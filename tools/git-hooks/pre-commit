@@ -24,4 +24,25 @@ if git diff --cached --no-color -U0 --diff-filter=ACMR \
   exit 1
 fi
 
+# Solo en el repositorio de código, que será público. Se reconoce por su core.hooksPath:
+# otro repositorio que use estos ganchos los activa con otra ruta.
+if [ "$(git config core.hooksPath)" = "tools/git-hooks" ]; then
+  # Hora en UTC, para no revelar la zona horaria del PC.
+  for ident in GIT_AUTHOR_IDENT GIT_COMMITTER_IDENT; do
+    if [ "$(git var "$ident" | awk '{print $NF}')" != "+0000" ]; then
+      echo "pre-commit: la hora del commit no está en UTC. En PowerShell: \$env:TZ = \"UTC0\". En Git Bash: export TZ=UTC0." >&2
+      exit 1
+    fi
+  done
+
+  # Nada de lo preparado cita identificadores de los documentos de planificación, que no se publican.
+  ids='(^|[^A-Za-z0-9_-])(ADR-[0-9]{4}|(D|R|RF|RNF|RN|RS|SCR|T|SP|UF|CE|RK|ARQ|TM|AR|AS|INC)-[0-9]+)([^0-9]|$)'
+  found=$(git diff --cached --no-color -U0 --diff-filter=ACMR | grep -E '^\+[^+]' | grep -E "$ids")
+  if [ -n "$found" ]; then
+    echo "pre-commit: lo preparado cita un identificador de los documentos de planificación, como el de una decisión o una tarea. Descríbelo con palabras:" >&2
+    printf '%s\n' "$found" | head -5 >&2
+    exit 1
+  fi
+fi
+
 exec gitleaks git --pre-commit --redact --staged --verbose

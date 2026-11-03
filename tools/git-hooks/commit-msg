@@ -16,3 +16,10 @@ if printf '%s\n' "$body" | grep -Eiq '^co-authored-by:|generated with'; then
   echo "commit-msg: el mensaje atribuye el cambio a una herramienta. Quita esa línea." >&2
   exit 1
 fi
+
+# Solo en el repositorio de código, que será público: sin identificadores de los documentos de planificación.
+ids='(^|[^A-Za-z0-9_-])(ADR-[0-9]{4}|(D|R|RF|RNF|RN|RS|SCR|T|SP|UF|CE|RK|ARQ|TM|AR|AS|INC)-[0-9]+)([^0-9]|$)'
+if [ "$(git config core.hooksPath)" = "tools/git-hooks" ] && printf '%s\n' "$body" | grep -Eq "$ids"; then
+  echo "commit-msg: el mensaje cita un identificador de los documentos de planificación, como el de una decisión o una tarea. Descríbelo con palabras." >&2
+  exit 1
+fi
