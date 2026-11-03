@@ -1,0 +1,7 @@
+# En release, R8 borra los registros de bajo nivel: pueden dejar datos del negocio en el registro del sistema.
+# Log.w y Log.e siguen, sin datos del negocio.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}
