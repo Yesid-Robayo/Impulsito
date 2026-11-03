@@ -46,6 +46,7 @@ fun ShopLedgerTheme(
         }
 
         darkTheme -> DarkColorScheme
+
         else -> LightColorScheme
     }
 

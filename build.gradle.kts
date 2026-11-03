@@ -8,8 +8,13 @@ plugins {
     alias(libs.plugins.ktlint) apply false
 }
 
+// La versión de ktlint sale del catálogo, no de la que trae el plugin por defecto.
+val ktlintVersion = libs.versions.ktlint.get()
 subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
+    extensions.configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
+        version.set(ktlintVersion)
+    }
 }
 
 // Reglas del código que corren dentro de check, porque no hay integración continua que las haga cumplir.
