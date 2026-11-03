@@ -1,0 +1,107 @@
+# --- Secretos: nunca entran al repositorio ---
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+keystore.properties
+signing.properties
+local.properties
+google-services.json
+client_secret*.json
+client-secret*.json
+*service-account*.json
+.env
+.env.*
+secrets/
+gitleaks-report*.json
+# Clave del manifiesto de versión y código de recuperación.
+# *.key y *.pem ya la cubren si usa esas extensiones: esto cubre cualquier otro formato.
+*manifest-signing*
+*manifest-private*
+*keyset*.json
+*recovery-kit*
+*.sealed
+
+# --- Salidas de compilación: se publican por fuera de Git ---
+*.apk
+*.aab
+*.apks
+*.ap_
+*.idsig
+*.dex
+output-metadata.json
+mapping.txt
+
+# --- Datos del negocio, copias y exportaciones ---
+# Se ancla a la raíz a propósito: un patrón "backup/" sin ancla ocultaría el
+# paquete de código data/.../backup/.
+/backups/
+/exports/
+/restore/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.db.gz
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.bak
+# Sin ancla: un CSV o un .gz con datos reales también puede caer en una subcarpeta.
+# Las pruebas generan sus archivos, así que no hacen falta excepciones.
+*.csv
+*.gz
+*-export-*.zip
+# Copias cifradas, fotos exportadas y documentos generados.
+*.slbk
+*.slmd
+*.slcopy
+*.slmeta
+*.sltmp
+*.xlsx
+*.xls
+*.pdf
+media-*.zip
+# Fotos: las de prueba se generan, y un recurso de la app usa png o webp.
+/media/
+/photos/
+/test-photos/
+/crash/
+*.jpg
+*.jpeg
+*.heic
+*.heif
+
+# --- Gradle y Kotlin ---
+.gradle/
+.kotlin/
+build/
+gradle-app.setting
+.gradletasknamecache
+hs_err_pid*
+replay_pid*
+*.hprof
+
+# --- Android Studio e IntelliJ ---
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+captures/
+.navigation/
+.externalNativeBuild/
+.cxx/
+*.logcat
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Claude Code: ajustes locales ---
+.claude/settings.local.json

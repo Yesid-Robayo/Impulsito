@@ -1,0 +1,18 @@
+#!/bin/sh
+# Gancho versionado. Lo activa el mismo core.hooksPath que pre-commit.
+# Rechaza un mensaje con un correo que no es de ejemplo, o con atribución a una herramienta de IA.
+
+allowed='@users\.noreply\.github\.com$|@example\.(com|net|org)$|\.(example|invalid|test)$'
+body=$(grep -v '^#' "$1")
+
+if printf '%s\n' "$body" \
+  | grep -Eio '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' \
+  | grep -Eivq "$allowed"; then
+  echo "commit-msg: el mensaje contiene un correo. Quítalo." >&2
+  exit 1
+fi
+
+if printf '%s\n' "$body" | grep -Eiq '^co-authored-by:|generated with'; then
+  echo "commit-msg: el mensaje atribuye el cambio a una herramienta. Quita esa línea." >&2
+  exit 1
+fi

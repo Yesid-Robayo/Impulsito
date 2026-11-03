@@ -1,0 +1,2 @@
+# Los ganchos de Git corren con sh: un fin de línea CRLF los rompe.
+tools/git-hooks/* text eol=lf

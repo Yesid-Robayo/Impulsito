@@ -1,0 +1,27 @@
+#!/bin/sh
+# Gancho versionado. Se activa una vez por clon con:
+#   git config core.hooksPath tools/git-hooks
+# Rechaza el commit si el autor no usa el correo noreply de GitHub, si lo preparado
+# agrega un correo que no es de ejemplo, o si gitleaks encuentra un secreto.
+
+noreply='@users\.noreply\.github\.com$'
+# Dominios reservados para ejemplos (RFC 2606) y el noreply de GitHub.
+allowed='@users\.noreply\.github\.com$|@example\.(com|net|org)$|\.(example|invalid|test)$'
+
+for email in "$(git config user.email)" "${GIT_AUTHOR_EMAIL:-}" "${GIT_COMMITTER_EMAIL:-}"; do
+  [ -z "$email" ] && continue
+  if ! printf '%s\n' "$email" | grep -Eiq "$noreply"; then
+    echo "pre-commit: el correo de Git no es el noreply de GitHub. Configúralo con git config user.email." >&2
+    exit 1
+  fi
+done
+
+if git diff --cached --no-color -U0 --diff-filter=ACMR \
+  | grep -E '^\+[^+]' \
+  | grep -Eio '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' \
+  | grep -Eivq "$allowed"; then
+  echo "pre-commit: lo preparado agrega un correo real. Quítalo o usa uno de example.com." >&2
+  exit 1
+fi
+
+exec gitleaks git --pre-commit --redact --staged --verbose
