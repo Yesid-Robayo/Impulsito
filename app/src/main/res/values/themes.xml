@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Nombre neutro: el nombre visible solo vive en app_name. El color lo pone ColorScheme en Compose. -->
+    <style name="Theme.ShopLedger" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
