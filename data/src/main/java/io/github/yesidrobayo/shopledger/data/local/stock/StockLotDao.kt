@@ -1,0 +1,69 @@
+package io.github.yesidrobayo.shopledger.data.local.stock
+
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.Query
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Lecturas y escrituras de `stock_lots`. Las escrituras solo se llaman dentro de la transacción del
+ * caso de uso.
+ *
+ * Los lotes de un producto salen en el orden en que entraron, por `id`. Sin `REPLACE`: un `INSERT
+ * OR REPLACE` sobre el mismo código borraría el lote que choca, y con filas en el libro fallaría su
+ * llave a mitad del caso de uso. El producto y la marca de lote sin asignar no cambian nunca: ninguna
+ * escritura los toca, y la guarda lo impide.
+ */
+@Dao
+internal interface StockLotDao {
+    @Query("SELECT * FROM stock_lots WHERE product_id = :productId ORDER BY id")
+    fun observeByProduct(productId: Long): Flow<List<StockLotEntity>>
+
+    @Query("SELECT * FROM stock_lots WHERE product_id = :productId ORDER BY id")
+    suspend fun findByProduct(productId: Long): List<StockLotEntity>
+
+    @Query("SELECT * FROM stock_lots WHERE id = :id")
+    suspend fun findById(id: Long): StockLotEntity?
+
+    /** El lote del producto con ese código: el código es único dentro del producto. */
+    @Query("SELECT * FROM stock_lots WHERE product_id = :productId AND lot_code = :lotCode")
+    suspend fun findByCode(productId: Long, lotCode: String): StockLotEntity?
+
+    /** El lote sin asignar del producto, que absorbe lo vendido sin lote. Hay a lo sumo uno. */
+    @Query("SELECT * FROM stock_lots WHERE product_id = :productId AND is_unassigned = 1")
+    suspend fun findUnassigned(productId: Long): StockLotEntity?
+
+    /**
+     * Si alguna fila del libro, o alguna línea de compra, lo usa. Con uso ya no se borra: se cierra.
+     */
+    @Query(
+        "SELECT EXISTS (SELECT 1 FROM stock_movements WHERE lot_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM purchase_lines WHERE lot_id = :id)",
+    )
+    suspend fun isInUse(id: Long): Boolean
+
+    /** Devuelve el id nuevo. Falla si el producto ya tiene ese código o ya tiene lote sin asignar. */
+    @Insert
+    suspend fun insert(lot: StockLotEntity): Long
+
+    /** Cambia el código y el vencimiento. Devuelve las filas cambiadas. */
+    @Query(
+        "UPDATE stock_lots SET lot_code = :lotCode, expiry_date = :expiryDate WHERE id = :id",
+    )
+    suspend fun updateCodeAndExpiry(id: Long, lotCode: String?, expiryDate: String?): Int
+
+    /** Anota el aviso de vencimiento, para no repetirlo, o lo borra con `null`. */
+    @Query("UPDATE stock_lots SET expiry_notified_at = :notifiedAt WHERE id = :id")
+    suspend fun setExpiryNotifiedAt(id: Long, notifiedAt: Long?): Int
+
+    /** Lo cierra con [closedAt], o lo reabre con `null`. */
+    @Query("UPDATE stock_lots SET closed_at = :closedAt WHERE id = :id")
+    suspend fun setClosedAt(id: Long, closedAt: Long?): Int
+
+    /**
+     * Elimina un lote sin uso. Con uso, una llave `RESTRICT` hace fallar la sentencia y no borra
+     * nada. Devuelve las filas borradas.
+     */
+    @Query("DELETE FROM stock_lots WHERE id = :id")
+    suspend fun delete(id: Long): Int
+}

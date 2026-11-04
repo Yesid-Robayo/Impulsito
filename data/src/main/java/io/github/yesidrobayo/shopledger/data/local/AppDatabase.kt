@@ -71,8 +71,14 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
 import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsDao
 import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.LocationDao
+import io.github.yesidrobayo.shopledger.data.local.stock.LocationEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.LowStockAlertDao
 import io.github.yesidrobayo.shopledger.data.local.stock.LowStockAlertEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.StockBalanceDao
+import io.github.yesidrobayo.shopledger.data.local.stock.StockBalanceEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.StockLotDao
+import io.github.yesidrobayo.shopledger.data.local.stock.StockLotEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementDao
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementEntity
 import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateDao
@@ -116,6 +122,8 @@ import kotlin.coroutines.CoroutineContext
         PurchaseLineEntity::class,
         SaleLineComponentEntity::class,
         SaleLineEntity::class,
+        StockBalanceEntity::class,
+        StockLotEntity::class,
         ProductEntity::class,
         UnitEntity::class,
         LowStockAlertEntity::class,
@@ -129,6 +137,7 @@ import kotlin.coroutines.CoroutineContext
         ExpenseCategoryEntity::class,
         CustomerLedgerEntryEntity::class,
         SaleEntity::class,
+        LocationEntity::class,
         PriceListEntity::class,
         CustomerEntity::class,
         SupplierLedgerEntryEntity::class,
@@ -174,6 +183,12 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun saleLineComponentDao(): SaleLineComponentDao
 
     abstract fun stockMovementDao(): StockMovementDao
+
+    abstract fun stockBalanceDao(): StockBalanceDao
+
+    abstract fun stockLotDao(): StockLotDao
+
+    abstract fun locationDao(): LocationDao
 
     abstract fun lowStockAlertDao(): LowStockAlertDao
 

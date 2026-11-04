@@ -257,7 +257,6 @@ internal class SchemaGuardsTest : CatalogDatabaseTest() {
                 "guard_app_settings_update",
                 "guard_products_insert",
                 "guard_products_update",
-                "guard_stock_movements_insert",
                 "guard_purchases_insert",
                 "guard_sales_insert",
                 "guard_sales_void_only",
@@ -270,7 +269,6 @@ internal class SchemaGuardsTest : CatalogDatabaseTest() {
         /** Lo que esperan: tablas, y columnas de los ajustes que llegan con la región. */
         val AWAITING_FOR =
             setOf(
-                "stock_lots",
                 "sale_returns",
             ) + listOf(
                 "currency_code",

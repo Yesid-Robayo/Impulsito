@@ -63,11 +63,13 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
             mapOf(
                 "purchases" to
                     listOf(
+                        "location_id -> locations RESTRICT",
                         "money_account_id -> money_accounts RESTRICT",
                         "supplier_id -> suppliers RESTRICT",
                     ),
                 "purchase_lines" to
                     listOf(
+                        "lot_id -> stock_lots RESTRICT",
                         "product_id -> products RESTRICT",
                         "purchase_id -> purchases RESTRICT",
                         "unit_id -> units RESTRICT",
@@ -76,6 +78,7 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                     listOf(
                         "cash_session_id -> cash_sessions RESTRICT",
                         "customer_id -> customers RESTRICT",
+                        "location_id -> locations RESTRICT",
                         "price_list_id -> price_lists RESTRICT",
                     ),
                 "sale_lines" to
@@ -88,6 +91,8 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                     ),
                 "stock_movements" to
                     listOf(
+                        "location_id -> locations RESTRICT",
+                        "lot_id -> stock_lots RESTRICT",
                         "product_id -> products RESTRICT",
                         "purchase_line_id -> purchase_lines RESTRICT",
                         "reverses_movement_id -> stock_movements RESTRICT",

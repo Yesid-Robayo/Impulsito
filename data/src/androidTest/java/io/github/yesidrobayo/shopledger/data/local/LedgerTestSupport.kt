@@ -80,7 +80,7 @@ internal abstract class LedgerDatabaseTest : CatalogDatabaseTest() {
     }
 }
 
-/** Ubicación cualquiera: la tabla de ubicaciones todavía no existe, y la columna no tiene llave. */
+/** La ubicación inicial `MAIN`, la única que nace con la base. */
 internal const val LOCATION_ID = 1L
 
 /** Fecha de negocio de los documentos que no piden otra. */

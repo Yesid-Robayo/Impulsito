@@ -8,12 +8,13 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.AppLockTimeout
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
+import io.github.yesidrobayo.shopledger.domain.model.stock.LocationKind
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 
 /**
  * Crea, al nacer la base, las filas que la app necesita desde la primera pantalla: la única de
- * `app_settings` y la única de `backup_state`, las dos con `id` 1, la cuenta de dinero `CASH` y las
- * unidades iniciales.
+ * `app_settings` y la única de `backup_state`, las dos con `id` 1, la cuenta de dinero `CASH`, las
+ * unidades iniciales y la ubicación inicial.
  *
  * Room llama a [onCreate] solo cuando crea la base, dentro de la misma transacción exclusiva en
  * que crea las tablas y antes de fijar la versión: si una inserción falla, no queda ni la base a
@@ -49,6 +50,11 @@ internal class InitialRowsCallback(private val clock: Clock) : RoomDatabase.Call
                 statement.step()
                 statement.reset()
             }
+        }
+        connection.prepare(INSERT_MAIN_LOCATION_SQL).use { statement ->
+            statement.bindLong(1, now)
+            statement.bindLong(2, now)
+            statement.step()
         }
     }
 }
@@ -118,3 +124,13 @@ private const val INSERT_CASH_ACCOUNT_SQL =
     "INSERT INTO money_accounts (system_key, name, normalized_name, kind, currency_code, " +
         "currency_decimals, balance, archived_at, created_at, updated_at) " +
         "VALUES ('CASH', NULL, NULL, 'CASH', 'XXX', 0, 0, NULL, ?, ?)"
+
+/**
+ * La ubicación inicial, de clave `MAIN`, sin nombre y vigente: toda fila del libro, compra y venta
+ * lleva una ubicación desde el principio, y con una sola la interfaz no habla de ubicaciones. Nace
+ * con `id` 1. Su clase es `OTHER`, porque no se asume que el negocio tenga un local: puede ser la
+ * casa de la persona o un puesto.
+ */
+private val INSERT_MAIN_LOCATION_SQL =
+    "INSERT INTO locations (system_key, name, normalized_name, kind, archived_at, created_at, " +
+        "updated_at) VALUES ('MAIN', NULL, NULL, '${LocationKind.OTHER.name}', NULL, ?, ?)"

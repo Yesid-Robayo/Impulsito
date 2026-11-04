@@ -34,12 +34,13 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
  *   devolución, una transferencia, una producción o un conteo.
  * - `business_date` de un compensatorio es la fecha de la anulación, no la del original.
  * - Producto, fila anulada, línea de venta y línea de compra usan `RESTRICT`: un producto o una
- *   línea con filas en el libro no se borran.
+ *   línea con filas en el libro no se borran. Ubicación y lote también, sin índice: casi nunca se
+ *   borran, y las filas de un producto se encuentran por `product_id`.
  * - El componente de un combo también usa `RESTRICT`, sin índice: nunca se borra, y sus filas se
  *   alcanzan por la línea de venta.
- * - `location_id`, `lot_id`, `sale_return_line_id`, `purchase_return_line_id`,
- *   `transfer_line_id`, `production_batch_id` y `count_session_id` todavía no tienen llave foránea: sus tablas no existen aún. La llave, con `RESTRICT`, llega con
- *   la tabla a la que apunta, dentro del mismo esquema 1.
+ * - `sale_return_line_id`, `purchase_return_line_id`, `transfer_line_id`, `production_batch_id` y
+ *   `count_session_id` todavía no tienen llave foránea: sus tablas no existen aún. La llave, con
+ *   `RESTRICT`, llega con la tabla a la que apunta, dentro del mismo esquema 1.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -73,6 +74,18 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
             entity = SaleLineComponentEntity::class,
             parentColumns = ["id"],
             childColumns = ["sale_line_component_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = LocationEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["location_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = StockLotEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["lot_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

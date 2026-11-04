@@ -9,6 +9,7 @@ import androidx.room3.RoomWarnings
 import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionEntity
 import io.github.yesidrobayo.shopledger.data.local.customer.CustomerEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.LocationEntity
 
 /**
  * La cabecera de una venta. Su `id` es también el número visible de la venta. Una venta confirmada
@@ -24,10 +25,11 @@ import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
  * - La lista de precios usa `RESTRICT`: una lista con ventas no se borra. No lleva índice: las
  *   listas casi nunca se borran, y SQLite solo busca ventas por esa columna al borrar una.
  * - El cliente también usa `RESTRICT`: un cliente con ventas no se borra, se archiva. Su índice
- *   sirve al extracto y al análisis por cliente.
+ *   sirve al extracto y al análisis por cliente. La ubicación también usa `RESTRICT`, sin índice:
+ *   una ubicación con ventas no se borra.
  * - La sesión de caja también usa `RESTRICT`, sin índice: una sesión no se borra nunca.
- * - `location_id`, `quote_id` y `order_id` todavía no tienen llave foránea: sus tablas no existen
- *   aún. La llave llega con la tabla a la que apunta, dentro del mismo esquema 1.
+ * - `quote_id` y `order_id` todavía no tienen llave foránea: sus tablas no existen aún. La llave
+ *   llega con la tabla a la que apunta, dentro del mismo esquema 1.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -49,6 +51,12 @@ import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
             entity = CashSessionEntity::class,
             parentColumns = ["id"],
             childColumns = ["cash_session_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = LocationEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["location_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

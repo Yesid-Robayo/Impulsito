@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d4703968e3442a754bfec972b1c8d634",
+    "identityHash": "c57bff30919b0165f0bc0ff8576c22f9",
     "entities": [
       {
         "tableName": "categories",
@@ -789,7 +789,7 @@
       },
       {
         "tableName": "stock_movements",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `product_id` INTEGER NOT NULL, `location_id` INTEGER NOT NULL, `lot_id` INTEGER, `type` TEXT NOT NULL, `reason` TEXT, `quantity_milli` INTEGER NOT NULL, `unit_cost` INTEGER NOT NULL, `total_cost` INTEGER NOT NULL, `average_cost_after` INTEGER NOT NULL, `stock_value_after` INTEGER NOT NULL, `balance_after_milli` INTEGER NOT NULL, `reverses_movement_id` INTEGER, `sale_line_id` INTEGER, `sale_line_component_id` INTEGER, `purchase_line_id` INTEGER, `sale_return_line_id` INTEGER, `purchase_return_line_id` INTEGER, `transfer_line_id` INTEGER, `production_batch_id` INTEGER, `count_session_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`reverses_movement_id`) REFERENCES `stock_movements`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sale_line_id`) REFERENCES `sale_lines`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`purchase_line_id`) REFERENCES `purchase_lines`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sale_line_component_id`) REFERENCES `sale_line_components`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `product_id` INTEGER NOT NULL, `location_id` INTEGER NOT NULL, `lot_id` INTEGER, `type` TEXT NOT NULL, `reason` TEXT, `quantity_milli` INTEGER NOT NULL, `unit_cost` INTEGER NOT NULL, `total_cost` INTEGER NOT NULL, `average_cost_after` INTEGER NOT NULL, `stock_value_after` INTEGER NOT NULL, `balance_after_milli` INTEGER NOT NULL, `reverses_movement_id` INTEGER, `sale_line_id` INTEGER, `sale_line_component_id` INTEGER, `purchase_line_id` INTEGER, `sale_return_line_id` INTEGER, `purchase_return_line_id` INTEGER, `transfer_line_id` INTEGER, `production_batch_id` INTEGER, `count_session_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`reverses_movement_id`) REFERENCES `stock_movements`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sale_line_id`) REFERENCES `sale_lines`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`purchase_line_id`) REFERENCES `purchase_lines`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sale_line_component_id`) REFERENCES `sale_line_components`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`location_id`) REFERENCES `locations`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`lot_id`) REFERENCES `stock_lots`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1039,12 +1039,34 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "locations",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "location_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "stock_lots",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "lot_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "purchase_lines",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `purchase_id` INTEGER NOT NULL, `product_id` INTEGER NOT NULL, `unit_id` INTEGER NOT NULL, `unit_factor_milli` INTEGER NOT NULL, `entered_quantity_milli` INTEGER NOT NULL, `quantity_milli` INTEGER NOT NULL, `unit_cost` INTEGER NOT NULL, `line_total` INTEGER NOT NULL, `tax_rate_bp` INTEGER NOT NULL, `tax_name_snapshot` TEXT, `tax_amount` INTEGER NOT NULL, `cost_amount` INTEGER NOT NULL, `lot_id` INTEGER, `reference_unit_cost` INTEGER, FOREIGN KEY(`purchase_id`) REFERENCES `purchases`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`unit_id`) REFERENCES `units`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `purchase_id` INTEGER NOT NULL, `product_id` INTEGER NOT NULL, `unit_id` INTEGER NOT NULL, `unit_factor_milli` INTEGER NOT NULL, `entered_quantity_milli` INTEGER NOT NULL, `quantity_milli` INTEGER NOT NULL, `unit_cost` INTEGER NOT NULL, `line_total` INTEGER NOT NULL, `tax_rate_bp` INTEGER NOT NULL, `tax_name_snapshot` TEXT, `tax_amount` INTEGER NOT NULL, `cost_amount` INTEGER NOT NULL, `lot_id` INTEGER, `reference_unit_cost` INTEGER, FOREIGN KEY(`purchase_id`) REFERENCES `purchases`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`unit_id`) REFERENCES `units`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`lot_id`) REFERENCES `stock_lots`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1189,6 +1211,17 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "unit_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "stock_lots",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "lot_id"
             ],
             "referencedColumns": [
               "id"
@@ -1513,6 +1546,200 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "unit_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "stock_balances",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `product_id` INTEGER NOT NULL, `location_id` INTEGER NOT NULL, `lot_key` INTEGER NOT NULL, `on_hand_milli` INTEGER NOT NULL, FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`location_id`) REFERENCES `locations`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productId",
+            "columnName": "product_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "locationId",
+            "columnName": "location_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lotKey",
+            "columnName": "lot_key",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "onHandMilli",
+            "columnName": "on_hand_milli",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_stock_balances_product_id_location_id_lot_key",
+            "unique": true,
+            "columnNames": [
+              "product_id",
+              "location_id",
+              "lot_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_stock_balances_product_id_location_id_lot_key` ON `${TABLE_NAME}` (`product_id`, `location_id`, `lot_key`)"
+          },
+          {
+            "name": "index_stock_balances_location_id",
+            "unique": false,
+            "columnNames": [
+              "location_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_stock_balances_location_id` ON `${TABLE_NAME}` (`location_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "products",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "product_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "locations",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "location_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "stock_lots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `product_id` INTEGER NOT NULL, `lot_code` TEXT, `is_unassigned` INTEGER NOT NULL, `expiry_date` TEXT, `purchase_line_id` INTEGER, `expiry_notified_at` INTEGER, `created_at` INTEGER NOT NULL, `closed_at` INTEGER, FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`purchase_line_id`) REFERENCES `purchase_lines`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productId",
+            "columnName": "product_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lotCode",
+            "columnName": "lot_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isUnassigned",
+            "columnName": "is_unassigned",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiryDate",
+            "columnName": "expiry_date",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "purchaseLineId",
+            "columnName": "purchase_line_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "expiryNotifiedAt",
+            "columnName": "expiry_notified_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "closedAt",
+            "columnName": "closed_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_stock_lots_product_id_lot_code",
+            "unique": true,
+            "columnNames": [
+              "product_id",
+              "lot_code"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_stock_lots_product_id_lot_code` ON `${TABLE_NAME}` (`product_id`, `lot_code`)"
+          },
+          {
+            "name": "index_stock_lots_expiry_date",
+            "unique": false,
+            "columnNames": [
+              "expiry_date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_stock_lots_expiry_date` ON `${TABLE_NAME}` (`expiry_date`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "products",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "product_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "purchase_lines",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "purchase_line_id"
             ],
             "referencedColumns": [
               "id"
@@ -3185,7 +3412,7 @@
       },
       {
         "tableName": "sales",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `status` TEXT NOT NULL, `net_total` INTEGER NOT NULL, `tax_total` INTEGER NOT NULL, `total` INTEGER NOT NULL, `total_cost` INTEGER NOT NULL, `total_replacement_cost` INTEGER NOT NULL, `order_adjustment` INTEGER NOT NULL, `tip_amount` INTEGER NOT NULL, `cash_rounding_amount` INTEGER NOT NULL, `amount_due` INTEGER NOT NULL, `customer_id` INTEGER, `price_list_id` INTEGER NOT NULL, `location_id` INTEGER NOT NULL, `cash_session_id` INTEGER, `quote_id` INTEGER, `order_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`price_list_id`) REFERENCES `price_lists`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`customer_id`) REFERENCES `customers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`cash_session_id`) REFERENCES `cash_sessions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `status` TEXT NOT NULL, `net_total` INTEGER NOT NULL, `tax_total` INTEGER NOT NULL, `total` INTEGER NOT NULL, `total_cost` INTEGER NOT NULL, `total_replacement_cost` INTEGER NOT NULL, `order_adjustment` INTEGER NOT NULL, `tip_amount` INTEGER NOT NULL, `cash_rounding_amount` INTEGER NOT NULL, `amount_due` INTEGER NOT NULL, `customer_id` INTEGER, `price_list_id` INTEGER NOT NULL, `location_id` INTEGER NOT NULL, `cash_session_id` INTEGER, `quote_id` INTEGER, `order_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`price_list_id`) REFERENCES `price_lists`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`customer_id`) REFERENCES `customers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`cash_session_id`) REFERENCES `cash_sessions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`location_id`) REFERENCES `locations`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -3394,6 +3621,93 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "locations",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "location_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "locations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `system_key` TEXT, `name` TEXT, `normalized_name` TEXT, `kind` TEXT NOT NULL, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "systemKey",
+            "columnName": "system_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_locations_system_key",
+            "unique": true,
+            "columnNames": [
+              "system_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_locations_system_key` ON `${TABLE_NAME}` (`system_key`)"
+          },
+          {
+            "name": "index_locations_normalized_name",
+            "unique": false,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_locations_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
           }
         ]
       },
@@ -3780,7 +4094,7 @@
       },
       {
         "tableName": "purchases",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `supplier_id` INTEGER, `status` TEXT NOT NULL, `invoice_reference` TEXT, `net_total` INTEGER NOT NULL, `tax_total` INTEGER NOT NULL, `total` INTEGER NOT NULL, `cost_total` INTEGER NOT NULL, `amount_paid` INTEGER NOT NULL, `money_account_id` INTEGER, `due_date` TEXT, `location_id` INTEGER NOT NULL, `fx_currency_code` TEXT, `fx_rate_micro` INTEGER, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`supplier_id`) REFERENCES `suppliers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`money_account_id`) REFERENCES `money_accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `supplier_id` INTEGER, `status` TEXT NOT NULL, `invoice_reference` TEXT, `net_total` INTEGER NOT NULL, `tax_total` INTEGER NOT NULL, `total` INTEGER NOT NULL, `cost_total` INTEGER NOT NULL, `amount_paid` INTEGER NOT NULL, `money_account_id` INTEGER, `due_date` TEXT, `location_id` INTEGER NOT NULL, `fx_currency_code` TEXT, `fx_rate_micro` INTEGER, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`supplier_id`) REFERENCES `suppliers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`money_account_id`) REFERENCES `money_accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`location_id`) REFERENCES `locations`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -3948,6 +4262,17 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "money_account_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "locations",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "location_id"
             ],
             "referencedColumns": [
               "id"
@@ -4370,7 +4695,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd4703968e3442a754bfec972b1c8d634')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c57bff30919b0165f0bc0ff8576c22f9')"
     ]
   }
 }

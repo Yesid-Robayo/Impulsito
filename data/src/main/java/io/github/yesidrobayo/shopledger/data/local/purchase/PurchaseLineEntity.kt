@@ -8,6 +8,7 @@ import androidx.room3.PrimaryKey
 import androidx.room3.RoomWarnings
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.UnitEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.StockLotEntity
 
 /**
  * Una línea de compra. Nunca se edita ni se borra, ni siquiera al anular la compra: la anulación
@@ -22,10 +23,8 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.UnitEntity
  *   `cost_amount` es lo que la línea suma al valor del stock: sin el impuesto si es recuperable.
  * - La tasa y el nombre del impuesto se copian, porque pueden cambiar después.
  * - `reference_unit_cost` va en la moneda en que se compró, si no es la del negocio.
- * - Compra y producto usan `RESTRICT`: un producto con compras no se borra. La unidad también,
- *   sin índice: una unidad con compras no se borra, se archiva.
- * - `lot_id` todavía no tiene llave foránea: la tabla de lotes no existe aún. La llave llega con
- *   ella, dentro del mismo esquema 1.
+ * - Compra y producto usan `RESTRICT`: un producto con compras no se borra. La unidad y el lote
+ *   también, sin índice: una unidad con compras no se borra, se archiva, y un lote se cierra.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -47,6 +46,12 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.UnitEntity
             entity = UnitEntity::class,
             parentColumns = ["id"],
             childColumns = ["unit_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = StockLotEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["lot_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

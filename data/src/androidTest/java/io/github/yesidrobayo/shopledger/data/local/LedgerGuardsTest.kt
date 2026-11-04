@@ -58,8 +58,7 @@ internal class LedgerGuardsTest : GuardProbeTest() {
             opening.with("business_date" to "2026-13-01"),
             opening.with("note" to "N".repeat(201)),
             // Solo un producto con libro de stock tiene filas. Los lotes son todo o nada: sin lote
-            // en un producto que los lleva, y ninguno en uno que no. Sin la tabla de lotes ningún
-            // lote existe, así que tampoco lo lleva el producto que los usa.
+            // en un producto que los lleva, y ninguno en uno que no. Un lote que no existe tampoco.
             movementRow(untracked),
             movementRow(MISSING_ID),
             opening.with("lot_id" to 1L),

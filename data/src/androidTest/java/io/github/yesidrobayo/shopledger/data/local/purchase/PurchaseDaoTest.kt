@@ -16,6 +16,8 @@ import io.github.yesidrobayo.shopledger.data.local.ids
 import io.github.yesidrobayo.shopledger.data.local.money.moneyAccount
 import io.github.yesidrobayo.shopledger.data.local.purchase
 import io.github.yesidrobayo.shopledger.data.local.purchaseLine
+import io.github.yesidrobayo.shopledger.data.local.stock.location
+import io.github.yesidrobayo.shopledger.data.local.stock.lot
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -37,6 +39,9 @@ internal class PurchaseDaoTest : LedgerDatabaseTest() {
     @Test
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         val supplierId = database.supplierDao().insert(supplier("Distribuidora Andina"))
+        // La ubicación y el lote existen, con el id que espera cada columna.
+        database.locationDao().insert(location("Bodega").copy(id = 4))
+        database.stockLotDao().insert(lot(productId, "L-2026-01").copy(id = 17))
         // Cada columna con un valor distinto, para que dos columnas cruzadas no pasen. Se pagó una
         // parte, con deuda al proveedor, en otra moneda, desde una cuenta que existe.
         val accountId = database.moneyAccountDao().insert(moneyAccount("Banco").copy(id = 3))

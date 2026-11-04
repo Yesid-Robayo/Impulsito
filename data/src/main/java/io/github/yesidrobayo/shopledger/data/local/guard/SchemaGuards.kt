@@ -38,6 +38,9 @@ internal object SchemaGuards {
             UNITS_GUARDS,
             PRODUCT_UNITS_GUARDS,
             STOCK_MOVEMENTS_GUARDS,
+            STOCK_BALANCES_GUARDS,
+            STOCK_LOTS_GUARDS,
+            LOCATIONS_GUARDS,
             LOW_STOCK_ALERTS_GUARDS,
             PURCHASES_GUARDS,
             PURCHASE_LINES_GUARDS,
@@ -980,10 +983,8 @@ private val PRODUCT_UNITS_GUARDS =
     )
 
 /** El libro de stock: solo crece. Cada fila lleva el signo y el origen de su tipo, y una
- * compensación apunta a la fila que compensa, una sola vez.
- *
- * Sin la tabla de lotes no existe ningún lote: la fila no puede llevar uno, igual que con la
- * tabla vacía. Un producto con lotes no recibe filas con cantidad hasta que lleguen. */
+ * compensación apunta a la fila que compensa, una sola vez. Un producto con lotes lleva el lote en
+ * cada fila con cantidad, y el lote es del mismo producto. */
 private val STOCK_MOVEMENTS_GUARDS =
     table(
         """
@@ -1045,12 +1046,102 @@ private val STOCK_MOVEMENTS_GUARDS =
         CREATE TRIGGER guard_stock_movements_no_delete BEFORE DELETE ON stock_movements
         BEGIN SELECT RAISE(ABORT, 'guard:stock_movements_append_only'); END;
         """,
-        Awaiting.Line(
-            "guard_stock_movements_insert",
-            "FROM stock_lots",
-            listOf("stock_lots"),
-            replacement = "  AND NEW.lot_id IS NULL",
-        ),
+    )
+
+/** Los saldos por producto, ubicación y lote: enteros, y `lot_key` es un lote o 0. */
+private val STOCK_BALANCES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_stock_balances_insert BEFORE INSERT ON stock_balances
+        WHEN NOT IFNULL((
+          typeof(NEW.lot_key) = 'integer' AND NEW.lot_key >= 0
+          AND typeof(NEW.on_hand_milli) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_balances'); END;
+
+        CREATE TRIGGER guard_stock_balances_update BEFORE UPDATE ON stock_balances
+        WHEN NOT IFNULL((
+          typeof(NEW.lot_key) = 'integer' AND NEW.lot_key >= 0
+          AND typeof(NEW.on_hand_milli) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_balances'); END;
+        """,
+    )
+
+/** Los lotes: código y vencimiento válidos, y un solo lote sin asignar por producto, que no deja
+ * de serlo ni cambia de producto. */
+private val STOCK_LOTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_stock_lots_insert BEFORE INSERT ON stock_lots
+        WHEN NOT IFNULL((
+          (NEW.lot_code IS NULL OR (typeof(NEW.lot_code) = 'text' AND length(NEW.lot_code) BETWEEN 1 AND 60))
+          AND NEW.is_unassigned IN (0, 1)
+          AND (NEW.expiry_date IS NULL OR (date(NEW.expiry_date) = NEW.expiry_date))
+          AND (NEW.expiry_notified_at IS NULL OR (typeof(NEW.expiry_notified_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND (NEW.closed_at IS NULL OR (typeof(NEW.closed_at) = 'integer'))
+          AND (NEW.is_unassigned = 0 OR (NEW.lot_code IS NULL AND NEW.expiry_date IS NULL))
+          AND (NEW.is_unassigned = 0 OR NOT EXISTS (SELECT 1 FROM stock_lots l WHERE l.product_id = NEW.product_id AND l.is_unassigned = 1))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_lots'); END;
+
+        CREATE TRIGGER guard_stock_lots_update BEFORE UPDATE ON stock_lots
+        WHEN NOT IFNULL((
+          (NEW.lot_code IS NULL OR (typeof(NEW.lot_code) = 'text' AND length(NEW.lot_code) BETWEEN 1 AND 60))
+          AND NEW.is_unassigned IN (0, 1)
+          AND (NEW.expiry_date IS NULL OR (date(NEW.expiry_date) = NEW.expiry_date))
+          AND (NEW.expiry_notified_at IS NULL OR (typeof(NEW.expiry_notified_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND (NEW.closed_at IS NULL OR (typeof(NEW.closed_at) = 'integer'))
+          AND (NEW.is_unassigned = 0 OR (NEW.lot_code IS NULL AND NEW.expiry_date IS NULL))
+          AND NEW.product_id = OLD.product_id AND NEW.is_unassigned = OLD.is_unassigned
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_lots'); END;
+        """,
+    )
+
+/** Las ubicaciones: la de clave `MAIN` nunca se archiva ni se borra, y una creada por la persona
+ * siempre tiene nombre. */
+private val LOCATIONS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_locations_insert BEFORE INSERT ON locations
+        WHEN NOT IFNULL((
+          (NEW.system_key IS NULL OR (typeof(NEW.system_key) = 'text' AND length(NEW.system_key) BETWEEN 1 AND 40))
+          AND (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40))
+          AND NEW.kind IN ('STORE', 'WAREHOUSE', 'STALL', 'OTHER')
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.system_key IS NOT NULL OR NEW.name IS NOT NULL)
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.system_key IS NOT 'MAIN' OR NEW.archived_at IS NULL)
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM locations o WHERE o.normalized_name = NEW.normalized_name AND o.archived_at IS NULL))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:locations'); END;
+
+        CREATE TRIGGER guard_locations_update BEFORE UPDATE ON locations
+        WHEN NOT IFNULL((
+          (NEW.system_key IS NULL OR (typeof(NEW.system_key) = 'text' AND length(NEW.system_key) BETWEEN 1 AND 40))
+          AND (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40))
+          AND NEW.kind IN ('STORE', 'WAREHOUSE', 'STALL', 'OTHER')
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.system_key IS NOT NULL OR NEW.name IS NOT NULL)
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.system_key IS NOT 'MAIN' OR NEW.archived_at IS NULL)
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM locations o WHERE o.normalized_name = NEW.normalized_name AND o.archived_at IS NULL AND o.id <> NEW.id))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:locations'); END;
+
+        CREATE TRIGGER guard_locations_no_delete BEFORE DELETE ON locations
+        WHEN OLD.system_key = 'MAIN'
+        BEGIN SELECT RAISE(ABORT, 'guard:locations_system'); END;
+        """,
     )
 
 /** Las alertas de stock bajo: una sola activa por producto, y una resuelta no se reabre. */

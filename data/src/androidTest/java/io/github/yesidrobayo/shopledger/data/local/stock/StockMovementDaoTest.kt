@@ -48,10 +48,11 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
         val purchaseLineId = insertPurchaseWithLine().id
         val lotProductId = products.insert(product("Queso").copy(tracksLots = 1))
         // Una fila por origen, y cada columna con un valor distinto dentro de su fila, para que dos
-        // columnas cruzadas no pasen. Las columnas sin llave todavía admiten cualquier id. La
-        // guarda pide que el lote exista, y la tabla de lotes todavía no existe: esta prueba, que
-        // solo mira que cada columna vuelva de su lugar, la retira.
-        execute("DROP TRIGGER guard_stock_movements_insert")
+        // columnas cruzadas no pasen. Las columnas sin llave todavía admiten cualquier id. El lote
+        // y las dos ubicaciones existen, con el id que cada fila espera, y la guarda sigue puesta.
+        database.stockLotDao().insert(lot(lotProductId, "Q-2026-01").copy(id = 41))
+        database.locationDao().insert(location("Bodega").copy(id = 2))
+        database.locationDao().insert(location("Puesto de feria", kind = "STALL").copy(id = 3))
         val rows =
             listOf(
                 movement(lotProductId, "PURCHASE", 12_000, 1_667, 20_000, 12_000, 1_668, 20_001)

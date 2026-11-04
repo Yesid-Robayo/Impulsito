@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.data.local.ids
 import io.github.yesidrobayo.shopledger.data.local.money.moneyAccount
 import io.github.yesidrobayo.shopledger.data.local.sale
 import io.github.yesidrobayo.shopledger.data.local.saleLine
+import io.github.yesidrobayo.shopledger.data.local.stock.location
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -41,11 +42,12 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
     @Test
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         // Cada columna con un valor distinto, para que dos columnas cruzadas no pasen. Un recargo
-        // en toda la venta y un redondeo de efectivo hacia arriba. El cliente y la sesión de caja ya
-        // tienen tabla y llave: la venta apunta a unos que existen, con un id propio.
+        // en toda la venta y un redondeo de efectivo hacia arriba. El cliente, la sesión de caja y
+        // la ubicación ya tienen tabla y llave: la venta apunta a unos que existen, con un id propio.
         val customerId = database.customerDao().insert(customer("Ana").copy(id = 8))
         val accountId = database.moneyAccountDao().insert(moneyAccount("Caja chica"))
         val sessionId = database.cashSessionDao().insert(openSession(accountId).copy(id = 5))
+        database.locationDao().insert(location("Puesto de feria", kind = "STALL").copy(id = 2))
         val header =
             SaleEntity(
                 status = "ACTIVE",

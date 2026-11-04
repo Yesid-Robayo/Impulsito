@@ -87,12 +87,13 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 RegexOption.IGNORE_CASE,
             )
         // Un gasto tampoco se borra: solo se anula. Los ajustes y el estado del respaldo son una sola fila que nace con la base: sin
-        // ella la app no arranca, y sin la del respaldo un cambio quedaría sin marca. Las categorías de gasto, las alertas de stock, los
+        // ella la app no arranca, y sin la del respaldo un cambio quedaría sin marca. Un saldo por ubicación y lote es la suma de
+        // sus filas del libro: borrarlo o reemplazarlo lo dejaría sin ellas. Las categorías de gasto, las alertas de stock, los
         // clientes, las plantillas de mensaje, las cuentas de dinero, las sesiones de caja y sus denominaciones nunca se reemplazan con
         // REPLACE, que borraría la fila que choca sin pasar por su regla de borrado.
         val documentAndSingleRowRemoval =
             Regex(
-                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(expenses|app_settings|backup_state)\b""",
+                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(expenses|app_settings|backup_state|stock_balances)\b""",
                 RegexOption.IGNORE_CASE,
             )
         val replaceableTables =
