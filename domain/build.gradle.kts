@@ -28,6 +28,8 @@ kotlin {
 dependencies {
     // api: los modelos públicos de :domain exponen tipos de fecha, y :data y :app los reciben.
     api(libs.kotlinx.datetime)
+    // api: los puertos de :domain devuelven Flow, y :data los implementa.
+    api(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
     // runTest y dispatchers de prueba para los casos de uso suspend, sin esperas reales.
     testImplementation(libs.kotlinx.coroutines.test)
