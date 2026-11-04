@@ -13,6 +13,8 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.product
 import io.github.yesidrobayo.shopledger.data.local.customer.customer
+import io.github.yesidrobayo.shopledger.data.local.document.order
+import io.github.yesidrobayo.shopledger.data.local.document.quote
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import io.github.yesidrobayo.shopledger.data.local.ids
 import io.github.yesidrobayo.shopledger.data.local.money.moneyAccount
@@ -42,12 +44,15 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
     @Test
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         // Cada columna con un valor distinto, para que dos columnas cruzadas no pasen. Un recargo
-        // en toda la venta y un redondeo de efectivo hacia arriba. El cliente, la sesión de caja y
-        // la ubicación ya tienen tabla y llave: la venta apunta a unos que existen, con un id propio.
+        // en toda la venta y un redondeo de efectivo hacia arriba. El cliente, la sesión de caja, la
+        // ubicación, la cotización y el pedido ya tienen tabla y llave: la venta apunta a unos que
+        // existen, con un id propio donde hace falta.
         val customerId = database.customerDao().insert(customer("Ana").copy(id = 8))
         val accountId = database.moneyAccountDao().insert(moneyAccount("Caja chica"))
         val sessionId = database.cashSessionDao().insert(openSession(accountId).copy(id = 5))
         database.locationDao().insert(location("Puesto de feria", kind = "STALL").copy(id = 2))
+        val quoteId = database.quoteDao().insert(quote())
+        val orderId = database.orderDao().insert(order())
         val header =
             SaleEntity(
                 status = "ACTIVE",
@@ -64,8 +69,8 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
                 priceListId = priceListId,
                 locationId = 2,
                 cashSessionId = sessionId,
-                quoteId = 6,
-                orderId = 7,
+                quoteId = quoteId,
+                orderId = orderId,
                 note = "Entrega en la tarde",
                 occurredAt = CREATED_AT,
                 createdAt = LATER,

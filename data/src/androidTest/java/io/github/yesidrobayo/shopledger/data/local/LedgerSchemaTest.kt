@@ -79,7 +79,9 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                         "cash_session_id -> cash_sessions RESTRICT",
                         "customer_id -> customers RESTRICT",
                         "location_id -> locations RESTRICT",
+                        "order_id -> orders RESTRICT",
                         "price_list_id -> price_lists RESTRICT",
+                        "quote_id -> quotes RESTRICT",
                     ),
                 "sale_lines" to
                     listOf(

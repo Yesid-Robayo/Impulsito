@@ -36,7 +36,10 @@ internal interface MediaAssetDao {
     @Query("UPDATE media_assets SET orphaned_at = :orphanedAt WHERE id = :id")
     suspend fun setOrphanedAt(id: Long, orphanedAt: Long?): Int
 
-    /** Borra la fila. Quien todavía la nombre queda sin imagen por su llave, no con un id roto. */
+    /**
+     * Borra la fila. Un producto que todavía la nombre queda sin imagen por su llave, no con un id
+     * roto. La foto de un comprobante no se borra: su llave `RESTRICT` hace fallar la sentencia.
+     */
     @Query("DELETE FROM media_assets WHERE id = :id")
     suspend fun delete(id: Long): Int
 }

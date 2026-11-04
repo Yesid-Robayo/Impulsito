@@ -41,14 +41,17 @@ internal interface UnitDao {
     suspend fun findActiveByNormalizedName(normalizedName: String): UnitEntity?
 
     /**
-     * Si algún producto la usa como unidad base, alguna conversión la usa, o alguna línea de compra
-     * o de venta se registró en ella. Con uso ya no se borra: solo se archiva.
+     * Si algún producto la usa como unidad base, alguna conversión la usa, o alguna línea de
+     * compra, de venta, de cotización o de pedido se registró en ella. Con uso ya no se borra: solo
+     * se archiva.
      */
     @Query(
         "SELECT EXISTS (SELECT 1 FROM products WHERE base_unit_id = :id) " +
             "OR EXISTS (SELECT 1 FROM product_units WHERE unit_id = :id) " +
             "OR EXISTS (SELECT 1 FROM purchase_lines WHERE unit_id = :id) " +
-            "OR EXISTS (SELECT 1 FROM sale_lines WHERE unit_id = :id)",
+            "OR EXISTS (SELECT 1 FROM sale_lines WHERE unit_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM quote_lines WHERE unit_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM order_lines WHERE unit_id = :id)",
     )
     suspend fun isInUse(id: Long): Boolean
 

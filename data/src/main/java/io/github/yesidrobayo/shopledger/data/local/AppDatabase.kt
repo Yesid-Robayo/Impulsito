@@ -47,6 +47,16 @@ import io.github.yesidrobayo.shopledger.data.local.customer.LoyaltyLedgerEntryDa
 import io.github.yesidrobayo.shopledger.data.local.customer.LoyaltyLedgerEntryEntity
 import io.github.yesidrobayo.shopledger.data.local.customer.MessageTemplateDao
 import io.github.yesidrobayo.shopledger.data.local.customer.MessageTemplateEntity
+import io.github.yesidrobayo.shopledger.data.local.document.DocumentAttachmentDao
+import io.github.yesidrobayo.shopledger.data.local.document.DocumentAttachmentEntity
+import io.github.yesidrobayo.shopledger.data.local.document.OrderDao
+import io.github.yesidrobayo.shopledger.data.local.document.OrderEntity
+import io.github.yesidrobayo.shopledger.data.local.document.OrderLineEntity
+import io.github.yesidrobayo.shopledger.data.local.document.QuoteDao
+import io.github.yesidrobayo.shopledger.data.local.document.QuoteEntity
+import io.github.yesidrobayo.shopledger.data.local.document.QuoteLineEntity
+import io.github.yesidrobayo.shopledger.data.local.document.SaleFiscalMarkDao
+import io.github.yesidrobayo.shopledger.data.local.document.SaleFiscalMarkEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseDao
@@ -114,12 +124,13 @@ import kotlin.coroutines.CoroutineContext
  * los ajustes y del estado del respaldo, que nacen con la base, los clientes con sus libros de
  * cuenta y de puntos y sus plantillas de mensaje, las cuentas de dinero con su libro y sus sesiones
  * de caja, el libro de los proveedores, el registro de auditoría, y las metas, los gastos
- * recurrentes y el índice de precios de los reportes. Del catálogo también tiene los combos, los
- * campos propios, las etiquetas y las imágenes, y de las ventas, los componentes que consumió cada
- * combo vendido. Room activa las llaves foráneas solo si alguna entidad declara una: sin ellas, una
- * fila huérfana entraría sin error. Las reglas que Room no sabe declarar son guardas, en
- * [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y la versión no cambia
- * mientras el esquema 1 no se publique.
+ * recurrentes y el índice de precios de los reportes, y las cotizaciones, los pedidos, las marcas
+ * de las ventas y las fotos de comprobantes. Del catálogo también tiene los combos, los campos
+ * propios, las etiquetas y las imágenes, y de las ventas, los componentes que consumió cada combo
+ * vendido. Room activa las llaves foráneas solo si alguna entidad declara una: sin ellas, una fila
+ * huérfana entraría sin error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards].
+ * Las demás tablas llegan con las tareas que las crean, y la versión no cambia mientras el esquema
+ * 1 no se publique.
  */
 @Database(
     // Cada tabla va antes que las tablas a las que apunta con RESTRICT: Room 3.0.3 ordena las
@@ -130,7 +141,6 @@ import kotlin.coroutines.CoroutineContext
         CategoryEntity::class,
         PriceHistoryEntity::class,
         CustomFieldDefinitionEntity::class,
-        MediaAssetEntity::class,
         ProductComponentEntity::class,
         ProductCustomValueEntity::class,
         ProductTagEntity::class,
@@ -148,8 +158,6 @@ import kotlin.coroutines.CoroutineContext
         CountSessionEntity::class,
         CountSessionLineEntity::class,
         StockLotEntity::class,
-        ProductEntity::class,
-        UnitEntity::class,
         LowStockAlertEntity::class,
         AppSettingsEntity::class,
         BackupStateEntity::class,
@@ -157,24 +165,33 @@ import kotlin.coroutines.CoroutineContext
         LoyaltyLedgerEntryEntity::class,
         MessageTemplateEntity::class,
         MoneyMovementEntity::class,
-        ExpenseEntity::class,
         CustomerLedgerEntryEntity::class,
-        SaleEntity::class,
-        PriceListEntity::class,
-        CustomerEntity::class,
         SupplierLedgerEntryEntity::class,
-        PurchaseEntity::class,
-        LocationEntity::class,
-        SupplierEntity::class,
         CashSessionCountEntity::class,
-        CashSessionEntity::class,
         CashDenominationEntity::class,
         AuditEventEntity::class,
         BusinessGoalEntity::class,
+        DocumentAttachmentEntity::class,
+        PurchaseEntity::class,
+        SupplierEntity::class,
+        MediaAssetEntity::class,
+        ExpenseEntity::class,
+        OrderLineEntity::class,
         PriceIndexEntryEntity::class,
+        QuoteLineEntity::class,
+        ProductEntity::class,
+        UnitEntity::class,
         RecurringExpenseEntity::class,
-        MoneyAccountEntity::class,
         ExpenseCategoryEntity::class,
+        SaleFiscalMarkEntity::class,
+        SaleEntity::class,
+        LocationEntity::class,
+        CashSessionEntity::class,
+        MoneyAccountEntity::class,
+        PriceListEntity::class,
+        OrderEntity::class,
+        QuoteEntity::class,
+        CustomerEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -259,9 +276,17 @@ internal abstract class AppDatabase : RoomDatabase() {
 
     abstract fun businessGoalDao(): BusinessGoalDao
 
+    abstract fun documentAttachmentDao(): DocumentAttachmentDao
+
+    abstract fun orderDao(): OrderDao
+
     abstract fun priceIndexEntryDao(): PriceIndexEntryDao
 
+    abstract fun quoteDao(): QuoteDao
+
     abstract fun recurringExpenseDao(): RecurringExpenseDao
+
+    abstract fun saleFiscalMarkDao(): SaleFiscalMarkDao
 
     companion object {
         /**

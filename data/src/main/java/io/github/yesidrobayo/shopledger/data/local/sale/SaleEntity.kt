@@ -8,6 +8,8 @@ import androidx.room3.PrimaryKey
 import androidx.room3.RoomWarnings
 import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionEntity
 import io.github.yesidrobayo.shopledger.data.local.customer.CustomerEntity
+import io.github.yesidrobayo.shopledger.data.local.document.OrderEntity
+import io.github.yesidrobayo.shopledger.data.local.document.QuoteEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.LocationEntity
 
@@ -28,8 +30,8 @@ import io.github.yesidrobayo.shopledger.data.local.stock.LocationEntity
  *   sirve al extracto y al análisis por cliente. La ubicación también usa `RESTRICT`, sin índice:
  *   una ubicación con ventas no se borra.
  * - La sesión de caja también usa `RESTRICT`, sin índice: una sesión no se borra nunca.
- * - `quote_id` y `order_id` todavía no tienen llave foránea: sus tablas no existen aún. La llave
- *   llega con la tabla a la que apunta, dentro del mismo esquema 1.
+ * - La cotización y el pedido de los que salió usan `RESTRICT`: una cotización convertida o un
+ *   pedido entregado no se borran. Sin índice, por la misma razón que la lista de precios.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -57,6 +59,18 @@ import io.github.yesidrobayo.shopledger.data.local.stock.LocationEntity
             entity = LocationEntity::class,
             parentColumns = ["id"],
             childColumns = ["location_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = QuoteEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["quote_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = OrderEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["order_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

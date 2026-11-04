@@ -69,6 +69,12 @@ internal object SchemaGuards {
             RECURRING_EXPENSES_GUARDS,
             PRICE_LISTS_GUARDS,
             PRICE_INDEX_ENTRIES_GUARDS,
+            QUOTES_GUARDS,
+            QUOTE_LINES_GUARDS,
+            ORDERS_GUARDS,
+            ORDER_LINES_GUARDS,
+            SALE_FISCAL_MARKS_GUARDS,
+            DOCUMENT_ATTACHMENTS_GUARDS,
             BUSINESS_GOALS_GUARDS,
             AUDIT_EVENTS_GUARDS,
         ).flatten()
@@ -2121,6 +2127,221 @@ private val PRICE_INDEX_ENTRIES_GUARDS =
           AND typeof(NEW.updated_at) = 'integer'
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:price_index_entries'); END;
+        """,
+    )
+
+/** Las cotizaciones: nacen abiertas, cuadran su total y se convierten o cancelan una sola vez. */
+private val QUOTES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_quotes_insert BEFORE INSERT ON quotes
+        WHEN NOT IFNULL((
+          NEW.status IN ('OPEN', 'CONVERTED', 'CANCELLED')
+          AND (NEW.valid_until IS NULL OR (date(NEW.valid_until) = NEW.valid_until))
+          AND typeof(NEW.net_total) = 'integer' AND NEW.net_total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.tax_total) = 'integer' AND NEW.tax_total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.total) = 'integer' AND NEW.total BETWEEN 0 AND 1000000000000000
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND NEW.total = NEW.net_total + NEW.tax_total
+          AND (NEW.status = 'CONVERTED') = (NEW.converted_sale_id IS NOT NULL)
+          AND NEW.status = 'OPEN'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:quotes'); END;
+
+        CREATE TRIGGER guard_quotes_update BEFORE UPDATE ON quotes
+        WHEN NOT IFNULL((
+          NEW.status IN ('OPEN', 'CONVERTED', 'CANCELLED')
+          AND (NEW.valid_until IS NULL OR (date(NEW.valid_until) = NEW.valid_until))
+          AND typeof(NEW.net_total) = 'integer' AND NEW.net_total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.tax_total) = 'integer' AND NEW.tax_total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.total) = 'integer' AND NEW.total BETWEEN 0 AND 1000000000000000
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND NEW.total = NEW.net_total + NEW.tax_total
+          AND (NEW.status = 'CONVERTED') = (NEW.converted_sale_id IS NOT NULL)
+          AND (OLD.status = 'OPEN' OR (NEW.status = OLD.status AND NEW.converted_sale_id IS OLD.converted_sale_id))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:quotes'); END;
+        """,
+    )
+
+/** Las líneas de cotización: cuadran su total y solo cambian con su cotización abierta. */
+private val QUOTE_LINES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_quote_lines_insert BEFORE INSERT ON quote_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.unit_factor_milli) = 'integer' AND NEW.unit_factor_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.entered_quantity_milli) = 'integer' AND NEW.entered_quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.unit_price) = 'integer' AND NEW.unit_price BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.line_discount) = 'integer' AND NEW.line_discount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.net_amount) = 'integer' AND NEW.net_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.tax_rate_bp) = 'integer' AND NEW.tax_rate_bp BETWEEN 0 AND 10000
+          AND (NEW.tax_name_snapshot IS NULL OR (typeof(NEW.tax_name_snapshot) = 'text' AND length(NEW.tax_name_snapshot) BETWEEN 1 AND 40))
+          AND typeof(NEW.tax_amount) = 'integer' AND NEW.tax_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.line_total) = 'integer' AND NEW.line_total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.product_name_snapshot) = 'text' AND length(NEW.product_name_snapshot) BETWEEN 1 AND 120
+          AND NEW.line_total = NEW.net_amount + NEW.tax_amount
+          AND EXISTS (SELECT 1 FROM quotes d WHERE d.id = NEW.quote_id AND d.status = 'OPEN')
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:quote_lines'); END;
+
+        CREATE TRIGGER guard_quote_lines_update BEFORE UPDATE ON quote_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.unit_factor_milli) = 'integer' AND NEW.unit_factor_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.entered_quantity_milli) = 'integer' AND NEW.entered_quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.unit_price) = 'integer' AND NEW.unit_price BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.line_discount) = 'integer' AND NEW.line_discount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.net_amount) = 'integer' AND NEW.net_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.tax_rate_bp) = 'integer' AND NEW.tax_rate_bp BETWEEN 0 AND 10000
+          AND (NEW.tax_name_snapshot IS NULL OR (typeof(NEW.tax_name_snapshot) = 'text' AND length(NEW.tax_name_snapshot) BETWEEN 1 AND 40))
+          AND typeof(NEW.tax_amount) = 'integer' AND NEW.tax_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.line_total) = 'integer' AND NEW.line_total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.product_name_snapshot) = 'text' AND length(NEW.product_name_snapshot) BETWEEN 1 AND 120
+          AND NEW.line_total = NEW.net_amount + NEW.tax_amount
+          AND EXISTS (SELECT 1 FROM quotes d WHERE d.id = NEW.quote_id AND d.status = 'OPEN')
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:quote_lines'); END;
+        """,
+    )
+
+/** Los pedidos: nacen pendientes, y se entregan o cancelan una sola vez. */
+private val ORDERS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_orders_insert BEFORE INSERT ON orders
+        WHEN NOT IFNULL((
+          NEW.status IN ('PENDING', 'READY', 'DELIVERED', 'CANCELLED')
+          AND (NEW.delivery_address IS NULL OR (typeof(NEW.delivery_address) = 'text' AND length(NEW.delivery_address) BETWEEN 1 AND 200))
+          AND (NEW.delivery_note IS NULL OR (typeof(NEW.delivery_note) = 'text' AND length(NEW.delivery_note) BETWEEN 1 AND 200))
+          AND typeof(NEW.shipping_amount) = 'integer' AND NEW.shipping_amount BETWEEN 0 AND 1000000000000000
+          AND (NEW.due_date IS NULL OR (date(NEW.due_date) = NEW.due_date))
+          AND typeof(NEW.total) = 'integer' AND NEW.total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.status = 'DELIVERED') = (NEW.delivered_sale_id IS NOT NULL)
+          AND NEW.status = 'PENDING'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:orders'); END;
+
+        CREATE TRIGGER guard_orders_update BEFORE UPDATE ON orders
+        WHEN NOT IFNULL((
+          NEW.status IN ('PENDING', 'READY', 'DELIVERED', 'CANCELLED')
+          AND (NEW.delivery_address IS NULL OR (typeof(NEW.delivery_address) = 'text' AND length(NEW.delivery_address) BETWEEN 1 AND 200))
+          AND (NEW.delivery_note IS NULL OR (typeof(NEW.delivery_note) = 'text' AND length(NEW.delivery_note) BETWEEN 1 AND 200))
+          AND typeof(NEW.shipping_amount) = 'integer' AND NEW.shipping_amount BETWEEN 0 AND 1000000000000000
+          AND (NEW.due_date IS NULL OR (date(NEW.due_date) = NEW.due_date))
+          AND typeof(NEW.total) = 'integer' AND NEW.total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.status = 'DELIVERED') = (NEW.delivered_sale_id IS NOT NULL)
+          AND (OLD.status IN ('PENDING', 'READY') OR (NEW.status = OLD.status AND NEW.delivered_sale_id IS OLD.delivered_sale_id))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:orders'); END;
+        """,
+    )
+
+/** Las líneas de pedido: cuadran su total y solo cambian con su pedido sin entregar. */
+private val ORDER_LINES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_order_lines_insert BEFORE INSERT ON order_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.unit_factor_milli) = 'integer' AND NEW.unit_factor_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.entered_quantity_milli) = 'integer' AND NEW.entered_quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.unit_price) = 'integer' AND NEW.unit_price BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.line_discount) = 'integer' AND NEW.line_discount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.net_amount) = 'integer' AND NEW.net_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.tax_rate_bp) = 'integer' AND NEW.tax_rate_bp BETWEEN 0 AND 10000
+          AND (NEW.tax_name_snapshot IS NULL OR (typeof(NEW.tax_name_snapshot) = 'text' AND length(NEW.tax_name_snapshot) BETWEEN 1 AND 40))
+          AND typeof(NEW.tax_amount) = 'integer' AND NEW.tax_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.line_total) = 'integer' AND NEW.line_total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.product_name_snapshot) = 'text' AND length(NEW.product_name_snapshot) BETWEEN 1 AND 120
+          AND NEW.line_total = NEW.net_amount + NEW.tax_amount
+          AND EXISTS (SELECT 1 FROM orders d WHERE d.id = NEW.order_id AND d.status IN ('PENDING', 'READY'))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:order_lines'); END;
+
+        CREATE TRIGGER guard_order_lines_update BEFORE UPDATE ON order_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.unit_factor_milli) = 'integer' AND NEW.unit_factor_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.entered_quantity_milli) = 'integer' AND NEW.entered_quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.unit_price) = 'integer' AND NEW.unit_price BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.line_discount) = 'integer' AND NEW.line_discount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.net_amount) = 'integer' AND NEW.net_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.tax_rate_bp) = 'integer' AND NEW.tax_rate_bp BETWEEN 0 AND 10000
+          AND (NEW.tax_name_snapshot IS NULL OR (typeof(NEW.tax_name_snapshot) = 'text' AND length(NEW.tax_name_snapshot) BETWEEN 1 AND 40))
+          AND typeof(NEW.tax_amount) = 'integer' AND NEW.tax_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.line_total) = 'integer' AND NEW.line_total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.product_name_snapshot) = 'text' AND length(NEW.product_name_snapshot) BETWEEN 1 AND 120
+          AND NEW.line_total = NEW.net_amount + NEW.tax_amount
+          AND EXISTS (SELECT 1 FROM orders d WHERE d.id = NEW.order_id AND d.status IN ('PENDING', 'READY'))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:order_lines'); END;
+        """,
+    )
+
+/** Las marcas de las ventas: `RECORDED` con su instante, y nunca pasan a otra venta. */
+private val SALE_FISCAL_MARKS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_sale_fiscal_marks_insert BEFORE INSERT ON sale_fiscal_marks
+        WHEN NOT IFNULL((
+          NEW.status IN ('PENDING', 'RECORDED', 'NOT_NEEDED')
+          AND (NEW.external_reference IS NULL OR (typeof(NEW.external_reference) = 'text' AND length(NEW.external_reference) BETWEEN 1 AND 60))
+          AND (NEW.recorded_at IS NULL OR (typeof(NEW.recorded_at) = 'integer'))
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.status <> 'RECORDED' OR NEW.recorded_at IS NOT NULL)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_fiscal_marks'); END;
+
+        CREATE TRIGGER guard_sale_fiscal_marks_update BEFORE UPDATE ON sale_fiscal_marks
+        WHEN NOT IFNULL((
+          NEW.status IN ('PENDING', 'RECORDED', 'NOT_NEEDED')
+          AND (NEW.external_reference IS NULL OR (typeof(NEW.external_reference) = 'text' AND length(NEW.external_reference) BETWEEN 1 AND 60))
+          AND (NEW.recorded_at IS NULL OR (typeof(NEW.recorded_at) = 'integer'))
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.status <> 'RECORDED' OR NEW.recorded_at IS NOT NULL)
+          AND NEW.sale_id = OLD.sale_id
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_fiscal_marks'); END;
+        """,
+    )
+
+/** Las fotos de comprobantes: cada una de exactamente un documento. */
+private val DOCUMENT_ATTACHMENTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_document_attachments_insert BEFORE INSERT ON document_attachments
+        WHEN NOT IFNULL((
+          (NEW.caption IS NULL OR (typeof(NEW.caption) = 'text' AND length(NEW.caption) BETWEEN 1 AND 120))
+          AND typeof(NEW.created_at) = 'integer'
+          AND (NEW.expense_id IS NULL) <> (NEW.purchase_id IS NULL)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:document_attachments'); END;
+
+        CREATE TRIGGER guard_document_attachments_update BEFORE UPDATE ON document_attachments
+        WHEN NOT IFNULL((
+          (NEW.caption IS NULL OR (typeof(NEW.caption) = 'text' AND length(NEW.caption) BETWEEN 1 AND 120))
+          AND typeof(NEW.created_at) = 'integer'
+          AND (NEW.expense_id IS NULL) <> (NEW.purchase_id IS NULL)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:document_attachments'); END;
         """,
     )
 
