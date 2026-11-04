@@ -3,8 +3,10 @@ package io.github.yesidrobayo.shopledger.data.local
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.local.catalog.CREATED_AT
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
+import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.UNIT_ID
 import io.github.yesidrobayo.shopledger.data.local.catalog.mediaAsset
+import io.github.yesidrobayo.shopledger.data.local.customer.customerRow
 import io.github.yesidrobayo.shopledger.data.local.guard.SchemaGuards
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -15,8 +17,9 @@ import org.junit.runner.RunWith
 /**
  * Las sondas de las guardas de cotizaciones, pedidos y sus líneas, marcas de las ventas y fotos de
  * comprobantes. Un documento nace abierto, cuadra su total y cambia de estado una sola vez hacia
- * su final; sus líneas solo cambian mientras sigue abierto. Cada guarda rechaza lo que debe, con
- * su mensaje, y deja pasar lo válido.
+ * su final. Cerrado, ya no cambia, salvo lo que borra anonimizar a su cliente, y sus líneas no se
+ * borran. Sus líneas solo cambian mientras sigue abierto. Cada guarda rechaza lo que debe, con su
+ * mensaje, y deja pasar lo válido.
  */
 @RunWith(AndroidJUnit4::class)
 internal class QuoteOrderGuardsTest : GuardProbeTest() {
@@ -139,6 +142,181 @@ internal class QuoteOrderGuardsTest : GuardProbeTest() {
         rejected(ORDER_LINES, lineRow("order_id" to cancelled).insertInto("order_lines"))
         rejected(ORDER_LINES, update("order_lines", closedLine, "quantity_milli" to 1L))
         assertEquals(2L, count("SELECT COUNT(*) FROM order_lines"))
+    }
+
+    @Test
+    fun aClosedQuoteNeverChangesButItsUpdateInstant() = runBlocking {
+        val saleId = insert("sales", saleRow(priceListId))
+        val customerId = insert("customers", customerRow())
+        val converted = insert("quotes", quoteRow())
+        execute(
+            update("quotes", converted, "status" to "CONVERTED", "converted_sale_id" to saleId),
+        )
+        val cancelled = insert("quotes", quoteRow().with("note" to "Para el lunes"))
+        execute(update("quotes", cancelled, "status" to "CANCELLED"))
+
+        for (closed in listOf(converted, cancelled)) {
+            for (change in listOf(
+                // Otro total que sigue cuadrando: neto más impuesto.
+                arrayOf("net_total" to 20_000L, "tax_total" to 3_800L, "total" to 23_800L),
+                arrayOf("note" to "Otra nota"),
+                arrayOf("customer_id" to customerId),
+                arrayOf("valid_until" to "2026-02-28"),
+                arrayOf("valid_until" to null),
+                arrayOf("occurred_at" to LATER),
+                arrayOf("business_date" to "2026-01-02"),
+                arrayOf("created_at" to LATER),
+            )) {
+                rejected(QUOTES, update("quotes", closed, *change))
+            }
+            execute(update("quotes", closed, "updated_at" to MUCH_LATER))
+        }
+        // Tampoco se borra una nota que ya tenía.
+        rejected(QUOTES, update("quotes", cancelled, "note" to null))
+
+        // Abierta, todo eso se puede.
+        val open = insert("quotes", quoteRow())
+        execute(
+            update(
+                "quotes",
+                open,
+                "net_total" to 20_000L,
+                "tax_total" to 3_800L,
+                "total" to 23_800L,
+                "note" to "Otra nota",
+                "customer_id" to customerId,
+            ),
+        )
+        assertEquals(23_800L, count("SELECT total FROM quotes WHERE id = $open"))
+        assertEquals(
+            2L,
+            count(
+                "SELECT COUNT(*) FROM quotes WHERE status <> 'OPEN' AND total = 11900 " +
+                    "AND updated_at = $MUCH_LATER",
+            ),
+        )
+    }
+
+    @Test
+    fun aClosedOrderNeverChangesButItsAddressAndNoteCanBeErased() = runBlocking {
+        val saleId = insert("sales", saleRow(priceListId))
+        val customerId = insert("customers", customerRow())
+        val withNote = orderRow().with("delivery_note" to "Timbre de la puerta azul")
+        val delivered = insert("orders", withNote)
+        execute(
+            update("orders", delivered, "status" to "DELIVERED", "delivered_sale_id" to saleId),
+        )
+        val cancelled = insert("orders", withNote)
+        execute(update("orders", cancelled, "status" to "CANCELLED"))
+
+        for (closed in listOf(delivered, cancelled)) {
+            for (change in listOf(
+                arrayOf("total" to 20_000L),
+                arrayOf("shipping_amount" to 0L),
+                arrayOf("delivery_address" to "Otra calle de ejemplo 2"),
+                arrayOf("delivery_note" to "Otra nota"),
+                arrayOf("customer_id" to customerId),
+                arrayOf("due_date" to "2026-01-06"),
+                arrayOf("due_date" to null),
+                arrayOf("occurred_at" to LATER),
+                arrayOf("business_date" to "2026-01-02"),
+                arrayOf("created_at" to LATER),
+            )) {
+                rejected(ORDERS, update("orders", closed, *change))
+            }
+            // Lo que borra anonimizar al cliente, por separado o junto con el resto.
+            execute(update("orders", closed, "delivery_address" to null, "updated_at" to LATER))
+            execute(update("orders", closed, "delivery_note" to null, "updated_at" to MUCH_LATER))
+            // Ya vacía, no vuelve a tener dirección.
+            rejected(ORDERS, update("orders", closed, "delivery_address" to "Calle de ejemplo 1"))
+        }
+        val other = insert("orders", withNote)
+        execute(update("orders", other, "status" to "DELIVERED", "delivered_sale_id" to saleId))
+        execute(update("orders", other, "delivery_address" to null, "delivery_note" to null))
+
+        assertEquals(
+            3L,
+            count(
+                "SELECT COUNT(*) FROM orders WHERE delivery_address IS NULL " +
+                    "AND delivery_note IS NULL AND total = 14900",
+            ),
+        )
+    }
+
+    @Test
+    fun theLinesOfAClosedDocumentAreNeverDeleted() = runBlocking {
+        val saleId = insert("sales", saleRow(priceListId))
+        val openQuote = insert("quotes", quoteRow())
+        val convertedQuote = insert("quotes", quoteRow())
+        val cancelledQuote = insert("quotes", quoteRow())
+        val quoteLines =
+            listOf(openQuote, convertedQuote, cancelledQuote).associateWith {
+                insert("quote_lines", lineRow("quote_id" to it))
+            }
+        execute(
+            update(
+                "quotes",
+                convertedQuote,
+                "status" to "CONVERTED",
+                "converted_sale_id" to saleId,
+            ),
+        )
+        execute(update("quotes", cancelledQuote, "status" to "CANCELLED"))
+
+        rejected(QUOTE_LINES_CLOSED, deleteLine("quote_lines", quoteLines.getValue(convertedQuote)))
+        rejected(QUOTE_LINES_CLOSED, deleteLine("quote_lines", quoteLines.getValue(cancelledQuote)))
+        // Un borrado de varias filas que alcanza una cerrada se detiene entero.
+        rejected(QUOTE_LINES_CLOSED, "DELETE FROM quote_lines")
+        assertEquals(3L, count("SELECT COUNT(*) FROM quote_lines"))
+        execute(deleteLine("quote_lines", quoteLines.getValue(openQuote)))
+        assertEquals(2L, count("SELECT COUNT(*) FROM quote_lines"))
+
+        val pendingOrder = insert("orders", orderRow())
+        val readyOrder = insert("orders", orderRow())
+        val deliveredOrder = insert("orders", orderRow())
+        val cancelledOrder = insert("orders", orderRow())
+        val orderLines =
+            listOf(pendingOrder, readyOrder, deliveredOrder, cancelledOrder).associateWith {
+                insert("order_lines", lineRow("order_id" to it))
+            }
+        execute(update("orders", readyOrder, "status" to "READY"))
+        execute(
+            update(
+                "orders",
+                deliveredOrder,
+                "status" to "DELIVERED",
+                "delivered_sale_id" to saleId,
+            ),
+        )
+        execute(update("orders", cancelledOrder, "status" to "CANCELLED"))
+
+        rejected(ORDER_LINES_CLOSED, deleteLine("order_lines", orderLines.getValue(deliveredOrder)))
+        rejected(ORDER_LINES_CLOSED, deleteLine("order_lines", orderLines.getValue(cancelledOrder)))
+        execute(deleteLine("order_lines", orderLines.getValue(pendingOrder)))
+        execute(deleteLine("order_lines", orderLines.getValue(readyOrder)))
+        assertEquals(2L, count("SELECT COUNT(*) FROM order_lines"))
+    }
+
+    @Test
+    fun aCancelledDocumentIsDeletedWithItsLines() = runBlocking {
+        // El modelo deja borrar una cotización sin convertir y un pedido sin entregar, y sus líneas
+        // se van en cascada. SQLite borra la fila del documento antes de la cascada, así que la
+        // guarda de las líneas ya no lo encuentra cerrado y la deja pasar.
+        val quote = insert("quotes", quoteRow())
+        insert("quote_lines", lineRow("quote_id" to quote))
+        insert("quote_lines", lineRow("quote_id" to quote))
+        execute(update("quotes", quote, "status" to "CANCELLED"))
+        val order = insert("orders", orderRow())
+        insert("order_lines", lineRow("order_id" to order))
+        execute(update("orders", order, "status" to "CANCELLED"))
+
+        assertEquals(1, database.quoteDao().delete(quote))
+        assertEquals(1, database.orderDao().delete(order))
+
+        assertEquals(0L, count("SELECT COUNT(*) FROM quotes"))
+        assertEquals(0L, count("SELECT COUNT(*) FROM quote_lines"))
+        assertEquals(0L, count("SELECT COUNT(*) FROM orders"))
+        assertEquals(0L, count("SELECT COUNT(*) FROM order_lines"))
     }
 
     @Test
@@ -305,11 +483,15 @@ internal class QuoteOrderGuardsTest : GuardProbeTest() {
         "created_at" to CREATED_AT,
     )
 
+    private fun deleteLine(table: String, id: Long): String = "DELETE FROM $table WHERE id = $id"
+
     private companion object {
         const val QUOTES = "guard:quotes"
         const val QUOTE_LINES = "guard:quote_lines"
+        const val QUOTE_LINES_CLOSED = "guard:quote_lines_closed"
         const val ORDERS = "guard:orders"
         const val ORDER_LINES = "guard:order_lines"
+        const val ORDER_LINES_CLOSED = "guard:order_lines_closed"
         const val FISCAL_MARKS = "guard:sale_fiscal_marks"
         const val ATTACHMENTS = "guard:document_attachments"
     }

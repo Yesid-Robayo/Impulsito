@@ -2407,7 +2407,10 @@ private val PRICE_INDEX_ENTRIES_GUARDS =
         """,
     )
 
-/** Las cotizaciones: nacen abiertas, cuadran su total y se convierten o cancelan una sola vez. */
+/**
+ * Las cotizaciones: nacen abiertas, cuadran su total y se convierten o cancelan una sola vez. Ya
+ * cerradas, no cambian: solo `updated_at`.
+ */
 private val QUOTES_GUARDS =
     table(
         """
@@ -2443,13 +2446,16 @@ private val QUOTES_GUARDS =
           AND typeof(NEW.updated_at) = 'integer'
           AND NEW.total = NEW.net_total + NEW.tax_total
           AND (NEW.status = 'CONVERTED') = (NEW.converted_sale_id IS NOT NULL)
-          AND (OLD.status = 'OPEN' OR (NEW.status = OLD.status AND NEW.converted_sale_id IS OLD.converted_sale_id))
+          AND (OLD.status = 'OPEN' OR (NEW.status = OLD.status AND NEW.converted_sale_id IS OLD.converted_sale_id AND NEW.customer_id IS OLD.customer_id AND NEW.valid_until IS OLD.valid_until AND NEW.net_total = OLD.net_total AND NEW.tax_total = OLD.tax_total AND NEW.total = OLD.total AND NEW.note IS OLD.note AND NEW.occurred_at = OLD.occurred_at AND NEW.business_date = OLD.business_date AND NEW.created_at = OLD.created_at))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:quotes'); END;
         """,
     )
 
-/** Las líneas de cotización: cuadran su total y solo cambian con su cotización abierta. */
+/**
+ * Las líneas de cotización: cuadran su total, y solo cambian o se borran con su cotización
+ * abierta.
+ */
 private val QUOTE_LINES_GUARDS =
     table(
         """
@@ -2488,10 +2494,18 @@ private val QUOTE_LINES_GUARDS =
           AND EXISTS (SELECT 1 FROM quotes d WHERE d.id = NEW.quote_id AND d.status = 'OPEN')
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:quote_lines'); END;
+
+        CREATE TRIGGER guard_quote_lines_no_delete BEFORE DELETE ON quote_lines
+        WHEN EXISTS (SELECT 1 FROM quotes d WHERE d.id = OLD.quote_id AND d.status <> 'OPEN')
+        BEGIN SELECT RAISE(ABORT, 'guard:quote_lines_closed'); END;
         """,
     )
 
-/** Los pedidos: nacen pendientes, y se entregan o cancelan una sola vez. */
+/**
+ * Los pedidos: nacen pendientes, y se entregan o cancelan una sola vez. Ya cerrados, no cambian,
+ * salvo `updated_at` y vaciar la dirección y la nota de entrega, que es lo que borra anonimizar al
+ * cliente.
+ */
 private val ORDERS_GUARDS =
     table(
         """
@@ -2525,13 +2539,16 @@ private val ORDERS_GUARDS =
           AND typeof(NEW.created_at) = 'integer'
           AND typeof(NEW.updated_at) = 'integer'
           AND (NEW.status = 'DELIVERED') = (NEW.delivered_sale_id IS NOT NULL)
-          AND (OLD.status IN ('PENDING', 'READY') OR (NEW.status = OLD.status AND NEW.delivered_sale_id IS OLD.delivered_sale_id))
+          AND (OLD.status IN ('PENDING', 'READY') OR (NEW.status = OLD.status AND NEW.delivered_sale_id IS OLD.delivered_sale_id AND NEW.customer_id IS OLD.customer_id AND (NEW.delivery_address IS OLD.delivery_address OR NEW.delivery_address IS NULL) AND (NEW.delivery_note IS OLD.delivery_note OR NEW.delivery_note IS NULL) AND NEW.shipping_amount = OLD.shipping_amount AND NEW.due_date IS OLD.due_date AND NEW.total = OLD.total AND NEW.occurred_at = OLD.occurred_at AND NEW.business_date = OLD.business_date AND NEW.created_at = OLD.created_at))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:orders'); END;
         """,
     )
 
-/** Las líneas de pedido: cuadran su total y solo cambian con su pedido sin entregar. */
+/**
+ * Las líneas de pedido: cuadran su total, y solo cambian o se borran con su pedido sin entregar ni
+ * cancelar.
+ */
 private val ORDER_LINES_GUARDS =
     table(
         """
@@ -2570,6 +2587,10 @@ private val ORDER_LINES_GUARDS =
           AND EXISTS (SELECT 1 FROM orders d WHERE d.id = NEW.order_id AND d.status IN ('PENDING', 'READY'))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:order_lines'); END;
+
+        CREATE TRIGGER guard_order_lines_no_delete BEFORE DELETE ON order_lines
+        WHEN EXISTS (SELECT 1 FROM orders d WHERE d.id = OLD.order_id AND d.status NOT IN ('PENDING', 'READY'))
+        BEGIN SELECT RAISE(ABORT, 'guard:order_lines_closed'); END;
         """,
     )
 
