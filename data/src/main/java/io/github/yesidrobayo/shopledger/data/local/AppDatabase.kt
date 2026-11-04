@@ -16,16 +16,27 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
+import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseDao
+import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
+import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineDao
+import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineEntity
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleDao
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineDao
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementDao
+import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementEntity
 import java.io.File
 import kotlin.coroutines.CoroutineContext
 
 /**
  * La base de la app: el esquema 1, que nace completo y sin migraciones.
  *
- * Por ahora tiene el catálogo (categorías, proveedores, productos y su historial de precios) y
- * `price_lists`, a la que apunta ese historial. Room activa las llaves foráneas solo si alguna
- * entidad declara una: sin ellas, una fila huérfana entraría sin error. Las demás tablas llegan con
- * las tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
+ * Por ahora tiene el catálogo (categorías, proveedores, productos y su historial de precios),
+ * `price_lists`, las compras y las ventas con sus líneas, y el libro de stock. Room activa las
+ * llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana entraría sin
+ * error. Las demás tablas llegan con las tareas que las crean, y la versión no cambia mientras el
+ * esquema 1 no se publique.
  */
 @Database(
     entities = [
@@ -34,6 +45,11 @@ import kotlin.coroutines.CoroutineContext
         SupplierEntity::class,
         ProductEntity::class,
         PriceHistoryEntity::class,
+        PurchaseEntity::class,
+        PurchaseLineEntity::class,
+        SaleEntity::class,
+        SaleLineEntity::class,
+        StockMovementEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -46,6 +62,16 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun productDao(): ProductDao
 
     abstract fun priceHistoryDao(): PriceHistoryDao
+
+    abstract fun purchaseDao(): PurchaseDao
+
+    abstract fun purchaseLineDao(): PurchaseLineDao
+
+    abstract fun saleDao(): SaleDao
+
+    abstract fun saleLineDao(): SaleLineDao
+
+    abstract fun stockMovementDao(): StockMovementDao
 
     companion object {
         /**

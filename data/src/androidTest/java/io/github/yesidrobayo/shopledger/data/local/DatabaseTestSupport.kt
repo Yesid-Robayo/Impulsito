@@ -57,7 +57,18 @@ internal suspend fun PooledConnection.texts(sql: String): List<String> =
 
 /** Las tablas que crea el esquema compilado, en el orden de [OWN_TABLES_SQL]. */
 internal val SCHEMA_TABLES =
-    listOf("categories", "price_lists", "product_price_history", "products", "suppliers")
+    listOf(
+        "categories",
+        "price_lists",
+        "product_price_history",
+        "products",
+        "purchase_lines",
+        "purchases",
+        "sale_lines",
+        "sales",
+        "stock_movements",
+        "suppliers",
+    )
 
 /** Lectoras que Room abre en WAL si no se le pide otra cantidad. */
 internal const val WAL_READERS = 4

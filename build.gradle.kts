@@ -63,6 +63,16 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         // necesita import.
         val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
         val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
+        // El libro de stock y las líneas de venta y de compra solo crecen: ningún DAO los edita ni los borra, porque el saldo, el
+        // costo y lo vendido salen de ellos. Una venta o una compra tampoco se borran: solo se anulan. Un INSERT OR REPLACE borra
+        // la fila que choca sin pasar por la guarda de borrado.
+        val dataMain = Regex("""^data/src/main/""")
+        val ledgerEdit = Regex("""\b[U]PDATE(\s+OR\s+[A-Z]+)?\s+(stock_movements|sale_lines|purchase_lines)\b""", RegexOption.IGNORE_CASE)
+        val ledgerRemoval =
+            Regex(
+                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(stock_movements|sale_lines|purchase_lines|sales|purchases)\b""",
+                RegexOption.IGNORE_CASE,
+            )
 
         val binary = setOf("png", "webp", "jpg", "jpeg", "gif", "ttf", "otf", "jar", "so", "jks", "keystore", "db", "gz", "zip", "apk")
         val skippedDirs = setOf("build", ".gradle", ".kotlin", ".idea", ".cxx")
@@ -123,6 +133,11 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                     (domainJavaUse.containsMatchIn(line) || domainMathCall.containsMatchIn(line))
                 ) {
                     problems += "$where: el dominio es Kotlin puro: sin java.* y, de Math, solo las operaciones Exact"
+                }
+                if (isSource && dataMain.containsMatchIn(path) &&
+                    (ledgerEdit.containsMatchIn(line) || ledgerRemoval.containsMatchIn(line))
+                ) {
+                    problems += "$where: el libro de stock y las líneas solo se agregan, y una venta o una compra solo se anulan"
                 }
             }
         }
