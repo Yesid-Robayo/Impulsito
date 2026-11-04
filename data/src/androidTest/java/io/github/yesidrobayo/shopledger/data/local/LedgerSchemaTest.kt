@@ -67,7 +67,11 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                         "supplier_id -> suppliers RESTRICT",
                     ),
                 "purchase_lines" to
-                    listOf("product_id -> products RESTRICT", "purchase_id -> purchases RESTRICT"),
+                    listOf(
+                        "product_id -> products RESTRICT",
+                        "purchase_id -> purchases RESTRICT",
+                        "unit_id -> units RESTRICT",
+                    ),
                 "sales" to
                     listOf(
                         "cash_session_id -> cash_sessions RESTRICT",
@@ -80,6 +84,7 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                         "price_list_id -> price_lists RESTRICT",
                         "product_id -> products RESTRICT",
                         "sale_id -> sales RESTRICT",
+                        "unit_id -> units RESTRICT",
                     ),
                 "stock_movements" to
                     listOf(

@@ -270,7 +270,6 @@ internal class SchemaGuardsTest : CatalogDatabaseTest() {
         /** Lo que esperan: tablas, y columnas de los ajustes que llegan con la región. */
         val AWAITING_FOR =
             setOf(
-                "product_units",
                 "stock_lots",
                 "sale_returns",
             ) + listOf(

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "49fe2cb1609069cb9c67bbcd94cd74ed",
+    "identityHash": "d4703968e3442a754bfec972b1c8d634",
     "entities": [
       {
         "tableName": "categories",
@@ -664,6 +664,130 @@
         ]
       },
       {
+        "tableName": "product_units",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `product_id` INTEGER NOT NULL, `unit_id` INTEGER NOT NULL, `factor_milli` INTEGER NOT NULL, `sale_price` INTEGER, `barcode` TEXT, `for_sale` INTEGER NOT NULL, `for_purchase` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unit_id`) REFERENCES `units`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productId",
+            "columnName": "product_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unitId",
+            "columnName": "unit_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "factorMilli",
+            "columnName": "factor_milli",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "salePrice",
+            "columnName": "sale_price",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "barcode",
+            "columnName": "barcode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "forSale",
+            "columnName": "for_sale",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "forPurchase",
+            "columnName": "for_purchase",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_product_units_product_id_unit_id",
+            "unique": true,
+            "columnNames": [
+              "product_id",
+              "unit_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_product_units_product_id_unit_id` ON `${TABLE_NAME}` (`product_id`, `unit_id`)"
+          },
+          {
+            "name": "index_product_units_unit_id",
+            "unique": false,
+            "columnNames": [
+              "unit_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_product_units_unit_id` ON `${TABLE_NAME}` (`unit_id`)"
+          },
+          {
+            "name": "index_product_units_barcode",
+            "unique": false,
+            "columnNames": [
+              "barcode"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_product_units_barcode` ON `${TABLE_NAME}` (`barcode`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "products",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "product_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "units",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "unit_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
         "tableName": "stock_movements",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `product_id` INTEGER NOT NULL, `location_id` INTEGER NOT NULL, `lot_id` INTEGER, `type` TEXT NOT NULL, `reason` TEXT, `quantity_milli` INTEGER NOT NULL, `unit_cost` INTEGER NOT NULL, `total_cost` INTEGER NOT NULL, `average_cost_after` INTEGER NOT NULL, `stock_value_after` INTEGER NOT NULL, `balance_after_milli` INTEGER NOT NULL, `reverses_movement_id` INTEGER, `sale_line_id` INTEGER, `sale_line_component_id` INTEGER, `purchase_line_id` INTEGER, `sale_return_line_id` INTEGER, `purchase_return_line_id` INTEGER, `transfer_line_id` INTEGER, `production_batch_id` INTEGER, `count_session_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`reverses_movement_id`) REFERENCES `stock_movements`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sale_line_id`) REFERENCES `sale_lines`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`purchase_line_id`) REFERENCES `purchase_lines`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sale_line_component_id`) REFERENCES `sale_line_components`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
@@ -920,7 +1044,7 @@
       },
       {
         "tableName": "purchase_lines",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `purchase_id` INTEGER NOT NULL, `product_id` INTEGER NOT NULL, `unit_id` INTEGER NOT NULL, `unit_factor_milli` INTEGER NOT NULL, `entered_quantity_milli` INTEGER NOT NULL, `quantity_milli` INTEGER NOT NULL, `unit_cost` INTEGER NOT NULL, `line_total` INTEGER NOT NULL, `tax_rate_bp` INTEGER NOT NULL, `tax_name_snapshot` TEXT, `tax_amount` INTEGER NOT NULL, `cost_amount` INTEGER NOT NULL, `lot_id` INTEGER, `reference_unit_cost` INTEGER, FOREIGN KEY(`purchase_id`) REFERENCES `purchases`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `purchase_id` INTEGER NOT NULL, `product_id` INTEGER NOT NULL, `unit_id` INTEGER NOT NULL, `unit_factor_milli` INTEGER NOT NULL, `entered_quantity_milli` INTEGER NOT NULL, `quantity_milli` INTEGER NOT NULL, `unit_cost` INTEGER NOT NULL, `line_total` INTEGER NOT NULL, `tax_rate_bp` INTEGER NOT NULL, `tax_name_snapshot` TEXT, `tax_amount` INTEGER NOT NULL, `cost_amount` INTEGER NOT NULL, `lot_id` INTEGER, `reference_unit_cost` INTEGER, FOREIGN KEY(`purchase_id`) REFERENCES `purchases`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`unit_id`) REFERENCES `units`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1058,6 +1182,17 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "units",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "unit_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
@@ -1161,7 +1296,7 @@
       },
       {
         "tableName": "sale_lines",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sale_id` INTEGER NOT NULL, `product_id` INTEGER NOT NULL, `unit_id` INTEGER NOT NULL, `unit_factor_milli` INTEGER NOT NULL, `entered_quantity_milli` INTEGER NOT NULL, `quantity_milli` INTEGER NOT NULL, `unit_price` INTEGER NOT NULL, `unit_cost` INTEGER NOT NULL, `line_discount` INTEGER NOT NULL, `order_adjustment_share` INTEGER NOT NULL, `net_amount` INTEGER NOT NULL, `tax_rate_bp` INTEGER NOT NULL, `tax_name_snapshot` TEXT, `tax_amount` INTEGER NOT NULL, `line_total` INTEGER NOT NULL, `line_cost` INTEGER NOT NULL, `unit_replacement_cost` INTEGER NOT NULL, `line_replacement_cost` INTEGER NOT NULL, `product_name_snapshot` TEXT NOT NULL, `stock_effect` TEXT NOT NULL, `parent_line_id` INTEGER, `price_list_id` INTEGER NOT NULL, FOREIGN KEY(`sale_id`) REFERENCES `sales`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`parent_line_id`) REFERENCES `sale_lines`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`price_list_id`) REFERENCES `price_lists`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sale_id` INTEGER NOT NULL, `product_id` INTEGER NOT NULL, `unit_id` INTEGER NOT NULL, `unit_factor_milli` INTEGER NOT NULL, `entered_quantity_milli` INTEGER NOT NULL, `quantity_milli` INTEGER NOT NULL, `unit_price` INTEGER NOT NULL, `unit_cost` INTEGER NOT NULL, `line_discount` INTEGER NOT NULL, `order_adjustment_share` INTEGER NOT NULL, `net_amount` INTEGER NOT NULL, `tax_rate_bp` INTEGER NOT NULL, `tax_name_snapshot` TEXT, `tax_amount` INTEGER NOT NULL, `line_total` INTEGER NOT NULL, `line_cost` INTEGER NOT NULL, `unit_replacement_cost` INTEGER NOT NULL, `line_replacement_cost` INTEGER NOT NULL, `product_name_snapshot` TEXT NOT NULL, `stock_effect` TEXT NOT NULL, `parent_line_id` INTEGER, `price_list_id` INTEGER NOT NULL, FOREIGN KEY(`sale_id`) REFERENCES `sales`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`parent_line_id`) REFERENCES `sale_lines`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`price_list_id`) REFERENCES `price_lists`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`unit_id`) REFERENCES `units`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1371,12 +1506,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "units",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "unit_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "products",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, `category_id` INTEGER, `default_supplier_id` INTEGER, `base_unit_id` INTEGER NOT NULL, `stock_mode` TEXT NOT NULL, `sale_price` INTEGER NOT NULL, `average_cost` INTEGER NOT NULL, `initial_cost` INTEGER NOT NULL, `fixed_unit_cost` INTEGER NOT NULL, `stock_value` INTEGER NOT NULL, `on_hand_milli` INTEGER NOT NULL, `min_stock_milli` INTEGER NOT NULL, `barcode` TEXT, `parent_product_id` INTEGER, `variant_axis_1` TEXT, `variant_axis_2` TEXT, `variant_value_1` TEXT, `variant_value_2` TEXT, `photo_media_id` INTEGER, `tax_rate_id` INTEGER, `replacement_cost` INTEGER NOT NULL, `replacement_cost_at` INTEGER, `target_margin_bp` INTEGER, `reference_cost` INTEGER, `reference_price` INTEGER, `price_review_since` INTEGER, `tracks_lots` INTEGER NOT NULL, `expiry_notice_days` INTEGER, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, FOREIGN KEY(`category_id`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`default_supplier_id`) REFERENCES `suppliers`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`parent_product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`tax_rate_id`) REFERENCES `tax_rates`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`photo_media_id`) REFERENCES `media_assets`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, `category_id` INTEGER, `default_supplier_id` INTEGER, `base_unit_id` INTEGER NOT NULL, `stock_mode` TEXT NOT NULL, `sale_price` INTEGER NOT NULL, `average_cost` INTEGER NOT NULL, `initial_cost` INTEGER NOT NULL, `fixed_unit_cost` INTEGER NOT NULL, `stock_value` INTEGER NOT NULL, `on_hand_milli` INTEGER NOT NULL, `min_stock_milli` INTEGER NOT NULL, `barcode` TEXT, `parent_product_id` INTEGER, `variant_axis_1` TEXT, `variant_axis_2` TEXT, `variant_value_1` TEXT, `variant_value_2` TEXT, `photo_media_id` INTEGER, `tax_rate_id` INTEGER, `replacement_cost` INTEGER NOT NULL, `replacement_cost_at` INTEGER, `target_margin_bp` INTEGER, `reference_cost` INTEGER, `reference_price` INTEGER, `price_review_since` INTEGER, `tracks_lots` INTEGER NOT NULL, `expiry_notice_days` INTEGER, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, FOREIGN KEY(`category_id`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`default_supplier_id`) REFERENCES `suppliers`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`parent_product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`tax_rate_id`) REFERENCES `tax_rates`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`photo_media_id`) REFERENCES `media_assets`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`base_unit_id`) REFERENCES `units`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1695,6 +1841,104 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "units",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "base_unit_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "units",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `system_key` TEXT, `name` TEXT, `normalized_name` TEXT, `symbol` TEXT, `kind` TEXT NOT NULL, `allows_fraction` INTEGER NOT NULL, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "systemKey",
+            "columnName": "system_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "symbol",
+            "columnName": "symbol",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allowsFraction",
+            "columnName": "allows_fraction",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_units_system_key",
+            "unique": true,
+            "columnNames": [
+              "system_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_units_system_key` ON `${TABLE_NAME}` (`system_key`)"
+          },
+          {
+            "name": "index_units_normalized_name",
+            "unique": false,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_units_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
           }
         ]
       },
@@ -4126,7 +4370,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '49fe2cb1609069cb9c67bbcd94cd74ed')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd4703968e3442a754bfec972b1c8d634')"
     ]
   }
 }

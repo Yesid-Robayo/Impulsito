@@ -74,8 +74,16 @@ internal const val MUCH_LATER = CREATED_AT + 3_600_000L
 /** Un reloj que siempre da [CREATED_AT]: las filas que nacen con la base salen iguales siempre. */
 internal val FIXED_CLOCK = Clock { Instant.fromEpochMilliseconds(CREATED_AT) }
 
-/** Unidad base cualquiera: la tabla de unidades todavía no existe, y la columna no tiene llave. */
+/**
+ * La unidad inicial `UNIT`, la primera que nace con la base: la unidad base por defecto. Le siguen
+ * las otras once iniciales, en el orden del modelo de datos, como [KILOGRAM_ID] y [GRAM_ID].
+ */
 internal const val UNIT_ID = 1L
+internal const val KILOGRAM_ID = 2L
+internal const val GRAM_ID = 3L
+internal const val BOX_ID = 10L
+internal const val PACK_ID = 11L
+internal const val DOZEN_ID = 12L
 
 internal fun category(name: String, targetMarginBp: Long? = null): CategoryEntity = CategoryEntity(
     name = name,

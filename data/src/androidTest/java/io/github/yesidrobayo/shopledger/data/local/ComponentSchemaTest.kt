@@ -83,9 +83,9 @@ internal class ComponentSchemaTest : CatalogDatabaseTest() {
                         "component_product_id -> products RESTRICT",
                         "sale_line_id -> sale_lines RESTRICT",
                     ),
-                // La unidad del producto llega con su tabla.
                 "products" to
                     listOf(
+                        "base_unit_id -> units RESTRICT",
                         "category_id -> categories SET NULL",
                         "default_supplier_id -> suppliers SET NULL",
                         "parent_product_id -> products RESTRICT",

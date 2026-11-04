@@ -35,6 +35,8 @@ internal object SchemaGuards {
             TAGS_GUARDS,
             PRODUCT_TAGS_GUARDS,
             MEDIA_ASSETS_GUARDS,
+            UNITS_GUARDS,
+            PRODUCT_UNITS_GUARDS,
             STOCK_MOVEMENTS_GUARDS,
             LOW_STOCK_ALERTS_GUARDS,
             PURCHASES_GUARDS,
@@ -610,10 +612,7 @@ private val SUPPLIERS_GUARDS =
  *
  * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
  * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
- * parte de estas guardas que hoy protege menos que su texto completo.
- *
- * Sin las unidades del producto, ninguna unidad tiene código: quitar esa condición da lo mismo
- * que tener su tabla vacía. */
+ * parte de estas guardas que hoy protege menos que su texto completo. */
 private val PRODUCTS_GUARDS =
     table(
         """
@@ -697,9 +696,7 @@ private val PRODUCTS_GUARDS =
         BEGIN SELECT RAISE(ABORT, 'guard:products'); END;
         """,
         awaitingCurrencyLock("guard_products_insert"),
-        Awaiting.Line("guard_products_insert", "FROM product_units", listOf("product_units")),
         awaitingCurrencyLock("guard_products_update"),
-        Awaiting.Line("guard_products_update", "FROM product_units", listOf("product_units")),
     )
 
 /** El historial de precios: solo crece, y se borra solo en cascada con su producto. */
@@ -897,6 +894,88 @@ private val MEDIA_ASSETS_GUARDS =
           AND (NEW.orphaned_at IS NULL OR (typeof(NEW.orphaned_at) = 'integer'))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:media_assets'); END;
+        """,
+    )
+
+/** Las unidades: la de clave `UNIT`, base por defecto de todo producto, nunca se archiva ni se
+ * borra, y una unidad creada por la persona siempre tiene nombre. */
+private val UNITS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_units_insert BEFORE INSERT ON units
+        WHEN NOT IFNULL((
+          (NEW.system_key IS NULL OR (typeof(NEW.system_key) = 'text' AND length(NEW.system_key) BETWEEN 1 AND 40))
+          AND (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40))
+          AND (NEW.symbol IS NULL OR (typeof(NEW.symbol) = 'text' AND length(NEW.symbol) BETWEEN 1 AND 10))
+          AND NEW.kind IN ('COUNT', 'MASS', 'VOLUME', 'LENGTH', 'OTHER')
+          AND NEW.allows_fraction IN (0, 1)
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.system_key IS NOT NULL OR NEW.name IS NOT NULL)
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.system_key IS NOT 'UNIT' OR NEW.archived_at IS NULL)
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM units u WHERE u.normalized_name = NEW.normalized_name AND u.archived_at IS NULL))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:units'); END;
+
+        CREATE TRIGGER guard_units_update BEFORE UPDATE ON units
+        WHEN NOT IFNULL((
+          (NEW.system_key IS NULL OR (typeof(NEW.system_key) = 'text' AND length(NEW.system_key) BETWEEN 1 AND 40))
+          AND (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40))
+          AND (NEW.symbol IS NULL OR (typeof(NEW.symbol) = 'text' AND length(NEW.symbol) BETWEEN 1 AND 10))
+          AND NEW.kind IN ('COUNT', 'MASS', 'VOLUME', 'LENGTH', 'OTHER')
+          AND NEW.allows_fraction IN (0, 1)
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.system_key IS NOT NULL OR NEW.name IS NOT NULL)
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.system_key IS NOT 'UNIT' OR NEW.archived_at IS NULL)
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM units u WHERE u.normalized_name = NEW.normalized_name AND u.archived_at IS NULL AND u.id <> NEW.id))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:units'); END;
+
+        CREATE TRIGGER guard_units_no_delete BEFORE DELETE ON units
+        WHEN OLD.system_key = 'UNIT'
+        BEGIN SELECT RAISE(ABORT, 'guard:units_system'); END;
+        """,
+    )
+
+/** Las conversiones de cada producto: factor de al menos una milésima de la unidad base, y un
+ * código que no se repite entre conversiones ni con el de otro producto vigente. */
+private val PRODUCT_UNITS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_product_units_insert BEFORE INSERT ON product_units
+        WHEN NOT IFNULL((
+          typeof(NEW.factor_milli) = 'integer' AND NEW.factor_milli BETWEEN 1 AND 1000000000
+          AND (NEW.sale_price IS NULL OR (typeof(NEW.sale_price) = 'integer' AND NEW.sale_price BETWEEN 0 AND 1000000000000))
+          AND (NEW.barcode IS NULL OR (typeof(NEW.barcode) = 'text' AND length(NEW.barcode) BETWEEN 1 AND 64))
+          AND NEW.for_sale IN (0, 1)
+          AND NEW.for_purchase IN (0, 1)
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM products p WHERE p.barcode = NEW.barcode AND p.archived_at IS NULL AND p.id <> NEW.product_id))
+          AND (NEW.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_units u WHERE u.barcode = NEW.barcode))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_units'); END;
+
+        CREATE TRIGGER guard_product_units_update BEFORE UPDATE ON product_units
+        WHEN NOT IFNULL((
+          typeof(NEW.factor_milli) = 'integer' AND NEW.factor_milli BETWEEN 1 AND 1000000000
+          AND (NEW.sale_price IS NULL OR (typeof(NEW.sale_price) = 'integer' AND NEW.sale_price BETWEEN 0 AND 1000000000000))
+          AND (NEW.barcode IS NULL OR (typeof(NEW.barcode) = 'text' AND length(NEW.barcode) BETWEEN 1 AND 64))
+          AND NEW.for_sale IN (0, 1)
+          AND NEW.for_purchase IN (0, 1)
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM products p WHERE p.barcode = NEW.barcode AND p.archived_at IS NULL AND p.id <> NEW.product_id))
+          AND (NEW.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_units u WHERE u.barcode = NEW.barcode AND u.id <> NEW.id))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_units'); END;
         """,
     )
 

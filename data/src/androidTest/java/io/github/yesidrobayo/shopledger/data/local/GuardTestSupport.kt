@@ -141,6 +141,32 @@ internal fun priceChangeRow(productId: Long, priceListId: Long): Row = row(
     "business_date" to BUSINESS_DATE,
 )
 
+/** Una unidad que creó la persona: con nombre, sin clave inicial, de conteo y sin decimales. */
+internal fun unitRow(name: String = "bulto"): Row = row(
+    "system_key" to null,
+    "name" to name,
+    "normalized_name" to name,
+    "symbol" to null,
+    "kind" to "COUNT",
+    "allows_fraction" to 0L,
+    "archived_at" to null,
+    "created_at" to CREATED_AT,
+    "updated_at" to CREATED_AT,
+)
+
+/** La conversión de una caja de 24 unidades base, a la venta y a la compra, sin código. */
+internal fun productUnitRow(productId: Long, unitId: Long): Row = row(
+    "product_id" to productId,
+    "unit_id" to unitId,
+    "factor_milli" to 24_000L,
+    "sale_price" to null,
+    "barcode" to null,
+    "for_sale" to 1L,
+    "for_purchase" to 1L,
+    "created_at" to CREATED_AT,
+    "updated_at" to CREATED_AT,
+)
+
 /** Una fila del libro sin origen: el inventario inicial de diez unidades a 1.200. */
 internal fun movementRow(productId: Long): Row = row(
     "product_id" to productId,

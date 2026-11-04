@@ -80,6 +80,7 @@ internal val SCHEMA_TABLES =
         "product_custom_values",
         "product_price_history",
         "product_tags",
+        "product_units",
         "products",
         "purchase_lines",
         "purchases",
@@ -91,6 +92,7 @@ internal val SCHEMA_TABLES =
         "suppliers",
         "tags",
         "tax_rates",
+        "units",
     )
 
 /** Cada índice de [table] como `nombre (columnas)`, con `unique` delante si lo es, por nombre. */

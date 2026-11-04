@@ -7,6 +7,7 @@ import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import androidx.room3.RoomWarnings
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.UnitEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 
 /**
@@ -29,8 +30,7 @@ import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
  * - `parent_line_id` es la línea principal de un extra, de la misma venta. Venta, producto, línea
  *   principal y lista de precios usan `RESTRICT`. La línea principal y la lista no llevan índice:
  *   ninguna de las dos se borra con ventas.
- * - `unit_id` todavía no tiene llave foránea: la tabla de unidades no existe aún. La llave llega
- *   con ella, dentro del mismo esquema 1.
+ * - La unidad también usa `RESTRICT` sin índice: una unidad con ventas no se borra, se archiva.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -58,6 +58,12 @@ import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
             entity = PriceListEntity::class,
             parentColumns = ["id"],
             childColumns = ["price_list_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = UnitEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["unit_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

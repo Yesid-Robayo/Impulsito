@@ -29,10 +29,14 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.ProductCustomValueEnt
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductTagEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductUnitDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductUnitEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.TagDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.TagEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.UnitDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.UnitEntity
 import io.github.yesidrobayo.shopledger.data.local.customer.CustomerDao
 import io.github.yesidrobayo.shopledger.data.local.customer.CustomerEntity
 import io.github.yesidrobayo.shopledger.data.local.customer.CustomerLedgerEntryDao
@@ -81,18 +85,23 @@ import kotlin.coroutines.CoroutineContext
 /**
  * La base de la app: el esquema 1, que nace completo y sin migraciones.
  *
- * Por ahora tiene el catálogo (categorías, proveedores, productos y su historial de precios),
- * `price_lists`, las compras y las ventas con sus líneas, el libro de stock y sus alertas, los
- * gastos con sus categorías, las tasas de impuesto, las filas únicas de los ajustes y del estado
- * del respaldo, que nacen con la base, los clientes con sus libros de cuenta y de puntos y sus
- * plantillas de mensaje, las cuentas de dinero con su libro y sus sesiones de caja, y el libro de
- * los proveedores. Del catálogo también tiene los combos, los campos propios, las etiquetas y las
- * imágenes, y de las ventas, los componentes que consumió cada combo vendido. Room activa las
- * llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana entraría sin
- * error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards]. Las demás tablas
- * llegan con las tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
+ * Por ahora tiene el catálogo (categorías, proveedores, unidades, productos con sus conversiones y
+ * su historial de precios), `price_lists`, las compras y las ventas con sus líneas, el libro de
+ * stock y sus alertas, los gastos con sus categorías, las tasas de impuesto, las filas únicas de
+ * los ajustes y del estado del respaldo, que nacen con la base, los clientes con sus libros de
+ * cuenta y de puntos y sus plantillas de mensaje, las cuentas de dinero con su libro y sus sesiones
+ * de caja, y el libro de los proveedores. Del catálogo también tiene los combos, los campos
+ * propios, las etiquetas y las imágenes, y de las ventas, los componentes que consumió cada combo
+ * vendido. Room activa las llaves foráneas solo si alguna entidad declara una: sin ellas, una fila
+ * huérfana entraría sin error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards].
+ * Las demás tablas llegan con las tareas que las crean, y la versión no cambia mientras el
+ * esquema 1 no se publique.
  */
 @Database(
+    // Cada tabla va antes que las tablas a las que apunta con RESTRICT: Room 3.0.3 ordena las
+    // entidades para borrarlas con un comparador que no es transitivo, y desde 32 entidades el
+    // ordenamiento falla al compilar si dos vecinas quedan al revés. Con la lista ya en ese orden,
+    // el ordenamiento la recorre una vez y no compara nada más.
     entities = [
         CategoryEntity::class,
         PriceHistoryEntity::class,
@@ -102,11 +111,13 @@ import kotlin.coroutines.CoroutineContext
         ProductCustomValueEntity::class,
         ProductTagEntity::class,
         TagEntity::class,
+        ProductUnitEntity::class,
         StockMovementEntity::class,
         PurchaseLineEntity::class,
         SaleLineComponentEntity::class,
         SaleLineEntity::class,
         ProductEntity::class,
+        UnitEntity::class,
         LowStockAlertEntity::class,
         AppSettingsEntity::class,
         BackupStateEntity::class,
@@ -147,6 +158,10 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun productComponentDao(): ProductComponentDao
 
     abstract fun tagDao(): TagDao
+
+    abstract fun productUnitDao(): ProductUnitDao
+
+    abstract fun unitDao(): UnitDao
 
     abstract fun purchaseDao(): PurchaseDao
 
@@ -270,8 +285,8 @@ internal abstract class AppDatabase : RoomDatabase() {
          * - Al crearla y en cada apertura, [SchemaGuardsCallback] deja en la base las guardas del
          *   catálogo. Va primero: al crearla, las filas que escribe [InitialRowsCallback] ya
          *   pasan por sus guardas.
-         * - Al crearla, [InitialRowsCallback] escribe las filas únicas de los ajustes y del
-         *   respaldo en la misma transacción que las tablas.
+         * - Al crearla, [InitialRowsCallback] escribe las filas iniciales, como las únicas de los
+         *   ajustes y del respaldo, en la misma transacción que las tablas.
          *
          * @param databaseFile ruta absoluta del archivo de la base.
          * @param queryContext contexto de las consultas, fuera del hilo principal.

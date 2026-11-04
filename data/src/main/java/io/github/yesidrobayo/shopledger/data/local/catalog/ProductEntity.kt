@@ -21,11 +21,10 @@ import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateEntity
  *   nombre ni su código de barras, así que esos índices no son únicos: la unicidad entre activos la
  *   impone la guarda de la tabla.
  * - Al eliminar su categoría o su proveedor habitual, el producto queda sin ellos. Un producto
- *   padre no se borra mientras tenga variantes.
+ *   padre no se borra mientras tenga variantes, y una unidad no se borra mientras sea la base de
+ *   algún producto.
  * - Al borrar su foto, el producto queda sin ella: la imagen no es historia del producto.
  * - Al eliminar su tasa de impuesto, el producto queda sin tasa, y sus ventas guardan su copia.
- * - `base_unit_id` todavía no tiene llave foránea: la tabla de unidades no existe aún. La llave,
- *   con `RESTRICT`, llega con ella, dentro del mismo esquema 1. Su índice ya está.
  */
 @Entity(
     tableName = "products",
@@ -59,6 +58,12 @@ import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateEntity
             parentColumns = ["id"],
             childColumns = ["photo_media_id"],
             onDelete = ForeignKey.SET_NULL,
+        ),
+        ForeignKey(
+            entity = UnitEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["base_unit_id"],
+            onDelete = ForeignKey.RESTRICT,
         ),
     ],
     indices = [
