@@ -20,4 +20,6 @@ dependencies {
     // api: los modelos públicos de :domain exponen tipos de fecha, y :data y :app los reciben.
     api(libs.kotlinx.datetime)
     testImplementation(libs.junit)
+    // runTest y dispatchers de prueba para los casos de uso suspend, sin esperas reales.
+    testImplementation(libs.kotlinx.coroutines.test)
 }
