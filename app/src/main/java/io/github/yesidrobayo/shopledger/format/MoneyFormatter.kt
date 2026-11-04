@@ -4,6 +4,7 @@ import android.icu.text.DecimalFormat
 import android.icu.text.NumberFormat
 import android.icu.util.Currency
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import java.math.BigDecimal
 import java.text.AttributedCharacterIterator
 import java.text.CharacterIterator
@@ -26,11 +27,19 @@ import java.text.CharacterIterator
 class MoneyFormatter(val formatLocale: FormatLocale, val currencyDecimals: Int) {
     private val format: DecimalFormat
 
+    /**
+     * Los separadores y el signo con que este formateador escribe las cifras de un monto. El
+     * dominio los usa para leer lo que la persona escribe en un campo de dinero, y así lee
+     * exactamente lo que este formateador muestra.
+     */
+    val inputSymbols: NumberSymbols
+
     init {
         require(currencyDecimals in MIN_CURRENCY_DECIMALS..MAX_CURRENCY_DECIMALS) {
             "Los decimales de la moneda van de $MIN_CURRENCY_DECIMALS a $MAX_CURRENCY_DECIMALS"
         }
         format = currencyFormat(formatLocale, currencyDecimals)
+        inputSymbols = numberInputSymbols(format)
     }
 
     /** El monto en partes: si es negativo, y sus cifras sin signo ni símbolo. */

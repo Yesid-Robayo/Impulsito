@@ -4,6 +4,7 @@ import android.icu.text.DecimalFormat
 import android.icu.text.NumberFormat
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.Scale
+import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import java.math.BigDecimal
 
 /**
@@ -19,6 +20,12 @@ import java.math.BigDecimal
 class QuantityFormatter(val formatLocale: FormatLocale) {
     private val wholeFormat: DecimalFormat = decimalFormat(formatLocale, fractionDigits = 0)
     private val fractionFormat: DecimalFormat = decimalFormat(formatLocale, fractionDigits = 3)
+
+    /**
+     * Los separadores y el signo con que este formateador escribe una cantidad. El dominio los usa
+     * para leer lo que la persona escribe en un campo de cantidad.
+     */
+    val inputSymbols: NumberSymbols = numberInputSymbols(fractionFormat)
 
     /**
      * La cantidad, con el signo menos tipográfico si es negativa: `−2`, `−0,250`.

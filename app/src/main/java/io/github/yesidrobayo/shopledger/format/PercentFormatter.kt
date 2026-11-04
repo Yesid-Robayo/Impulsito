@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.format
 import android.icu.text.DecimalFormat
 import android.icu.text.NumberFormat
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.rule.roundDiv
 import java.math.BigDecimal
 
@@ -21,6 +22,13 @@ class PercentFormatter(val formatLocale: FormatLocale) {
         fixedDecimalFormat(formatLocale.numberLocale, NumberFormat.PERCENTSTYLE, DISPLAY_DIGITS)
     private val pointsFormat: DecimalFormat =
         fixedDecimalFormat(formatLocale.numberLocale, NumberFormat.NUMBERSTYLE, DISPLAY_DIGITS)
+
+    /**
+     * Los separadores y el signo con que este formateador escribe un porcentaje. El dominio los usa
+     * para leer lo que la persona escribe en un campo de porcentaje, con el signo de porcentaje o
+     * sin él.
+     */
+    val inputSymbols: NumberSymbols = numberInputSymbols(percentFormat)
 
     /** Un porcentaje, como un margen: `20,0 %`, `−20,0 %`. */
     fun format(rate: BasisPoints): String = percent(tenths(rate))
