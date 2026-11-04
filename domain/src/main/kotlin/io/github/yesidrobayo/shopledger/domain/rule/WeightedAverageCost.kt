@@ -10,21 +10,27 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 
 /**
- * Costo promedio ponderado móvil de un producto.
+ * Costo promedio ponderado móvil de un producto, llevado con el valor total de su stock.
  *
- * Cada entrada de mercancía recalcula el promedio con el valor de lo que ya había y el total de lo
- * que entra. Una salida no lo cambia: se lleva el costo del momento, que la venta congela y que
- * nada posterior reescribe. Así una compra de hoy nunca cambia la ganancia de una venta pasada.
+ * Cada entrada de mercancía suma su total al valor del stock, y el promedio sale de ese valor. Una
+ * salida se lleva su parte del valor y no cambia el promedio: ese costo lo congela la venta, y nada
+ * posterior lo reescribe. Así una compra de hoy nunca cambia la ganancia de una venta pasada.
+ *
+ * El valor se lleva aparte, y no se deduce del promedio redondeado, para que el redondeo no se
+ * acumule: una caja de 24 unidades por 10000 se vende de a una y suma exactamente 10000, y una de
+ * 1000 unidades por 400, con un promedio que redondea a cero, sigue teniendo costo.
+ *
+ * El valor y el promedio son globales por producto, no por ubicación ni por lote.
  *
  * Cada operación lleva en su KDoc el nombre de su fórmula en la documentación, para encontrarla con
  * una búsqueda: `entrada`, `costoDeSalida`, `salida`, `ajustePositivo`, `devolucionAProveedor`,
  * `corregirCosto` y `replayCostState`.
  *
  * Las operaciones que multiplican devuelven [Checked]: una cifra que no cabe en `Long` llega como
- * [Checked.Overflow] y no se guarda nada. Las que solo suman o restan lanzan [ArithmeticException],
- * igual que [Money]. Ninguna aplica topes: la reproducción del libro debe aceptar lo que ya está
- * guardado, aunque una anulación lo haya llevado por encima de un tope, y cada caso de uso valida
- * los suyos antes de confirmar.
+ * [Checked.Overflow] y no se guarda nada. La única que solo suma y resta, [exit], lanza
+ * [ArithmeticException], igual que [Money]. Ninguna aplica topes: la reproducción del libro debe
+ * aceptar lo que ya está guardado, aunque una anulación lo haya llevado por encima de un tope, y
+ * cada caso de uso valida los suyos antes de confirmar.
  */
 object WeightedAverageCost {
     /**
@@ -34,11 +40,11 @@ object WeightedAverageCost {
      * El promedio sale del total y no del costo unitario, que ya viene redondeado: tres kilogramos
      * por 25000 son 8333,33 por kilogramo, y 8333 × 3 perdería una unidad menor.
      *
-     * Sin unidades, o con stock sin valor, el costo anterior no pesa y el promedio es el de la
-     * entrada. Con stock negativo, esas unidades ya se vendieron con su costo congelado, y
-     * ponderarlas daría a lo que queda un costo mayor que lo pagado. Con stock sin valor,
-     * ponderarlo lo haría pasar por gratuito. Un total cero, como una bonificación, sí es válido y
-     * baja el promedio.
+     * Sin unidades, o con stock sin valor, el costo anterior no pesa: el promedio es el de la
+     * entrada, y todo lo que queda se valora a ese costo. Con stock negativo, esas unidades ya se
+     * vendieron con su costo congelado, y ponderarlas daría a lo que queda un costo mayor que lo
+     * pagado. Con stock sin valor, ponderarlo lo haría pasar por gratuito. Un total cero, como una
+     * bonificación, sí es válido y baja el promedio.
      */
     fun entry(state: CostState, quantity: QuantityMilli, total: Money): Checked<CostState> {
         requirePositive(quantity)
@@ -48,10 +54,12 @@ object WeightedAverageCost {
 
     /**
      * `costoDeSalida`: lo que cuestan [quantity] milésimas que salen del stock. Es el costo de una
-     * línea de venta, de un ajuste negativo o de un insumo de producción, y se guarda congelado.
+     * línea de venta, de un ajuste negativo, de un insumo de producción o de una devolución a
+     * proveedor sin línea de compra, y se guarda congelado.
      *
-     * Es la parte proporcional del valor del stock. Lo que sale por encima de lo que hay, o con
-     * stock negativo, sale al costo promedio, que es el último que se conoce.
+     * Es la parte proporcional del valor del stock, así que vaciarlo se lleva todo su valor. Lo que
+     * sale por encima de lo que hay, o con stock negativo, sale al costo promedio, que es el último
+     * que se conoce.
      */
     fun exitCost(state: CostState, quantity: QuantityMilli): Checked<Money> {
         requirePositive(quantity)
@@ -59,12 +67,17 @@ object WeightedAverageCost {
     }
 
     /**
-     * `salida`: el estado tras restar [quantity] milésimas. El costo promedio no cambia. Puede
-     * dejar el stock negativo, porque vender nunca se bloquea por falta de stock.
+     * `salida`: el estado tras restar [quantity] milésimas que se llevan [cost]. El costo promedio
+     * no cambia. Puede dejar el stock negativo, porque vender nunca se bloquea por falta de stock.
+     *
+     * [cost] es el que dio [exitCost] al escribir la fila, o el que la fila guardó al reproducir el
+     * libro. Si se lleva más de lo que vale el stock, lo que queda vale cero, nunca negativo, y sin
+     * unidades no queda nada que valorar.
      */
-    fun exit(state: CostState, quantity: QuantityMilli): CostState {
+    fun exit(state: CostState, quantity: QuantityMilli, cost: Money): CostState {
         requirePositive(quantity)
-        return applyExit(state, quantity)
+        requireNotNegative(cost)
+        return applyExit(state, quantity, cost)
     }
 
     /**
@@ -78,17 +91,28 @@ object WeightedAverageCost {
     }
 
     /**
-     * `ajustePositivo`: el estado tras sumar [quantity] milésimas sin cambiar el costo promedio.
+     * `ajustePositivo`: el estado tras sumar [quantity] milésimas que valen [total], sin cambiar el
+     * costo promedio. [total] es el que dio [positiveAdjustmentCost] al escribir la fila, o el que
+     * la fila guardó al reproducir el libro.
+     *
+     * Con stock positivo, el total se suma al valor. Sin unidades, el stock negativo ya se vendió
+     * con su costo congelado, y lo que queda se valora a la misma tasa que el ajuste.
      */
-    fun positiveAdjustment(state: CostState, quantity: QuantityMilli): CostState {
+    fun positiveAdjustment(
+        state: CostState,
+        quantity: QuantityMilli,
+        total: Money,
+    ): Checked<CostState> {
         requirePositive(quantity)
-        return applyPositiveAdjustment(state, quantity)
+        requireNotNegative(total)
+        return checked { applyPositiveAdjustment(state, quantity, total) }
     }
 
     /**
-     * `devolucionAProveedor`: el estado tras devolver [quantity] milésimas al costo de su línea de
-     * compra, [total]. A diferencia de una venta, sí cambia el promedio: lo devuelto sale a lo que
-     * costó, y lo que queda vale el resto. Si no queda stock, el costo no cambia.
+     * `devolucionAProveedor`: el estado tras devolver [quantity] milésimas que valen [total], el
+     * costo de su línea de compra. A diferencia de una venta, sí cambia el promedio: lo devuelto
+     * sale a lo que costó, y el promedio de lo que queda sale del valor que queda. Si no queda
+     * stock, el costo no cambia.
      */
     fun supplierReturn(
         state: CostState,
@@ -101,12 +125,13 @@ object WeightedAverageCost {
     }
 
     /**
-     * `corregirCosto`: fija el costo promedio en [newCost] sin mover unidades. Sirve para dar costo
-     * a un stock que no lo tenía, o corregir uno errado sin una compra. No reescribe ninguna venta.
+     * `corregirCosto`: fija el costo promedio en [newCost] sin mover unidades, y valora el stock a
+     * ese costo. Sirve para dar costo a un stock que no lo tenía, o corregir uno errado sin una
+     * compra. No reescribe ninguna venta, pero sí cambia el valor del inventario.
      */
-    fun correctCost(state: CostState, newCost: Money): CostState {
+    fun correctCost(state: CostState, newCost: Money): Checked<CostState> {
         requireNotNegative(newCost)
-        return state.copy(averageCost = newCost)
+        return checked { applyCostCorrection(state, newCost) }
     }
 
     /**
@@ -118,16 +143,17 @@ object WeightedAverageCost {
      * anulaciones. Se reproduce el libro como si el documento anulado no hubiera existido.
      *
      * El libro efectivo deja fuera cada fila anulada y la fila que la anula. Las transferencias se
-     * saltan, porque no cambian el costo: transferir todo el stock no lo borra. Las filas se
+     * saltan, porque no cambian el costo: transferir todo el stock no borra su valor. Las filas se
      * aplican por [CostMovement.id], que es el orden en que se registraron, cada una con los
-     * valores que guardó: nada ya escrito se recalcula. Recibir las filas ya filtradas da el mismo
-     * resultado.
+     * valores que guardó: una venta se lleva el costo que congeló, aunque hoy saldría a otro, y
+     * nada ya escrito se recalcula. Recibir las filas ya filtradas da el mismo resultado.
      *
-     * Empieza sin stock y con [initialCost], el costo que se escribió al crear el producto.
+     * Empieza sin stock, sin valor y con [initialCost], el costo que se escribió al crear el
+     * producto.
      */
     fun replayCostState(initialCost: Money, movements: List<CostMovement>): CostReplayResult {
         val reversed = movements.mapNotNullTo(mutableSetOf()) { it.reversesMovementId }
-        var state = CostState(QuantityMilli.ZERO, initialCost)
+        var state = CostState.initial(initialCost)
         for (movement in movements.sortedBy { it.id }) {
             if (movement.reversesMovementId != null || movement.id in reversed) continue
             val next = try {
@@ -159,11 +185,11 @@ object WeightedAverageCost {
 
             StockMovementType.SALE,
             StockMovementType.PRODUCTION_OUT,
-            -> if (removes) applyExit(state, -movement.quantity) else null
+            -> if (removes) applyExit(state, -movement.quantity, -movement.totalCost) else null
 
             StockMovementType.ADJUSTMENT -> when {
-                removes -> applyExit(state, -movement.quantity)
-                adds -> applyPositiveAdjustment(state, movement.quantity)
+                removes -> applyExit(state, -movement.quantity, -movement.totalCost)
+                adds -> applyPositiveAdjustment(state, movement.quantity, movement.totalCost)
                 else -> null
             }
 
@@ -176,7 +202,7 @@ object WeightedAverageCost {
 
             StockMovementType.COST_CORRECTION -> {
                 val valid = quantity == 0L && total == 0L && movement.unitCost.minor >= 0L
-                if (valid) state.copy(averageCost = movement.unitCost) else null
+                if (valid) applyCostCorrection(state, movement.unitCost) else null
             }
 
             StockMovementType.TRANSFER_OUT,
@@ -198,36 +224,42 @@ object WeightedAverageCost {
 
     private fun applyEntry(state: CostState, quantity: QuantityMilli, total: Money): CostState {
         val onHandAfter = state.onHand + quantity
-        val value = stockValueOf(state)
-        val averageAfter = if (state.onHand.milli <= 0L || value == 0L) {
-            mulDiv(total.minor, Scale.MILLI, quantity.milli)
-        } else {
-            mulDiv(Math.addExact(value, total.minor), Scale.MILLI, onHandAfter.milli)
+        val value = state.stockValue.minor
+        if (state.onHand.milli <= 0L || value == 0L) {
+            val average = mulDiv(total.minor, Scale.MILLI, quantity.milli)
+            // Lo que queda se valora al costo de la entrada: con stock negativo queda menos de lo
+            // que entró, y con stock sin valor, más.
+            val valueAfter = valueAtRate(total.minor, onHandAfter, quantity)
+            return CostState(onHandAfter, Money(average), Money(valueAfter))
         }
-        return CostState(onHandAfter, Money(averageAfter))
+        // Con stock positivo, lo que queda también lo es, y el divisor nunca es cero.
+        val valueAfter = Math.addExact(value, total.minor)
+        val average = mulDiv(valueAfter, Scale.MILLI, onHandAfter.milli)
+        return CostState(onHandAfter, Money(average), Money(valueAfter))
     }
 
     private fun exitCostOf(state: CostState, quantity: Long): Long {
         val onHand = state.onHand.milli
+        val value = state.stockValue.minor
         val average = state.averageCost.minor
         return when {
             onHand <= 0L -> mulDiv(quantity, average, Scale.MILLI)
-
-            quantity <= onHand -> mulDiv(stockValueOf(state), quantity, onHand)
-
-            else -> Math.addExact(
-                stockValueOf(state),
-                mulDiv(quantity - onHand, average, Scale.MILLI),
-            )
+            quantity <= onHand -> mulDiv(value, quantity, onHand)
+            else -> Math.addExact(value, mulDiv(quantity - onHand, average, Scale.MILLI))
         }
     }
 
-    private fun applyExit(state: CostState, quantity: QuantityMilli): CostState =
-        state.copy(onHand = state.onHand - quantity)
+    private fun applyExit(state: CostState, quantity: QuantityMilli, cost: Money): CostState {
+        val onHandAfter = state.onHand - quantity
+        // Ni el valor ni el costo son negativos, así que la resta no desborda.
+        val remaining = state.stockValue.minor - cost.minor
+        val valueAfter = if (onHandAfter.milli > 0L && remaining > 0L) remaining else 0L
+        return state.copy(onHand = onHandAfter, stockValue = Money(valueAfter))
+    }
 
     private fun positiveAdjustmentCostOf(state: CostState, quantity: Long): Long {
         val onHand = state.onHand.milli
-        val value = stockValueOf(state)
+        val value = state.stockValue.minor
         return if (onHand > 0L && value > 0L) {
             mulDiv(value, quantity, onHand)
         } else {
@@ -235,30 +267,47 @@ object WeightedAverageCost {
         }
     }
 
-    private fun applyPositiveAdjustment(state: CostState, quantity: QuantityMilli): CostState =
-        state.copy(onHand = state.onHand + quantity)
+    private fun applyPositiveAdjustment(
+        state: CostState,
+        quantity: QuantityMilli,
+        total: Money,
+    ): CostState {
+        val onHandAfter = state.onHand + quantity
+        val valueAfter = if (state.onHand.milli > 0L) {
+            Math.addExact(state.stockValue.minor, total.minor)
+        } else {
+            valueAtRate(total.minor, onHandAfter, quantity)
+        }
+        return state.copy(onHand = onHandAfter, stockValue = Money(valueAfter))
+    }
 
     private fun applySupplierReturn(
         state: CostState,
         quantity: QuantityMilli,
         total: Money,
     ): CostState {
-        val onHandAfter = state.onHand - quantity
-        if (onHandAfter.milli <= 0L) return state.copy(onHand = onHandAfter)
-        // Si lo devuelto costó más de lo que vale el stock, lo que queda vale cero, nunca negativo.
-        val valueAfter = Math.subtractExact(stockValueOf(state), total.minor).coerceAtLeast(0L)
-        return CostState(onHandAfter, Money(mulDiv(valueAfter, Scale.MILLI, onHandAfter.milli)))
+        val exited = applyExit(state, quantity, total)
+        val onHandAfter = exited.onHand.milli
+        if (onHandAfter <= 0L) return exited
+        val average = mulDiv(exited.stockValue.minor, Scale.MILLI, onHandAfter)
+        return exited.copy(averageCost = Money(average))
+    }
+
+    private fun applyCostCorrection(state: CostState, newCost: Money): CostState {
+        val onHand = state.onHand.milli
+        val value = if (onHand > 0L) mulDiv(onHand, newCost.minor, Scale.MILLI) else 0L
+        return CostState(state.onHand, newCost, Money(value))
     }
 
     /**
-     * El valor total del stock, deducido del promedio: `onHand × averageCost / 1000`, redondeado.
-     * Sin unidades no hay nada que valorar, así que vale cero también con stock negativo.
+     * El valor de [onHandAfter] milésimas si [quantity] milésimas valen [total]. Sin unidades no
+     * hay nada que valorar, así que vale cero también con stock negativo.
      */
-    private fun stockValueOf(state: CostState): Long = if (state.onHand.milli <= 0L) {
-        0L
-    } else {
-        mulDiv(state.onHand.milli, state.averageCost.minor, Scale.MILLI)
-    }
+    private fun valueAtRate(
+        total: Long,
+        onHandAfter: QuantityMilli,
+        quantity: QuantityMilli,
+    ): Long = if (onHandAfter.milli > 0L) mulDiv(total, onHandAfter.milli, quantity.milli) else 0L
 
     /** [mulDivRound] dentro de una cuenta: si no cabe, la corta como cualquier desbordamiento. */
     private fun mulDiv(a: Long, b: Long, d: Long): Long = mulDivRound(a, b, d).valueOrNull()

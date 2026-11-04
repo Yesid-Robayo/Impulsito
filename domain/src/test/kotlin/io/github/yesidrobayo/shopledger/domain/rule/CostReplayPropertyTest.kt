@@ -55,6 +55,60 @@ class CostReplayPropertyTest {
     }
 
     @Test
+    fun `stock without units never has value`() {
+        val random = Random(SEED + 2)
+        repeat(SEQUENCES) { sequence ->
+            val ledger = SimulatedLedger(random, withVoids = true)
+            repeat(random.nextInt(1, MAX_STEPS)) {
+                ledger.step()
+                // El valor nunca es negativo: lo impide el propio estado.
+                if (ledger.state.onHand.milli <= 0L) {
+                    assertEquals("secuencia $sequence", Money.ZERO, ledger.state.stockValue)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `without negative stock what leaves adds up to exactly what came in`() {
+        val random = Random(SEED + 3)
+        repeat(SEQUENCES) { sequence ->
+            val cost = WeightedAverageCost
+            var state = CostState.initial(Money(random.nextLong(0, 3000)))
+            var cameIn = 0L
+            var wentOut = 0L
+            repeat(random.nextInt(1, MAX_STEPS)) {
+                val onHand = state.onHand.milli
+                // Una entrada sobre unidades sin valor, porque llegaron gratis o porque el redondeo
+                // se lo quitó, las valora al costo nuevo como costo desconocido, y crea valor:
+                // queda fuera de esta cuenta.
+                val canEnter = onHand == 0L || state.stockValue > Money.ZERO
+                if (canEnter && (onHand == 0L || random.nextBoolean())) {
+                    val quantity = quantity(random)
+                    val total = Money(random.nextLong(0, 50_000))
+                    state = cost.entry(state, quantity, total).accepted()
+                    cameIn += total.minor
+                } else if (onHand > 0L) {
+                    // Sale una parte o todo, nunca más de lo que hay.
+                    val quantity = QuantityMilli(random.nextLong(1, onHand + 1))
+                    val exitCost = cost.exitCost(state, quantity).accepted()
+                    state = cost.exit(state, quantity, exitCost)
+                    wentOut += exitCost.minor
+                }
+                assertEquals("secuencia $sequence", cameIn, wentOut + state.stockValue.minor)
+            }
+            // Vaciar el stock se lleva exactamente su valor.
+            if (state.onHand.milli > 0L) {
+                assertEquals(
+                    "secuencia $sequence",
+                    state.stockValue,
+                    cost.exitCost(state, state.onHand).accepted(),
+                )
+            }
+        }
+    }
+
+    @Test
     fun `voided documents weigh nothing whatever order they were voided in`() {
         val random = Random(SEED + 1)
         repeat(SEQUENCES) { sequence ->
@@ -87,7 +141,7 @@ class CostReplayPropertyTest {
         private val cost = WeightedAverageCost
         private val initialCost = Money(random.nextLong(0, 3000))
         val rows = mutableListOf<CostMovement>()
-        var state = CostState(QuantityMilli.ZERO, initialCost)
+        var state = CostState.initial(initialCost)
             private set
 
         fun replay(movements: List<CostMovement>) = cost.replayCostState(initialCost, movements)
@@ -126,20 +180,20 @@ class CostReplayPropertyTest {
             // La fila congela el costo del momento.
             val unitCost = state.averageCost
             val total = cost.exitCost(state, quantity).accepted()
-            state = cost.exit(state, quantity)
+            state = cost.exit(state, quantity, total)
             add(type, -quantity, unitCost, -total)
         }
 
         private fun positiveAdjustment() {
             val quantity = quantity()
             val total = cost.positiveAdjustmentCost(state, quantity).accepted()
-            state = cost.positiveAdjustment(state, quantity)
+            state = cost.positiveAdjustment(state, quantity, total).accepted()
             add(ADJUSTMENT, quantity, state.averageCost, total)
         }
 
         private fun correction() {
             val newCost = Money(random.nextLong(0, 3000))
-            state = cost.correctCost(state, newCost)
+            state = cost.correctCost(state, newCost).accepted()
             add(COST_CORRECTION, QuantityMilli.ZERO, newCost, Money.ZERO)
         }
 
@@ -171,12 +225,7 @@ class CostReplayPropertyTest {
             }
         }
 
-        // Unidades enteras o fracciones, para cubrir productos por unidad y por peso.
-        private fun quantity() = if (random.nextBoolean()) {
-            QuantityMilli.ofUnits(random.nextLong(1, 20))
-        } else {
-            QuantityMilli(random.nextLong(1, 20_000))
-        }
+        private fun quantity() = quantity(random)
 
         private fun unitCostOf(total: Money, quantity: QuantityMilli) =
             Money(roundDiv(Math.multiplyExact(total.minor, 1000L), quantity.milli))
@@ -208,6 +257,13 @@ class CostReplayPropertyTest {
                 PRODUCTION_OUT to PRODUCTION_VOID,
                 PRODUCTION_IN to PRODUCTION_VOID,
             )
+
+        // Unidades enteras o fracciones, para cubrir productos por unidad y por peso.
+        fun quantity(random: Random) = if (random.nextBoolean()) {
+            QuantityMilli.ofUnits(random.nextLong(1, 20))
+        } else {
+            QuantityMilli(random.nextLong(1, 20_000))
+        }
 
         fun voidOf(target: CostMovement, id: Long) = CostMovement(
             id = id,
