@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.Flow
  * caso de uso.
  *
  * Cada escritura toca solo sus columnas, y ninguna usa `REPLACE`: un `INSERT OR REPLACE` sobre un
- * campo lo borraría con todos sus valores en cascada. Un nombre o un valor repetido falla por su
- * índice único y no cambia nada.
+ * campo lo borraría con todos sus valores en cascada. Un nombre repetido entre los vigentes falla por
+ * la guarda, y un valor repetido por su índice único: ninguno cambia nada.
  */
 @Dao
 internal interface CustomFieldDao {
@@ -25,14 +25,18 @@ internal interface CustomFieldDao {
     @Query("SELECT * FROM custom_field_definitions WHERE id = :id")
     suspend fun findField(id: Long): CustomFieldDefinitionEntity?
 
-    @Query("SELECT * FROM custom_field_definitions WHERE normalized_name = :normalizedName")
-    suspend fun findFieldByNormalizedName(normalizedName: String): CustomFieldDefinitionEntity?
+    /** El campo vigente con ese nombre: uno archivado no reserva el suyo. */
+    @Query(
+        "SELECT * FROM custom_field_definitions WHERE normalized_name = :normalizedName " +
+            "AND archived_at IS NULL ORDER BY id LIMIT 1",
+    )
+    suspend fun findActiveField(normalizedName: String): CustomFieldDefinitionEntity?
 
     /** Productos con un valor en el campo: es lo que se muestra antes de borrarlo. */
     @Query("SELECT COUNT(*) FROM product_custom_values WHERE field_id = :fieldId")
     suspend fun countValues(fieldId: Long): Int
 
-    /** Devuelve el id nuevo. Falla si el nombre normalizado ya existe, también archivado. */
+    /** Devuelve el id nuevo. Falla si un campo vigente ya tiene ese nombre normalizado. */
     @Insert
     suspend fun insertField(field: CustomFieldDefinitionEntity): Long
 
@@ -52,7 +56,10 @@ internal interface CustomFieldDao {
         updatedAt: Long,
     ): Int
 
-    /** Archiva o reactiva el campo: con `null`, vuelve a mostrarse. Sus valores no cambian. */
+    /**
+     * Archiva o reactiva el campo: con `null`, vuelve a mostrarse. Sus valores no cambian.
+     * Reactivarlo falla si otro campo vigente ya tiene su nombre.
+     */
     @Query(
         "UPDATE custom_field_definitions SET archived_at = :archivedAt, updated_at = :updatedAt " +
             "WHERE id = :id",

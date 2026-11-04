@@ -10,7 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Los campos propios y sus valores: nombre único también entre archivados, orden de la persona y
+ * Los campos propios y sus valores: nombre único entre los vigentes, orden de la persona y
  * después por `id`, un valor por campo y producto, y valores que se van en cascada con su campo y
  * con su producto.
  */
@@ -46,12 +46,16 @@ internal class CustomFieldDaoTest : CatalogDatabaseTest() {
     }
 
     @Test
-    fun aFieldNameIsUniqueAlsoAgainstArchivedOnesAndItsTypeStays() = runBlocking {
+    fun aFieldNameIsUniqueOnlyAmongActiveOnesAndItsTypeStays() = runBlocking {
         val archived = fields.insertField(field("Talla").copy(archivedAt = LATER))
+        // Uno archivado no reserva su nombre: otro vigente lo toma.
+        val active = fields.insertField(field("TALLA"))
         val id = fields.insertField(field("Fecha de cosecha", type = "DATE"))
 
-        constraintFailure(UNIQUE) { fields.insertField(field("TALLA")) }
-        constraintFailure(UNIQUE) { fields.updateField(id, "Talla", "talla", 0, LATER) }
+        // Entre vigentes no se repite, ni al crear, ni al renombrar, ni al reactivar.
+        guardFailure(GUARD) { fields.insertField(field(" talla ")) }
+        guardFailure(GUARD) { fields.updateField(id, "Talla", "talla", 0, LATER) }
+        guardFailure(GUARD) { fields.setFieldArchived(archived, archivedAt = null, LATER) }
 
         assertEquals(1, fields.updateField(id, "Cosecha", "cosecha", sortOrder = 5, MUCH_LATER))
         assertEquals(
@@ -62,9 +66,13 @@ internal class CustomFieldDaoTest : CatalogDatabaseTest() {
                 sortOrder = 5,
                 updatedAt = MUCH_LATER,
             ),
-            fields.findFieldByNormalizedName("cosecha"),
+            fields.findActiveField("cosecha"),
         )
-        assertEquals(archived, fields.findFieldByNormalizedName("talla")?.id)
+        assertEquals(active, fields.findActiveField("talla")?.id)
+        // Archivado el vigente, el otro vuelve.
+        fields.setFieldArchived(active, archivedAt = MUCH_LATER, MUCH_LATER)
+        assertEquals(1, fields.setFieldArchived(archived, archivedAt = null, MUCH_LATER))
+        assertEquals(archived, fields.findActiveField("talla")?.id)
         assertNull(fields.findField(MISSING_ID))
         assertEquals(0, fields.updateField(MISSING_ID, "Otro", "otro", 0, LATER))
     }
@@ -137,6 +145,7 @@ internal class CustomFieldDaoTest : CatalogDatabaseTest() {
     )
 
     private companion object {
+        const val GUARD = "guard:custom_field_definitions"
         const val MISSING_ID = 999L
     }
 }

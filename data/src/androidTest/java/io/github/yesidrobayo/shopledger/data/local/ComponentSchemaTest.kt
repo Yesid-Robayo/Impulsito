@@ -29,7 +29,7 @@ internal class ComponentSchemaTest : CatalogDatabaseTest() {
                     ),
                 "custom_field_definitions" to
                     listOf(
-                        "unique index_custom_field_definitions_normalized_name (normalized_name)",
+                        "index_custom_field_definitions_normalized_name (normalized_name)",
                     ),
                 "product_custom_values" to
                     listOf(

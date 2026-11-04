@@ -772,7 +772,8 @@ private val PRODUCT_COMPONENTS_GUARDS =
         """,
     )
 
-/** Los campos propios: nombre con su largo y un tipo conocido. */
+/** Los campos propios: nombre con su largo y un tipo conocido. El nombre es único entre los
+ * vigentes: uno archivado no reserva el suyo. */
 private val CUSTOM_FIELD_DEFINITIONS_GUARDS =
     table(
         """
@@ -785,6 +786,7 @@ private val CUSTOM_FIELD_DEFINITIONS_GUARDS =
           AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
           AND typeof(NEW.created_at) = 'integer'
           AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.archived_at IS NOT NULL OR NOT EXISTS (SELECT 1 FROM custom_field_definitions f WHERE f.normalized_name = NEW.normalized_name AND f.archived_at IS NULL))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:custom_field_definitions'); END;
 
@@ -797,6 +799,7 @@ private val CUSTOM_FIELD_DEFINITIONS_GUARDS =
           AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
           AND typeof(NEW.created_at) = 'integer'
           AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.archived_at IS NOT NULL OR NOT EXISTS (SELECT 1 FROM custom_field_definitions f WHERE f.normalized_name = NEW.normalized_name AND f.archived_at IS NULL AND f.id <> NEW.id))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:custom_field_definitions'); END;
         """,

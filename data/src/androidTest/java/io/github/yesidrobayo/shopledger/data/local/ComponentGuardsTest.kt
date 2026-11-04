@@ -86,6 +86,14 @@ internal class ComponentGuardsTest : GuardProbeTest() {
             rejected(CUSTOM_FIELDS, broken.insertInto("custom_field_definitions"))
         }
         val id = insert("custom_field_definitions", valid.with("name" to "C".repeat(40)))
+        // Lo archivado no reserva su nombre, y entre vigentes no se repite.
+        insert("custom_field_definitions", valid.with("archived_at" to LATER))
+        rejected(CUSTOM_FIELDS, valid.insertInto("custom_field_definitions"))
+        val other = insert("custom_field_definitions", customFieldRow("color"))
+        rejected(
+            CUSTOM_FIELDS,
+            update("custom_field_definitions", other, "normalized_name" to "talla"),
+        )
 
         rejected(CUSTOM_FIELDS, update("custom_field_definitions", id, "field_type" to "COLOR"))
         rejected(CUSTOM_FIELDS, update("custom_field_definitions", id, "normalized_name" to null))
@@ -97,7 +105,7 @@ internal class ComponentGuardsTest : GuardProbeTest() {
                 "archived_at" to LATER,
             ),
         )
-        assertEquals(1L, count("SELECT COUNT(*) FROM custom_field_definitions"))
+        assertEquals(3L, count("SELECT COUNT(*) FROM custom_field_definitions"))
     }
 
     @Test

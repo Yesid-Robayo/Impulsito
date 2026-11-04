@@ -10,8 +10,9 @@ import androidx.room3.PrimaryKey
  *
  * - `field_type` es un `CustomFieldType` por su nombre: dice cómo interpreta el dominio el texto de
  *   cada valor.
- * - El nombre normalizado es único en toda la tabla, también entre archivados: archivar un campo
- *   solo lo esconde, y sus valores siguen en los productos.
+ * - El nombre normalizado es único solo entre los vigentes, y lo impone la guarda de la tabla: un
+ *   campo archivado no reserva su nombre, igual que un producto. Por eso su índice no es único.
+ *   Archivar un campo solo lo esconde, y sus valores siguen en los productos.
  * - `sort_order` es el orden en que la persona los ve. Dos campos con el mismo orden salen por
  *   `id`.
  * - Borrarlo borra sus valores en cascada. Por eso solo se ofrece sin valores, o cuando la persona
@@ -19,7 +20,7 @@ import androidx.room3.PrimaryKey
  */
 @Entity(
     tableName = "custom_field_definitions",
-    indices = [Index(value = ["normalized_name"], unique = true)],
+    indices = [Index(value = ["normalized_name"])],
 )
 internal data class CustomFieldDefinitionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
