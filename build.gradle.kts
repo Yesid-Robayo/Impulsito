@@ -64,6 +64,10 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         // necesita import.
         val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
         val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
+        // Un solo archivo escribe en el registro del sistema, y lo que recibe ya pasó por tipos que no admiten montos, nombres ni
+        // el mensaje de una excepción. La salida estándar y la traza de una excepción también llegan al registro, con el mensaje.
+        val directLog = Regex("""\bandroid\.util\.[L]og\b|\bprint(ln)?\(|\bSystem\.(out|err)\b|\.print[S]tackTrace\(""")
+        val logSink = "data/src/main/java/io/github/yesidrobayo/shopledger/data/log/AndroidEventLog.kt"
         // Los libros, de stock, de clientes, de dinero y de proveedores, las líneas de venta, de compra, de devolución, de
         // transferencias y de producción, los componentes de un combo vendido, los conteos de caja, los pagos de una venta y las
         // cotizaciones solo crecen: ningún DAO los edita ni los borra, porque el saldo, el costo, lo vendido, lo cobrado y cada
@@ -164,6 +168,9 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 }
                 if (isSource && domainMain.containsMatchIn(path) && systemZone.containsMatchIn(line)) {
                     problems += "$where: las reglas de negocio usan la zona del negocio, nunca la del teléfono"
+                }
+                if (isSource && mainSource.containsMatchIn(path) && path != logSink && directLog.containsMatchIn(line)) {
+                    problems += "$where: solo AndroidEventLog escribe en el registro del sistema: usa EventLog"
                 }
                 if (uiSource.containsMatchIn(path) && uiForbiddenImport.containsMatchIn(line)) {
                     problems += "$where: una pantalla no importa la capa de datos ni un puerto: usa un caso de uso"

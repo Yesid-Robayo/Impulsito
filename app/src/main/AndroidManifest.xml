@@ -3,6 +3,7 @@
 
     <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS. -->
     <application
+        android:name=".ShopLedgerApp"
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
