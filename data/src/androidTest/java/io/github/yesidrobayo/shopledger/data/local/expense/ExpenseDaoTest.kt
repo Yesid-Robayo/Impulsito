@@ -8,8 +8,8 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
 import io.github.yesidrobayo.shopledger.data.local.catalog.FOREIGN_KEY
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
-import io.github.yesidrobayo.shopledger.data.local.catalog.UNIQUE
 import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
+import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import io.github.yesidrobayo.shopledger.data.local.ids
 import io.github.yesidrobayo.shopledger.domain.model.Limit
@@ -144,8 +144,9 @@ internal class ExpenseDaoTest : CatalogDatabaseTest() {
         val original = expense(categoryId)
         val id = expenses.insert(original)
 
-        // Un INSERT OR REPLACE borraría el gasto y escribiría otro en su lugar.
-        constraintFailure(UNIQUE) { expenses.insert(original.copy(id = id, amount = 1)) }
+        // Un INSERT OR REPLACE borraría el gasto y escribiría otro en su lugar. La guarda rechaza
+        // el id repetido antes que la llave primaria, también con REPLACE.
+        guardFailure("guard:expenses") { expenses.insert(original.copy(id = id, amount = 1)) }
 
         assertEquals(original.copy(id = id), expenses.findById(id))
     }

@@ -5,10 +5,11 @@ package io.github.yesidrobayo.shopledger.domain.model.settings
  * no cuenta como un cambio sin respaldar, porque no son datos del negocio.
  *
  * [lowStockNotificationsEnabled] apaga los avisos de stock bajo, no la lista de productos por
- * agotarse, y no es retroactivo.
+ * agotarse, y no es retroactivo. [colorPalette] solo cambia colores: no depende de [themeMode].
  */
 data class AppPreferences(
     val themeMode: ThemeMode,
+    val colorPalette: ColorPalette,
     val lowStockNotificationsEnabled: Boolean,
     val appLockEnabled: Boolean,
     val appLockTimeout: AppLockTimeout,

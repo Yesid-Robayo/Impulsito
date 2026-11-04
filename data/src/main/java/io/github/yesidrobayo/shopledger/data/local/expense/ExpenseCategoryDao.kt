@@ -30,17 +30,20 @@ internal interface ExpenseCategoryDao {
     suspend fun findById(id: Long): ExpenseCategoryEntity?
 
     /**
-     * La categoría con ese nombre normalizado, archivada o no: el nombre es único en toda la tabla,
-     * así que hay a lo sumo una. El repositorio mira `archived_at` para saber si está vigente.
+     * La vigente con ese nombre normalizado. El nombre es único solo entre las vigentes, así que hay
+     * a lo sumo una: las archivadas con el mismo nombre no cuentan.
      */
-    @Query("SELECT * FROM expense_categories WHERE normalized_name = :normalizedName")
-    suspend fun findByNormalizedName(normalizedName: String): ExpenseCategoryEntity?
+    @Query(
+        "SELECT * FROM expense_categories " +
+            "WHERE normalized_name = :normalizedName AND archived_at IS NULL",
+    )
+    suspend fun findActiveByNormalizedName(normalizedName: String): ExpenseCategoryEntity?
 
     /** Si tiene gastos, aunque estén anulados. Con gastos ya no se borra: solo se archiva. */
     @Query("SELECT EXISTS (SELECT 1 FROM expenses WHERE expense_category_id = :id)")
     suspend fun hasExpenses(id: Long): Boolean
 
-    /** Devuelve el id nuevo. Falla si el nombre normalizado o la clave ya existen. */
+    /** Devuelve el id nuevo. Falla si la clave ya existe, o si el nombre ya es de una vigente. */
     @Insert
     suspend fun insert(category: ExpenseCategoryEntity): Long
 

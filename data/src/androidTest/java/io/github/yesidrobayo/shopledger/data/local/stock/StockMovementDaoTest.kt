@@ -9,8 +9,8 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.FOREIGN_KEY
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
-import io.github.yesidrobayo.shopledger.data.local.catalog.UNIQUE
 import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
+import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.product
 import io.github.yesidrobayo.shopledger.data.local.movement
 import io.github.yesidrobayo.shopledger.data.local.openingBalance
@@ -47,7 +47,10 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
         val purchaseLineId = insertPurchaseWithLine().id
         val lotProductId = products.insert(product("Queso").copy(tracksLots = 1))
         // Una fila por origen, y cada columna con un valor distinto dentro de su fila, para que dos
-        // columnas cruzadas no pasen. Las columnas sin llave todavía admiten cualquier id.
+        // columnas cruzadas no pasen. Las columnas sin llave todavía admiten cualquier id. La
+        // guarda pide que el lote exista, y la tabla de lotes todavía no existe: esta prueba, que
+        // solo mira que cada columna vuelva de su lugar, la retira.
+        execute("DROP TRIGGER guard_stock_movements_insert")
         val rows =
             listOf(
                 movement(lotProductId, "PURCHASE", 12_000, 1_667, 20_000, 12_000, 1_668, 20_001)
@@ -159,8 +162,9 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
         val openingId = append(openingBalance(productId))
         val before = requireNotNull(products.findById(productId))
 
-        // El producto ya tomó su estado nuevo cuando la fila choca con su llave: todo se deshace.
-        constraintFailure(FOREIGN_KEY) {
+        // El producto ya tomó su estado nuevo cuando la guarda rechaza la fila, que compensa una
+        // que no existe: todo se deshace.
+        guardFailure(GUARD) {
             database.withWriteTransaction {
                 products.updateStockState(productId, 9_000, 1_200, 10_800, LATER)
                 ledger.insert(
@@ -194,8 +198,9 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
 
         assertTrue(ledger.isCompensated(openingId))
         assertFalse(ledger.isCompensated(reversalId))
-        // Una segunda compensación de la misma fila choca con el índice único.
-        constraintFailure(UNIQUE) { ledger.insert(reversal) }
+        // Una segunda compensación de la misma fila la rechaza la guarda, antes que el índice
+        // único, que sigue debajo.
+        guardFailure(GUARD) { ledger.insert(reversal) }
 
         // Las filas que no compensan conviven: el índice único admite varios nulos.
         ledger.insert(openingBalance(productId))
@@ -204,7 +209,9 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
 
     @Test
     fun rowNeedsAnExistingProductAndExistingOrigins() = runBlocking {
-        constraintFailure(FOREIGN_KEY) { ledger.insert(openingBalance(MISSING_ID)) }
+        // El producto y la fila que se compensa los pide la guarda, antes que la llave. Las
+        // líneas de origen las pide la llave.
+        guardFailure(GUARD) { ledger.insert(openingBalance(MISSING_ID)) }
         constraintFailure(FOREIGN_KEY) {
             ledger.insert(
                 movement(productId, "SALE", -1_000, 1_200, -1_200, -1_000, 1_200, 0)
@@ -216,7 +223,7 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
                 openingBalance(productId).copy(type = "PURCHASE", purchaseLineId = MISSING_ID),
             )
         }
-        constraintFailure(FOREIGN_KEY) {
+        guardFailure(GUARD) {
             ledger.insert(
                 movement(productId, "ADJUSTMENT_VOID", -1_000, 1_200, -1_200, -1_000, 1_200, 0)
                     .copy(reversesMovementId = MISSING_ID),
@@ -312,8 +319,9 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
         val original = openingBalance(productId)
         val id = ledger.insert(original)
 
-        // Un INSERT OR REPLACE borraría la fila y escribiría otra en su lugar.
-        constraintFailure(UNIQUE) {
+        // Un INSERT OR REPLACE borraría la fila y escribiría otra en su lugar. La guarda rechaza
+        // el id repetido antes que la llave primaria, también con REPLACE.
+        guardFailure(GUARD) {
             ledger.insert(openingBalance(productId).copy(id = id, quantityMilli = 1))
         }
 
@@ -399,6 +407,7 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
 
     private companion object {
         const val MISSING_ID = 999L
+        const val GUARD = "guard:stock_movements"
 
         /** El costo inicial del producto de las pruebas. */
         val INITIAL_COST = Money(1_200)

@@ -95,7 +95,8 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
 
     @Test
     fun variantNeedsAnExistingParentAndProtectsIt() = runBlocking {
-        constraintFailure(FOREIGN_KEY) {
+        // La guarda pide un padre que exista y que no sea variante: rechaza antes que la llave.
+        guardFailure("guard:products") {
             products.insert(product("Camiseta azul", parentProductId = MISSING_ID))
         }
         val parentId = products.insert(product("Camiseta"))

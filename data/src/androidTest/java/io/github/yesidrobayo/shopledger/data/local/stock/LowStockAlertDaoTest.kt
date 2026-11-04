@@ -4,11 +4,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.local.catalog.CREATED_AT
 import io.github.yesidrobayo.shopledger.data.local.catalog.CatalogDatabaseTest
 import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
-import io.github.yesidrobayo.shopledger.data.local.catalog.FOREIGN_KEY
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.UNIQUE
 import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
+import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.product
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import io.github.yesidrobayo.shopledger.data.local.ids
@@ -108,14 +108,17 @@ internal class LowStockAlertDaoTest : CatalogDatabaseTest() {
 
     @Test
     fun pendingNotificationsAreTheOutboxAndTheirStatusChangesAlone() = runBlocking {
+        val sugar = database.productDao().insert(product("Azúcar"))
+        // Una alerta ya resuelta cuyo aviso no salió sigue en la bandeja de salida. Nace activa y
+        // se resuelve después: una alerta no nace resuelta, y hay una sola activa por producto.
+        val resolvedPending = alerts.insert(lowStock(coffee))
+        alerts.resolve(resolvedPending, resolvedAt = LATER)
         val shown = alerts.insert(lowStock(coffee))
         val suppressed = alerts.insert(lowStock(tea).copy(notificationStatus = "SUPPRESSED"))
-        // Una alerta ya resuelta cuyo aviso no salió sigue en la bandeja de salida.
-        val resolvedPending = alerts.insert(lowStock(coffee).copy(resolvedAt = LATER))
-        val pending = alerts.insert(lowStock(tea))
+        val pending = alerts.insert(lowStock(sugar))
 
         assertEquals(
-            listOf(shown, resolvedPending, pending),
+            listOf(resolvedPending, shown, pending),
             alerts.findPendingNotifications().map { it.id },
         )
 
@@ -130,7 +133,9 @@ internal class LowStockAlertDaoTest : CatalogDatabaseTest() {
 
     @Test
     fun alertsFollowTheirProduct() = runBlocking {
-        constraintFailure(FOREIGN_KEY) { alerts.insert(lowStock(MISSING_ID)) }
+        // Un producto que no existe lo rechaza la guarda, antes que la llave: la alerta pide un
+        // producto con libro de stock.
+        guardFailure("guard:low_stock_alerts") { alerts.insert(lowStock(MISSING_ID)) }
         val coffeeAlert = alerts.insert(lowStock(coffee))
         val teaAlert = alerts.insert(lowStock(tea))
 

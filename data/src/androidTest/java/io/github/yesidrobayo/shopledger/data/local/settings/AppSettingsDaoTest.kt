@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.CatalogDatabaseTest
 import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
+import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -26,6 +27,12 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
 
         assertEquals(1, settings.updateThemeMode("DARK", LATER))
         assertEquals(initial.copy(themeMode = "DARK", updatedAt = LATER), settings.get())
+        // La paleta es independiente del tema: cambiarla no toca el modo oscuro.
+        assertEquals(1, settings.updateColorPalette("FOREST_HONEY", LATER))
+        assertEquals(
+            initial.copy(themeMode = "DARK", colorPalette = "FOREST_HONEY", updatedAt = LATER),
+            settings.get(),
+        )
 
         assertEquals(1, settings.updateLowStockNotificationsEnabled(0, MUCH_LATER))
         assertEquals(1, settings.updateAppLockEnabled(1, MUCH_LATER))
@@ -36,6 +43,7 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
         val expected =
             initial.copy(
                 themeMode = "DARK",
+                colorPalette = "FOREST_HONEY",
                 lowStockNotificationsEnabled = 0,
                 appLockEnabled = 1,
                 appLockTimeoutSeconds = 300,
@@ -96,7 +104,10 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
     @Test
     fun withoutTheRowNothingIsWrittenAndNothingIsRead() = runBlocking {
         // Solo en esta prueba, y a mano: ningún DAO borra la fila, y sin ella cada escritura
-        // devuelve 0 en vez de crear otra.
+        // devuelve 0 en vez de crear otra. Su guarda impide borrarla: la prueba la retira antes,
+        // como la encontraría la app en una base dañada.
+        guardFailure("guard:app_settings_no_delete") { execute("DELETE FROM app_settings") }
+        execute("DROP TRIGGER guard_app_settings_no_delete")
         execute("DELETE FROM app_settings")
 
         assertNull(settings.get())
@@ -116,6 +127,7 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 "get",
                 "updateProfile",
                 "updateThemeMode",
+                "updateColorPalette",
                 "updateLowStockNotificationsEnabled",
                 "updateAppLockEnabled",
                 "updateAppLockTimeoutSeconds",

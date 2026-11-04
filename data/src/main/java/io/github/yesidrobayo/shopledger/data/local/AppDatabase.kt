@@ -21,6 +21,8 @@ import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseEntity
+import io.github.yesidrobayo.shopledger.data.local.guard.SchemaGuards
+import io.github.yesidrobayo.shopledger.data.local.guard.SchemaGuardsCallback
 import io.github.yesidrobayo.shopledger.data.local.migration.AppMigrations
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseDao
@@ -49,8 +51,9 @@ import kotlin.coroutines.CoroutineContext
  * `price_lists`, las compras y las ventas con sus líneas, el libro de stock y sus alertas, los
  * gastos con sus categorías, y las filas únicas de los ajustes y del estado del respaldo, que
  * nacen con la base. Room activa las llaves foráneas solo si alguna entidad declara una: sin
- * ellas, una fila huérfana entraría sin error. Las demás tablas llegan con las tareas que las
- * crean, y la versión no cambia mientras el esquema 1 no se publique.
+ * ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe declarar son guardas,
+ * en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y la versión no cambia
+ * mientras el esquema 1 no se publique.
  */
 @Database(
     entities = [
@@ -178,6 +181,9 @@ internal abstract class AppDatabase : RoomDatabase() {
          *   para la copia candidata de una restauración.
          * - Sin cierre automático por inactividad: Room reabriría la conexión de escritura con
          *   `synchronous = NORMAL`, sin pasar por [open].
+         * - Al crearla y en cada apertura, [SchemaGuardsCallback] deja en la base las guardas del
+         *   catálogo. Va primero: al crearla, las filas que escribe [InitialRowsCallback] ya
+         *   pasan por sus guardas.
          * - Al crearla, [InitialRowsCallback] escribe las filas únicas de los ajustes y del
          *   respaldo en la misma transacción que las tablas.
          *
@@ -198,6 +204,7 @@ internal abstract class AppDatabase : RoomDatabase() {
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .setQueryCoroutineContext(queryContext)
                 .addMigrations(*AppMigrations.all.toTypedArray())
+                .addCallback(SchemaGuardsCallback)
                 .addCallback(InitialRowsCallback(clock))
                 .build()
         }

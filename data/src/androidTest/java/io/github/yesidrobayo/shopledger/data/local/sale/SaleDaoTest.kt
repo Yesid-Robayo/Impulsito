@@ -8,8 +8,8 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
 import io.github.yesidrobayo.shopledger.data.local.catalog.FOREIGN_KEY
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
-import io.github.yesidrobayo.shopledger.data.local.catalog.UNIQUE
 import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
+import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.product
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import io.github.yesidrobayo.shopledger.data.local.ids
@@ -221,7 +221,9 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
             lines.insert(saleLine(MISSING_ID, productId, priceListId))
         }
         val id = sales.insert(sale(priceListId))
-        constraintFailure(FOREIGN_KEY) { lines.insert(saleLine(id, MISSING_ID, priceListId)) }
+        // Un producto que no existe lo rechaza la guarda, antes que la llave: la línea pide un
+        // producto cuyo modo de stock concuerde con su efecto.
+        guardFailure("guard:sale_lines") { lines.insert(saleLine(id, MISSING_ID, priceListId)) }
         constraintFailure(FOREIGN_KEY) { lines.insert(saleLine(id, productId, MISSING_ID)) }
         constraintFailure(FOREIGN_KEY) {
             lines.insert(saleLine(id, productId, priceListId, parentLineId = MISSING_ID))
@@ -293,9 +295,12 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
         val original = saleLine(id, productId, priceListId)
         val lineId = lines.insert(original)
 
-        // Un INSERT OR REPLACE borraría la fila y escribiría otra en su lugar.
-        constraintFailure(UNIQUE) { lines.insert(original.copy(id = lineId, unitPrice = 1)) }
-        constraintFailure(UNIQUE) { sales.insert(sale(priceListId).copy(id = id, total = 1)) }
+        // Un INSERT OR REPLACE borraría la fila y escribiría otra en su lugar. La guarda rechaza
+        // el id repetido antes que la llave primaria, también con REPLACE.
+        guardFailure("guard:sale_lines") {
+            lines.insert(original.copy(id = lineId, unitPrice = 1))
+        }
+        guardFailure("guard:sales") { sales.insert(sale(priceListId).copy(id = id, total = 1)) }
 
         assertEquals(listOf(original.copy(id = lineId)), lines.findBySale(id))
         assertEquals(11_900L, sales.findById(id)?.total)

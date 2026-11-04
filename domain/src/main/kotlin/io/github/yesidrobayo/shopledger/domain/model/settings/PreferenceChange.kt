@@ -9,6 +9,8 @@ package io.github.yesidrobayo.shopledger.domain.model.settings
 sealed interface PreferenceChange {
     data class Theme(val mode: ThemeMode) : PreferenceChange
 
+    data class Palette(val palette: ColorPalette) : PreferenceChange
+
     data class LowStockNotifications(val enabled: Boolean) : PreferenceChange
 
     data class AppLock(val enabled: Boolean) : PreferenceChange

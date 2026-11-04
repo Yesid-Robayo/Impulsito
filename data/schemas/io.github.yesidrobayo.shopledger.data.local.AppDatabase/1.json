@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "453e4a68f61b064ba809f6c212d1e305",
+    "identityHash": "0dd95775230d5a5671f602f3deb62a05",
     "entities": [
       {
         "tableName": "price_lists",
@@ -1820,12 +1820,12 @@
           },
           {
             "name": "index_expense_categories_normalized_name",
-            "unique": true,
+            "unique": false,
             "columnNames": [
               "normalized_name"
             ],
             "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_expense_categories_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expense_categories_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
           }
         ]
       },
@@ -1949,7 +1949,7 @@
       },
       {
         "tableName": "app_settings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `business_name` TEXT, `default_target_margin_bp` INTEGER NOT NULL, `low_stock_notifications_enabled` INTEGER NOT NULL, `theme_mode` TEXT NOT NULL, `app_lock_enabled` INTEGER NOT NULL, `app_lock_timeout_seconds` INTEGER NOT NULL, `metered_backup_policy` TEXT NOT NULL, `onboarding_completed_at` INTEGER, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `business_name` TEXT, `default_target_margin_bp` INTEGER NOT NULL, `low_stock_notifications_enabled` INTEGER NOT NULL, `theme_mode` TEXT NOT NULL, `color_palette` TEXT NOT NULL, `app_lock_enabled` INTEGER NOT NULL, `app_lock_timeout_seconds` INTEGER NOT NULL, `metered_backup_policy` TEXT NOT NULL, `onboarding_completed_at` INTEGER, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -1977,6 +1977,12 @@
           {
             "fieldPath": "themeMode",
             "columnName": "theme_mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "colorPalette",
+            "columnName": "color_palette",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -2224,7 +2230,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '453e4a68f61b064ba809f6c212d1e305')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0dd95775230d5a5671f602f3deb62a05')"
     ]
   }
 }

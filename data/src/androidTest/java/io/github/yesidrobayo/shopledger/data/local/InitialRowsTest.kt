@@ -2,7 +2,6 @@ package io.github.yesidrobayo.shopledger.data.local
 
 import androidx.room3.useReaderConnection
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.CREATED_AT
 import io.github.yesidrobayo.shopledger.data.local.catalog.CatalogDatabaseTest
@@ -28,8 +27,6 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 internal class InitialRowsTest : CatalogDatabaseTest() {
-    private val context = InstrumentationRegistry.getInstrumentation().targetContext
-
     @Test
     fun aNewDatabaseHasOneRowOfSettingsAndOneOfBackupState() = runBlocking {
         val expectedSettings =
@@ -39,6 +36,7 @@ internal class InitialRowsTest : CatalogDatabaseTest() {
                 defaultTargetMarginBp = 3_000,
                 lowStockNotificationsEnabled = 1,
                 themeMode = "SYSTEM",
+                colorPalette = "INDIGO_MUSTARD",
                 appLockEnabled = 0,
                 appLockTimeoutSeconds = 60,
                 meteredBackupPolicy = "EVERY_60_MIN",
@@ -134,7 +132,7 @@ internal class InitialRowsTest : CatalogDatabaseTest() {
             mapOf(
                 "expense_categories" to
                     listOf(
-                        "unique index_expense_categories_normalized_name (normalized_name)",
+                        "index_expense_categories_normalized_name (normalized_name)",
                         "unique index_expense_categories_system_key (system_key)",
                     ),
                 "expenses" to

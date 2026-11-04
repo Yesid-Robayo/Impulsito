@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.UNIQUE
 import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
+import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import io.github.yesidrobayo.shopledger.data.local.ids
 import kotlinx.coroutines.flow.first
@@ -21,9 +22,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Las categorías de gasto: iniciales sin nombre junto a las de la persona, nombre y clave únicos,
- * orden por creación, archivo y reactivación, y la de otros gastos, que nunca se archiva ni se
- * borra. Con gastos, una categoría no se borra.
+ * Las categorías de gasto: iniciales sin nombre junto a las de la persona, clave única, nombre
+ * único entre las vigentes, orden por creación, archivo y reactivación, y la de otros gastos, que
+ * nunca se archiva ni se borra. Con gastos, una categoría no se borra.
  *
  * Las listas se comparan con lo que ya traía la base al nacer, para que las pruebas sigan valiendo
  * cuando la base nazca con sus categorías iniciales.
@@ -48,25 +49,34 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
     }
 
     @Test
-    fun namesAndKeysCannotRepeatButUnnamedSeedsDoNotCollide() = runBlocking {
+    fun keysAndActiveNamesCannotRepeatButUnnamedSeedsDoNotCollide() = runBlocking {
         // Dos iniciales sin nombre: SQLite no compara nulos, así que no chocan.
         categories.insert(seededExpenseCategory("RENT"))
         categories.insert(seededExpenseCategory("UTILITIES"))
         constraintFailure(UNIQUE) { categories.insert(seededExpenseCategory("RENT")) }
 
-        // Tildes, mayúsculas y espacios de más no hacen otro nombre.
+        // Tildes, mayúsculas y espacios de más no hacen otro nombre: la guarda lo rechaza.
         val cleaningId = categories.insert(expenseCategory("Limpieza Baño"))
-        constraintFailure(UNIQUE) { categories.insert(expenseCategory("  LIMPIÉZA   BAÑO ")) }
+        guardFailure(GUARD) { categories.insert(expenseCategory("  LIMPIÉZA   BAÑO ")) }
         // En español la ñ es otra letra: Baño y Bano son dos nombres.
         val otherId = categories.insert(expenseCategory("Limpieza Bano"))
-        assertEquals(otherId, categories.findByNormalizedName("limpieza bano")?.id)
+        assertEquals(otherId, categories.findActiveByNormalizedName("limpieza bano")?.id)
 
-        // Una archivada también reserva su nombre: el nombre es único en toda la tabla.
+        // Una archivada no reserva su nombre: la unicidad es solo entre las vigentes.
         categories.setArchivedAt(cleaningId, archivedAt = LATER, updatedAt = LATER)
-        constraintFailure(UNIQUE) { categories.insert(expenseCategory("Limpieza baño")) }
-        assertEquals(cleaningId, categories.findByNormalizedName("limpieza baño")?.id)
-        assertEquals(LATER, categories.findByNormalizedName("limpieza baño")?.archivedAt)
-        assertNull(categories.findByNormalizedName("limpieza"))
+        assertNull(categories.findActiveByNormalizedName("limpieza baño"))
+        val againId = categories.insert(expenseCategory("Limpieza baño"))
+        assertEquals(againId, categories.findActiveByNormalizedName("limpieza baño")?.id)
+        assertEquals(LATER, categories.findById(cleaningId)?.archivedAt)
+        assertNull(categories.findActiveByNormalizedName("limpieza"))
+
+        // Con una vigente de ese nombre, la archivada no se reactiva, y otra no se renombra a él.
+        guardFailure(GUARD) { categories.setArchivedAt(cleaningId, null, MUCH_LATER) }
+        guardFailure(GUARD) {
+            categories.update(otherId, "Limpieza baño", "limpieza baño", isFixed = 0, LATER)
+        }
+        assertEquals(LATER, categories.findById(cleaningId)?.archivedAt)
+        assertEquals("limpieza bano", categories.findById(otherId)?.normalizedName)
     }
 
     @Test
@@ -176,7 +186,7 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
                 "observeActive",
                 "observeArchived",
                 "findById",
-                "findByNormalizedName",
+                "findActiveByNormalizedName",
                 "hasExpenses",
                 "insert",
                 "update",
@@ -189,5 +199,6 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
 
     private companion object {
         const val MISSING_ID = 999L
+        const val GUARD = "guard:expense_categories"
     }
 }

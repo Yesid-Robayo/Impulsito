@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.data.local.catalog
 
+import android.content.Context
 import androidx.room3.executeSQL
 import androidx.room3.useReaderConnection
 import androidx.room3.useWriterConnection
@@ -34,8 +35,8 @@ import org.junit.Before
  * instante de [FIXED_CLOCK].
  */
 internal abstract class CatalogDatabaseTest {
-    private val context = InstrumentationRegistry.getInstrumentation().targetContext
-    private val file = testDatabaseFile(context, "${javaClass.simpleName}.db")
+    protected val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
+    protected val file = testDatabaseFile(context, "${javaClass.simpleName}.db")
     protected lateinit var database: AppDatabase
 
     @Before
@@ -181,6 +182,22 @@ internal suspend fun constraintFailure(constraint: String, block: suspend () -> 
 
 internal const val FOREIGN_KEY = "FOREIGN KEY constraint"
 internal const val UNIQUE = "UNIQUE constraint"
+
+/**
+ * Corre [block] y exige que lo rechace la guarda que aborta con [guard], como `guard:sales`. El
+ * mensaje debe terminar en él: `guard:sales` no pasa por `guard:sales_void_only`, ni otro error por
+ * el de la guarda.
+ */
+internal suspend fun guardFailure(guard: String, block: suspend () -> Unit) {
+    try {
+        block()
+    } catch (expected: SQLiteException) {
+        val message = expected.message.orEmpty()
+        assertTrue("Falló por otra causa: $message", message.endsWith(": $guard"))
+        return
+    }
+    fail("La sentencia debía fallar por $guard")
+}
 
 /** Espera máxima por cada emisión de un [Flow]: si no llega, la prueba falla sin colgarse. */
 private const val EMISSION_TIMEOUT_MS = 10_000L

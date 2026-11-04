@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.CatalogDatabaseTest
 import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
+import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.expense.expense
 import io.github.yesidrobayo.shopledger.data.local.expense.expenseCategory
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
@@ -84,7 +85,10 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
     @Test
     fun withoutTheRowTheMarkSaysSoInsteadOfCreatingOne() = runBlocking {
         // Solo en esta prueba, y a mano: ningún DAO borra la fila. Sin ella la marca devuelve 0,
-        // y la transacción que la pidió no debe confirmarse.
+        // y la transacción que la pidió no debe confirmarse. Su guarda impide borrarla: la prueba
+        // la retira antes, como la encontraría la app en una base dañada.
+        guardFailure("guard:backup_state_no_delete") { execute("DELETE FROM backup_state") }
+        execute("DROP TRIGGER guard_backup_state_no_delete")
         execute("DELETE FROM backup_state")
 
         assertEquals(0, state.markChanged(LATER))

@@ -12,8 +12,9 @@ import androidx.room3.PrimaryKey
  * llegan con la configuración regional, en sus propias columnas.
  *
  * - `default_target_margin_bp` es el margen objetivo del negocio, en puntos básicos.
- * - `theme_mode` y `metered_backup_policy` son los nombres guardados de `ThemeMode` y
- *   `MeteredBackupPolicy`, y `app_lock_timeout_seconds` los segundos de `AppLockTimeout`.
+ * - `theme_mode`, `color_palette` y `metered_backup_policy` son los nombres guardados de
+ *   `ThemeMode`, `ColorPalette` y `MeteredBackupPolicy`, y `app_lock_timeout_seconds` los segundos
+ *   de `AppLockTimeout`. La paleta solo cambia colores, y no depende del tema.
  * - `onboarding_completed_at` es nulo hasta que termina el primer uso.
  *
  * Booleanos en `Long`, 0 o 1. El `id` no se genera: siempre es 1. Sin valores por defecto en las
@@ -26,6 +27,7 @@ internal data class AppSettingsEntity(
     @ColumnInfo(name = "default_target_margin_bp") val defaultTargetMarginBp: Long,
     @ColumnInfo(name = "low_stock_notifications_enabled") val lowStockNotificationsEnabled: Long,
     @ColumnInfo(name = "theme_mode") val themeMode: String,
+    @ColumnInfo(name = "color_palette") val colorPalette: String,
     @ColumnInfo(name = "app_lock_enabled") val appLockEnabled: Long,
     @ColumnInfo(name = "app_lock_timeout_seconds") val appLockTimeoutSeconds: Long,
     @ColumnInfo(name = "metered_backup_policy") val meteredBackupPolicy: String,

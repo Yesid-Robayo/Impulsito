@@ -7,8 +7,8 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
 import io.github.yesidrobayo.shopledger.data.local.catalog.FOREIGN_KEY
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
-import io.github.yesidrobayo.shopledger.data.local.catalog.UNIQUE
 import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
+import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.product
 import io.github.yesidrobayo.shopledger.data.local.catalog.supplier
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
@@ -243,9 +243,14 @@ internal class PurchaseDaoTest : LedgerDatabaseTest() {
         val original = purchaseLine(id, productId)
         val lineId = lines.insert(original)
 
-        // Un INSERT OR REPLACE borraría la línea y escribiría otra en su lugar.
-        constraintFailure(UNIQUE) { lines.insert(original.copy(id = lineId, unitCost = 1)) }
-        constraintFailure(UNIQUE) { purchases.insert(purchase(null).copy(id = id, total = 1)) }
+        // Un INSERT OR REPLACE borraría la línea y escribiría otra en su lugar. La guarda rechaza
+        // el id repetido antes que la llave primaria, también con REPLACE.
+        guardFailure("guard:purchase_lines") {
+            lines.insert(original.copy(id = lineId, unitCost = 1))
+        }
+        guardFailure("guard:purchases") {
+            purchases.insert(purchase(null).copy(id = id, total = 1))
+        }
 
         assertEquals(listOf(original.copy(id = lineId)), lines.findByPurchase(id))
         assertEquals(20_000L, purchases.findById(id)?.total)

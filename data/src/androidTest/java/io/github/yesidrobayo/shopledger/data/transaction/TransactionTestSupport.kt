@@ -15,9 +15,14 @@ import io.github.yesidrobayo.shopledger.data.local.openingBalance
 import io.github.yesidrobayo.shopledger.data.local.sale
 import io.github.yesidrobayo.shopledger.data.local.saleLine
 import io.github.yesidrobayo.shopledger.data.local.texts
+import io.github.yesidrobayo.shopledger.domain.model.Checked
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
+import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
 import kotlin.time.Instant
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -131,11 +136,12 @@ internal const val SOLD_MILLI = 2_000L
  * Una venta con la forma de la real, escrita con los DAO dentro de una sola transacción: lee los
  * productos, inserta la cabecera y, por cada línea, la línea, su fila `SALE` del libro y el saldo,
  * el costo y el valor del producto. Una venta sin stock suficiente no se bloquea: el saldo puede
- * quedar negativo.
+ * quedar negativo, y entonces el stock vale cero.
  *
- * El costo de cada línea es el costo promedio del producto por la cantidad. Un producto puede
- * repetirse en varias líneas: cada línea parte del saldo que dejó la anterior, leído dentro de la
- * misma transacción.
+ * El costo de cada línea y el estado que deja salen del costo promedio del dominio, como en la
+ * venta real, y así cumplen las guardas del libro. Un producto puede repetirse en varias líneas:
+ * cada línea parte del estado que dejó la anterior, desde los productos leídos dentro de la misma
+ * transacción.
  */
 internal class TestSaleUseCase(
     private val transactions: TransactionRunner,
@@ -148,54 +154,75 @@ internal class TestSaleUseCase(
         reject: Boolean = false,
         hook: StepHook = StepHook {},
     ): Long? = transactions.write {
-        val products =
-            database.productDao().findByIds(productIds.distinct()).associateBy { it.id }
+        val states =
+            database.productDao().findByIds(productIds.distinct())
+                .associate { it.id to stateOf(it) }
                 .toMutableMap()
         hook.reached(StepPoint(SaleStep.READ_PRODUCTS))
-        val lineCosts = productIds.map { lineCost(requireNotNull(products[it])) }
-        val saleId = database.saleDao().insert(header(productIds.size, lineCosts.sum()))
+        val exits =
+            productIds.map { productId ->
+                val before = requireNotNull(states[productId]) { "El producto no existe" }
+                val cost = exitCostOf(before)
+                val after = WeightedAverageCost.exit(before, SOLD, cost)
+                states[productId] = after
+                LineExit(productId, before, cost, after)
+            }
+        val saleId = database.saleDao().insert(header(exits.size, exits.sumOf { it.cost.minor }))
         hook.reached(StepPoint(SaleStep.INSERT_HEADER))
-        productIds.forEachIndexed { index, productId ->
-            val current = requireNotNull(products[productId]) { "El producto no existe" }
-            val cost = lineCosts[index]
+        exits.forEachIndexed { index, exit ->
             val lineId =
                 database.saleLineDao().insert(
-                    saleLine(saleId, productId, priceListId).copy(
-                        unitCost = current.averageCost,
-                        lineCost = cost,
+                    saleLine(saleId, exit.productId, priceListId).copy(
+                        unitCost = exit.before.averageCost.minor,
+                        lineCost = exit.cost.minor,
                     ),
                 )
             hook.reached(StepPoint(SaleStep.INSERT_LINE, index))
-            val balance = current.onHandMilli - SOLD_MILLI
-            val value = current.stockValue - cost
             database.stockMovementDao().insert(
                 movement(
-                    productId,
+                    exit.productId,
                     type = "SALE",
                     quantityMilli = -SOLD_MILLI,
-                    unitCost = current.averageCost,
-                    totalCost = -cost,
-                    balanceAfterMilli = balance,
-                    averageCostAfter = current.averageCost,
-                    stockValueAfter = value,
+                    unitCost = exit.before.averageCost.minor,
+                    totalCost = -exit.cost.minor,
+                    balanceAfterMilli = exit.after.onHand.milli,
+                    averageCostAfter = exit.after.averageCost.minor,
+                    stockValueAfter = exit.after.stockValue.minor,
                 ).copy(saleLineId = lineId),
             )
             hook.reached(StepPoint(SaleStep.APPEND_MOVEMENT, index))
             database.productDao().updateStockState(
-                productId,
-                onHandMilli = balance,
-                averageCost = current.averageCost,
-                stockValue = value,
+                exit.productId,
+                onHandMilli = exit.after.onHand.milli,
+                averageCost = exit.after.averageCost.minor,
+                stockValue = exit.after.stockValue.minor,
                 updatedAt = CREATED_AT,
             )
             hook.reached(StepPoint(SaleStep.UPDATE_STOCK_STATE, index))
-            products[productId] = current.copy(onHandMilli = balance, stockValue = value)
         }
         if (reject) TxResult.Rollback(null) else TxResult.Commit(saleId)
     }
 
-    private fun lineCost(product: ProductEntity): Long =
-        Math.multiplyExact(product.averageCost, SOLD_MILLI) / MILLI
+    private fun stateOf(product: ProductEntity): CostState = CostState(
+        QuantityMilli(product.onHandMilli),
+        Money(product.averageCost),
+        Money(product.stockValue),
+    )
+
+    /** Lo que se lleva una línea: con estos datos la cuenta siempre cabe. */
+    private fun exitCostOf(state: CostState): Money =
+        when (val result = WeightedAverageCost.exitCost(state, SOLD)) {
+            is Checked.Value -> result.value
+            Checked.Overflow, is Checked.AboveLimit -> error("La cuenta debía caber: $result")
+        }
+
+    /** Una línea: su producto, el estado antes de ella, lo que se lleva y el estado que deja. */
+    private class LineExit(
+        val productId: Long,
+        val before: CostState,
+        val cost: Money,
+        val after: CostState,
+    )
 
     /** La cabecera cuadra con sus líneas: cada una es la de [saleLine], con su costo. */
     private fun header(lines: Int, totalCost: Long) = sale(priceListId).copy(
@@ -211,7 +238,7 @@ internal class TestSaleUseCase(
     )
 
     private companion object {
-        const val MILLI = 1_000L
+        val SOLD = QuantityMilli(SOLD_MILLI)
 
         // Los montos de cada línea de saleLine.
         const val LINE_NET = 10_000L

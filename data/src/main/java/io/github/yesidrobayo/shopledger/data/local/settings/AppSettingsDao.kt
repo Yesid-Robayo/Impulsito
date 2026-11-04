@@ -41,6 +41,11 @@ internal interface AppSettingsDao {
     suspend fun updateThemeMode(themeMode: String, updatedAt: Long): Int
 
     @Query(
+        "UPDATE app_settings SET color_palette = :colorPalette, updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateColorPalette(colorPalette: String, updatedAt: Long): Int
+
+    @Query(
         "UPDATE app_settings SET low_stock_notifications_enabled = :enabled, " +
             "updated_at = :updatedAt WHERE id = 1",
     )

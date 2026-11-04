@@ -4,6 +4,7 @@ import androidx.room3.RoomDatabase
 import androidx.sqlite.SQLiteConnection
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.settings.AppLockTimeout
+import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -33,15 +34,17 @@ internal class InitialRowsCallback(private val clock: Clock) : RoomDatabase.Call
 
 /**
  * La fila inicial de `app_settings`: sin nombre del negocio, con el margen objetivo inicial, avisos
- * de stock encendidos, tema del sistema, sin bloqueo pero con un minuto de espera para cuando se
- * active, una copia como mucho cada hora con datos móviles y el primer uso sin terminar.
+ * de stock encendidos, tema del sistema con la paleta inicial, sin bloqueo pero con un minuto de
+ * espera para cuando se active, una copia como mucho cada hora con datos móviles y el primer uso
+ * sin terminar.
  */
 private val INSERT_APP_SETTINGS_SQL =
     "INSERT INTO app_settings (id, business_name, default_target_margin_bp, " +
-        "low_stock_notifications_enabled, theme_mode, app_lock_enabled, " +
+        "low_stock_notifications_enabled, theme_mode, color_palette, app_lock_enabled, " +
         "app_lock_timeout_seconds, metered_backup_policy, onboarding_completed_at, updated_at) " +
         "VALUES (1, NULL, " +
-        "${BasisPoints.DEFAULT_TARGET_MARGIN.bp}, 1, '${ThemeMode.SYSTEM.name}', 0, " +
+        "${BasisPoints.DEFAULT_TARGET_MARGIN.bp}, 1, '${ThemeMode.SYSTEM.name}', " +
+        "'${ColorPalette.INDIGO_MUSTARD.name}', 0, " +
         "${AppLockTimeout.ONE_MINUTE.seconds}, '${MeteredBackupPolicy.EVERY_60_MIN.name}', NULL, ?)"
 
 /**

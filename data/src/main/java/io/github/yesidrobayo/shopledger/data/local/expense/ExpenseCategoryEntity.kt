@@ -12,9 +12,10 @@ import androidx.room3.PrimaryKey
  *   se muestra el texto traducido de esa clave, en el idioma de la interfaz; las que crea la
  *   persona no tienen clave y siempre tienen nombre. Por eso `name` y `normalized_name` admiten
  *   nulo, y siempre van juntos.
- * - `normalized_name` lo calcula `TextNormalizer` en el dominio, y es único en toda la tabla, como
- *   pide el modelo de datos: una archivada también reserva su nombre. SQLite no compara nulos, así
- *   que las iniciales sin nombre no chocan entre sí.
+ * - `normalized_name` lo calcula `TextNormalizer` en el dominio. Es único solo entre las vigentes,
+ *   como en productos y proveedores: una archivada no reserva su nombre. Por eso su índice no es
+ *   único, y la unicidad la impone la guarda de la tabla. Las iniciales sin nombre no chocan entre
+ *   sí.
  * - `is_system` vale 1 solo en la de otros gastos, que nunca se archiva ni se borra: siempre hay
  *   dónde anotar un gasto. `is_fixed` marca un gasto fijo, para el punto de equilibrio.
  *
@@ -24,7 +25,7 @@ import androidx.room3.PrimaryKey
     tableName = "expense_categories",
     indices = [
         Index(value = ["system_key"], unique = true),
-        Index(value = ["normalized_name"], unique = true),
+        Index(value = ["normalized_name"]),
     ],
 )
 internal data class ExpenseCategoryEntity(
