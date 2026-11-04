@@ -7,14 +7,8 @@ import androidx.room3.withWriteTransaction
 import androidx.sqlite.SQLiteException
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import java.util.concurrent.atomic.AtomicInteger
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -86,7 +80,7 @@ class AppDatabaseTest {
     fun foreignKeysAreOnInEveryConnection() = runBlocking {
         // Las lectoras primero: así la escritora llega después, por el camino de toda conexión
         // nueva y no por el de la primera.
-        val readers = foreignKeysOnConcurrentReaders()
+        val readers = database.onEveryReader { it.longValue("PRAGMA foreign_keys") }
         val writer = database.useWriterConnection { it.longValue("PRAGMA foreign_keys") }
         val insideTransaction = database.withWriteTransaction { longValue("PRAGMA foreign_keys") }
         val orphanFailure =
@@ -124,25 +118,6 @@ class AppDatabaseTest {
         assertEquals(2L, countPriceLists())
     }
 
-    /**
-     * Lee `PRAGMA foreign_keys` en todas las lectoras a la vez. Cada una retiene su conexión hasta
-     * que llegan todas, así que son conexiones distintas.
-     */
-    private suspend fun foreignKeysOnConcurrentReaders(): List<Long> = coroutineScope {
-        val arrived = AtomicInteger()
-        val allArrived = CompletableDeferred<Unit>()
-        List(WAL_READERS) {
-            async(Dispatchers.IO) {
-                database.useReaderConnection { connection ->
-                    val value = connection.longValue("PRAGMA foreign_keys")
-                    if (arrived.incrementAndGet() == WAL_READERS) allArrived.complete(Unit)
-                    withTimeout(READERS_TIMEOUT_MS) { allArrived.await() }
-                    value
-                }
-            }
-        }.awaitAll()
-    }
-
     private suspend fun countPriceLists(): Long =
         database.useReaderConnection { it.longValue("SELECT COUNT(*) FROM price_lists") }
 
@@ -159,11 +134,8 @@ class AppDatabaseTest {
     )
 
     private companion object {
-        /** Lectoras que Room abre en WAL si no se le pide otra cantidad. */
-        const val WAL_READERS = 4
         const val FOREIGN_KEYS_ON = 1L
         const val MISSING_ID = 999L
-        const val READERS_TIMEOUT_MS = 10_000L
 
         /** Ejecuta el bloque y devuelve la excepción de SQLite que lanzó, o falla si no lanzó. */
         suspend fun failureOf(block: suspend () -> Unit): SQLiteException {

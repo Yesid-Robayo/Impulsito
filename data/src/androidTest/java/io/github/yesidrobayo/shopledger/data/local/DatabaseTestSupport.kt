@@ -2,10 +2,19 @@ package io.github.yesidrobayo.shopledger.data.local
 
 import android.content.Context
 import androidx.room3.PooledConnection
+import androidx.room3.RoomDatabase
+import androidx.room3.useReaderConnection
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.driver.bundled.SQLITE_OPEN_READWRITE
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeout
 
 // Apoyo común de las pruebas de la base. Todos los datos son inventados.
 
@@ -45,6 +54,33 @@ internal suspend fun PooledConnection.texts(sql: String): List<String> =
     usePrepared(sql) { statement ->
         buildList { while (statement.step()) add(statement.getText(0)) }
     }
+
+/** Lectoras que Room abre en WAL si no se le pide otra cantidad. */
+internal const val WAL_READERS = 4
+
+/** Espera máxima a que las lectoras lleguen todas: si una no llega, la prueba falla sin colgarse. */
+private const val READERS_TIMEOUT_MS = 10_000L
+
+/**
+ * Corre [block] en todas las lectoras a la vez y devuelve lo que dio cada una. Cada lectora
+ * retiene su conexión hasta que llegan todas, así que son conexiones distintas.
+ */
+internal suspend fun <T> RoomDatabase.onEveryReader(
+    block: suspend (PooledConnection) -> T,
+): List<T> = coroutineScope {
+    val arrived = AtomicInteger()
+    val allArrived = CompletableDeferred<Unit>()
+    List(WAL_READERS) {
+        async(Dispatchers.IO) {
+            useReaderConnection { connection ->
+                val value = block(connection)
+                if (arrived.incrementAndGet() == WAL_READERS) allArrived.complete(Unit)
+                withTimeout(READERS_TIMEOUT_MS) { allArrived.await() }
+                value
+            }
+        }
+    }.awaitAll()
+}
 
 /** Tablas propias de la base, sin las internas de SQLite, de Room ni de Android. */
 internal const val OWN_TABLES_SQL =

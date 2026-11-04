@@ -54,6 +54,18 @@ class RefusedDatabaseTest {
         assertForeignDatabaseIntact(userVersion = AppDatabase.SCHEMA_VERSION)
     }
 
+    @Test
+    fun openRefusesDatabaseFromNewerVersionAndKeepsIt() {
+        writeForeignDatabase(userVersion = AppDatabase.SCHEMA_VERSION + 1)
+
+        // El camino de la app: el rechazo sale de open, que cierra la instancia antes de relanzarlo.
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { AppDatabase.open(context, file, Dispatchers.IO) }
+        }
+
+        assertForeignDatabaseIntact(userVersion = AppDatabase.SCHEMA_VERSION + 1)
+    }
+
     /** Una base que no creó esta versión de la app: otra tabla, con filas, y la versión dada. */
     private fun writeForeignDatabase(userVersion: Int) {
         BundledSQLiteDriver().open(file.path).use { connection ->
