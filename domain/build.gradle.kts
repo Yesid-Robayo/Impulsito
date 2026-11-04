@@ -1,4 +1,5 @@
 import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 // :domain es Kotlin puro: nada de Android.
@@ -16,6 +17,11 @@ java {
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17
+        // Un método con cuerpo en una interfaz se compila solo dentro de ella, sin la clase DefaultImpls que Kotlin
+        // agrega para módulos compilados con un Kotlin anterior a 2.2. Aquí no hay ninguno: :data y :app compilan con
+        // el mismo Kotlin. Esa clase nunca se ejecuta, y en el informe bajaría la cobertura de líneas sin que falte
+        // ninguna prueba.
+        jvmDefault = JvmDefaultMode.NO_COMPATIBILITY
     }
 }
 
