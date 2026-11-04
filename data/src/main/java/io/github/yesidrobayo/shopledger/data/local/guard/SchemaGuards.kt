@@ -50,11 +50,15 @@ internal object SchemaGuards {
             LOW_STOCK_ALERTS_GUARDS,
             PURCHASES_GUARDS,
             PURCHASE_LINES_GUARDS,
+            PURCHASE_RETURNS_GUARDS,
+            PURCHASE_RETURN_LINES_GUARDS,
             SUPPLIER_LEDGER_ENTRIES_GUARDS,
             SALES_GUARDS,
             SALE_LINES_GUARDS,
             SALE_LINE_COMPONENTS_GUARDS,
             TAX_RATES_GUARDS,
+            SALE_RETURNS_GUARDS,
+            SALE_RETURN_LINES_GUARDS,
             CUSTOMERS_GUARDS,
             CUSTOMER_LEDGER_ENTRIES_GUARDS,
             LOYALTY_LEDGER_ENTRIES_GUARDS,
@@ -1470,14 +1474,67 @@ private val SUPPLIER_LEDGER_ENTRIES_GUARDS =
         awaitingCurrencyLock("guard_supplier_ledger_entries_insert"),
     )
 
+/** Las devoluciones a proveedor: nacen activas, solo cambian al anularse y nunca se borran. Un
+ * saldo a favor pide saber cuál proveedor es. */
+private val PURCHASE_RETURNS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_purchase_returns_insert BEFORE INSERT ON purchase_returns
+        WHEN NOT IFNULL((
+          NEW.status = 'ACTIVE' AND NEW.voided_at IS NULL AND NEW.void_reason IS NULL AND NEW.void_note IS NULL
+          AND NEW.resolution IN ('CASH_REFUND', 'SUPPLIER_CREDIT')
+          AND typeof(NEW.total) = 'integer' AND NEW.total BETWEEN 0 AND 1000000000000000
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND (NEW.resolution <> 'SUPPLIER_CREDIT' OR NEW.supplier_id IS NOT NULL)
+          AND NOT EXISTS (SELECT 1 FROM purchase_returns x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:purchase_returns'); END;
+
+        CREATE TRIGGER guard_purchase_returns_void_only BEFORE UPDATE ON purchase_returns
+        WHEN NOT IFNULL((
+          OLD.status = 'ACTIVE' AND NEW.status = 'VOIDED' AND NEW.voided_at IS NOT NULL
+          AND NEW.void_reason IN ('ENTRY_ERROR', 'UNDO', 'OTHER')
+          AND (NEW.void_note IS NULL OR length(NEW.void_note) <= 200)
+          AND NEW.id IS OLD.id AND NEW.purchase_id IS OLD.purchase_id AND NEW.supplier_id IS OLD.supplier_id AND NEW.resolution IS OLD.resolution AND NEW.total IS OLD.total AND NEW.money_account_id IS OLD.money_account_id
+          AND NEW.note IS OLD.note AND NEW.occurred_at IS OLD.occurred_at AND NEW.business_date IS OLD.business_date AND NEW.created_at IS OLD.created_at
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:purchase_returns_void_only'); END;
+
+        CREATE TRIGGER guard_purchase_returns_no_delete BEFORE DELETE ON purchase_returns
+        BEGIN SELECT RAISE(ABORT, 'guard:purchase_returns_no_delete'); END;
+        """,
+    )
+
+/** Las líneas de las devoluciones a proveedor: no cambian ni se borran. */
+private val PURCHASE_RETURN_LINES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_purchase_return_lines_insert BEFORE INSERT ON purchase_return_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.unit_cost) = 'integer' AND NEW.unit_cost BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.line_total) = 'integer' AND NEW.line_total BETWEEN 0 AND 1000000000000000
+          AND NOT EXISTS (SELECT 1 FROM purchase_return_lines x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:purchase_return_lines'); END;
+
+        CREATE TRIGGER guard_purchase_return_lines_no_update BEFORE UPDATE ON purchase_return_lines
+        BEGIN SELECT RAISE(ABORT, 'guard:purchase_return_lines_append_only'); END;
+
+        CREATE TRIGGER guard_purchase_return_lines_no_delete BEFORE DELETE ON purchase_return_lines
+        BEGIN SELECT RAISE(ABORT, 'guard:purchase_return_lines_append_only'); END;
+        """,
+    )
+
 /** Las ventas: nacen activas, solo cambian al anularse y nunca se borran.
  *
  * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
  * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
  * parte de estas guardas que hoy protege menos que su texto completo.
- *
- * Sin devoluciones de venta no hay ninguna activa que impida anular: quitar esa condición da lo
- * mismo que tener su tabla vacía. */
+ */
 private val SALES_GUARDS =
     table(
         """
@@ -1521,7 +1578,6 @@ private val SALES_GUARDS =
         BEGIN SELECT RAISE(ABORT, 'guard:sales_no_delete'); END;
         """,
         awaitingCurrencyLock("guard_sales_insert"),
-        Awaiting.Line("guard_sales_void_only", "FROM sale_returns", listOf("sale_returns")),
     )
 
 /** Las líneas de venta: no cambian ni se borran. */
@@ -1614,6 +1670,72 @@ private val SALE_LINE_COMPONENTS_GUARDS =
 
         CREATE TRIGGER guard_sale_line_components_no_delete BEFORE DELETE ON sale_line_components
         BEGIN SELECT RAISE(ABORT, 'guard:sale_line_components_append_only'); END;
+        """,
+    )
+
+/** Las devoluciones de venta: nacen activas, de una venta activa, cuadradas, solo cambian al
+ * anularse y nunca se borran. */
+private val SALE_RETURNS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_sale_returns_insert BEFORE INSERT ON sale_returns
+        WHEN NOT IFNULL((
+          NEW.status = 'ACTIVE' AND NEW.voided_at IS NULL AND NEW.void_reason IS NULL AND NEW.void_note IS NULL
+          AND NEW.resolution IN ('REFUND', 'STORE_CREDIT', 'EXCHANGE')
+          AND typeof(NEW.net_refund) = 'integer' AND NEW.net_refund BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.tax_refund) = 'integer' AND NEW.tax_refund BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.total_refund) = 'integer' AND NEW.total_refund BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.cost_returned) = 'integer' AND NEW.cost_returned BETWEEN 0 AND 1000000000000000
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND NEW.total_refund = NEW.net_refund + NEW.tax_refund
+          AND EXISTS (SELECT 1 FROM sales s WHERE s.id = NEW.sale_id AND s.status = 'ACTIVE')
+          AND NOT EXISTS (SELECT 1 FROM sale_returns x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_returns'); END;
+
+        CREATE TRIGGER guard_sale_returns_void_only BEFORE UPDATE ON sale_returns
+        WHEN NOT IFNULL((
+          OLD.status = 'ACTIVE' AND NEW.status = 'VOIDED' AND NEW.voided_at IS NOT NULL
+          AND NEW.void_reason IN ('ENTRY_ERROR', 'UNDO', 'OTHER')
+          AND (NEW.void_note IS NULL OR length(NEW.void_note) <= 200)
+          AND NEW.id IS OLD.id AND NEW.sale_id IS OLD.sale_id AND NEW.resolution IS OLD.resolution AND NEW.net_refund IS OLD.net_refund AND NEW.tax_refund IS OLD.tax_refund AND NEW.total_refund IS OLD.total_refund
+          AND NEW.cost_returned IS OLD.cost_returned AND NEW.money_account_id IS OLD.money_account_id AND NEW.replacement_sale_id IS OLD.replacement_sale_id AND NEW.note IS OLD.note AND NEW.occurred_at IS OLD.occurred_at AND NEW.business_date IS OLD.business_date
+          AND NEW.created_at IS OLD.created_at
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_returns_void_only'); END;
+
+        CREATE TRIGGER guard_sale_returns_no_delete BEFORE DELETE ON sale_returns
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_returns_no_delete'); END;
+        """,
+    )
+
+/** Las líneas de las devoluciones de venta: no cambian ni se borran, y entre todas las
+ * devoluciones activas una línea vendida no devuelve más de lo que se vendió. */
+private val SALE_RETURN_LINES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_sale_return_lines_insert BEFORE INSERT ON sale_return_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.net_amount) = 'integer' AND NEW.net_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.tax_amount) = 'integer' AND NEW.tax_amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.line_total) = 'integer' AND NEW.line_total BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.line_cost) = 'integer' AND NEW.line_cost BETWEEN 0 AND 1000000000000000
+          AND NEW.restock IN (0, 1)
+          AND NEW.line_total = NEW.net_amount + NEW.tax_amount
+          AND (SELECT COALESCE(SUM(rl.quantity_milli), 0) FROM sale_return_lines rl JOIN sale_returns r ON r.id = rl.sale_return_id WHERE rl.sale_line_id = NEW.sale_line_id AND r.status = 'ACTIVE') + NEW.quantity_milli <= (SELECT sl.quantity_milli FROM sale_lines sl WHERE sl.id = NEW.sale_line_id)
+          AND NOT EXISTS (SELECT 1 FROM sale_return_lines x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_return_lines'); END;
+
+        CREATE TRIGGER guard_sale_return_lines_no_update BEFORE UPDATE ON sale_return_lines
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_return_lines_append_only'); END;
+
+        CREATE TRIGGER guard_sale_return_lines_no_delete BEFORE DELETE ON sale_return_lines
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_return_lines_append_only'); END;
         """,
     )
 

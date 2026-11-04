@@ -81,6 +81,14 @@ import io.github.yesidrobayo.shopledger.data.local.report.BusinessGoalDao
 import io.github.yesidrobayo.shopledger.data.local.report.BusinessGoalEntity
 import io.github.yesidrobayo.shopledger.data.local.report.PriceIndexEntryDao
 import io.github.yesidrobayo.shopledger.data.local.report.PriceIndexEntryEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.PurchaseReturnDao
+import io.github.yesidrobayo.shopledger.data.local.returns.PurchaseReturnEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.PurchaseReturnLineDao
+import io.github.yesidrobayo.shopledger.data.local.returns.PurchaseReturnLineEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnDao
+import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnLineDao
+import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnLineEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentDao
@@ -126,11 +134,11 @@ import kotlin.coroutines.CoroutineContext
  * de caja, el libro de los proveedores, el registro de auditoría, y las metas, los gastos
  * recurrentes y el índice de precios de los reportes, y las cotizaciones, los pedidos, las marcas
  * de las ventas y las fotos de comprobantes. Del catálogo también tiene los combos, los campos
- * propios, las etiquetas y las imágenes, y de las ventas, los componentes que consumió cada combo
- * vendido. Room activa las llaves foráneas solo si alguna entidad declara una: sin ellas, una fila
- * huérfana entraría sin error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards].
- * Las demás tablas llegan con las tareas que las crean, y la versión no cambia mientras el esquema
- * 1 no se publique.
+ * propios, las etiquetas y las imágenes; de las ventas, los componentes que consumió cada combo
+ * vendido y sus devoluciones, y de las compras, las devoluciones a proveedor. Room activa las
+ * llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana entraría sin
+ * error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards]. Las demás tablas
+ * llegan con las tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
  */
 @Database(
     // Cada tabla va antes que las tablas a las que apunta con RESTRICT: Room 3.0.3 ordena las
@@ -147,8 +155,10 @@ import kotlin.coroutines.CoroutineContext
         TagEntity::class,
         ProductUnitEntity::class,
         StockMovementEntity::class,
+        PurchaseReturnLineEntity::class,
         PurchaseLineEntity::class,
         SaleLineComponentEntity::class,
+        SaleReturnLineEntity::class,
         SaleLineEntity::class,
         StockBalanceEntity::class,
         StockTransferLineEntity::class,
@@ -166,7 +176,9 @@ import kotlin.coroutines.CoroutineContext
         MessageTemplateEntity::class,
         MoneyMovementEntity::class,
         CustomerLedgerEntryEntity::class,
+        SaleReturnEntity::class,
         SupplierLedgerEntryEntity::class,
+        PurchaseReturnEntity::class,
         CashSessionCountEntity::class,
         CashDenominationEntity::class,
         AuditEventEntity::class,
@@ -221,11 +233,19 @@ internal abstract class AppDatabase : RoomDatabase() {
 
     abstract fun purchaseLineDao(): PurchaseLineDao
 
+    abstract fun purchaseReturnDao(): PurchaseReturnDao
+
+    abstract fun purchaseReturnLineDao(): PurchaseReturnLineDao
+
     abstract fun saleDao(): SaleDao
 
     abstract fun saleLineDao(): SaleLineDao
 
     abstract fun saleLineComponentDao(): SaleLineComponentDao
+
+    abstract fun saleReturnDao(): SaleReturnDao
+
+    abstract fun saleReturnLineDao(): SaleReturnLineDao
 
     abstract fun stockMovementDao(): StockMovementDao
 

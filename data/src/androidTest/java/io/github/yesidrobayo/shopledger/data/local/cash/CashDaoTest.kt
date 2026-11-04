@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.data.local.money.appendMoneyMovement
 import io.github.yesidrobayo.shopledger.data.local.money.moneyAccount
 import io.github.yesidrobayo.shopledger.data.local.money.moneyMovement
 import io.github.yesidrobayo.shopledger.data.local.sale
+import io.github.yesidrobayo.shopledger.data.local.saleReturn
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -87,6 +88,9 @@ internal class CashDaoTest : LedgerDatabaseTest() {
         val expenseId = database.expenseDao().insert(expense(categoryId))
         val sessionId = sessions.insert(openSession(accountId, openingAmount = 20_000))
         assertEquals(sessionId, sessions.findOpen(accountId)?.id)
+        // La devolución ya tiene llave: el reembolso apunta a una que existe.
+        val sold = database.saleDao().insert(sale(insertPriceList("lista")))
+        val saleReturnId = database.saleReturnDao().insert(saleReturn(sold))
 
         // Apertura de 20.000, ventas en efectivo por 35.000, una devolución de 2.000, un gasto de
         // 3.000 y un retiro de 10.000: se esperan 40.000.
@@ -94,7 +98,7 @@ internal class CashDaoTest : LedgerDatabaseTest() {
         for (movement in listOf(
             moneyMovement(accountId, "OPENING_BALANCE", 20_000, 0),
             moneyMovement(accountId, "SALE_RECEIPT", 35_000, 0).copy(salePaymentId = 1),
-            moneyMovement(accountId, "REFUND", -2_000, 0).copy(saleReturnId = 1),
+            moneyMovement(accountId, "REFUND", -2_000, 0).copy(saleReturnId = saleReturnId),
             moneyMovement(accountId, "EXPENSE_PAYMENT", -3_000, 0).copy(expenseId = expenseId),
             moneyMovement(accountId, "OWNER_DRAW", -10_000, 0),
         )) {

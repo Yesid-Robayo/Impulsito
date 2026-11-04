@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data.local.payable
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.local.GuardProbeTest
+import io.github.yesidrobayo.shopledger.data.local.purchaseReturn
 import io.github.yesidrobayo.shopledger.data.local.purchaseRow
 import io.github.yesidrobayo.shopledger.data.local.supplierRow
 import io.github.yesidrobayo.shopledger.data.local.update
@@ -32,8 +33,13 @@ internal class SupplierLedgerGuardsTest : GuardProbeTest() {
                 "purchase_id" to purchaseId,
             )
         val payment = opening.with("type" to "PAYMENT", "amount" to -10_000L)
+        val purchaseReturnId = database.purchaseReturnDao().insert(purchaseReturn())
         val returnCredit =
-            opening.with("type" to "RETURN_CREDIT", "amount" to -1_000L, "purchase_return_id" to 1L)
+            opening.with(
+                "type" to "RETURN_CREDIT",
+                "amount" to -1_000L,
+                "purchase_return_id" to purchaseReturnId,
+            )
         for (broken in listOf(
             // Nunca 0, y el signo de cada tipo.
             opening.with("amount" to 0L),
@@ -45,7 +51,7 @@ internal class SupplierLedgerGuardsTest : GuardProbeTest() {
             opening.with("purchase_id" to purchaseId),
             payment.with("purchase_id" to purchaseId),
             returnCredit.with("purchase_return_id" to null),
-            opening.with("purchase_return_id" to 1L),
+            opening.with("purchase_return_id" to purchaseReturnId),
             opening.with("reverses_entry_id" to 1L),
             // Un ajuste siempre explica su motivo.
             opening.with("type" to "ADJUSTMENT"),

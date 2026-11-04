@@ -63,10 +63,11 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         // necesita import.
         val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
         val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
-        // Los libros, de stock, de clientes, de dinero y de proveedores, las líneas de venta, de compra, de transferencias y de
-        // producción, los componentes de un combo vendido y los conteos de caja solo crecen: ningún DAO los edita ni los borra, porque
-        // el saldo, el costo y lo vendido salen de ellos. Una venta, una compra, una transferencia o un lote de producción tampoco se
-        // borran: solo se anulan. Un INSERT OR REPLACE borra la fila que choca sin pasar por la guarda de borrado.
+        // Los libros, de stock, de clientes, de dinero y de proveedores, las líneas de venta, de compra, de devolución, de
+        // transferencias y de producción, los componentes de un combo vendido y los conteos de caja solo crecen: ningún DAO los edita
+        // ni los borra, porque el saldo, el costo y lo vendido salen de ellos. Una venta, una compra, una devolución, una
+        // transferencia o un lote de producción tampoco se borran: solo se anulan. Un INSERT OR REPLACE borra la fila que choca sin
+        // pasar por la guarda de borrado.
         val dataMain = Regex("""^data/src/main/""")
         val appendOnlyTables =
             listOf(
@@ -81,12 +82,14 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 "sale_line_components",
                 "stock_transfer_lines",
                 "production_batch_lines",
+                "sale_return_lines",
+                "purchase_return_lines",
             ).joinToString("|")
         // El registro de auditoría tampoco se edita, pero su poda sí borra lo que pasa del tope. Nunca con REPLACE.
         val ledgerEdit = Regex("""\b[U]PDATE(\s+OR\s+[A-Z]+)?\s+($appendOnlyTables|audit_events)\b""", RegexOption.IGNORE_CASE)
         val ledgerRemoval =
             Regex(
-                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+($appendOnlyTables|sales|purchases|stock_transfers|production_batches)\b""",
+                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+($appendOnlyTables|sales|purchases|stock_transfers|production_batches|sale_returns|purchase_returns)\b""",
                 RegexOption.IGNORE_CASE,
             )
         // Un gasto tampoco se borra: solo se anula. Los ajustes y el estado del respaldo son una sola fila que nace con la base: sin
@@ -176,7 +179,7 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 if (isSource && dataMain.containsMatchIn(path) &&
                     (ledgerEdit.containsMatchIn(line) || ledgerRemoval.containsMatchIn(line))
                 ) {
-                    problems += "$where: los libros y las líneas solo se agregan, y una venta o una compra solo se anulan"
+                    problems += "$where: los libros y las líneas solo se agregan, y una venta, una compra o una devolución solo se anulan"
                 }
                 if (isSource && dataMain.containsMatchIn(path) && documentAndSingleRowRemoval.containsMatchIn(line)) {
                     problems += "$where: un gasto solo se anula, y los ajustes y el estado del respaldo nunca se borran ni se reemplazan"

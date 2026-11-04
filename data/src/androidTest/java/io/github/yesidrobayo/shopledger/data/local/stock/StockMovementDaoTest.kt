@@ -45,6 +45,8 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         val saleLine = insertSaleWithLine()
         val component = insertComboLineWithComponent(saleLine.saleId)
+        val saleReturnLineId = insertSaleReturnLine(saleLine).id
+        val purchaseReturnLineId = insertPurchaseReturnLine().id
         val purchaseLineId = insertPurchaseWithLine().id
         val lotProductId = products.insert(product("Queso").copy(tracksLots = 1))
         // Una fila por origen, y cada columna con un valor distinto dentro de su fila, para que dos
@@ -120,9 +122,9 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
                     note = "Conteo de cierre",
                 ),
                 movement(productId, "SALE_RETURN", 1_000, 2_900, 2_901, -1_500, 2_902, 2_903)
-                    .copy(saleReturnLineId = 71),
+                    .copy(saleReturnLineId = saleReturnLineId),
                 movement(productId, "PURCHASE_RETURN", -300, 2_800, -840, -1_800, 2_801, 2_802)
-                    .copy(purchaseReturnLineId = 81),
+                    .copy(purchaseReturnLineId = purchaseReturnLineId),
                 movement(productId, "TRANSFER_OUT", -200, 2_700, 0, -2_000, 2_701, 2_702)
                     .copy(transferLineId = 91, locationId = 3),
                 movement(productId, "PRODUCTION_IN", 4_000, 2_600, 10_400, 2_000, 2_601, 2_602)

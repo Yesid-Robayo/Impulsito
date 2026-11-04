@@ -99,9 +99,11 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                         "product_id -> products RESTRICT",
                         "production_batch_id -> production_batches RESTRICT",
                         "purchase_line_id -> purchase_lines RESTRICT",
+                        "purchase_return_line_id -> purchase_return_lines RESTRICT",
                         "reverses_movement_id -> stock_movements RESTRICT",
                         "sale_line_component_id -> sale_line_components RESTRICT",
                         "sale_line_id -> sale_lines RESTRICT",
+                        "sale_return_line_id -> sale_return_lines RESTRICT",
                         "transfer_line_id -> stock_transfer_lines RESTRICT",
                     ),
             )

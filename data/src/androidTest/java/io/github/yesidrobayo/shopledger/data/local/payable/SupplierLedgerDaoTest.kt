@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.data.local.indexesOf
 import io.github.yesidrobayo.shopledger.data.local.money.moneyAccount
 import io.github.yesidrobayo.shopledger.data.local.money.moneyMovement
 import io.github.yesidrobayo.shopledger.data.local.purchase
+import io.github.yesidrobayo.shopledger.data.local.purchaseReturn
 import io.github.yesidrobayo.shopledger.data.local.texts
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -49,6 +50,7 @@ internal class SupplierLedgerDaoTest : LedgerDatabaseTest() {
         assertEquals(
             listOf(
                 "purchase_id -> purchases RESTRICT",
+                "purchase_return_id -> purchase_returns RESTRICT",
                 "reverses_entry_id -> supplier_ledger_entries RESTRICT",
                 "supplier_id -> suppliers RESTRICT",
             ),
@@ -65,8 +67,9 @@ internal class SupplierLedgerDaoTest : LedgerDatabaseTest() {
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         val supplierId = suppliers.insert(supplier("Distribuidora Andina"))
         val purchaseId = database.purchaseDao().insert(purchase(supplierId))
-        // Cada columna con un valor distinto dentro de su fila. La devolución a proveedor todavía
-        // no tiene tabla ni llave: cualquier id entra.
+        val purchaseReturnId =
+            database.purchaseReturnDao().insert(purchaseReturn().copy(supplierId = supplierId))
+        // Cada columna con un valor distinto dentro de su fila.
         val rows =
             listOf(
                 supplierEntry(supplierId, "CREDIT_PURCHASE", 30_000, 30_001, purchaseId).copy(
@@ -76,7 +79,7 @@ internal class SupplierLedgerDaoTest : LedgerDatabaseTest() {
                     createdAt = 12,
                 ),
                 supplierEntry(supplierId, "RETURN_CREDIT", -1_000, 29_001)
-                    .copy(purchaseReturnId = 71, businessDate = "2026-01-02"),
+                    .copy(purchaseReturnId = purchaseReturnId, businessDate = "2026-01-02"),
             )
 
         val stored = rows.map { it.copy(id = ledger.insert(it)) }

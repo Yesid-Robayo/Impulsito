@@ -34,11 +34,13 @@ internal interface StockLotDao {
     suspend fun findUnassigned(productId: Long): StockLotEntity?
 
     /**
-     * Si alguna fila del libro, o alguna línea de compra, lo usa. Con uso ya no se borra: se cierra.
+     * Si alguna fila del libro, alguna línea de compra o alguna línea devuelta a un proveedor lo
+     * usa. Con uso ya no se borra: se cierra.
      */
     @Query(
         "SELECT EXISTS (SELECT 1 FROM stock_movements WHERE lot_id = :id) " +
-            "OR EXISTS (SELECT 1 FROM purchase_lines WHERE lot_id = :id)",
+            "OR EXISTS (SELECT 1 FROM purchase_lines WHERE lot_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM purchase_return_lines WHERE lot_id = :id)",
     )
     suspend fun isInUse(id: Long): Boolean
 

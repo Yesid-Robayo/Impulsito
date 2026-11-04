@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.local.GuardProbeTest
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
+import io.github.yesidrobayo.shopledger.data.local.saleReturn
 import io.github.yesidrobayo.shopledger.data.local.saleRow
 import io.github.yesidrobayo.shopledger.data.local.update
 import kotlinx.coroutines.runBlocking
@@ -102,8 +103,13 @@ internal class CustomerGuardsTest : GuardProbeTest() {
         val opening = customerEntryRow(customerId)
         val creditSale = opening.with("type" to "CREDIT_SALE", "sale_id" to saleId)
         val payment = opening.with("type" to "PAYMENT", "amount" to -2_000L)
+        val saleReturnId = database.saleReturnDao().insert(saleReturn(saleId))
         val returnCredit =
-            opening.with("type" to "RETURN_CREDIT", "amount" to -1_000L, "sale_return_id" to 1L)
+            opening.with(
+                "type" to "RETURN_CREDIT",
+                "amount" to -1_000L,
+                "sale_return_id" to saleReturnId,
+            )
         for (broken in listOf(
             // Nunca 0, y el signo de cada tipo.
             opening.with("amount" to 0L),
@@ -115,7 +121,7 @@ internal class CustomerGuardsTest : GuardProbeTest() {
             opening.with("sale_id" to saleId),
             payment.with("sale_id" to saleId),
             returnCredit.with("sale_return_id" to null),
-            opening.with("sale_return_id" to 1L),
+            opening.with("sale_return_id" to saleReturnId),
             opening.with("reverses_entry_id" to 1L),
             // Un ajuste siempre explica su motivo.
             opening.with("type" to "ADJUSTMENT"),

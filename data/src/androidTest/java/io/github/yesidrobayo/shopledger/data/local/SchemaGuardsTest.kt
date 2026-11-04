@@ -259,18 +259,15 @@ internal class SchemaGuardsTest : CatalogDatabaseTest() {
                 "guard_products_update",
                 "guard_purchases_insert",
                 "guard_sales_insert",
-                "guard_sales_void_only",
                 "guard_customer_ledger_entries_insert",
                 "guard_money_movements_insert",
                 "guard_supplier_ledger_entries_insert",
                 "guard_expenses_insert",
             )
 
-        /** Lo que esperan: tablas, y columnas de los ajustes que llegan con la región. */
+        /** Lo que esperan: columnas de los ajustes que llegan con la región. */
         val AWAITING_FOR =
             setOf(
-                "sale_returns",
-            ) + listOf(
                 "currency_code",
                 "currency_decimals",
                 "currency_symbol",
@@ -300,7 +297,7 @@ internal class SchemaGuardsTest : CatalogDatabaseTest() {
                 "discreet_mode_enabled",
                 "media_on_metered",
                 "update_check_enabled",
-            ).map { "app_settings.$it" }
+            ).map { "app_settings.$it" }.toSet()
     }
 }
 

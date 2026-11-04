@@ -12,9 +12,9 @@ import org.junit.runner.RunWith
  * lleva cada tipo y solo ese, y el compensatorio, que apunta a una fila del tipo que anula, en la
  * misma parte y con la cantidad opuesta, una sola vez.
  *
- * Cada origen es una fila real: una línea de venta, una de compra, una línea de transferencia, un
- * lote de producción y una sesión de conteo. Las líneas de devolución todavía no tienen tabla, y
- * su columna admite cualquier id.
+ * Cada origen es una fila real: una línea de venta, una de compra, una de devolución de venta, una
+ * de devolución a proveedor, una línea de transferencia, un lote de producción y una sesión de
+ * conteo.
  */
 @RunWith(AndroidJUnit4::class)
 internal class StockMovementTypesGuardsTest : GuardProbeTest() {
@@ -26,12 +26,19 @@ internal class StockMovementTypesGuardsTest : GuardProbeTest() {
         val transferId = insert("stock_transfers", transferRow(LOCATION_ID, otherLocation()))
         val batchId = insert("production_batches", batchRow(productId))
         countSessionId = insert("count_sessions", countSessionRow())
+        val saleLine = insertSaleWithLine()
+        val saleReturnId = database.saleReturnDao().insert(saleReturn(saleLine.saleId))
+        val purchaseReturnId = database.purchaseReturnDao().insert(purchaseReturn())
         origins =
             mapOf(
-                "sale_line_id" to insertSaleWithLine().id,
+                "sale_line_id" to saleLine.id,
                 "purchase_line_id" to insertPurchaseWithLine().id,
-                "sale_return_line_id" to FREE_RETURN_LINE_ID,
-                "purchase_return_line_id" to FREE_RETURN_LINE_ID,
+                "sale_return_line_id" to
+                    database.saleReturnLineDao().insert(saleReturnLine(saleReturnId, saleLine.id)),
+                "purchase_return_line_id" to
+                    database.purchaseReturnLineDao().insert(
+                        purchaseReturnLine(purchaseReturnId, productId),
+                    ),
                 "transfer_line_id" to
                     insert("stock_transfer_lines", transferLineRow(transferId, productId)),
                 "production_batch_id" to batchId,
@@ -186,7 +193,6 @@ internal class StockMovementTypesGuardsTest : GuardProbeTest() {
         const val MISSING_ID = 999L
         const val QUANTITY = 1_000L
         const val UNIT_COST = 1_200L
-        const val FREE_RETURN_LINE_ID = 71L
         const val POSITIVE = 1
         const val NEGATIVE = -1
         const val ZERO = 0

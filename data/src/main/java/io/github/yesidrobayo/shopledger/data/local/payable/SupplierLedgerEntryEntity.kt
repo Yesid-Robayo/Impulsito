@@ -5,8 +5,10 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import androidx.room3.RoomWarnings
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.PurchaseReturnEntity
 
 /**
  * Una fila del libro de un proveedor: lo que el negocio le debe y lo que le pagó. Solo se agrega,
@@ -25,10 +27,10 @@ import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
  *   `RETURN_CREDIT` y `reverses_entry_id` solo un `ENTRY_VOID`, con índice único: una fila se anula
  *   una sola vez.
  * - `due_date` es el vencimiento de un cargo, que nace de la fecha y del plazo del proveedor.
- * - Proveedor, compra y fila anulada usan `RESTRICT`: nada con filas en el libro se borra.
- * - `purchase_return_id` todavía no tiene llave foránea: la tabla de devoluciones a proveedor no
- *   existe aún. La llave, con `RESTRICT`, llega con ella, dentro del mismo esquema 1.
+ * - Proveedor, compra, devolución y fila anulada usan `RESTRICT`: nada con filas en el libro se
+ *   borra. La devolución no lleva índice: una devolución nunca se borra.
  */
+@Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
     tableName = "supplier_ledger_entries",
     foreignKeys = [
@@ -42,6 +44,12 @@ import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
             entity = PurchaseEntity::class,
             parentColumns = ["id"],
             childColumns = ["purchase_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = PurchaseReturnEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["purchase_return_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
         ForeignKey(

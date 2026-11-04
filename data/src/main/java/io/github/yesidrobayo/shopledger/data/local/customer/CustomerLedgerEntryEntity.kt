@@ -5,6 +5,8 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import androidx.room3.RoomWarnings
+import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
 
 /**
@@ -26,10 +28,10 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
  *   SQLite admite varios `NULL` en un índice único, así que no toca las demás filas.
  * - `due_date` es el vencimiento opcional de un cargo. Los abonos cubren primero los más viejos,
  *   pero eso es una lectura: no se escribe aquí.
- * - Cliente, venta y fila anulada usan `RESTRICT`: nada con filas en el libro se borra.
- * - `sale_return_id` todavía no tiene llave foránea: la tabla de devoluciones no existe aún. La
- *   llave, con `RESTRICT`, llega con ella, dentro del mismo esquema 1.
+ * - Cliente, venta, devolución y fila anulada usan `RESTRICT`: nada con filas en el libro se
+ *   borra. La devolución no lleva índice: una devolución nunca se borra.
  */
+@Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
     tableName = "customer_ledger_entries",
     foreignKeys = [
@@ -43,6 +45,12 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
             entity = SaleEntity::class,
             parentColumns = ["id"],
             childColumns = ["sale_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = SaleReturnEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sale_return_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
         ForeignKey(

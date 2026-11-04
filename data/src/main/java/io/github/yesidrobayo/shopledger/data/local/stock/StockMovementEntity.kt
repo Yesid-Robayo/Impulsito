@@ -8,6 +8,8 @@ import androidx.room3.PrimaryKey
 import androidx.room3.RoomWarnings
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.PurchaseReturnLineEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnLineEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
 
@@ -40,9 +42,8 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
  *   alcanzan por la línea de venta.
  * - La línea de transferencia, el lote de producción y la sesión de conteo también usan
  *   `RESTRICT` sin índice: las filas de un documento se encuentran por `product_id`.
- * - `sale_return_line_id` y `purchase_return_line_id` todavía no tienen llave foránea: sus tablas no
- *   existen aún. La llave, con `RESTRICT`, llega con la tabla a la que apunta, dentro del mismo
- *   esquema 1.
+ * - Las líneas de devolución de venta y a proveedor también usan `RESTRICT`, sin índice: nunca se
+ *   borran, y sus filas se alcanzan por el producto.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -106,6 +107,18 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
             entity = CountSessionEntity::class,
             parentColumns = ["id"],
             childColumns = ["count_session_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = SaleReturnLineEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sale_return_line_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = PurchaseReturnLineEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["purchase_return_line_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

@@ -7,6 +7,10 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.UNIT_ID
 import io.github.yesidrobayo.shopledger.data.local.catalog.product
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.PurchaseReturnEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.PurchaseReturnLineEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnEntity
+import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnLineEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
@@ -54,6 +58,20 @@ internal abstract class LedgerDatabaseTest : CatalogDatabaseTest() {
         val lineId = database.saleLineDao().insert(comboLine)
         val component = saleLineComponent(lineId, productId)
         return component.copy(id = database.saleLineComponentDao().insert(component))
+    }
+
+    /** Guarda una devolución de una unidad de [saleLine], y devuelve su línea con su id. */
+    protected suspend fun insertSaleReturnLine(saleLine: SaleLineEntity): SaleReturnLineEntity {
+        val returnId = database.saleReturnDao().insert(saleReturn(saleLine.saleId))
+        val line = saleReturnLine(returnId, saleLine.id)
+        return line.copy(id = database.saleReturnLineDao().insert(line))
+    }
+
+    /** Guarda una devolución a proveedor de doce unidades del producto, y devuelve su línea. */
+    protected suspend fun insertPurchaseReturnLine(): PurchaseReturnLineEntity {
+        val returnId = database.purchaseReturnDao().insert(purchaseReturn())
+        val line = purchaseReturnLine(returnId, productId)
+        return line.copy(id = database.purchaseReturnLineDao().insert(line))
     }
 
     /** Guarda una compra con una línea del producto, y devuelve esa línea con su id. */
@@ -163,6 +181,68 @@ internal fun saleLineComponent(
     unitCost = 3_000,
     lineCost = 6_000,
 )
+
+/** Una devolución activa de una unidad de [sale], con su impuesto: 5.000 más 950. */
+internal fun saleReturn(saleId: Long): SaleReturnEntity = SaleReturnEntity(
+    saleId = saleId,
+    resolution = "REFUND",
+    netRefund = 5_000,
+    taxRefund = 950,
+    totalRefund = 5_950,
+    costReturned = 3_000,
+    moneyAccountId = null,
+    replacementSaleId = null,
+    note = null,
+    occurredAt = CREATED_AT,
+    businessDate = BUSINESS_DATE,
+    createdAt = CREATED_AT,
+    status = "ACTIVE",
+    voidedAt = null,
+    voidReason = null,
+    voidNote = null,
+)
+
+/** La línea de [saleReturn]: una unidad de la línea vendida, que vuelve al stock. */
+internal fun saleReturnLine(saleReturnId: Long, saleLineId: Long): SaleReturnLineEntity =
+    SaleReturnLineEntity(
+        saleReturnId = saleReturnId,
+        saleLineId = saleLineId,
+        quantityMilli = 1_000,
+        netAmount = 5_000,
+        taxAmount = 950,
+        lineTotal = 5_950,
+        lineCost = 3_000,
+        restock = 1,
+    )
+
+/** Una devolución activa de una caja, sin compra ni proveedor, que devuelve el dinero. */
+internal fun purchaseReturn(): PurchaseReturnEntity = PurchaseReturnEntity(
+    purchaseId = null,
+    supplierId = null,
+    resolution = "CASH_REFUND",
+    total = 20_000,
+    moneyAccountId = null,
+    note = null,
+    occurredAt = CREATED_AT,
+    businessDate = BUSINESS_DATE,
+    createdAt = CREATED_AT,
+    status = "ACTIVE",
+    voidedAt = null,
+    voidReason = null,
+    voidNote = null,
+)
+
+/** La línea de [purchaseReturn]: doce unidades base del producto a 1.667. */
+internal fun purchaseReturnLine(purchaseReturnId: Long, productId: Long): PurchaseReturnLineEntity =
+    PurchaseReturnLineEntity(
+        purchaseReturnId = purchaseReturnId,
+        purchaseLineId = null,
+        productId = productId,
+        lotId = null,
+        quantityMilli = 12_000,
+        unitCost = 1_667,
+        lineTotal = 20_000,
+    )
 
 /** Una compra activa de una caja por 20.000, pagada entera y sin impuesto. */
 internal fun purchase(

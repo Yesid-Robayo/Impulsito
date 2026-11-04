@@ -17,6 +17,9 @@ import io.github.yesidrobayo.shopledger.data.local.expense.expense
 import io.github.yesidrobayo.shopledger.data.local.expense.expenseCategory
 import io.github.yesidrobayo.shopledger.data.local.ids
 import io.github.yesidrobayo.shopledger.data.local.payable.supplierEntry
+import io.github.yesidrobayo.shopledger.data.local.purchaseReturn
+import io.github.yesidrobayo.shopledger.data.local.sale
+import io.github.yesidrobayo.shopledger.data.local.saleReturn
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
 import io.github.yesidrobayo.shopledger.data.local.texts
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -118,6 +121,9 @@ internal class MoneyLedgerDaoTest : CatalogDatabaseTest() {
         val supplierPayment =
             database.supplierLedgerEntryDao()
                 .insert(supplierEntry(supplierId, "PAYMENT", -5, -5))
+        val sold = database.saleDao().insert(sale(insertPriceList("lista")))
+        val saleReturnId = database.saleReturnDao().insert(saleReturn(sold))
+        val purchaseReturnId = database.purchaseReturnDao().insert(purchaseReturn())
         // Cada columna con un valor distinto dentro de su fila, para que dos columnas cruzadas no
         // pasen. Las columnas sin llave todavía admiten cualquier id.
         val rows =
@@ -135,8 +141,9 @@ internal class MoneyLedgerDaoTest : CatalogDatabaseTest() {
                 ),
                 moneyMovement(accountId, "SUPPLIER_PAYMENT", -5, -1_306)
                     .copy(supplierLedgerEntryId = supplierPayment),
-                moneyMovement(accountId, "REFUND", -6, -1_312).copy(saleReturnId = 61),
-                moneyMovement(accountId, "SUPPLIER_REFUND", 7, -1_305).copy(purchaseReturnId = 71),
+                moneyMovement(accountId, "REFUND", -6, -1_312).copy(saleReturnId = saleReturnId),
+                moneyMovement(accountId, "SUPPLIER_REFUND", 7, -1_305)
+                    .copy(purchaseReturnId = purchaseReturnId),
                 moneyMovement(accountId, "CASH_DIFFERENCE", -8, -1_313)
                     .copy(cashSessionId = sessionId),
             )

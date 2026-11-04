@@ -67,6 +67,7 @@ internal class CustomerSchemaTest : LedgerDatabaseTest() {
                         "customer_id -> customers RESTRICT",
                         "reverses_entry_id -> customer_ledger_entries RESTRICT",
                         "sale_id -> sales RESTRICT",
+                        "sale_return_id -> sale_returns RESTRICT",
                     ),
                 "loyalty_ledger_entries" to
                     listOf(

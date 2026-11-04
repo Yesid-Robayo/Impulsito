@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.CREATED_AT
 import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
 import io.github.yesidrobayo.shopledger.data.local.sale
+import io.github.yesidrobayo.shopledger.data.local.saleReturn
 import io.github.yesidrobayo.shopledger.data.local.texts
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -32,14 +33,15 @@ internal class CustomerLedgerDaoTest : LedgerDatabaseTest() {
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         val customerId = customers.insert(customer("Ana"))
         val saleId = database.saleDao().insert(sale(priceListId).copy(customerId = customerId))
+        val saleReturnId = database.saleReturnDao().insert(saleReturn(saleId))
         // Cada columna con un valor distinto dentro de su fila, para que dos columnas cruzadas no
-        // pasen. La devolución todavía no tiene tabla ni llave: cualquier id entra.
+        // pasen.
         val entries =
             listOf(
                 customerEntry(customerId, "CREDIT_SALE", 5_000, 5_001, saleId = saleId)
                     .copy(dueDate = "2026-02-15", note = "Fiado", occurredAt = 11, createdAt = 12),
                 customerEntry(customerId, "RETURN_CREDIT", -1_000, 4_001)
-                    .copy(saleReturnId = 71, businessDate = "2026-01-02"),
+                    .copy(saleReturnId = saleReturnId, businessDate = "2026-01-02"),
             )
         val loyalty =
             loyaltyEntry(customerId, "EARN", 12, 13, saleId = saleId)

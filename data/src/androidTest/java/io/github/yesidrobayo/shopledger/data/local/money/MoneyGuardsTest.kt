@@ -5,6 +5,9 @@ import io.github.yesidrobayo.shopledger.data.local.GuardProbeTest
 import io.github.yesidrobayo.shopledger.data.local.cash.cashSessionRow
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.payable.supplierEntryRow
+import io.github.yesidrobayo.shopledger.data.local.purchaseReturn
+import io.github.yesidrobayo.shopledger.data.local.saleReturn
+import io.github.yesidrobayo.shopledger.data.local.saleRow
 import io.github.yesidrobayo.shopledger.data.local.supplierRow
 import io.github.yesidrobayo.shopledger.data.local.update
 import kotlinx.coroutines.runBlocking
@@ -123,7 +126,14 @@ internal class MoneyGuardsTest : GuardProbeTest() {
         insert(TABLE, opening.with("type" to "OWNER_DRAW", "amount" to -10_000L))
         insert(TABLE, opening.with("type" to "OTHER_INCOME", "note" to "Reintegro"))
         insert(TABLE, opening.with("type" to "SALE_RECEIPT", "sale_payment_id" to 1L))
-        insert(TABLE, opening.with("type" to "SUPPLIER_REFUND", "purchase_return_id" to 1L))
+        // Las devoluciones ya tienen llave: el movimiento válido apunta a unas que existen.
+        val saleReturnId =
+            database.saleReturnDao().insert(saleReturn(insert("sales", saleRow(priceListId))))
+        val purchaseReturnId = database.purchaseReturnDao().insert(purchaseReturn())
+        insert(
+            TABLE,
+            opening.with("type" to "SUPPLIER_REFUND", "purchase_return_id" to purchaseReturnId),
+        )
         insert(
             TABLE,
             opening.with(
@@ -133,7 +143,10 @@ internal class MoneyGuardsTest : GuardProbeTest() {
                 "available_date" to "2026-01-03",
             ),
         )
-        insert(TABLE, opening.with("type" to "REFUND", "amount" to -1_000L, "sale_return_id" to 1L))
+        insert(
+            TABLE,
+            opening.with("type" to "REFUND", "amount" to -1_000L, "sale_return_id" to saleReturnId),
+        )
         insert(
             TABLE,
             opening.with(

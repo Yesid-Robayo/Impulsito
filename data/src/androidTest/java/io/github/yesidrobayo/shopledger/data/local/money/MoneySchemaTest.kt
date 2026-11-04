@@ -65,7 +65,9 @@ internal class MoneySchemaTest : LedgerDatabaseTest() {
                         "expense_id -> expenses RESTRICT",
                         "money_account_id -> money_accounts RESTRICT",
                         "purchase_id -> purchases RESTRICT",
+                        "purchase_return_id -> purchase_returns RESTRICT",
                         "reverses_movement_id -> money_movements RESTRICT",
+                        "sale_return_id -> sale_returns RESTRICT",
                         "supplier_ledger_entry_id -> supplier_ledger_entries RESTRICT",
                     ),
             )
