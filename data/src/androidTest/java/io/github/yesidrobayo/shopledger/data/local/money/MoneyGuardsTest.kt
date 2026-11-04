@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data.local.money
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.local.GuardProbeTest
+import io.github.yesidrobayo.shopledger.data.local.cash.cashSessionRow
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.payable.supplierEntryRow
 import io.github.yesidrobayo.shopledger.data.local.supplierRow
@@ -141,8 +142,10 @@ internal class MoneyGuardsTest : GuardProbeTest() {
                 "supplier_ledger_entry_id" to supplierPayment,
             ),
         )
-        // Una diferencia de caja puede faltar o sobrar.
-        val difference = opening.with("type" to "CASH_DIFFERENCE", "cash_session_id" to 1L)
+        // Una diferencia de caja puede faltar o sobrar, y apunta a su sesión.
+        val sessionId = insert("cash_sessions", cashSessionRow(accountId))
+        val difference =
+            opening.with("type" to "CASH_DIFFERENCE", "cash_session_id" to sessionId)
         insert(TABLE, difference.with("amount" to -500L))
         insert(TABLE, difference.with("amount" to 500L))
         insert(

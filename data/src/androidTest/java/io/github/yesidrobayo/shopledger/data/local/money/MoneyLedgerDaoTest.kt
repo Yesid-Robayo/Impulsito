@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.local.money
 import androidx.room3.useReaderConnection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.cash.openSession
 import io.github.yesidrobayo.shopledger.data.local.catalog.CREATED_AT
 import io.github.yesidrobayo.shopledger.data.local.catalog.CatalogDatabaseTest
 import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
@@ -113,6 +114,7 @@ internal class MoneyLedgerDaoTest : CatalogDatabaseTest() {
         )
         val completeId = accounts.insert(complete)
         val supplierId = database.supplierDao().insert(supplier("Distribuidora Andina"))
+        val sessionId = database.cashSessionDao().insert(openSession(accountId))
         val supplierPayment =
             database.supplierLedgerEntryDao()
                 .insert(supplierEntry(supplierId, "PAYMENT", -5, -5))
@@ -135,7 +137,8 @@ internal class MoneyLedgerDaoTest : CatalogDatabaseTest() {
                     .copy(supplierLedgerEntryId = supplierPayment),
                 moneyMovement(accountId, "REFUND", -6, -1_312).copy(saleReturnId = 61),
                 moneyMovement(accountId, "SUPPLIER_REFUND", 7, -1_305).copy(purchaseReturnId = 71),
-                moneyMovement(accountId, "CASH_DIFFERENCE", -8, -1_313).copy(cashSessionId = 81),
+                moneyMovement(accountId, "CASH_DIFFERENCE", -8, -1_313)
+                    .copy(cashSessionId = sessionId),
             )
 
         val stored = rows.map { it.copy(id = movements.insert(it)) }

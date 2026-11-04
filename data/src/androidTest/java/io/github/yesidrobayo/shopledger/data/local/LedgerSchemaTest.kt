@@ -70,6 +70,7 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                     listOf("product_id -> products RESTRICT", "purchase_id -> purchases RESTRICT"),
                 "sales" to
                     listOf(
+                        "cash_session_id -> cash_sessions RESTRICT",
                         "customer_id -> customers RESTRICT",
                         "price_list_id -> price_lists RESTRICT",
                     ),

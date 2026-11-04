@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "a482e91e52f1958da08d7b494fd8b190",
+    "identityHash": "f5a61cbd806127f7bab4ee9dcbe52858",
     "entities": [
       {
         "tableName": "price_lists",
@@ -1501,7 +1501,7 @@
       },
       {
         "tableName": "sales",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `status` TEXT NOT NULL, `net_total` INTEGER NOT NULL, `tax_total` INTEGER NOT NULL, `total` INTEGER NOT NULL, `total_cost` INTEGER NOT NULL, `total_replacement_cost` INTEGER NOT NULL, `order_adjustment` INTEGER NOT NULL, `tip_amount` INTEGER NOT NULL, `cash_rounding_amount` INTEGER NOT NULL, `amount_due` INTEGER NOT NULL, `customer_id` INTEGER, `price_list_id` INTEGER NOT NULL, `location_id` INTEGER NOT NULL, `cash_session_id` INTEGER, `quote_id` INTEGER, `order_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`price_list_id`) REFERENCES `price_lists`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`customer_id`) REFERENCES `customers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `status` TEXT NOT NULL, `net_total` INTEGER NOT NULL, `tax_total` INTEGER NOT NULL, `total` INTEGER NOT NULL, `total_cost` INTEGER NOT NULL, `total_replacement_cost` INTEGER NOT NULL, `order_adjustment` INTEGER NOT NULL, `tip_amount` INTEGER NOT NULL, `cash_rounding_amount` INTEGER NOT NULL, `amount_due` INTEGER NOT NULL, `customer_id` INTEGER, `price_list_id` INTEGER NOT NULL, `location_id` INTEGER NOT NULL, `cash_session_id` INTEGER, `quote_id` INTEGER, `order_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`price_list_id`) REFERENCES `price_lists`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`customer_id`) REFERENCES `customers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`cash_session_id`) REFERENCES `cash_sessions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1695,6 +1695,17 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "customer_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "cash_sessions",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "cash_session_id"
             ],
             "referencedColumns": [
               "id"
@@ -3480,7 +3491,7 @@
       },
       {
         "tableName": "money_movements",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `money_account_id` INTEGER NOT NULL, `type` TEXT NOT NULL, `amount` INTEGER NOT NULL, `balance_after` INTEGER NOT NULL, `available_date` TEXT, `transfer_group_id` TEXT, `fx_rate_micro` INTEGER, `sale_payment_id` INTEGER, `customer_ledger_entry_id` INTEGER, `supplier_ledger_entry_id` INTEGER, `expense_id` INTEGER, `purchase_id` INTEGER, `sale_return_id` INTEGER, `purchase_return_id` INTEGER, `cash_session_id` INTEGER, `reverses_movement_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `created_at` INTEGER NOT NULL, FOREIGN KEY(`money_account_id`) REFERENCES `money_accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`customer_ledger_entry_id`) REFERENCES `customer_ledger_entries`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`supplier_ledger_entry_id`) REFERENCES `supplier_ledger_entries`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`expense_id`) REFERENCES `expenses`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`purchase_id`) REFERENCES `purchases`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`reverses_movement_id`) REFERENCES `money_movements`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `money_account_id` INTEGER NOT NULL, `type` TEXT NOT NULL, `amount` INTEGER NOT NULL, `balance_after` INTEGER NOT NULL, `available_date` TEXT, `transfer_group_id` TEXT, `fx_rate_micro` INTEGER, `sale_payment_id` INTEGER, `customer_ledger_entry_id` INTEGER, `supplier_ledger_entry_id` INTEGER, `expense_id` INTEGER, `purchase_id` INTEGER, `sale_return_id` INTEGER, `purchase_return_id` INTEGER, `cash_session_id` INTEGER, `reverses_movement_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `created_at` INTEGER NOT NULL, FOREIGN KEY(`money_account_id`) REFERENCES `money_accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`customer_ledger_entry_id`) REFERENCES `customer_ledger_entries`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`supplier_ledger_entry_id`) REFERENCES `supplier_ledger_entries`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`expense_id`) REFERENCES `expenses`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`purchase_id`) REFERENCES `purchases`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`cash_session_id`) REFERENCES `cash_sessions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`reverses_movement_id`) REFERENCES `money_movements`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -3697,6 +3708,17 @@
             ]
           },
           {
+            "table": "cash_sessions",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "cash_session_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
             "table": "money_movements",
             "onDelete": "RESTRICT",
             "onUpdate": "NO ACTION",
@@ -3866,11 +3888,245 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "cash_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `money_account_id` INTEGER NOT NULL, `status` TEXT NOT NULL, `opening_amount` INTEGER NOT NULL, `expected_amount` INTEGER, `counted_amount` INTEGER, `difference_amount` INTEGER, `opened_at` INTEGER NOT NULL, `closed_at` INTEGER, `business_date` TEXT NOT NULL, `note` TEXT, FOREIGN KEY(`money_account_id`) REFERENCES `money_accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moneyAccountId",
+            "columnName": "money_account_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "openingAmount",
+            "columnName": "opening_amount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expectedAmount",
+            "columnName": "expected_amount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "countedAmount",
+            "columnName": "counted_amount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "differenceAmount",
+            "columnName": "difference_amount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "openedAt",
+            "columnName": "opened_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "closedAt",
+            "columnName": "closed_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "businessDate",
+            "columnName": "business_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cash_sessions_money_account_id_status",
+            "unique": false,
+            "columnNames": [
+              "money_account_id",
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cash_sessions_money_account_id_status` ON `${TABLE_NAME}` (`money_account_id`, `status`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "money_accounts",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "money_account_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "cash_denominations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `value` INTEGER NOT NULL, `is_active` INTEGER NOT NULL, `sort_order` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "is_active",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sort_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "cash_session_counts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `cash_session_id` INTEGER NOT NULL, `phase` TEXT NOT NULL, `denomination_id` INTEGER NOT NULL, `count` INTEGER NOT NULL, FOREIGN KEY(`cash_session_id`) REFERENCES `cash_sessions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`denomination_id`) REFERENCES `cash_denominations`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cashSessionId",
+            "columnName": "cash_session_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phase",
+            "columnName": "phase",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "denominationId",
+            "columnName": "denomination_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "count",
+            "columnName": "count",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cash_session_counts_cash_session_id_phase_denomination_id",
+            "unique": true,
+            "columnNames": [
+              "cash_session_id",
+              "phase",
+              "denomination_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_cash_session_counts_cash_session_id_phase_denomination_id` ON `${TABLE_NAME}` (`cash_session_id`, `phase`, `denomination_id`)"
+          },
+          {
+            "name": "index_cash_session_counts_denomination_id",
+            "unique": false,
+            "columnNames": [
+              "denomination_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cash_session_counts_denomination_id` ON `${TABLE_NAME}` (`denomination_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "cash_sessions",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "cash_session_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "cash_denominations",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "denomination_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a482e91e52f1958da08d7b494fd8b190')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f5a61cbd806127f7bab4ee9dcbe52858')"
     ]
   }
 }

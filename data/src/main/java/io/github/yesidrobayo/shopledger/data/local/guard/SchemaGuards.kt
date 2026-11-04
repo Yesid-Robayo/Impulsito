@@ -50,6 +50,9 @@ internal object SchemaGuards {
             MESSAGE_TEMPLATES_GUARDS,
             MONEY_ACCOUNTS_GUARDS,
             MONEY_MOVEMENTS_GUARDS,
+            CASH_SESSIONS_GUARDS,
+            CASH_DENOMINATIONS_GUARDS,
+            CASH_SESSION_COUNTS_GUARDS,
             EXPENSE_CATEGORIES_GUARDS,
             EXPENSES_GUARDS,
             PRICE_LISTS_GUARDS,
@@ -1499,6 +1502,93 @@ private val MONEY_MOVEMENTS_GUARDS =
         BEGIN SELECT RAISE(ABORT, 'guard:money_movements_append_only'); END;
         """,
         awaitingCurrencyLock("guard_money_movements_insert"),
+    )
+
+/** Las sesiones de caja: una sola abierta por cuenta. Nace abierta, cambia solo mientras lo
+ * está, y se cierra una vez con lo esperado, lo contado y su diferencia exacta. */
+private val CASH_SESSIONS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_cash_sessions_insert BEFORE INSERT ON cash_sessions
+        WHEN NOT IFNULL((
+          NEW.status IN ('OPEN', 'CLOSED')
+          AND typeof(NEW.opening_amount) = 'integer'
+          AND (NEW.expected_amount IS NULL OR (typeof(NEW.expected_amount) = 'integer'))
+          AND (NEW.counted_amount IS NULL OR (typeof(NEW.counted_amount) = 'integer'))
+          AND (NEW.difference_amount IS NULL OR (typeof(NEW.difference_amount) = 'integer'))
+          AND typeof(NEW.opened_at) = 'integer'
+          AND (NEW.closed_at IS NULL OR (typeof(NEW.closed_at) = 'integer'))
+          AND date(NEW.business_date) = NEW.business_date
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND NEW.status = 'OPEN'
+          AND NEW.closed_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM cash_sessions c WHERE c.money_account_id = NEW.money_account_id AND c.status = 'OPEN')
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:cash_sessions'); END;
+
+        CREATE TRIGGER guard_cash_sessions_update BEFORE UPDATE ON cash_sessions
+        WHEN NOT IFNULL((
+          NEW.status IN ('OPEN', 'CLOSED')
+          AND typeof(NEW.opening_amount) = 'integer'
+          AND (NEW.expected_amount IS NULL OR (typeof(NEW.expected_amount) = 'integer'))
+          AND (NEW.counted_amount IS NULL OR (typeof(NEW.counted_amount) = 'integer'))
+          AND (NEW.difference_amount IS NULL OR (typeof(NEW.difference_amount) = 'integer'))
+          AND typeof(NEW.opened_at) = 'integer'
+          AND (NEW.closed_at IS NULL OR (typeof(NEW.closed_at) = 'integer'))
+          AND date(NEW.business_date) = NEW.business_date
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND OLD.status = 'OPEN'
+          AND NEW.id = OLD.id AND NEW.money_account_id = OLD.money_account_id AND NEW.opening_amount = OLD.opening_amount AND NEW.opened_at = OLD.opened_at
+          AND (NEW.status = 'OPEN' OR (NEW.closed_at IS NOT NULL AND NEW.expected_amount IS NOT NULL AND NEW.counted_amount IS NOT NULL AND NEW.difference_amount = NEW.counted_amount - NEW.expected_amount))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:cash_sessions'); END;
+        """,
+    )
+
+/** Las denominaciones de la caja: un valor positivo en la unidad menor. */
+private val CASH_DENOMINATIONS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_cash_denominations_insert BEFORE INSERT ON cash_denominations
+        WHEN NOT IFNULL((
+          typeof(NEW.value) = 'integer' AND NEW.value BETWEEN 1 AND 1000000000000
+          AND NEW.is_active IN (0, 1)
+          AND typeof(NEW.sort_order) = 'integer'
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:cash_denominations'); END;
+
+        CREATE TRIGGER guard_cash_denominations_update BEFORE UPDATE ON cash_denominations
+        WHEN NOT IFNULL((
+          typeof(NEW.value) = 'integer' AND NEW.value BETWEEN 1 AND 1000000000000
+          AND NEW.is_active IN (0, 1)
+          AND typeof(NEW.sort_order) = 'integer'
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:cash_denominations'); END;
+        """,
+    )
+
+/** Los conteos por denominación: un entero por fase, que no cambia ni se borra. */
+private val CASH_SESSION_COUNTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_cash_session_counts_insert BEFORE INSERT ON cash_session_counts
+        WHEN NOT IFNULL((
+          NEW.phase IN ('OPENING', 'CLOSING')
+          AND typeof(NEW.count) = 'integer' AND NEW.count BETWEEN 0 AND 1000000000
+          AND NOT EXISTS (SELECT 1 FROM cash_session_counts x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:cash_session_counts'); END;
+
+        CREATE TRIGGER guard_cash_session_counts_no_update BEFORE UPDATE ON cash_session_counts
+        BEGIN SELECT RAISE(ABORT, 'guard:cash_session_counts_append_only'); END;
+
+        CREATE TRIGGER guard_cash_session_counts_no_delete BEFORE DELETE ON cash_session_counts
+        BEGIN SELECT RAISE(ABORT, 'guard:cash_session_counts_append_only'); END;
+        """,
     )
 
 /** Las categorías de gasto: el nombre es único entre las vigentes, y la de otros gastos no

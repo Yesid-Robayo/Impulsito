@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.local.sale
 import androidx.room3.useReaderConnection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.local.LedgerDatabaseTest
+import io.github.yesidrobayo.shopledger.data.local.cash.openSession
 import io.github.yesidrobayo.shopledger.data.local.catalog.CREATED_AT
 import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
 import io.github.yesidrobayo.shopledger.data.local.catalog.FOREIGN_KEY
@@ -14,6 +15,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.product
 import io.github.yesidrobayo.shopledger.data.local.customer.customer
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import io.github.yesidrobayo.shopledger.data.local.ids
+import io.github.yesidrobayo.shopledger.data.local.money.moneyAccount
 import io.github.yesidrobayo.shopledger.data.local.sale
 import io.github.yesidrobayo.shopledger.data.local.saleLine
 import io.github.yesidrobayo.shopledger.domain.model.Limit
@@ -39,9 +41,11 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
     @Test
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         // Cada columna con un valor distinto, para que dos columnas cruzadas no pasen. Un recargo
-        // en toda la venta y un redondeo de efectivo hacia arriba. El cliente ya tiene tabla y
-        // llave: la venta apunta a uno que existe, con un id propio.
+        // en toda la venta y un redondeo de efectivo hacia arriba. El cliente y la sesión de caja ya
+        // tienen tabla y llave: la venta apunta a unos que existen, con un id propio.
         val customerId = database.customerDao().insert(customer("Ana").copy(id = 8))
+        val accountId = database.moneyAccountDao().insert(moneyAccount("Caja chica"))
+        val sessionId = database.cashSessionDao().insert(openSession(accountId).copy(id = 5))
         val header =
             SaleEntity(
                 status = "ACTIVE",
@@ -57,7 +61,7 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
                 customerId = customerId,
                 priceListId = priceListId,
                 locationId = 2,
-                cashSessionId = 5,
+                cashSessionId = sessionId,
                 quoteId = 6,
                 orderId = 7,
                 note = "Entrega en la tarde",

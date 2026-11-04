@@ -63,9 +63,10 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         // necesita import.
         val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
         val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
-        // Los libros, de stock, de clientes, de dinero y de proveedores, las líneas de venta y de compra y los componentes de un combo
-        // vendido solo crecen: ningún DAO los edita ni los borra, porque el saldo, el costo y lo vendido salen de ellos. Una venta o
-        // una compra tampoco se borran: solo se anulan. Un INSERT OR REPLACE borra la fila que choca sin pasar por la guarda de borrado.
+        // Los libros, de stock, de clientes, de dinero y de proveedores, las líneas de venta y de compra, los componentes de un combo
+        // vendido y los conteos de caja solo crecen: ningún DAO los edita ni los borra, porque el saldo, el costo y lo vendido salen de
+        // ellos. Una venta o una compra tampoco se borran: solo se anulan. Un INSERT OR REPLACE borra la fila que choca sin pasar por
+        // la guarda de borrado.
         val dataMain = Regex("""^data/src/main/""")
         val appendOnlyTables =
             listOf(
@@ -74,6 +75,7 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 "loyalty_ledger_entries",
                 "money_movements",
                 "supplier_ledger_entries",
+                "cash_session_counts",
                 "sale_lines",
                 "purchase_lines",
                 "sale_line_components",
@@ -86,8 +88,8 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
             )
         // Un gasto tampoco se borra: solo se anula. Los ajustes y el estado del respaldo son una sola fila que nace con la base: sin
         // ella la app no arranca, y sin la del respaldo un cambio quedaría sin marca. Las categorías de gasto, las alertas de stock, los
-        // clientes, las plantillas de mensaje y las cuentas de dinero sí se borran, pero nunca con REPLACE, que borraría la fila que
-        // choca sin pasar por su regla de borrado.
+        // clientes, las plantillas de mensaje, las cuentas de dinero, las sesiones de caja y sus denominaciones nunca se reemplazan con
+        // REPLACE, que borraría la fila que choca sin pasar por su regla de borrado.
         val documentAndSingleRowRemoval =
             Regex(
                 """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(expenses|app_settings|backup_state)\b""",
@@ -100,6 +102,8 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 "customers",
                 "message_templates",
                 "money_accounts",
+                "cash_sessions",
+                "cash_denominations",
             ).joinToString("|")
         val catalogReplace =
             Regex("""\b([R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+($replaceableTables)\b""", RegexOption.IGNORE_CASE)

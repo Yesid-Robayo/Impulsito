@@ -60,6 +60,7 @@ internal class MoneySchemaTest : LedgerDatabaseTest() {
                 "money_accounts" to emptyList(),
                 "money_movements" to
                     listOf(
+                        "cash_session_id -> cash_sessions RESTRICT",
                         "customer_ledger_entry_id -> customer_ledger_entries RESTRICT",
                         "expense_id -> expenses RESTRICT",
                         "money_account_id -> money_accounts RESTRICT",

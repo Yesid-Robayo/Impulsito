@@ -60,6 +60,9 @@ internal val SCHEMA_TABLES =
     listOf(
         "app_settings",
         "backup_state",
+        "cash_denominations",
+        "cash_session_counts",
+        "cash_sessions",
         "categories",
         "custom_field_definitions",
         "customer_ledger_entries",

@@ -6,6 +6,7 @@ import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import androidx.room3.RoomWarnings
+import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionEntity
 import io.github.yesidrobayo.shopledger.data.local.customer.CustomerEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 
@@ -24,8 +25,9 @@ import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
  *   listas casi nunca se borran, y SQLite solo busca ventas por esa columna al borrar una.
  * - El cliente también usa `RESTRICT`: un cliente con ventas no se borra, se archiva. Su índice
  *   sirve al extracto y al análisis por cliente.
- * - `location_id`, `cash_session_id`, `quote_id` y `order_id` todavía no tienen llave foránea: sus
- *   tablas no existen aún. La llave llega con la tabla a la que apunta, dentro del mismo esquema 1.
+ * - La sesión de caja también usa `RESTRICT`, sin índice: una sesión no se borra nunca.
+ * - `location_id`, `quote_id` y `order_id` todavía no tienen llave foránea: sus tablas no existen
+ *   aún. La llave llega con la tabla a la que apunta, dentro del mismo esquema 1.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -41,6 +43,12 @@ import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
             entity = CustomerEntity::class,
             parentColumns = ["id"],
             childColumns = ["customer_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = CashSessionEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["cash_session_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

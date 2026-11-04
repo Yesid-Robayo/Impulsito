@@ -9,6 +9,12 @@ import androidx.room3.useWriterConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
+import io.github.yesidrobayo.shopledger.data.local.cash.CashDenominationDao
+import io.github.yesidrobayo.shopledger.data.local.cash.CashDenominationEntity
+import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionCountDao
+import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionCountEntity
+import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionDao
+import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.CategoryDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.CategoryEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.CustomFieldDao
@@ -79,12 +85,12 @@ import kotlin.coroutines.CoroutineContext
  * `price_lists`, las compras y las ventas con sus líneas, el libro de stock y sus alertas, los
  * gastos con sus categorías, las tasas de impuesto, las filas únicas de los ajustes y del estado
  * del respaldo, que nacen con la base, los clientes con sus libros de cuenta y de puntos y sus
- * plantillas de mensaje, las cuentas de dinero con su libro, y el libro de los proveedores. Del
- * catálogo también tiene los combos, los campos propios, las etiquetas y las imágenes, y de las
- * ventas, los componentes que consumió cada combo vendido. Room activa las llaves foráneas solo si
- * alguna entidad declara una: sin ellas, una fila huérfana entraría sin error. Las reglas que Room
- * no sabe declarar son guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las
- * crean, y la versión no cambia mientras el esquema 1 no se publique.
+ * plantillas de mensaje, las cuentas de dinero con su libro y sus sesiones de caja, y el libro de
+ * los proveedores. Del catálogo también tiene los combos, los campos propios, las etiquetas y las
+ * imágenes, y de las ventas, los componentes que consumió cada combo vendido. Room activa las
+ * llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana entraría sin
+ * error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards]. Las demás tablas
+ * llegan con las tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
  */
 @Database(
     entities = [
@@ -117,7 +123,10 @@ import kotlin.coroutines.CoroutineContext
         SupplierLedgerEntryEntity::class,
         PurchaseEntity::class,
         SupplierEntity::class,
+        CashSessionCountEntity::class,
+        CashSessionEntity::class,
         MoneyAccountEntity::class,
+        CashDenominationEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -175,6 +184,12 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun moneyMovementDao(): MoneyMovementDao
 
     abstract fun supplierLedgerEntryDao(): SupplierLedgerEntryDao
+
+    abstract fun cashSessionDao(): CashSessionDao
+
+    abstract fun cashDenominationDao(): CashDenominationDao
+
+    abstract fun cashSessionCountDao(): CashSessionCountDao
 
     companion object {
         /**
