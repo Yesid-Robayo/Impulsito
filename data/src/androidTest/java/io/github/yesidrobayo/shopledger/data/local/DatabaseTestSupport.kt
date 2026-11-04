@@ -84,6 +84,7 @@ internal val SCHEMA_TABLES =
         "sale_lines",
         "sales",
         "stock_movements",
+        "supplier_ledger_entries",
         "suppliers",
         "tags",
         "tax_rates",

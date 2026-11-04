@@ -3,6 +3,8 @@ package io.github.yesidrobayo.shopledger.data.local.money
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.local.GuardProbeTest
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
+import io.github.yesidrobayo.shopledger.data.local.payable.supplierEntryRow
+import io.github.yesidrobayo.shopledger.data.local.supplierRow
 import io.github.yesidrobayo.shopledger.data.local.update
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -109,6 +111,13 @@ internal class MoneyGuardsTest : GuardProbeTest() {
             rejected(MOVEMENTS, broken.insertInto(TABLE))
         }
 
+        // El pago al proveedor apunta a su fila del libro del proveedor, que ya tiene tabla y llave.
+        val supplierId = insert("suppliers", supplierRow())
+        val supplierPayment =
+            insert(
+                "supplier_ledger_entries",
+                supplierEntryRow(supplierId).with("type" to "PAYMENT", "amount" to -1L),
+            )
         insert(TABLE, opening.with("amount" to -50_000L, "balance_after" to -50_000L))
         insert(TABLE, opening.with("type" to "OWNER_DRAW", "amount" to -10_000L))
         insert(TABLE, opening.with("type" to "OTHER_INCOME", "note" to "Reintegro"))
@@ -129,7 +138,7 @@ internal class MoneyGuardsTest : GuardProbeTest() {
             opening.with(
                 "type" to "SUPPLIER_PAYMENT",
                 "amount" to -1L,
-                "supplier_ledger_entry_id" to 1L,
+                "supplier_ledger_entry_id" to supplierPayment,
             ),
         )
         // Una diferencia de caja puede faltar o sobrar.

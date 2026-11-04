@@ -46,6 +46,8 @@ import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountDao
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountEntity
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyMovementDao
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyMovementEntity
+import io.github.yesidrobayo.shopledger.data.local.payable.SupplierLedgerEntryDao
+import io.github.yesidrobayo.shopledger.data.local.payable.SupplierLedgerEntryEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseDao
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
@@ -77,12 +79,12 @@ import kotlin.coroutines.CoroutineContext
  * `price_lists`, las compras y las ventas con sus líneas, el libro de stock y sus alertas, los
  * gastos con sus categorías, las tasas de impuesto, las filas únicas de los ajustes y del estado
  * del respaldo, que nacen con la base, los clientes con sus libros de cuenta y de puntos y sus
- * plantillas de mensaje, y las cuentas de dinero con su libro. Del catálogo también tiene los
- * combos, los campos propios, las etiquetas y las imágenes, y de las ventas, los componentes que
- * consumió cada combo vendido. Room activa las llaves foráneas solo si alguna entidad declara una:
- * sin ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe declarar son
- * guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y la versión no
- * cambia mientras el esquema 1 no se publique.
+ * plantillas de mensaje, las cuentas de dinero con su libro, y el libro de los proveedores. Del
+ * catálogo también tiene los combos, los campos propios, las etiquetas y las imágenes, y de las
+ * ventas, los componentes que consumió cada combo vendido. Room activa las llaves foráneas solo si
+ * alguna entidad declara una: sin ellas, una fila huérfana entraría sin error. Las reglas que Room
+ * no sabe declarar son guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las
+ * crean, y la versión no cambia mientras el esquema 1 no se publique.
  */
 @Database(
     entities = [
@@ -106,14 +108,15 @@ import kotlin.coroutines.CoroutineContext
         LoyaltyLedgerEntryEntity::class,
         MessageTemplateEntity::class,
         MoneyMovementEntity::class,
-        PurchaseEntity::class,
-        SupplierEntity::class,
         ExpenseEntity::class,
         ExpenseCategoryEntity::class,
         CustomerLedgerEntryEntity::class,
         SaleEntity::class,
         PriceListEntity::class,
         CustomerEntity::class,
+        SupplierLedgerEntryEntity::class,
+        PurchaseEntity::class,
+        SupplierEntity::class,
         MoneyAccountEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
@@ -170,6 +173,8 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun moneyAccountDao(): MoneyAccountDao
 
     abstract fun moneyMovementDao(): MoneyMovementDao
+
+    abstract fun supplierLedgerEntryDao(): SupplierLedgerEntryDao
 
     companion object {
         /**

@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.Flow
  * Lecturas y escrituras de `suppliers`. Las escrituras solo se llaman dentro de la transacción del
  * caso de uso.
  *
- * Ninguna función escribe `balance`: es la suma del libro del proveedor, y solo la mueve la
- * escritura de ese libro, en su misma transacción. Las listas van por nombre normalizado y después
- * por `id`, porque un archivado puede repetir el nombre de otro proveedor.
+ * La edición no toca `balance`: es la suma del libro del proveedor, y solo lo mueve [setBalance],
+ * en la transacción que agrega la fila de ese libro. Las listas van por nombre normalizado y
+ * después por `id`, porque un archivado puede repetir el nombre de otro proveedor.
  */
 @Dao
 internal interface SupplierDao {
@@ -55,6 +55,13 @@ internal interface SupplierDao {
     /** Lo archiva con un instante, o lo reactiva con `null`. */
     @Query("UPDATE suppliers SET archived_at = :archivedAt, updated_at = :updatedAt WHERE id = :id")
     suspend fun setArchivedAt(id: Long, archivedAt: Long?, updatedAt: Long): Int
+
+    /**
+     * Lo que se le debe tras una fila nueva de su libro, su `balance_after`. Solo la llama la
+     * escritura del libro del proveedor, en la misma transacción que agrega la fila.
+     */
+    @Query("UPDATE suppliers SET balance = :balance, updated_at = :updatedAt WHERE id = :id")
+    suspend fun setBalance(id: Long, balance: Long, updatedAt: Long): Int
 
     /**
      * Elimina un proveedor sin historia. Su llave foránea deja sin proveedor habitual a sus

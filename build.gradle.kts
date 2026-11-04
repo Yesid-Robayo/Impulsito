@@ -63,9 +63,9 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         // necesita import.
         val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
         val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
-        // Los libros, de stock, de los clientes y de dinero, las líneas de venta y de compra y los componentes de un combo vendido solo
-        // crecen: ningún DAO los edita ni los borra, porque el saldo, el costo y lo vendido salen de ellos. Una venta o una compra
-        // tampoco se borran: solo se anulan. Un INSERT OR REPLACE borra la fila que choca sin pasar por la guarda de borrado.
+        // Los libros, de stock, de clientes, de dinero y de proveedores, las líneas de venta y de compra y los componentes de un combo
+        // vendido solo crecen: ningún DAO los edita ni los borra, porque el saldo, el costo y lo vendido salen de ellos. Una venta o
+        // una compra tampoco se borran: solo se anulan. Un INSERT OR REPLACE borra la fila que choca sin pasar por la guarda de borrado.
         val dataMain = Regex("""^data/src/main/""")
         val appendOnlyTables =
             listOf(
@@ -73,6 +73,7 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 "customer_ledger_entries",
                 "loyalty_ledger_entries",
                 "money_movements",
+                "supplier_ledger_entries",
                 "sale_lines",
                 "purchase_lines",
                 "sale_line_components",

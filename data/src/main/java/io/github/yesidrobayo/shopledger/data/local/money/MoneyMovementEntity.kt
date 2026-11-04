@@ -8,6 +8,7 @@ import androidx.room3.PrimaryKey
 import androidx.room3.RoomWarnings
 import io.github.yesidrobayo.shopledger.data.local.customer.CustomerLedgerEntryEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseEntity
+import io.github.yesidrobayo.shopledger.data.local.payable.SupplierLedgerEntryEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
 
 /**
@@ -29,12 +30,13 @@ import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
  * - Cada tipo lleva su origen: el pago de la venta, el abono del cliente, el pago al proveedor, el
  *   gasto, la compra, la devolución, la sesión de caja o el movimiento que anula.
  *   `reverses_movement_id` es único: un movimiento se anula una sola vez.
- * - Cuenta, abono del cliente, gasto, compra y movimiento anulado usan `RESTRICT`. Sin índice
- *   sobre el abono, el gasto ni la compra: casi siempre son nulos, y lo que apuntan no se borra.
- * - `sale_payment_id`, `supplier_ledger_entry_id`, `sale_return_id`, `purchase_return_id` y
- *   `cash_session_id` todavía no tienen llave foránea: sus tablas no existen aún. La llave, con
- *   `RESTRICT`, llega con la tabla a la que apunta, dentro del mismo esquema 1. Los índices de
- *   `sale_payment_id` y `cash_session_id` ya están.
+ * - Cuenta, abono del cliente, pago al proveedor, gasto, compra y movimiento anulado usan
+ *   `RESTRICT`. Sin índice sobre el abono, el pago al proveedor, el gasto ni la compra: casi
+ *   siempre son nulos, y lo que apuntan no se borra.
+ * - `sale_payment_id`, `sale_return_id`, `purchase_return_id` y `cash_session_id` todavía no
+ *   tienen llave foránea: sus tablas no existen aún. La llave, con `RESTRICT`, llega con la tabla
+ *   a la que apunta, dentro del mismo esquema 1. Los índices de `sale_payment_id` y
+ *   `cash_session_id` ya están.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -50,6 +52,12 @@ import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
             entity = CustomerLedgerEntryEntity::class,
             parentColumns = ["id"],
             childColumns = ["customer_ledger_entry_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = SupplierLedgerEntryEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["supplier_ledger_entry_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
         ForeignKey(

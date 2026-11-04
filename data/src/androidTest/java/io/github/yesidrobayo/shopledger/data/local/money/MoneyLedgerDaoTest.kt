@@ -10,10 +10,12 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.FIXED_CLOCK
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
+import io.github.yesidrobayo.shopledger.data.local.catalog.supplier
 import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.expense.expense
 import io.github.yesidrobayo.shopledger.data.local.expense.expenseCategory
 import io.github.yesidrobayo.shopledger.data.local.ids
+import io.github.yesidrobayo.shopledger.data.local.payable.supplierEntry
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
 import io.github.yesidrobayo.shopledger.data.local.texts
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -110,6 +112,10 @@ internal class MoneyLedgerDaoTest : CatalogDatabaseTest() {
             updatedAt = LATER,
         )
         val completeId = accounts.insert(complete)
+        val supplierId = database.supplierDao().insert(supplier("Distribuidora Andina"))
+        val supplierPayment =
+            database.supplierLedgerEntryDao()
+                .insert(supplierEntry(supplierId, "PAYMENT", -5, -5))
         // Cada columna con un valor distinto dentro de su fila, para que dos columnas cruzadas no
         // pasen. Las columnas sin llave todavía admiten cualquier id.
         val rows =
@@ -126,7 +132,7 @@ internal class MoneyLedgerDaoTest : CatalogDatabaseTest() {
                     fxRateMicro = 4_150_000_000,
                 ),
                 moneyMovement(accountId, "SUPPLIER_PAYMENT", -5, -1_306)
-                    .copy(supplierLedgerEntryId = 51),
+                    .copy(supplierLedgerEntryId = supplierPayment),
                 moneyMovement(accountId, "REFUND", -6, -1_312).copy(saleReturnId = 61),
                 moneyMovement(accountId, "SUPPLIER_REFUND", 7, -1_305).copy(purchaseReturnId = 71),
                 moneyMovement(accountId, "CASH_DIFFERENCE", -8, -1_313).copy(cashSessionId = 81),

@@ -39,6 +39,7 @@ internal object SchemaGuards {
             LOW_STOCK_ALERTS_GUARDS,
             PURCHASES_GUARDS,
             PURCHASE_LINES_GUARDS,
+            SUPPLIER_LEDGER_ENTRIES_GUARDS,
             SALES_GUARDS,
             SALE_LINES_GUARDS,
             SALE_LINE_COMPONENTS_GUARDS,
@@ -1075,6 +1076,47 @@ private val PURCHASE_LINES_GUARDS =
         CREATE TRIGGER guard_purchase_lines_no_delete BEFORE DELETE ON purchase_lines
         BEGIN SELECT RAISE(ABORT, 'guard:purchase_lines_append_only'); END;
         """,
+    )
+
+/** El libro del proveedor: solo crece. Cada fila lleva el signo y el origen de su tipo, y una
+ * compensación apunta a una fila del mismo proveedor, con el monto opuesto, una sola vez.
+ *
+ * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
+ * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
+ * parte de estas guardas que hoy protege menos que su texto completo. */
+private val SUPPLIER_LEDGER_ENTRIES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_supplier_ledger_entries_insert BEFORE INSERT ON supplier_ledger_entries
+        WHEN NOT IFNULL((
+          NEW.type IN ('OPENING_BALANCE', 'CREDIT_PURCHASE', 'PAYMENT', 'RETURN_CREDIT', 'ADJUSTMENT', 'ENTRY_VOID')
+          AND typeof(NEW.amount) = 'integer'
+          AND typeof(NEW.balance_after) = 'integer'
+          AND (NEW.due_date IS NULL OR (date(NEW.due_date) = NEW.due_date))
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND (SELECT currency_locked_at FROM app_settings WHERE id = 1) IS NOT NULL
+          AND NEW.amount <> 0
+          AND CASE NEW.type WHEN 'CREDIT_PURCHASE' THEN NEW.amount > 0 WHEN 'PAYMENT' THEN NEW.amount < 0 WHEN 'RETURN_CREDIT' THEN NEW.amount < 0 ELSE 1 END
+          AND (NEW.type = 'CREDIT_PURCHASE') = (NEW.purchase_id IS NOT NULL)
+          AND (NEW.type = 'RETURN_CREDIT') = (NEW.purchase_return_id IS NOT NULL)
+          AND (NEW.type = 'ENTRY_VOID') = (NEW.reverses_entry_id IS NOT NULL)
+          AND (NEW.type <> 'ADJUSTMENT' OR NEW.note IS NOT NULL)
+          AND (NEW.reverses_entry_id IS NULL OR EXISTS (SELECT 1 FROM supplier_ledger_entries o WHERE o.id = NEW.reverses_entry_id AND o.supplier_id = NEW.supplier_id AND o.amount = -NEW.amount AND o.type <> 'ENTRY_VOID'))
+          AND NOT EXISTS (SELECT 1 FROM supplier_ledger_entries e WHERE e.reverses_entry_id = NEW.reverses_entry_id)
+          AND NOT EXISTS (SELECT 1 FROM supplier_ledger_entries x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:supplier_ledger_entries'); END;
+
+        CREATE TRIGGER guard_supplier_ledger_entries_no_update BEFORE UPDATE ON supplier_ledger_entries
+        BEGIN SELECT RAISE(ABORT, 'guard:supplier_ledger_entries_append_only'); END;
+
+        CREATE TRIGGER guard_supplier_ledger_entries_no_delete BEFORE DELETE ON supplier_ledger_entries
+        BEGIN SELECT RAISE(ABORT, 'guard:supplier_ledger_entries_append_only'); END;
+        """,
+        awaitingCurrencyLock("guard_supplier_ledger_entries_insert"),
     )
 
 /** Las ventas: nacen activas, solo cambian al anularse y nunca se borran.
