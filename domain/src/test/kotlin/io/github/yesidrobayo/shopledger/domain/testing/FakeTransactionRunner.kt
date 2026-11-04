@@ -10,8 +10,8 @@ import io.github.yesidrobayo.shopledger.domain.port.TxResult
  * uso y cómo termina cada una.
  *
  * Hace lo que el contrato pide a la base real: con `Commit` confirma y cuenta un cambio, con
- * `Rollback` o una excepción deshace todo, y con [restoreInProgress] rechaza la escritura antes de
- * empezarla.
+ * `CommitUncounted` confirma sin contarlo, con `Rollback` o una excepción deshace todo, y con
+ * [restoreInProgress] rechaza la escritura antes de empezarla.
  */
 internal class FakeTransactionRunner(private val database: InMemoryDatabase) : TransactionRunner {
     var restoreInProgress: Boolean = false
@@ -21,6 +21,8 @@ internal class FakeTransactionRunner(private val database: InMemoryDatabase) : T
     var readCalls: Int = 0
         private set
     var commits: Int = 0
+        private set
+    var uncountedCommits: Int = 0
         private set
     var rollbacks: Int = 0
         private set
@@ -41,6 +43,12 @@ internal class FakeTransactionRunner(private val database: InMemoryDatabase) : T
             is TxResult.Commit -> {
                 database.commit()
                 commits++
+                result.value
+            }
+
+            is TxResult.CommitUncounted -> {
+                database.commit(counted = false)
+                uncountedCommits++
                 result.value
             }
 

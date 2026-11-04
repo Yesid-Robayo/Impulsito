@@ -26,6 +26,9 @@ import kotlinx.coroutines.withContext
  *   escribirlo después no puede chocar con otro escritor.
  * - **El cambio se cuenta dentro.** Con una confirmación, [ChangeCounter] suma el cambio en la misma
  *   transacción, justo antes de confirmar. Lo que corre después, con [CommitListener], va fuera.
+ * - **Lo que no es del negocio no se cuenta.** Con [TxResult.CommitUncounted] se confirma por este
+ *   mismo camino, con todo lo demás de esta lista, pero sin [ChangeCounter] ni [CommitListener]:
+ *   no hay cambio que respaldar ni copia que programar.
  * - **No se cancela una vez empezada.** La persona ya confirmó: salir de la pantalla no la corta.
  * - **Sin restauración en curso.** Con el cerrojo de [RestoreLock] tomado, no empieza.
  * - **Fallas sin texto.** Un error de almacenamiento de SQLite sale como [StorageFailureException],
@@ -58,6 +61,9 @@ internal class RoomTransactionRunner(
                     notifyCommitted()
                     outcome.value
                 }
+
+                // Nada que programar: no se contó ningún cambio sin respaldar.
+                is Outcome.CommittedUncounted -> outcome.value
 
                 is Outcome.RolledBack -> outcome.value
             }
@@ -101,6 +107,9 @@ internal class RoomTransactionRunner(
                     Outcome.Committed(result.value)
                 }
 
+                // Confirma igual al salir del bloque de Room, solo que sin contar.
+                is TxResult.CommitUncounted -> Outcome.CommittedUncounted(result.value)
+
                 // Deshace todo sin excepción: el rechazo de una regla es un resultado.
                 is TxResult.Rollback -> rollback(Outcome.RolledBack(result.value))
             }
@@ -137,6 +146,8 @@ internal class RoomTransactionRunner(
         val value: T
 
         class Committed<out T>(override val value: T) : Outcome<T>
+
+        class CommittedUncounted<out T>(override val value: T) : Outcome<T>
 
         class RolledBack<out T>(override val value: T) : Outcome<T>
     }

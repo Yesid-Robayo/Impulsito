@@ -16,9 +16,10 @@ interface TransactionRunner {
      * Corre [block] dentro de una sola transacción de escritura y devuelve su valor.
      *
      * Con [TxResult.Commit] confirma todo lo escrito y lo cuenta como un cambio sin respaldar, en la
-     * misma transacción, para que la copia se programe. Con [TxResult.Rollback] deshace todo y no
-     * cuenta nada: así una regla de negocio rechaza sin dejar rastro. Si [block] lanza una
-     * excepción, también deshace todo y la relanza.
+     * misma transacción, para que la copia se programe. Con [TxResult.CommitUncounted] confirma
+     * igual, pero no cuenta nada ni programa la copia: es para lo que no es un hecho del negocio.
+     * Con [TxResult.Rollback] deshace todo y no cuenta nada: así una regla de negocio rechaza sin
+     * dejar rastro. Si [block] lanza una excepción, también deshace todo y la relanza.
      *
      * Toma el bloqueo de escritura al empezar, así que leer un saldo y escribirlo después no puede
      * chocar con otro escritor. Una vez empezada, salir de la pantalla no la cancela: la persona ya

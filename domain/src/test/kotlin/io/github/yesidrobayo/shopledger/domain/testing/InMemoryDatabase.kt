@@ -71,10 +71,13 @@ internal class InMemoryDatabase {
         writesInTransaction = 0
     }
 
-    /** Confirma la copia de trabajo y suma un cambio sin respaldar en la misma transacción. */
-    fun commit() {
+    /**
+     * Confirma la copia de trabajo. Con [counted], suma un cambio sin respaldar en la misma
+     * transacción; sin él, la confirma tal cual, como lo que no es un hecho del negocio.
+     */
+    fun commit(counted: Boolean = true) {
         val tables = checkNotNull(working) { "No hay transacción que confirmar" }
-        committed.value = tables.copy(changeSeq = tables.changeSeq + 1)
+        committed.value = if (counted) tables.copy(changeSeq = tables.changeSeq + 1) else tables
         end()
     }
 

@@ -78,6 +78,61 @@ class SingleTransactionTest {
     }
 
     @Test
+    fun `an uncounted commit confirms every write and counts no change`() = runTest {
+        register(lines)
+        val counted = database.tables.value
+
+        // Como guardar una venta en espera: queda escrita, pero no es un cambio sin respaldar.
+        val purchaseId =
+            transactions.write { TxResult.CommitUncounted(purchases.insert(samplePurchase())) }
+
+        assertEquals(2, transactions.writeCalls)
+        assertEquals(1, transactions.commits)
+        assertEquals(1, transactions.uncountedCommits)
+        assertEquals(0, transactions.rollbacks)
+        val tables = database.tables.value
+        assertEquals(counted.changeSeq, tables.changeSeq)
+        assertEquals(listOf(1L, purchaseId), tables.purchases.keys.toList())
+    }
+
+    @Test
+    fun `a failure inside an uncounted write leaves nothing`() = runTest {
+        // Cada compra escribe dos veces, su id y su fila: falla la última de la segunda.
+        database.failAtWrite = 4
+
+        val failure = failureOf {
+            transactions.write {
+                purchases.insert(samplePurchase())
+                purchases.insert(samplePurchase())
+                TxResult.CommitUncounted(Unit)
+            }
+        }
+
+        assertTrue(failure is InjectedFailure)
+        assertEquals(0, transactions.uncountedCommits)
+        assertEquals(1, transactions.rollbacks)
+        assertEquals(Tables(), database.tables.value)
+    }
+
+    @Test
+    fun `a restore in progress rejects an uncounted write before it writes`() = runTest {
+        transactions.restoreInProgress = true
+
+        val failure = failureOf {
+            transactions.write<Long> {
+                TxResult.CommitUncounted(purchases.insert(samplePurchase()))
+            }
+        }
+
+        assertEquals(
+            StorageFailure.RESTORE_IN_PROGRESS,
+            (failure as StorageFailureException).failure,
+        )
+        assertEquals(0, transactions.uncountedCommits)
+        assertEquals(Tables(), database.tables.value)
+    }
+
+    @Test
     fun `a business rejection opens one transaction and leaves nothing`() = runTest {
         assertEquals(FakePurchaseResult.EmptyPurchase, register(emptyList()))
         assertEquals(
