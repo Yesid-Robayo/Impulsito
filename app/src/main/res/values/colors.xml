@@ -7,4 +7,7 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Fondo del ícono: el índigo de la paleta predeterminada. Es plano y no cambia con el tema ni con la paleta que elija
+         la persona, porque el lanzador no deja cambiar el ícono sin trucos frágiles. -->
+    <color name="ic_launcher_background">#FF26306E</color>
 </resources>
