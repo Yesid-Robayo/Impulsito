@@ -49,6 +49,37 @@ internal interface ProductDao {
     )
     suspend fun findActiveByBarcode(barcode: String): ProductEntity?
 
+    /** El saldo de un producto, o `null` si no existe: lo único que el libro lee antes de escribir. */
+    @Query("SELECT on_hand_milli FROM products WHERE id = :id")
+    suspend fun findOnHandMilli(id: Long): Long?
+
+    /**
+     * Si el producto tiene historia: alguna fila suya en el libro de stock, en sus saldos o sus
+     * lotes, o en una línea de venta, de compra, de devolución a proveedor, de cotización, de pedido,
+     * de transferencia, de conteo o de producción, como producto o como componente. Cuentan también
+     * las anuladas, porque se anulan sin borrarse. Con historia ya no se borra: solo se archiva.
+     *
+     * Son las tablas que guardan lo que pasó con el producto. Las que lo relacionan con otros
+     * productos del catálogo, como combo, extra o variante, no son historia: impiden borrarlo, pero
+     * se deshacen editando el catálogo.
+     */
+    @Query(
+        "SELECT EXISTS (SELECT 1 FROM stock_movements WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM stock_balances WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM stock_lots WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM sale_lines WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM sale_line_components WHERE component_product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM purchase_lines WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM purchase_return_lines WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM quote_lines WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM order_lines WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM stock_transfer_lines WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM count_session_lines WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM production_batches WHERE product_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM production_batch_lines WHERE component_product_id = :id)",
+    )
+    suspend fun hasHistory(id: Long): Boolean
+
     /** Devuelve el id nuevo. El repositorio lo crea sin stock: saldo y valor en cero. */
     @Insert
     suspend fun insert(product: ProductEntity): Long
@@ -102,12 +133,13 @@ internal interface ProductDao {
 
     /**
      * El costo inicial y, con él, el costo promedio: sin filas en el libro, el promedio es el costo
-     * con que empieza la reproducción. Con filas, el costo solo lo mueve el libro, y el repositorio
-     * no la llama.
+     * con que empieza la reproducción. Con filas, el costo solo lo mueve el libro: la sentencia no
+     * cambia nada y devuelve 0, porque pisar el promedio lo apartaría del que reproduce el libro.
      */
     @Query(
         "UPDATE products SET initial_cost = :initialCost, average_cost = :initialCost, " +
-            "updated_at = :updatedAt WHERE id = :id",
+            "updated_at = :updatedAt " +
+            "WHERE id = :id AND NOT EXISTS (SELECT 1 FROM stock_movements WHERE product_id = :id)",
     )
     suspend fun updateInitialCost(id: Long, initialCost: Long, updatedAt: Long): Int
 

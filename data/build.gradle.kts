@@ -62,6 +62,9 @@ dependencies {
     kspAndroidTest(libs.androidx.room3.compiler)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
+    // Las lecturas de los repositorios devuelven Flow: Turbine espera cada emisión con un tope de
+    // tiempo, sin colgar la prueba si no llega.
+    androidTestImplementation(libs.turbine)
 }
 
 // Meta de líneas de :data, medida con lo que recorrieron las pruebas en el dispositivo. No va en

@@ -31,6 +31,17 @@ internal interface SupplierDao {
     )
     suspend fun findActiveByNormalizedName(normalizedName: String): SupplierEntity?
 
+    /**
+     * Si el proveedor tiene historia: alguna compra, devolución a proveedor o fila de su libro de
+     * cuenta, aunque esté anulada. Con historia ya no se borra: solo se archiva.
+     */
+    @Query(
+        "SELECT EXISTS (SELECT 1 FROM purchases WHERE supplier_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM purchase_returns WHERE supplier_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM supplier_ledger_entries WHERE supplier_id = :id)",
+    )
+    suspend fun hasHistory(id: Long): Boolean
+
     /** Devuelve el id nuevo. El saldo inicial lo pone el repositorio, en cero. */
     @Insert
     suspend fun insert(supplier: SupplierEntity): Long
