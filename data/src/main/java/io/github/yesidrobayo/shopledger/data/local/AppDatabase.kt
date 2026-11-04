@@ -78,7 +78,12 @@ import io.github.yesidrobayo.shopledger.data.local.payment.PaymentMethodDao
 import io.github.yesidrobayo.shopledger.data.local.payment.PaymentMethodEntity
 import io.github.yesidrobayo.shopledger.data.local.payment.SalePaymentDao
 import io.github.yesidrobayo.shopledger.data.local.payment.SalePaymentEntity
+import io.github.yesidrobayo.shopledger.data.local.pricing.FxRateDao
+import io.github.yesidrobayo.shopledger.data.local.pricing.FxRateEntity
+import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListDao
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
+import io.github.yesidrobayo.shopledger.data.local.pricing.ProductPriceDao
+import io.github.yesidrobayo.shopledger.data.local.pricing.ProductPriceEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseDao
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineDao
@@ -145,10 +150,11 @@ import kotlin.coroutines.CoroutineContext
  * de las ventas y las fotos de comprobantes. Del catálogo también tiene los combos, los campos
  * propios, las etiquetas, las imágenes y los extras de cada producto; de las ventas, los
  * componentes que consumió cada combo vendido, sus devoluciones, las ventas en espera, los métodos
- * de pago y los pagos, y de las compras, las devoluciones a proveedor. Room activa las llaves
- * foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana entraría sin error.
- * Las reglas que Room no sabe declarar son guardas, en [SchemaGuards]. Las demás tablas llegan con
- * las tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
+ * de pago y los pagos; de las compras, las devoluciones a proveedor, y de los precios, los precios
+ * por lista y las cotizaciones. Room activa las llaves foráneas solo si alguna entidad declara una:
+ * sin ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe declarar son
+ * guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y la versión no
+ * cambia mientras el esquema 1 no se publique.
  */
 @Database(
     // Cada tabla va antes que las tablas a las que apunta con RESTRICT: Room 3.0.3 ordena las
@@ -190,6 +196,8 @@ import kotlin.coroutines.CoroutineContext
         MoneyMovementEntity::class,
         SalePaymentEntity::class,
         PaymentMethodEntity::class,
+        ProductPriceEntity::class,
+        FxRateEntity::class,
         CustomerLedgerEntryEntity::class,
         SaleReturnEntity::class,
         SupplierLedgerEntryEntity::class,
@@ -295,6 +303,12 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun paymentMethodDao(): PaymentMethodDao
 
     abstract fun salePaymentDao(): SalePaymentDao
+
+    abstract fun priceListDao(): PriceListDao
+
+    abstract fun productPriceDao(): ProductPriceDao
+
+    abstract fun fxRateDao(): FxRateDao
 
     abstract fun customerDao(): CustomerDao
 

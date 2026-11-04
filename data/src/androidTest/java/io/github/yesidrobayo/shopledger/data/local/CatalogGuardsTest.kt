@@ -208,7 +208,8 @@ internal class CatalogGuardsTest : GuardProbeTest() {
             rejected(PRICE_LISTS, broken.insertInto("price_lists"))
         }
         val relativeId = insert("price_lists", relative)
-        val initialId = insert("price_lists", initial)
+        // La inicial nace con la base.
+        val initialId = count("SELECT id FROM price_lists WHERE system_key = 'DEFAULT'")
 
         rejected(PRICE_LISTS, update("price_lists", relativeId, "base_price_list_id" to relativeId))
         rejected(PRICE_LISTS, update("price_lists", initialId, "archived_at" to LATER))

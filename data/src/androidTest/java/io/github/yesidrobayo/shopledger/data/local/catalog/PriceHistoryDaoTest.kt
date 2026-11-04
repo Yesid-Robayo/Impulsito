@@ -146,7 +146,7 @@ internal class PriceHistoryDaoTest : CatalogDatabaseTest() {
             execute("DELETE FROM price_lists WHERE id = $priceListId")
         }
 
-        assertEquals(1L, count("SELECT COUNT(*) FROM price_lists"))
+        assertEquals(1L, count("SELECT COUNT(*) FROM price_lists WHERE id = $priceListId"))
     }
 
     @Test

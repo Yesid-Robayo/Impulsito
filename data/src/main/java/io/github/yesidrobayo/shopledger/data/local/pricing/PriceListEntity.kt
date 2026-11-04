@@ -8,7 +8,12 @@ import androidx.room3.PrimaryKey
 
 /**
  * Una lista de precios. La inicial, de clave estable `DEFAULT`, usa el precio de venta del
- * producto. Una lista relativa se calcula desde su lista base con un ajuste en puntos básicos.
+ * producto, nace con la base y nunca se archiva ni se borra. Una lista relativa se calcula desde
+ * su lista base con un ajuste en puntos básicos, y esa cadena nunca vuelve a la misma lista.
+ *
+ * `normalized_name` es único solo entre las vigentes: una archivada no reserva su nombre. Por eso
+ * su índice no es único, y la unicidad la impone la guarda de la tabla. La inicial no tiene nombre
+ * hasta que la persona lo edite.
  *
  * Solo `Long` y `String`: el repositorio convierte `kind` al enum del dominio por su nombre, y
  * la entidad nunca sale de esta capa. Sin valores por defecto en las columnas: los pone el código.
@@ -26,7 +31,7 @@ import androidx.room3.PrimaryKey
     ],
     indices = [
         Index(value = ["system_key"], unique = true),
-        Index(value = ["normalized_name"], unique = true),
+        Index(value = ["normalized_name"]),
         Index(value = ["base_price_list_id"]),
     ],
 )

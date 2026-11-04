@@ -61,7 +61,8 @@ class AppDatabaseTest {
         assertEquals(listOf("ok"), opened.integrity)
         assertEquals(emptyList<String>(), opened.foreignKeyProblems)
         assertEquals(SCHEMA_TABLES, opened.tables)
-        assertEquals(0L, opened.priceLists)
+        // Solo la lista inicial, que nace con la base.
+        assertEquals(1L, opened.priceLists)
     }
 
     @Test
@@ -118,8 +119,10 @@ class AppDatabaseTest {
         assertEquals(2L, countPriceLists())
     }
 
-    private suspend fun countPriceLists(): Long =
-        database.useReaderConnection { it.longValue("SELECT COUNT(*) FROM price_lists") }
+    /** Las listas que escribió la prueba, sin la inicial que nace con la base. */
+    private suspend fun countPriceLists(): Long = database.useReaderConnection {
+        it.longValue("SELECT COUNT(*) FROM price_lists WHERE system_key IS NULL")
+    }
 
     private fun relativeListSql(name: String, baseId: Long): String =
         insertPriceListSql(name, "RELATIVE", basePriceListId = baseId)

@@ -15,7 +15,8 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 /**
  * Crea, al nacer la base, las filas que la app necesita desde la primera pantalla: la única de
  * `app_settings` y la única de `backup_state`, las dos con `id` 1, la cuenta de dinero `CASH`, las
- * unidades iniciales, la ubicación inicial y los seis métodos de pago.
+ * unidades iniciales, la ubicación inicial, los seis métodos de pago y la lista de precios
+ * inicial.
  *
  * Room llama a [onCreate] solo cuando crea la base, dentro de la misma transacción exclusiva en
  * que crea las tablas y antes de fijar la versión: si una inserción falla, no queda ni la base a
@@ -58,6 +59,11 @@ internal class InitialRowsCallback(private val clock: Clock) : RoomDatabase.Call
             statement.step()
         }
         insertPaymentMethods(connection, now)
+        connection.prepare(INSERT_DEFAULT_PRICE_LIST_SQL).use { statement ->
+            statement.bindLong(1, now)
+            statement.bindLong(2, now)
+            statement.step()
+        }
     }
 
     /**
@@ -175,3 +181,12 @@ private const val INSERT_CASH_ACCOUNT_SQL =
 private val INSERT_MAIN_LOCATION_SQL =
     "INSERT INTO locations (system_key, name, normalized_name, kind, archived_at, created_at, " +
         "updated_at) VALUES ('MAIN', NULL, NULL, '${LocationKind.OTHER.name}', NULL, ?, ?)"
+
+/**
+ * La lista de precios inicial, de clave `DEFAULT`: fija, sin base ni ajuste, y sin nombre, que sale
+ * traducido de la clave. Su precio es el de venta de cada producto, así que no guarda precios.
+ */
+private const val INSERT_DEFAULT_PRICE_LIST_SQL =
+    "INSERT INTO price_lists (system_key, name, normalized_name, kind, base_price_list_id, " +
+        "adjustment_bp, archived_at, created_at, updated_at) " +
+        "VALUES ('DEFAULT', NULL, NULL, 'FIXED', NULL, NULL, NULL, ?, ?)"

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "a275793e7764d5b51b1742b0174c949f",
+    "identityHash": "2da2b85f54c9c269aaadff167595d5f8",
     "entities": [
       {
         "tableName": "categories",
@@ -4146,6 +4146,164 @@
         ]
       },
       {
+        "tableName": "product_prices",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `price_list_id` INTEGER NOT NULL, `product_id` INTEGER NOT NULL, `price` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, FOREIGN KEY(`price_list_id`) REFERENCES `price_lists`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priceListId",
+            "columnName": "price_list_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productId",
+            "columnName": "product_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "price",
+            "columnName": "price",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_product_prices_price_list_id_product_id",
+            "unique": true,
+            "columnNames": [
+              "price_list_id",
+              "product_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_product_prices_price_list_id_product_id` ON `${TABLE_NAME}` (`price_list_id`, `product_id`)"
+          },
+          {
+            "name": "index_product_prices_product_id",
+            "unique": false,
+            "columnNames": [
+              "product_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_product_prices_product_id` ON `${TABLE_NAME}` (`product_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "price_lists",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "price_list_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "products",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "product_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "fx_rates",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `currency_code` TEXT NOT NULL, `rate_micro` INTEGER NOT NULL, `note` TEXT, `occurred_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `created_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currencyCode",
+            "columnName": "currency_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rateMicro",
+            "columnName": "rate_micro",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "businessDate",
+            "columnName": "business_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_fx_rates_currency_code_occurred_at",
+            "unique": false,
+            "columnNames": [
+              "currency_code",
+              "occurred_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fx_rates_currency_code_occurred_at` ON `${TABLE_NAME}` (`currency_code`, `occurred_at`)"
+          }
+        ]
+      },
+      {
         "tableName": "customer_ledger_entries",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `customer_id` INTEGER NOT NULL, `type` TEXT NOT NULL, `amount` INTEGER NOT NULL, `balance_after` INTEGER NOT NULL, `sale_id` INTEGER, `sale_return_id` INTEGER, `reverses_entry_id` INTEGER, `due_date` TEXT, `note` TEXT, `occurred_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `created_at` INTEGER NOT NULL, FOREIGN KEY(`customer_id`) REFERENCES `customers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sale_id`) REFERENCES `sales`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sale_return_id`) REFERENCES `sale_returns`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`reverses_entry_id`) REFERENCES `customer_ledger_entries`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
@@ -7318,12 +7476,12 @@
           },
           {
             "name": "index_price_lists_normalized_name",
-            "unique": true,
+            "unique": false,
             "columnNames": [
               "normalized_name"
             ],
             "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_price_lists_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_price_lists_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
           },
           {
             "name": "index_price_lists_base_price_list_id",
@@ -7746,7 +7904,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a275793e7764d5b51b1742b0174c949f')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2da2b85f54c9c269aaadff167595d5f8')"
     ]
   }
 }

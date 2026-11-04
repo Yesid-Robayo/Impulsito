@@ -150,8 +150,11 @@ class WriterSynchronousTest {
     private suspend fun openDatabase(): AppDatabase =
         AppDatabase.open(context, file, Dispatchers.IO).also { opened += it }
 
+    /** Las listas que escribió la prueba, sin la inicial que nace con la base. */
     private suspend fun countPriceLists(database: AppDatabase): Long =
-        database.useReaderConnection { it.longValue("SELECT COUNT(*) FROM price_lists") }
+        database.useReaderConnection {
+            it.longValue("SELECT COUNT(*) FROM price_lists WHERE system_key IS NULL")
+        }
 
     private data class ReaderSettings(val synchronous: Long, val queryOnly: Long)
 

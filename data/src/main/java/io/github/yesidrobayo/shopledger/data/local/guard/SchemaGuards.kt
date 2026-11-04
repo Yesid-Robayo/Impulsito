@@ -77,6 +77,8 @@ internal object SchemaGuards {
             EXPENSES_GUARDS,
             RECURRING_EXPENSES_GUARDS,
             PRICE_LISTS_GUARDS,
+            PRODUCT_PRICES_GUARDS,
+            FX_RATES_GUARDS,
             PRICE_INDEX_ENTRIES_GUARDS,
             QUOTES_GUARDS,
             QUOTE_LINES_GUARDS,
@@ -2361,6 +2363,7 @@ private val PRICE_LISTS_GUARDS =
           AND (NEW.kind = 'RELATIVE') = (NEW.adjustment_bp IS NOT NULL)
           AND (NEW.base_price_list_id IS NULL OR NEW.base_price_list_id <> NEW.id)
           AND (NEW.system_key IS NOT 'DEFAULT' OR (NEW.kind = 'FIXED' AND NEW.archived_at IS NULL))
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM price_lists l WHERE l.normalized_name = NEW.normalized_name AND l.archived_at IS NULL))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:price_lists'); END;
 
@@ -2380,12 +2383,62 @@ private val PRICE_LISTS_GUARDS =
           AND (NEW.kind = 'RELATIVE') = (NEW.adjustment_bp IS NOT NULL)
           AND (NEW.base_price_list_id IS NULL OR NEW.base_price_list_id <> NEW.id)
           AND (NEW.system_key IS NOT 'DEFAULT' OR (NEW.kind = 'FIXED' AND NEW.archived_at IS NULL))
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM price_lists l WHERE l.normalized_name = NEW.normalized_name AND l.archived_at IS NULL AND l.id <> NEW.id))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:price_lists'); END;
 
         CREATE TRIGGER guard_price_lists_no_delete BEFORE DELETE ON price_lists
         WHEN OLD.system_key = 'DEFAULT'
         BEGIN SELECT RAISE(ABORT, 'guard:price_lists_system'); END;
+        """,
+    )
+
+/** Los precios por lista: solo en una lista fija distinta de la inicial, que usa el precio de
+ * venta, y nunca en una relativa, que se calcula. */
+private val PRODUCT_PRICES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_product_prices_insert BEFORE INSERT ON product_prices
+        WHEN NOT IFNULL((
+          typeof(NEW.price) = 'integer' AND NEW.price BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND EXISTS (SELECT 1 FROM price_lists l WHERE l.id = NEW.price_list_id AND l.kind = 'FIXED' AND l.system_key IS NOT 'DEFAULT')
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_prices'); END;
+
+        CREATE TRIGGER guard_product_prices_update BEFORE UPDATE ON product_prices
+        WHEN NOT IFNULL((
+          typeof(NEW.price) = 'integer' AND NEW.price BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND EXISTS (SELECT 1 FROM price_lists l WHERE l.id = NEW.price_list_id AND l.kind = 'FIXED' AND l.system_key IS NOT 'DEFAULT')
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_prices'); END;
+        """,
+    )
+
+/** Las cotizaciones manuales: solo crecen, y la cotización es siempre mayor que cero. */
+private val FX_RATES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_fx_rates_insert BEFORE INSERT ON fx_rates
+        WHEN NOT IFNULL((
+          length(NEW.currency_code) = 3 AND NEW.currency_code = upper(NEW.currency_code) AND NEW.currency_code NOT GLOB '*[^A-Z]*'
+          AND typeof(NEW.rate_micro) = 'integer' AND NEW.rate_micro BETWEEN 1 AND 1000000000000000
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND NOT EXISTS (SELECT 1 FROM fx_rates x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:fx_rates'); END;
+
+        CREATE TRIGGER guard_fx_rates_no_update BEFORE UPDATE ON fx_rates
+        BEGIN SELECT RAISE(ABORT, 'guard:fx_rates_append_only'); END;
+
+        CREATE TRIGGER guard_fx_rates_no_delete BEFORE DELETE ON fx_rates
+        BEGIN SELECT RAISE(ABORT, 'guard:fx_rates_append_only'); END;
         """,
     )
 
