@@ -43,7 +43,8 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
 
     @Test
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
-        val saleLineId = insertSaleWithLine().id
+        val saleLine = insertSaleWithLine()
+        val component = insertComboLineWithComponent(saleLine.saleId)
         val purchaseLineId = insertPurchaseWithLine().id
         val lotProductId = products.insert(product("Queso").copy(tracksLots = 1))
         // Una fila por origen, y cada columna con un valor distinto dentro de su fila, para que dos
@@ -56,7 +57,7 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
                 movement(lotProductId, "PURCHASE", 12_000, 1_667, 20_000, 12_000, 1_668, 20_001)
                     .copy(lotId = 41, purchaseLineId = purchaseLineId, locationId = 2),
                 movement(productId, "SALE", -2_000, 3_000, -6_001, -2_000, 3_002, 0)
-                    .copy(saleLineId = saleLineId, saleLineComponentId = 51),
+                    .copy(saleLineId = component.saleLineId, saleLineComponentId = component.id),
                 movement(productId, "ADJUSTMENT", -500, 3_000, -1_500, -2_500, 3_001, 0).copy(
                     reason = "COUNT_CORRECTION",
                     countSessionId = 61,
@@ -210,7 +211,7 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
     @Test
     fun rowNeedsAnExistingProductAndExistingOrigins() = runBlocking {
         // El producto y la fila que se compensa los pide la guarda, antes que la llave. Las
-        // líneas de origen las pide la llave.
+        // líneas de origen y el componente de un combo los pide la llave.
         guardFailure(GUARD) { ledger.insert(openingBalance(MISSING_ID)) }
         constraintFailure(FOREIGN_KEY) {
             ledger.insert(
@@ -221,6 +222,13 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
         constraintFailure(FOREIGN_KEY) {
             ledger.insert(
                 openingBalance(productId).copy(type = "PURCHASE", purchaseLineId = MISSING_ID),
+            )
+        }
+        val saleLineId = insertSaleWithLine().id
+        constraintFailure(FOREIGN_KEY) {
+            ledger.insert(
+                movement(productId, "SALE", -1_000, 1_200, -1_200, -1_000, 1_200, 0)
+                    .copy(saleLineId = saleLineId, saleLineComponentId = MISSING_ID),
             )
         }
         guardFailure(GUARD) {
@@ -260,8 +268,11 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
         val saleRowId = ledger.insert(sold.copy(saleLineId = saleLine.id))
         ledger.insert(sold.copy(saleLineId = otherSaleLine.id))
         // Un componente de un combo lleva la línea del combo.
+        val component = insertComboLineWithComponent(saleLine.saleId)
         val componentRowId =
-            ledger.insert(sold.copy(saleLineId = saleLine.id, saleLineComponentId = 7))
+            ledger.insert(
+                sold.copy(saleLineId = component.saleLineId, saleLineComponentId = component.id),
+            )
         val voidRowId =
             ledger.insert(
                 sold.copy(

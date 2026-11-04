@@ -77,6 +77,7 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                         "product_id -> products RESTRICT",
                         "purchase_line_id -> purchase_lines RESTRICT",
                         "reverses_movement_id -> stock_movements RESTRICT",
+                        "sale_line_component_id -> sale_line_components RESTRICT",
                         "sale_line_id -> sale_lines RESTRICT",
                     ),
             )

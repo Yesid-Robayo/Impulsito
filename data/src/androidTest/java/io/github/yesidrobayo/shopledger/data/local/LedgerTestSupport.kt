@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.product
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementEntity
 import kotlinx.coroutines.flow.Flow
@@ -38,6 +39,21 @@ internal abstract class LedgerDatabaseTest : CatalogDatabaseTest() {
         val saleId = database.saleDao().insert(sale(priceListId))
         val line = saleLine(saleId, productId, priceListId)
         return line.copy(id = database.saleLineDao().insert(line))
+    }
+
+    /**
+     * Agrega a la venta [saleId] la línea de un combo nuevo que consumió el producto, y devuelve ese
+     * componente con su id.
+     */
+    protected suspend fun insertComboLineWithComponent(saleId: Long): SaleLineComponentEntity {
+        // Un nombre por combo: dos productos vigentes no se llaman igual.
+        val name = "Combo ${count("SELECT COUNT(*) FROM products")}"
+        val comboId = database.productDao().insert(product(name).copy(stockMode = "COMPONENTS"))
+        val comboLine =
+            saleLine(saleId, comboId, priceListId).copy(stockEffect = "COMPONENTS")
+        val lineId = database.saleLineDao().insert(comboLine)
+        val component = saleLineComponent(lineId, productId)
+        return component.copy(id = database.saleLineComponentDao().insert(component))
     }
 
     /** Guarda una compra con una línea del producto, y devuelve esa línea con su id. */
@@ -133,6 +149,19 @@ internal fun saleLine(
     stockEffect = "DIRECT",
     parentLineId = parentLineId,
     priceListId = priceListId,
+)
+
+/** Lo que consumió de [componentProductId], con libro de stock, una línea de combo: dos unidades. */
+internal fun saleLineComponent(
+    saleLineId: Long,
+    componentProductId: Long,
+): SaleLineComponentEntity = SaleLineComponentEntity(
+    saleLineId = saleLineId,
+    componentProductId = componentProductId,
+    quantityMilli = 2_000,
+    tracked = 1,
+    unitCost = 3_000,
+    lineCost = 6_000,
 )
 
 /** Una compra activa de una caja por 20.000, pagada entera y sin impuesto. */

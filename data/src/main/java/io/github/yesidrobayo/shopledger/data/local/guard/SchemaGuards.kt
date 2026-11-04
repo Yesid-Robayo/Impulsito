@@ -29,12 +29,19 @@ internal object SchemaGuards {
             SUPPLIERS_GUARDS,
             PRODUCTS_GUARDS,
             PRODUCT_PRICE_HISTORY_GUARDS,
+            PRODUCT_COMPONENTS_GUARDS,
+            CUSTOM_FIELD_DEFINITIONS_GUARDS,
+            PRODUCT_CUSTOM_VALUES_GUARDS,
+            TAGS_GUARDS,
+            PRODUCT_TAGS_GUARDS,
+            MEDIA_ASSETS_GUARDS,
             STOCK_MOVEMENTS_GUARDS,
             LOW_STOCK_ALERTS_GUARDS,
             PURCHASES_GUARDS,
             PURCHASE_LINES_GUARDS,
             SALES_GUARDS,
             SALE_LINES_GUARDS,
+            SALE_LINE_COMPONENTS_GUARDS,
             TAX_RATES_GUARDS,
             EXPENSE_CATEGORIES_GUARDS,
             EXPENSES_GUARDS,
@@ -595,9 +602,8 @@ private val SUPPLIERS_GUARDS =
  * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
  * parte de estas guardas que hoy protege menos que su texto completo.
  *
- * Sin las unidades del producto ni los componentes vendidos, ninguna unidad tiene código ni
- * ningún producto se vendió como componente: quitar esas condiciones da lo mismo que tener sus
- * tablas vacías. */
+ * Sin las unidades del producto, ninguna unidad tiene código: quitar esa condición da lo mismo
+ * que tener su tabla vacía. */
 private val PRODUCTS_GUARDS =
     table(
         """
@@ -684,12 +690,6 @@ private val PRODUCTS_GUARDS =
         Awaiting.Line("guard_products_insert", "FROM product_units", listOf("product_units")),
         awaitingCurrencyLock("guard_products_update"),
         Awaiting.Line("guard_products_update", "FROM product_units", listOf("product_units")),
-        Awaiting.Part(
-            "guard_products_update",
-            " AND NOT EXISTS (SELECT 1 FROM sale_line_components c " +
-                "WHERE c.component_product_id = OLD.id)",
-            listOf("sale_line_components"),
-        ),
     )
 
 /** El historial de precios: solo crece, y se borra solo en cascada con su producto. */
@@ -727,6 +727,163 @@ private val PRODUCT_PRICE_HISTORY_GUARDS =
         CREATE TRIGGER guard_product_price_history_no_delete BEFORE DELETE ON product_price_history
         WHEN EXISTS (SELECT 1 FROM products p WHERE p.id = OLD.product_id)
         BEGIN SELECT RAISE(ABORT, 'guard:product_price_history_append_only'); END;
+        """,
+    )
+
+/** Las recetas de los combos: el padre es un combo, nunca su propio componente, y la receta
+ * tiene a lo sumo dos niveles, sin ciclos. Sin consultas recursivas, que SQLite no admite en un
+ * trigger: se comprueban los dos niveles por separado. */
+private val PRODUCT_COMPONENTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_product_components_insert BEFORE INSERT ON product_components
+        WHEN NOT IFNULL((
+          typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND NEW.parent_product_id <> NEW.component_product_id
+          AND EXISTS (SELECT 1 FROM products p WHERE p.id = NEW.parent_product_id AND p.stock_mode = 'COMPONENTS')
+          AND NOT EXISTS (SELECT 1 FROM product_components a JOIN product_components b ON b.parent_product_id = a.component_product_id WHERE a.parent_product_id = NEW.component_product_id)
+          AND NOT (EXISTS (SELECT 1 FROM product_components a WHERE a.component_product_id = NEW.parent_product_id) AND EXISTS (SELECT 1 FROM product_components b WHERE b.parent_product_id = NEW.component_product_id))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_components'); END;
+
+        CREATE TRIGGER guard_product_components_update BEFORE UPDATE ON product_components
+        WHEN NOT IFNULL((
+          typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND NEW.parent_product_id <> NEW.component_product_id
+          AND EXISTS (SELECT 1 FROM products p WHERE p.id = NEW.parent_product_id AND p.stock_mode = 'COMPONENTS')
+          AND NOT EXISTS (SELECT 1 FROM product_components a JOIN product_components b ON b.parent_product_id = a.component_product_id WHERE a.parent_product_id = NEW.component_product_id)
+          AND NOT (EXISTS (SELECT 1 FROM product_components a WHERE a.component_product_id = NEW.parent_product_id) AND EXISTS (SELECT 1 FROM product_components b WHERE b.parent_product_id = NEW.component_product_id))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_components'); END;
+        """,
+    )
+
+/** Los campos propios: nombre con su largo y un tipo conocido. */
+private val CUSTOM_FIELD_DEFINITIONS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_custom_field_definitions_insert BEFORE INSERT ON custom_field_definitions
+        WHEN NOT IFNULL((
+          typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40
+          AND typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40
+          AND NEW.field_type IN ('TEXT', 'NUMBER', 'DATE', 'BOOLEAN')
+          AND typeof(NEW.sort_order) = 'integer'
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:custom_field_definitions'); END;
+
+        CREATE TRIGGER guard_custom_field_definitions_update BEFORE UPDATE ON custom_field_definitions
+        WHEN NOT IFNULL((
+          typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40
+          AND typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40
+          AND NEW.field_type IN ('TEXT', 'NUMBER', 'DATE', 'BOOLEAN')
+          AND typeof(NEW.sort_order) = 'integer'
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:custom_field_definitions'); END;
+        """,
+    )
+
+/** Los valores de los campos propios: texto neutro de 1 a 200 caracteres. */
+private val PRODUCT_CUSTOM_VALUES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_product_custom_values_insert BEFORE INSERT ON product_custom_values
+        WHEN NOT IFNULL((
+          typeof(NEW.value_text) = 'text' AND length(NEW.value_text) BETWEEN 1 AND 200
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_custom_values'); END;
+
+        CREATE TRIGGER guard_product_custom_values_update BEFORE UPDATE ON product_custom_values
+        WHEN NOT IFNULL((
+          typeof(NEW.value_text) = 'text' AND length(NEW.value_text) BETWEEN 1 AND 200
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_custom_values'); END;
+        """,
+    )
+
+/** Las etiquetas: nombre con su largo. */
+private val TAGS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_tags_insert BEFORE INSERT ON tags
+        WHEN NOT IFNULL((
+          typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40
+          AND typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:tags'); END;
+
+        CREATE TRIGGER guard_tags_update BEFORE UPDATE ON tags
+        WHEN NOT IFNULL((
+          typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40
+          AND typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:tags'); END;
+        """,
+    )
+
+/** Los vínculos entre productos y etiquetas: dos ids enteros. */
+private val PRODUCT_TAGS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_product_tags_insert BEFORE INSERT ON product_tags
+        WHEN NOT IFNULL((
+          typeof(NEW.product_id) = 'integer' AND typeof(NEW.tag_id) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_tags'); END;
+
+        CREATE TRIGGER guard_product_tags_update BEFORE UPDATE ON product_tags
+        WHEN NOT IFNULL((
+          typeof(NEW.product_id) = 'integer' AND typeof(NEW.tag_id) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_tags'); END;
+        """,
+    )
+
+/** Las imágenes: un `sha256` en hexadecimal minúsculo, un tipo conocido y medidas dentro de los
+ * límites de lectura. */
+private val MEDIA_ASSETS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_media_assets_insert BEFORE INSERT ON media_assets
+        WHEN NOT IFNULL((
+          length(NEW.sha256) = 64 AND NEW.sha256 NOT GLOB '*[^0-9a-f]*'
+          AND NEW.kind IN ('PRODUCT_PHOTO', 'DOCUMENT_ATTACHMENT', 'PAYMENT_QR', 'BUSINESS_LOGO')
+          AND typeof(NEW.mime_type) = 'text' AND length(NEW.mime_type) BETWEEN 1 AND 40
+          AND typeof(NEW.width_px) = 'integer' AND NEW.width_px BETWEEN 1 AND 20000
+          AND typeof(NEW.height_px) = 'integer' AND NEW.height_px BETWEEN 1 AND 20000
+          AND typeof(NEW.size_bytes) = 'integer' AND NEW.size_bytes BETWEEN 1 AND 2097152
+          AND typeof(NEW.created_at) = 'integer'
+          AND (NEW.orphaned_at IS NULL OR (typeof(NEW.orphaned_at) = 'integer'))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:media_assets'); END;
+
+        CREATE TRIGGER guard_media_assets_update BEFORE UPDATE ON media_assets
+        WHEN NOT IFNULL((
+          length(NEW.sha256) = 64 AND NEW.sha256 NOT GLOB '*[^0-9a-f]*'
+          AND NEW.kind IN ('PRODUCT_PHOTO', 'DOCUMENT_ATTACHMENT', 'PAYMENT_QR', 'BUSINESS_LOGO')
+          AND typeof(NEW.mime_type) = 'text' AND length(NEW.mime_type) BETWEEN 1 AND 40
+          AND typeof(NEW.width_px) = 'integer' AND NEW.width_px BETWEEN 1 AND 20000
+          AND typeof(NEW.height_px) = 'integer' AND NEW.height_px BETWEEN 1 AND 20000
+          AND typeof(NEW.size_bytes) = 'integer' AND NEW.size_bytes BETWEEN 1 AND 2097152
+          AND typeof(NEW.created_at) = 'integer'
+          AND (NEW.orphaned_at IS NULL OR (typeof(NEW.orphaned_at) = 'integer'))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:media_assets'); END;
         """,
     )
 
@@ -1031,6 +1188,31 @@ private val TAX_RATES_GUARDS =
           AND typeof(NEW.updated_at) = 'integer'
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:tax_rates'); END;
+        """,
+    )
+
+/** Los componentes vendidos de un combo: no cambian ni se borran. Son de una línea de combo, y
+ * cada hoja lleva libro de stock si y solo si se marcó así al vender. */
+private val SALE_LINE_COMPONENTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_sale_line_components_insert BEFORE INSERT ON sale_line_components
+        WHEN NOT IFNULL((
+          typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND NEW.tracked IN (0, 1)
+          AND typeof(NEW.unit_cost) = 'integer' AND NEW.unit_cost BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.line_cost) = 'integer' AND NEW.line_cost BETWEEN 0 AND 1000000000000000
+          AND EXISTS (SELECT 1 FROM sale_lines l WHERE l.id = NEW.sale_line_id AND l.stock_effect = 'COMPONENTS')
+          AND EXISTS (SELECT 1 FROM products p WHERE p.id = NEW.component_product_id AND p.stock_mode <> 'COMPONENTS' AND (p.stock_mode = 'TRACKED') = (NEW.tracked = 1))
+          AND NOT EXISTS (SELECT 1 FROM sale_line_components x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_line_components'); END;
+
+        CREATE TRIGGER guard_sale_line_components_no_update BEFORE UPDATE ON sale_line_components
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_line_components_append_only'); END;
+
+        CREATE TRIGGER guard_sale_line_components_no_delete BEFORE DELETE ON sale_line_components
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_line_components_append_only'); END;
         """,
     )
 

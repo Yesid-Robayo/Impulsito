@@ -268,7 +268,6 @@ internal class SchemaGuardsTest : CatalogDatabaseTest() {
         val AWAITING_FOR =
             setOf(
                 "product_units",
-                "sale_line_components",
                 "stock_lots",
                 "sale_returns",
             ) + listOf(

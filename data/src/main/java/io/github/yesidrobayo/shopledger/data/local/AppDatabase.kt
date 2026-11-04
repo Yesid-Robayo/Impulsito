@@ -11,12 +11,22 @@ import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.CategoryDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.CategoryEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.CustomFieldDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.CustomFieldDefinitionEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.MediaAssetDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.MediaAssetEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.PriceHistoryDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.PriceHistoryEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductComponentDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductComponentEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductCustomValueEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductTagEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.TagDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.TagEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseDao
@@ -31,6 +41,8 @@ import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineDao
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentDao
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
 import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsDao
@@ -52,10 +64,12 @@ import kotlin.coroutines.CoroutineContext
  * Por ahora tiene el catálogo (categorías, proveedores, productos y su historial de precios),
  * `price_lists`, las compras y las ventas con sus líneas, el libro de stock y sus alertas, los
  * gastos con sus categorías, las tasas de impuesto, y las filas únicas de los ajustes y del estado
- * del respaldo, que nacen con la base. Room activa las llaves foráneas solo si alguna entidad
- * declara una: sin ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe
- * declarar son guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y
- * la versión no cambia mientras el esquema 1 no se publique.
+ * del respaldo, que nacen con la base. Del catálogo también tiene los combos, los campos propios,
+ * las etiquetas y las imágenes, y de las ventas, los componentes que consumió cada combo vendido.
+ * Room activa las llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana
+ * entraría sin error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards]. Las
+ * demás tablas llegan con las tareas que las crean, y la versión no cambia mientras el esquema 1
+ * no se publique.
  */
 @Database(
     entities = [
@@ -64,10 +78,17 @@ import kotlin.coroutines.CoroutineContext
         SupplierEntity::class,
         ProductEntity::class,
         PriceHistoryEntity::class,
+        CustomFieldDefinitionEntity::class,
+        MediaAssetEntity::class,
+        ProductComponentEntity::class,
+        ProductCustomValueEntity::class,
+        ProductTagEntity::class,
+        TagEntity::class,
         PurchaseEntity::class,
         PurchaseLineEntity::class,
         SaleEntity::class,
         SaleLineEntity::class,
+        SaleLineComponentEntity::class,
         StockMovementEntity::class,
         LowStockAlertEntity::class,
         ExpenseCategoryEntity::class,
@@ -88,6 +109,14 @@ internal abstract class AppDatabase : RoomDatabase() {
 
     abstract fun priceHistoryDao(): PriceHistoryDao
 
+    abstract fun customFieldDao(): CustomFieldDao
+
+    abstract fun mediaAssetDao(): MediaAssetDao
+
+    abstract fun productComponentDao(): ProductComponentDao
+
+    abstract fun tagDao(): TagDao
+
     abstract fun purchaseDao(): PurchaseDao
 
     abstract fun purchaseLineDao(): PurchaseLineDao
@@ -95,6 +124,8 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun saleDao(): SaleDao
 
     abstract fun saleLineDao(): SaleLineDao
+
+    abstract fun saleLineComponentDao(): SaleLineComponentDao
 
     abstract fun stockMovementDao(): StockMovementDao
 

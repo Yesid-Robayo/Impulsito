@@ -141,6 +141,22 @@ internal fun product(
     updatedAt = CREATED_AT,
 )
 
+/**
+ * La fila de una foto de producto de 800 por 600. [hashSeed] es el carácter hexadecimal que se
+ * repite en su `sha256`, para que dos imágenes de una prueba no choquen.
+ */
+internal fun mediaAsset(hashSeed: Char = 'a', orphanedAt: Long? = null): MediaAssetEntity =
+    MediaAssetEntity(
+        sha256 = hashSeed.toString().repeat(64),
+        kind = "PRODUCT_PHOTO",
+        mimeType = "image/webp",
+        widthPx = 800,
+        heightPx = 600,
+        sizeBytes = 48_000,
+        createdAt = CREATED_AT,
+        orphanedAt = orphanedAt,
+    )
+
 /** Un cambio de precio manual, el más común: con precio anterior y sin lote. */
 internal fun manualChange(
     productId: Long,

@@ -5,8 +5,10 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import androidx.room3.RoomWarnings
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineEntity
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
 
 /**
@@ -33,11 +35,13 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
  * - `business_date` de un compensatorio es la fecha de la anulación, no la del original.
  * - Producto, fila anulada, línea de venta y línea de compra usan `RESTRICT`: un producto o una
  *   línea con filas en el libro no se borran.
- * - `location_id`, `lot_id`, `sale_line_component_id`, `sale_return_line_id`,
- *   `purchase_return_line_id`, `transfer_line_id`, `production_batch_id` y `count_session_id`
- *   todavía no tienen llave foránea: sus tablas no existen aún. La llave, con `RESTRICT`, llega con
+ * - El componente de un combo también usa `RESTRICT`, sin índice: nunca se borra, y sus filas se
+ *   alcanzan por la línea de venta.
+ * - `location_id`, `lot_id`, `sale_return_line_id`, `purchase_return_line_id`,
+ *   `transfer_line_id`, `production_batch_id` y `count_session_id` todavía no tienen llave foránea: sus tablas no existen aún. La llave, con `RESTRICT`, llega con
  *   la tabla a la que apunta, dentro del mismo esquema 1.
  */
+@Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
     tableName = "stock_movements",
     foreignKeys = [
@@ -63,6 +67,12 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
             entity = PurchaseLineEntity::class,
             parentColumns = ["id"],
             childColumns = ["purchase_line_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = SaleLineComponentEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sale_line_component_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

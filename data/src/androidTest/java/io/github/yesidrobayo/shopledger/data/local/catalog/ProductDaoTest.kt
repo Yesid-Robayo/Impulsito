@@ -25,6 +25,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
         val supplierId = database.supplierDao().insert(supplier("Distribuidora Andina"))
         val taxRateId = database.taxRateDao().insert(taxRate("General", rateBp = 2_100))
         val parentId = products.insert(product("Camiseta"))
+        val photoId = database.mediaAssetDao().insert(mediaAsset())
         // Cada columna con un valor distinto, para que dos columnas cruzadas no pasen.
         val variant =
             ProductEntity(
@@ -47,7 +48,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
                 variantAxis2 = "Talla",
                 variantValue1 = "Rojo",
                 variantValue2 = "M",
-                photoMediaId = 77,
+                photoMediaId = photoId,
                 taxRateId = taxRateId,
                 replacementCost = 22_000,
                 replacementCostAt = LATER,
@@ -160,6 +161,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
     fun editingDetailsNeverTouchesPriceCostsOrStock() = runBlocking {
         val categoryId = database.categoryDao().insert(category("Granos"))
         val taxRateId = database.taxRateDao().insert(taxRate("Reducida", rateBp = 500))
+        val photoId = database.mediaAssetDao().insert(mediaAsset())
         val id = products.insert(product("Lenteja"))
         // Lo que dejaron el libro de stock, el historial de precios y el archivado.
         products.updateStockState(
@@ -197,7 +199,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
                 variantAxis2 = null,
                 variantValue1 = "500 g",
                 variantValue2 = null,
-                photoMediaId = 9,
+                photoMediaId = photoId,
                 taxRateId = taxRateId,
                 targetMarginBp = 3_000,
                 referenceCost = 80,
@@ -218,7 +220,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
                 barcode = "7702",
                 variantAxis1 = "Peso",
                 variantValue1 = "500 g",
-                photoMediaId = 9,
+                photoMediaId = photoId,
                 taxRateId = taxRateId,
                 targetMarginBp = 3_000,
                 referenceCost = 80,

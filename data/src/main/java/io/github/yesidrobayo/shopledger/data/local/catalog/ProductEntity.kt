@@ -22,10 +22,10 @@ import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateEntity
  *   impone la guarda de la tabla.
  * - Al eliminar su categoría o su proveedor habitual, el producto queda sin ellos. Un producto
  *   padre no se borra mientras tenga variantes.
- * - `base_unit_id` y `photo_media_id` todavía no tienen llave foránea: sus tablas no existen aún.
- *   La llave, con `RESTRICT` para la unidad y `SET NULL` para la foto, llega con la tabla a la que
- *   apunta, dentro del mismo esquema 1. Sus índices ya están.
+ * - Al borrar su foto, el producto queda sin ella: la imagen no es historia del producto.
  * - Al eliminar su tasa de impuesto, el producto queda sin tasa, y sus ventas guardan su copia.
+ * - `base_unit_id` todavía no tiene llave foránea: la tabla de unidades no existe aún. La llave,
+ *   con `RESTRICT`, llega con ella, dentro del mismo esquema 1. Su índice ya está.
  */
 @Entity(
     tableName = "products",
@@ -52,6 +52,12 @@ import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateEntity
             entity = TaxRateEntity::class,
             parentColumns = ["id"],
             childColumns = ["tax_rate_id"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+        ForeignKey(
+            entity = MediaAssetEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["photo_media_id"],
             onDelete = ForeignKey.SET_NULL,
         ),
     ],

@@ -63,14 +63,14 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         // necesita import.
         val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
         val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
-        // El libro de stock y las líneas de venta y de compra solo crecen: ningún DAO los edita ni los borra, porque el saldo, el
-        // costo y lo vendido salen de ellos. Una venta o una compra tampoco se borran: solo se anulan. Un INSERT OR REPLACE borra
-        // la fila que choca sin pasar por la guarda de borrado.
+        // El libro de stock, las líneas de venta y de compra y los componentes de un combo vendido solo crecen: ningún DAO los edita
+        // ni los borra, porque el saldo, el costo y lo vendido salen de ellos. Una venta o una compra tampoco se borran: solo se anulan. Un
+        // INSERT OR REPLACE borra la fila que choca sin pasar por la guarda de borrado.
         val dataMain = Regex("""^data/src/main/""")
-        val ledgerEdit = Regex("""\b[U]PDATE(\s+OR\s+[A-Z]+)?\s+(stock_movements|sale_lines|purchase_lines)\b""", RegexOption.IGNORE_CASE)
+        val ledgerEdit = Regex("""\b[U]PDATE(\s+OR\s+[A-Z]+)?\s+(stock_movements|sale_lines|purchase_lines|sale_line_components)\b""", RegexOption.IGNORE_CASE)
         val ledgerRemoval =
             Regex(
-                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(stock_movements|sale_lines|purchase_lines|sales|purchases)\b""",
+                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(stock_movements|sale_lines|purchase_lines|sale_line_components|sales|purchases)\b""",
                 RegexOption.IGNORE_CASE,
             )
         // Un gasto tampoco se borra: solo se anula. Los ajustes y el estado del respaldo son una sola fila que nace con la base: sin
