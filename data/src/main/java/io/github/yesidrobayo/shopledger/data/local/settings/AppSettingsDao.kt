@@ -90,6 +90,31 @@ internal interface AppSettingsDao {
     )
     suspend fun lockCurrency(lockedAt: Long): Int
 
+    /**
+     * Cambia la zona del negocio a [zoneId], un identificador IANA. Es un dato del negocio, así que
+     * va dentro de la transacción del caso de uso y cuenta como cambio.
+     *
+     * Solo cambia esta columna: ninguna fecha de negocio ya escrita se recalcula, porque cada
+     * registro guardó la suya con la zona vigente al escribirlo. Solo los registros nuevos usan la
+     * zona nueva.
+     */
+    @Query(
+        "UPDATE app_settings SET business_time_zone = :zoneId, updated_at = :updatedAt " +
+            "WHERE id = 1",
+    )
+    suspend fun updateBusinessTimeZone(zoneId: String, updatedAt: Long): Int
+
+    /**
+     * Cambia el primer día de las semanas de los reportes, de 1, lunes, a 7, domingo. Como la zona,
+     * es un dato del negocio y va dentro de la transacción del caso de uso. Solo cambia cómo se
+     * agrupan los reportes: ninguna fila guarda su semana.
+     */
+    @Query(
+        "UPDATE app_settings SET week_start_day = :weekStartDay, updated_at = :updatedAt " +
+            "WHERE id = 1",
+    )
+    suspend fun updateWeekStartDay(weekStartDay: Long, updatedAt: Long): Int
+
     /** Marca el fin del primer uso en [completedAt], que también queda como último cambio. */
     @Query(
         "UPDATE app_settings SET onboarding_completed_at = :completedAt, " +
