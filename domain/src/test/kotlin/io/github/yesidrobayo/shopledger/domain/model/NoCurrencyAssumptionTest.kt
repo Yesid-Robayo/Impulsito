@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.model
 
+import io.github.yesidrobayo.shopledger.domain.rule.CashRounding
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.PriceSuggestion
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
@@ -66,6 +67,7 @@ class NoCurrencyAssumptionTest {
                 ProfitSummary::class.java.name,
                 MarginCalculator::class.java.name,
                 PriceSuggestion.Suggested::class.java.name,
+                CashRounding::class.java.name,
                 "$MODEL.MoneyKt",
                 "$MODEL.CheckedKt",
                 "$RULE.IntegerRoundingKt",
