@@ -91,13 +91,16 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                     ),
                 "stock_movements" to
                     listOf(
+                        "count_session_id -> count_sessions RESTRICT",
                         "location_id -> locations RESTRICT",
                         "lot_id -> stock_lots RESTRICT",
                         "product_id -> products RESTRICT",
+                        "production_batch_id -> production_batches RESTRICT",
                         "purchase_line_id -> purchase_lines RESTRICT",
                         "reverses_movement_id -> stock_movements RESTRICT",
                         "sale_line_component_id -> sale_line_components RESTRICT",
                         "sale_line_id -> sale_lines RESTRICT",
+                        "transfer_line_id -> stock_transfer_lines RESTRICT",
                     ),
             )
 

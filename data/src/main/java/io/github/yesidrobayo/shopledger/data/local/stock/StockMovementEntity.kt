@@ -38,9 +38,11 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
  *   borran, y las filas de un producto se encuentran por `product_id`.
  * - El componente de un combo también usa `RESTRICT`, sin índice: nunca se borra, y sus filas se
  *   alcanzan por la línea de venta.
- * - `sale_return_line_id`, `purchase_return_line_id`, `transfer_line_id`, `production_batch_id` y
- *   `count_session_id` todavía no tienen llave foránea: sus tablas no existen aún. La llave, con
- *   `RESTRICT`, llega con la tabla a la que apunta, dentro del mismo esquema 1.
+ * - La línea de transferencia, el lote de producción y la sesión de conteo también usan
+ *   `RESTRICT` sin índice: las filas de un documento se encuentran por `product_id`.
+ * - `sale_return_line_id` y `purchase_return_line_id` todavía no tienen llave foránea: sus tablas no
+ *   existen aún. La llave, con `RESTRICT`, llega con la tabla a la que apunta, dentro del mismo
+ *   esquema 1.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -86,6 +88,24 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
             entity = StockLotEntity::class,
             parentColumns = ["id"],
             childColumns = ["lot_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = StockTransferLineEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["transfer_line_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = ProductionBatchEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["production_batch_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = CountSessionEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["count_session_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

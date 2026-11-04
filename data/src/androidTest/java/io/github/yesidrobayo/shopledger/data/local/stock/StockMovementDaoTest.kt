@@ -53,6 +53,61 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
         database.stockLotDao().insert(lot(lotProductId, "Q-2026-01").copy(id = 41))
         database.locationDao().insert(location("Bodega").copy(id = 2))
         database.locationDao().insert(location("Puesto de feria", kind = "STALL").copy(id = 3))
+        // La línea de transferencia, el lote de producción y la sesión de conteo, también.
+        val transferId =
+            database.stockTransferDao().insert(
+                StockTransferEntity(
+                    fromLocationId = 3,
+                    toLocationId = 2,
+                    note = null,
+                    occurredAt = CREATED_AT,
+                    businessDate = "2026-01-01",
+                    createdAt = CREATED_AT,
+                    status = "ACTIVE",
+                    voidedAt = null,
+                    voidReason = null,
+                    voidNote = null,
+                ),
+            )
+        database.stockTransferDao().insertLine(
+            StockTransferLineEntity(
+                id = 91,
+                transferId = transferId,
+                productId = productId,
+                lotId = null,
+                quantityMilli = 200,
+            ),
+        )
+        database.productionBatchDao().insert(
+            ProductionBatchEntity(
+                id = 101,
+                productId = productId,
+                locationId = MAIN_LOCATION_ID,
+                quantityMilli = 4_000,
+                totalCost = 10_400,
+                note = null,
+                occurredAt = CREATED_AT,
+                businessDate = "2026-01-01",
+                createdAt = CREATED_AT,
+                status = "ACTIVE",
+                voidedAt = null,
+                voidReason = null,
+                voidNote = null,
+            ),
+        )
+        database.countSessionDao().insert(
+            CountSessionEntity(
+                id = 61,
+                status = "OPEN",
+                isBlind = 0,
+                locationId = MAIN_LOCATION_ID,
+                categoryId = null,
+                note = null,
+                startedAt = CREATED_AT,
+                finishedAt = null,
+                businessDate = "2026-01-01",
+            ),
+        )
         val rows =
             listOf(
                 movement(lotProductId, "PURCHASE", 12_000, 1_667, 20_000, 12_000, 1_668, 20_001)

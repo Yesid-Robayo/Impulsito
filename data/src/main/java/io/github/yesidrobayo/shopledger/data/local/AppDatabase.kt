@@ -79,16 +79,25 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
 import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsDao
 import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.CountSessionDao
+import io.github.yesidrobayo.shopledger.data.local.stock.CountSessionEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.CountSessionLineEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.LocationDao
 import io.github.yesidrobayo.shopledger.data.local.stock.LocationEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.LowStockAlertDao
 import io.github.yesidrobayo.shopledger.data.local.stock.LowStockAlertEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.ProductionBatchDao
+import io.github.yesidrobayo.shopledger.data.local.stock.ProductionBatchEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.ProductionBatchLineEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.StockBalanceDao
 import io.github.yesidrobayo.shopledger.data.local.stock.StockBalanceEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.StockLotDao
 import io.github.yesidrobayo.shopledger.data.local.stock.StockLotEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementDao
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.StockTransferDao
+import io.github.yesidrobayo.shopledger.data.local.stock.StockTransferEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.StockTransferLineEntity
 import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateDao
 import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateEntity
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -132,6 +141,12 @@ import kotlin.coroutines.CoroutineContext
         SaleLineComponentEntity::class,
         SaleLineEntity::class,
         StockBalanceEntity::class,
+        StockTransferLineEntity::class,
+        StockTransferEntity::class,
+        ProductionBatchLineEntity::class,
+        ProductionBatchEntity::class,
+        CountSessionEntity::class,
+        CountSessionLineEntity::class,
         StockLotEntity::class,
         ProductEntity::class,
         UnitEntity::class,
@@ -202,6 +217,12 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun stockLotDao(): StockLotDao
 
     abstract fun locationDao(): LocationDao
+
+    abstract fun stockTransferDao(): StockTransferDao
+
+    abstract fun productionBatchDao(): ProductionBatchDao
+
+    abstract fun countSessionDao(): CountSessionDao
 
     abstract fun lowStockAlertDao(): LowStockAlertDao
 

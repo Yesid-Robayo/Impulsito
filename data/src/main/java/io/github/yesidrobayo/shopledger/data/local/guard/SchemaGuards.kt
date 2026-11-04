@@ -41,6 +41,12 @@ internal object SchemaGuards {
             STOCK_BALANCES_GUARDS,
             STOCK_LOTS_GUARDS,
             LOCATIONS_GUARDS,
+            STOCK_TRANSFERS_GUARDS,
+            STOCK_TRANSFER_LINES_GUARDS,
+            PRODUCTION_BATCHES_GUARDS,
+            PRODUCTION_BATCH_LINES_GUARDS,
+            COUNT_SESSIONS_GUARDS,
+            COUNT_SESSION_LINES_GUARDS,
             LOW_STOCK_ALERTS_GUARDS,
             PURCHASES_GUARDS,
             PURCHASE_LINES_GUARDS,
@@ -1145,6 +1151,165 @@ private val LOCATIONS_GUARDS =
         CREATE TRIGGER guard_locations_no_delete BEFORE DELETE ON locations
         WHEN OLD.system_key = 'MAIN'
         BEGIN SELECT RAISE(ABORT, 'guard:locations_system'); END;
+        """,
+    )
+
+/** Las transferencias: nacen activas entre dos ubicaciones distintas, y solo cambian al anularse,
+ * una vez. */
+private val STOCK_TRANSFERS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_stock_transfers_insert BEFORE INSERT ON stock_transfers
+        WHEN NOT IFNULL((
+          NEW.status = 'ACTIVE' AND NEW.voided_at IS NULL AND NEW.void_reason IS NULL AND NEW.void_note IS NULL
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND NEW.from_location_id <> NEW.to_location_id
+          AND NOT EXISTS (SELECT 1 FROM stock_transfers x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_transfers'); END;
+
+        CREATE TRIGGER guard_stock_transfers_void_only BEFORE UPDATE ON stock_transfers
+        WHEN NOT IFNULL((
+          OLD.status = 'ACTIVE' AND NEW.status = 'VOIDED' AND NEW.voided_at IS NOT NULL
+          AND NEW.void_reason IN ('ENTRY_ERROR', 'UNDO', 'OTHER')
+          AND (NEW.void_note IS NULL OR length(NEW.void_note) <= 200)
+          AND NEW.id IS OLD.id AND NEW.from_location_id IS OLD.from_location_id AND NEW.to_location_id IS OLD.to_location_id AND NEW.note IS OLD.note AND NEW.occurred_at IS OLD.occurred_at AND NEW.business_date IS OLD.business_date
+          AND NEW.created_at IS OLD.created_at
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_transfers_void_only'); END;
+
+        CREATE TRIGGER guard_stock_transfers_no_delete BEFORE DELETE ON stock_transfers
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_transfers_no_delete'); END;
+        """,
+    )
+
+/** Las líneas de una transferencia: una cantidad positiva, que no cambia nunca. */
+private val STOCK_TRANSFER_LINES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_stock_transfer_lines_insert BEFORE INSERT ON stock_transfer_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND NOT EXISTS (SELECT 1 FROM stock_transfer_lines x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_transfer_lines'); END;
+
+        CREATE TRIGGER guard_stock_transfer_lines_no_update BEFORE UPDATE ON stock_transfer_lines
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_transfer_lines_append_only'); END;
+
+        CREATE TRIGGER guard_stock_transfer_lines_no_delete BEFORE DELETE ON stock_transfer_lines
+        BEGIN SELECT RAISE(ABORT, 'guard:stock_transfer_lines_append_only'); END;
+        """,
+    )
+
+/** Los lotes de producción: nacen activos, y solo cambian al anularse, una vez. */
+private val PRODUCTION_BATCHES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_production_batches_insert BEFORE INSERT ON production_batches
+        WHEN NOT IFNULL((
+          NEW.status = 'ACTIVE' AND NEW.voided_at IS NULL AND NEW.void_reason IS NULL AND NEW.void_note IS NULL
+          AND typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.total_cost) = 'integer' AND NEW.total_cost BETWEEN 0 AND 1000000000000000
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND NOT EXISTS (SELECT 1 FROM production_batches x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:production_batches'); END;
+
+        CREATE TRIGGER guard_production_batches_void_only BEFORE UPDATE ON production_batches
+        WHEN NOT IFNULL((
+          OLD.status = 'ACTIVE' AND NEW.status = 'VOIDED' AND NEW.voided_at IS NOT NULL
+          AND NEW.void_reason IN ('ENTRY_ERROR', 'UNDO', 'OTHER')
+          AND (NEW.void_note IS NULL OR length(NEW.void_note) <= 200)
+          AND NEW.id IS OLD.id AND NEW.product_id IS OLD.product_id AND NEW.location_id IS OLD.location_id AND NEW.quantity_milli IS OLD.quantity_milli AND NEW.total_cost IS OLD.total_cost AND NEW.note IS OLD.note
+          AND NEW.occurred_at IS OLD.occurred_at AND NEW.business_date IS OLD.business_date AND NEW.created_at IS OLD.created_at
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:production_batches_void_only'); END;
+
+        CREATE TRIGGER guard_production_batches_no_delete BEFORE DELETE ON production_batches
+        BEGIN SELECT RAISE(ABORT, 'guard:production_batches_no_delete'); END;
+        """,
+    )
+
+/** Los insumos de producción: cantidad y costos enteros dentro de sus topes, que no cambian nunca. */
+private val PRODUCTION_BATCH_LINES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_production_batch_lines_insert BEFORE INSERT ON production_batch_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.quantity_milli) = 'integer' AND NEW.quantity_milli BETWEEN 1 AND 1000000000
+          AND typeof(NEW.unit_cost) = 'integer' AND NEW.unit_cost BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.line_cost) = 'integer' AND NEW.line_cost BETWEEN 0 AND 1000000000000000
+          AND NOT EXISTS (SELECT 1 FROM production_batch_lines x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:production_batch_lines'); END;
+
+        CREATE TRIGGER guard_production_batch_lines_no_update BEFORE UPDATE ON production_batch_lines
+        BEGIN SELECT RAISE(ABORT, 'guard:production_batch_lines_append_only'); END;
+
+        CREATE TRIGGER guard_production_batch_lines_no_delete BEFORE DELETE ON production_batch_lines
+        BEGIN SELECT RAISE(ABORT, 'guard:production_batch_lines_append_only'); END;
+        """,
+    )
+
+/** Las sesiones de conteo: nacen abiertas, y solo una abierta cambia o se cierra, con su instante. */
+private val COUNT_SESSIONS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_count_sessions_insert BEFORE INSERT ON count_sessions
+        WHEN NOT IFNULL((
+          NEW.status IN ('OPEN', 'APPLIED', 'CANCELLED')
+          AND NEW.is_blind IN (0, 1)
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.started_at) = 'integer'
+          AND (NEW.finished_at IS NULL OR (typeof(NEW.finished_at) = 'integer'))
+          AND date(NEW.business_date) = NEW.business_date
+          AND NEW.status = 'OPEN'
+          AND NEW.finished_at IS NULL
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:count_sessions'); END;
+
+        CREATE TRIGGER guard_count_sessions_update BEFORE UPDATE ON count_sessions
+        WHEN NOT IFNULL((
+          NEW.status IN ('OPEN', 'APPLIED', 'CANCELLED')
+          AND NEW.is_blind IN (0, 1)
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.started_at) = 'integer'
+          AND (NEW.finished_at IS NULL OR (typeof(NEW.finished_at) = 'integer'))
+          AND date(NEW.business_date) = NEW.business_date
+          AND NEW.id = OLD.id AND NEW.location_id = OLD.location_id AND NEW.is_blind = OLD.is_blind AND NEW.started_at = OLD.started_at
+          AND (OLD.status = 'OPEN' OR (NEW.status = OLD.status AND NEW.finished_at IS OLD.finished_at))
+          AND (NEW.status = 'OPEN') = (NEW.finished_at IS NULL)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:count_sessions'); END;
+        """,
+    )
+
+/** Lo contado en cada sesión: solo cambia con la sesión abierta. */
+private val COUNT_SESSION_LINES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_count_session_lines_insert BEFORE INSERT ON count_session_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.expected_milli) = 'integer'
+          AND (NEW.counted_milli IS NULL OR (typeof(NEW.counted_milli) = 'integer' AND NEW.counted_milli BETWEEN 0 AND 8000000000))
+          AND EXISTS (SELECT 1 FROM count_sessions c WHERE c.id = NEW.count_session_id AND c.status = 'OPEN')
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:count_session_lines'); END;
+
+        CREATE TRIGGER guard_count_session_lines_update BEFORE UPDATE ON count_session_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.expected_milli) = 'integer'
+          AND (NEW.counted_milli IS NULL OR (typeof(NEW.counted_milli) = 'integer' AND NEW.counted_milli BETWEEN 0 AND 8000000000))
+          AND EXISTS (SELECT 1 FROM count_sessions c WHERE c.id = NEW.count_session_id AND c.status = 'OPEN')
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:count_session_lines'); END;
         """,
     )
 

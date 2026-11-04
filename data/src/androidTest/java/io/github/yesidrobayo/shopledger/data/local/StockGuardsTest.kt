@@ -218,17 +218,6 @@ internal class StockGuardsTest : GuardProbeTest() {
         "closed_at" to null,
     )
 
-    /** Una ubicación que creó la persona: con nombre y sin clave inicial. */
-    private fun locationRow(name: String): Row = row(
-        "system_key" to null,
-        "name" to name,
-        "normalized_name" to name,
-        "kind" to "WAREHOUSE",
-        "archived_at" to null,
-        "created_at" to CREATED_AT,
-        "updated_at" to CREATED_AT,
-    )
-
     private companion object {
         const val BALANCES = "guard:stock_balances"
         const val LOTS = "guard:stock_lots"
