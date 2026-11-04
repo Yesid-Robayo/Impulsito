@@ -250,54 +250,14 @@ internal class SchemaGuardsTest : CatalogDatabaseTest() {
         const val BROKEN_GUARD_SQL =
             "CREATE TRIGGER guard_missing_insert BEFORE INSERT ON missing BEGIN SELECT 1; END;"
 
-        /** Las guardas que hoy se instalan sin una parte, porque falta lo que nombran. */
-        val AWAITING =
-            setOf(
-                "guard_app_settings_insert",
-                "guard_app_settings_update",
-                "guard_products_insert",
-                "guard_products_update",
-                "guard_purchases_insert",
-                "guard_sales_insert",
-                "guard_customer_ledger_entries_insert",
-                "guard_money_movements_insert",
-                "guard_supplier_ledger_entries_insert",
-                "guard_expenses_insert",
-            )
+        /**
+         * Las guardas que hoy se instalan sin una parte, porque falta lo que nombran: ninguna, con
+         * el esquema 1 completo. Una guarda nueva que espere algo se suma aquí, con lo que espera.
+         */
+        val AWAITING = emptySet<String>()
 
-        /** Lo que esperan: columnas de los ajustes que llegan con la región. */
-        val AWAITING_FOR =
-            setOf(
-                "currency_code",
-                "currency_decimals",
-                "currency_symbol",
-                "currency_locked_at",
-                "cash_rounding",
-                "format_locale",
-                "business_time_zone",
-                "week_start_day",
-                "csv_separator",
-                "tax_mode",
-                "purchase_tax_recoverable",
-                "default_rounding_step",
-                "tips_enabled",
-                "reference_currency_code",
-                "reference_currency_decimals",
-                "cost_stale_days",
-                "expiry_notice_days",
-                "loyalty_enabled",
-                "loyalty_amount_per_point",
-                "loyalty_point_value",
-                "revenue_limit_amount",
-                "revenue_limit_months",
-                "daily_summary_time",
-                "receipt_business_details",
-                "receipt_footer_text",
-                "fiscal_portal_url",
-                "discreet_mode_enabled",
-                "media_on_metered",
-                "update_check_enabled",
-            ).map { "app_settings.$it" }.toSet()
+        /** Lo que esperan esas guardas, como `tabla` o `tabla.columna`. */
+        val AWAITING_FOR = emptySet<String>()
     }
 }
 

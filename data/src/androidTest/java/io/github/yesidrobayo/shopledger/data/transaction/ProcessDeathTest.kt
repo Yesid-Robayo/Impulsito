@@ -14,6 +14,7 @@ import androidx.room3.useWriterConnection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.confirmTestCurrency
 import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.insertPriceListSql
 import io.github.yesidrobayo.shopledger.data.local.longValue
@@ -58,6 +59,8 @@ internal class ProcessDeathTest {
         ready.delete()
         // Se cierra antes de empezar: mientras el otro proceso escribe, este no tiene la base.
         withDatabase { database ->
+            // Un negocio que ya guarda dinero: con la moneda confirmada y bloqueada.
+            database.confirmTestCurrency(CURRENCY_LOCKED_AT)
             database.useWriterConnection {
                 it.executeSQL(insertPriceListSql("default", "FIXED", basePriceListId = null))
             }
@@ -208,6 +211,9 @@ internal class ProcessDeathTest {
 
     private companion object {
         const val LOG_TAG = "ProcessDeathTest"
+
+        /** Un instante fijo cualquiera, en milisegundos UTC. */
+        const val CURRENCY_LOCKED_AT = 1_767_225_600_000L
         const val SPILL_LINES = 300
 
         /** El nombre del proceso del servicio, como lo declara el manifiesto de pruebas. */

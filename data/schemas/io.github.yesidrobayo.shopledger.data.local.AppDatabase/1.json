@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "2da2b85f54c9c269aaadff167595d5f8",
+    "identityHash": "0f811f344dbaf50999b8ff9ca3d2b59a",
     "entities": [
       {
         "tableName": "categories",
@@ -3025,7 +3025,7 @@
       },
       {
         "tableName": "app_settings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `business_name` TEXT, `default_target_margin_bp` INTEGER NOT NULL, `low_stock_notifications_enabled` INTEGER NOT NULL, `theme_mode` TEXT NOT NULL, `color_palette` TEXT NOT NULL, `app_lock_enabled` INTEGER NOT NULL, `app_lock_timeout_seconds` INTEGER NOT NULL, `metered_backup_policy` TEXT NOT NULL, `onboarding_completed_at` INTEGER, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `business_name` TEXT, `default_target_margin_bp` INTEGER NOT NULL, `low_stock_notifications_enabled` INTEGER NOT NULL, `theme_mode` TEXT NOT NULL, `color_palette` TEXT NOT NULL, `app_lock_enabled` INTEGER NOT NULL, `app_lock_timeout_seconds` INTEGER NOT NULL, `metered_backup_policy` TEXT NOT NULL, `onboarding_completed_at` INTEGER, `currency_code` TEXT NOT NULL, `currency_decimals` INTEGER NOT NULL, `currency_symbol` TEXT, `currency_locked_at` INTEGER, `cash_rounding` INTEGER NOT NULL, `format_locale` TEXT NOT NULL, `business_time_zone` TEXT NOT NULL, `week_start_day` INTEGER NOT NULL, `csv_separator` TEXT NOT NULL, `tax_mode` TEXT NOT NULL, `default_tax_rate_id` INTEGER, `purchase_tax_recoverable` INTEGER NOT NULL, `default_rounding_step` INTEGER NOT NULL, `tips_enabled` INTEGER NOT NULL, `reference_currency_code` TEXT, `reference_currency_decimals` INTEGER, `cost_stale_days` INTEGER NOT NULL, `expiry_notice_days` INTEGER NOT NULL, `loyalty_enabled` INTEGER NOT NULL, `loyalty_amount_per_point` INTEGER, `loyalty_point_value` INTEGER, `revenue_limit_amount` INTEGER, `revenue_limit_months` INTEGER, `daily_summary_time` TEXT, `receipt_logo_media_id` INTEGER, `receipt_business_details` TEXT, `receipt_footer_text` TEXT, `fiscal_portal_url` TEXT, `discreet_mode_enabled` INTEGER NOT NULL, `media_on_metered` INTEGER NOT NULL, `update_check_enabled` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`default_tax_rate_id`) REFERENCES `tax_rates`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`receipt_logo_media_id`) REFERENCES `media_assets`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "id",
@@ -3086,6 +3086,178 @@
             "affinity": "INTEGER"
           },
           {
+            "fieldPath": "currencyCode",
+            "columnName": "currency_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currencyDecimals",
+            "columnName": "currency_decimals",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currencySymbol",
+            "columnName": "currency_symbol",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "currencyLockedAt",
+            "columnName": "currency_locked_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "cashRounding",
+            "columnName": "cash_rounding",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "formatLocale",
+            "columnName": "format_locale",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "businessTimeZone",
+            "columnName": "business_time_zone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weekStartDay",
+            "columnName": "week_start_day",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "csvSeparator",
+            "columnName": "csv_separator",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxMode",
+            "columnName": "tax_mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "defaultTaxRateId",
+            "columnName": "default_tax_rate_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "purchaseTaxRecoverable",
+            "columnName": "purchase_tax_recoverable",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "defaultRoundingStep",
+            "columnName": "default_rounding_step",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipsEnabled",
+            "columnName": "tips_enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referenceCurrencyCode",
+            "columnName": "reference_currency_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "referenceCurrencyDecimals",
+            "columnName": "reference_currency_decimals",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "costStaleDays",
+            "columnName": "cost_stale_days",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiryNoticeDays",
+            "columnName": "expiry_notice_days",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "loyaltyEnabled",
+            "columnName": "loyalty_enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "loyaltyAmountPerPoint",
+            "columnName": "loyalty_amount_per_point",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "loyaltyPointValue",
+            "columnName": "loyalty_point_value",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "revenueLimitAmount",
+            "columnName": "revenue_limit_amount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "revenueLimitMonths",
+            "columnName": "revenue_limit_months",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dailySummaryTime",
+            "columnName": "daily_summary_time",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "receiptLogoMediaId",
+            "columnName": "receipt_logo_media_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "receiptBusinessDetails",
+            "columnName": "receipt_business_details",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "receiptFooterText",
+            "columnName": "receipt_footer_text",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fiscalPortalUrl",
+            "columnName": "fiscal_portal_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "discreetModeEnabled",
+            "columnName": "discreet_mode_enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaOnMetered",
+            "columnName": "media_on_metered",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updateCheckEnabled",
+            "columnName": "update_check_enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "updatedAt",
             "columnName": "updated_at",
             "affinity": "INTEGER",
@@ -3097,7 +3269,31 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "foreignKeys": [
+          {
+            "table": "tax_rates",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "default_tax_rate_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "media_assets",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "receipt_logo_media_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       },
       {
         "tableName": "backup_state",
@@ -7904,7 +8100,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2da2b85f54c9c269aaadff167595d5f8')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0f811f344dbaf50999b8ff9ca3d2b59a')"
     ]
   }
 }

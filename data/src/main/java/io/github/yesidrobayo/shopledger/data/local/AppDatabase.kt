@@ -383,14 +383,17 @@ internal abstract class AppDatabase : RoomDatabase() {
          * @param databaseFile ruta absoluta del archivo de la base.
          * @param queryContext contexto de las consultas, fuera del hilo principal.
          * @param clock reloj de las filas que nacen con la base, si esta la crea.
+         * @param initialRegion formato, zona y semana con que nacen los ajustes, si la base se
+         *   crea. Solo se lee entonces, y por defecto sale del sistema del teléfono.
          */
         suspend fun open(
             context: Context,
             databaseFile: File,
             queryContext: CoroutineContext,
             clock: Clock = SystemClock,
+            initialRegion: () -> InitialRegion = InitialRegion::ofSystem,
         ): AppDatabase {
-            val database = build(context, databaseFile, queryContext, clock)
+            val database = build(context, databaseFile, queryContext, clock, initialRegion)
             try {
                 database.useWriterConnection { it.executeSQL("PRAGMA synchronous = FULL") }
             } catch (failure: Throwable) {
@@ -431,12 +434,15 @@ internal abstract class AppDatabase : RoomDatabase() {
          * @param databaseFile ruta absoluta del archivo de la base.
          * @param queryContext contexto de las consultas, fuera del hilo principal.
          * @param clock reloj de las filas que nacen con la base, si esta la crea.
+         * @param initialRegion formato, zona y semana con que nacen los ajustes, si la base se
+         *   crea. Solo se lee entonces, y por defecto sale del sistema del teléfono.
          */
         fun build(
             context: Context,
             databaseFile: File,
             queryContext: CoroutineContext,
             clock: Clock = SystemClock,
+            initialRegion: () -> InitialRegion = InitialRegion::ofSystem,
         ): AppDatabase {
             require(databaseFile.isAbsolute) { "La ruta de la base debe ser absoluta" }
             return Room
@@ -446,7 +452,7 @@ internal abstract class AppDatabase : RoomDatabase() {
                 .setQueryCoroutineContext(queryContext)
                 .addMigrations(*AppMigrations.all.toTypedArray())
                 .addCallback(SchemaGuardsCallback)
-                .addCallback(InitialRowsCallback(clock))
+                .addCallback(InitialRowsCallback(clock, initialRegion))
                 .build()
         }
     }

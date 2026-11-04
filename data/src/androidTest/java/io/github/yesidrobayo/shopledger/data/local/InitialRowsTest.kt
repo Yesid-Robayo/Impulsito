@@ -6,13 +6,20 @@ import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.CREATED_AT
 import io.github.yesidrobayo.shopledger.data.local.catalog.CatalogDatabaseTest
 import io.github.yesidrobayo.shopledger.data.local.catalog.FIXED_CLOCK
+import io.github.yesidrobayo.shopledger.data.local.catalog.FIXED_REGION
+import io.github.yesidrobayo.shopledger.data.local.catalog.FOREIGN_KEY
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
+import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
+import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
+import io.github.yesidrobayo.shopledger.data.local.catalog.mediaAsset
 import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsEntity
+import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateEntity
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,30 +31,54 @@ import org.junit.runner.RunWith
  * Las filas se crean una sola vez, cuando Room crea la base, en la misma transacción que las
  * tablas: una base que ya existía no las recibe de nuevo, y si crearlas falla no queda una base a
  * medias que se dé por completa.
+ *
+ * Aquí la moneda no se confirma: se prueba la base tal como nace.
  */
 @RunWith(AndroidJUnit4::class)
 internal class InitialRowsTest : CatalogDatabaseTest() {
+    override val confirmsCurrency: Boolean = false
+
     @Test
     fun aNewDatabaseHasOneRowOfSettingsAndOneOfBackupState() = runBlocking {
-        val expectedSettings =
-            AppSettingsEntity(
-                id = 1,
-                businessName = null,
-                defaultTargetMarginBp = 3_000,
-                lowStockNotificationsEnabled = 1,
-                themeMode = "SYSTEM",
-                colorPalette = "INDIGO_MUSTARD",
-                appLockEnabled = 0,
-                appLockTimeoutSeconds = 60,
-                meteredBackupPolicy = "EVERY_60_MIN",
-                onboardingCompletedAt = null,
-                updatedAt = CREATED_AT,
-            )
-
-        assertEquals(expectedSettings, database.appSettingsDao().get())
+        assertEquals(INITIAL_SETTINGS, database.appSettingsDao().get())
         assertEquals(INITIAL_BACKUP_STATE, database.backupStateDao().get())
         assertEquals(1L, count("SELECT COUNT(*) FROM app_settings"))
         assertEquals(1L, count("SELECT COUNT(*) FROM backup_state"))
+    }
+
+    @Test
+    fun theBusinessIsBornWithoutCurrencyAndTheCashAccountTakesItFromTheSettings() = runBlocking {
+        val settings = requireNotNull(database.appSettingsDao().get())
+        val cash = requireNotNull(database.moneyAccountDao().findBySystemKey("CASH"))
+
+        // Sin moneda hasta que la persona la elija: nada con dinero se guarda antes.
+        assertEquals("XXX", settings.currencyCode)
+        assertEquals(0L, settings.currencyDecimals)
+        assertNull(settings.currencyLockedAt)
+        assertEquals(settings.currencyCode, cash.currencyCode)
+        assertEquals(settings.currencyDecimals, cash.currencyDecimals)
+    }
+
+    @Test
+    fun theRegionalStartComesFromTheSystemAndPassesTheGuard() = runBlocking {
+        // Sin región fija: la que da el emulador, sea cual sea, entra por la guarda de los ajustes.
+        val file = testDatabaseFile(context, "initial-rows-system-region.db")
+        deleteDatabaseFiles(file)
+        try {
+            val system = InitialRegion.ofSystem()
+            val opened = AppDatabase.open(context, file, Dispatchers.IO, FIXED_CLOCK)
+            try {
+                val settings = requireNotNull(opened.appSettingsDao().get())
+                assertEquals(system.formatLocale, settings.formatLocale)
+                assertEquals(system.businessTimeZone, settings.businessTimeZone)
+                assertEquals(system.weekStartDay.toLong(), settings.weekStartDay)
+                assertEquals(system.csvSeparator.name, settings.csvSeparator)
+            } finally {
+                opened.close()
+            }
+        } finally {
+            deleteDatabaseFiles(file)
+        }
     }
 
     @Test
@@ -165,11 +196,42 @@ internal class InitialRowsTest : CatalogDatabaseTest() {
                         "recurring_expense_id -> recurring_expenses RESTRICT",
                     ),
                 "low_stock_alerts" to listOf("product_id -> products CASCADE"),
-                "app_settings" to emptyList(),
+                "app_settings" to
+                    listOf(
+                        "default_tax_rate_id -> tax_rates SET NULL",
+                        "receipt_logo_media_id -> media_assets SET NULL",
+                    ),
                 "backup_state" to emptyList(),
             )
 
         for ((table, keys) in expected) assertEquals(table, keys, database.foreignKeysOf(table))
+    }
+
+    @Test
+    fun deletingTheDefaultTaxRateOrTheLogoLeavesTheSettingsWithoutThem() = runBlocking {
+        val taxRateId = database.taxRateDao().insert(TAX_RATE)
+        val logoId = database.mediaAssetDao().insert(mediaAsset())
+        execute(
+            "UPDATE app_settings SET default_tax_rate_id = $taxRateId, " +
+                "receipt_logo_media_id = $logoId, updated_at = $LATER WHERE id = 1",
+        )
+        assertEquals(taxRateId, database.appSettingsDao().get()?.defaultTaxRateId)
+
+        execute("DELETE FROM tax_rates WHERE id = $taxRateId")
+        execute("DELETE FROM media_assets WHERE id = $logoId")
+
+        // Lo demás no cambia: la llave solo deja nulas sus columnas.
+        assertEquals(
+            INITIAL_SETTINGS.copy(updatedAt = LATER),
+            database.appSettingsDao().get(),
+        )
+        // Una tasa o una imagen que no existe no entra.
+        constraintFailure(FOREIGN_KEY) {
+            execute("UPDATE app_settings SET default_tax_rate_id = 999 WHERE id = 1")
+        }
+        constraintFailure(FOREIGN_KEY) {
+            execute("UPDATE app_settings SET receipt_logo_media_id = 999 WHERE id = 1")
+        }
     }
 
     @Test
@@ -199,6 +261,63 @@ internal class InitialRowsTest : CatalogDatabaseTest() {
     private class InjectedFailure : RuntimeException()
 
     private companion object {
+        val INITIAL_SETTINGS =
+            AppSettingsEntity(
+                id = 1,
+                businessName = null,
+                defaultTargetMarginBp = 3_000,
+                lowStockNotificationsEnabled = 1,
+                themeMode = "SYSTEM",
+                colorPalette = "INDIGO_MUSTARD",
+                appLockEnabled = 0,
+                appLockTimeoutSeconds = 60,
+                meteredBackupPolicy = "EVERY_60_MIN",
+                onboardingCompletedAt = null,
+                currencyCode = "XXX",
+                currencyDecimals = 0,
+                currencySymbol = null,
+                currencyLockedAt = null,
+                cashRounding = 0,
+                formatLocale = FIXED_REGION.formatLocale,
+                businessTimeZone = FIXED_REGION.businessTimeZone,
+                weekStartDay = FIXED_REGION.weekStartDay.toLong(),
+                csvSeparator = FIXED_REGION.csvSeparator.name,
+                taxMode = "NONE",
+                defaultTaxRateId = null,
+                purchaseTaxRecoverable = 0,
+                defaultRoundingStep = 0,
+                tipsEnabled = 0,
+                referenceCurrencyCode = null,
+                referenceCurrencyDecimals = null,
+                costStaleDays = 90,
+                expiryNoticeDays = 30,
+                loyaltyEnabled = 0,
+                loyaltyAmountPerPoint = null,
+                loyaltyPointValue = null,
+                revenueLimitAmount = null,
+                revenueLimitMonths = null,
+                dailySummaryTime = null,
+                receiptLogoMediaId = null,
+                receiptBusinessDetails = null,
+                receiptFooterText = null,
+                fiscalPortalUrl = null,
+                discreetModeEnabled = 0,
+                mediaOnMetered = 0,
+                updateCheckEnabled = 1,
+                updatedAt = CREATED_AT,
+            )
+
+        /** Una tasa inventada, sin relación con ningún impuesto real. */
+        val TAX_RATE =
+            TaxRateEntity(
+                name = "Tasa de prueba",
+                normalizedName = "tasa de prueba",
+                rateBp = 1_000,
+                archivedAt = null,
+                createdAt = CREATED_AT,
+                updatedAt = MUCH_LATER,
+            )
+
         val INITIAL_BACKUP_STATE =
             BackupStateEntity(
                 id = 1,

@@ -102,6 +102,27 @@ class BackupNeutralityTest {
     }
 
     @Test
+    fun `no metadata key nor header field carries a regional settings column`() {
+        // Las columnas regionales de los ajustes viajan dentro de la base, y solo ahí: una copia de
+        // otra región se ve igual por fuera.
+        val regionalColumns =
+            listOf(
+                "currency_code", "currency_decimals", "currency_symbol", "currency_locked_at",
+                "cash_rounding", "format_locale", "business_time_zone", "week_start_day",
+                "csv_separator", "reference_currency_code", "reference_currency_decimals",
+            )
+        val names =
+            BackupMetaKey.entries.map { it.wireName } +
+                BackupHeaderField.entries.map { it.wireName }
+
+        val carrying = names.filter { name -> regionalColumns.any { it in name } }
+
+        assertTrue(carrying.toString(), carrying.isEmpty())
+        // Control negativo: la misma revisión atrapa una clave que copie una columna regional.
+        assertTrue(regionalColumns.any { it in "sl_business_time_zone" })
+    }
+
+    @Test
     fun `a key named after a currency a region or a zone fails the name review`() {
         // Ninguna de estas palabras está en el vocabulario, tampoco las abreviaturas.
         val regionalNames =

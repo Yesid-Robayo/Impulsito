@@ -16,10 +16,30 @@ import org.junit.runner.RunWith
 /**
  * Los ajustes, en su única fila: cada escritura cambia solo sus columnas y `updated_at`, ninguna
  * pisa otra con un valor viejo, y la fila no se inserta ni se borra desde un DAO.
+ *
+ * La base nace sin moneda, como la de un negocio nuevo: así se prueba confirmarla y bloquearla.
  */
 @RunWith(AndroidJUnit4::class)
 internal class AppSettingsDaoTest : CatalogDatabaseTest() {
+    override val confirmsCurrency: Boolean = false
+
     private val settings get() = database.appSettingsDao()
+
+    @Test
+    fun theCurrencyChangesOnlyItsColumnsAndLocksOnlyOnce() = runBlocking {
+        val initial = requireNotNull(settings.get())
+
+        assertEquals(1, settings.updateCurrency("XTS", 3, LATER))
+        val confirmed = initial.copy(currencyCode = "XTS", currencyDecimals = 3, updatedAt = LATER)
+        assertEquals(confirmed, settings.get())
+
+        assertEquals(1, settings.lockCurrency(MUCH_LATER))
+        val locked = confirmed.copy(currencyLockedAt = MUCH_LATER, updatedAt = MUCH_LATER)
+        assertEquals(locked, settings.get())
+        // El segundo registro con dinero no mueve el bloqueo ni el último cambio.
+        assertEquals(0, settings.lockCurrency(MUCH_LATER + 1))
+        assertEquals(locked, settings.get())
+    }
 
     @Test
     fun eachPreferenceChangesOnlyItsColumn() = runBlocking {
@@ -114,6 +134,8 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
         assertEquals(0, settings.updateThemeMode("DARK", LATER))
         assertEquals(0, settings.updateProfile("Otra", 1_000, LATER))
         assertEquals(0, settings.markOnboardingCompleted(LATER))
+        assertEquals(0, settings.updateCurrency("XTS", 2, LATER))
+        assertEquals(0, settings.lockCurrency(LATER))
         assertEquals(0L, count("SELECT COUNT(*) FROM app_settings"))
     }
 
@@ -132,6 +154,8 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 "updateAppLockEnabled",
                 "updateAppLockTimeoutSeconds",
                 "updateMeteredBackupPolicy",
+                "updateCurrency",
+                "lockCurrency",
                 "markOnboardingCompleted",
             ),
             functionsOf(AppSettingsDao::class.java),

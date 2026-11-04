@@ -7,10 +7,13 @@ import androidx.room3.useWriterConnection
 import androidx.sqlite.SQLiteException
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.InitialRegion
+import io.github.yesidrobayo.shopledger.data.local.confirmTestCurrency
 import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.insertPriceListSql
 import io.github.yesidrobayo.shopledger.data.local.longValue
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
+import io.github.yesidrobayo.shopledger.domain.model.settings.CsvSeparator
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import kotlin.time.Instant
@@ -32,17 +35,27 @@ import org.junit.Before
 /**
  * Cada prueba abre su propia base por el camino de la app, con el SQLite empaquetado, WAL y las
  * llaves foráneas activas, y la borra al terminar. Las filas que nacen con la base llevan el
- * instante de [FIXED_CLOCK].
+ * instante de [FIXED_CLOCK], y la región de [FIXED_REGION].
+ *
+ * Con [confirmsCurrency], la moneda queda confirmada y bloqueada antes de cada prueba, como en un
+ * negocio que ya guardó dinero: sin ella, las guardas rechazan todo monto. Las pruebas de la base
+ * recién nacida y del rechazo sin moneda la apagan.
  */
 internal abstract class CatalogDatabaseTest {
     protected val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
     protected val file = testDatabaseFile(context, "${javaClass.simpleName}.db")
     protected lateinit var database: AppDatabase
 
+    protected open val confirmsCurrency: Boolean = true
+
     @Before
     fun openDatabase() {
         deleteDatabaseFiles(file)
-        database = runBlocking { AppDatabase.open(context, file, Dispatchers.IO, FIXED_CLOCK) }
+        database =
+            runBlocking {
+                AppDatabase.open(context, file, Dispatchers.IO, FIXED_CLOCK) { FIXED_REGION }
+            }
+        if (confirmsCurrency) runBlocking { database.confirmTestCurrency(CREATED_AT) }
     }
 
     @After
@@ -73,6 +86,12 @@ internal const val MUCH_LATER = CREATED_AT + 3_600_000L
 
 /** Un reloj que siempre da [CREATED_AT]: las filas que nacen con la base salen iguales siempre. */
 internal val FIXED_CLOCK = Clock { Instant.fromEpochMilliseconds(CREATED_AT) }
+
+/**
+ * Una región fija para las bases de las pruebas: así la fila de los ajustes nace igual en
+ * cualquier emulador, sin importar su idioma, su región ni su zona.
+ */
+internal val FIXED_REGION = InitialRegion("es-AR", "Etc/GMT+3", 1, CsvSeparator.SEMICOLON)
 
 /**
  * La unidad inicial `UNIT`, la primera que nace con la base: la unidad base por defecto. Le siguen

@@ -175,6 +175,28 @@ internal const val OWN_TABLES_SQL =
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' " +
         "AND name NOT IN ('room_master_table', 'android_metadata') ORDER BY name"
 
+/**
+ * La moneda del negocio en las pruebas que guardan dinero: `XTS`, el código que ISO 4217 reserva
+ * para pruebas, con dos decimales. No es la moneda de nadie.
+ */
+internal const val TEST_BUSINESS_CURRENCY = "XTS"
+internal const val TEST_BUSINESS_DECIMALS = 2L
+
+/**
+ * Confirma la moneda del negocio y la bloquea en [at], como lo harían la persona al elegirla y el
+ * primer registro con dinero. Sin esto, las guardas rechazan todo monto: las pruebas que guardan
+ * dinero empiezan así, y las que prueban ese rechazo no la llaman.
+ *
+ * La cuenta inicial `CASH` conserva su moneda: las pruebas de esa cuenta la confirman aparte.
+ */
+internal suspend fun AppDatabase.confirmTestCurrency(at: Long) {
+    val settings = appSettingsDao()
+    check(settings.updateCurrency(TEST_BUSINESS_CURRENCY, TEST_BUSINESS_DECIMALS, at) == 1) {
+        "No se pudo confirmar la moneda"
+    }
+    check(settings.lockCurrency(at) == 1) { "No se pudo bloquear la moneda" }
+}
+
 /** Inserta una lista de precios con columnas explícitas. `null` en la base la deja sin base. */
 internal fun insertPriceListSql(
     normalizedName: String,

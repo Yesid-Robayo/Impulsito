@@ -68,6 +68,28 @@ internal interface AppSettingsDao {
     )
     suspend fun updateMeteredBackupPolicy(policy: String, updatedAt: Long): Int
 
+    /**
+     * Cambia la moneda del negocio y sus decimales. Solo antes del bloqueo: después, la guarda lo
+     * rechaza, porque cambiaría el valor de cada monto guardado. Va en la misma transacción que
+     * escribe la misma moneda en la cuenta inicial `CASH`.
+     */
+    @Query(
+        "UPDATE app_settings SET currency_code = :currencyCode, " +
+            "currency_decimals = :currencyDecimals, updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateCurrency(currencyCode: String, currencyDecimals: Long, updatedAt: Long): Int
+
+    /**
+     * Bloquea la moneda en [lockedAt], con el primer registro con dinero y en su misma
+     * transacción. Solo la primera vez: con la moneda ya bloqueada no cambia nada y devuelve 0,
+     * así que llamarla en cada registro es seguro. Sin moneda confirmada, la guarda lo rechaza.
+     */
+    @Query(
+        "UPDATE app_settings SET currency_locked_at = :lockedAt, updated_at = :lockedAt " +
+            "WHERE id = 1 AND currency_locked_at IS NULL",
+    )
+    suspend fun lockCurrency(lockedAt: Long): Int
+
     /** Marca el fin del primer uso en [completedAt], que también queda como último cambio. */
     @Query(
         "UPDATE app_settings SET onboarding_completed_at = :completedAt, " +

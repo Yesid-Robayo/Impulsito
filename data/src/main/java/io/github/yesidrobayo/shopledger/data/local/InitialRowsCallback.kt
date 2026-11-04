@@ -7,7 +7,9 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.settings.AppLockTimeout
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
 import io.github.yesidrobayo.shopledger.domain.model.stock.LocationKind
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -23,17 +25,26 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
  * medias ni una versión que diga que está completa, y la próxima apertura la crea de nuevo. Una
  * base que ya existía, como una restaurada o una migrada, nunca pasa por aquí.
  *
- * Los valores iniciales son los del modelo de datos, sin nada de un país ni de un idioma: la
- * configuración regional llega en sus propias columnas. Las filas iniciales de un catálogo llevan
- * solo su clave estable en inglés, sin nombre ni símbolo: el texto visible sale de los recursos
- * traducibles de esa clave, en el idioma de la interfaz, hasta que la persona lo edite. [clock] da
- * el instante de `updated_at`, y el de `created_at` donde lo hay.
+ * Los valores iniciales son los del modelo de datos, sin nada de un país ni de un idioma: el
+ * negocio nace sin moneda, y el formato, la zona y la semana salen de [initialRegion], que lee el
+ * sistema solo cuando la base nace. Las filas iniciales de un catálogo llevan solo su clave estable
+ * en inglés, sin nombre ni símbolo: el texto visible sale de los recursos traducibles de esa clave,
+ * en el idioma de la interfaz, hasta que la persona lo edite. [clock] da el instante de
+ * `updated_at`, y el de `created_at` donde lo hay.
  */
-internal class InitialRowsCallback(private val clock: Clock) : RoomDatabase.Callback() {
+internal class InitialRowsCallback(
+    private val clock: Clock,
+    private val initialRegion: () -> InitialRegion,
+) : RoomDatabase.Callback() {
     override suspend fun onCreate(connection: SQLiteConnection) {
         val now = clock.nowEpochMillis()
+        val region = initialRegion()
         connection.prepare(INSERT_APP_SETTINGS_SQL).use { statement ->
-            statement.bindLong(1, now)
+            statement.bindText(1, region.formatLocale)
+            statement.bindText(2, region.businessTimeZone)
+            statement.bindLong(3, region.weekStartDay.toLong())
+            statement.bindText(4, region.csvSeparator.name)
+            statement.bindLong(5, now)
             statement.step()
         }
         connection.prepare(INSERT_BACKUP_STATE_SQL).use { it.step() }
@@ -143,15 +154,44 @@ private const val INSERT_UNIT_SQL =
  * de stock encendidos, tema del sistema con la paleta inicial, sin bloqueo pero con un minuto de
  * espera para cuando se active, una copia como mucho cada hora con datos móviles y el primer uso
  * sin terminar.
+ *
+ * La moneda nace sin confirmar, `XXX` con 0 decimales y sin bloqueo: así nada con dinero se guarda
+ * antes de que la persona la elija. Sin redondeo de efectivo ni de precios, sin impuestos, propinas
+ * ni puntos, sin moneda de referencia, comprobante, tope de ingresos ni resumen diario, y con el
+ * modo discreto apagado, sin fotos por datos móviles y con la búsqueda de versiones encendida. Los
+ * días de costo viejo y de aviso de vencimiento son los del modelo de datos. El formato, la zona,
+ * la semana y el separador de columnas van como parámetros.
  */
 private val INSERT_APP_SETTINGS_SQL =
     "INSERT INTO app_settings (id, business_name, default_target_margin_bp, " +
         "low_stock_notifications_enabled, theme_mode, color_palette, app_lock_enabled, " +
-        "app_lock_timeout_seconds, metered_backup_policy, onboarding_completed_at, updated_at) " +
+        "app_lock_timeout_seconds, metered_backup_policy, onboarding_completed_at, " +
+        "currency_code, currency_decimals, currency_symbol, currency_locked_at, cash_rounding, " +
+        "format_locale, business_time_zone, week_start_day, csv_separator, tax_mode, " +
+        "default_tax_rate_id, purchase_tax_recoverable, default_rounding_step, tips_enabled, " +
+        "reference_currency_code, reference_currency_decimals, cost_stale_days, " +
+        "expiry_notice_days, loyalty_enabled, loyalty_amount_per_point, loyalty_point_value, " +
+        "revenue_limit_amount, revenue_limit_months, daily_summary_time, receipt_logo_media_id, " +
+        "receipt_business_details, receipt_footer_text, fiscal_portal_url, " +
+        "discreet_mode_enabled, media_on_metered, update_check_enabled, updated_at) " +
         "VALUES (1, NULL, " +
         "${BasisPoints.DEFAULT_TARGET_MARGIN.bp}, 1, '${ThemeMode.SYSTEM.name}', " +
         "'${ColorPalette.INDIGO_MUSTARD.name}', 0, " +
-        "${AppLockTimeout.ONE_MINUTE.seconds}, '${MeteredBackupPolicy.EVERY_60_MIN.name}', NULL, ?)"
+        "${AppLockTimeout.ONE_MINUTE.seconds}, '${MeteredBackupPolicy.EVERY_60_MIN.name}', NULL, " +
+        "'${CurrencyCode.UNCONFIRMED.code}', 0, NULL, NULL, 0, " +
+        "?, ?, ?, ?, '${TaxMode.NONE.name}', " +
+        "NULL, 0, 0, 0, " +
+        "NULL, NULL, $INITIAL_COST_STALE_DAYS, " +
+        "$INITIAL_EXPIRY_NOTICE_DAYS, 0, NULL, NULL, " +
+        "NULL, NULL, NULL, NULL, " +
+        "NULL, NULL, NULL, " +
+        "0, 0, 1, ?)"
+
+/** Días sin comprar tras los que un costo se marca como viejo. Es un valor de diseño. */
+private const val INITIAL_COST_STALE_DAYS = 90
+
+/** Días antes del vencimiento de un lote en que se avisa. Es un valor de diseño. */
+private const val INITIAL_EXPIRY_NOTICE_DAYS = 30
 
 /**
  * La fila inicial de `backup_state`: ningún cambio todavía, ningún destino elegido, sin fallos y
@@ -163,14 +203,15 @@ private const val INSERT_BACKUP_STATE_SQL =
 
 /**
  * La cuenta de dinero inicial: la caja, con su clave estable y sin nombre propio, que se muestra
- * con el texto traducido de la clave. Nace sin saldo y con `XXX`, el código de ISO 4217 que
- * significa sin moneda: la del negocio todavía no existe ni está confirmada, y confirmarla la
- * escribe aquí en la misma transacción, mientras la cuenta no tenga movimientos.
+ * con el texto traducido de la clave. Nace sin saldo y con la moneda y los decimales de la fila de
+ * `app_settings`, que se escribe antes: al nacer es `XXX`, sin moneda, y confirmar la del negocio
+ * la escribe también aquí, en la misma transacción, mientras la cuenta no tenga movimientos.
  */
 private const val INSERT_CASH_ACCOUNT_SQL =
     "INSERT INTO money_accounts (system_key, name, normalized_name, kind, currency_code, " +
         "currency_decimals, balance, archived_at, created_at, updated_at) " +
-        "VALUES ('CASH', NULL, NULL, 'CASH', 'XXX', 0, 0, NULL, ?, ?)"
+        "SELECT 'CASH', NULL, NULL, 'CASH', currency_code, currency_decimals, 0, NULL, ?, ? " +
+        "FROM app_settings WHERE id = 1"
 
 /**
  * La ubicación inicial, de clave `MAIN`, sin nombre y vigente: toda fila del libro, compra y venta

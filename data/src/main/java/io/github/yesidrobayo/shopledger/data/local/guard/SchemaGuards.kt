@@ -15,7 +15,8 @@ import androidx.sqlite.execSQL
  * porque la copia y la restauración comparan las guardas por su texto exacto. Una tabla nueva suma
  * su bloque y una línea en [all]. Las guardas que esperan una tabla o una columna que todavía no
  * existe conservan aquí su texto completo, y declaran con [Awaiting] la parte que se instala
- * distinta mientras tanto: quien crea esa tabla o columna borra esa línea, y nada más.
+ * distinta mientras tanto: quien crea esa tabla o columna borra esa línea, y nada más. Con el
+ * esquema 1 completo, ninguna espera nada: todas se instalan con su texto completo.
  *
  * [sync] corre al crear la base y en cada apertura: deja en la base exactamente estas guardas.
  */
@@ -320,55 +321,10 @@ private fun table(sql: String, vararg awaiting: Awaiting): List<Guard> {
 private val GUARD_HEADER =
     Regex("^CREATE TRIGGER (guard_[a-z0-9_]+) BEFORE (?:INSERT|UPDATE|DELETE) ON ([a-z_]+)\n")
 
-/**
- * La condición de la moneda confirmada antes del primer registro con dinero, que espera la columna
- * que bloquea la moneda.
- */
-private fun awaitingCurrencyLock(guard: String): Awaiting = Awaiting.Line(
-    guard,
-    "SELECT currency_locked_at FROM app_settings",
-    listOf("app_settings.currency_locked_at"),
-)
-
-/** Las columnas de `app_settings` que sus guardas nombran y que todavía no existen. */
-private val SETTINGS_COLUMNS_TO_COME =
-    listOf(
-        "currency_code",
-        "currency_decimals",
-        "currency_symbol",
-        "currency_locked_at",
-        "cash_rounding",
-        "format_locale",
-        "business_time_zone",
-        "week_start_day",
-        "csv_separator",
-        "tax_mode",
-        "purchase_tax_recoverable",
-        "default_rounding_step",
-        "tips_enabled",
-        "reference_currency_code",
-        "reference_currency_decimals",
-        "cost_stale_days",
-        "expiry_notice_days",
-        "loyalty_enabled",
-        "loyalty_amount_per_point",
-        "loyalty_point_value",
-        "revenue_limit_amount",
-        "revenue_limit_months",
-        "daily_summary_time",
-        "receipt_business_details",
-        "receipt_footer_text",
-        "fiscal_portal_url",
-        "discreet_mode_enabled",
-        "media_on_metered",
-        "update_check_enabled",
-    )
-
 /** Los ajustes: fila única, que nunca se borra.
  *
- * Sus columnas de moneda, formato regional, impuestos, propinas, fidelidad, comprobante y avisos
- * llegan juntas con la configuración regional: hasta entonces se instalan sin las líneas que las
- * nombran. */
+ * La moneda es de tres letras mayúsculas, con 0 a 4 decimales. Desde que se bloquea, ni ella ni
+ * sus decimales cambian, el bloqueo no se quita, y nunca se bloquea `XXX`, que es sin moneda. */
 private val APP_SETTINGS_GUARDS =
     table(
         """
@@ -473,8 +429,6 @@ private val APP_SETTINGS_GUARDS =
         CREATE TRIGGER guard_app_settings_no_delete BEFORE DELETE ON app_settings
         BEGIN SELECT RAISE(ABORT, 'guard:app_settings_no_delete'); END;
         """,
-        Awaiting.Columns("guard_app_settings_insert", "app_settings", SETTINGS_COLUMNS_TO_COME),
-        Awaiting.Columns("guard_app_settings_update", "app_settings", SETTINGS_COLUMNS_TO_COME),
     )
 
 /** El estado del respaldo: fila única, que nunca se borra, y `change_seq` nunca baja. */
@@ -640,9 +594,8 @@ private val SUPPLIERS_GUARDS =
 /** Los productos: nombre y código únicos entre los vigentes, y el modo de stock, la unidad
  * base y los lotes fijos una vez que hay historial.
  *
- * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
- * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
- * parte de estas guardas que hoy protege menos que su texto completo. */
+ * Un registro con dinero exige la moneda confirmada y bloqueada en los ajustes: sin moneda, un
+ * monto no tendría unidad. */
 private val PRODUCTS_GUARDS =
     table(
         """
@@ -725,8 +678,6 @@ private val PRODUCTS_GUARDS =
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:products'); END;
         """,
-        awaitingCurrencyLock("guard_products_insert"),
-        awaitingCurrencyLock("guard_products_update"),
     )
 
 /** El historial de precios: solo crece, y se borra solo en cascada con su producto. */
@@ -1391,9 +1342,8 @@ private val LOW_STOCK_ALERTS_GUARDS =
 
 /** Las compras: nacen activas, solo cambian al anularse y nunca se borran.
  *
- * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
- * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
- * parte de estas guardas que hoy protege menos que su texto completo. */
+ * Un registro con dinero exige la moneda confirmada y bloqueada en los ajustes: sin moneda, un
+ * monto no tendría unidad. */
 private val PURCHASES_GUARDS =
     table(
         """
@@ -1435,7 +1385,6 @@ private val PURCHASES_GUARDS =
         CREATE TRIGGER guard_purchases_no_delete BEFORE DELETE ON purchases
         BEGIN SELECT RAISE(ABORT, 'guard:purchases_no_delete'); END;
         """,
-        awaitingCurrencyLock("guard_purchases_insert"),
     )
 
 /** Las líneas de compra: no cambian ni se borran. */
@@ -1469,9 +1418,8 @@ private val PURCHASE_LINES_GUARDS =
 /** El libro del proveedor: solo crece. Cada fila lleva el signo y el origen de su tipo, y una
  * compensación apunta a una fila del mismo proveedor, con el monto opuesto, una sola vez.
  *
- * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
- * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
- * parte de estas guardas que hoy protege menos que su texto completo. */
+ * Un registro con dinero exige la moneda confirmada y bloqueada en los ajustes: sin moneda, un
+ * monto no tendría unidad. */
 private val SUPPLIER_LEDGER_ENTRIES_GUARDS =
     table(
         """
@@ -1504,7 +1452,6 @@ private val SUPPLIER_LEDGER_ENTRIES_GUARDS =
         CREATE TRIGGER guard_supplier_ledger_entries_no_delete BEFORE DELETE ON supplier_ledger_entries
         BEGIN SELECT RAISE(ABORT, 'guard:supplier_ledger_entries_append_only'); END;
         """,
-        awaitingCurrencyLock("guard_supplier_ledger_entries_insert"),
     )
 
 /** Las devoluciones a proveedor: nacen activas, solo cambian al anularse y nunca se borran. Un
@@ -1564,9 +1511,8 @@ private val PURCHASE_RETURN_LINES_GUARDS =
 
 /** Las ventas: nacen activas, solo cambian al anularse y nunca se borran.
  *
- * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
- * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
- * parte de estas guardas que hoy protege menos que su texto completo.
+ * Un registro con dinero exige la moneda confirmada y bloqueada en los ajustes: sin moneda, un
+ * monto no tendría unidad.
  */
 private val SALES_GUARDS =
     table(
@@ -1610,7 +1556,6 @@ private val SALES_GUARDS =
         CREATE TRIGGER guard_sales_no_delete BEFORE DELETE ON sales
         BEGIN SELECT RAISE(ABORT, 'guard:sales_no_delete'); END;
         """,
-        awaitingCurrencyLock("guard_sales_insert"),
     )
 
 /** Las líneas de venta: no cambian ni se borran. */
@@ -1951,9 +1896,8 @@ private val CUSTOMERS_GUARDS =
 /** El libro del cliente: solo crece. Cada fila lleva el signo y el origen de su tipo, y una
  * compensación apunta a una fila del mismo cliente, con el monto opuesto, una sola vez.
  *
- * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
- * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
- * parte de estas guardas que hoy protege menos que su texto completo. */
+ * Un registro con dinero exige la moneda confirmada y bloqueada en los ajustes: sin moneda, un
+ * monto no tendría unidad. */
 private val CUSTOMER_LEDGER_ENTRIES_GUARDS =
     table(
         """
@@ -1986,7 +1930,6 @@ private val CUSTOMER_LEDGER_ENTRIES_GUARDS =
         CREATE TRIGGER guard_customer_ledger_entries_no_delete BEFORE DELETE ON customer_ledger_entries
         BEGIN SELECT RAISE(ABORT, 'guard:customer_ledger_entries_append_only'); END;
         """,
-        awaitingCurrencyLock("guard_customer_ledger_entries_insert"),
     )
 
 /** El libro de puntos: solo crece, con el mismo patrón que el del cliente. Los puntos no son
@@ -2093,9 +2036,8 @@ private val MONEY_ACCOUNTS_GUARDS =
  * transferencia lleva su grupo, y una anulación apunta a un movimiento de la misma cuenta, con
  * el monto opuesto, una sola vez y nunca a una transferencia.
  *
- * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
- * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
- * parte de estas guardas que hoy protege menos que su texto completo. */
+ * Un registro con dinero exige la moneda confirmada y bloqueada en los ajustes: sin moneda, un
+ * monto no tendría unidad. */
 private val MONEY_MOVEMENTS_GUARDS =
     table(
         """
@@ -2136,7 +2078,6 @@ private val MONEY_MOVEMENTS_GUARDS =
         CREATE TRIGGER guard_money_movements_no_delete BEFORE DELETE ON money_movements
         BEGIN SELECT RAISE(ABORT, 'guard:money_movements_append_only'); END;
         """,
-        awaitingCurrencyLock("guard_money_movements_insert"),
     )
 
 /** Las sesiones de caja: una sola abierta por cuenta. Nace abierta, cambia solo mientras lo
@@ -2272,9 +2213,8 @@ private val EXPENSE_CATEGORIES_GUARDS =
 
 /** Los gastos: nacen activos, solo cambian al anularse y nunca se borran.
  *
- * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
- * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
- * parte de estas guardas que hoy protege menos que su texto completo. */
+ * Un registro con dinero exige la moneda confirmada y bloqueada en los ajustes: sin moneda, un
+ * monto no tendría unidad. */
 private val EXPENSES_GUARDS =
     table(
         """
@@ -2304,7 +2244,6 @@ private val EXPENSES_GUARDS =
         CREATE TRIGGER guard_expenses_no_delete BEFORE DELETE ON expenses
         BEGIN SELECT RAISE(ABORT, 'guard:expenses_no_delete'); END;
         """,
-        awaitingCurrencyLock("guard_expenses_insert"),
     )
 
 /** Los gastos recurrentes: el día cabe en su período, y el próximo vencimiento es una fecha. */
