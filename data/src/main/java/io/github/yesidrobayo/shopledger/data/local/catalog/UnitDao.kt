@@ -42,8 +42,8 @@ internal interface UnitDao {
 
     /**
      * Si algún producto la usa como unidad base, alguna conversión la usa, o alguna línea de
-     * compra, de venta, de cotización o de pedido se registró en ella. Con uso ya no se borra: solo
-     * se archiva.
+     * compra, de venta, de cotización, de pedido o de una venta en espera se registró en ella. Con
+     * uso ya no se borra: solo se archiva.
      */
     @Query(
         "SELECT EXISTS (SELECT 1 FROM products WHERE base_unit_id = :id) " +
@@ -51,7 +51,8 @@ internal interface UnitDao {
             "OR EXISTS (SELECT 1 FROM purchase_lines WHERE unit_id = :id) " +
             "OR EXISTS (SELECT 1 FROM sale_lines WHERE unit_id = :id) " +
             "OR EXISTS (SELECT 1 FROM quote_lines WHERE unit_id = :id) " +
-            "OR EXISTS (SELECT 1 FROM order_lines WHERE unit_id = :id)",
+            "OR EXISTS (SELECT 1 FROM order_lines WHERE unit_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM sale_draft_lines WHERE unit_id = :id)",
     )
     suspend fun isInUse(id: Long): Boolean
 

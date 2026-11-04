@@ -30,6 +30,7 @@ internal object SchemaGuards {
             PRODUCTS_GUARDS,
             PRODUCT_PRICE_HISTORY_GUARDS,
             PRODUCT_COMPONENTS_GUARDS,
+            PRODUCT_MODIFIERS_GUARDS,
             CUSTOM_FIELD_DEFINITIONS_GUARDS,
             PRODUCT_CUSTOM_VALUES_GUARDS,
             TAGS_GUARDS,
@@ -57,6 +58,8 @@ internal object SchemaGuards {
             SALE_LINES_GUARDS,
             SALE_LINE_COMPONENTS_GUARDS,
             TAX_RATES_GUARDS,
+            SALE_DRAFTS_GUARDS,
+            SALE_DRAFT_LINES_GUARDS,
             SALE_RETURNS_GUARDS,
             SALE_RETURN_LINES_GUARDS,
             CUSTOMERS_GUARDS,
@@ -789,6 +792,32 @@ private val PRODUCT_COMPONENTS_GUARDS =
           AND NOT (EXISTS (SELECT 1 FROM product_components a WHERE a.component_product_id = NEW.parent_product_id) AND EXISTS (SELECT 1 FROM product_components b WHERE b.parent_product_id = NEW.component_product_id))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:product_components'); END;
+        """,
+    )
+
+/** Los extras de un producto: otro producto, con su grupo y su orden. */
+private val PRODUCT_MODIFIERS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_product_modifiers_insert BEFORE INSERT ON product_modifiers
+        WHEN NOT IFNULL((
+          (NEW.group_name IS NULL OR (typeof(NEW.group_name) = 'text' AND length(NEW.group_name) BETWEEN 1 AND 40))
+          AND typeof(NEW.sort_order) = 'integer'
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND NEW.product_id <> NEW.modifier_product_id
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_modifiers'); END;
+
+        CREATE TRIGGER guard_product_modifiers_update BEFORE UPDATE ON product_modifiers
+        WHEN NOT IFNULL((
+          (NEW.group_name IS NULL OR (typeof(NEW.group_name) = 'text' AND length(NEW.group_name) BETWEEN 1 AND 40))
+          AND typeof(NEW.sort_order) = 'integer'
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND NEW.product_id <> NEW.modifier_product_id
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:product_modifiers'); END;
         """,
     )
 
@@ -1670,6 +1699,50 @@ private val SALE_LINE_COMPONENTS_GUARDS =
 
         CREATE TRIGGER guard_sale_line_components_no_delete BEFORE DELETE ON sale_line_components
         BEGIN SELECT RAISE(ABORT, 'guard:sale_line_components_append_only'); END;
+        """,
+    )
+
+/** Las ventas en espera: nombre opcional con su largo. No son historia: cambian y se borran. */
+private val SALE_DRAFTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_sale_drafts_insert BEFORE INSERT ON sale_drafts
+        WHEN NOT IFNULL((
+          (NEW.label IS NULL OR (typeof(NEW.label) = 'text' AND length(NEW.label) BETWEEN 1 AND 40))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_drafts'); END;
+
+        CREATE TRIGGER guard_sale_drafts_update BEFORE UPDATE ON sale_drafts
+        WHEN NOT IFNULL((
+          (NEW.label IS NULL OR (typeof(NEW.label) = 'text' AND length(NEW.label) BETWEEN 1 AND 40))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_drafts'); END;
+        """,
+    )
+
+/** Las líneas de una venta en espera: cantidad, precio opcional y descuento en sus topes. */
+private val SALE_DRAFT_LINES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_sale_draft_lines_insert BEFORE INSERT ON sale_draft_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.entered_quantity_milli) = 'integer' AND NEW.entered_quantity_milli BETWEEN 1 AND 1000000000
+          AND (NEW.unit_price IS NULL OR (typeof(NEW.unit_price) = 'integer' AND NEW.unit_price BETWEEN 0 AND 1000000000000))
+          AND typeof(NEW.line_discount) = 'integer' AND NEW.line_discount BETWEEN 0 AND 1000000000000000
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_draft_lines'); END;
+
+        CREATE TRIGGER guard_sale_draft_lines_update BEFORE UPDATE ON sale_draft_lines
+        WHEN NOT IFNULL((
+          typeof(NEW.entered_quantity_milli) = 'integer' AND NEW.entered_quantity_milli BETWEEN 1 AND 1000000000
+          AND (NEW.unit_price IS NULL OR (typeof(NEW.unit_price) = 'integer' AND NEW.unit_price BETWEEN 0 AND 1000000000000))
+          AND typeof(NEW.line_discount) = 'integer' AND NEW.line_discount BETWEEN 0 AND 1000000000000000
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_draft_lines'); END;
         """,
     )
 

@@ -30,6 +30,8 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.ProductComponentEntit
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductCustomValueEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductModifierDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductModifierEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductTagEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductUnitDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductUnitEntity
@@ -90,6 +92,9 @@ import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnEntity
 import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnLineDao
 import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnLineEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleDao
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleDraftDao
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleDraftEntity
+import io.github.yesidrobayo.shopledger.data.local.sale.SaleDraftLineEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentEntity
@@ -134,11 +139,12 @@ import kotlin.coroutines.CoroutineContext
  * de caja, el libro de los proveedores, el registro de auditoría, y las metas, los gastos
  * recurrentes y el índice de precios de los reportes, y las cotizaciones, los pedidos, las marcas
  * de las ventas y las fotos de comprobantes. Del catálogo también tiene los combos, los campos
- * propios, las etiquetas y las imágenes; de las ventas, los componentes que consumió cada combo
- * vendido y sus devoluciones, y de las compras, las devoluciones a proveedor. Room activa las
- * llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana entraría sin
- * error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards]. Las demás tablas
- * llegan con las tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
+ * propios, las etiquetas, las imágenes y los extras de cada producto; de las ventas, los
+ * componentes que consumió cada combo vendido, sus devoluciones y las ventas en espera, y de las
+ * compras, las devoluciones a proveedor. Room activa las llaves foráneas solo si alguna entidad
+ * declara una: sin ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe
+ * declarar son guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y
+ * la versión no cambia mientras el esquema 1 no se publique.
  */
 @Database(
     // Cada tabla va antes que las tablas a las que apunta con RESTRICT: Room 3.0.3 ordena las
@@ -150,10 +156,13 @@ import kotlin.coroutines.CoroutineContext
         PriceHistoryEntity::class,
         CustomFieldDefinitionEntity::class,
         ProductComponentEntity::class,
+        ProductModifierEntity::class,
         ProductCustomValueEntity::class,
         ProductTagEntity::class,
         TagEntity::class,
         ProductUnitEntity::class,
+        SaleDraftEntity::class,
+        SaleDraftLineEntity::class,
         StockMovementEntity::class,
         PurchaseReturnLineEntity::class,
         PurchaseLineEntity::class,
@@ -223,6 +232,8 @@ internal abstract class AppDatabase : RoomDatabase() {
 
     abstract fun productComponentDao(): ProductComponentDao
 
+    abstract fun productModifierDao(): ProductModifierDao
+
     abstract fun tagDao(): TagDao
 
     abstract fun productUnitDao(): ProductUnitDao
@@ -242,6 +253,8 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun saleLineDao(): SaleLineDao
 
     abstract fun saleLineComponentDao(): SaleLineComponentDao
+
+    abstract fun saleDraftDao(): SaleDraftDao
 
     abstract fun saleReturnDao(): SaleReturnDao
 
