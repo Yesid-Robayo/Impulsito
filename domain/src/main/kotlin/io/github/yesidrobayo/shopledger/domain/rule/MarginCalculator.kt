@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.rule
 
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Checked
+import io.github.yesidrobayo.shopledger.domain.model.ExactUnitCost
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -47,10 +48,11 @@ object MarginCalculator {
     /**
      * El costo de una unidad entera con el que se mide el margen de un producto en el catálogo.
      *
-     * Con stock y valor de stock positivos es el valor del stock dividido por la cantidad, y no el
-     * costo promedio: el valor lleva el costo sin redondear, y el promedio, redondeado a la unidad
-     * menor, puede desviarse de él. Sin stock, o sin valor, es el costo promedio. Un producto sin
-     * control de stock usa su costo fijo y no pasa por aquí.
+     * Es el costo de catálogo exacto, redondeado a la unidad menor más cercana. Con stock y valor
+     * de stock positivos sale del valor del stock, y no del costo promedio: el valor lleva el costo
+     * sin redondear, y el promedio, redondeado al guardarse, puede desviarse de él. Sin stock, o sin
+     * valor, es el costo promedio. Un producto sin control de stock usa su costo fijo y no pasa por
+     * aquí.
      *
      * Devuelve [Checked.Overflow] si el costo no cabe en `Long`, algo que con un valor de stock
      * dentro de su tope no pasa.
@@ -60,33 +62,44 @@ object MarginCalculator {
         stockValue: Money,
         averageCost: Money,
     ): Checked<Money> {
-        if (onHand <= QuantityMilli.ZERO || stockValue <= Money.ZERO) {
-            return Checked.Value(averageCost)
-        }
-        return mulDivRound(stockValue.minor, Scale.MILLI, onHand.milli).map(::Money)
+        val exact = exactCatalogCost(onHand, stockValue, averageCost)
+        return mulDivRound(exact.amount.minor, Scale.MILLI, exact.quantity.milli).map(::Money)
     }
 
     /**
-     * La base del precio sugerido: el costo de reposición, si se conoce, porque el precio debe
-     * cubrir lo que costará volver a comprar; si no, el costo de catálogo de [catalogUnitCost].
+     * La base del precio sugerido, sin redondear: el costo de reposición, si se conoce, porque el
+     * precio debe cubrir lo que costará volver a comprar; si no, el costo de catálogo exacto.
+     *
+     * No se redondea porque un costo menor que media unidad menor redondea a cero: una caja de
+     * 1000 unidades por 400 cuesta 0,4 por unidad, y con la base en cero el producto parecería no
+     * tener costo y no tendría sugerencia.
      */
-    fun suggestionBase(replacementCost: Money, catalogUnitCost: Money): Money =
-        if (replacementCost > Money.ZERO) replacementCost else catalogUnitCost
+    fun suggestionBase(
+        replacementCost: Money,
+        onHand: QuantityMilli,
+        stockValue: Money,
+        averageCost: Money,
+    ): ExactUnitCost = if (replacementCost > Money.ZERO) {
+        ExactUnitCost.perUnit(replacementCost)
+    } else {
+        exactCatalogCost(onHand, stockValue, averageCost)
+    }
 
     /**
      * El menor precio que deja [targetMargin] sobre [base]: `base × 10000 / (10000 − margen)`.
      *
-     * Redondea hacia arriba, igual que el impuesto y el paso, para que el margen resultante nunca
-     * quede por debajo del pedido. Si los precios incluyen impuesto, [includedTaxRate] es la tasa
-     * del producto y el precio la suma, porque el margen se mide sin ella; si no lo incluyen, o se
-     * agrega al cobrar, es cero. Con [roundingStep] positivo sube al siguiente múltiplo del paso,
-     * ya con el impuesto, y con cero no redondea.
+     * Parte del costo exacto y redondea hacia arriba solo el precio, igual que el impuesto y el
+     * paso, para que el margen resultante nunca quede por debajo del pedido. Si los precios incluyen
+     * impuesto, [includedTaxRate] es la tasa del producto y el precio la suma, porque el margen se
+     * mide sin ella; si no lo incluyen, o se agrega al cobrar, es cero. Con [roundingStep] positivo
+     * sube al siguiente múltiplo del paso, ya con el impuesto, y con cero no redondea.
      *
-     * Una tasa fuera de 0 a 100 % o un paso negativo son errores de programación: los dos vienen de
-     * datos ya validados. El margen pedido, en cambio, lo escribe la persona en la pantalla.
+     * Sin costo, con la base en cero, no hay sugerencia. Una tasa fuera de 0 a 100 % o un paso
+     * negativo son errores de programación: los dos vienen de datos ya validados. El margen pedido,
+     * en cambio, lo escribe la persona en la pantalla.
      */
     fun suggestedPrice(
-        base: Money,
+        base: ExactUnitCost,
         targetMargin: BasisPoints,
         includedTaxRate: BasisPoints,
         roundingStep: Money,
@@ -98,15 +111,19 @@ object MarginCalculator {
         if (targetMargin < BasisPoints.ZERO || targetMargin > BasisPoints.MAX_TARGET_MARGIN) {
             return PriceSuggestion.TargetMarginOutOfRange
         }
-        if (base <= Money.ZERO) return PriceSuggestion.NoCost
-        // El sugerido nunca baja de la base. Si la base ya pasa el tope, el precio también, y
-        // descartarla aquí deja cada multiplicación siguiente muy lejos del máximo de Long.
-        if (!Limit.UNIT_MONEY.allows(base.minor)) return PriceSuggestion.AbovePriceLimit
-        val net =
-            ceilDiv(
-                Math.multiplyExact(base.minor, Scale.BASIS_POINTS),
-                Scale.BASIS_POINTS - targetMargin.bp,
-            )
+        if (base.amount <= Money.ZERO) return PriceSuggestion.NoCost
+        // El costo de una unidad entera por 10000, hacia arriba: monto × 1000 × 10000 / cantidad.
+        // Si no cabe en Long, el costo pasa de 9 × 10^14, y el precio, que nunca baja del costo,
+        // pasa su tope.
+        val scaledCost =
+            mulDivCeil(base.amount.minor, Scale.MILLI * Scale.BASIS_POINTS, base.quantity.milli)
+                .valueOrNull() ?: return PriceSuggestion.AbovePriceLimit
+        // Subir dos veces al entero siguiente da lo mismo que subir una vez el cociente completo:
+        // el precio es el menor entero cuyo margen, medido contra el costo exacto, alcanza el pedido.
+        val net = ceilDiv(scaledCost, Scale.BASIS_POINTS - targetMargin.bp)
+        // El impuesto y el paso solo suben el precio. Descartar aquí uno que ya pasa el tope deja
+        // cada multiplicación siguiente muy lejos del máximo de Long.
+        if (!Limit.UNIT_MONEY.allows(net)) return PriceSuggestion.AbovePriceLimit
         val withTax =
             ceilDiv(
                 Math.multiplyExact(net, Scale.BASIS_POINTS + includedTaxRate.bp),
@@ -146,5 +163,20 @@ object MarginCalculator {
         )
     } catch (overflow: ArithmeticException) {
         Checked.Overflow
+    }
+
+    /**
+     * El costo de catálogo sin redondear: con stock y valor de stock positivos, el valor del stock
+     * sobre la cantidad; si no, el costo promedio. Sin stock no hay unidades que valorar, y un valor
+     * de cero significa costo desconocido.
+     */
+    private fun exactCatalogCost(
+        onHand: QuantityMilli,
+        stockValue: Money,
+        averageCost: Money,
+    ): ExactUnitCost = if (onHand <= QuantityMilli.ZERO || stockValue <= Money.ZERO) {
+        ExactUnitCost.perUnit(averageCost)
+    } else {
+        ExactUnitCost(stockValue, onHand)
     }
 }

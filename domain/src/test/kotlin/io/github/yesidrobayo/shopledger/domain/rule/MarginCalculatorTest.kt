@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.rule
 
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Checked
+import io.github.yesidrobayo.shopledger.domain.model.ExactUnitCost
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitSummary
@@ -162,8 +163,139 @@ class MarginCalculatorTest {
 
     @Test
     fun `the suggestion starts from the replacement cost when it is known`() {
-        assertEquals(Money(1300L), MarginCalculator.suggestionBase(Money(1300L), Money(1355L)))
-        assertEquals(Money(1355L), MarginCalculator.suggestionBase(Money.ZERO, Money(1355L)))
+        // El producto tiene costo de catálogo 1355, pero volver a comprarlo cuesta 1500.
+        val base = MarginCalculator.suggestionBase(
+            replacementCost = Money(1500L),
+            onHand = QuantityMilli(11_000L),
+            stockValue = Money(14_905L),
+            averageCost = Money(1355L),
+        )
+
+        assertEquals(ExactUnitCost.perUnit(Money(1500L)), base)
+        // 1500 a 30 %: exacto 2142,86.
+        assertEquals(suggested(2143L), suggestFrom(base, targetBp = 3000L))
+    }
+
+    @Test
+    fun `without a replacement cost the suggestion starts from the stock value over the stock`() {
+        // 11 unidades que valen 14905: 1355 por unidad, el costo del ejemplo de margen.
+        val base = MarginCalculator.suggestionBase(
+            replacementCost = Money.ZERO,
+            onHand = QuantityMilli(11_000L),
+            stockValue = Money(14_905L),
+            averageCost = Money(999L),
+        )
+
+        assertEquals(ExactUnitCost(Money(14_905L), QuantityMilli(11_000L)), base)
+        // 1355 a 30 %: exacto 1935,71. Con paso 100, 2000.
+        assertEquals(suggested(1936L), suggestFrom(base, targetBp = 3000L))
+        assertEquals(suggested(2000L), suggestFrom(base, targetBp = 3000L, step = 100L))
+    }
+
+    @Test
+    fun `without stock or without stock value the suggestion starts from the average cost`() {
+        val averageCost = Money(1300L)
+        val withoutStock = MarginCalculator.suggestionBase(
+            Money.ZERO,
+            QuantityMilli.ZERO,
+            Money.ZERO,
+            averageCost,
+        )
+        val negativeStock = MarginCalculator.suggestionBase(
+            Money.ZERO,
+            QuantityMilli(-2000L),
+            Money.ZERO,
+            averageCost,
+        )
+        val withoutValue = MarginCalculator.suggestionBase(
+            Money.ZERO,
+            QuantityMilli(5000L),
+            Money.ZERO,
+            averageCost,
+        )
+
+        assertEquals(ExactUnitCost.perUnit(averageCost), withoutStock)
+        assertEquals(ExactUnitCost.perUnit(averageCost), negativeStock)
+        assertEquals(ExactUnitCost.perUnit(averageCost), withoutValue)
+        // 1300 a 35 %: exacto 2000.
+        assertEquals(suggested(2000L), suggestFrom(withoutStock, targetBp = 3500L))
+    }
+
+    @Test
+    fun `a box of a thousand units for 400 suggests a price from its cost of four tenths`() {
+        // Sin costo de reposición. El costo existe aunque por unidad redondee a cero, y la
+        // sugerencia no pide corregirlo.
+        val base = MarginCalculator.suggestionBase(
+            replacementCost = Money.ZERO,
+            onHand = QuantityMilli(1_000_000L),
+            stockValue = Money(400L),
+            averageCost = Money.ZERO,
+        )
+
+        assertEquals(ExactUnitCost(Money(400L), QuantityMilli(1_000_000L)), base)
+        // 0,4 a 0 %, 30 %, 90 % y 99 %: exactos 0,4, 0,57, 4 y 40.
+        assertEquals(suggested(1L), suggestFrom(base, targetBp = 0L))
+        assertEquals(suggested(1L), suggestFrom(base, targetBp = 3000L))
+        assertEquals(suggested(4L), suggestFrom(base, targetBp = 9000L))
+        assertEquals(suggested(40L), suggestFrom(base, targetBp = 9900L))
+        // 1 con 21 % incluido: 1,21 sube a 2. Con paso 50, 50; y sin impuesto, con paso 100, 100.
+        assertEquals(suggested(2L), suggestFrom(base, targetBp = 3000L, taxBp = 2100L))
+        assertEquals(
+            suggested(50L),
+            suggestFrom(base, targetBp = 3000L, taxBp = 2100L, step = 50L),
+        )
+        assertEquals(suggested(100L), suggestFrom(base, targetBp = 3000L, step = 100L))
+    }
+
+    @Test
+    fun `a box of 24 for 10000 suggests from its exact cost and not from 417`() {
+        val base = MarginCalculator.suggestionBase(
+            replacementCost = Money.ZERO,
+            onHand = QuantityMilli(24_000L),
+            stockValue = Money(10_000L),
+            averageCost = Money(417L),
+        )
+
+        // 416,67 a 90 %: exacto 4166,67. Con la base redondeada a 417 serían 4170.
+        assertEquals(suggested(4167L), suggestFrom(base, targetBp = 9000L))
+        assertEquals(suggested(4170L), suggest(base = 417L, targetBp = 9000L))
+        // A 99 %: exacto 41666,67, y 41700 desde 417.
+        assertEquals(suggested(41_667L), suggestFrom(base, targetBp = 9900L))
+        assertEquals(suggested(41_700L), suggest(base = 417L, targetBp = 9900L))
+        // A 30 %, exacto 595,24, las dos bases coinciden. Sin margen, 416,67 sube a 417.
+        assertEquals(suggested(596L), suggestFrom(base, targetBp = 3000L))
+        assertEquals(suggested(417L), suggestFrom(base, targetBp = 0L))
+        // 4167 con paso 100 sube a 4200.
+        assertEquals(suggested(4200L), suggestFrom(base, targetBp = 9000L, step = 100L))
+    }
+
+    @Test
+    fun `the average cost example suggests from its stock value and not from its rounded cost`() {
+        // 11 unidades que valen 14900: 1354,55 por unidad, guardado como 1355.
+        val base = MarginCalculator.suggestionBase(
+            replacementCost = Money.ZERO,
+            onHand = QuantityMilli(11_000L),
+            stockValue = Money(14_900L),
+            averageCost = Money(1355L),
+        )
+
+        // A 30 %: exacto 1935,06. A 99 %: exacto 135454,55, y 135500 desde 1355.
+        assertEquals(suggested(1936L), suggestFrom(base, targetBp = 3000L))
+        assertEquals(suggested(135_455L), suggestFrom(base, targetBp = 9900L))
+        assertEquals(suggested(135_500L), suggest(base = 1355L, targetBp = 9900L))
+    }
+
+    @Test
+    fun `a product sold by weight suggests from its exact cost per kilogram`() {
+        // 4,250 kg que valen 136250: 32058,82 por kilogramo. A 30 %: exacto 45798,32.
+        val base = MarginCalculator.suggestionBase(
+            replacementCost = Money.ZERO,
+            onHand = QuantityMilli(4250L),
+            stockValue = Money(136_250L),
+            averageCost = Money(32_059L),
+        )
+
+        assertEquals(suggested(45_799L), suggestFrom(base, targetBp = 3000L))
     }
 
     @Test
@@ -224,6 +356,11 @@ class MarginCalculatorTest {
     fun `without a known cost there is no suggestion`() {
         assertEquals(PriceSuggestion.NoCost, suggest(base = 0L, targetBp = 3000L))
         assertEquals(PriceSuggestion.NoCost, suggest(base = -5L, targetBp = 3000L))
+        // Ni costo de reposición, ni valor de stock, ni costo promedio: con stock o sin él.
+        for (onHand in listOf(QuantityMilli.ZERO, QuantityMilli(5000L))) {
+            val base = MarginCalculator.suggestionBase(Money.ZERO, onHand, Money.ZERO, Money.ZERO)
+            assertEquals(PriceSuggestion.NoCost, suggestFrom(base, targetBp = 3000L))
+        }
     }
 
     @Test
@@ -278,6 +415,25 @@ class MarginCalculatorTest {
     }
 
     @Test
+    fun `a fractional cost is checked against the price cap without rounding it first`() {
+        // 10^15 por mil unidades es exactamente el precio máximo por unidad.
+        val atCap = ExactUnitCost(Money(1_000_000_000_000_000L), QuantityMilli(1_000_000L))
+        // Una unidad menor más reparte 0,001 por unidad, que ya pasa el tope.
+        val aboveCap = ExactUnitCost(Money(1_000_000_000_000_001L), QuantityMilli(1_000_000L))
+
+        assertEquals(suggested(MAX_UNIT_MONEY), suggestFrom(atCap, targetBp = 0L))
+        assertEquals(PriceSuggestion.AbovePriceLimit, suggestFrom(aboveCap, targetBp = 0L))
+    }
+
+    @Test
+    fun `a cost too large to multiply is rejected as above the cap without overflowing`() {
+        // El valor de stock máximo en una milésima: 9 × 10^18 por unidad, por 10000 no cabe en Long.
+        val base = ExactUnitCost(Money(9_000_000_000_000_000L), QuantityMilli(1L))
+
+        assertEquals(PriceSuggestion.AbovePriceLimit, suggestFrom(base, targetBp = 3000L))
+    }
+
+    @Test
     fun `the highest base with the highest margin and tax is rejected without overflowing`() {
         // 10^12 a 99 % da 10^14, y con 100 % de impuesto, 2 × 10^14: muy lejos del máximo de Long.
         assertEquals(
@@ -289,26 +445,44 @@ class MarginCalculatorTest {
     @Test
     fun `the suggestion is the lowest price that reaches the target on seeded cases`() {
         val random = Random(20_261_103)
-        repeat(10_000) {
-            val base = random.nextLong(1L, MAX_UNIT_MONEY + 1L)
+        val anyRange = List(6000) { anyCost(random) }
+        val belowOneMinorUnit = List(2000) { costBelowOneMinorUnit(random) }
+        val wholeUnits = List(2000) { wholeUnitCost(random) }
+        val costs = anyRange + belowOneMinorUnit + wholeUnits
+
+        assertEquals(10_000, costs.size)
+        for (base in costs) {
             val target = random.nextLong(0L, 9901L)
+            val tax = if (random.nextBoolean()) 0L else random.nextLong(0L, 10_001L)
             val step = if (random.nextBoolean()) 0L else random.nextLong(1L, 100_001L)
-            val result = suggest(base = base, targetBp = target, step = step)
-            // Exacto: el menor precio con precio × (10000 − margen) >= base × 10000.
-            val needed = BigInteger.valueOf(base) * BigInteger.valueOf(10_000L)
+            val result = suggestFrom(base, targetBp = target, taxBp = tax, step = step)
+            // Exacto: el menor precio sin impuesto con precio × (10000 − margen) >= costo × 10000,
+            // y el costo es monto × 1000 / cantidad. Una sola división, sin techos intermedios.
+            val amount = BigInteger.valueOf(base.amount.minor)
+            val quantity = BigInteger.valueOf(base.quantity.milli)
             val keep = BigInteger.valueOf(10_000L - target)
-            val (quotient, remainder) = needed.divideAndRemainder(keep)
-            val lowest = if (remainder.signum() == 0) quotient else quotient + BigInteger.ONE
+            val lowest = ceilDiv(amount * BigInteger.valueOf(10_000_000L), quantity * keep)
+            val taxFactor = BigInteger.valueOf(10_000L + tax)
+            val withTax = ceilDiv(lowest * taxFactor, BigInteger.valueOf(10_000L))
             val expected =
-                if (step == 0L) lowest else ceilToMultiple(lowest, BigInteger.valueOf(step))
-            val case = "base $base, margen $target, paso $step"
+                if (step == 0L) withTax else ceilToMultiple(withTax, BigInteger.valueOf(step))
+            val case = "costo ${base.amount.minor} por ${base.quantity.milli}, margen $target, " +
+                "impuesto $tax, paso $step"
 
             if (expected > BigInteger.valueOf(MAX_UNIT_MONEY)) {
                 assertEquals(case, PriceSuggestion.AbovePriceLimit, result)
             } else {
                 assertEquals(case, suggested(expected.toLong()), result)
-                val margin = MarginCalculator.margin(Money(expected.toLong()), Money(base))
-                assertTrue(case, margin is Margin.Defined && margin.value.bp >= target)
+                // Sin el impuesto, el precio alcanza el margen contra el costo exacto:
+                // precio × 10000 / (10000 + impuesto) × (10000 − margen) >= costo × 10000.
+                val reached = expected * BigInteger.valueOf(10_000L) * keep * quantity
+                val needed = amount * BigInteger.valueOf(10_000_000L) * taxFactor
+                assertTrue(case, reached >= needed)
+                // Con un costo entero y sin impuesto, el margen que muestra la app también llega.
+                if (base.quantity == QuantityMilli(1000L) && tax == 0L) {
+                    val margin = MarginCalculator.margin(Money(expected.toLong()), base.amount)
+                    assertTrue(case, margin is Margin.Defined && margin.value.bp >= target)
+                }
             }
         }
     }
@@ -468,17 +642,51 @@ class MarginCalculatorTest {
 
     private fun suggested(price: Long): PriceSuggestion = PriceSuggestion.Suggested(Money(price))
 
+    /** Sugerencia desde un costo entero por unidad, como el de reposición. */
     private fun suggest(base: Long, targetBp: Long, taxBp: Long = 0L, step: Long = 0L) =
-        MarginCalculator.suggestedPrice(
-            base = Money(base),
-            targetMargin = BasisPoints(targetBp),
-            includedTaxRate = BasisPoints(taxBp),
-            roundingStep = Money(step),
-        )
+        suggestFrom(ExactUnitCost.perUnit(Money(base)), targetBp, taxBp, step)
 
-    private fun ceilToMultiple(value: BigInteger, step: BigInteger): BigInteger {
-        val (quotient, remainder) = value.divideAndRemainder(step)
-        return (if (remainder.signum() == 0) quotient else quotient + BigInteger.ONE) * step
+    private fun suggestFrom(
+        base: ExactUnitCost,
+        targetBp: Long,
+        taxBp: Long = 0L,
+        step: Long = 0L,
+    ): PriceSuggestion = MarginCalculator.suggestedPrice(
+        base = base,
+        targetMargin = BasisPoints(targetBp),
+        includedTaxRate = BasisPoints(taxBp),
+        roundingStep = Money(step),
+    )
+
+    private fun ceilDiv(value: BigInteger, divisor: BigInteger): BigInteger {
+        val (quotient, remainder) = value.divideAndRemainder(divisor)
+        return if (remainder.signum() == 0) quotient else quotient + BigInteger.ONE
+    }
+
+    private fun ceilToMultiple(value: BigInteger, step: BigInteger): BigInteger =
+        ceilDiv(value, step) * step
+
+    /**
+     * Un costo de cualquier tamaño: el monto llega a 2^54, sobre el valor de stock máximo, y la
+     * cantidad a 2^34, sobre el stock máximo. Casi siempre es fraccionario.
+     */
+    private fun anyCost(random: Random): ExactUnitCost =
+        ExactUnitCost(Money(randomBits(random, 54)), QuantityMilli(randomBits(random, 34)))
+
+    /** Menos de una unidad menor por unidad, como la caja de 1000 por 400. */
+    private fun costBelowOneMinorUnit(random: Random): ExactUnitCost {
+        val quantity = random.nextLong(2000L, 8_000_000_001L)
+        return ExactUnitCost(Money(random.nextLong(1L, quantity / 1000L)), QuantityMilli(quantity))
+    }
+
+    /** Un costo entero por unidad, como el de reposición, hasta el precio máximo. */
+    private fun wholeUnitCost(random: Random): ExactUnitCost =
+        ExactUnitCost.perUnit(Money(random.nextLong(1L, MAX_UNIT_MONEY + 1L)))
+
+    /** Un número positivo con una cantidad de bits al azar, para cruzar tamaños muy distintos. */
+    private fun randomBits(random: Random, maxBits: Int): Long {
+        val bits = random.nextInt(1, maxBits + 1)
+        return (random.nextLong() ushr (64 - bits)).coerceAtLeast(1L)
     }
 
     private fun profit(
