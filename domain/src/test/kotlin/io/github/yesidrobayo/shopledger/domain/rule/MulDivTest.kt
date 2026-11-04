@@ -240,6 +240,102 @@ class MulDivTest {
         }
     }
 
+    @Test
+    fun `the ceiling of an exact division does not round`() {
+        // Una caja de 1000 unidades por 400, por mil y por 10000: 0,4 por unidad son 4000.
+        assertEquals(Checked.Value(4000L), mulDivCeil(400L, 10_000_000L, 1_000_000L))
+        assertEquals(Checked.Value(Long.MAX_VALUE), mulDivCeil(Long.MAX_VALUE, 2L, 2L))
+        assertEquals(Checked.Value(0L), mulDivCeil(0L, Long.MAX_VALUE, 7L))
+    }
+
+    @Test
+    fun `any remainder rounds the ceiling up`() {
+        // 1355 × 10000 / 7000 = 1935,71, el precio de un margen del 30 %.
+        assertEquals(Checked.Value(1936L), mulDivCeil(1355L, 10_000L, 7000L))
+        // Una caja de 24 por 10000, por mil y por 10000: 4166666,67.
+        assertEquals(Checked.Value(4_166_667L), mulDivCeil(10_000L, 10_000_000L, 24_000L))
+        // Un tercio sube igual que medio, y que casi uno.
+        assertEquals(Checked.Value(1L), mulDivCeil(1L, 1L, 3L))
+        assertEquals(Checked.Value(1L), mulDivCeil(1L, 1L, 2L))
+        assertEquals(Checked.Value(1L), mulDivCeil(2L, 1L, 3L))
+    }
+
+    @Test
+    fun `a ceiling that needs 128 bits in the middle comes back exact`() {
+        // 10^9 × 10^12 = 10^21 no cabe en Long; el resultado, 10^18, sí.
+        assertEquals(
+            Checked.Value(1_000_000_000_000_000_000L),
+            mulDivCeil(1_000_000_000L, 1_000_000_000_000L, 1000L),
+        )
+        assertEquals(
+            Checked.Value(Long.MAX_VALUE),
+            mulDivCeil(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE),
+        )
+    }
+
+    @Test
+    fun `a ceiling whose product high half reaches the divisor is rejected`() {
+        // 2^32 × 2^32 = 2^64: el cociente entre 1 ya no cabe en 64 bits.
+        assertEquals(Checked.Overflow, mulDivCeil(4_294_967_296L, 4_294_967_296L, 1L))
+        assertEquals(Checked.Overflow, mulDivCeil(3_037_000_500L, 3_037_000_500L, 1L))
+    }
+
+    @Test
+    fun `a ceiling that fits in 64 bits but not in a long is rejected`() {
+        // (2^32 − 1) × (2^32 + 1) = 2^64 − 1.
+        assertEquals(Checked.Overflow, mulDivCeil(4_294_967_295L, 4_294_967_297L, 1L))
+    }
+
+    @Test
+    fun `a ceiling that only overflows when rounding up is rejected`() {
+        // (2^64 − 1) / 2 = 2^63 − 0,5: el cociente es el máximo de Long y el techo, 2^63, no cabe.
+        assertEquals(Checked.Overflow, mulDivCeil(4_294_967_295L, 4_294_967_297L, 2L))
+    }
+
+    @Test
+    fun `a quotient of all ones with a remainder does not wrap around to zero`() {
+        // 31 × 1190112520884487201 = 2^65 − 1, y entre 2 da 2^64 − 1 con resto 1. Sumar uno a ese
+        // cociente sin mirarlo antes daría cero.
+        assertEquals(Checked.Overflow, mulDivCeil(31L, 1_190_112_520_884_487_201L, 2L))
+    }
+
+    @Test
+    fun `a negative factor or a divisor that is not positive is a programming error`() {
+        assertThrows(IllegalArgumentException::class.java) { mulDivCeil(-1L, 1L, 1L) }
+        assertThrows(IllegalArgumentException::class.java) { mulDivCeil(1L, -1L, 1L) }
+        assertThrows(IllegalArgumentException::class.java) { mulDivCeil(1L, 1L, 0L) }
+        assertThrows(IllegalArgumentException::class.java) { mulDivCeil(1L, 1L, -1L) }
+    }
+
+    @Test
+    fun `the ceiling matches big integer arithmetic on ten thousand seeded cases`() {
+        val random = Random(20_261_104)
+        val anyRange = List(8000) { ceilingCase(random) }
+        val edges = List(2000) { ceilingEdgeCase(random) }
+        val cases = anyRange + edges
+
+        assertEquals(10_000, cases.size)
+        for ((a, b, d) in cases) {
+            assertEquals("mulDivCeil($a, $b, $d)", ceilingReference(a, b, d), mulDivCeil(a, b, d))
+        }
+    }
+
+    @Test
+    fun `the ceiling matches big integer arithmetic on every combination of edge values`() {
+        val factors = EDGES.filter { it >= 0L }
+        for (a in factors) {
+            for (b in factors) {
+                for (d in EDGE_DIVISORS) {
+                    assertEquals(
+                        "mulDivCeil($a, $b, $d)",
+                        ceilingReference(a, b, d),
+                        mulDivCeil(a, b, d),
+                    )
+                }
+            }
+        }
+    }
+
     /**
      * La misma cuenta con `BigInteger`, que solo existe en las pruebas, y con otra forma de
      * redondear: comparar el doble del resto con el divisor.
@@ -253,6 +349,30 @@ class MulDivTest {
         if (magnitude > BigInteger.valueOf(Long.MAX_VALUE)) return Checked.Overflow
         val signed = if (product.signum() < 0) magnitude.negate() else magnitude
         return Checked.Value(signed.toLong())
+    }
+
+    /**
+     * El techo con `BigInteger` y con otra fórmula, `(n + d − 1) / d`, que en `Long` desbordaría y
+     * aquí no.
+     */
+    private fun ceilingReference(a: Long, b: Long, d: Long): Checked<Long> {
+        val product = BigInteger.valueOf(a).multiply(BigInteger.valueOf(b))
+        val divisor = BigInteger.valueOf(d)
+        val ceiling = (product + divisor - BigInteger.ONE) / divisor
+        if (ceiling > BigInteger.valueOf(Long.MAX_VALUE)) return Checked.Overflow
+        return Checked.Value(ceiling.toLong())
+    }
+
+    /** Factores sin signo de cualquier tamaño, con el divisor también al azar. */
+    private fun ceilingCase(random: Random): Triple<Long, Long, Long> = Triple(
+        randomNonNegativeLong(random),
+        randomNonNegativeLong(random),
+        randomPositiveLong(random),
+    )
+
+    private fun ceilingEdgeCase(random: Random): Triple<Long, Long, Long> {
+        val factors = EDGES.filter { it >= 0L }
+        return Triple(factors.random(random), factors.random(random), EDGE_DIVISORS.random(random))
     }
 
     /** Cualquier rango: cada número lleva una cantidad de bits al azar, y se cruzan los tamaños. */
@@ -274,6 +394,11 @@ class MulDivTest {
         val bits = random.nextInt(1, 64)
         val magnitude = random.nextLong() ushr (64 - bits)
         return if (random.nextBoolean()) -magnitude else magnitude
+    }
+
+    private fun randomNonNegativeLong(random: Random): Long {
+        val bits = random.nextInt(1, 64)
+        return random.nextLong() ushr (64 - bits)
     }
 
     private fun randomPositiveLong(random: Random): Long {
