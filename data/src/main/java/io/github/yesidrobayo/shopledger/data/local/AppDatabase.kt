@@ -42,6 +42,10 @@ import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseEntity
 import io.github.yesidrobayo.shopledger.data.local.guard.SchemaGuards
 import io.github.yesidrobayo.shopledger.data.local.guard.SchemaGuardsCallback
 import io.github.yesidrobayo.shopledger.data.local.migration.AppMigrations
+import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountDao
+import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountEntity
+import io.github.yesidrobayo.shopledger.data.local.money.MoneyMovementDao
+import io.github.yesidrobayo.shopledger.data.local.money.MoneyMovementEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseDao
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
@@ -72,19 +76,17 @@ import kotlin.coroutines.CoroutineContext
  * Por ahora tiene el catálogo (categorías, proveedores, productos y su historial de precios),
  * `price_lists`, las compras y las ventas con sus líneas, el libro de stock y sus alertas, los
  * gastos con sus categorías, las tasas de impuesto, las filas únicas de los ajustes y del estado
- * del respaldo, que nacen con la base, y los clientes con sus libros de cuenta y de puntos y sus
- * plantillas de mensaje. Del catálogo también tiene los combos, los campos propios, las etiquetas y
- * las imágenes, y de las ventas, los componentes que consumió cada combo vendido. Room activa las
- * llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana entraría sin
- * error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards]. Las demás tablas
- * llegan con las tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
+ * del respaldo, que nacen con la base, los clientes con sus libros de cuenta y de puntos y sus
+ * plantillas de mensaje, y las cuentas de dinero con su libro. Del catálogo también tiene los
+ * combos, los campos propios, las etiquetas y las imágenes, y de las ventas, los componentes que
+ * consumió cada combo vendido. Room activa las llaves foráneas solo si alguna entidad declara una:
+ * sin ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe declarar son
+ * guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y la versión no
+ * cambia mientras el esquema 1 no se publique.
  */
 @Database(
     entities = [
-        PriceListEntity::class,
         CategoryEntity::class,
-        SupplierEntity::class,
-        ProductEntity::class,
         PriceHistoryEntity::class,
         CustomFieldDefinitionEntity::class,
         MediaAssetEntity::class,
@@ -92,22 +94,27 @@ import kotlin.coroutines.CoroutineContext
         ProductCustomValueEntity::class,
         ProductTagEntity::class,
         TagEntity::class,
-        PurchaseEntity::class,
-        PurchaseLineEntity::class,
-        SaleEntity::class,
-        SaleLineEntity::class,
-        SaleLineComponentEntity::class,
         StockMovementEntity::class,
+        PurchaseLineEntity::class,
+        SaleLineComponentEntity::class,
+        SaleLineEntity::class,
+        ProductEntity::class,
         LowStockAlertEntity::class,
-        ExpenseCategoryEntity::class,
-        ExpenseEntity::class,
         AppSettingsEntity::class,
         BackupStateEntity::class,
         TaxRateEntity::class,
-        CustomerEntity::class,
-        CustomerLedgerEntryEntity::class,
         LoyaltyLedgerEntryEntity::class,
         MessageTemplateEntity::class,
+        MoneyMovementEntity::class,
+        PurchaseEntity::class,
+        SupplierEntity::class,
+        ExpenseEntity::class,
+        ExpenseCategoryEntity::class,
+        CustomerLedgerEntryEntity::class,
+        SaleEntity::class,
+        PriceListEntity::class,
+        CustomerEntity::class,
+        MoneyAccountEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -159,6 +166,10 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun loyaltyLedgerEntryDao(): LoyaltyLedgerEntryDao
 
     abstract fun messageTemplateDao(): MessageTemplateDao
+
+    abstract fun moneyAccountDao(): MoneyAccountDao
+
+    abstract fun moneyMovementDao(): MoneyMovementDao
 
     companion object {
         /**

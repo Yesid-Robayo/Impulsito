@@ -61,7 +61,11 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
     fun foreignKeysRestrictAndPointToTheTablesThatExist() = runBlocking {
         val expected =
             mapOf(
-                "purchases" to listOf("supplier_id -> suppliers RESTRICT"),
+                "purchases" to
+                    listOf(
+                        "money_account_id -> money_accounts RESTRICT",
+                        "supplier_id -> suppliers RESTRICT",
+                    ),
                 "purchase_lines" to
                     listOf("product_id -> products RESTRICT", "purchase_id -> purchases RESTRICT"),
                 "sales" to

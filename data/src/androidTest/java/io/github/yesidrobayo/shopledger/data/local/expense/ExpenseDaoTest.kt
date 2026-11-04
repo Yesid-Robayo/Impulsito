@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import io.github.yesidrobayo.shopledger.data.local.ids
+import io.github.yesidrobayo.shopledger.data.local.money.moneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -39,12 +40,14 @@ internal class ExpenseDaoTest : CatalogDatabaseTest() {
 
     @Test
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
-        // La cuenta y el gasto recurrente todavía no tienen tabla ni llave: solo su columna.
+        // El gasto recurrente todavía no tiene tabla ni llave: solo su columna. La cuenta ya tiene
+        // las dos, así que el gasto apunta a una que existe.
+        val accountId = database.moneyAccountDao().insert(moneyAccount("Banco").copy(id = 7))
         val full =
             expense(categoryId, businessDate = "2026-03-15", occurredAt = LATER).copy(
                 amount = 123_456,
                 description = "Factura de agua de marzo",
-                moneyAccountId = 7,
+                moneyAccountId = accountId,
                 recurringExpenseId = 3,
                 createdAt = MUCH_LATER,
             )

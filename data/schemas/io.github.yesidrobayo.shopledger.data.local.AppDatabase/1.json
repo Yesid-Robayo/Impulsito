@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "300d309b675d6d8e057f461de18b9ca6",
+    "identityHash": "ef5fbac3da4ce13744f10e25b2229722",
     "entities": [
       {
         "tableName": "price_lists",
@@ -1181,7 +1181,7 @@
       },
       {
         "tableName": "purchases",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `supplier_id` INTEGER, `status` TEXT NOT NULL, `invoice_reference` TEXT, `net_total` INTEGER NOT NULL, `tax_total` INTEGER NOT NULL, `total` INTEGER NOT NULL, `cost_total` INTEGER NOT NULL, `amount_paid` INTEGER NOT NULL, `money_account_id` INTEGER, `due_date` TEXT, `location_id` INTEGER NOT NULL, `fx_currency_code` TEXT, `fx_rate_micro` INTEGER, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`supplier_id`) REFERENCES `suppliers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `supplier_id` INTEGER, `status` TEXT NOT NULL, `invoice_reference` TEXT, `net_total` INTEGER NOT NULL, `tax_total` INTEGER NOT NULL, `total` INTEGER NOT NULL, `cost_total` INTEGER NOT NULL, `amount_paid` INTEGER NOT NULL, `money_account_id` INTEGER, `due_date` TEXT, `location_id` INTEGER NOT NULL, `fx_currency_code` TEXT, `fx_rate_micro` INTEGER, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`supplier_id`) REFERENCES `suppliers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`money_account_id`) REFERENCES `money_accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1338,6 +1338,17 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "supplier_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "money_accounts",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "money_account_id"
             ],
             "referencedColumns": [
               "id"
@@ -2436,7 +2447,7 @@
       },
       {
         "tableName": "expenses",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `expense_category_id` INTEGER NOT NULL, `status` TEXT NOT NULL, `amount` INTEGER NOT NULL, `description` TEXT, `money_account_id` INTEGER, `recurring_expense_id` INTEGER, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`expense_category_id`) REFERENCES `expense_categories`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `expense_category_id` INTEGER NOT NULL, `status` TEXT NOT NULL, `amount` INTEGER NOT NULL, `description` TEXT, `money_account_id` INTEGER, `recurring_expense_id` INTEGER, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`expense_category_id`) REFERENCES `expense_categories`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`money_account_id`) REFERENCES `money_accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -2545,6 +2556,17 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "expense_category_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "money_accounts",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "money_account_id"
             ],
             "referencedColumns": [
               "id"
@@ -3361,11 +3383,325 @@
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_message_templates_template_key_language_tag` ON `${TABLE_NAME}` (`template_key`, `language_tag`)"
           }
         ]
+      },
+      {
+        "tableName": "money_accounts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `system_key` TEXT, `name` TEXT, `normalized_name` TEXT, `kind` TEXT NOT NULL, `currency_code` TEXT NOT NULL, `currency_decimals` INTEGER NOT NULL, `balance` INTEGER NOT NULL, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "systemKey",
+            "columnName": "system_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currencyCode",
+            "columnName": "currency_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currencyDecimals",
+            "columnName": "currency_decimals",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "balance",
+            "columnName": "balance",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_money_accounts_system_key",
+            "unique": true,
+            "columnNames": [
+              "system_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_money_accounts_system_key` ON `${TABLE_NAME}` (`system_key`)"
+          },
+          {
+            "name": "index_money_accounts_normalized_name",
+            "unique": false,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_money_accounts_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "money_movements",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `money_account_id` INTEGER NOT NULL, `type` TEXT NOT NULL, `amount` INTEGER NOT NULL, `balance_after` INTEGER NOT NULL, `available_date` TEXT, `transfer_group_id` TEXT, `fx_rate_micro` INTEGER, `sale_payment_id` INTEGER, `customer_ledger_entry_id` INTEGER, `supplier_ledger_entry_id` INTEGER, `expense_id` INTEGER, `purchase_id` INTEGER, `sale_return_id` INTEGER, `purchase_return_id` INTEGER, `cash_session_id` INTEGER, `reverses_movement_id` INTEGER, `note` TEXT, `occurred_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `created_at` INTEGER NOT NULL, FOREIGN KEY(`money_account_id`) REFERENCES `money_accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`customer_ledger_entry_id`) REFERENCES `customer_ledger_entries`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`expense_id`) REFERENCES `expenses`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`purchase_id`) REFERENCES `purchases`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`reverses_movement_id`) REFERENCES `money_movements`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moneyAccountId",
+            "columnName": "money_account_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amount",
+            "columnName": "amount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "balanceAfter",
+            "columnName": "balance_after",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "availableDate",
+            "columnName": "available_date",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "transferGroupId",
+            "columnName": "transfer_group_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fxRateMicro",
+            "columnName": "fx_rate_micro",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "salePaymentId",
+            "columnName": "sale_payment_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "customerLedgerEntryId",
+            "columnName": "customer_ledger_entry_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "supplierLedgerEntryId",
+            "columnName": "supplier_ledger_entry_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "expenseId",
+            "columnName": "expense_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "purchaseId",
+            "columnName": "purchase_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "saleReturnId",
+            "columnName": "sale_return_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "purchaseReturnId",
+            "columnName": "purchase_return_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "cashSessionId",
+            "columnName": "cash_session_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "reversesMovementId",
+            "columnName": "reverses_movement_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "businessDate",
+            "columnName": "business_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_money_movements_money_account_id",
+            "unique": false,
+            "columnNames": [
+              "money_account_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_money_movements_money_account_id` ON `${TABLE_NAME}` (`money_account_id`)"
+          },
+          {
+            "name": "index_money_movements_reverses_movement_id",
+            "unique": true,
+            "columnNames": [
+              "reverses_movement_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_money_movements_reverses_movement_id` ON `${TABLE_NAME}` (`reverses_movement_id`)"
+          },
+          {
+            "name": "index_money_movements_sale_payment_id",
+            "unique": false,
+            "columnNames": [
+              "sale_payment_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_money_movements_sale_payment_id` ON `${TABLE_NAME}` (`sale_payment_id`)"
+          },
+          {
+            "name": "index_money_movements_cash_session_id",
+            "unique": false,
+            "columnNames": [
+              "cash_session_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_money_movements_cash_session_id` ON `${TABLE_NAME}` (`cash_session_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "money_accounts",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "money_account_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "customer_ledger_entries",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "customer_ledger_entry_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "expenses",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "expense_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "purchases",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "purchase_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "money_movements",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "reverses_movement_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '300d309b675d6d8e057f461de18b9ca6')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ef5fbac3da4ce13744f10e25b2229722')"
     ]
   }
 }

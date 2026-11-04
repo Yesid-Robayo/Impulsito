@@ -1,0 +1,51 @@
+package io.github.yesidrobayo.shopledger.data.local.money
+
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.Query
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * El libro de dinero: agregar y leer, nada más.
+ *
+ * No hay función que edite ni borre un movimiento, y no debe haberla en ningún DAO: el saldo de
+ * cada cuenta es la suma de sus movimientos, y uno cambiado lo dejaría mal sin que nada lo
+ * delatara. La inserción no usa `REPLACE`, que borraría el movimiento que choca.
+ *
+ * Todo sale en el orden del libro, por `id`. [insert] solo se llama dentro de la transacción del
+ * caso de uso, la misma en que la cuenta queda con el `balance_after` del movimiento.
+ */
+@Dao
+internal interface MoneyMovementDao {
+    @Query("SELECT * FROM money_movements WHERE money_account_id = :accountId ORDER BY id")
+    fun observeByAccount(accountId: Long): Flow<List<MoneyMovementEntity>>
+
+    @Query("SELECT * FROM money_movements WHERE id = :id")
+    suspend fun findById(id: Long): MoneyMovementEntity?
+
+    /** Los movimientos de una cuenta en el orden del libro: lo que da su extracto y su saldo. */
+    @Query("SELECT * FROM money_movements WHERE money_account_id = :accountId ORDER BY id")
+    suspend fun findByAccount(accountId: Long): List<MoneyMovementEntity>
+
+    /**
+     * El saldo que dejó el último movimiento de la cuenta, o `null` si no tiene ninguno: la base
+     * del `balance_after` del siguiente.
+     */
+    @Query(
+        "SELECT balance_after FROM money_movements WHERE money_account_id = :accountId " +
+            "ORDER BY id DESC LIMIT 1",
+    )
+    suspend fun lastBalanceAfter(accountId: Long): Long?
+
+    /** Las dos filas de una transferencia, la que sale y la que entra. */
+    @Query("SELECT * FROM money_movements WHERE transfer_group_id = :groupId ORDER BY id")
+    suspend fun findByTransferGroup(groupId: String): List<MoneyMovementEntity>
+
+    /** Si algún movimiento ya anula a [movementId]: uno se anula una sola vez. */
+    @Query("SELECT EXISTS (SELECT 1 FROM money_movements WHERE reverses_movement_id = :movementId)")
+    suspend fun isCompensated(movementId: Long): Boolean
+
+    /** Agrega el movimiento y devuelve su id, que fija su lugar en el orden del libro. */
+    @Insert
+    suspend fun insert(movement: MoneyMovementEntity): Long
+}

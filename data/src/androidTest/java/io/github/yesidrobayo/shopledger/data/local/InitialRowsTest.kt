@@ -158,7 +158,11 @@ internal class InitialRowsTest : CatalogDatabaseTest() {
         val expected =
             mapOf(
                 "expense_categories" to emptyList(),
-                "expenses" to listOf("expense_category_id -> expense_categories RESTRICT"),
+                "expenses" to
+                    listOf(
+                        "expense_category_id -> expense_categories RESTRICT",
+                        "money_account_id -> money_accounts RESTRICT",
+                    ),
                 "low_stock_alerts" to listOf("product_id -> products CASCADE"),
                 "app_settings" to emptyList(),
                 "backup_state" to emptyList(),

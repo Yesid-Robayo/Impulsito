@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.product
 import io.github.yesidrobayo.shopledger.data.local.catalog.supplier
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import io.github.yesidrobayo.shopledger.data.local.ids
+import io.github.yesidrobayo.shopledger.data.local.money.moneyAccount
 import io.github.yesidrobayo.shopledger.data.local.purchase
 import io.github.yesidrobayo.shopledger.data.local.purchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.Limit
@@ -37,7 +38,8 @@ internal class PurchaseDaoTest : LedgerDatabaseTest() {
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         val supplierId = database.supplierDao().insert(supplier("Distribuidora Andina"))
         // Cada columna con un valor distinto, para que dos columnas cruzadas no pasen. Se pagó una
-        // parte, con deuda al proveedor, en otra moneda.
+        // parte, con deuda al proveedor, en otra moneda, desde una cuenta que existe.
+        val accountId = database.moneyAccountDao().insert(moneyAccount("Banco").copy(id = 3))
         val header =
             PurchaseEntity(
                 supplierId = supplierId,
@@ -48,7 +50,7 @@ internal class PurchaseDaoTest : LedgerDatabaseTest() {
                 total = 99_960,
                 costTotal = 84_001,
                 amountPaid = 40_000,
-                moneyAccountId = 3,
+                moneyAccountId = accountId,
                 dueDate = "2026-02-15",
                 locationId = 4,
                 fxCurrencyCode = "XTS",

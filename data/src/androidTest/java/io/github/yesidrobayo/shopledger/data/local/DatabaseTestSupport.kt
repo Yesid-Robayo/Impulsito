@@ -70,6 +70,8 @@ internal val SCHEMA_TABLES =
         "loyalty_ledger_entries",
         "media_assets",
         "message_templates",
+        "money_accounts",
+        "money_movements",
         "price_lists",
         "product_components",
         "product_custom_values",

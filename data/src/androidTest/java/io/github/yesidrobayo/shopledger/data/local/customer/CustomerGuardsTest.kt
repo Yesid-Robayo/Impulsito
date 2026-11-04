@@ -117,6 +117,9 @@ internal class CustomerGuardsTest : GuardProbeTest() {
             returnCredit.with("sale_return_id" to null),
             opening.with("sale_return_id" to 1L),
             opening.with("reverses_entry_id" to 1L),
+            // Un ajuste siempre explica su motivo.
+            opening.with("type" to "ADJUSTMENT"),
+            opening.with("type" to "ADJUSTMENT", "amount" to -1L),
             // Tipos, enteros, fechas y largos.
             opening.with("type" to "GIFT_CARD"),
             opening.with("amount" to 5_000.5),
@@ -136,7 +139,7 @@ internal class CustomerGuardsTest : GuardProbeTest() {
             payment,
             returnCredit,
             opening.with("type" to "ADJUSTMENT", "note" to "Corrección"),
-            opening.with("type" to "ADJUSTMENT", "amount" to -1L),
+            opening.with("type" to "ADJUSTMENT", "amount" to -1L, "note" to "Redondeo"),
         )) {
             insert(ENTRIES_TABLE, valid)
         }

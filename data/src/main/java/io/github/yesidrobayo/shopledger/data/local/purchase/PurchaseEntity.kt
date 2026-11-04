@@ -5,7 +5,9 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import androidx.room3.RoomWarnings
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
+import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountEntity
 
 /**
  * La cabecera de una compra. Una compra confirmada no se edita ni se borra: solo se anula, y la
@@ -20,9 +22,13 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
  * - `fx_currency_code` y `fx_rate_micro` solo dejan constancia de la moneda en que se compró: los
  *   montos siempre van en la del negocio.
  * - El proveedor usa `RESTRICT`: un proveedor con compras no se borra, se archiva.
- * - `money_account_id` y `location_id` todavía no tienen llave foránea: sus tablas no existen aún.
- *   La llave llega con la tabla a la que apunta, dentro del mismo esquema 1.
+ * - La cuenta de dinero también usa `RESTRICT`: una cuenta usada por una compra no se borra. No
+ *   lleva índice: las cuentas casi nunca se borran, y SQLite solo busca compras por esa columna
+ *   al borrar una.
+ * - `location_id` todavía no tiene llave foránea: su tabla no existe aún. La llave llega con la
+ *   tabla a la que apunta, dentro del mismo esquema 1.
  */
+@Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
     tableName = "purchases",
     foreignKeys = [
@@ -30,6 +36,12 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
             entity = SupplierEntity::class,
             parentColumns = ["id"],
             childColumns = ["supplier_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = MoneyAccountEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["money_account_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

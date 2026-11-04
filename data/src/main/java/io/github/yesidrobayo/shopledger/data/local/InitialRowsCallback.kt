@@ -11,7 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 
 /**
  * Crea, al nacer la base, las filas que la app necesita desde la primera pantalla: la única de
- * `app_settings` y la única de `backup_state`, las dos con `id` 1.
+ * `app_settings` y la única de `backup_state`, las dos con `id` 1, y la cuenta de dinero `CASH`.
  *
  * Room llama a [onCreate] solo cuando crea la base, dentro de la misma transacción exclusiva en
  * que crea las tablas y antes de fijar la versión: si una inserción falla, no queda ni la base a
@@ -20,7 +20,8 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
  *
  * Los valores iniciales son los del modelo de datos, sin nada de un país ni de un idioma: la
  * configuración regional llega en sus propias columnas, y las categorías y unidades iniciales, con
- * sus textos traducibles, llegan con sus tablas. [clock] da el instante de `updated_at`.
+ * sus textos traducibles, llegan con sus tablas. [clock] da el instante de `updated_at`, y el de
+ * `created_at` donde lo hay.
  */
 internal class InitialRowsCallback(private val clock: Clock) : RoomDatabase.Callback() {
     override suspend fun onCreate(connection: SQLiteConnection) {
@@ -29,6 +30,12 @@ internal class InitialRowsCallback(private val clock: Clock) : RoomDatabase.Call
             statement.step()
         }
         connection.prepare(INSERT_BACKUP_STATE_SQL).use { it.step() }
+        connection.prepare(INSERT_CASH_ACCOUNT_SQL).use { statement ->
+            val now = clock.nowEpochMillis()
+            statement.bindLong(1, now)
+            statement.bindLong(2, now)
+            statement.step()
+        }
     }
 }
 
@@ -54,3 +61,14 @@ private val INSERT_APP_SETTINGS_SQL =
 private const val INSERT_BACKUP_STATE_SQL =
     "INSERT INTO backup_state (id, change_seq, verified_seq, link_state, consecutive_failures, " +
         "invariant_failures, head_generation) VALUES (1, 0, 0, 'NOT_CONNECTED', 0, 0, 0)"
+
+/**
+ * La cuenta de dinero inicial: la caja, con su clave estable y sin nombre propio, que se muestra
+ * con el texto traducido de la clave. Nace sin saldo y con `XXX`, el código de ISO 4217 que
+ * significa sin moneda: la del negocio todavía no existe ni está confirmada, y confirmarla la
+ * escribe aquí en la misma transacción, mientras la cuenta no tenga movimientos.
+ */
+private const val INSERT_CASH_ACCOUNT_SQL =
+    "INSERT INTO money_accounts (system_key, name, normalized_name, kind, currency_code, " +
+        "currency_decimals, balance, archived_at, created_at, updated_at) " +
+        "VALUES ('CASH', NULL, NULL, 'CASH', 'XXX', 0, 0, NULL, ?, ?)"

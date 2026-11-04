@@ -47,6 +47,8 @@ internal object SchemaGuards {
             CUSTOMER_LEDGER_ENTRIES_GUARDS,
             LOYALTY_LEDGER_ENTRIES_GUARDS,
             MESSAGE_TEMPLATES_GUARDS,
+            MONEY_ACCOUNTS_GUARDS,
+            MONEY_MOVEMENTS_GUARDS,
             EXPENSE_CATEGORIES_GUARDS,
             EXPENSES_GUARDS,
             PRICE_LISTS_GUARDS,
@@ -1291,6 +1293,7 @@ private val CUSTOMER_LEDGER_ENTRIES_GUARDS =
           AND (NEW.type = 'CREDIT_SALE') = (NEW.sale_id IS NOT NULL)
           AND (NEW.type = 'RETURN_CREDIT') = (NEW.sale_return_id IS NOT NULL)
           AND (NEW.type = 'ENTRY_VOID') = (NEW.reverses_entry_id IS NOT NULL)
+          AND (NEW.type <> 'ADJUSTMENT' OR NEW.note IS NOT NULL)
           AND (NEW.reverses_entry_id IS NULL OR EXISTS (SELECT 1 FROM customer_ledger_entries o WHERE o.id = NEW.reverses_entry_id AND o.customer_id = NEW.customer_id AND o.amount = -NEW.amount AND o.type <> 'ENTRY_VOID'))
           AND NOT EXISTS (SELECT 1 FROM customer_ledger_entries e WHERE e.reverses_entry_id = NEW.reverses_entry_id)
           AND NOT EXISTS (SELECT 1 FROM customer_ledger_entries x WHERE x.id = NEW.id)
@@ -1360,6 +1363,100 @@ private val MESSAGE_TEMPLATES_GUARDS =
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:message_templates'); END;
         """,
+    )
+
+/** Las cuentas de dinero: una clase conocida, una moneda de tres letras mayúsculas con sus
+ * decimales, y un nombre o una clave inicial. Con movimientos, la moneda ya no cambia. */
+private val MONEY_ACCOUNTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_money_accounts_insert BEFORE INSERT ON money_accounts
+        WHEN NOT IFNULL((
+          (NEW.system_key IS NULL OR (typeof(NEW.system_key) = 'text' AND length(NEW.system_key) BETWEEN 1 AND 40))
+          AND (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40))
+          AND NEW.kind IN ('CASH', 'BANK', 'WALLET', 'OTHER')
+          AND length(NEW.currency_code) = 3 AND NEW.currency_code = upper(NEW.currency_code) AND NEW.currency_code NOT GLOB '*[^A-Z]*'
+          AND typeof(NEW.currency_decimals) = 'integer' AND NEW.currency_decimals BETWEEN 0 AND 4
+          AND typeof(NEW.balance) = 'integer'
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.system_key IS NOT NULL OR NEW.name IS NOT NULL)
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM money_accounts a WHERE a.normalized_name = NEW.normalized_name AND a.archived_at IS NULL))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:money_accounts'); END;
+
+        CREATE TRIGGER guard_money_accounts_update BEFORE UPDATE ON money_accounts
+        WHEN NOT IFNULL((
+          (NEW.system_key IS NULL OR (typeof(NEW.system_key) = 'text' AND length(NEW.system_key) BETWEEN 1 AND 40))
+          AND (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40))
+          AND NEW.kind IN ('CASH', 'BANK', 'WALLET', 'OTHER')
+          AND length(NEW.currency_code) = 3 AND NEW.currency_code = upper(NEW.currency_code) AND NEW.currency_code NOT GLOB '*[^A-Z]*'
+          AND typeof(NEW.currency_decimals) = 'integer' AND NEW.currency_decimals BETWEEN 0 AND 4
+          AND typeof(NEW.balance) = 'integer'
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.system_key IS NOT NULL OR NEW.name IS NOT NULL)
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM money_accounts a WHERE a.normalized_name = NEW.normalized_name AND a.archived_at IS NULL AND a.id <> NEW.id))
+          AND ((NEW.currency_code = OLD.currency_code AND NEW.currency_decimals = OLD.currency_decimals) OR NOT EXISTS (SELECT 1 FROM money_movements m WHERE m.money_account_id = OLD.id))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:money_accounts'); END;
+        """,
+    )
+
+/** El libro de dinero: solo crece. Cada movimiento lleva el signo y el origen de su tipo, una
+ * transferencia lleva su grupo, y una anulación apunta a un movimiento de la misma cuenta, con
+ * el monto opuesto, una sola vez y nunca a una transferencia.
+ *
+ * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
+ * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
+ * parte de estas guardas que hoy protege menos que su texto completo. */
+private val MONEY_MOVEMENTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_money_movements_insert BEFORE INSERT ON money_movements
+        WHEN NOT IFNULL((
+          NEW.type IN ('OPENING_BALANCE', 'SALE_RECEIPT', 'CUSTOMER_PAYMENT', 'REFUND', 'FEE', 'EXPENSE_PAYMENT', 'PURCHASE_PAYMENT', 'SUPPLIER_PAYMENT', 'SUPPLIER_REFUND', 'OWNER_DRAW', 'OWNER_CONTRIBUTION', 'OTHER_INCOME', 'TRANSFER_OUT', 'TRANSFER_IN', 'CASH_DIFFERENCE', 'MOVEMENT_VOID')
+          AND typeof(NEW.amount) = 'integer'
+          AND typeof(NEW.balance_after) = 'integer'
+          AND (NEW.available_date IS NULL OR (date(NEW.available_date) = NEW.available_date))
+          AND (NEW.transfer_group_id IS NULL OR (typeof(NEW.transfer_group_id) = 'text' AND length(NEW.transfer_group_id) BETWEEN 36 AND 36))
+          AND (NEW.fx_rate_micro IS NULL OR (typeof(NEW.fx_rate_micro) = 'integer' AND NEW.fx_rate_micro BETWEEN 1 AND 1000000000000000))
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND (SELECT currency_locked_at FROM app_settings WHERE id = 1) IS NOT NULL
+          AND NEW.amount <> 0
+          AND CASE WHEN NEW.type IN ('SALE_RECEIPT', 'CUSTOMER_PAYMENT', 'SUPPLIER_REFUND', 'OWNER_CONTRIBUTION', 'OTHER_INCOME', 'TRANSFER_IN') THEN NEW.amount > 0 WHEN NEW.type IN ('REFUND', 'FEE', 'EXPENSE_PAYMENT', 'PURCHASE_PAYMENT', 'SUPPLIER_PAYMENT', 'OWNER_DRAW', 'TRANSFER_OUT') THEN NEW.amount < 0 ELSE 1 END
+          AND (NEW.type IN ('TRANSFER_OUT', 'TRANSFER_IN')) = (NEW.transfer_group_id IS NOT NULL)
+          AND (NEW.type NOT IN ('SALE_RECEIPT', 'FEE') OR NEW.sale_payment_id IS NOT NULL)
+          AND (NEW.type <> 'CUSTOMER_PAYMENT' OR NEW.customer_ledger_entry_id IS NOT NULL)
+          AND (NEW.type <> 'SUPPLIER_PAYMENT' OR NEW.supplier_ledger_entry_id IS NOT NULL)
+          AND (NEW.type <> 'EXPENSE_PAYMENT' OR NEW.expense_id IS NOT NULL)
+          AND (NEW.type <> 'PURCHASE_PAYMENT' OR NEW.purchase_id IS NOT NULL)
+          AND (NEW.type <> 'REFUND' OR NEW.sale_return_id IS NOT NULL)
+          AND (NEW.type <> 'SUPPLIER_REFUND' OR NEW.purchase_return_id IS NOT NULL)
+          AND (NEW.type <> 'CASH_DIFFERENCE' OR NEW.cash_session_id IS NOT NULL)
+          AND (NEW.type = 'MOVEMENT_VOID') = (NEW.reverses_movement_id IS NOT NULL)
+          AND (NEW.reverses_movement_id IS NULL OR EXISTS (SELECT 1 FROM money_movements o WHERE o.id = NEW.reverses_movement_id AND o.money_account_id = NEW.money_account_id AND o.amount = -NEW.amount AND o.type NOT IN ('MOVEMENT_VOID', 'TRANSFER_OUT', 'TRANSFER_IN')))
+          AND NOT EXISTS (SELECT 1 FROM money_movements m WHERE m.reverses_movement_id = NEW.reverses_movement_id)
+          AND NOT EXISTS (SELECT 1 FROM money_movements x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:money_movements'); END;
+
+        CREATE TRIGGER guard_money_movements_no_update BEFORE UPDATE ON money_movements
+        BEGIN SELECT RAISE(ABORT, 'guard:money_movements_append_only'); END;
+
+        CREATE TRIGGER guard_money_movements_no_delete BEFORE DELETE ON money_movements
+        BEGIN SELECT RAISE(ABORT, 'guard:money_movements_append_only'); END;
+        """,
+        awaitingCurrencyLock("guard_money_movements_insert"),
     )
 
 /** Las categorías de gasto: el nombre es único entre las vigentes, y la de otros gastos no
