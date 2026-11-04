@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.data.local.expense.expense
 import io.github.yesidrobayo.shopledger.data.local.expense.expenseCategory
 import io.github.yesidrobayo.shopledger.data.local.ids
 import io.github.yesidrobayo.shopledger.data.local.payable.supplierEntry
+import io.github.yesidrobayo.shopledger.data.local.payment.insertSaleWithCardPayment
 import io.github.yesidrobayo.shopledger.data.local.purchaseReturn
 import io.github.yesidrobayo.shopledger.data.local.sale
 import io.github.yesidrobayo.shopledger.data.local.saleReturn
@@ -121,16 +122,18 @@ internal class MoneyLedgerDaoTest : CatalogDatabaseTest() {
         val supplierPayment =
             database.supplierLedgerEntryDao()
                 .insert(supplierEntry(supplierId, "PAYMENT", -5, -5))
-        val sold = database.saleDao().insert(sale(insertPriceList("lista")))
+        val priceListId = insertPriceList("lista")
+        val sold = database.saleDao().insert(sale(priceListId))
         val saleReturnId = database.saleReturnDao().insert(saleReturn(sold))
         val purchaseReturnId = database.purchaseReturnDao().insert(purchaseReturn())
+        val salePayment = database.insertSaleWithCardPayment(priceListId)
         // Cada columna con un valor distinto dentro de su fila, para que dos columnas cruzadas no
-        // pasen. Las columnas sin llave todavía admiten cualquier id.
+        // pasen. Cada origen existe, porque todas las columnas ya tienen llave.
         val rows =
             listOf(
                 moneyMovement(accountId, "FEE", -300, -301).copy(
                     availableDate = "2026-01-03",
-                    salePaymentId = 41,
+                    salePaymentId = salePayment,
                     note = "Comisión",
                     occurredAt = 11,
                     createdAt = 12,
@@ -160,6 +163,7 @@ internal class MoneyLedgerDaoTest : CatalogDatabaseTest() {
         val accountId = accounts.insert(moneyAccount("Banco"))
         val categoryId = database.expenseCategoryDao().insert(expenseCategory("Arriendo"))
         val expenseId = database.expenseDao().insert(expense(categoryId))
+        val salePayment = database.insertSaleWithCardPayment(insertPriceList("lista"))
         assertNull(movements.lastBalanceAfter(accountId))
 
         // El ejemplo de la regla: saldo inicial, una venta cobrada, un gasto y un retiro. Cada
@@ -175,10 +179,10 @@ internal class MoneyLedgerDaoTest : CatalogDatabaseTest() {
             val previous = movements.lastBalanceAfter(accountId) ?: 0
             assertEquals(expected, previous + amount)
             val movement = moneyMovement(accountId, type, amount, previous + amount)
-            // Venta y gasto llevan su origen. El pago de la venta todavía no tiene tabla ni llave.
+            // Venta y gasto llevan su origen.
             val withOrigin =
                 when (type) {
-                    "SALE_RECEIPT" -> movement.copy(salePaymentId = 1)
+                    "SALE_RECEIPT" -> movement.copy(salePaymentId = salePayment)
                     "EXPENSE_PAYMENT" -> movement.copy(expenseId = expenseId)
                     else -> movement
                 }

@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.data.local.GuardProbeTest
 import io.github.yesidrobayo.shopledger.data.local.cash.cashSessionRow
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.payable.supplierEntryRow
+import io.github.yesidrobayo.shopledger.data.local.payment.insertSaleWithCardPayment
 import io.github.yesidrobayo.shopledger.data.local.purchaseReturn
 import io.github.yesidrobayo.shopledger.data.local.saleReturn
 import io.github.yesidrobayo.shopledger.data.local.saleRow
@@ -125,7 +126,8 @@ internal class MoneyGuardsTest : GuardProbeTest() {
         insert(TABLE, opening.with("amount" to -50_000L, "balance_after" to -50_000L))
         insert(TABLE, opening.with("type" to "OWNER_DRAW", "amount" to -10_000L))
         insert(TABLE, opening.with("type" to "OTHER_INCOME", "note" to "Reintegro"))
-        insert(TABLE, opening.with("type" to "SALE_RECEIPT", "sale_payment_id" to 1L))
+        val salePayment = database.insertSaleWithCardPayment(priceListId)
+        insert(TABLE, opening.with("type" to "SALE_RECEIPT", "sale_payment_id" to salePayment))
         // Las devoluciones ya tienen llave: el movimiento válido apunta a unas que existen.
         val saleReturnId =
             database.saleReturnDao().insert(saleReturn(insert("sales", saleRow(priceListId))))
@@ -139,7 +141,7 @@ internal class MoneyGuardsTest : GuardProbeTest() {
             opening.with(
                 "type" to "FEE",
                 "amount" to -300L,
-                "sale_payment_id" to 1L,
+                "sale_payment_id" to salePayment,
                 "available_date" to "2026-01-03",
             ),
         )

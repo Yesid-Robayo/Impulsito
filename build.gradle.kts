@@ -54,9 +54,10 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         val uiSource = Regex("""^app/src/main/(java|kotlin)/io/github/yesidrobayo/shopledger/ui/""")
         val uiForbiddenImport =
             Regex("""^\s*import\s+io\.github\.yesidrobayo\.shopledger\.(data|domain\.port)(\.|\s|$)""")
-        // Tipos retirados porque fijaban supuestos de un país: unidades solo métricas, pasos de redondeo de una moneda y
-        // una clase de dinero con nombre de moneda. Las unidades son una tabla editable y el paso, un entero que escribe la persona.
-        val retiredType = Regex("""\b([U]nitOfMeasure|[P]riceRoundingStep)\b|\bclass\s+[C]op\b""")
+        // Tipos retirados porque fijaban supuestos de un país: unidades solo métricas, pasos de redondeo de una moneda, una
+        // clase de dinero con nombre de moneda y una lista cerrada de métodos de pago con marcas. Las unidades y los métodos de
+        // pago son tablas editables, y el paso, un entero que escribe la persona.
+        val retiredType = Regex("""\b([U]nitOfMeasure|[P]riceRoundingStep|[P]aymentMethod)\b|\bclass\s+[C]op\b""")
         // El dinero va en la unidad menor de la moneda del negocio, sin sufijo de moneda ni de unidad.
         val moneySuffix = Regex("""[a-z0-9]_([c]op|[p]esos|[m]inor)(?![a-z0-9])""")
         // El dominio es Kotlin puro: sin java.*, tampoco java.math para multiplicar en 128 bits. Solo Math.*Exact, que no
@@ -64,10 +65,10 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
         val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
         // Los libros, de stock, de clientes, de dinero y de proveedores, las líneas de venta, de compra, de devolución, de
-        // transferencias y de producción, los componentes de un combo vendido y los conteos de caja solo crecen: ningún DAO los edita
-        // ni los borra, porque el saldo, el costo y lo vendido salen de ellos. Una venta, una compra, una devolución, una
-        // transferencia o un lote de producción tampoco se borran: solo se anulan. Un INSERT OR REPLACE borra la fila que choca sin
-        // pasar por la guarda de borrado.
+        // transferencias y de producción, los componentes de un combo vendido, los conteos de caja y los pagos de una venta solo
+        // crecen: ningún DAO los edita ni los borra, porque el saldo, el costo, lo vendido y lo cobrado salen de ellos. Una venta,
+        // una compra, una devolución, una transferencia o un lote de producción tampoco se borran: solo se anulan. Un INSERT OR
+        // REPLACE borra la fila que choca sin pasar por la guarda de borrado.
         val dataMain = Regex("""^data/src/main/""")
         val appendOnlyTables =
             listOf(
@@ -84,6 +85,7 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 "production_batch_lines",
                 "sale_return_lines",
                 "purchase_return_lines",
+                "sale_payments",
             ).joinToString("|")
         // El registro de auditoría tampoco se edita, pero su poda sí borra lo que pasa del tope. Nunca con REPLACE.
         val ledgerEdit = Regex("""\b[U]PDATE(\s+OR\s+[A-Z]+)?\s+($appendOnlyTables|audit_events)\b""", RegexOption.IGNORE_CASE)
@@ -166,7 +168,7 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                     problems += "$where: una pantalla no importa la capa de datos ni un puerto: usa un caso de uso"
                 }
                 if (retiredType.containsMatchIn(line)) {
-                    problems += "$where: ese tipo se retiró porque suponía un país: usa la tabla de unidades o un paso entero"
+                    problems += "$where: ese tipo se retiró porque suponía un país: usa su tabla editable o un paso entero"
                 }
                 if (moneySuffix.containsMatchIn(line)) {
                     problems += "$where: el dinero va en unidad menor sin sufijo de moneda ni de unidad"

@@ -62,6 +62,8 @@ internal object SchemaGuards {
             SALE_DRAFT_LINES_GUARDS,
             SALE_RETURNS_GUARDS,
             SALE_RETURN_LINES_GUARDS,
+            PAYMENT_METHODS_GUARDS,
+            SALE_PAYMENTS_GUARDS,
             CUSTOMERS_GUARDS,
             CUSTOMER_LEDGER_ENTRIES_GUARDS,
             LOYALTY_LEDGER_ENTRIES_GUARDS,
@@ -1674,6 +1676,92 @@ private val TAX_RATES_GUARDS =
           AND (NEW.archived_at IS NOT NULL OR NOT EXISTS (SELECT 1 FROM tax_rates t WHERE t.normalized_name = NEW.normalized_name AND t.archived_at IS NULL AND t.id <> NEW.id))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:tax_rates'); END;
+        """,
+    )
+
+/** Los métodos de pago: el tipo es uno de los seis que conoce la app, un método sin clave inicial
+ * tiene nombre, y el nombre es único entre los vigentes. */
+private val PAYMENT_METHODS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_payment_methods_insert BEFORE INSERT ON payment_methods
+        WHEN NOT IFNULL((
+          (NEW.system_key IS NULL OR (typeof(NEW.system_key) = 'text' AND length(NEW.system_key) BETWEEN 1 AND 40))
+          AND (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40))
+          AND NEW.kind IN ('CASH', 'CARD', 'TRANSFER', 'WALLET', 'ON_ACCOUNT', 'OTHER')
+          AND typeof(NEW.fee_bp) = 'integer' AND NEW.fee_bp BETWEEN 0 AND 10000
+          AND typeof(NEW.fee_fixed) = 'integer' AND NEW.fee_fixed BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.settlement_days) = 'integer' AND NEW.settlement_days BETWEEN 0 AND 3650
+          AND typeof(NEW.price_adjustment_bp) = 'integer' AND NEW.price_adjustment_bp BETWEEN -10000 AND 10000
+          AND (NEW.instructions_text IS NULL OR (typeof(NEW.instructions_text) = 'text' AND length(NEW.instructions_text) BETWEEN 1 AND 500))
+          AND typeof(NEW.sort_order) = 'integer'
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.system_key IS NOT NULL OR NEW.name IS NOT NULL)
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM payment_methods p WHERE p.normalized_name = NEW.normalized_name AND p.archived_at IS NULL))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:payment_methods'); END;
+
+        CREATE TRIGGER guard_payment_methods_update BEFORE UPDATE ON payment_methods
+        WHEN NOT IFNULL((
+          (NEW.system_key IS NULL OR (typeof(NEW.system_key) = 'text' AND length(NEW.system_key) BETWEEN 1 AND 40))
+          AND (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40))
+          AND NEW.kind IN ('CASH', 'CARD', 'TRANSFER', 'WALLET', 'ON_ACCOUNT', 'OTHER')
+          AND typeof(NEW.fee_bp) = 'integer' AND NEW.fee_bp BETWEEN 0 AND 10000
+          AND typeof(NEW.fee_fixed) = 'integer' AND NEW.fee_fixed BETWEEN 0 AND 1000000000000
+          AND typeof(NEW.settlement_days) = 'integer' AND NEW.settlement_days BETWEEN 0 AND 3650
+          AND typeof(NEW.price_adjustment_bp) = 'integer' AND NEW.price_adjustment_bp BETWEEN -10000 AND 10000
+          AND (NEW.instructions_text IS NULL OR (typeof(NEW.instructions_text) = 'text' AND length(NEW.instructions_text) BETWEEN 1 AND 500))
+          AND typeof(NEW.sort_order) = 'integer'
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.system_key IS NOT NULL OR NEW.name IS NOT NULL)
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM payment_methods p WHERE p.normalized_name = NEW.normalized_name AND p.archived_at IS NULL AND p.id <> NEW.id))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:payment_methods'); END;
+        """,
+    )
+
+/** Los pagos de una venta: solo crecen. Un pago a crédito no va a una cuenta y exige cliente, y
+ * el recibido, el cambio y la otra moneda van con sus columnas. */
+private val SALE_PAYMENTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_sale_payments_insert BEFORE INSERT ON sale_payments
+        WHEN NOT IFNULL((
+          typeof(NEW.method_name_snapshot) = 'text' AND length(NEW.method_name_snapshot) BETWEEN 1 AND 40
+          AND NEW.method_kind_snapshot IN ('CASH', 'CARD', 'TRANSFER', 'WALLET', 'ON_ACCOUNT', 'OTHER')
+          AND typeof(NEW.amount) = 'integer' AND NEW.amount BETWEEN 0 AND 1000000000000000
+          AND typeof(NEW.fee_amount) = 'integer' AND NEW.fee_amount BETWEEN 0 AND 1000000000000000
+          AND date(NEW.settlement_date) = NEW.settlement_date
+          AND (NEW.tendered_amount IS NULL OR (typeof(NEW.tendered_amount) = 'integer' AND NEW.tendered_amount BETWEEN 0 AND 1000000000000000))
+          AND (NEW.change_amount IS NULL OR (typeof(NEW.change_amount) = 'integer' AND NEW.change_amount BETWEEN 0 AND 1000000000000000))
+          AND (NEW.tender_currency_code IS NULL OR (length(NEW.tender_currency_code) = 3 AND NEW.tender_currency_code = upper(NEW.tender_currency_code) AND NEW.tender_currency_code NOT GLOB '*[^A-Z]*'))
+          AND (NEW.tender_currency_decimals IS NULL OR (typeof(NEW.tender_currency_decimals) = 'integer' AND NEW.tender_currency_decimals BETWEEN 0 AND 4))
+          AND (NEW.tender_amount IS NULL OR (typeof(NEW.tender_amount) = 'integer' AND NEW.tender_amount BETWEEN 0 AND 1000000000000000))
+          AND (NEW.fx_rate_micro IS NULL OR (typeof(NEW.fx_rate_micro) = 'integer' AND NEW.fx_rate_micro BETWEEN 1 AND 1000000000000000))
+          AND typeof(NEW.created_at) = 'integer'
+          AND (NEW.tendered_amount IS NULL) = (NEW.change_amount IS NULL)
+          AND (NEW.tendered_amount IS NULL OR (NEW.method_kind_snapshot = 'CASH' AND NEW.tendered_amount - NEW.change_amount = NEW.amount))
+          AND (NEW.tender_currency_code IS NULL) = (NEW.tender_currency_decimals IS NULL)
+          AND (NEW.tender_currency_code IS NULL) = (NEW.tender_amount IS NULL)
+          AND (NEW.tender_currency_code IS NULL) = (NEW.fx_rate_micro IS NULL)
+          AND (NEW.method_kind_snapshot <> 'ON_ACCOUNT' OR (NEW.money_account_id IS NULL AND EXISTS (SELECT 1 FROM sales s WHERE s.id = NEW.sale_id AND s.customer_id IS NOT NULL)))
+          AND NOT EXISTS (SELECT 1 FROM sale_payments x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_payments'); END;
+
+        CREATE TRIGGER guard_sale_payments_no_update BEFORE UPDATE ON sale_payments
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_payments_append_only'); END;
+
+        CREATE TRIGGER guard_sale_payments_no_delete BEFORE DELETE ON sale_payments
+        BEGIN SELECT RAISE(ABORT, 'guard:sale_payments_append_only'); END;
         """,
     )
 

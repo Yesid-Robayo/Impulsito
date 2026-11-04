@@ -4,6 +4,7 @@ import androidx.room3.RoomDatabase
 import androidx.sqlite.SQLiteConnection
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.settings.AppLockTimeout
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
@@ -14,7 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 /**
  * Crea, al nacer la base, las filas que la app necesita desde la primera pantalla: la única de
  * `app_settings` y la única de `backup_state`, las dos con `id` 1, la cuenta de dinero `CASH`, las
- * unidades iniciales y la ubicación inicial.
+ * unidades iniciales, la ubicación inicial y los seis métodos de pago.
  *
  * Room llama a [onCreate] solo cuando crea la base, dentro de la misma transacción exclusiva en
  * que crea las tablas y antes de fijar la versión: si una inserción falla, no queda ni la base a
@@ -56,8 +57,48 @@ internal class InitialRowsCallback(private val clock: Clock) : RoomDatabase.Call
             statement.bindLong(2, now)
             statement.step()
         }
+        insertPaymentMethods(connection, now)
+    }
+
+    /**
+     * Los seis métodos de pago iniciales, uno por tipo y en el orden en que se ofrecen al cobrar,
+     * con el efectivo primero. Solo llevan su clave: sin nombre, que sale traducido de la clave, y
+     * sin comisión, días de acreditación, ajuste, cuenta ni instrucciones, que escribe la persona.
+     */
+    private fun insertPaymentMethods(connection: SQLiteConnection, now: Long) {
+        connection.prepare(INSERT_PAYMENT_METHOD_SQL).use { statement ->
+            INITIAL_PAYMENT_METHODS.forEachIndexed { index, kind ->
+                statement.reset()
+                statement.bindText(1, kind.name)
+                statement.bindText(2, kind.name)
+                statement.bindLong(3, index + 1L)
+                statement.bindLong(4, now)
+                statement.bindLong(5, now)
+                statement.step()
+            }
+        }
     }
 }
+
+/**
+ * Los tipos de los métodos iniciales, en su orden. La clave estable de cada uno es el nombre de
+ * su tipo: un método genérico por tipo, sin ninguna marca.
+ */
+private val INITIAL_PAYMENT_METHODS =
+    listOf(
+        PaymentMethodKind.CASH,
+        PaymentMethodKind.CARD,
+        PaymentMethodKind.TRANSFER,
+        PaymentMethodKind.WALLET,
+        PaymentMethodKind.ON_ACCOUNT,
+        PaymentMethodKind.OTHER,
+    )
+
+private const val INSERT_PAYMENT_METHOD_SQL =
+    "INSERT INTO payment_methods (system_key, name, normalized_name, kind, fee_bp, fee_fixed, " +
+        "settlement_days, price_adjustment_bp, money_account_id, instructions_text, " +
+        "instructions_media_id, sort_order, archived_at, created_at, updated_at) " +
+        "VALUES (?, NULL, NULL, ?, 0, 0, 0, 0, NULL, NULL, NULL, ?, NULL, ?, ?)"
 
 /**
  * Una unidad inicial: su clave estable, qué mide y si admite decimales. Las de conteo no los
