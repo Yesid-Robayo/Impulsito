@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "610ae669f3c49f2d290c2abbf243c10a",
+    "identityHash": "5bd265394ce7636d76be0ddfd7c88e18",
     "entities": [
       {
         "tableName": "categories",
@@ -2774,12 +2774,12 @@
         "indices": [
           {
             "name": "index_tax_rates_normalized_name",
-            "unique": true,
+            "unique": false,
             "columnNames": [
               "normalized_name"
             ],
             "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_tax_rates_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tax_rates_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
           }
         ]
       },
@@ -6470,7 +6470,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '610ae669f3c49f2d290c2abbf243c10a')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5bd265394ce7636d76be0ddfd7c88e18')"
     ]
   }
 }

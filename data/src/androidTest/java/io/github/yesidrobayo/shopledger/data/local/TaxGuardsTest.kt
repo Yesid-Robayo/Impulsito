@@ -50,6 +50,29 @@ internal class TaxGuardsTest : GuardProbeTest() {
         assertEquals(0L, count("SELECT rate_bp FROM tax_rates WHERE id = $id"))
     }
 
+    @Test
+    fun aRateNameIsUniqueOnlyAmongActiveOnes() = runBlocking {
+        val valid = taxRateRow("tasa reducida")
+        val archived = insert("tax_rates", valid.with("archived_at" to LATER))
+        // Una archivada no reserva su nombre, y dos vigentes no lo repiten.
+        val active = insert("tax_rates", valid)
+        rejected(TAX_RATES, valid.insertInto("tax_rates"))
+
+        // La archivada no se reactiva con el nombre de una vigente, y otra no se renombra a él.
+        rejected(TAX_RATES, update("tax_rates", archived, "archived_at" to null))
+        val other = insert("tax_rates", taxRateRow("tasa cero"))
+        rejected(TAX_RATES, update("tax_rates", other, "normalized_name" to "tasa reducida"))
+        execute(update("tax_rates", active, "archived_at" to LATER))
+        execute(update("tax_rates", archived, "archived_at" to null))
+        assertEquals(
+            1L,
+            count(
+                "SELECT COUNT(*) FROM tax_rates " +
+                    "WHERE normalized_name = 'tasa reducida' AND archived_at IS NULL",
+            ),
+        )
+    }
+
     private fun taxRateRow(name: String = "tasa general"): Row = row(
         "name" to name,
         "normalized_name" to name,

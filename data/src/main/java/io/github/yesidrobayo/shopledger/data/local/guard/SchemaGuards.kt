@@ -1561,8 +1561,8 @@ private val SALE_LINES_GUARDS =
         """,
     )
 
-/** Las tasas de impuesto: la tasa va de 0 a 10.000 puntos básicos. El nombre único lo impone
- * su índice, no la guarda. */
+/** Las tasas de impuesto: la tasa va de 0 a 10.000 puntos básicos, y el nombre es único entre
+ * las vigentes. */
 private val TAX_RATES_GUARDS =
     table(
         """
@@ -1574,6 +1574,7 @@ private val TAX_RATES_GUARDS =
           AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
           AND typeof(NEW.created_at) = 'integer'
           AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.archived_at IS NOT NULL OR NOT EXISTS (SELECT 1 FROM tax_rates t WHERE t.normalized_name = NEW.normalized_name AND t.archived_at IS NULL))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:tax_rates'); END;
 
@@ -1585,6 +1586,7 @@ private val TAX_RATES_GUARDS =
           AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
           AND typeof(NEW.created_at) = 'integer'
           AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.archived_at IS NOT NULL OR NOT EXISTS (SELECT 1 FROM tax_rates t WHERE t.normalized_name = NEW.normalized_name AND t.archived_at IS NULL AND t.id <> NEW.id))
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:tax_rates'); END;
         """,

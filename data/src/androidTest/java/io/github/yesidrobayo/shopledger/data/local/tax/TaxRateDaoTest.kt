@@ -7,7 +7,6 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.Emissions
 import io.github.yesidrobayo.shopledger.data.local.catalog.FOREIGN_KEY
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
-import io.github.yesidrobayo.shopledger.data.local.catalog.UNIQUE
 import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.product
@@ -22,8 +21,8 @@ import org.junit.runner.RunWith
 
 /**
  * Las tasas de impuesto: la base nace sin ninguna, cada columna vuelve como se guardó, la tasa va
- * de 0 a 10.000 puntos básicos, el nombre es único también frente a una archivada, las listas van
- * por creación, y borrar una tasa deja sin tasa a sus productos.
+ * de 0 a 10.000 puntos básicos, el nombre es único solo entre las vigentes, las listas van por
+ * creación, y borrar una tasa deja sin tasa a sus productos.
  */
 @RunWith(AndroidJUnit4::class)
 internal class TaxRateDaoTest : CatalogDatabaseTest() {
@@ -43,9 +42,9 @@ internal class TaxRateDaoTest : CatalogDatabaseTest() {
         val id = rates.insert(rate)
 
         assertEquals(rate.copy(id = id), rates.findById(id))
-        assertEquals(id, rates.findByNormalizedName("tasa general")?.id)
+        assertEquals(id, rates.findActiveByNormalizedName("tasa general")?.id)
         assertNull(rates.findById(MISSING_ID))
-        assertNull(rates.findByNormalizedName("otra"))
+        assertNull(rates.findActiveByNormalizedName("otra"))
     }
 
     @Test
@@ -64,23 +63,32 @@ internal class TaxRateDaoTest : CatalogDatabaseTest() {
     }
 
     @Test
-    fun theNameIsUniqueEvenAgainstAnArchivedRate() = runBlocking {
+    fun theNameIsUniqueOnlyAmongActiveRates() = runBlocking {
         val general = rates.insert(taxRate("Tasa Básica", rateBp = 1_900))
-        // Tildes, mayúsculas y espacios de más no hacen otro nombre.
-        constraintFailure(UNIQUE) { rates.insert(taxRate("  TASA   BASICA ", rateBp = 500)) }
+        // Tildes, mayúsculas y espacios de más no hacen otro nombre: la guarda lo rechaza.
+        guardFailure(GUARD) { rates.insert(taxRate("  TASA   BASICA ", rateBp = 500)) }
 
-        // A diferencia de productos y proveedores, una archivada sigue reservando su nombre.
+        // Una archivada no reserva su nombre: la unicidad es solo entre las vigentes.
         rates.setArchivedAt(general, archivedAt = LATER, updatedAt = LATER)
-        constraintFailure(UNIQUE) { rates.insert(taxRate("Tasa básica", rateBp = 500)) }
-        assertEquals(general, rates.findByNormalizedName("tasa basica")?.id)
+        assertNull(rates.findActiveByNormalizedName("tasa basica"))
+        val again = rates.insert(taxRate("Tasa básica", rateBp = 500))
+        assertEquals(again, rates.findActiveByNormalizedName("tasa basica")?.id)
 
-        // Otra no se renombra a ese nombre, y la tasa con ese nombre queda como estaba.
+        // Con una vigente de ese nombre, la archivada no se reactiva, y otra no se renombra a él.
+        guardFailure(GUARD) {
+            rates.setArchivedAt(general, archivedAt = null, updatedAt = MUCH_LATER)
+        }
         val reduced = rates.insert(taxRate("Reducida", rateBp = 500))
-        constraintFailure(UNIQUE) {
+        guardFailure(GUARD) {
             rates.update(reduced, "Tasa básica", "tasa basica", 500, MUCH_LATER)
         }
         assertEquals("reducida", rates.findById(reduced)?.normalizedName)
         assertEquals(LATER, rates.findById(general)?.archivedAt)
+
+        // Archivada la nueva, la vieja vuelve.
+        rates.setArchivedAt(again, archivedAt = MUCH_LATER, updatedAt = MUCH_LATER)
+        assertEquals(1, rates.setArchivedAt(general, archivedAt = null, updatedAt = MUCH_LATER))
+        assertEquals(general, rates.findActiveByNormalizedName("tasa basica")?.id)
     }
 
     @Test
@@ -174,7 +182,7 @@ internal class TaxRateDaoTest : CatalogDatabaseTest() {
     @Test
     fun indexesAndKeysAreTheOnesOfTheDataModel() = runBlocking {
         assertEquals(
-            listOf("unique index_tax_rates_normalized_name (normalized_name)"),
+            listOf("index_tax_rates_normalized_name (normalized_name)"),
             database.indexesOf("tax_rates"),
         )
         assertEquals(emptyList<String>(), database.foreignKeysOf("tax_rates"))

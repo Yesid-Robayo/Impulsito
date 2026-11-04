@@ -27,11 +27,13 @@ internal interface TaxRateDao {
     suspend fun findById(id: Long): TaxRateEntity?
 
     /**
-     * La tasa con ese nombre normalizado, vigente o archivada: el nombre es único en toda la tabla,
-     * así que hay a lo sumo una.
+     * La vigente con ese nombre normalizado. El nombre es único solo entre las vigentes, así que hay
+     * a lo sumo una: las archivadas con el mismo nombre no cuentan.
      */
-    @Query("SELECT * FROM tax_rates WHERE normalized_name = :normalizedName")
-    suspend fun findByNormalizedName(normalizedName: String): TaxRateEntity?
+    @Query(
+        "SELECT * FROM tax_rates WHERE normalized_name = :normalizedName AND archived_at IS NULL",
+    )
+    suspend fun findActiveByNormalizedName(normalizedName: String): TaxRateEntity?
 
     /**
      * Cuántos productos la usan, también los archivados: es lo que se avisa antes de eliminarla,
@@ -40,7 +42,7 @@ internal interface TaxRateDao {
     @Query("SELECT COUNT(*) FROM products WHERE tax_rate_id = :id")
     suspend fun countProducts(id: Long): Int
 
-    /** Devuelve el id nuevo. Falla si el nombre ya es de otra tasa, aunque esté archivada. */
+    /** Devuelve el id nuevo. Falla si el nombre ya es de una vigente. */
     @Insert
     suspend fun insert(rate: TaxRateEntity): Long
 
@@ -60,7 +62,10 @@ internal interface TaxRateDao {
         updatedAt: Long,
     ): Int
 
-    /** La archiva con [archivedAt], o la reactiva con `null`. Devuelve 0 si no existe. */
+    /**
+     * La archiva con [archivedAt], o la reactiva con `null`. Devuelve 0 si no existe. Falla si al
+     * reactivarla ya hay una vigente con su nombre.
+     */
     @Query("UPDATE tax_rates SET archived_at = :archivedAt, updated_at = :updatedAt WHERE id = :id")
     suspend fun setArchivedAt(id: Long, archivedAt: Long?, updatedAt: Long): Int
 
