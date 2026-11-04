@@ -40,15 +40,16 @@ internal class ExpenseDaoTest : CatalogDatabaseTest() {
 
     @Test
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
-        // El gasto recurrente todavía no tiene tabla ni llave: solo su columna. La cuenta ya tiene
-        // las dos, así que el gasto apunta a una que existe.
+        // La cuenta y el gasto recurrente ya tienen tabla y llave: el gasto apunta a unos que
+        // existen.
         val accountId = database.moneyAccountDao().insert(moneyAccount("Banco").copy(id = 7))
+        val recurringId = database.recurringExpenseDao().insert(recurringExpense(categoryId))
         val full =
             expense(categoryId, businessDate = "2026-03-15", occurredAt = LATER).copy(
                 amount = 123_456,
                 description = "Factura de agua de marzo",
                 moneyAccountId = accountId,
-                recurringExpenseId = 3,
+                recurringExpenseId = recurringId,
                 createdAt = MUCH_LATER,
             )
         val bare = expense(categoryId)

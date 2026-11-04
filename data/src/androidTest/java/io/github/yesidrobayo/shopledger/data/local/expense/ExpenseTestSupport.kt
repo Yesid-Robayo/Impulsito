@@ -56,3 +56,22 @@ internal fun expense(
     voidReason = null,
     voidNote = null,
 )
+
+/** Un arriendo mensual de 900.000 el día 5, con recordatorio y sin cuenta de dinero. */
+internal fun recurringExpense(
+    categoryId: Long,
+    nextDueDate: String = "2026-02-05",
+    archivedAt: Long? = null,
+): RecurringExpenseEntity = RecurringExpenseEntity(
+    expenseCategoryId = categoryId,
+    amount = 900_000,
+    description = "Arriendo del local",
+    recurrence = "MONTHLY",
+    dayOfPeriod = 5,
+    nextDueDate = nextDueDate,
+    moneyAccountId = null,
+    reminderEnabled = 1,
+    archivedAt = archivedAt,
+    createdAt = CREATED_AT,
+    updatedAt = CREATED_AT,
+)

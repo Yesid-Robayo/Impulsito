@@ -18,8 +18,8 @@ import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountEntity
  * - La cuenta de dinero usa `RESTRICT`: una cuenta usada por un gasto no se borra. No lleva
  *   índice: las cuentas casi nunca se borran, y SQLite solo busca gastos por esa columna al borrar
  *   una.
- * - `recurring_expense_id` todavía no tiene llave foránea: su tabla no existe aún. La llave llega
- *   con la tabla a la que apunta, dentro del mismo esquema 1.
+ * - El gasto recurrente del que salió también usa `RESTRICT`: una plantilla con gastos generados
+ *   no se borra, se archiva. Sin índice: solo lo consulta el borrado de una plantilla, que es raro.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -35,6 +35,12 @@ import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountEntity
             entity = MoneyAccountEntity::class,
             parentColumns = ["id"],
             childColumns = ["money_account_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = RecurringExpenseEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["recurring_expense_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

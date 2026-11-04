@@ -60,7 +60,10 @@ internal object SchemaGuards {
             CASH_SESSION_COUNTS_GUARDS,
             EXPENSE_CATEGORIES_GUARDS,
             EXPENSES_GUARDS,
+            RECURRING_EXPENSES_GUARDS,
             PRICE_LISTS_GUARDS,
+            PRICE_INDEX_ENTRIES_GUARDS,
+            BUSINESS_GOALS_GUARDS,
             AUDIT_EVENTS_GUARDS,
         ).flatten()
 
@@ -1846,6 +1849,42 @@ private val EXPENSES_GUARDS =
         awaitingCurrencyLock("guard_expenses_insert"),
     )
 
+/** Los gastos recurrentes: el día cabe en su período, y el próximo vencimiento es una fecha. */
+private val RECURRING_EXPENSES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_recurring_expenses_insert BEFORE INSERT ON recurring_expenses
+        WHEN NOT IFNULL((
+          typeof(NEW.amount) = 'integer' AND NEW.amount BETWEEN 1 AND 1000000000000000
+          AND (NEW.description IS NULL OR (typeof(NEW.description) = 'text' AND length(NEW.description) BETWEEN 1 AND 200))
+          AND NEW.recurrence IN ('WEEKLY', 'MONTHLY', 'YEARLY')
+          AND typeof(NEW.day_of_period) = 'integer' AND NEW.day_of_period BETWEEN 1 AND 366
+          AND date(NEW.next_due_date) = NEW.next_due_date
+          AND NEW.reminder_enabled IN (0, 1)
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND CASE NEW.recurrence WHEN 'WEEKLY' THEN NEW.day_of_period <= 7 WHEN 'MONTHLY' THEN NEW.day_of_period <= 31 ELSE 1 END
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:recurring_expenses'); END;
+
+        CREATE TRIGGER guard_recurring_expenses_update BEFORE UPDATE ON recurring_expenses
+        WHEN NOT IFNULL((
+          typeof(NEW.amount) = 'integer' AND NEW.amount BETWEEN 1 AND 1000000000000000
+          AND (NEW.description IS NULL OR (typeof(NEW.description) = 'text' AND length(NEW.description) BETWEEN 1 AND 200))
+          AND NEW.recurrence IN ('WEEKLY', 'MONTHLY', 'YEARLY')
+          AND typeof(NEW.day_of_period) = 'integer' AND NEW.day_of_period BETWEEN 1 AND 366
+          AND date(NEW.next_due_date) = NEW.next_due_date
+          AND NEW.reminder_enabled IN (0, 1)
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND CASE NEW.recurrence WHEN 'WEEKLY' THEN NEW.day_of_period <= 7 WHEN 'MONTHLY' THEN NEW.day_of_period <= 31 ELSE 1 END
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:recurring_expenses'); END;
+        """,
+    )
+
 /** Las listas de precios: la inicial es fija, no se archiva ni se borra. */
 private val PRICE_LISTS_GUARDS =
     table(
@@ -1891,6 +1930,56 @@ private val PRICE_LISTS_GUARDS =
         CREATE TRIGGER guard_price_lists_no_delete BEFORE DELETE ON price_lists
         WHEN OLD.system_key = 'DEFAULT'
         BEGIN SELECT RAISE(ABORT, 'guard:price_lists_system'); END;
+        """,
+    )
+
+/** El índice de precios: una variación por mes `YYYY-MM`, dentro de su rango. */
+private val PRICE_INDEX_ENTRIES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_price_index_entries_insert BEFORE INSERT ON price_index_entries
+        WHEN NOT IFNULL((
+          length(NEW.month) = 7 AND date(NEW.month || '-01') = NEW.month || '-01'
+          AND typeof(NEW.change_bp) = 'integer' AND NEW.change_bp BETWEEN -10000 AND 1000000
+          AND (NEW.source_note IS NULL OR (typeof(NEW.source_note) = 'text' AND length(NEW.source_note) BETWEEN 1 AND 120))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:price_index_entries'); END;
+
+        CREATE TRIGGER guard_price_index_entries_update BEFORE UPDATE ON price_index_entries
+        WHEN NOT IFNULL((
+          length(NEW.month) = 7 AND date(NEW.month || '-01') = NEW.month || '-01'
+          AND typeof(NEW.change_bp) = 'integer' AND NEW.change_bp BETWEEN -10000 AND 1000000
+          AND (NEW.source_note IS NULL OR (typeof(NEW.source_note) = 'text' AND length(NEW.source_note) BETWEEN 1 AND 120))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:price_index_entries'); END;
+        """,
+    )
+
+/** Las metas: una fila por mes `YYYY-MM`, con metas dentro del rango del dinero. */
+private val BUSINESS_GOALS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_business_goals_insert BEFORE INSERT ON business_goals
+        WHEN NOT IFNULL((
+          length(NEW.month) = 7 AND date(NEW.month || '-01') = NEW.month || '-01'
+          AND (NEW.sales_goal IS NULL OR (typeof(NEW.sales_goal) = 'integer' AND NEW.sales_goal BETWEEN 0 AND 9000000000000000))
+          AND (NEW.profit_goal IS NULL OR (typeof(NEW.profit_goal) = 'integer' AND NEW.profit_goal BETWEEN -9000000000000000 AND 9000000000000000))
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:business_goals'); END;
+
+        CREATE TRIGGER guard_business_goals_update BEFORE UPDATE ON business_goals
+        WHEN NOT IFNULL((
+          length(NEW.month) = 7 AND date(NEW.month || '-01') = NEW.month || '-01'
+          AND (NEW.sales_goal IS NULL OR (typeof(NEW.sales_goal) = 'integer' AND NEW.sales_goal BETWEEN 0 AND 9000000000000000))
+          AND (NEW.profit_goal IS NULL OR (typeof(NEW.profit_goal) = 'integer' AND NEW.profit_goal BETWEEN -9000000000000000 AND 9000000000000000))
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:business_goals'); END;
         """,
     )
 

@@ -51,6 +51,8 @@ import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseEntity
+import io.github.yesidrobayo.shopledger.data.local.expense.RecurringExpenseDao
+import io.github.yesidrobayo.shopledger.data.local.expense.RecurringExpenseEntity
 import io.github.yesidrobayo.shopledger.data.local.guard.SchemaGuards
 import io.github.yesidrobayo.shopledger.data.local.guard.SchemaGuardsCallback
 import io.github.yesidrobayo.shopledger.data.local.migration.AppMigrations
@@ -65,6 +67,10 @@ import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseDao
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineDao
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineEntity
+import io.github.yesidrobayo.shopledger.data.local.report.BusinessGoalDao
+import io.github.yesidrobayo.shopledger.data.local.report.BusinessGoalEntity
+import io.github.yesidrobayo.shopledger.data.local.report.PriceIndexEntryDao
+import io.github.yesidrobayo.shopledger.data.local.report.PriceIndexEntryEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineComponentDao
@@ -98,12 +104,13 @@ import kotlin.coroutines.CoroutineContext
  * stock y sus alertas, los gastos con sus categorías, las tasas de impuesto, las filas únicas de
  * los ajustes y del estado del respaldo, que nacen con la base, los clientes con sus libros de
  * cuenta y de puntos y sus plantillas de mensaje, las cuentas de dinero con su libro y sus sesiones
- * de caja, el libro de los proveedores y el registro de auditoría. Del catálogo también tiene los
- * combos, los campos propios, las etiquetas y las imágenes, y de las ventas, los componentes que
- * consumió cada combo vendido. Room activa las llaves foráneas solo si alguna entidad declara una:
- * sin ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe declarar son
- * guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y la versión no
- * cambia mientras el esquema 1 no se publique.
+ * de caja, el libro de los proveedores, el registro de auditoría, y las metas, los gastos
+ * recurrentes y el índice de precios de los reportes. Del catálogo también tiene los combos, los
+ * campos propios, las etiquetas y las imágenes, y de las ventas, los componentes que consumió cada
+ * combo vendido. Room activa las llaves foráneas solo si alguna entidad declara una: sin ellas, una
+ * fila huérfana entraría sin error. Las reglas que Room no sabe declarar son guardas, en
+ * [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y la versión no cambia
+ * mientras el esquema 1 no se publique.
  */
 @Database(
     // Cada tabla va antes que las tablas a las que apunta con RESTRICT: Room 3.0.3 ordena las
@@ -136,20 +143,23 @@ import kotlin.coroutines.CoroutineContext
         MessageTemplateEntity::class,
         MoneyMovementEntity::class,
         ExpenseEntity::class,
-        ExpenseCategoryEntity::class,
         CustomerLedgerEntryEntity::class,
         SaleEntity::class,
-        LocationEntity::class,
         PriceListEntity::class,
         CustomerEntity::class,
         SupplierLedgerEntryEntity::class,
         PurchaseEntity::class,
+        LocationEntity::class,
         SupplierEntity::class,
         CashSessionCountEntity::class,
         CashSessionEntity::class,
-        MoneyAccountEntity::class,
         CashDenominationEntity::class,
         AuditEventEntity::class,
+        BusinessGoalEntity::class,
+        PriceIndexEntryEntity::class,
+        RecurringExpenseEntity::class,
+        MoneyAccountEntity::class,
+        ExpenseCategoryEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -225,6 +235,12 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun cashSessionCountDao(): CashSessionCountDao
 
     abstract fun auditEventDao(): AuditEventDao
+
+    abstract fun businessGoalDao(): BusinessGoalDao
+
+    abstract fun priceIndexEntryDao(): PriceIndexEntryDao
+
+    abstract fun recurringExpenseDao(): RecurringExpenseDao
 
     companion object {
         /**

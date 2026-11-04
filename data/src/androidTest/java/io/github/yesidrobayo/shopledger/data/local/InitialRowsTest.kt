@@ -154,7 +154,7 @@ internal class InitialRowsTest : CatalogDatabaseTest() {
 
     @Test
     fun foreignKeysPointToTheTablesThatExist() = runBlocking {
-        // La cuenta de dinero y el gasto recurrente de un gasto llegan con sus tablas.
+        // La cuenta de dinero de un gasto llega con su tabla.
         val expected =
             mapOf(
                 "expense_categories" to emptyList(),
@@ -162,6 +162,7 @@ internal class InitialRowsTest : CatalogDatabaseTest() {
                     listOf(
                         "expense_category_id -> expense_categories RESTRICT",
                         "money_account_id -> money_accounts RESTRICT",
+                        "recurring_expense_id -> recurring_expenses RESTRICT",
                     ),
                 "low_stock_alerts" to listOf("product_id -> products CASCADE"),
                 "app_settings" to emptyList(),
