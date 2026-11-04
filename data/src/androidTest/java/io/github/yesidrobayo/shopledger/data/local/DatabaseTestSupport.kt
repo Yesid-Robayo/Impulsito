@@ -55,10 +55,18 @@ internal suspend fun PooledConnection.texts(sql: String): List<String> =
         buildList { while (statement.step()) add(statement.getText(0)) }
     }
 
-/** Las tablas que crea el esquema compilado, en el orden de [OWN_TABLES_SQL]. */
+/**
+ * Las tablas que crea el esquema compilado, en el orden de [OWN_TABLES_SQL]: las catorce del brief
+ * y `price_lists`.
+ */
 internal val SCHEMA_TABLES =
     listOf(
+        "app_settings",
+        "backup_state",
         "categories",
+        "expense_categories",
+        "expenses",
+        "low_stock_alerts",
         "price_lists",
         "product_price_history",
         "products",
@@ -69,6 +77,24 @@ internal val SCHEMA_TABLES =
         "stock_movements",
         "suppliers",
     )
+
+/** Cada índice de [table] como `nombre (columnas)`, con `unique` delante si lo es, por nombre. */
+internal suspend fun RoomDatabase.indexesOf(table: String): List<String> = useReaderConnection {
+    it.texts(
+        "SELECT CASE il.\"unique\" WHEN 1 THEN 'unique ' ELSE '' END || il.name || ' (' || " +
+            "(SELECT group_concat(ii.name, ', ') FROM " +
+            "(SELECT name FROM pragma_index_info(il.name) ORDER BY seqno) ii) || ')' " +
+            "FROM pragma_index_list('$table') il ORDER BY il.name",
+    )
+}
+
+/** Cada llave de [table] como `columna -> tabla ACCIÓN`, por columna. */
+internal suspend fun RoomDatabase.foreignKeysOf(table: String): List<String> = useReaderConnection {
+    it.texts(
+        "SELECT \"from\" || ' -> ' || \"table\" || ' ' || on_delete " +
+            "FROM pragma_foreign_key_list('$table') ORDER BY \"from\"",
+    )
+}
 
 /** Lectoras que Room abre en WAL si no se le pide otra cantidad. */
 internal const val WAL_READERS = 4

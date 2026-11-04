@@ -1,6 +1,5 @@
 package io.github.yesidrobayo.shopledger.data.local
 
-import androidx.room3.useReaderConnection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.local.catalog.CatalogDatabaseTest
 import kotlinx.coroutines.runBlocking
@@ -55,7 +54,7 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                     ),
             )
 
-        for ((table, indexes) in expected) assertEquals(table, indexes, indexesOf(table))
+        for ((table, indexes) in expected) assertEquals(table, indexes, database.indexesOf(table))
     }
 
     @Test
@@ -82,24 +81,6 @@ internal class LedgerSchemaTest : CatalogDatabaseTest() {
                     ),
             )
 
-        for ((table, keys) in expected) assertEquals(table, keys, foreignKeysOf(table))
-    }
-
-    /** Cada índice como `nombre (columnas)`, con `unique` delante si lo es, por nombre. */
-    private suspend fun indexesOf(table: String): List<String> = database.useReaderConnection {
-        it.texts(
-            "SELECT CASE il.\"unique\" WHEN 1 THEN 'unique ' ELSE '' END || il.name || ' (' || " +
-                "(SELECT group_concat(ii.name, ', ') FROM " +
-                "(SELECT name FROM pragma_index_info(il.name) ORDER BY seqno) ii) || ')' " +
-                "FROM pragma_index_list('$table') il ORDER BY il.name",
-        )
-    }
-
-    /** Cada llave como `columna -> tabla ACCIÓN`, por columna. */
-    private suspend fun foreignKeysOf(table: String): List<String> = database.useReaderConnection {
-        it.texts(
-            "SELECT \"from\" || ' -> ' || \"table\" || ' ' || on_delete " +
-                "FROM pragma_foreign_key_list('$table') ORDER BY \"from\"",
-        )
+        for ((table, keys) in expected) assertEquals(table, keys, database.foreignKeysOf(table))
     }
 }

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "09e05e9374112d4d12d9fb5120b82eed",
+    "identityHash": "453e4a68f61b064ba809f6c212d1e305",
     "entities": [
       {
         "tableName": "price_lists",
@@ -1653,11 +1653,578 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "low_stock_alerts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `product_id` INTEGER NOT NULL, `on_hand_milli_at_trigger` INTEGER NOT NULL, `min_stock_milli_at_trigger` INTEGER NOT NULL, `notification_status` TEXT NOT NULL, `occurred_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `resolved_at` INTEGER, FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productId",
+            "columnName": "product_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "onHandMilliAtTrigger",
+            "columnName": "on_hand_milli_at_trigger",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minStockMilliAtTrigger",
+            "columnName": "min_stock_milli_at_trigger",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notificationStatus",
+            "columnName": "notification_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "businessDate",
+            "columnName": "business_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "resolvedAt",
+            "columnName": "resolved_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_low_stock_alerts_product_id_resolved_at",
+            "unique": false,
+            "columnNames": [
+              "product_id",
+              "resolved_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_low_stock_alerts_product_id_resolved_at` ON `${TABLE_NAME}` (`product_id`, `resolved_at`)"
+          },
+          {
+            "name": "index_low_stock_alerts_notification_status",
+            "unique": false,
+            "columnNames": [
+              "notification_status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_low_stock_alerts_notification_status` ON `${TABLE_NAME}` (`notification_status`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "products",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "product_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "expense_categories",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `system_key` TEXT, `name` TEXT, `normalized_name` TEXT, `is_system` INTEGER NOT NULL, `is_fixed` INTEGER NOT NULL, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "systemKey",
+            "columnName": "system_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isSystem",
+            "columnName": "is_system",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isFixed",
+            "columnName": "is_fixed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_expense_categories_system_key",
+            "unique": true,
+            "columnNames": [
+              "system_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_expense_categories_system_key` ON `${TABLE_NAME}` (`system_key`)"
+          },
+          {
+            "name": "index_expense_categories_normalized_name",
+            "unique": true,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_expense_categories_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "expenses",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `expense_category_id` INTEGER NOT NULL, `status` TEXT NOT NULL, `amount` INTEGER NOT NULL, `description` TEXT, `money_account_id` INTEGER, `recurring_expense_id` INTEGER, `occurred_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, `voided_at` INTEGER, `void_reason` TEXT, `void_note` TEXT, FOREIGN KEY(`expense_category_id`) REFERENCES `expense_categories`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expenseCategoryId",
+            "columnName": "expense_category_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amount",
+            "columnName": "amount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "moneyAccountId",
+            "columnName": "money_account_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "recurringExpenseId",
+            "columnName": "recurring_expense_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "businessDate",
+            "columnName": "business_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "voidedAt",
+            "columnName": "voided_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "voidReason",
+            "columnName": "void_reason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "voidNote",
+            "columnName": "void_note",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_expenses_expense_category_id",
+            "unique": false,
+            "columnNames": [
+              "expense_category_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expenses_expense_category_id` ON `${TABLE_NAME}` (`expense_category_id`)"
+          },
+          {
+            "name": "index_expenses_status_business_date",
+            "unique": false,
+            "columnNames": [
+              "status",
+              "business_date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expenses_status_business_date` ON `${TABLE_NAME}` (`status`, `business_date`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "expense_categories",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "expense_category_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "app_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `business_name` TEXT, `default_target_margin_bp` INTEGER NOT NULL, `low_stock_notifications_enabled` INTEGER NOT NULL, `theme_mode` TEXT NOT NULL, `app_lock_enabled` INTEGER NOT NULL, `app_lock_timeout_seconds` INTEGER NOT NULL, `metered_backup_policy` TEXT NOT NULL, `onboarding_completed_at` INTEGER, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "businessName",
+            "columnName": "business_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "defaultTargetMarginBp",
+            "columnName": "default_target_margin_bp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lowStockNotificationsEnabled",
+            "columnName": "low_stock_notifications_enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "themeMode",
+            "columnName": "theme_mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appLockEnabled",
+            "columnName": "app_lock_enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appLockTimeoutSeconds",
+            "columnName": "app_lock_timeout_seconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meteredBackupPolicy",
+            "columnName": "metered_backup_policy",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "onboardingCompletedAt",
+            "columnName": "onboarding_completed_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "backup_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `change_seq` INTEGER NOT NULL, `verified_seq` INTEGER NOT NULL, `first_unsynced_at` INTEGER, `link_state` TEXT NOT NULL, `failure_code` TEXT, `consecutive_failures` INTEGER NOT NULL, `last_failure_kind` TEXT, `invariant_failures` INTEGER NOT NULL, `last_attempt_at` INTEGER, `last_success_at` INTEGER, `last_upload_finished_at` INTEGER, `last_stale_notice_at` INTEGER, `last_drill_at` INTEGER, `last_drill_result` TEXT, `last_full_verify_at` INTEGER, `last_human_check_at` INTEGER, `human_check_generation` INTEGER, `destination_kind` TEXT, `destination_account` TEXT, `destination_id` TEXT, `destination_folder` TEXT, `head_generation` INTEGER NOT NULL, `head_device_id` TEXT, `head_file_ref` TEXT, `shrink_accepted_generation` INTEGER, `pending_generation` INTEGER, `pending_seq` INTEGER, `pending_sha256` TEXT, `pending_size_bytes` INTEGER, `conflict_kind` TEXT, `conflict_generation` INTEGER, `conflict_device_id` TEXT, `conflict_file_ref` TEXT, `copy_generation` INTEGER, `copy_device_id` TEXT, `copy_created_at` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "changeSeq",
+            "columnName": "change_seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verifiedSeq",
+            "columnName": "verified_seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstUnsyncedAt",
+            "columnName": "first_unsynced_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "linkState",
+            "columnName": "link_state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "failureCode",
+            "columnName": "failure_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "consecutiveFailures",
+            "columnName": "consecutive_failures",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastFailureKind",
+            "columnName": "last_failure_kind",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "invariantFailures",
+            "columnName": "invariant_failures",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptAt",
+            "columnName": "last_attempt_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSuccessAt",
+            "columnName": "last_success_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastUploadFinishedAt",
+            "columnName": "last_upload_finished_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastStaleNoticeAt",
+            "columnName": "last_stale_notice_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastDrillAt",
+            "columnName": "last_drill_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastDrillResult",
+            "columnName": "last_drill_result",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastFullVerifyAt",
+            "columnName": "last_full_verify_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastHumanCheckAt",
+            "columnName": "last_human_check_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "humanCheckGeneration",
+            "columnName": "human_check_generation",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "destinationKind",
+            "columnName": "destination_kind",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destinationAccount",
+            "columnName": "destination_account",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destinationId",
+            "columnName": "destination_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destinationFolder",
+            "columnName": "destination_folder",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "headGeneration",
+            "columnName": "head_generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "headDeviceId",
+            "columnName": "head_device_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "headFileRef",
+            "columnName": "head_file_ref",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "shrinkAcceptedGeneration",
+            "columnName": "shrink_accepted_generation",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pendingGeneration",
+            "columnName": "pending_generation",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pendingSeq",
+            "columnName": "pending_seq",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pendingSha256",
+            "columnName": "pending_sha256",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pendingSizeBytes",
+            "columnName": "pending_size_bytes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "conflictKind",
+            "columnName": "conflict_kind",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "conflictGeneration",
+            "columnName": "conflict_generation",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "conflictDeviceId",
+            "columnName": "conflict_device_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "conflictFileRef",
+            "columnName": "conflict_file_ref",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "copyGeneration",
+            "columnName": "copy_generation",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "copyDeviceId",
+            "columnName": "copy_device_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "copyCreatedAt",
+            "columnName": "copy_created_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '09e05e9374112d4d12d9fb5120b82eed')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '453e4a68f61b064ba809f6c212d1e305')"
     ]
   }
 }

@@ -73,6 +73,16 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(stock_movements|sale_lines|purchase_lines|sales|purchases)\b""",
                 RegexOption.IGNORE_CASE,
             )
+        // Un gasto tampoco se borra: solo se anula. Los ajustes y el estado del respaldo son una sola fila que nace con la base: sin
+        // ella la app no arranca, y sin la del respaldo un cambio quedaría sin marca. Las categorías de gasto y las alertas de stock sí se
+        // borran, pero nunca con REPLACE, que borraría la fila que choca sin pasar por su regla de borrado.
+        val documentAndSingleRowRemoval =
+            Regex(
+                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(expenses|app_settings|backup_state)\b""",
+                RegexOption.IGNORE_CASE,
+            )
+        val catalogReplace =
+            Regex("""\b([R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(expense_categories|low_stock_alerts)\b""", RegexOption.IGNORE_CASE)
 
         val binary = setOf("png", "webp", "jpg", "jpeg", "gif", "ttf", "otf", "jar", "so", "jks", "keystore", "db", "gz", "zip", "apk")
         val skippedDirs = setOf("build", ".gradle", ".kotlin", ".idea", ".cxx")
@@ -138,6 +148,12 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                     (ledgerEdit.containsMatchIn(line) || ledgerRemoval.containsMatchIn(line))
                 ) {
                     problems += "$where: el libro de stock y las líneas solo se agregan, y una venta o una compra solo se anulan"
+                }
+                if (isSource && dataMain.containsMatchIn(path) && documentAndSingleRowRemoval.containsMatchIn(line)) {
+                    problems += "$where: un gasto solo se anula, y los ajustes y el estado del respaldo nunca se borran ni se reemplazan"
+                }
+                if (isSource && dataMain.containsMatchIn(path) && catalogReplace.containsMatchIn(line)) {
+                    problems += "$where: sin REPLACE, que borraría la fila que choca sin pasar por su regla de borrado"
                 }
             }
         }

@@ -7,6 +7,8 @@ import androidx.room3.RoomDatabase
 import androidx.room3.executeSQL
 import androidx.room3.useWriterConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
+import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.CategoryDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.CategoryEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.PriceHistoryDao
@@ -15,6 +17,10 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.ProductDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
+import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryDao
+import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryEntity
+import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseDao
+import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseDao
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
@@ -24,8 +30,14 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
+import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsDao
+import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.LowStockAlertDao
+import io.github.yesidrobayo.shopledger.data.local.stock.LowStockAlertEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementDao
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementEntity
+import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import java.io.File
 import kotlin.coroutines.CoroutineContext
 
@@ -33,10 +45,11 @@ import kotlin.coroutines.CoroutineContext
  * La base de la app: el esquema 1, que nace completo y sin migraciones.
  *
  * Por ahora tiene el catálogo (categorías, proveedores, productos y su historial de precios),
- * `price_lists`, las compras y las ventas con sus líneas, y el libro de stock. Room activa las
- * llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana entraría sin
- * error. Las demás tablas llegan con las tareas que las crean, y la versión no cambia mientras el
- * esquema 1 no se publique.
+ * `price_lists`, las compras y las ventas con sus líneas, el libro de stock y sus alertas, los
+ * gastos con sus categorías, y las filas únicas de los ajustes y del estado del respaldo, que
+ * nacen con la base. Room activa las llaves foráneas solo si alguna entidad declara una: sin
+ * ellas, una fila huérfana entraría sin error. Las demás tablas llegan con las tareas que las
+ * crean, y la versión no cambia mientras el esquema 1 no se publique.
  */
 @Database(
     entities = [
@@ -50,6 +63,11 @@ import kotlin.coroutines.CoroutineContext
         SaleEntity::class,
         SaleLineEntity::class,
         StockMovementEntity::class,
+        LowStockAlertEntity::class,
+        ExpenseCategoryEntity::class,
+        ExpenseEntity::class,
+        AppSettingsEntity::class,
+        BackupStateEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -72,6 +90,16 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun saleLineDao(): SaleLineDao
 
     abstract fun stockMovementDao(): StockMovementDao
+
+    abstract fun lowStockAlertDao(): LowStockAlertDao
+
+    abstract fun expenseCategoryDao(): ExpenseCategoryDao
+
+    abstract fun expenseDao(): ExpenseDao
+
+    abstract fun appSettingsDao(): AppSettingsDao
+
+    abstract fun backupStateDao(): BackupStateDao
 
     companion object {
         /**
@@ -109,13 +137,15 @@ internal abstract class AppDatabase : RoomDatabase() {
          *
          * @param databaseFile ruta absoluta del archivo de la base.
          * @param queryContext contexto de las consultas, fuera del hilo principal.
+         * @param clock reloj de las filas que nacen con la base, si esta la crea.
          */
         suspend fun open(
             context: Context,
             databaseFile: File,
             queryContext: CoroutineContext,
+            clock: Clock = SystemClock,
         ): AppDatabase {
-            val database = build(context, databaseFile, queryContext)
+            val database = build(context, databaseFile, queryContext, clock)
             try {
                 database.useWriterConnection { it.executeSQL("PRAGMA synchronous = FULL") }
             } catch (failure: Throwable) {
@@ -145,14 +175,18 @@ internal abstract class AppDatabase : RoomDatabase() {
          *   datos quedan en el archivo.
          * - Sin cierre automático por inactividad: Room reabriría la conexión de escritura con
          *   `synchronous = NORMAL`, sin pasar por [open].
+         * - Al crearla, [InitialRowsCallback] escribe las filas únicas de los ajustes y del
+         *   respaldo en la misma transacción que las tablas.
          *
          * @param databaseFile ruta absoluta del archivo de la base.
          * @param queryContext contexto de las consultas, fuera del hilo principal.
+         * @param clock reloj de las filas que nacen con la base, si esta la crea.
          */
         fun build(
             context: Context,
             databaseFile: File,
             queryContext: CoroutineContext,
+            clock: Clock = SystemClock,
         ): AppDatabase {
             require(databaseFile.isAbsolute) { "La ruta de la base debe ser absoluta" }
             return Room
@@ -160,6 +194,7 @@ internal abstract class AppDatabase : RoomDatabase() {
                 .setDriver(BundledSQLiteDriver())
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .setQueryCoroutineContext(queryContext)
+                .addCallback(InitialRowsCallback(clock))
                 .build()
         }
     }

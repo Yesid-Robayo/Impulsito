@@ -10,7 +10,9 @@ import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.insertPriceListSql
 import io.github.yesidrobayo.shopledger.data.local.longValue
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
+import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,7 +30,8 @@ import org.junit.Before
 
 /**
  * Cada prueba abre su propia base por el camino de la app, con el SQLite empaquetado, WAL y las
- * llaves foráneas activas, y la borra al terminar.
+ * llaves foráneas activas, y la borra al terminar. Las filas que nacen con la base llevan el
+ * instante de [FIXED_CLOCK].
  */
 internal abstract class CatalogDatabaseTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -38,7 +41,7 @@ internal abstract class CatalogDatabaseTest {
     @Before
     fun openDatabase() {
         deleteDatabaseFiles(file)
-        database = runBlocking { AppDatabase.open(context, file, Dispatchers.IO) }
+        database = runBlocking { AppDatabase.open(context, file, Dispatchers.IO, FIXED_CLOCK) }
     }
 
     @After
@@ -66,6 +69,9 @@ internal abstract class CatalogDatabaseTest {
 internal const val CREATED_AT = 1_767_225_600_000L
 internal const val LATER = CREATED_AT + 60_000L
 internal const val MUCH_LATER = CREATED_AT + 3_600_000L
+
+/** Un reloj que siempre da [CREATED_AT]: las filas que nacen con la base salen iguales siempre. */
+internal val FIXED_CLOCK = Clock { Instant.fromEpochMilliseconds(CREATED_AT) }
 
 /** Unidad base cualquiera: la tabla de unidades todavía no existe, y la columna no tiene llave. */
 internal const val UNIT_ID = 1L
