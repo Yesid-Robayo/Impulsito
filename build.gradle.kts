@@ -42,6 +42,9 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         // Los formatos salen del formato regional elegido, nunca del idioma del sistema.
         val systemLocale = Regex("""Locale\.getDefault\(""")
         val mainSource = Regex("""^(app|data|domain)/src/main/""")
+        // Las reglas de negocio reciben la zona del negocio por parámetro: nunca leen la del teléfono, que cambia al viajar.
+        val systemZone = Regex("""current[S]ystemDefault|[s]ystemDefault\(|TimeZone\.get[D]efault\(""")
+        val domainMainSource = Regex("""^domain/src/main/""")
         // Una pantalla que importa la capa de datos o un puerto se salta el caso de uso y su transacción.
         val uiSource = Regex("""^app/src/main/(java|kotlin)/io/github/yesidrobayo/shopledger/ui/""")
         val uiForbiddenImport =
@@ -86,6 +89,9 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 }
                 if (isSource && mainSource.containsMatchIn(path) && systemLocale.containsMatchIn(line)) {
                     problems += "$where: el formato sale del formato regional elegido, no del idioma del sistema"
+                }
+                if (isSource && domainMainSource.containsMatchIn(path) && systemZone.containsMatchIn(line)) {
+                    problems += "$where: las reglas de negocio usan la zona del negocio, nunca la del teléfono"
                 }
                 if (uiSource.containsMatchIn(path) && uiForbiddenImport.containsMatchIn(line)) {
                     problems += "$where: una pantalla no importa la capa de datos ni un puerto: usa un caso de uso"
