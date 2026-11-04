@@ -49,6 +49,16 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         val uiSource = Regex("""^app/src/main/(java|kotlin)/io/github/yesidrobayo/shopledger/ui/""")
         val uiForbiddenImport =
             Regex("""^\s*import\s+io\.github\.yesidrobayo\.shopledger\.(data|domain\.port)(\.|\s|$)""")
+        // Tipos retirados porque fijaban supuestos de un país: unidades solo métricas, pasos de redondeo de una moneda y
+        // una clase de dinero con nombre de moneda. Las unidades son una tabla editable y el paso, un entero que escribe la persona.
+        val retiredType = Regex("""\b([U]nitOfMeasure|[P]riceRoundingStep)\b|\bclass\s+[C]op\b""")
+        // El dinero va en la unidad menor de la moneda del negocio, sin sufijo de moneda ni de unidad.
+        val moneySuffix = Regex("""[a-z0-9]_([c]op|[p]esos|[m]inor)(?![a-z0-9])""")
+        // El dominio es Kotlin puro: sin java.*, tampoco java.math para multiplicar en 128 bits. Solo Math.*Exact, que no
+        // necesita import.
+        val domainMain = Regex("""^domain/src/main/""")
+        val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
+        val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
 
         val binary = setOf("png", "webp", "jpg", "jpeg", "gif", "ttf", "otf", "jar", "so", "jks", "keystore", "db", "gz", "zip", "apk")
         val skippedDirs = setOf("build", ".gradle", ".kotlin", ".idea", ".cxx")
@@ -95,6 +105,17 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 }
                 if (uiSource.containsMatchIn(path) && uiForbiddenImport.containsMatchIn(line)) {
                     problems += "$where: una pantalla no importa la capa de datos ni un puerto: usa un caso de uso"
+                }
+                if (retiredType.containsMatchIn(line)) {
+                    problems += "$where: ese tipo se retiró porque suponía un país: usa la tabla de unidades o un paso entero"
+                }
+                if (moneySuffix.containsMatchIn(line)) {
+                    problems += "$where: el dinero va en unidad menor sin sufijo de moneda ni de unidad"
+                }
+                if (isSource && domainMain.containsMatchIn(path) &&
+                    (domainJavaUse.containsMatchIn(line) || domainMathCall.containsMatchIn(line))
+                ) {
+                    problems += "$where: el dominio es Kotlin puro: sin java.* y, de Math, solo las operaciones Exact"
                 }
             }
         }
