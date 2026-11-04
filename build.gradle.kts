@@ -39,6 +39,9 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         val rootProjectNameLine = Regex("""^\s*rootProject\.name = "[I]mpulsito"\s*$""")
         // Una migración destructiva borraría el negocio de la persona al actualizar.
         val destructiveMigration = Regex("fallbackTo[D]estructiveMigration")
+        // El cierre automático de Room reabre la conexión de escritura con synchronous = NORMAL, sin el FULL que fija la app
+        // al abrir la base: una venta confirmada podría perderse en un corte de energía.
+        val autoClose = Regex("set[A]utoCloseTimeout")
         // Los formatos salen del formato regional elegido, nunca del idioma del sistema.
         val systemLocale = Regex("""Locale\.getDefault\(""")
         val mainSource = Regex("""^(app|data|domain)/src/main/""")
@@ -96,6 +99,9 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 }
                 if (destructiveMigration.containsMatchIn(line)) {
                     problems += "$where: una migración destructiva puede borrar los datos al actualizar"
+                }
+                if (autoClose.containsMatchIn(line)) {
+                    problems += "$where: el cierre automático de Room reabre la conexión de escritura sin synchronous = FULL"
                 }
                 if (isSource && mainSource.containsMatchIn(path) && systemLocale.containsMatchIn(line)) {
                     problems += "$where: el formato sale del formato regional elegido, no del idioma del sistema"
