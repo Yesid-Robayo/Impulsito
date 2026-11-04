@@ -44,7 +44,8 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         val mainSource = Regex("""^(app|data|domain)/src/main/""")
         // Las reglas de negocio reciben la zona del negocio por parámetro: nunca leen la del teléfono, que cambia al viajar.
         val systemZone = Regex("""current[S]ystemDefault|[s]ystemDefault\(|TimeZone\.get[D]efault\(""")
-        val domainMainSource = Regex("""^domain/src/main/""")
+        // Código de producción del dominio: lo usan la regla de la zona y la de Kotlin puro.
+        val domainMain = Regex("""^domain/src/main/""")
         // Una pantalla que importa la capa de datos o un puerto se salta el caso de uso y su transacción.
         val uiSource = Regex("""^app/src/main/(java|kotlin)/io/github/yesidrobayo/shopledger/ui/""")
         val uiForbiddenImport =
@@ -56,7 +57,6 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         val moneySuffix = Regex("""[a-z0-9]_([c]op|[p]esos|[m]inor)(?![a-z0-9])""")
         // El dominio es Kotlin puro: sin java.*, tampoco java.math para multiplicar en 128 bits. Solo Math.*Exact, que no
         // necesita import.
-        val domainMain = Regex("""^domain/src/main/""")
         val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
         val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
 
@@ -100,7 +100,7 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 if (isSource && mainSource.containsMatchIn(path) && systemLocale.containsMatchIn(line)) {
                     problems += "$where: el formato sale del formato regional elegido, no del idioma del sistema"
                 }
-                if (isSource && domainMainSource.containsMatchIn(path) && systemZone.containsMatchIn(line)) {
+                if (isSource && domainMain.containsMatchIn(path) && systemZone.containsMatchIn(line)) {
                     problems += "$where: las reglas de negocio usan la zona del negocio, nunca la del teléfono"
                 }
                 if (uiSource.containsMatchIn(path) && uiForbiddenImport.containsMatchIn(line)) {
