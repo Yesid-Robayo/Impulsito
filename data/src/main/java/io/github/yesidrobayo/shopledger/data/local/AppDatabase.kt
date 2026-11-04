@@ -7,6 +7,8 @@ import androidx.room3.RoomDatabase
 import androidx.room3.executeSQL
 import androidx.room3.useWriterConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventDao
+import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventEntity
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
 import io.github.yesidrobayo.shopledger.data.local.cash.CashDenominationDao
@@ -96,12 +98,12 @@ import kotlin.coroutines.CoroutineContext
  * stock y sus alertas, los gastos con sus categorías, las tasas de impuesto, las filas únicas de
  * los ajustes y del estado del respaldo, que nacen con la base, los clientes con sus libros de
  * cuenta y de puntos y sus plantillas de mensaje, las cuentas de dinero con su libro y sus sesiones
- * de caja, y el libro de los proveedores. Del catálogo también tiene los combos, los campos
- * propios, las etiquetas y las imágenes, y de las ventas, los componentes que consumió cada combo
- * vendido. Room activa las llaves foráneas solo si alguna entidad declara una: sin ellas, una fila
- * huérfana entraría sin error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards].
- * Las demás tablas llegan con las tareas que las crean, y la versión no cambia mientras el
- * esquema 1 no se publique.
+ * de caja, el libro de los proveedores y el registro de auditoría. Del catálogo también tiene los
+ * combos, los campos propios, las etiquetas y las imágenes, y de las ventas, los componentes que
+ * consumió cada combo vendido. Room activa las llaves foráneas solo si alguna entidad declara una:
+ * sin ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe declarar son
+ * guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y la versión no
+ * cambia mientras el esquema 1 no se publique.
  */
 @Database(
     // Cada tabla va antes que las tablas a las que apunta con RESTRICT: Room 3.0.3 ordena las
@@ -147,6 +149,7 @@ import kotlin.coroutines.CoroutineContext
         CashSessionEntity::class,
         MoneyAccountEntity::class,
         CashDenominationEntity::class,
+        AuditEventEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -220,6 +223,8 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun cashDenominationDao(): CashDenominationDao
 
     abstract fun cashSessionCountDao(): CashSessionCountDao
+
+    abstract fun auditEventDao(): AuditEventDao
 
     companion object {
         /**

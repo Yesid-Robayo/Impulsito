@@ -80,7 +80,8 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 "purchase_lines",
                 "sale_line_components",
             ).joinToString("|")
-        val ledgerEdit = Regex("""\b[U]PDATE(\s+OR\s+[A-Z]+)?\s+($appendOnlyTables)\b""", RegexOption.IGNORE_CASE)
+        // El registro de auditoría tampoco se edita, pero su poda sí borra lo que pasa del tope. Nunca con REPLACE.
+        val ledgerEdit = Regex("""\b[U]PDATE(\s+OR\s+[A-Z]+)?\s+($appendOnlyTables|audit_events)\b""", RegexOption.IGNORE_CASE)
         val ledgerRemoval =
             Regex(
                 """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+($appendOnlyTables|sales|purchases)\b""",
@@ -105,6 +106,7 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 "money_accounts",
                 "cash_sessions",
                 "cash_denominations",
+                "audit_events",
             ).joinToString("|")
         val catalogReplace =
             Regex("""\b([R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+($replaceableTables)\b""", RegexOption.IGNORE_CASE)

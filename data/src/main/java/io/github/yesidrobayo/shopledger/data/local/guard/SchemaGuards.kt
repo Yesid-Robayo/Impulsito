@@ -61,6 +61,7 @@ internal object SchemaGuards {
             EXPENSE_CATEGORIES_GUARDS,
             EXPENSES_GUARDS,
             PRICE_LISTS_GUARDS,
+            AUDIT_EVENTS_GUARDS,
         ).flatten()
 
     private val byName: Map<String, Guard> = all.associateBy { it.name }
@@ -1890,5 +1891,27 @@ private val PRICE_LISTS_GUARDS =
         CREATE TRIGGER guard_price_lists_no_delete BEFORE DELETE ON price_lists
         WHEN OLD.system_key = 'DEFAULT'
         BEGIN SELECT RAISE(ABORT, 'guard:price_lists_system'); END;
+        """,
+    )
+
+/** El registro de auditoría: solo crece, y solo se borra lo que pasa de las 5.000 filas. */
+private val AUDIT_EVENTS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_audit_events_insert BEFORE INSERT ON audit_events
+        WHEN NOT IFNULL((
+          typeof(NEW.occurred_at) = 'integer'
+          AND NEW.event_type IN ('EXPORT_CSV', 'EXPORT_FULL_COPY', 'RESTORE', 'RESTORE_REJECTED', 'DESTINATION_DISCONNECTED', 'DESTINATION_CHANGED', 'APP_LOCK_CHANGED', 'ENCRYPTION_CHANGED', 'RECOVERY_CODE_VIEWED', 'DELETE_MY_DATA', 'AUTH_FAILED')
+          AND NEW.result IN ('SUCCESS', 'FAILURE')
+          AND NOT EXISTS (SELECT 1 FROM audit_events x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:audit_events'); END;
+
+        CREATE TRIGGER guard_audit_events_no_update BEFORE UPDATE ON audit_events
+        BEGIN SELECT RAISE(ABORT, 'guard:audit_events_append_only'); END;
+
+        CREATE TRIGGER guard_audit_events_no_delete BEFORE DELETE ON audit_events
+        WHEN (SELECT COUNT(*) FROM audit_events) <= 5000
+        BEGIN SELECT RAISE(ABORT, 'guard:audit_events_append_only'); END;
         """,
     )

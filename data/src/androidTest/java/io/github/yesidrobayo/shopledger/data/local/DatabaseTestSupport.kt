@@ -59,6 +59,7 @@ internal suspend fun PooledConnection.texts(sql: String): List<String> =
 internal val SCHEMA_TABLES =
     listOf(
         "app_settings",
+        "audit_events",
         "backup_state",
         "cash_denominations",
         "cash_session_counts",
