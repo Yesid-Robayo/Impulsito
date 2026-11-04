@@ -39,6 +39,8 @@ import io.github.yesidrobayo.shopledger.data.local.stock.LowStockAlertDao
 import io.github.yesidrobayo.shopledger.data.local.stock.LowStockAlertEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementDao
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementEntity
+import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateDao
+import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateEntity
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import java.io.File
@@ -49,11 +51,11 @@ import kotlin.coroutines.CoroutineContext
  *
  * Por ahora tiene el catálogo (categorías, proveedores, productos y su historial de precios),
  * `price_lists`, las compras y las ventas con sus líneas, el libro de stock y sus alertas, los
- * gastos con sus categorías, y las filas únicas de los ajustes y del estado del respaldo, que
- * nacen con la base. Room activa las llaves foráneas solo si alguna entidad declara una: sin
- * ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe declarar son guardas,
- * en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y la versión no cambia
- * mientras el esquema 1 no se publique.
+ * gastos con sus categorías, las tasas de impuesto, y las filas únicas de los ajustes y del estado
+ * del respaldo, que nacen con la base. Room activa las llaves foráneas solo si alguna entidad
+ * declara una: sin ellas, una fila huérfana entraría sin error. Las reglas que Room no sabe
+ * declarar son guardas, en [SchemaGuards]. Las demás tablas llegan con las tareas que las crean, y
+ * la versión no cambia mientras el esquema 1 no se publique.
  */
 @Database(
     entities = [
@@ -72,6 +74,7 @@ import kotlin.coroutines.CoroutineContext
         ExpenseEntity::class,
         AppSettingsEntity::class,
         BackupStateEntity::class,
+        TaxRateEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -104,6 +107,8 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun appSettingsDao(): AppSettingsDao
 
     abstract fun backupStateDao(): BackupStateDao
+
+    abstract fun taxRateDao(): TaxRateDao
 
     companion object {
         /**

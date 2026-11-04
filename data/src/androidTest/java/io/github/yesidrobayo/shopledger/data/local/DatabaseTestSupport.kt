@@ -55,10 +55,7 @@ internal suspend fun PooledConnection.texts(sql: String): List<String> =
         buildList { while (statement.step()) add(statement.getText(0)) }
     }
 
-/**
- * Las tablas que crea el esquema compilado, en el orden de [OWN_TABLES_SQL]: las catorce del brief
- * y `price_lists`.
- */
+/** Las tablas que crea el esquema compilado, en el orden de [OWN_TABLES_SQL]. */
 internal val SCHEMA_TABLES =
     listOf(
         "app_settings",
@@ -76,6 +73,7 @@ internal val SCHEMA_TABLES =
         "sales",
         "stock_movements",
         "suppliers",
+        "tax_rates",
     )
 
 /** Cada índice de [table] como `nombre (columnas)`, con `unique` delante si lo es, por nombre. */

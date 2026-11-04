@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "0dd95775230d5a5671f602f3deb62a05",
+    "identityHash": "213917c2172808ca8a8f47b0bac1ade5",
     "entities": [
       {
         "tableName": "price_lists",
@@ -256,7 +256,7 @@
       },
       {
         "tableName": "products",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, `category_id` INTEGER, `default_supplier_id` INTEGER, `base_unit_id` INTEGER NOT NULL, `stock_mode` TEXT NOT NULL, `sale_price` INTEGER NOT NULL, `average_cost` INTEGER NOT NULL, `initial_cost` INTEGER NOT NULL, `fixed_unit_cost` INTEGER NOT NULL, `stock_value` INTEGER NOT NULL, `on_hand_milli` INTEGER NOT NULL, `min_stock_milli` INTEGER NOT NULL, `barcode` TEXT, `parent_product_id` INTEGER, `variant_axis_1` TEXT, `variant_axis_2` TEXT, `variant_value_1` TEXT, `variant_value_2` TEXT, `photo_media_id` INTEGER, `tax_rate_id` INTEGER, `replacement_cost` INTEGER NOT NULL, `replacement_cost_at` INTEGER, `target_margin_bp` INTEGER, `reference_cost` INTEGER, `reference_price` INTEGER, `price_review_since` INTEGER, `tracks_lots` INTEGER NOT NULL, `expiry_notice_days` INTEGER, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, FOREIGN KEY(`category_id`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`default_supplier_id`) REFERENCES `suppliers`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`parent_product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, `category_id` INTEGER, `default_supplier_id` INTEGER, `base_unit_id` INTEGER NOT NULL, `stock_mode` TEXT NOT NULL, `sale_price` INTEGER NOT NULL, `average_cost` INTEGER NOT NULL, `initial_cost` INTEGER NOT NULL, `fixed_unit_cost` INTEGER NOT NULL, `stock_value` INTEGER NOT NULL, `on_hand_milli` INTEGER NOT NULL, `min_stock_milli` INTEGER NOT NULL, `barcode` TEXT, `parent_product_id` INTEGER, `variant_axis_1` TEXT, `variant_axis_2` TEXT, `variant_value_1` TEXT, `variant_value_2` TEXT, `photo_media_id` INTEGER, `tax_rate_id` INTEGER, `replacement_cost` INTEGER NOT NULL, `replacement_cost_at` INTEGER, `target_margin_bp` INTEGER, `reference_cost` INTEGER, `reference_price` INTEGER, `price_review_since` INTEGER, `tracks_lots` INTEGER NOT NULL, `expiry_notice_days` INTEGER, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, FOREIGN KEY(`category_id`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`default_supplier_id`) REFERENCES `suppliers`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`parent_product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`tax_rate_id`) REFERENCES `tax_rates`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "id",
@@ -549,6 +549,17 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "parent_product_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "tax_rates",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "tax_rate_id"
             ],
             "referencedColumns": [
               "id"
@@ -2226,11 +2237,75 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "tax_rates",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, `rate_bp` INTEGER NOT NULL, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rateBp",
+            "columnName": "rate_bp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_tax_rates_normalized_name",
+            "unique": true,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_tax_rates_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0dd95775230d5a5671f602f3deb62a05')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '213917c2172808ca8a8f47b0bac1ade5')"
     ]
   }
 }

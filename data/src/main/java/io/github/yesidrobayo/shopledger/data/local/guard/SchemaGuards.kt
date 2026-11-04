@@ -35,6 +35,7 @@ internal object SchemaGuards {
             PURCHASE_LINES_GUARDS,
             SALES_GUARDS,
             SALE_LINES_GUARDS,
+            TAX_RATES_GUARDS,
             EXPENSE_CATEGORIES_GUARDS,
             EXPENSES_GUARDS,
             PRICE_LISTS_GUARDS,
@@ -1001,6 +1002,35 @@ private val SALE_LINES_GUARDS =
 
         CREATE TRIGGER guard_sale_lines_no_delete BEFORE DELETE ON sale_lines
         BEGIN SELECT RAISE(ABORT, 'guard:sale_lines_append_only'); END;
+        """,
+    )
+
+/** Las tasas de impuesto: la tasa va de 0 a 10.000 puntos básicos. El nombre único lo impone
+ * su índice, no la guarda. */
+private val TAX_RATES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_tax_rates_insert BEFORE INSERT ON tax_rates
+        WHEN NOT IFNULL((
+          typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40
+          AND typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40
+          AND typeof(NEW.rate_bp) = 'integer' AND NEW.rate_bp BETWEEN 0 AND 10000
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:tax_rates'); END;
+
+        CREATE TRIGGER guard_tax_rates_update BEFORE UPDATE ON tax_rates
+        WHEN NOT IFNULL((
+          typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 40
+          AND typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 40
+          AND typeof(NEW.rate_bp) = 'integer' AND NEW.rate_bp BETWEEN 0 AND 10000
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:tax_rates'); END;
         """,
     )
 

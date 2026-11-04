@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.data.local.catalog
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.yesidrobayo.shopledger.data.local.tax.taxRate
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -22,6 +23,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         val categoryId = database.categoryDao().insert(category("Bebidas"))
         val supplierId = database.supplierDao().insert(supplier("Distribuidora Andina"))
+        val taxRateId = database.taxRateDao().insert(taxRate("General", rateBp = 2_100))
         val parentId = products.insert(product("Camiseta"))
         // Cada columna con un valor distinto, para que dos columnas cruzadas no pasen.
         val variant =
@@ -46,7 +48,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
                 variantValue1 = "Rojo",
                 variantValue2 = "M",
                 photoMediaId = 77,
-                taxRateId = 5,
+                taxRateId = taxRateId,
                 replacementCost = 22_000,
                 replacementCostAt = LATER,
                 targetMarginBp = 4_500,
@@ -157,6 +159,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
     @Test
     fun editingDetailsNeverTouchesPriceCostsOrStock() = runBlocking {
         val categoryId = database.categoryDao().insert(category("Granos"))
+        val taxRateId = database.taxRateDao().insert(taxRate("Reducida", rateBp = 500))
         val id = products.insert(product("Lenteja"))
         // Lo que dejaron el libro de stock, el historial de precios y el archivado.
         products.updateStockState(
@@ -195,7 +198,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
                 variantValue1 = "500 g",
                 variantValue2 = null,
                 photoMediaId = 9,
-                taxRateId = 4,
+                taxRateId = taxRateId,
                 targetMarginBp = 3_000,
                 referenceCost = 80,
                 referencePrice = 150,
@@ -216,7 +219,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
                 variantAxis1 = "Peso",
                 variantValue1 = "500 g",
                 photoMediaId = 9,
-                taxRateId = 4,
+                taxRateId = taxRateId,
                 targetMarginBp = 3_000,
                 referenceCost = 80,
                 referencePrice = 150,

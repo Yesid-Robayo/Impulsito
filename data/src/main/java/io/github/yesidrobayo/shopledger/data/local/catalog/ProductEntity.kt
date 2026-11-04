@@ -5,6 +5,7 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateEntity
 
 /**
  * Un producto del catálogo. Cada variante es un producto propio, con su libro de stock.
@@ -21,9 +22,10 @@ import androidx.room3.PrimaryKey
  *   impone la guarda de la tabla.
  * - Al eliminar su categoría o su proveedor habitual, el producto queda sin ellos. Un producto
  *   padre no se borra mientras tenga variantes.
- * - `base_unit_id`, `photo_media_id` y `tax_rate_id` todavía no tienen llave foránea: sus tablas
- *   no existen aún. La llave, con `RESTRICT` para la unidad y `SET NULL` para foto e impuesto,
- *   llega con la tabla a la que apunta, dentro del mismo esquema 1. Sus índices ya están.
+ * - `base_unit_id` y `photo_media_id` todavía no tienen llave foránea: sus tablas no existen aún.
+ *   La llave, con `RESTRICT` para la unidad y `SET NULL` para la foto, llega con la tabla a la que
+ *   apunta, dentro del mismo esquema 1. Sus índices ya están.
+ * - Al eliminar su tasa de impuesto, el producto queda sin tasa, y sus ventas guardan su copia.
  */
 @Entity(
     tableName = "products",
@@ -45,6 +47,12 @@ import androidx.room3.PrimaryKey
             parentColumns = ["id"],
             childColumns = ["parent_product_id"],
             onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = TaxRateEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tax_rate_id"],
+            onDelete = ForeignKey.SET_NULL,
         ),
     ],
     indices = [
