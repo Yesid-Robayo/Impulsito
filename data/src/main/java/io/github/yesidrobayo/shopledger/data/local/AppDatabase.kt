@@ -27,6 +27,14 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.TagDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.TagEntity
+import io.github.yesidrobayo.shopledger.data.local.customer.CustomerDao
+import io.github.yesidrobayo.shopledger.data.local.customer.CustomerEntity
+import io.github.yesidrobayo.shopledger.data.local.customer.CustomerLedgerEntryDao
+import io.github.yesidrobayo.shopledger.data.local.customer.CustomerLedgerEntryEntity
+import io.github.yesidrobayo.shopledger.data.local.customer.LoyaltyLedgerEntryDao
+import io.github.yesidrobayo.shopledger.data.local.customer.LoyaltyLedgerEntryEntity
+import io.github.yesidrobayo.shopledger.data.local.customer.MessageTemplateDao
+import io.github.yesidrobayo.shopledger.data.local.customer.MessageTemplateEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseDao
@@ -63,13 +71,13 @@ import kotlin.coroutines.CoroutineContext
  *
  * Por ahora tiene el catálogo (categorías, proveedores, productos y su historial de precios),
  * `price_lists`, las compras y las ventas con sus líneas, el libro de stock y sus alertas, los
- * gastos con sus categorías, las tasas de impuesto, y las filas únicas de los ajustes y del estado
- * del respaldo, que nacen con la base. Del catálogo también tiene los combos, los campos propios,
- * las etiquetas y las imágenes, y de las ventas, los componentes que consumió cada combo vendido.
- * Room activa las llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana
- * entraría sin error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards]. Las
- * demás tablas llegan con las tareas que las crean, y la versión no cambia mientras el esquema 1
- * no se publique.
+ * gastos con sus categorías, las tasas de impuesto, las filas únicas de los ajustes y del estado
+ * del respaldo, que nacen con la base, y los clientes con sus libros de cuenta y de puntos y sus
+ * plantillas de mensaje. Del catálogo también tiene los combos, los campos propios, las etiquetas y
+ * las imágenes, y de las ventas, los componentes que consumió cada combo vendido. Room activa las
+ * llaves foráneas solo si alguna entidad declara una: sin ellas, una fila huérfana entraría sin
+ * error. Las reglas que Room no sabe declarar son guardas, en [SchemaGuards]. Las demás tablas
+ * llegan con las tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
  */
 @Database(
     entities = [
@@ -96,6 +104,10 @@ import kotlin.coroutines.CoroutineContext
         AppSettingsEntity::class,
         BackupStateEntity::class,
         TaxRateEntity::class,
+        CustomerEntity::class,
+        CustomerLedgerEntryEntity::class,
+        LoyaltyLedgerEntryEntity::class,
+        MessageTemplateEntity::class,
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -140,6 +152,13 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun backupStateDao(): BackupStateDao
 
     abstract fun taxRateDao(): TaxRateDao
+    abstract fun customerDao(): CustomerDao
+
+    abstract fun customerLedgerEntryDao(): CustomerLedgerEntryDao
+
+    abstract fun loyaltyLedgerEntryDao(): LoyaltyLedgerEntryDao
+
+    abstract fun messageTemplateDao(): MessageTemplateDao
 
     companion object {
         /**

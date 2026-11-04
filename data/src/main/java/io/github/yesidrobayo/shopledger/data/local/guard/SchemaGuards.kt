@@ -43,6 +43,10 @@ internal object SchemaGuards {
             SALE_LINES_GUARDS,
             SALE_LINE_COMPONENTS_GUARDS,
             TAX_RATES_GUARDS,
+            CUSTOMERS_GUARDS,
+            CUSTOMER_LEDGER_ENTRIES_GUARDS,
+            LOYALTY_LEDGER_ENTRIES_GUARDS,
+            MESSAGE_TEMPLATES_GUARDS,
             EXPENSE_CATEGORIES_GUARDS,
             EXPENSES_GUARDS,
             PRICE_LISTS_GUARDS,
@@ -1213,6 +1217,148 @@ private val SALE_LINE_COMPONENTS_GUARDS =
 
         CREATE TRIGGER guard_sale_line_components_no_delete BEFORE DELETE ON sale_line_components
         BEGIN SELECT RAISE(ABORT, 'guard:sale_line_components_append_only'); END;
+        """,
+    )
+
+/** Los clientes: solo el nombre es obligatorio, y puede faltar solo en uno anonimizado, que ya
+ * no guarda ningún dato personal y no deja de estarlo. */
+private val CUSTOMERS_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_customers_insert BEFORE INSERT ON customers
+        WHEN NOT IFNULL((
+          (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 80))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 80))
+          AND (NEW.phone IS NULL OR (typeof(NEW.phone) = 'text' AND length(NEW.phone) BETWEEN 1 AND 30))
+          AND (NEW.email IS NULL OR (typeof(NEW.email) = 'text' AND length(NEW.email) BETWEEN 1 AND 120))
+          AND (NEW.notes IS NULL OR (typeof(NEW.notes) = 'text' AND length(NEW.notes) BETWEEN 1 AND 500))
+          AND typeof(NEW.balance) = 'integer'
+          AND typeof(NEW.points_balance) = 'integer' AND NEW.points_balance BETWEEN -1000000000000 AND 1000000000000
+          AND (NEW.anonymized_at IS NULL OR (typeof(NEW.anonymized_at) = 'integer'))
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.name IS NOT NULL OR NEW.anonymized_at IS NOT NULL)
+          AND (NEW.anonymized_at IS NULL OR (NEW.name IS NULL AND NEW.phone IS NULL AND NEW.email IS NULL AND NEW.notes IS NULL))
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:customers'); END;
+
+        CREATE TRIGGER guard_customers_update BEFORE UPDATE ON customers
+        WHEN NOT IFNULL((
+          (NEW.name IS NULL OR (typeof(NEW.name) = 'text' AND length(NEW.name) BETWEEN 1 AND 80))
+          AND (NEW.normalized_name IS NULL OR (typeof(NEW.normalized_name) = 'text' AND length(NEW.normalized_name) BETWEEN 1 AND 80))
+          AND (NEW.phone IS NULL OR (typeof(NEW.phone) = 'text' AND length(NEW.phone) BETWEEN 1 AND 30))
+          AND (NEW.email IS NULL OR (typeof(NEW.email) = 'text' AND length(NEW.email) BETWEEN 1 AND 120))
+          AND (NEW.notes IS NULL OR (typeof(NEW.notes) = 'text' AND length(NEW.notes) BETWEEN 1 AND 500))
+          AND typeof(NEW.balance) = 'integer'
+          AND typeof(NEW.points_balance) = 'integer' AND NEW.points_balance BETWEEN -1000000000000 AND 1000000000000
+          AND (NEW.anonymized_at IS NULL OR (typeof(NEW.anonymized_at) = 'integer'))
+          AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
+          AND typeof(NEW.created_at) = 'integer'
+          AND typeof(NEW.updated_at) = 'integer'
+          AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
+          AND (NEW.name IS NOT NULL OR NEW.anonymized_at IS NOT NULL)
+          AND (NEW.anonymized_at IS NULL OR (NEW.name IS NULL AND NEW.phone IS NULL AND NEW.email IS NULL AND NEW.notes IS NULL))
+          AND (OLD.anonymized_at IS NULL OR NEW.anonymized_at IS OLD.anonymized_at)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:customers'); END;
+        """,
+    )
+
+/** El libro del cliente: solo crece. Cada fila lleva el signo y el origen de su tipo, y una
+ * compensación apunta a una fila del mismo cliente, con el monto opuesto, una sola vez.
+ *
+ * Mientras no exista la columna que bloquea la moneda, que llega con la configuración
+ * regional, no se exige la moneda confirmada antes del primer registro con dinero. Es la única
+ * parte de estas guardas que hoy protege menos que su texto completo. */
+private val CUSTOMER_LEDGER_ENTRIES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_customer_ledger_entries_insert BEFORE INSERT ON customer_ledger_entries
+        WHEN NOT IFNULL((
+          NEW.type IN ('OPENING_BALANCE', 'CREDIT_SALE', 'PAYMENT', 'RETURN_CREDIT', 'ADJUSTMENT', 'ENTRY_VOID')
+          AND typeof(NEW.amount) = 'integer'
+          AND typeof(NEW.balance_after) = 'integer'
+          AND (NEW.due_date IS NULL OR (date(NEW.due_date) = NEW.due_date))
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND (SELECT currency_locked_at FROM app_settings WHERE id = 1) IS NOT NULL
+          AND NEW.amount <> 0
+          AND CASE NEW.type WHEN 'CREDIT_SALE' THEN NEW.amount > 0 WHEN 'PAYMENT' THEN NEW.amount < 0 WHEN 'RETURN_CREDIT' THEN NEW.amount < 0 ELSE 1 END
+          AND (NEW.type = 'CREDIT_SALE') = (NEW.sale_id IS NOT NULL)
+          AND (NEW.type = 'RETURN_CREDIT') = (NEW.sale_return_id IS NOT NULL)
+          AND (NEW.type = 'ENTRY_VOID') = (NEW.reverses_entry_id IS NOT NULL)
+          AND (NEW.reverses_entry_id IS NULL OR EXISTS (SELECT 1 FROM customer_ledger_entries o WHERE o.id = NEW.reverses_entry_id AND o.customer_id = NEW.customer_id AND o.amount = -NEW.amount AND o.type <> 'ENTRY_VOID'))
+          AND NOT EXISTS (SELECT 1 FROM customer_ledger_entries e WHERE e.reverses_entry_id = NEW.reverses_entry_id)
+          AND NOT EXISTS (SELECT 1 FROM customer_ledger_entries x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:customer_ledger_entries'); END;
+
+        CREATE TRIGGER guard_customer_ledger_entries_no_update BEFORE UPDATE ON customer_ledger_entries
+        BEGIN SELECT RAISE(ABORT, 'guard:customer_ledger_entries_append_only'); END;
+
+        CREATE TRIGGER guard_customer_ledger_entries_no_delete BEFORE DELETE ON customer_ledger_entries
+        BEGIN SELECT RAISE(ABORT, 'guard:customer_ledger_entries_append_only'); END;
+        """,
+        awaitingCurrencyLock("guard_customer_ledger_entries_insert"),
+    )
+
+/** El libro de puntos: solo crece, con el mismo patrón que el del cliente. Los puntos no son
+ * dinero, así que no esperan la moneda confirmada. */
+private val LOYALTY_LEDGER_ENTRIES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_loyalty_ledger_entries_insert BEFORE INSERT ON loyalty_ledger_entries
+        WHEN NOT IFNULL((
+          NEW.type IN ('EARN', 'REDEEM', 'ADJUSTMENT', 'ENTRY_VOID')
+          AND typeof(NEW.points) = 'integer' AND NEW.points BETWEEN -1000000000000 AND 1000000000000
+          AND typeof(NEW.balance_after) = 'integer' AND NEW.balance_after BETWEEN -1000000000000 AND 1000000000000
+          AND (NEW.note IS NULL OR (typeof(NEW.note) = 'text' AND length(NEW.note) BETWEEN 1 AND 200))
+          AND typeof(NEW.occurred_at) = 'integer'
+          AND date(NEW.business_date) = NEW.business_date
+          AND typeof(NEW.created_at) = 'integer'
+          AND NEW.points <> 0
+          AND CASE NEW.type WHEN 'EARN' THEN NEW.points > 0 WHEN 'REDEEM' THEN NEW.points < 0 ELSE 1 END
+          AND (NEW.type IN ('EARN', 'REDEEM')) = (NEW.sale_id IS NOT NULL)
+          AND (NEW.type = 'ENTRY_VOID') = (NEW.reverses_entry_id IS NOT NULL)
+          AND (NEW.reverses_entry_id IS NULL OR EXISTS (SELECT 1 FROM loyalty_ledger_entries o WHERE o.id = NEW.reverses_entry_id AND o.customer_id = NEW.customer_id AND o.points = -NEW.points AND o.type <> 'ENTRY_VOID'))
+          AND NOT EXISTS (SELECT 1 FROM loyalty_ledger_entries e WHERE e.reverses_entry_id = NEW.reverses_entry_id)
+          AND NOT EXISTS (SELECT 1 FROM loyalty_ledger_entries x WHERE x.id = NEW.id)
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:loyalty_ledger_entries'); END;
+
+        CREATE TRIGGER guard_loyalty_ledger_entries_no_update BEFORE UPDATE ON loyalty_ledger_entries
+        BEGIN SELECT RAISE(ABORT, 'guard:loyalty_ledger_entries_append_only'); END;
+
+        CREATE TRIGGER guard_loyalty_ledger_entries_no_delete BEFORE DELETE ON loyalty_ledger_entries
+        BEGIN SELECT RAISE(ABORT, 'guard:loyalty_ledger_entries_append_only'); END;
+        """,
+    )
+
+/** Las plantillas de mensaje: una clave conocida, un idioma y un texto con su largo. */
+private val MESSAGE_TEMPLATES_GUARDS =
+    table(
+        """
+        CREATE TRIGGER guard_message_templates_insert BEFORE INSERT ON message_templates
+        WHEN NOT IFNULL((
+          NEW.template_key IN ('PAYMENT_REMINDER')
+          AND typeof(NEW.language_tag) = 'text' AND length(NEW.language_tag) BETWEEN 1 AND 8
+          AND typeof(NEW.body) = 'text' AND length(NEW.body) BETWEEN 1 AND 1000
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:message_templates'); END;
+
+        CREATE TRIGGER guard_message_templates_update BEFORE UPDATE ON message_templates
+        WHEN NOT IFNULL((
+          NEW.template_key IN ('PAYMENT_REMINDER')
+          AND typeof(NEW.language_tag) = 'text' AND length(NEW.language_tag) BETWEEN 1 AND 8
+          AND typeof(NEW.body) = 'text' AND length(NEW.body) BETWEEN 1 AND 1000
+          AND typeof(NEW.updated_at) = 'integer'
+        ), 0)
+        BEGIN SELECT RAISE(ABORT, 'guard:message_templates'); END;
         """,
     )
 

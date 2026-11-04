@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.constraintFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.catalog.product
+import io.github.yesidrobayo.shopledger.data.local.customer.customer
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import io.github.yesidrobayo.shopledger.data.local.ids
 import io.github.yesidrobayo.shopledger.data.local.sale
@@ -38,7 +39,9 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
     @Test
     fun everyColumnReadsBackFromItsOwnPlace() = runBlocking {
         // Cada columna con un valor distinto, para que dos columnas cruzadas no pasen. Un recargo
-        // en toda la venta y un redondeo de efectivo hacia arriba.
+        // en toda la venta y un redondeo de efectivo hacia arriba. El cliente ya tiene tabla y
+        // llave: la venta apunta a uno que existe, con un id propio.
+        val customerId = database.customerDao().insert(customer("Ana").copy(id = 8))
         val header =
             SaleEntity(
                 status = "ACTIVE",
@@ -51,7 +54,7 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
                 tipAmount = 2_000,
                 cashRoundingAmount = 50,
                 amountDue = 52_050,
-                customerId = 8,
+                customerId = customerId,
                 priceListId = priceListId,
                 locationId = 2,
                 cashSessionId = 5,

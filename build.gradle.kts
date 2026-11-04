@@ -63,26 +63,43 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         // necesita import.
         val domainJavaUse = Regex("""^\s*import\s+javax?\.|\bjavax?\.[a-z]+\.[A-Z]""")
         val domainMathCall = Regex("""\bMath\.(?!\w+Exact\b)\w+""")
-        // El libro de stock, las líneas de venta y de compra y los componentes de un combo vendido solo crecen: ningún DAO los edita
-        // ni los borra, porque el saldo, el costo y lo vendido salen de ellos. Una venta o una compra tampoco se borran: solo se anulan. Un
-        // INSERT OR REPLACE borra la fila que choca sin pasar por la guarda de borrado.
+        // Los libros, de stock y de los clientes, las líneas de venta y de compra y los componentes de un combo vendido solo crecen:
+        // ningún DAO los edita ni los borra, porque el saldo, el costo y lo vendido salen de ellos. Una venta o una compra tampoco se
+        // borran: solo se anulan. Un INSERT OR REPLACE borra la fila que choca sin pasar por la guarda de borrado.
         val dataMain = Regex("""^data/src/main/""")
-        val ledgerEdit = Regex("""\b[U]PDATE(\s+OR\s+[A-Z]+)?\s+(stock_movements|sale_lines|purchase_lines|sale_line_components)\b""", RegexOption.IGNORE_CASE)
+        val appendOnlyTables =
+            listOf(
+                "stock_movements",
+                "customer_ledger_entries",
+                "loyalty_ledger_entries",
+                "sale_lines",
+                "purchase_lines",
+                "sale_line_components",
+            ).joinToString("|")
+        val ledgerEdit = Regex("""\b[U]PDATE(\s+OR\s+[A-Z]+)?\s+($appendOnlyTables)\b""", RegexOption.IGNORE_CASE)
         val ledgerRemoval =
             Regex(
-                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(stock_movements|sale_lines|purchase_lines|sale_line_components|sales|purchases)\b""",
+                """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+($appendOnlyTables|sales|purchases)\b""",
                 RegexOption.IGNORE_CASE,
             )
         // Un gasto tampoco se borra: solo se anula. Los ajustes y el estado del respaldo son una sola fila que nace con la base: sin
-        // ella la app no arranca, y sin la del respaldo un cambio quedaría sin marca. Las categorías de gasto y las alertas de stock sí se
-        // borran, pero nunca con REPLACE, que borraría la fila que choca sin pasar por su regla de borrado.
+        // ella la app no arranca, y sin la del respaldo un cambio quedaría sin marca. Las categorías de gasto, las alertas de stock, los
+        // clientes y las plantillas de mensaje sí se borran, pero nunca con REPLACE, que borraría la fila que choca sin pasar por su
+        // regla de borrado.
         val documentAndSingleRowRemoval =
             Regex(
                 """\b([D]ELETE\s+FROM|[R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(expenses|app_settings|backup_state)\b""",
                 RegexOption.IGNORE_CASE,
             )
+        val replaceableTables =
+            listOf(
+                "expense_categories",
+                "low_stock_alerts",
+                "customers",
+                "message_templates",
+            ).joinToString("|")
         val catalogReplace =
-            Regex("""\b([R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+(expense_categories|low_stock_alerts)\b""", RegexOption.IGNORE_CASE)
+            Regex("""\b([R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+($replaceableTables)\b""", RegexOption.IGNORE_CASE)
 
         val binary = setOf("png", "webp", "jpg", "jpeg", "gif", "ttf", "otf", "jar", "so", "jks", "keystore", "db", "gz", "zip", "apk")
         val skippedDirs = setOf("build", ".gradle", ".kotlin", ".idea", ".cxx")
@@ -147,7 +164,7 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 if (isSource && dataMain.containsMatchIn(path) &&
                     (ledgerEdit.containsMatchIn(line) || ledgerRemoval.containsMatchIn(line))
                 ) {
-                    problems += "$where: el libro de stock y las líneas solo se agregan, y una venta o una compra solo se anulan"
+                    problems += "$where: los libros y las líneas solo se agregan, y una venta o una compra solo se anulan"
                 }
                 if (isSource && dataMain.containsMatchIn(path) && documentAndSingleRowRemoval.containsMatchIn(line)) {
                     problems += "$where: un gasto solo se anula, y los ajustes y el estado del respaldo nunca se borran ni se reemplazan"

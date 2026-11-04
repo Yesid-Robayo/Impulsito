@@ -6,6 +6,7 @@ import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import androidx.room3.RoomWarnings
+import io.github.yesidrobayo.shopledger.data.local.customer.CustomerEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 
 /**
@@ -21,9 +22,10 @@ import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
  * - `status` nace `ACTIVE` y solo pasa a `VOIDED`, con `voided_at` y `void_reason`.
  * - La lista de precios usa `RESTRICT`: una lista con ventas no se borra. No lleva índice: las
  *   listas casi nunca se borran, y SQLite solo busca ventas por esa columna al borrar una.
- * - `customer_id`, `location_id`, `cash_session_id`, `quote_id` y `order_id` todavía no tienen
- *   llave foránea: sus tablas no existen aún. La llave llega con la tabla a la que apunta, dentro
- *   del mismo esquema 1. El índice de `customer_id` ya está.
+ * - El cliente también usa `RESTRICT`: un cliente con ventas no se borra, se archiva. Su índice
+ *   sirve al extracto y al análisis por cliente.
+ * - `location_id`, `cash_session_id`, `quote_id` y `order_id` todavía no tienen llave foránea: sus
+ *   tablas no existen aún. La llave llega con la tabla a la que apunta, dentro del mismo esquema 1.
  */
 @Suppress(RoomWarnings.MISSING_INDEX_ON_FOREIGN_KEY_CHILD)
 @Entity(
@@ -33,6 +35,12 @@ import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
             entity = PriceListEntity::class,
             parentColumns = ["id"],
             childColumns = ["price_list_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = CustomerEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["customer_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

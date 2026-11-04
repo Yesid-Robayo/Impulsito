@@ -261,6 +261,7 @@ internal class SchemaGuardsTest : CatalogDatabaseTest() {
                 "guard_purchases_insert",
                 "guard_sales_insert",
                 "guard_sales_void_only",
+                "guard_customer_ledger_entries_insert",
                 "guard_expenses_insert",
             )
 
