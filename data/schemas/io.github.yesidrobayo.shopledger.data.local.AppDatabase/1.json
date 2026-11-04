@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "345e1bd2f395742683cbb01557acb0b5",
+    "identityHash": "6728c6ae4ee58138d0c65f7b229a8dc0",
     "entities": [
       {
         "tableName": "price_lists",
@@ -111,11 +111,593 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "categories",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, `target_margin_bp` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetMarginBp",
+            "columnName": "target_margin_bp",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_categories_normalized_name",
+            "unique": true,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_categories_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "suppliers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, `phone` TEXT, `email` TEXT, `notes` TEXT, `balance` INTEGER NOT NULL, `payment_terms_days` INTEGER, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phone",
+            "columnName": "phone",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "balance",
+            "columnName": "balance",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paymentTermsDays",
+            "columnName": "payment_terms_days",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_suppliers_normalized_name",
+            "unique": false,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_suppliers_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "products",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, `category_id` INTEGER, `default_supplier_id` INTEGER, `base_unit_id` INTEGER NOT NULL, `stock_mode` TEXT NOT NULL, `sale_price` INTEGER NOT NULL, `average_cost` INTEGER NOT NULL, `initial_cost` INTEGER NOT NULL, `fixed_unit_cost` INTEGER NOT NULL, `stock_value` INTEGER NOT NULL, `on_hand_milli` INTEGER NOT NULL, `min_stock_milli` INTEGER NOT NULL, `barcode` TEXT, `parent_product_id` INTEGER, `variant_axis_1` TEXT, `variant_axis_2` TEXT, `variant_value_1` TEXT, `variant_value_2` TEXT, `photo_media_id` INTEGER, `tax_rate_id` INTEGER, `replacement_cost` INTEGER NOT NULL, `replacement_cost_at` INTEGER, `target_margin_bp` INTEGER, `reference_cost` INTEGER, `reference_price` INTEGER, `price_review_since` INTEGER, `tracks_lots` INTEGER NOT NULL, `expiry_notice_days` INTEGER, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, FOREIGN KEY(`category_id`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`default_supplier_id`) REFERENCES `suppliers`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`parent_product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "category_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "defaultSupplierId",
+            "columnName": "default_supplier_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "baseUnitId",
+            "columnName": "base_unit_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stockMode",
+            "columnName": "stock_mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "salePrice",
+            "columnName": "sale_price",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "averageCost",
+            "columnName": "average_cost",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "initialCost",
+            "columnName": "initial_cost",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fixedUnitCost",
+            "columnName": "fixed_unit_cost",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stockValue",
+            "columnName": "stock_value",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "onHandMilli",
+            "columnName": "on_hand_milli",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minStockMilli",
+            "columnName": "min_stock_milli",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "barcode",
+            "columnName": "barcode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "parentProductId",
+            "columnName": "parent_product_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "variantAxis1",
+            "columnName": "variant_axis_1",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "variantAxis2",
+            "columnName": "variant_axis_2",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "variantValue1",
+            "columnName": "variant_value_1",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "variantValue2",
+            "columnName": "variant_value_2",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "photoMediaId",
+            "columnName": "photo_media_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "taxRateId",
+            "columnName": "tax_rate_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "replacementCost",
+            "columnName": "replacement_cost",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "replacementCostAt",
+            "columnName": "replacement_cost_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "targetMarginBp",
+            "columnName": "target_margin_bp",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "referenceCost",
+            "columnName": "reference_cost",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "referencePrice",
+            "columnName": "reference_price",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "priceReviewSince",
+            "columnName": "price_review_since",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "tracksLots",
+            "columnName": "tracks_lots",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiryNoticeDays",
+            "columnName": "expiry_notice_days",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_products_normalized_name",
+            "unique": false,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+          },
+          {
+            "name": "index_products_category_id",
+            "unique": false,
+            "columnNames": [
+              "category_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_category_id` ON `${TABLE_NAME}` (`category_id`)"
+          },
+          {
+            "name": "index_products_default_supplier_id",
+            "unique": false,
+            "columnNames": [
+              "default_supplier_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_default_supplier_id` ON `${TABLE_NAME}` (`default_supplier_id`)"
+          },
+          {
+            "name": "index_products_base_unit_id",
+            "unique": false,
+            "columnNames": [
+              "base_unit_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_base_unit_id` ON `${TABLE_NAME}` (`base_unit_id`)"
+          },
+          {
+            "name": "index_products_barcode",
+            "unique": false,
+            "columnNames": [
+              "barcode"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_barcode` ON `${TABLE_NAME}` (`barcode`)"
+          },
+          {
+            "name": "index_products_parent_product_id",
+            "unique": false,
+            "columnNames": [
+              "parent_product_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_parent_product_id` ON `${TABLE_NAME}` (`parent_product_id`)"
+          },
+          {
+            "name": "index_products_photo_media_id",
+            "unique": false,
+            "columnNames": [
+              "photo_media_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_photo_media_id` ON `${TABLE_NAME}` (`photo_media_id`)"
+          },
+          {
+            "name": "index_products_tax_rate_id",
+            "unique": false,
+            "columnNames": [
+              "tax_rate_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_tax_rate_id` ON `${TABLE_NAME}` (`tax_rate_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "categories",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "category_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "suppliers",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "default_supplier_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "products",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "parent_product_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "product_price_history",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `product_id` INTEGER NOT NULL, `price_list_id` INTEGER NOT NULL, `old_price` INTEGER, `new_price` INTEGER NOT NULL, `source` TEXT NOT NULL, `batch_id` TEXT, `bulk_mode` TEXT, `percent_bp` INTEGER, `amount_delta` INTEGER, `target_margin_bp` INTEGER, `fx_rate_micro` INTEGER, `rounding_step` INTEGER, `occurred_at` INTEGER NOT NULL, `business_date` TEXT NOT NULL, FOREIGN KEY(`product_id`) REFERENCES `products`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`price_list_id`) REFERENCES `price_lists`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productId",
+            "columnName": "product_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priceListId",
+            "columnName": "price_list_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "oldPrice",
+            "columnName": "old_price",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "newPrice",
+            "columnName": "new_price",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "batchId",
+            "columnName": "batch_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bulkMode",
+            "columnName": "bulk_mode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "percentBp",
+            "columnName": "percent_bp",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "amountDelta",
+            "columnName": "amount_delta",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "targetMarginBp",
+            "columnName": "target_margin_bp",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "fxRateMicro",
+            "columnName": "fx_rate_micro",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "roundingStep",
+            "columnName": "rounding_step",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "businessDate",
+            "columnName": "business_date",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_product_price_history_product_id",
+            "unique": false,
+            "columnNames": [
+              "product_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_product_price_history_product_id` ON `${TABLE_NAME}` (`product_id`)"
+          },
+          {
+            "name": "index_product_price_history_batch_id",
+            "unique": false,
+            "columnNames": [
+              "batch_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_product_price_history_batch_id` ON `${TABLE_NAME}` (`batch_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "products",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "product_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "price_lists",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "price_list_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '345e1bd2f395742683cbb01557acb0b5')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6728c6ae4ee58138d0c65f7b229a8dc0')"
     ]
   }
 }

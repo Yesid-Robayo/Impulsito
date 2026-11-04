@@ -61,7 +61,7 @@ class ExportedSchemaTest {
                 database.close()
             }
 
-        assertEquals(listOf("price_lists"), tables)
+        assertEquals(SCHEMA_TABLES, tables)
     }
 
     @Test

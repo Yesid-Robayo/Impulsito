@@ -60,7 +60,7 @@ class AppDatabaseTest {
         assertEquals(listOf("wal"), opened.journalMode)
         assertEquals(listOf("ok"), opened.integrity)
         assertEquals(emptyList<String>(), opened.foreignKeyProblems)
-        assertEquals(listOf("price_lists"), opened.tables)
+        assertEquals(SCHEMA_TABLES, opened.tables)
         assertEquals(0L, opened.priceLists)
     }
 

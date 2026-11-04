@@ -19,6 +19,7 @@ androidxTestRunner = "1.7.0"
 androidxTestJunit = "1.3.0"
 turbine = "1.2.1"
 kover = "0.9.11"
+jacoco = "0.8.16"
 ktlint = "1.8.0"
 ktlintGradle = "14.2.0"
 

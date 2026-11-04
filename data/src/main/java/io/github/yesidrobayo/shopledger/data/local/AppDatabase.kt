@@ -7,6 +7,14 @@ import androidx.room3.RoomDatabase
 import androidx.room3.executeSQL
 import androidx.room3.useWriterConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import io.github.yesidrobayo.shopledger.data.local.catalog.CategoryDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.CategoryEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.PriceHistoryDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.PriceHistoryEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.ProductEntity
+import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.SupplierEntity
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 import java.io.File
 import kotlin.coroutines.CoroutineContext
@@ -14,17 +22,31 @@ import kotlin.coroutines.CoroutineContext
 /**
  * La base de la app: el esquema 1, que nace completo y sin migraciones.
  *
- * Por ahora solo tiene `price_lists`, la tabla más pequeña del esquema con una llave foránea. Hace
- * falta una así desde el principio porque Room activa las llaves foráneas solo si alguna entidad
- * declara una: sin ella, una fila huérfana entraría sin error. Las demás tablas llegan con las
- * tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
+ * Por ahora tiene el catálogo (categorías, proveedores, productos y su historial de precios) y
+ * `price_lists`, a la que apunta ese historial. Room activa las llaves foráneas solo si alguna
+ * entidad declara una: sin ellas, una fila huérfana entraría sin error. Las demás tablas llegan con
+ * las tareas que las crean, y la versión no cambia mientras el esquema 1 no se publique.
  */
 @Database(
-    entities = [PriceListEntity::class],
+    entities = [
+        PriceListEntity::class,
+        CategoryEntity::class,
+        SupplierEntity::class,
+        ProductEntity::class,
+        PriceHistoryEntity::class,
+    ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = true,
 )
 internal abstract class AppDatabase : RoomDatabase() {
+    abstract fun categoryDao(): CategoryDao
+
+    abstract fun supplierDao(): SupplierDao
+
+    abstract fun productDao(): ProductDao
+
+    abstract fun priceHistoryDao(): PriceHistoryDao
+
     companion object {
         /**
          * Versión del esquema que compila esta app. Una base con un `user_version` mayor viene de
