@@ -21,6 +21,7 @@ import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseCategoryEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseEntity
+import io.github.yesidrobayo.shopledger.data.local.migration.AppMigrations
 import io.github.yesidrobayo.shopledger.data.local.pricing.PriceListEntity
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseDao
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseEntity
@@ -173,6 +174,8 @@ internal abstract class AppDatabase : RoomDatabase() {
          *   memoria, y la copia de respaldo necesita WAL para no frenar las escrituras.
          * - Sin migración destructiva: sin una ruta de migración, Room lanza una excepción y los
          *   datos quedan en el archivo.
+         * - Los saltos de versión salen de [AppMigrations], la misma lista para la base activa y
+         *   para la copia candidata de una restauración.
          * - Sin cierre automático por inactividad: Room reabriría la conexión de escritura con
          *   `synchronous = NORMAL`, sin pasar por [open].
          * - Al crearla, [InitialRowsCallback] escribe las filas únicas de los ajustes y del
@@ -194,6 +197,7 @@ internal abstract class AppDatabase : RoomDatabase() {
                 .setDriver(BundledSQLiteDriver())
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .setQueryCoroutineContext(queryContext)
+                .addMigrations(*AppMigrations.all.toTypedArray())
                 .addCallback(InitialRowsCallback(clock))
                 .build()
         }

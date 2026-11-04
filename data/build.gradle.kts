@@ -57,6 +57,9 @@ dependencies {
 
     // La base se prueba en el dispositivo, con el mismo driver que la app.
     androidTestImplementation(libs.androidx.room3.testing)
+    // La plantilla de migraciones usa una base ficticia propia de las pruebas, con varias versiones:
+    // el mismo compilador de Room la genera, y su esquema de cada versión queda exportado.
+    kspAndroidTest(libs.androidx.room3.compiler)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
 }
