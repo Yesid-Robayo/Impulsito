@@ -26,6 +26,17 @@ class IcuTextNormalizerTest {
     }
 
     @Test
+    fun `a typographic apostrophe between groups becomes the keyboard apostrophe`() {
+        assertEquals("1'234'567.89", IcuTextNormalizer.normalizeNumber("1\u2019234\u2019567.89"))
+        assertEquals("\u22121'234.00", IcuTextNormalizer.normalizeNumber("-1'234.00"))
+    }
+
+    @Test
+    fun `text keeps its typographic apostrophes`() {
+        assertEquals("1 d\u2019oct.", IcuTextNormalizer.normalizeText("1 d\u2019oct."))
+    }
+
+    @Test
     fun `direction marks around a sign are removed`() {
         assertEquals("\u221212.5", IcuTextNormalizer.normalizeNumber("\u200E-12.5"))
         assertEquals("\u221212.5", IcuTextNormalizer.normalizeNumber("\u061C-12.5"))

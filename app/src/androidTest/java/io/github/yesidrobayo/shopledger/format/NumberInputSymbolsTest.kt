@@ -53,7 +53,10 @@ class NumberInputSymbolsTest {
     @Test
     fun groupsWithAnApostropheReadBothApostrophes() {
         val formatter = moneyFormatter(locale("de-CH"), 2)
+        // Unas versiones de ICU dan el apóstrofo tipográfico y otras el del teclado: la pantalla y
+        // el lector usan siempre el del teclado.
         assertEquals("1'234'567.89", formatter.format(Money(123_456_789)))
+        assertEquals('\'', formatter.inputSymbols.grouping?.separator)
         for (text in listOf("1'234'567.89", "1\u2019234\u2019567.89", "1234567.89")) {
             assertEquals(
                 text,

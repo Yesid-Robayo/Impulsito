@@ -124,6 +124,9 @@ dependencies {
     // Los ViewModel se prueban en JVM: dispatchers de prueba en lugar del principal, y Turbine para leer cada estado.
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    // La matriz de configuraciones regionales, la misma que corre :domain, para los ViewModel y las pruebas en el dispositivo.
+    testImplementation(testFixtures(project(":domain")))
+    androidTestImplementation(testFixtures(project(":domain")))
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.runner)

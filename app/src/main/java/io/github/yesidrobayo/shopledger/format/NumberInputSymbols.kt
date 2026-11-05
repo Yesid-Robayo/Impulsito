@@ -40,7 +40,8 @@ internal fun numberInputSymbols(format: DecimalFormat): NumberSymbols {
         }
         char = iterator.next()
     }
-    val groupingSeparators = IcuTextNormalizer.normalizeText(grouping.toString()).toSet()
+    // Como número, para que el separador sea el mismo que se ve en pantalla, también el apóstrofo.
+    val groupingSeparators = IcuTextNormalizer.normalizeNumber(grouping.toString()).toSet()
     val primarySize = format.groupingSize
     // Solo un formato de porcentaje escribe el signo; los demás se quedan con el del teclado.
     val percentSign = IcuTextNormalizer.normalizeText(percent.toString())

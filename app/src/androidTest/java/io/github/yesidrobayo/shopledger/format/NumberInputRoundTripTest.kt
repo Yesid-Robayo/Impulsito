@@ -6,6 +6,8 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.testing.RegionalMatrix
+import io.github.yesidrobayo.shopledger.domain.testing.RegionalMatrixRow
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -16,15 +18,15 @@ import org.junit.runners.Parameterized
 
 /**
  * Lo que escriben los formateadores, leído por el dominio con los símbolos que ellos mismos dan,
- * vuelve a los mismos enteros. Corre con cada fila de la matriz de configuraciones de la estrategia
- * de pruebas, que es el único lugar donde se nombran una moneda y una región, y con cada idioma
- * extraño del teléfono. Necesita el ICU de Android, por eso corre en el dispositivo.
+ * vuelve a los mismos enteros. Corre con cada fila de la matriz de configuraciones, la misma que
+ * corre `:domain` en la JVM, y con cada idioma extraño del teléfono. Necesita el ICU de Android, por
+ * eso corre en el dispositivo.
  *
  * Un decimal de más y un valor sobre su tope se arman también con los formateadores, para que el
  * texto rechazado sea uno que la región de verdad escribiría.
  */
 @RunWith(Parameterized::class)
-class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice) {
+class NumberInputRoundTripTest(private val row: RegionalMatrixRow, device: ForeignDevice) {
     @get:Rule
     val foreignDevice = ForeignDeviceRule(device)
 
@@ -173,10 +175,11 @@ class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice
      * El formato regional de la fila. La fila que lo toma del dispositivo usa el idioma del
      * teléfono que fija la regla, así que se resuelve dentro de cada prueba.
      */
-    private fun formatLocale(): FormatLocale =
-        requireNotNull(FormatLocale.of(row.formatLocale ?: Locale.getDefault().toLanguageTag())) {
-            "La fila $row no tiene un formato regional válido"
-        }
+    private fun formatLocale(): FormatLocale = requireNotNull(
+        FormatLocale.of(row.region?.formatLocaleTag ?: Locale.getDefault().toLanguageTag()),
+    ) {
+        "La fila $row no tiene un formato regional válido"
+    }
 
     private fun money(formatter: MoneyFormatter, text: String, limit: Limit): NumberInput<Money> =
         NumberInputParser.money(text, formatter.inputSymbols, row.currencyDecimals, limit)
@@ -185,18 +188,6 @@ class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice
         NumberInputParser.percent(text, formatter.inputSymbols, BasisPoints.MAX_BULK_PERCENT)
 
     private fun value(amount: Money): NumberInput<Money> = NumberInput.Value(amount)
-
-    /**
-     * Una fila de la matriz: la moneda solo nombra la fila, porque lo que cambia la lectura son sus
-     * decimales y el formato regional. `null` es el formato del dispositivo.
-     */
-    data class MatrixRow(
-        val currency: String,
-        val currencyDecimals: Int,
-        val formatLocale: String?,
-    ) {
-        override fun toString(): String = "$currency $currencyDecimals ${formatLocale ?: "device"}"
-    }
 
     companion object {
         private val AMOUNTS: List<Long> =
@@ -233,32 +224,10 @@ class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice
         private val PERCENTAGES: List<Long> =
             listOf(0L, 10L, 1_250L, 2_000L, -2_000L, -9_990L, 99_990L)
 
-        /** Las filas de la matriz de configuraciones, en su orden. */
-        private val MATRIX: List<MatrixRow> =
-            listOf(
-                MatrixRow("JPY", 0, "ja-JP"),
-                MatrixRow("VND", 0, "vi-VN"),
-                MatrixRow("USD", 2, "en-US"),
-                MatrixRow("EUR", 2, "es-ES"),
-                MatrixRow("BRL", 2, "pt-BR"),
-                MatrixRow("INR", 2, "en-IN"),
-                MatrixRow("CAD", 2, "en-CA"),
-                MatrixRow("CHF", 2, "de-CH"),
-                MatrixRow("KWD", 3, "en-KW"),
-                MatrixRow("CLF", 4, "es-CL"),
-                MatrixRow("XXX", 0, null),
-                MatrixRow("ARS", 2, "es-AR"),
-                MatrixRow("MXN", 2, "es-MX"),
-                MatrixRow("JPY", 0, "en-JP"),
-                MatrixRow("CLP", 0, "es-CL"),
-                MatrixRow("ARS", 0, "es-AR"),
-                MatrixRow("XTS", 4, "en"),
-                MatrixRow("COP", 0, "es-CO"),
-            )
-
         @JvmStatic
         @Parameterized.Parameters(name = "{0} {1}")
-        fun parameters(): List<Array<Any>> =
-            MATRIX.flatMap { row -> ForeignDevice.ALL.map { device -> arrayOf(row, device) } }
+        fun parameters(): List<Array<Any>> = RegionalMatrix.ROWS.flatMap { row ->
+            ForeignDevice.ALL.map { device -> arrayOf(row, device) }
+        }
     }
 }

@@ -7,6 +7,9 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     // Mide la cobertura de las pruebas en JVM y hace cumplir sus metas dentro de check.
     alias(libs.plugins.kover)
+    // Accesorios de prueba que comparten :domain y :app, como la matriz de configuraciones regionales. Es un plugin de
+    // Gradle, sin biblioteca nueva, y nada de él entra en el APK.
+    `java-test-fixtures`
 }
 
 java {
@@ -33,6 +36,8 @@ dependencies {
     testImplementation(libs.junit)
     // runTest y dispatchers de prueba para los casos de uso suspend, sin esperas reales.
     testImplementation(libs.kotlinx.coroutines.test)
+    // La regla que fija la zona y el idioma de la JVM es de JUnit.
+    testFixturesImplementation(libs.junit)
 }
 
 // Metas de cobertura de la estrategia de pruebas, exigidas en check. Una regla de Kover no tiene filtros propios: los
