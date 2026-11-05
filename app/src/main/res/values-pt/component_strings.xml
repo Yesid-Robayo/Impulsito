@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+    <!-- Textos dos componentes base, em português. -->
+    <!-- Están en un archivo propio para no chocar con los de otras tareas. Algunos los usan solo las pantallas que vienen. -->
+
+    <!-- Estados y etiquetas de las filas. -->
+    <string name="status_voided">Anulada</string>
+    <string name="status_no_cost">Sem custo</string>
+    <string name="status_archived">Arquivado</string>
+    <string name="notice_no_price">Sem preço</string>
+    <string name="notice_negative_margin">Perda em cada venda</string>
+    <string name="notice_oversell">Restariam %1$s</string>
+    <string name="stock_left">Restam %1$s</string>
+    <string name="stock_minimum">Mínimo %1$s</string>
+    <string name="stock_negative_row">Estoque negativo: %1$s</string>
+    <string name="product_margin_value">Margem %1$s</string>
+
+    <!-- Búsqueda y selección. -->
+    <string name="sale_search_hint">Buscar produto</string>
+    <string name="empty_search_title">Sem resultados para \"%1$s\"</string>
+    <string name="selection_create">Criar \"%1$s\"</string>
+
+    <!-- Formatos con texto: las piezas ya formateadas se insertan, nunca se concatenan. -->
+    <string name="format_date_range">%1$s a %2$s</string>
+    <string name="format_line_quantity_price">%1$s × %2$s</string>
+    <string name="format_custom_unit_quantity">%1$s × %2$s</string>
+    <string name="format_variation_vs_period">%1$s em relação a %2$s</string>
+    <string name="onboarding_step_progress">Passo %1$d de %2$d</string>
+
+    <!-- Campos. -->
+    <string name="form_amount">Valor</string>
+    <string name="form_date">Data</string>
+
+    <!-- Acciones comunes. -->
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_add">Adicionar</string>
+    <string name="sale_register">Registrar venda</string>
+    <string name="sale_register_amount">Registrar venda · %1$s</string>
+    <string name="status_loss">Perda</string>
+
+    <!-- TalkBack. -->
+    <string name="a11y_no_value">Sem dado</string>
+    <string name="a11y_loading">Carregando</string>
+    <string name="a11y_voided_amount">%1$s, anulada</string>
+    <string name="a11y_percent">%1$s por cento</string>
+    <string name="a11y_percent_up">Subiu %1$s por cento</string>
+    <string name="a11y_percent_down">Caiu %1$s por cento</string>
+    <string name="a11y_quantity_in_sale">%1$s na venda</string>
+    <string name="a11y_stepper_remove_one">Remover uma unidade de %1$s</string>
+    <string name="a11y_stepper_add_one">Adicionar uma unidade de %1$s</string>
+    <string name="a11y_stepper_remove_line">Remover %1$s da venda</string>
+    <string name="a11y_discreet_hidden">Oculto</string>
+    <string name="a11y_payment_method_has_qr">Com imagem do QR</string>
+    <string name="a11y_hub_tool">%1$s, %2$s</string>
+    <string name="a11y_hub_tool_attention">%1$s, requer atenção: %2$s</string>
+
+    <!-- TalkBack de los componentes base, agregados al catálogo de redacción con estos componentes. -->
+    <string name="a11y_period_previous">Período anterior</string>
+    <string name="a11y_period_next">Próximo período</string>
+    <string name="a11y_month_previous">Mês anterior</string>
+    <string name="a11y_month_next">Próximo mês</string>
+    <string name="a11y_today">Hoje</string>
+    <string name="a11y_more_options">Mais opções</string>
+    <string name="a11y_clear_search">Limpar a busca</string>
+    <string name="a11y_scan_code">Ler um código</string>
+
+    <!-- Conteos con plural. -->
+    <plurals name="product_variants_stock">
+        <item quantity="one">%1$d variante · %2$s</item>
+        <item quantity="many">%1$d de variantes · %2$s</item>
+        <item quantity="other">%1$d variantes · %2$s</item>
+    </plurals>
+    <plurals name="a11y_search_results">
+        <item quantity="one">%1$d produto encontrado</item>
+        <item quantity="many">%1$d de produtos encontrados</item>
+        <item quantity="other">%1$d produtos encontrados</item>
+    </plurals>
+</resources>

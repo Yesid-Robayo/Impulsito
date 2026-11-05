@@ -115,6 +115,51 @@ class AppSizes internal constructor() {
 
     /** Tamaño normal de las etiquetas de la barra. */
     val bottomBarMaxLabel = 12.sp
+
+    /** Icono en línea con texto, como el de un aviso o el de un error de campo. */
+    val iconInline: Dp = 20.dp
+
+    /** Icono pequeño dentro de una etiqueta de estado o de un chip de método de pago. */
+    val iconTag: Dp = 14.dp
+
+    /** Alto de una etiqueta de estado. */
+    val statusTag: Dp = 24.dp
+
+    /** Alto visible de un chip de opciones, dentro de su área táctil de 48 dp. */
+    val compactChip: Dp = 40.dp
+
+    /** Alto de un campo, de la búsqueda y de los chips de métodos de pago. */
+    val field: Dp = 56.dp
+
+    /** Alto mínimo de una fila de lista con dos líneas. */
+    val listRow: Dp = 72.dp
+
+    /** Alto mínimo de una fila de lista con una línea. */
+    val listRowSingle: Dp = 56.dp
+
+    /** Alto mínimo de la tarjeta de un producto en la venta. */
+    val saleTile: Dp = 116.dp
+
+    /** Ancho mínimo del valor entre los dos botones del selector de cantidad. */
+    val stepperValue: Dp = 40.dp
+
+    /** Grosor de la barra de un ranking. */
+    val rankingBar: Dp = 6.dp
+
+    /** Borde de lo que está agregado o tiene el foco. */
+    val focusBorder: Dp = 2.dp
+
+    /** Borde de un chip seleccionado. */
+    val selectedBorder: Dp = 1.5.dp
+
+    /** Grosor del indicador de trabajo dentro de un botón. */
+    val progressStroke: Dp = 2.dp
+
+    /** Ancho de una hoja inferior en tableta, cuando pasa a diálogo lateral. */
+    val sideSheet: Dp = 400.dp
+
+    /** Parte de la pantalla que ocupa como máximo una hoja inferior. */
+    val sheetMaxFraction: Float = 0.9f
 }
 
 /**

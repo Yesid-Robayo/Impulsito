@@ -95,6 +95,37 @@ fun EmptyState(
     }
 }
 
+/**
+ * El estado vacío dentro de una tarjeta o de una sección: sin círculo, con el título, el texto y una
+ * acción opcional, alineados a la izquierda como el resto de la tarjeta.
+ */
+@Composable
+fun EmptyStateInline(
+    title: String,
+    modifier: Modifier = Modifier,
+    body: String? = null,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(vertical = AppTheme.spacing.s8),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        if (body != null) {
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (action != null) action()
+    }
+}
+
 @ThemePreviews
 @Composable
 private fun EmptyStatePreview() {
@@ -106,6 +137,21 @@ private fun EmptyStatePreview() {
         ) {
             PrimaryActionButton(stringResource(R.string.empty_catalog_action), {
             }, ActionVariant.PRIMARY)
+        }
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun EmptyStateInlinePreview() {
+    PreviewTheme {
+        AppCard(Modifier.padding(AppTheme.spacing.s16)) {
+            EmptyStateInline(
+                title = stringResource(R.string.empty_sales_title),
+                body = stringResource(R.string.empty_sales_body),
+            ) {
+                InlineTextButton(stringResource(R.string.empty_sales_action), {})
+            }
         }
     }
 }

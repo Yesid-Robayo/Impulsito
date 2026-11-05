@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -44,7 +46,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -67,7 +71,9 @@ data class BottomBarItem(
  * Es propia porque la barra de Material no contempla una acción central que sobresale. La pestaña
  * activa cambia de contorno a relleno y lleva una píldora detrás del icono: no depende solo del
  * color. Las etiquetas crecen con la letra del sistema solo hasta un tope, porque cinco no caben de
- * otra forma; la presión larga y TalkBack dan la etiqueta completa.
+ * otra forma. Una etiqueta que no cabe se achica hasta 10 sp; si aun así no cabe, pasa a dos líneas y
+ * la barra crece un poco, y solo una más larga que eso lleva puntos suspensivos. Nunca se corta sin
+ * ellos. La presión larga y TalkBack dan la etiqueta completa.
  *
  * @param items las cuatro pestañas, en orden: las dos primeras van a la izquierda de Vender.
  * @param selected la pestaña activa, o `null` si ninguna lo está.
@@ -103,7 +109,7 @@ fun AppBottomBar(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(sizes.bottomBar - sizes.hairline)
+                        .heightIn(min = sizes.bottomBar - sizes.hairline)
                         .selectableGroup(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -111,7 +117,10 @@ fun AppBottomBar(
                     BottomBarTab(item, selected == index) { onSelect(index) }
                 }
                 Box(
-                    modifier = Modifier.width(sizes.bottomBarCenterSlot).fillMaxHeight(),
+                    modifier = Modifier.width(sizes.bottomBarCenterSlot).heightIn(
+                        min =
+                            sizes.bottomBar - sizes.hairline,
+                    ),
                     contentAlignment = Alignment.TopCenter,
                 ) {
                     // Sobresale de la barra: la mitad superior queda sobre el contenido.
@@ -139,21 +148,22 @@ private fun RowScope.BottomBarTab(item: BottomBarItem, selected: Boolean, onClic
     val tint = if (selected) colors.primary else colors.onSurfaceVariant
     val pill = if (selected) colors.secondaryContainer else Color.Transparent
     // El peso va en una caja propia: la del globo no es hija directa de la fila y no lo recibiría.
-    Box(Modifier.weight(1f).fillMaxHeight()) {
+    Box(Modifier.weight(1f).heightIn(min = sizes.bottomBar - sizes.hairline)) {
         TooltipBox(
             positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
                 TooltipAnchorPosition.Above,
             ),
             tooltip = { PlainTooltip { Text(item.label) } },
             state = rememberTooltipState(),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Column(
                 modifier =
                     Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .heightIn(min = sizes.bottomBar - sizes.hairline)
                         .selectable(selected = selected, onClick = onClick, role = Role.Tab)
-                        .padding(horizontal = AppTheme.spacing.s2),
+                        .padding(horizontal = AppTheme.spacing.s2, vertical = AppTheme.spacing.s4),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -173,20 +183,58 @@ private fun RowScope.BottomBarTab(item: BottomBarItem, selected: Boolean, onClic
                     )
                 }
                 Spacer(Modifier.height(AppTheme.spacing.s4))
-                Text(
-                    text = item.label,
-                    color = tint,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    autoSize =
-                        TextAutoSize.StepBased(
-                            minFontSize = sizes.bottomBarMinLabel,
-                            maxFontSize = sizes.bottomBarMaxLabel,
-                        ),
-                )
+                BottomBarLabel(item.label, tint, selected)
             }
+        }
+    }
+}
+
+/**
+ * La etiqueta de una pestaña: en una línea, achicándose de 12 a 10 sp si hace falta. Si a 10 sp no
+ * cabe en una línea, va en dos a 10 sp, y solo si tampoco cabe en dos lleva puntos suspensivos.
+ */
+@Composable
+private fun BottomBarLabel(label: String, color: Color, selected: Boolean) {
+    val sizes = AppTheme.sizes
+    val style =
+        MaterialTheme.typography.labelSmall.copy(
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            textAlign = TextAlign.Center,
+        )
+    val measurer = rememberTextMeasurer()
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val width = constraints.maxWidth
+        val fitsOneLine =
+            measurer
+                .measure(
+                    text = label,
+                    style = style.copy(fontSize = sizes.bottomBarMinLabel),
+                    maxLines = 1,
+                    softWrap = false,
+                ).size.width <= width
+        if (fitsOneLine) {
+            Text(
+                text = label,
+                color = color,
+                style = style,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = sizes.bottomBarMinLabel,
+                    maxFontSize = sizes.bottomBarMaxLabel,
+                ),
+            )
+        } else {
+            Text(
+                text = label,
+                color = color,
+                style = style.copy(
+                    fontSize = sizes.bottomBarMinLabel,
+                    lineHeight =
+                        sizes.bottomBarMinLabel * 1.2f,
+                ),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

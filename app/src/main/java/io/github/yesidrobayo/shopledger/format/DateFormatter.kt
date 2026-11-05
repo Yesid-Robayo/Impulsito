@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.format
 
 import android.icu.text.DateFormat
+import android.icu.text.DateFormatSymbols
 import android.icu.text.DateTimePatternGenerator
 import android.icu.text.DisplayContext
 import android.icu.util.GregorianCalendar
@@ -11,9 +12,11 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import java.util.Date
 import java.util.Locale
 import kotlin.time.Instant
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 
@@ -74,6 +77,19 @@ class DateFormatter(val formatLocale: FormatLocale, val uiLocale: Locale) {
 
     /** Mes y año como título, con mayúscula inicial: `Noviembre de 2026`. */
     fun monthYear(month: YearMonth): String = monthYearFormat.render(BusinessDate(month.firstDay))
+
+    /**
+     * El nombre corto de [day], para el encabezado de un calendario: `lu` o `Mo`, en el idioma de la
+     * interfaz. Es la forma independiente de ICU, la que va sola y no dentro de una fecha.
+     */
+    fun weekdayShort(day: DayOfWeek): String {
+        // ICU numera del domingo, 1, al sábado, 7; la numeración ISO va del lunes, 1, al domingo, 7.
+        val icuIndex = day.isoDayNumber % DAYS_IN_WEEK + 1
+        return IcuTextNormalizer.normalizeText(weekdayNames[icuIndex])
+    }
+
+    private val weekdayNames: Array<String> =
+        DateFormatSymbols(locale).getWeekdays(DateFormatSymbols.STANDALONE, DateFormatSymbols.SHORT)
 
     private fun dateFormat(skeleton: String): DateFormat =
         DateFormat.getInstanceForSkeleton(skeleton, locale).apply {
@@ -143,5 +159,8 @@ class DateFormatter(val formatLocale: FormatLocale, val uiLocale: Locale) {
             }
 
         const val UTC_ID = "Etc/UTC"
+
+        /** Días de una semana. */
+        const val DAYS_IN_WEEK = 7
     }
 }

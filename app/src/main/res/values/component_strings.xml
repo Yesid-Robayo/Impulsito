@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+    <!-- Textos de los componentes base, en inglés, el idioma de respaldo. -->
+    <!-- Están en un archivo propio para no chocar con los de otras tareas. Algunos los usan solo las pantallas que vienen. -->
+
+    <!-- Estados y etiquetas de las filas. -->
+    <string name="status_voided">Voided</string>
+    <string name="status_no_cost">No cost</string>
+    <string name="status_archived">Archived</string>
+    <string name="notice_no_price">No price</string>
+    <string name="notice_negative_margin">Loss on each sale</string>
+    <string name="notice_oversell">%1$s would be left</string>
+    <string name="stock_left">%1$s left</string>
+    <string name="stock_minimum">Minimum %1$s</string>
+    <string name="stock_negative_row">Negative stock: %1$s</string>
+    <string name="product_margin_value">Margin %1$s</string>
+
+    <!-- Búsqueda y selección. -->
+    <string name="sale_search_hint">Search products</string>
+    <string name="empty_search_title">No results for \"%1$s\"</string>
+    <string name="selection_create">Create \"%1$s\"</string>
+
+    <!-- Formatos con texto: las piezas ya formateadas se insertan, nunca se concatenan. -->
+    <string name="format_date_range">%1$s to %2$s</string>
+    <string name="format_line_quantity_price">%1$s × %2$s</string>
+    <string name="format_custom_unit_quantity">%1$s × %2$s</string>
+    <string name="format_variation_vs_period">%1$s vs %2$s</string>
+    <string name="onboarding_step_progress">Step %1$d of %2$d</string>
+
+    <!-- Campos. -->
+    <string name="form_amount">Amount</string>
+    <string name="form_date">Date</string>
+
+    <!-- Acciones comunes. -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_add">Add</string>
+    <string name="sale_register">Record sale</string>
+    <string name="sale_register_amount">Record sale · %1$s</string>
+    <string name="status_loss">Loss</string>
+
+    <!-- TalkBack. -->
+    <string name="a11y_no_value">No data</string>
+    <string name="a11y_loading">Loading</string>
+    <string name="a11y_voided_amount">%1$s, voided</string>
+    <string name="a11y_percent">%1$s percent</string>
+    <string name="a11y_percent_up">Up %1$s percent</string>
+    <string name="a11y_percent_down">Down %1$s percent</string>
+    <string name="a11y_quantity_in_sale">%1$s in the sale</string>
+    <string name="a11y_stepper_remove_one">Remove one unit of %1$s</string>
+    <string name="a11y_stepper_add_one">Add one unit of %1$s</string>
+    <string name="a11y_stepper_remove_line">Remove %1$s from the sale</string>
+    <string name="a11y_discreet_hidden">Hidden</string>
+    <string name="a11y_payment_method_has_qr">With QR image</string>
+    <string name="a11y_hub_tool">%1$s, %2$s</string>
+    <string name="a11y_hub_tool_attention">%1$s, needs attention: %2$s</string>
+
+    <!-- TalkBack de los componentes base, agregados al catálogo de redacción con estos componentes. -->
+    <string name="a11y_period_previous">Previous period</string>
+    <string name="a11y_period_next">Next period</string>
+    <string name="a11y_month_previous">Previous month</string>
+    <string name="a11y_month_next">Next month</string>
+    <string name="a11y_today">Today</string>
+    <string name="a11y_more_options">More options</string>
+    <string name="a11y_clear_search">Clear search</string>
+    <string name="a11y_scan_code">Scan a code</string>
+
+    <!-- Conteos con plural. -->
+    <plurals name="product_variants_stock">
+        <item quantity="one">%1$d variant · %2$s</item>
+        <item quantity="other">%1$d variants · %2$s</item>
+    </plurals>
+    <plurals name="a11y_search_results">
+        <item quantity="one">%1$d product found</item>
+        <item quantity="other">%1$d products found</item>
+    </plurals>
+</resources>

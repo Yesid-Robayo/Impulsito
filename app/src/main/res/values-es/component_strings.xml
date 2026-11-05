@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+    <!-- Textos de los componentes base, en español neutro. -->
+    <!-- Están en un archivo propio para no chocar con los de otras tareas. Algunos los usan solo las pantallas que vienen. -->
+
+    <!-- Estados y etiquetas de las filas. -->
+    <string name="status_voided">Anulada</string>
+    <string name="status_no_cost">Sin costo</string>
+    <string name="status_archived">Archivado</string>
+    <string name="notice_no_price">Sin precio</string>
+    <string name="notice_negative_margin">Pérdida en cada venta</string>
+    <string name="notice_oversell">Quedarían %1$s</string>
+    <string name="stock_left">Quedan %1$s</string>
+    <string name="stock_minimum">Mínimo %1$s</string>
+    <string name="stock_negative_row">Stock negativo: %1$s</string>
+    <string name="product_margin_value">Margen %1$s</string>
+
+    <!-- Búsqueda y selección. -->
+    <string name="sale_search_hint">Buscar producto</string>
+    <string name="empty_search_title">Sin resultados para \"%1$s\"</string>
+    <string name="selection_create">Crear \"%1$s\"</string>
+
+    <!-- Formatos con texto: las piezas ya formateadas se insertan, nunca se concatenan. -->
+    <string name="format_date_range">%1$s a %2$s</string>
+    <string name="format_line_quantity_price">%1$s × %2$s</string>
+    <string name="format_custom_unit_quantity">%1$s × %2$s</string>
+    <string name="format_variation_vs_period">%1$s frente a %2$s</string>
+    <string name="onboarding_step_progress">Paso %1$d de %2$d</string>
+
+    <!-- Campos. -->
+    <string name="form_amount">Valor</string>
+    <string name="form_date">Fecha</string>
+
+    <!-- Acciones comunes. -->
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_add">Agregar</string>
+    <string name="sale_register">Registrar venta</string>
+    <string name="sale_register_amount">Registrar venta · %1$s</string>
+    <string name="status_loss">Pérdida</string>
+
+    <!-- TalkBack. -->
+    <string name="a11y_no_value">Sin dato</string>
+    <string name="a11y_loading">Cargando</string>
+    <string name="a11y_voided_amount">%1$s, anulada</string>
+    <string name="a11y_percent">%1$s por ciento</string>
+    <string name="a11y_percent_up">Subió %1$s por ciento</string>
+    <string name="a11y_percent_down">Bajó %1$s por ciento</string>
+    <string name="a11y_quantity_in_sale">%1$s en la venta</string>
+    <string name="a11y_stepper_remove_one">Quitar una unidad de %1$s</string>
+    <string name="a11y_stepper_add_one">Agregar una unidad de %1$s</string>
+    <string name="a11y_stepper_remove_line">Quitar %1$s de la venta</string>
+    <string name="a11y_discreet_hidden">Oculto</string>
+    <string name="a11y_payment_method_has_qr">Con imagen QR</string>
+    <string name="a11y_hub_tool">%1$s, %2$s</string>
+    <string name="a11y_hub_tool_attention">%1$s, requiere atención: %2$s</string>
+
+    <!-- TalkBack de los componentes base, agregados al catálogo de redacción con estos componentes. -->
+    <string name="a11y_period_previous">Período anterior</string>
+    <string name="a11y_period_next">Período siguiente</string>
+    <string name="a11y_month_previous">Mes anterior</string>
+    <string name="a11y_month_next">Mes siguiente</string>
+    <string name="a11y_today">Hoy</string>
+    <string name="a11y_more_options">Más opciones</string>
+    <string name="a11y_clear_search">Borrar la búsqueda</string>
+    <string name="a11y_scan_code">Escanear un código</string>
+
+    <!-- Conteos con plural. -->
+    <plurals name="product_variants_stock">
+        <item quantity="one">%1$d variante · %2$s</item>
+        <item quantity="many">%1$d de variantes · %2$s</item>
+        <item quantity="other">%1$d variantes · %2$s</item>
+    </plurals>
+    <plurals name="a11y_search_results">
+        <item quantity="one">%1$d producto encontrado</item>
+        <item quantity="many">%1$d de productos encontrados</item>
+        <item quantity="other">%1$d productos encontrados</item>
+    </plurals>
+</resources>
