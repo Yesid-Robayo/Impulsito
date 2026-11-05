@@ -3,4 +3,8 @@
     <!-- Fondo del ícono: el índigo de la paleta predeterminada. Es plano y no cambia con el tema ni con la paleta que elija
          la persona, porque el lanzador no deja cambiar el ícono sin trucos frágiles. -->
     <color name="ic_launcher_background">#FF26306E</color>
+    <!-- Fondo de la ventana antes del primer cuadro de Compose: el papel claro de la paleta predeterminada, la que se ve
+         mientras el ajuste aún no se ha leído. Así el arranque no destella con el gris del tema de Android. En oscuro lo
+         cambia values-night/. Lo vigila WindowPaperTest. -->
+    <color name="window_paper">#FFF9F7F2</color>
 </resources>

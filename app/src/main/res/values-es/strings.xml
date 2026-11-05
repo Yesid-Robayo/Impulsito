@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español neutro e impersonal: cubre toda variante del español. Textos de la guía de redacción. -->
+
+    <!-- Barra inferior: las cuatro pestañas y la acción central. -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_records">Registros</string>
+    <string name="nav_sell">Vender</string>
+    <string name="nav_products">Productos</string>
+    <string name="nav_numbers">Números</string>
+
+    <!-- Acciones y estados comunes. -->
+    <string name="action_retry">Reintentar</string>
+    <string name="state_error_read">No se pudo abrir esto.</string>
+    <string name="a11y_back">Volver</string>
+    <string name="a11y_close">Cerrar</string>
+    <string name="a11y_settings">Ajustes</string>
+
+    <!-- Estados vacíos de las cuatro raíces. -->
+    <string name="empty_home_title">Para empezar</string>
+    <string name="empty_home_body">Agregar los productos y registrar la primera venta toma segundos.</string>
+    <string name="empty_home_action">Crear el primer producto</string>
+    <string name="hub_entry_action">Negocio</string>
+    <string name="empty_sales_title">Aquí aparecerán las ventas</string>
+    <string name="empty_sales_body">Cada venta queda guardada, con lo vendido y la ganancia.</string>
+    <string name="empty_sales_action">Registrar venta</string>
+    <string name="empty_catalog_title">El catálogo está vacío</string>
+    <string name="empty_catalog_body">Un producto con precio y costo muestra cuánto deja cada venta.</string>
+    <string name="empty_catalog_action">Crear producto</string>
+    <string name="empty_stats_title">Los números aparecerán con la primera venta</string>
+    <string name="empty_stats_action">Registrar venta</string>
+
+    <!-- Títulos de las pantallas que aún no tienen contenido. -->
+    <string name="sale_new_title">Nueva venta</string>
+    <string name="records_tab_sales">Ventas</string>
+    <string name="records_tab_expenses">Gastos</string>
+    <string name="records_tab_purchases">Compras</string>
+    <string name="product_new_title">Nuevo producto</string>
+    <string name="action_edit">Editar</string>
+    <string name="product_tab_suppliers">Proveedores</string>
+    <string name="term_inventory">Inventario</string>
+    <string name="bulk_title">Actualizar precios</string>
+    <string name="stock_adjust_title">Ajustar stock</string>
+    <string name="purchase_new_title">Nueva compra</string>
+    <string name="settings_title">Ajustes</string>
+    <string name="backup_title">Respaldo</string>
+    <string name="categories_title">Categorías</string>
+    <string name="region_title">Configuración regional</string>
+    <string name="language_title">Idioma</string>
+    <string name="tax_title">Impuestos</string>
+    <string name="payment_method_title">Métodos de pago</string>
+    <string name="checkout_title">Cobro</string>
+    <string name="draft_title">Ventas en espera</string>
+    <string name="customer_title">Clientes</string>
+    <string name="loyalty_title">Programa de puntos</string>
+    <string name="money_title">Cuentas de dinero</string>
+    <string name="payable_title">Cuentas por pagar</string>
+    <string name="cash_title">Caja</string>
+    <string name="sale_return_title">Devolución de venta</string>
+    <string name="supplier_return_title">Devolución a proveedor</string>
+    <string name="price_list_title">Listas de precios</string>
+    <string name="reference_title">Moneda de referencia</string>
+    <string name="unit_title">Unidades y conversiones</string>
+    <string name="variant_title">Variantes</string>
+    <string name="combo_title">Combos y recetas</string>
+    <string name="scanner_title">Escáner</string>
+    <string name="field_title">Campos y etiquetas</string>
+    <string name="label_title">Etiquetas imprimibles</string>
+    <string name="lot_title">Lotes y vencimientos</string>
+    <string name="location_title">Ubicaciones y transferencias</string>
+    <string name="count_title">Conteo físico</string>
+    <string name="production_title">Producción</string>
+    <string name="reorder_title">Reposición sugerida</string>
+    <string name="import_title">Importar datos</string>
+    <string name="receipt_template_title">Plantilla de comprobante</string>
+    <string name="printer_title">Impresoras</string>
+    <string name="quote_title">Cotizaciones</string>
+    <string name="order_title">Pedidos</string>
+    <string name="fiscal_title">Pendientes de facturar</string>
+    <string name="catalog_title">Catálogo compartible</string>
+    <string name="report_title">Resumen de gestión</string>
+    <string name="goal_screen_title">Metas y límites</string>
+    <string name="recurring_title">Gastos recurrentes</string>
+    <string name="index_title">Índice de precios</string>
+    <string name="help_title">Ayuda</string>
+    <string name="encryption_title">Cifrado de copias</string>
+    <string name="offsite_title">Copias locales</string>
+    <string name="storage_title">Almacenamiento y borrado</string>
+    <string name="transparency_title">Qué datos hay y adónde van</string>
+    <string name="update_title">Actualizaciones y verificar APK</string>
+    <string name="audit_title">Registro de auditoría</string>
+    <string name="account_title">Seguridad de la cuenta de la nube</string>
+    <string name="hub_title">Negocio</string>
+    <string name="destination_title">Dónde guardar las copias</string>
+    <string name="webdav_title">Conectar el servicio</string>
+    <string name="slots_title">Preparar archivos en la nube</string>
+</resources>

@@ -1,5 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Impulsito</string>
+    <!-- Inglés: es el respaldo, lo que ve un teléfono en un idioma sin carpeta propia. -->
+
+    <!-- El nombre no se traduce: así la carpeta de copias es la misma en todos los idiomas. -->
+    <string name="app_name" translatable="false">Impulsito</string>
 
     <!-- Barra inferior: las cuatro pestañas y la acción central. -->
     <string name="nav_home">Home</string>

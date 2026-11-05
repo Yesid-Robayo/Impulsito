@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Nombre neutro: el nombre visible solo vive en app_name. El color lo pone ColorScheme en Compose. -->
-    <style name="Theme.ShopLedger" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Nombre neutro: el nombre visible solo vive en app_name. El color lo pone ColorScheme en Compose.
+         Desciende de Theme.AppCompat porque MainActivity es una AppCompatActivity, que no abre con otro tema.
+         DayNight sigue al modo del teléfono, porque el ajuste de la app aún no se ha leído. El fondo de la ventana es el
+         papel de la paleta predeterminada: el primer cuadro, y la pantalla de inicio del sistema, que lo toma de aquí,
+         salen del mismo color que Compose pinta después, sin destello blanco ni gris. -->
+    <style name="Theme.ShopLedger" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/window_paper</item>
+    </style>
 </resources>

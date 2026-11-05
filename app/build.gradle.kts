@@ -47,6 +47,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    androidResources {
+        // Declara al sistema los idiomas de las carpetas values-*, con el inglés de values/ como respaldo que fija
+        // resources.properties: agregar un idioma es agregar una carpeta, sin tocar código. El selector lee esta lista.
+        generateLocaleConfig = true
+    }
+
+    lint {
+        // Una clave sin traducir saldría en inglés sin aviso a quien usa la app en otro idioma: check falla.
+        error += "MissingTranslation"
+    }
+
     signingConfigs {
         if (keystorePropertiesFile.exists() && keystorePassword != null) {
             create("release") {
@@ -72,6 +83,9 @@ android {
             // El sufijo deja instalar debug junto a la app real, sin tocar su applicationId, que nunca cambia.
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            // Inglés estirado y con acentos (en-XA) y árabe de derecha a izquierda (ar-XB): un texto escrito en el código
+            // queda sin transformar, y uno que se corta o se desborda se ve. Solo en debug: la app real no los ofrece.
+            isPseudoLocalesEnabled = true
         }
         release {
             signingConfig = signingConfigs.findByName("release")
@@ -94,6 +108,8 @@ dependencies {
     implementation(project(":data"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
+    // El idioma por app en Android 8 a 12 solo funciona con una AppCompatActivity.
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

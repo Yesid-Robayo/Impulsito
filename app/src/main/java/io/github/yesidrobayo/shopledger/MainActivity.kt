@@ -2,10 +2,10 @@ package io.github.yesidrobayo.shopledger
 
 import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -36,8 +36,12 @@ import kotlinx.coroutines.launch
  * solo el papel de la paleta predeterminada, sin contenido: así no aparece un destello de otros
  * colores. Si la base no abre, la navegación sigue con la paleta predeterminada y el tema del
  * teléfono; la pantalla de rescate llega con la compuerta del arranque.
+ *
+ * Es una [AppCompatActivity] porque en Android 8 a 12 el idioma elegido dentro de la app solo se
+ * aplica a ese tipo de actividad. Sigue siendo una `FragmentActivity`, así que el desbloqueo con
+ * huella o rostro también funciona aquí.
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private val shownAppearance = mutableStateOf<Appearance?>(null)
     private val dataUnavailable = mutableStateOf(false)
 
