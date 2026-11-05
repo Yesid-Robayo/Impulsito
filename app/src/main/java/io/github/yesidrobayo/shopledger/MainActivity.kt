@@ -1,39 +1,48 @@
 package io.github.yesidrobayo.shopledger
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.yesidrobayo.shopledger.data.DataAccess
-import io.github.yesidrobayo.shopledger.ui.theme.ShopLedgerTheme
+import io.github.yesidrobayo.shopledger.navigation.AppNavHost
+import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
+import io.github.yesidrobayo.shopledger.ui.theme.Appearance
+import io.github.yesidrobayo.shopledger.ui.theme.DefaultColorPalette
+import io.github.yesidrobayo.shopledger.ui.theme.isDark
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
- * La única actividad de la app. Por ahora muestra una pantalla provisional con el nombre del
- * negocio, que lee de los ajustes por el contenedor, o el de la app mientras no hay uno.
+ * La única actividad de la app: aplica la paleta y el modo que eligió la persona, y muestra la
+ * navegación.
  *
- * La base se abre fuera del hilo principal: la pantalla aparece enseguida y el nombre llega cuando
- * la base está lista. Si la base no abre, la pantalla sigue con el nombre de la app; la pantalla
- * de rescate llega con la compuerta del arranque.
+ * La paleta y el modo viven en la base, que se abre fuera del hilo principal. Hasta leerlos se ve
+ * solo el papel de la paleta predeterminada, sin contenido: así no aparece un destello de otros
+ * colores. Si la base no abre, la navegación sigue con la paleta predeterminada y el tema del
+ * teléfono; la pantalla de rescate llega con la compuerta del arranque.
  */
 class MainActivity : ComponentActivity() {
-    private val shownName = mutableStateOf<String?>(null)
+    private val shownAppearance = mutableStateOf<Appearance?>(null)
+    private val dataUnavailable = mutableStateOf(false)
 
-    /** El nombre del negocio que leyó de los ajustes, o `null` si todavía no hay uno. */
-    internal val businessName: State<String?> get() = shownName
+    /** La paleta y el modo que leyó de los ajustes, o `null` mientras la base no responde. */
+    internal val appearance: State<Appearance?> get() = shownAppearance
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,44 +52,36 @@ class MainActivity : ComponentActivity() {
             when (val access = container.data.open()) {
                 is DataAccess.Ready ->
                     repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        access.ports.settings.observe().collect { settings ->
-                            shownName.value = settings.profile.businessName
-                        }
+                        access.ports.settings
+                            .observe()
+                            .map {
+                                Appearance(it.preferences.colorPalette, it.preferences.themeMode)
+                            }
+                            .distinctUntilChanged()
+                            .collect { shownAppearance.value = it }
                     }
 
                 // La causa ya quedó registrada por su clase.
-                DataAccess.Unavailable -> Unit
+                DataAccess.Unavailable -> dataUnavailable.value = true
             }
         }
         setContent {
-            ShopLedgerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    AppName(
-                        businessName = shownName.value,
-                        modifier = Modifier.padding(innerPadding),
-                    )
+            val appearance = shownAppearance.value
+            val darkTheme = appearance.isDark(systemDark = isSystemInDarkTheme())
+            // Los iconos de las barras del sistema siguen al modo de la app, no al del teléfono: con
+            // el modo fijado al revés del sistema, se perderían sobre el papel.
+            DisposableEffect(darkTheme) {
+                val style = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { darkTheme }
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+                onDispose {}
+            }
+            AppTheme(palette = appearance?.palette ?: DefaultColorPalette, darkTheme = darkTheme) {
+                if (appearance == null && !dataUnavailable.value) {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
+                } else {
+                    AppNavHost()
                 }
             }
         }
-    }
-}
-
-/**
- * Pantalla provisional del esqueleto: el nombre del negocio si la persona ya lo escribió, o el
- * nombre visible de la app, que sale de los recursos.
- */
-@Composable
-fun AppName(businessName: String?, modifier: Modifier = Modifier) {
-    Text(
-        text = businessName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.app_name),
-        modifier = modifier,
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AppNamePreview() {
-    ShopLedgerTheme {
-        AppName(businessName = null)
     }
 }

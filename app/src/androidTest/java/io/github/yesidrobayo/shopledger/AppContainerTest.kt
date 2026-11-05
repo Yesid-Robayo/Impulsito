@@ -7,8 +7,11 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.DataPorts
 import io.github.yesidrobayo.shopledger.di.AppContainer
-import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
-import io.github.yesidrobayo.shopledger.domain.port.TxResult
+import io.github.yesidrobayo.shopledger.domain.model.settings.AppPreferences
+import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
+import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
+import io.github.yesidrobayo.shopledger.ui.theme.Appearance
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -21,8 +24,8 @@ import org.junit.runner.RunWith
  * La app arma sus dependencias a mano: el proceso crea un solo contenedor, y la actividad recibe
  * por él un repositorio de la base real de la app de pruebas.
  *
- * Usa la base de la app instalada para las pruebas, con datos inventados, y deja el perfil como lo
- * encontró. Abre la actividad sin herramientas de interfaz: mira el estado que la actividad leyó.
+ * Usa la base de la app instalada para las pruebas, y deja la paleta y el modo como los encontró.
+ * Abre la actividad sin herramientas de interfaz: mira el estado que la actividad leyó.
  */
 @RunWith(AndroidJUnit4::class)
 class AppContainerTest {
@@ -30,11 +33,13 @@ class AppContainerTest {
         InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
             as ShopLedgerApp
 
-    private var originalProfile: BusinessProfile? = null
+    private var original: AppPreferences? = null
 
     @After
-    fun restoreProfile() {
-        runBlocking { originalProfile?.let { profile -> writeProfile(ports(), profile) } }
+    fun restorePreferences() {
+        runBlocking {
+            original?.let { writeAppearance(ports(), Appearance(it.colorPalette, it.themeMode)) }
+        }
     }
 
     @Test
@@ -60,25 +65,24 @@ class AppContainerTest {
     }
 
     @Test
-    fun theActivityReadsTheBusinessNameThroughTheContainer() {
+    fun theActivityReadsTheAppearanceThroughTheContainer() {
         val ports = runBlocking { ports() }
-        val original = runBlocking { ports.settings.get().profile }
-        originalProfile = original
+        original = runBlocking { ports.settings.get().preferences }
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            runBlocking { writeProfile(ports, original.copy(businessName = BUSINESS_NAME)) }
+            runBlocking { writeAppearance(ports, CHOSEN) }
 
-            assertEquals(BUSINESS_NAME, awaitShownName(scenario))
+            assertEquals(CHOSEN, awaitAppearance(scenario))
         }
     }
 
-    /** Espera a que la actividad muestre [BUSINESS_NAME], que llega desde la base. */
-    private fun awaitShownName(scenario: ActivityScenario<MainActivity>): String? {
+    /** Espera a que la actividad aplique [CHOSEN], que llega desde la base. */
+    private fun awaitAppearance(scenario: ActivityScenario<MainActivity>): Appearance? {
         val deadline = SystemClock.elapsedRealtime() + WAIT_MILLIS
-        var shown: String? = null
+        var shown: Appearance? = null
         while (SystemClock.elapsedRealtime() < deadline) {
-            scenario.onActivity { shown = it.businessName.value }
-            if (shown == BUSINESS_NAME) return shown
+            scenario.onActivity { shown = it.appearance.value }
+            if (shown == CHOSEN) return shown
             Thread.sleep(POLL_MILLIS)
         }
         return shown
@@ -86,16 +90,16 @@ class AppContainerTest {
 
     private suspend fun ports(): DataPorts = (app.container.data.open() as DataAccess.Ready).ports
 
-    private suspend fun writeProfile(ports: DataPorts, profile: BusinessProfile) {
-        ports.transactions.write {
-            ports.settings.updateProfile(profile, app.container.clock.now())
-            TxResult.Commit(Unit)
-        }
+    // Las preferencias se cambian fuera de una transacción: no cuentan como un cambio sin respaldar.
+    private suspend fun writeAppearance(ports: DataPorts, appearance: Appearance) {
+        val now = app.container.clock.now()
+        ports.settings.updatePreference(PreferenceChange.Palette(appearance.palette), now)
+        ports.settings.updatePreference(PreferenceChange.Theme(appearance.themeMode), now)
     }
 
     private companion object {
-        /** Un nombre inventado, que no es el de la app. */
-        const val BUSINESS_NAME = "Tienda de prueba"
+        /** Una paleta y un modo que no son los iniciales. */
+        val CHOSEN = Appearance(ColorPalette.GARNET_HONEY, ThemeMode.DARK)
         const val WAIT_MILLIS = 5_000L
         const val POLL_MILLIS = 50L
     }

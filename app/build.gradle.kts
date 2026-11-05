@@ -4,6 +4,8 @@ import javax.inject.Inject
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    // Las claves de la navegación se guardan serializadas: así la pila sobrevive a que Android cierre el proceso.
+    alias(libs.plugins.kotlin.serialization)
 }
 
 // Firma de release. keystore.properties, ignorado por Git, solo dice dónde está la clave y su alias. La contraseña nunca
@@ -98,6 +100,10 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    // Un ViewModel por entrada de la pila, que se limpia al salir de ella.
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     testImplementation(libs.junit)
     // Los ViewModel se prueban en JVM: dispatchers de prueba en lugar del principal, y Turbine para leer cada estado.
     testImplementation(libs.kotlinx.coroutines.test)

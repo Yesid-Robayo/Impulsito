@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.room3) apply false
     alias(libs.plugins.kover) apply false
@@ -122,6 +123,14 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
             ).joinToString("|")
         val catalogReplace =
             Regex("""\b([R]EPLACE\s+INTO|[I]NSERT\s+OR\s+REPLACE\s+INTO)\s+($replaceableTables)\b""", RegexOption.IGNORE_CASE)
+        // Los colores salen de la paleta que eligió la persona: un color escrito en una pantalla se saltaría la paleta y sus
+        // contrastes medidos. Solo ui/theme/ guarda valores, y el color dinámico de Android nunca se usa, porque borra la marca.
+        val themeSource = Regex("""^app/src/main/(java|kotlin)/io/github/yesidrobayo/shopledger/ui/theme/""")
+        val colorLiteral =
+            Regex(
+                """\b[C]olor\(\s*(0x|red\s*=)|#[0-9A-Fa-f]{6}\b|\b[C]olor\.(Black|White|Gray|LightGray|DarkGray|Red|Green|Blue|Yellow|Cyan|Magenta)\b""",
+            )
+        val dynamicColor = Regex("""\b[d]ynamic(Light|Dark)ColorScheme\b""")
 
         val binary = setOf("png", "webp", "jpg", "jpeg", "gif", "ttf", "otf", "jar", "so", "jks", "keystore", "db", "gz", "zip", "apk")
         val skippedDirs = setOf("build", ".gradle", ".kotlin", ".idea", ".cxx")
@@ -196,6 +205,14 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 }
                 if (isSource && dataMain.containsMatchIn(path) && catalogReplace.containsMatchIn(line)) {
                     problems += "$where: sin REPLACE, que borraría la fila que choca sin pasar por su regla de borrado"
+                }
+                if (isSource && path.startsWith("app/src/main/") && !themeSource.containsMatchIn(path) &&
+                    colorLiteral.containsMatchIn(line)
+                ) {
+                    problems += "$where: un color sale de la paleta, con MaterialTheme.colorScheme o AppTheme.colors"
+                }
+                if (isSource && dynamicColor.containsMatchIn(line)) {
+                    problems += "$where: sin color dinámico de Android: la paleta la elige la persona"
                 }
             }
         }
