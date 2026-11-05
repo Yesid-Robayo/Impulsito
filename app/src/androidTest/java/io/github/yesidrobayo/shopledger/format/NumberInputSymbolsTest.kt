@@ -27,17 +27,17 @@ class NumberInputSymbolsTest {
     fun aCommaDecimalRegionAndAPointDecimalRegion() {
         assertEquals(
             NumberSymbols(',', '\u2212', DigitGrouping('.', 3, 3)),
-            MoneyFormatter(locale("es-AR"), 2).inputSymbols,
+            moneyFormatter(locale("es-AR"), 2).inputSymbols,
         )
         assertEquals(
             NumberSymbols('.', '\u2212', DigitGrouping(',', 3, 3)),
-            MoneyFormatter(locale("en-US"), 2).inputSymbols,
+            moneyFormatter(locale("en-US"), 2).inputSymbols,
         )
     }
 
     @Test
     fun groupsOfThreeAndThenTwoDigits() {
-        val formatter = MoneyFormatter(locale("en-IN"), 2)
+        val formatter = moneyFormatter(locale("en-IN"), 2)
         assertEquals(NumberSymbols('.', '\u2212', DigitGrouping(',', 3, 2)), formatter.inputSymbols)
         assertEquals("12,34,567.00", formatter.format(Money(123_456_700)))
         assertEquals(
@@ -52,7 +52,7 @@ class NumberInputSymbolsTest {
 
     @Test
     fun groupsWithAnApostropheReadBothApostrophes() {
-        val formatter = MoneyFormatter(locale("de-CH"), 2)
+        val formatter = moneyFormatter(locale("de-CH"), 2)
         assertEquals("1'234'567.89", formatter.format(Money(123_456_789)))
         for (text in listOf("1'234'567.89", "1\u2019234\u2019567.89", "1234567.89")) {
             assertEquals(
@@ -65,7 +65,7 @@ class NumberInputSymbolsTest {
 
     @Test
     fun groupsWithAThinSpaceReadAnySpace() {
-        val formatter = MoneyFormatter(locale("fr-FR"), 2)
+        val formatter = moneyFormatter(locale("fr-FR"), 2)
         assertEquals('\u00A0', formatter.inputSymbols.grouping?.separator)
         for (text in listOf("1\u202F234\u202F567,89", "1 234 567,89", "1234567,89")) {
             assertEquals(
@@ -78,7 +78,7 @@ class NumberInputSymbolsTest {
 
     @Test
     fun aRegionWithOtherDigitsStillReadsLatinDigitsWithoutDirectionMarks() {
-        val formatter = MoneyFormatter(locale("ar-EG"), 2)
+        val formatter = moneyFormatter(locale("ar-EG"), 2)
         assertEquals('\u2212', formatter.inputSymbols.minusSign)
         val text = formatter.format(Money(-123_456))
         assertEquals(
@@ -96,7 +96,7 @@ class NumberInputSymbolsTest {
     @Test
     fun aRegionWhereMoneyAndQuantitiesUseDifferentSeparatorsReadsEachWithItsOwn() {
         for (tag in listOf("en-DE", "pt-CV", "kea-CV", "fr-CH")) {
-            val money = MoneyFormatter(locale(tag), 2)
+            val money = moneyFormatter(locale(tag), 2)
             for (minor in listOf(123_456L, -123_456L, 100L)) {
                 val text = money.format(Money(minor))
                 assertEquals(
@@ -152,7 +152,7 @@ class NumberInputSymbolsTest {
             if (read != NumberInput.Value(expected)) failures += "$formatLocale $text $read"
         }
         for (decimals in 0..MoneyFormatter.MAX_CURRENCY_DECIMALS) {
-            val money = MoneyFormatter(formatLocale, decimals)
+            val money = moneyFormatter(formatLocale, decimals)
             for (minor in listOf(-123_456_789_012L, 0L, 7L, Limit.UNIT_MONEY.max)) {
                 val text = money.format(Money(minor))
                 val read = NumberInputParser.money(

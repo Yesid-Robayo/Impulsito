@@ -76,24 +76,18 @@ class MoneyFormatterTest(private val device: ForeignDevice) {
 
     @Test
     fun partsSplitTheSignFromTheDigits() {
-        assertEquals(
-            MoneyParts(negative = true, number = "1.200,00"),
-            money("es-AR", 2).parts(Money(-120_000)),
-        )
-        assertEquals(
-            MoneyParts(negative = false, number = "1,200.00"),
-            money("en-US", 2).parts(Money(120_000)),
-        )
+        val negative = money("es-AR", 2).parts(Money(-120_000))
+        assertEquals(true to "1.200,00", negative.negative to negative.number)
+        val positive = money("en-US", 2).parts(Money(120_000))
+        assertEquals(false to "1,200.00", positive.negative to positive.number)
     }
 
     @Test
     fun zeroIsNeverBlankAndKeepsTheDecimalsOfTheCurrency() {
         assertEquals("0,00", money("es-AR", 2).format(Money.ZERO))
         assertEquals("0", money("ja-JP", 0).format(Money.ZERO))
-        assertEquals(
-            MoneyParts(negative = false, number = "0.000"),
-            money("en-KW", 3).parts(Money.ZERO),
-        )
+        val zero = money("en-KW", 3).parts(Money.ZERO)
+        assertEquals(false to "0.000", zero.negative to zero.number)
     }
 
     @Test
@@ -162,8 +156,8 @@ class MoneyFormatterTest(private val device: ForeignDevice) {
     @Test
     fun decimalsOutsideZeroToFourAreAProgrammingError() {
         val formatLocale = requireNotNull(FormatLocale.of("en-US"))
-        assertThrows(IllegalArgumentException::class.java) { MoneyFormatter(formatLocale, -1) }
-        assertThrows(IllegalArgumentException::class.java) { MoneyFormatter(formatLocale, 5) }
+        assertThrows(IllegalArgumentException::class.java) { moneyFormatter(formatLocale, -1) }
+        assertThrows(IllegalArgumentException::class.java) { moneyFormatter(formatLocale, 5) }
     }
 
     @Test
@@ -183,7 +177,7 @@ class MoneyFormatterTest(private val device: ForeignDevice) {
     }
 
     private fun money(tag: String, decimals: Int): MoneyFormatter =
-        MoneyFormatter(requireNotNull(FormatLocale.of(tag)), decimals)
+        moneyFormatter(requireNotNull(FormatLocale.of(tag)), decimals)
 
     companion object {
         private const val THREADS = 8

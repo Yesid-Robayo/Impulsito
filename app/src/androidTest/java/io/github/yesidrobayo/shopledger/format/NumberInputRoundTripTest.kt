@@ -30,7 +30,7 @@ class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice
 
     @Test
     fun amountsComeBackToTheSameMinorUnits() {
-        val formatter = MoneyFormatter(formatLocale(), row.currencyDecimals)
+        val formatter = moneyFormatter(formatLocale(), row.currencyDecimals)
         for (minor in AMOUNTS) {
             val text = formatter.format(Money(minor))
             assertEquals(
@@ -50,7 +50,7 @@ class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice
 
     @Test
     fun aNegativeAmountUsesTheTypographicMinusAndAlsoReadsWithTheKeyboardHyphen() {
-        val formatter = MoneyFormatter(formatLocale(), row.currencyDecimals)
+        val formatter = moneyFormatter(formatLocale(), row.currencyDecimals)
         val text = formatter.format(Money(-120_000))
         assertTrue("$row $text", text.contains('\u2212'))
         assertEquals(value(Money(-120_000)), money(formatter, text, Limit.UNIT_MONEY))
@@ -60,12 +60,12 @@ class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice
 
     @Test
     fun oneDecimalMoreThanTheCurrencyHasIsRejected() {
-        val formatter = MoneyFormatter(formatLocale(), row.currencyDecimals)
+        val formatter = moneyFormatter(formatLocale(), row.currencyDecimals)
         // Lo que escribiría la misma región con un decimal más. Con el máximo de decimales no hay
         // formateador con uno más: se agrega una cifra al final, donde van los decimales.
         val text =
             if (row.currencyDecimals < MoneyFormatter.MAX_CURRENCY_DECIMALS) {
-                MoneyFormatter(formatLocale(), row.currencyDecimals + 1).format(Money(123_451))
+                moneyFormatter(formatLocale(), row.currencyDecimals + 1).format(Money(123_451))
             } else {
                 formatter.format(Money(123_451)).also { assertTrue(it.last().isDigit()) } + "1"
             }
@@ -83,7 +83,7 @@ class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice
 
     @Test
     fun anAmountOverItsLimitIsRejectedAndTheLimitItselfIsNot() {
-        val formatter = MoneyFormatter(formatLocale(), row.currencyDecimals)
+        val formatter = moneyFormatter(formatLocale(), row.currencyDecimals)
         for (limit in listOf(Limit.UNIT_MONEY, Limit.DOCUMENT_TOTAL)) {
             val cap = Money(limit.max)
             assertEquals(value(cap), money(formatter, formatter.format(cap), limit))
@@ -117,7 +117,7 @@ class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice
     @Test
     fun aQuantityWithFourDecimalsOrOverItsLimitIsRejected() {
         val formatter = QuantityFormatter(formatLocale())
-        val fourDecimals = MoneyFormatter(formatLocale(), 4).format(Money(12_345))
+        val fourDecimals = moneyFormatter(formatLocale(), 4).format(Money(12_345))
         assertEquals(
             "$row $fourDecimals",
             NumberInput.TooManyDecimals(3),
@@ -155,7 +155,7 @@ class NumberInputRoundTripTest(private val row: MatrixRow, device: ForeignDevice
     @Test
     fun aPercentageWithThreeDecimalsOrOverItsLimitIsRejected() {
         val formatter = PercentFormatter(formatLocale())
-        val threeDecimals = MoneyFormatter(formatLocale(), 3).format(Money(12_345))
+        val threeDecimals = moneyFormatter(formatLocale(), 3).format(Money(12_345))
         assertEquals(
             "$row $threeDecimals",
             NumberInput.TooManyDecimals(2),

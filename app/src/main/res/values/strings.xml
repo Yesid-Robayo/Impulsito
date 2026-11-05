@@ -97,4 +97,10 @@
     <string name="destination_title">Where to save backups</string>
     <string name="webdav_title">Connect the service</string>
     <string name="slots_title">Prepare files in the cloud</string>
+
+    <!-- TalkBack: un monto se lee con sus cifras y el nombre de la moneda, nunca con el símbolo. %1$s son las cifras con los
+         separadores del formato regional, y %2$s el nombre de la moneda que da ICU en el idioma de la app, ya en singular o plural. -->
+    <string name="a11y_money_amount">%1$s %2$s</string>
+    <!-- TalkBack: un monto negativo. %1$s es el monto ya leído, con su moneda. -->
+    <string name="a11y_minus_amount">Minus %1$s</string>
 </resources>

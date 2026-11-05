@@ -46,6 +46,11 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         val autoClose = Regex("set[A]utoCloseTimeout")
         // Los formatos salen del formato regional elegido, nunca del idioma del sistema.
         val systemLocale = Regex("""Locale\.getDefault\(""")
+        // Una fábrica de ICU o de Java sin región, o un format sin Locale, toma la del proceso igual que Locale.getDefault().
+        val implicitLocale =
+            Regex(
+                """\b(NumberFormat|DecimalFormat|DateFormat|SimpleDateFormat|DecimalFormatSymbols|DateTimePatternGenerator|PluralRules|MessageFormat)\.get\w*Instance\(\)|\bString\.format\(\s*"|\bDecimalFormatSymbols\(\)""",
+            )
         val mainSource = Regex("""^(app|data|domain)/src/main/""")
         // Las reglas de negocio reciben la zona del negocio por parámetro: nunca leen la del teléfono, que cambia al viajar.
         val systemZone = Regex("""current[S]ystemDefault|[s]ystemDefault\(|TimeZone\.get[D]efault\(""")
@@ -172,7 +177,9 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 if (autoClose.containsMatchIn(line)) {
                     problems += "$where: el cierre automático de Room reabre la conexión de escritura sin synchronous = FULL"
                 }
-                if (isSource && mainSource.containsMatchIn(path) && systemLocale.containsMatchIn(line)) {
+                if (isSource && mainSource.containsMatchIn(path) &&
+                    (systemLocale.containsMatchIn(line) || implicitLocale.containsMatchIn(line))
+                ) {
                     problems += "$where: el formato sale del formato regional elegido, no del idioma del sistema"
                 }
                 if (isSource && domainMain.containsMatchIn(path) && systemZone.containsMatchIn(line)) {
