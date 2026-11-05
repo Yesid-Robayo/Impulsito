@@ -68,6 +68,9 @@ dependencies {
     // Las lecturas de los repositorios devuelven Flow: Turbine espera cada emisión con un tope de
     // tiempo, sin colgar la prueba si no llega.
     androidTestImplementation(libs.turbine)
+    // El generador de datos de prueba corre con cada fila de la matriz de configuraciones
+    // regionales, que vive en los accesorios de prueba de :domain. Solo entra en el APK de pruebas.
+    androidTestImplementation(testFixtures(project(":domain")))
 }
 
 // El catálogo del esquema, la lista permitida con que se revisa una copia antes de confiar en ella,
