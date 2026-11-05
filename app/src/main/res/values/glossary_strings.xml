@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+    <!-- Glosario en inglés, el idioma de respaldo. Cada término se escribe siempre igual en la app, en documentos y en la ayuda. -->
+    <!-- El glosario existe antes que las pantallas que lo usan: lint no avisa por cada término sin usar todavía. -->
+    <!-- term_inventory está en strings.xml, donde la navegación lo usa desde antes que este archivo. -->
+
+    <string name="term_sale">Sale</string>
+    <string name="term_sell">Sell</string>
+    <string name="term_purchase">Purchase</string>
+    <string name="term_expense">Expense</string>
+    <string name="term_product">Product</string>
+    <string name="term_service">Service</string>
+    <string name="term_supplier">Supplier</string>
+    <string name="term_customer">Customer</string>
+    <string name="term_cost">Cost</string>
+    <string name="term_average_cost">Average cost</string>
+    <string name="term_replacement_cost">Replacement cost</string>
+    <string name="term_price">Price</string>
+    <string name="term_margin">Margin</string>
+    <string name="term_sales_profit">Sales profit</string>
+    <string name="term_final_profit">Final profit</string>
+    <string name="term_damage_loss">Damage and loss</string>
+    <string name="term_tax">Tax</string>
+    <string name="term_payment_method">Payment method</string>
+    <string name="term_fee">Fee</string>
+    <string name="term_net_received">Net received</string>
+    <string name="term_cash">Cash</string>
+    <string name="term_change">Change</string>
+    <string name="term_tip">Tip</string>
+    <string name="term_sale_on_credit">Sale on credit</string>
+    <string name="term_receivable">Receivable</string>
+    <string name="term_payable">Payable</string>
+    <string name="term_payment_on_account">Payment on account</string>
+    <string name="term_credit_balance">Credit balance</string>
+    <string name="term_points">Points</string>
+    <string name="term_cash_register">Cash register</string>
+    <string name="term_open_register">Open register</string>
+    <string name="term_close_register">Close register</string>
+    <string name="term_return">Return</string>
+    <string name="term_exchange">Exchange</string>
+    <string name="term_void">Void</string>
+    <string name="term_receipt">Receipt</string>
+    <string name="term_quote">Quote</string>
+    <string name="term_order">Order</string>
+    <string name="term_batch">Batch</string>
+    <string name="term_expiry">Expiry date</string>
+    <string name="term_location">Location</string>
+    <string name="term_transfer">Transfer</string>
+    <string name="term_stock_count">Stock count</string>
+    <string name="term_unit">Unit</string>
+    <string name="term_price_list">Price list</string>
+    <string name="term_reference_currency">Reference currency</string>
+    <string name="term_backup">Backup</string>
+    <string name="term_cloud">Cloud</string>
+    <string name="term_restore">Restore</string>
+    <string name="term_recovery_code">Recovery code</string>
+    <string name="term_discreet_mode">Discreet mode</string>
+    <string name="term_cogs">Cost of goods sold</string>
+    <string name="term_stock">Stock</string>
+    <string name="term_no_category">No category</string>
+    <string name="term_low_stock">Running low</string>
+    <string name="term_out_of_stock">Out of stock</string>
+    <string name="term_surplus">Surplus</string>
+    <string name="term_inventory_value">Inventory value</string>
+    <string name="term_opening_stock">Opening stock</string>
+
+    <!-- Dos términos del glosario con la clave de su pantalla en la guía de redacción: el respaldo y los ajustes los usan tal cual. -->
+    <string name="backup_action_now">Back up now</string>
+    <string name="settings_palette_title">Colors</string>
+</resources>

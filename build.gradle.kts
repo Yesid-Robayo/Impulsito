@@ -224,3 +224,179 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
 }
 
 tasks.named("check") { dependsOn(verifyCodeRules) }
+
+// Redacción de los textos visibles, también dentro de check. El español es neutro: un solo texto sirve en todo país donde se
+// habla, así que una clave de values-es no se dirige a nadie con tú, vos ni usted, la app no habla de sí misma y no hay
+// regionalismos. En portugués tampoco se trata de você. Y en ningún idioma un texto llama factura a lo que genera la app, que
+// no emite documentos fiscales.
+val verifyWording = tasks.register("verifyWording") {
+    group = "verification"
+    description = "Busca en los textos visibles el tuteo, la primera persona, los regionalismos y los documentos fiscales."
+
+    // Se resuelven al configurar, como en verifyCodeRules: la acción solo recibe archivos.
+    val root = rootDir
+    val sourceDirs = subprojects.map { it.projectDir.resolve("src") }
+
+    doLast {
+        // Palabra entera, con letras de cualquier idioma: el \b de Java solo conoce las ASCII y cortaría «tú» por la tilde.
+        fun words(vararg forms: String) = Regex("""(?<![\p{L}\p{N}_])(${forms.joinToString("|")})(?![\p{L}\p{N}_])""")
+
+        // El criterio es una lista cerrada de palabras que solo pueden nombrar a quien lee o a la app, para que el trato
+        // neutro nunca la dispare. Son las mismas listas con que la documentación valida su guía de redacción, más algunas
+        // formas, y se probaron contra todos sus textos.
+        // Pronombres de tú, vos y usted. «tu» sin tilde es siempre el posesivo, y el té lleva tilde.
+        val secondPerson =
+            words(
+                "tú", "tu", "tus", "te", "ti", "contigo", "tuyo", "tuya", "tuyos", "tuyas", "vos", "usted", "ustedes",
+                // Verbos en segunda persona, en cualquier lugar de la frase: ninguno se escribe igual que una palabra que use la
+                // app. Por eso no está «estas», que también es un demostrativo, ni «compras», que nombra una pestaña.
+                "eres", "estás", "tienes", "puedes", "quieres", "debes", "necesitas", "deseas", "sabes", "has", "vas", "ves",
+                "prefieres", "recuerdas", "buscas", "intentas", "pierdes", "vendes", "cobras", "pagas", "usas", "tocas",
+                "podrás", "vendiste", "perdiste", "escribiste", "elegiste", "conectaste", "cambiaste", "devolviste",
+                "compraste", "registraste",
+                // Subjuntivo, el de «no olvides».
+                "seas", "estés", "tengas", "puedas", "quieras", "debas", "necesites", "desees", "sepas", "hayas", "vayas",
+                "veas", "hagas", "olvides", "pierdas", "borres", "guardes", "cierres", "toques", "abras", "apagues",
+                "desinstales",
+                // Voseo.
+                "sos", "tenés", "podés", "querés", "sabés", "debés", "necesitás", "mirá", "hacé", "agregá", "escribí",
+                "revisá", "tocá", "abrí", "cerrá", "buscá",
+                // Imperativo con el pronombre pegado.
+                "asegúrate", "regístrate", "conéctate", "acuérdate", "fíjate", "inténtalo", "pruébalo", "revísalo", "hazlo",
+                "cuéntanos",
+            )
+        // El imperativo del tuteo se escribe igual que la tercera persona, que el trato neutro sí usa: «la copia se guarda».
+        // Por eso solo cuenta con mayúscula al abrir una frase, donde el texto neutro pone el infinitivo: «Crear», no «Crea».
+        // En minúscula tras dos puntos sigue una lista, como «Por ejemplo: marca, garantía o talla». Queda fuera «activa»,
+        // que también es el adjetivo de «Activa».
+        val imperativeForms =
+            listOf(
+                "crea", "revisa", "agrega", "añade", "toca", "pulsa", "presiona", "intenta", "elige", "escribe", "guarda",
+                "abre", "cierra", "busca", "mira", "usa", "selecciona", "ingresa", "desactiva", "confirma", "comprueba",
+                "verifica", "recuerda", "olvida", "borra", "elimina", "conecta", "reconecta", "configura", "introduce",
+                "comparte", "descarga", "actualiza", "registra", "anota", "cambia", "libera", "instala", "pide", "exporta",
+                "restaura", "marca", "lee", "anula", "reintenta", "espera", "consulta", "permite", "desbloquea", "empieza",
+                "comienza", "mantén", "evita", "prueba", "vuelve", "sigue", "haz", "pon", "sal", "di", "ten", "ve", "ven",
+            )
+        val capitalized = imperativeForms.joinToString("|") { it.replaceFirstChar(Char::uppercaseChar) }
+        val imperative =
+            Regex(
+                """(?:^|[.!?¿¡:;]\s*)($capitalized)(?![\p{L}\p{N}_])""",
+                RegexOption.MULTILINE,
+            )
+        // La app no habla de sí misma: «Sin resultados», no «No encontramos».
+        val firstPerson =
+            words(
+                "nosotros", "nuestro", "nuestra", "nuestros", "nuestras", "nos", "me", "pudimos", "podemos", "encontramos",
+                "guardamos", "avisamos", "vemos", "paramos", "quitaremos", "tenemos", "conservamos", "recalculamos",
+                "corregimos", "subimos", "hemos", "vamos", "volveremos", "llevamos", "seguimos", "logramos", "mostramos",
+                "conté", "equivoqué", "devolví",
+            )
+        // Un adjetivo de saludo supone el género de quien lee. «Bienvenida a la app» sí vale, porque es el sustantivo.
+        val gendered = words("bienvenidos?")
+        // Regionalismos de la tabla de redacción del mapa, con sus formas: en otro país se dice otra cosa.
+        val regionalism =
+            words("platas?", "arriendos?", "fiad[oa]s?", "fiar", "celular", "celulares", "ordenador(es)?", "computador(es)?")
+        // La libra solo nombra la unidad real, de 453,59237 g, en una clave que lo dice con pound. La de 500 g es regional.
+        val pound = words("libras?")
+        val poundKey = Regex("""(^|_)pound(_|$)""")
+        // En portugués, sin você ni primera persona: «Dados do negócio», nunca «Seus dados».
+        val portuguesePerson = words("vocês?", "voces?", "teus?", "tuas?", "nossos?", "nossas?")
+        // La app no emite documentos fiscales: estas palabras solo aparecen para negarlo o en el nombre «Pendientes de
+        // facturar», y cada clave que las usa está en esta lista cerrada, en cualquier idioma.
+        val fiscalDocument = words("factur\\p{L}*", "invoic\\p{L}*", "notas? fisca(?:l|is)")
+        val fiscalDocumentKeys =
+            setOf(
+                "about_not_accounting",
+                "catalog_doc_legend",
+                "csv_file_sale_fiscal_marks",
+                "fiscal_share_note",
+                "fiscal_title",
+                "hub_tool_fiscal",
+                "legal_fiscal_bridge_notice",
+                "legal_order_not_invoice",
+                "legal_quote_not_invoice",
+                "legal_receipt_not_invoice",
+                "legal_terms_no_substitute",
+                "legal_universal_notice",
+                "order_doc_legend",
+                "quote_doc_legend",
+                "report_doc_legend",
+            )
+        // Los encabezados y nombres de archivo del CSV no siguen la regla impersonal: nombran una columna, como «Vuelve al
+        // stock». Los regionalismos y los documentos fiscales sí valen para ellos.
+        val csvKey = Regex("""^csv_""")
+
+        val valuesDir = Regex("""^values(-[A-Za-z0-9+-]+)?$""")
+        val spanishDir = Regex("""^values-(b\+)?es([-+].*)?$""")
+        val portugueseDir = Regex("""^values-(b\+)?pt([-+].*)?$""")
+        // Una secuencia de escape como \n o \' se lee como espacio: así «\nTe» sigue siendo una palabra suelta.
+        val escape = Regex("""\\.""")
+        val factory =
+            javax.xml.parsers.DocumentBuilderFactory.newInstance().apply {
+                // Un recurso nunca declara DOCTYPE: rechazarlo cierra la puerta a las entidades externas.
+                setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            }
+
+        val files =
+            sourceDirs
+                .filter { it.isDirectory }
+                .flatMap { src -> src.walkTopDown().filter { it.isFile && it.extension == "xml" }.toList() }
+                .filter { valuesDir.matches(it.parentFile.name) && it.parentFile.parentFile?.name == "res" }
+        val problems = mutableListOf<String>()
+        var texts = 0
+        for (file in files) {
+            val path = file.relativeTo(root).invariantSeparatorsPath
+            val spanish = spanishDir.matches(file.parentFile.name)
+            val portuguese = portugueseDir.matches(file.parentFile.name)
+            val document = factory.newDocumentBuilder().parse(file)
+            val elements =
+                listOf("string", "item").flatMap { tag ->
+                    val list = document.getElementsByTagName(tag)
+                    (0 until list.length).map { list.item(it) as org.w3c.dom.Element }
+                }
+            for (element in elements) {
+                // Un item solo es texto dentro de plurals o string-array, y se nombra por su padre.
+                val parent = element.parentNode as? org.w3c.dom.Element
+                val name =
+                    when {
+                        element.tagName == "string" -> element.getAttribute("name")
+                        parent != null && parent.tagName in setOf("plurals", "string-array") -> parent.getAttribute("name")
+                        else -> continue
+                    }
+                texts++
+                val original = escape.replace(element.textContent, " ")
+                val text = original.lowercase()
+                val impersonal = !csvKey.containsMatchIn(name)
+                val found = mutableListOf<String>()
+                fun reject(regex: Regex, reason: String, source: String = text) =
+                    regex.findAll(source).forEach { found += "«${it.groupValues[1]}»: $reason" }
+                if (name !in fiscalDocumentKeys) {
+                    reject(fiscalDocument, "la app no emite documentos fiscales, y la palabra solo va en las claves que lo niegan")
+                }
+                if (spanish && impersonal) {
+                    reject(secondPerson, "trata de tú, vos o usted, y el español va en infinitivo o impersonal")
+                    reject(imperative, "trata de tú, y una acción va en infinitivo", original)
+                    reject(firstPerson, "la app habla en primera persona, y el texto va impersonal")
+                    reject(gendered, "supone el género de quien lee, y va un sustantivo")
+                }
+                if (spanish) {
+                    reject(regionalism, "es un regionalismo, y va la palabra de la guía de redacción")
+                    if (!poundKey.containsMatchIn(name)) {
+                        reject(pound, "la libra solo nombra la unidad real, en una clave con pound")
+                    }
+                }
+                if (portuguese && impersonal) {
+                    reject(portuguesePerson, "trata de você o habla en primera persona, y el portugués va impersonal")
+                }
+                found.forEach { problems += "$path: $name: $it" }
+            }
+        }
+        if (problems.isNotEmpty()) {
+            throw GradleException("Redacción rota (${problems.size}):\n" + problems.joinToString("\n"))
+        }
+        logger.lifecycle("verifyWording: $texts textos en ${files.size} archivos revisados, sin problemas")
+    }
+}
+
+tasks.named("check") { dependsOn(verifyWording) }

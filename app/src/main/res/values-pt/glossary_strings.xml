@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+    <!-- Glosario en portugués de Brasil. Cada término se escribe siempre igual en la app, en documentos y en la ayuda. -->
+    <!-- El glosario existe antes que las pantallas que lo usan: lint no avisa por cada término sin usar todavía. -->
+    <!-- term_inventory está en strings.xml, donde la navegación lo usa desde antes que este archivo. -->
+
+    <string name="term_sale">Venda</string>
+    <string name="term_sell">Vender</string>
+    <string name="term_purchase">Compra</string>
+    <string name="term_expense">Despesa</string>
+    <string name="term_product">Produto</string>
+    <string name="term_service">Serviço</string>
+    <string name="term_supplier">Fornecedor</string>
+    <string name="term_customer">Cliente</string>
+    <string name="term_cost">Custo</string>
+    <string name="term_average_cost">Custo médio</string>
+    <string name="term_replacement_cost">Custo de reposição</string>
+    <string name="term_price">Preço</string>
+    <string name="term_margin">Margem</string>
+    <string name="term_sales_profit">Lucro nas vendas</string>
+    <string name="term_final_profit">Lucro final</string>
+    <string name="term_damage_loss">Danos e perdas</string>
+    <string name="term_tax">Imposto</string>
+    <string name="term_payment_method">Forma de pagamento</string>
+    <string name="term_fee">Taxa</string>
+    <string name="term_net_received">Valor líquido</string>
+    <string name="term_cash">Dinheiro</string>
+    <string name="term_change">Troco</string>
+    <string name="term_tip">Gorjeta</string>
+    <string name="term_sale_on_credit">Venda a prazo</string>
+    <string name="term_receivable">A receber</string>
+    <string name="term_payable">A pagar</string>
+    <string name="term_payment_on_account">Pagamento parcial</string>
+    <string name="term_credit_balance">Saldo a favor</string>
+    <string name="term_points">Pontos</string>
+    <string name="term_cash_register">Caixa</string>
+    <string name="term_open_register">Abrir caixa</string>
+    <string name="term_close_register">Fechar caixa</string>
+    <string name="term_return">Devolução</string>
+    <string name="term_exchange">Troca</string>
+    <string name="term_void">Anular</string>
+    <string name="term_receipt">Comprovante</string>
+    <string name="term_quote">Orçamento</string>
+    <string name="term_order">Pedido</string>
+    <string name="term_batch">Lote</string>
+    <string name="term_expiry">Validade</string>
+    <string name="term_location">Local</string>
+    <string name="term_transfer">Transferência</string>
+    <string name="term_stock_count">Contagem</string>
+    <string name="term_unit">Unidade</string>
+    <string name="term_price_list">Tabela de preços</string>
+    <string name="term_reference_currency">Moeda de referência</string>
+    <string name="term_backup">Cópia de segurança</string>
+    <string name="term_cloud">Nuvem</string>
+    <string name="term_restore">Restaurar</string>
+    <string name="term_recovery_code">Código de recuperação</string>
+    <string name="term_discreet_mode">Modo discreto</string>
+    <string name="term_cogs">Custo do que foi vendido</string>
+    <string name="term_stock">Estoque</string>
+    <string name="term_no_category">Sem categoria</string>
+    <string name="term_low_stock">Acabando</string>
+    <string name="term_out_of_stock">Esgotado</string>
+    <string name="term_surplus">Sobra</string>
+    <string name="term_inventory_value">Valor do estoque</string>
+    <string name="term_opening_stock">Estoque inicial</string>
+
+    <!-- Dos términos del glosario con la clave de su pantalla en la guía de redacción: el respaldo y los ajustes los usan tal cual. -->
+    <string name="backup_action_now">Fazer cópia agora</string>
+    <string name="settings_palette_title">Cores</string>
+</resources>

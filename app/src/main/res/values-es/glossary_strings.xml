@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+    <!-- Glosario en español neutro. Cada término se escribe siempre igual en la app, en documentos y en la ayuda. -->
+    <!-- El glosario existe antes que las pantallas que lo usan: lint no avisa por cada término sin usar todavía. -->
+    <!-- term_inventory está en strings.xml, donde la navegación lo usa desde antes que este archivo. -->
+
+    <string name="term_sale">Venta</string>
+    <string name="term_sell">Vender</string>
+    <string name="term_purchase">Compra</string>
+    <string name="term_expense">Gasto</string>
+    <string name="term_product">Producto</string>
+    <string name="term_service">Servicio</string>
+    <string name="term_supplier">Proveedor</string>
+    <string name="term_customer">Cliente</string>
+    <string name="term_cost">Costo</string>
+    <string name="term_average_cost">Costo promedio</string>
+    <string name="term_replacement_cost">Costo de reposición</string>
+    <string name="term_price">Precio</string>
+    <string name="term_margin">Margen</string>
+    <string name="term_sales_profit">Ganancia en ventas</string>
+    <string name="term_final_profit">Ganancia final</string>
+    <string name="term_damage_loss">Daños y pérdidas</string>
+    <string name="term_tax">Impuesto</string>
+    <string name="term_payment_method">Método de pago</string>
+    <string name="term_fee">Comisión</string>
+    <string name="term_net_received">Neto recibido</string>
+    <string name="term_cash">Efectivo</string>
+    <string name="term_change">Cambio</string>
+    <string name="term_tip">Propina</string>
+    <string name="term_sale_on_credit">Venta a crédito</string>
+    <string name="term_receivable">Por cobrar</string>
+    <string name="term_payable">Por pagar</string>
+    <string name="term_payment_on_account">Abono</string>
+    <string name="term_credit_balance">Saldo a favor</string>
+    <string name="term_points">Puntos</string>
+    <string name="term_cash_register">Caja</string>
+    <string name="term_open_register">Abrir caja</string>
+    <string name="term_close_register">Cerrar caja</string>
+    <string name="term_return">Devolución</string>
+    <string name="term_exchange">Cambio de producto</string>
+    <string name="term_void">Anular</string>
+    <string name="term_receipt">Comprobante</string>
+    <string name="term_quote">Cotización</string>
+    <string name="term_order">Pedido</string>
+    <string name="term_batch">Lote</string>
+    <string name="term_expiry">Vencimiento</string>
+    <string name="term_location">Ubicación</string>
+    <string name="term_transfer">Transferencia</string>
+    <string name="term_stock_count">Conteo</string>
+    <string name="term_unit">Unidad</string>
+    <string name="term_price_list">Lista de precios</string>
+    <string name="term_reference_currency">Moneda de referencia</string>
+    <string name="term_backup">Copia</string>
+    <string name="term_cloud">Nube</string>
+    <string name="term_restore">Restaurar</string>
+    <string name="term_recovery_code">Código de recuperación</string>
+    <string name="term_discreet_mode">Modo discreto</string>
+    <string name="term_cogs">Costo de lo vendido</string>
+    <string name="term_stock">Stock</string>
+    <string name="term_no_category">Sin categoría</string>
+    <string name="term_low_stock">Por agotarse</string>
+    <string name="term_out_of_stock">Agotado</string>
+    <string name="term_surplus">Sobrante</string>
+    <string name="term_inventory_value">Valor del inventario</string>
+    <string name="term_opening_stock">Inventario inicial</string>
+
+    <!-- Dos términos del glosario con la clave de su pantalla en la guía de redacción: el respaldo y los ajustes los usan tal cual. -->
+    <string name="backup_action_now">Respaldar ahora</string>
+    <string name="settings_palette_title">Colores</string>
+</resources>
