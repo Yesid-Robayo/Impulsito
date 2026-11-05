@@ -6,6 +6,9 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
+import io.github.yesidrobayo.shopledger.localization.AndroidLocalePlatform
+import io.github.yesidrobayo.shopledger.localization.AppLanguage
+import io.github.yesidrobayo.shopledger.localization.LanguagePreferenceFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,6 +36,19 @@ class AppContainer(application: Application) {
 
     /** El único punto de registro de la app. */
     val log: EventLog = data.log
+
+    /**
+     * El idioma de la interfaz, guardado fuera de la base. Crearlo no toca el disco: el proceso lo
+     * aplica después, antes de la primera actividad.
+     */
+    val language =
+        AppLanguage(
+            file = LanguagePreferenceFile({ application.noBackupFilesDir }),
+            platform = AndroidLocalePlatform(application),
+            log = log,
+            ioContext = dispatchers.io,
+            mainContext = dispatchers.main,
+        )
 
     /**
      * Para el trabajo corto que sigue a una confirmación, como programar la copia. Lo que deba
