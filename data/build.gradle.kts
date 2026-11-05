@@ -55,6 +55,9 @@ dependencies {
     implementation(libs.androidx.sqlite.bundled)
     ksp(libs.androidx.room3.compiler)
 
+    // Las pruebas en la JVM solo comparan el catálogo del esquema con sus fuentes, y lo generan.
+    testImplementation(libs.junit)
+
     // La base se prueba en el dispositivo, con el mismo driver que la app.
     androidTestImplementation(libs.androidx.room3.testing)
     // La plantilla de migraciones usa una base ficticia propia de las pruebas, con varias versiones:
@@ -65,6 +68,45 @@ dependencies {
     // Las lecturas de los repositorios devuelven Flow: Turbine espera cada emisión con un tope de
     // tiempo, sin colgar la prueba si no llega.
     androidTestImplementation(libs.turbine)
+}
+
+// El catálogo del esquema, la lista permitida con que se revisa una copia antes de confiar en ella,
+// sale de dos fuentes: el JSON que Room exporta de cada versión, solo el de AppDatabase y nunca el de
+// la base ficticia de las pruebas de migración, y SchemaGuards. Las pruebas en la JVM lo comparan con
+// ellas, y fallan si alguien cambió el esquema sin regenerarlo.
+val appDatabaseSchemas =
+    layout.projectDirectory.dir("schemas/io.github.yesidrobayo.shopledger.data.local.AppDatabase")
+val schemaCatalogSources =
+    layout.projectDirectory.dir("src/main/java/io/github/yesidrobayo/shopledger/data/local/guard")
+tasks.withType<Test>().configureEach {
+    systemProperty("schemaCatalog.schemaDir", appDatabaseSchemas.asFile.absolutePath)
+    systemProperty("schemaCatalog.sourceDir", schemaCatalogSources.asFile.absolutePath)
+    // El JSON también se lee como archivo: si cambia, las pruebas vuelven a correr.
+    inputs
+        .dir(appDatabaseSchemas)
+        .withPropertyName("appDatabaseSchemas")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
+// Un solo comando regenera el catálogo: .\gradlew.bat :data:generateSchemaCatalog. Corre el generador
+// de las pruebas en la JVM, con las clases de :data tal como las compila Gradle, porque las guardas
+// viven en código. Escribe el archivo de la versión actual y la lista de versiones. El de una versión
+// anterior queda congelado, como su JSON.
+tasks.register<Test>("generateSchemaCatalog") {
+    group = "build"
+    description = "Regenera SchemaCatalog desde el JSON que exporta Room y desde SchemaGuards."
+    // AGP registra las pruebas en la JVM después de este archivo: se toman al configurar esta
+    // tarea. Se usan sus clases y su classpath, que dependen de compilar, y no la tarea misma, que
+    // fallaría justo porque el catálogo no coincide.
+    val unitTests = tasks.named<Test>("testDebugUnitTest").get()
+    testClassesDirs = unitTests.testClassesDirs
+    classpath = unitTests.classpath
+    useJUnit()
+    filter { includeTestsMatching("*.SchemaCatalogRegeneration") }
+    systemProperty("schemaCatalog.write", "true")
+    testLogging { showStandardStreams = true }
+    // Siempre corre: lo que escribe vive en el código fuente, no en una salida de Gradle.
+    outputs.upToDateWhen { false }
 }
 
 // Meta de líneas de :data, medida con lo que recorrieron las pruebas en el dispositivo. No va en
