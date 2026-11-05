@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: es el respaldo de todo idioma sin carpeta propia. Textos de la guía de redacción. -->
+    <!-- Datos iniciales: el texto visible de una fila con clave y sin nombre, hasta que la persona lo edite.
+         Cada recurso es seed_<tabla>_<clave en minúsculas>. -->
+
+    <!-- Categorías de gasto iniciales. -->
+    <string name="seed_expense_categories_rent">Rent</string>
+    <string name="seed_expense_categories_utilities">Utilities</string>
+    <string name="seed_expense_categories_internet_phone">Internet and phone</string>
+    <string name="seed_expense_categories_transport">Transport</string>
+    <string name="seed_expense_categories_packaging_supplies">Packaging and supplies</string>
+    <string name="seed_expense_categories_advertising">Advertising</string>
+    <string name="seed_expense_categories_taxes_fees">Taxes and fees</string>
+    <string name="seed_expense_categories_wages">Wages</string>
+    <string name="seed_expense_categories_other">Other</string>
+
+    <!-- Unidades iniciales. -->
+    <string name="seed_units_unit">Unit</string>
+    <string name="seed_units_kilogram">Kilogram</string>
+    <string name="seed_units_gram">Gram</string>
+    <string name="seed_units_liter">Liter</string>
+    <string name="seed_units_milliliter">Milliliter</string>
+    <string name="seed_units_pound">Pound</string>
+    <string name="seed_units_ounce">Ounce</string>
+    <string name="seed_units_gallon">Gallon</string>
+    <string name="seed_units_meter">Meter</string>
+    <string name="seed_units_box">Box</string>
+    <string name="seed_units_pack">Pack</string>
+    <string name="seed_units_dozen">Dozen</string>
+
+    <!-- Métodos de pago iniciales: genéricos, sin marcas. -->
+    <string name="seed_payment_methods_cash">Cash</string>
+    <string name="seed_payment_methods_card">Card</string>
+    <string name="seed_payment_methods_transfer">Transfer</string>
+    <string name="seed_payment_methods_wallet">Digital wallet</string>
+    <string name="seed_payment_methods_on_account">On credit</string>
+    <string name="seed_payment_methods_other">Other</string>
+
+    <!-- Lista de precios inicial. -->
+    <string name="seed_price_lists_default">General price list</string>
+
+    <!-- Ubicación inicial. -->
+    <string name="seed_locations_main">Main</string>
+
+    <!-- Cuenta de dinero inicial. -->
+    <string name="seed_money_accounts_cash">Cash</string>
+
+    <!-- Símbolo de cada unidad inicial, que va junto al número y sin plural: 1,500 kg. -->
+    <string name="unit_symbol_unit">pcs</string>
+    <string name="unit_symbol_kilogram">kg</string>
+    <string name="unit_symbol_gram">g</string>
+    <string name="unit_symbol_liter">L</string>
+    <string name="unit_symbol_milliliter">mL</string>
+    <string name="unit_symbol_pound">lb</string>
+    <string name="unit_symbol_ounce">oz</string>
+    <string name="unit_symbol_gallon">gal</string>
+    <string name="unit_symbol_meter">m</string>
+    <string name="unit_symbol_box">box</string>
+    <string name="unit_symbol_pack">pack</string>
+    <string name="unit_symbol_dozen">doz</string>
+
+    <!-- Cantidad escrita con palabras de cada unidad inicial, como la lee TalkBack: un patrón plural de ICU,
+         cuya categoría sale de los decimales visibles. # es la cantidad con el formato regional del negocio. -->
+    <string name="unit_qty_unit">{qty, plural, one {# unit} other {# units}}</string>
+    <string name="unit_qty_kilogram">{qty, plural, one {# kilogram} other {# kilograms}}</string>
+    <string name="unit_qty_gram">{qty, plural, one {# gram} other {# grams}}</string>
+    <string name="unit_qty_liter">{qty, plural, one {# liter} other {# liters}}</string>
+    <string name="unit_qty_milliliter">{qty, plural, one {# milliliter} other {# milliliters}}</string>
+    <string name="unit_qty_pound">{qty, plural, one {# pound} other {# pounds}}</string>
+    <string name="unit_qty_ounce">{qty, plural, one {# ounce} other {# ounces}}</string>
+    <string name="unit_qty_gallon">{qty, plural, one {# gallon} other {# gallons}}</string>
+    <string name="unit_qty_meter">{qty, plural, one {# meter} other {# meters}}</string>
+    <string name="unit_qty_box">{qty, plural, one {# box} other {# boxes}}</string>
+    <string name="unit_qty_pack">{qty, plural, one {# pack} other {# packs}}</string>
+    <string name="unit_qty_dozen">{qty, plural, one {# dozen} other {# dozen}}</string>
+</resources>

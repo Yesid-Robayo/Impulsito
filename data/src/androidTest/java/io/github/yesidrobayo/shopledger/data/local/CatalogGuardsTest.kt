@@ -238,9 +238,8 @@ internal class CatalogGuardsTest : GuardProbeTest() {
         )) {
             rejected(EXPENSE_CATEGORIES, broken.insertInto("expense_categories"))
         }
-        // Las iniciales sin nombre no chocan entre sí.
-        insert("expense_categories", expenseCategoryRow(name = null, systemKey = "RENT"))
-        insert("expense_categories", expenseCategoryRow(name = null, systemKey = "WAGES"))
+        // Las iniciales sin nombre no chocan entre sí: la base ya trae nueve, y entra otra.
+        insert("expense_categories", expenseCategoryRow(name = null, systemKey = "TEST_SEED"))
 
         rejected(EXPENSE_CATEGORIES, update("expense_categories", archived, "archived_at" to null))
         val other = insert("expense_categories", expenseCategoryRow("transporte"))
@@ -266,11 +265,9 @@ internal class CatalogGuardsTest : GuardProbeTest() {
 
     @Test
     fun theOtherExpensesCategoryIsNeverArchivedNorDeleted() = runBlocking {
-        val system =
-            insert(
-                "expense_categories",
-                expenseCategoryRow(name = null, systemKey = "OTHER").with("is_system" to 1L),
-            )
+        // La de otros gastos nace con la base.
+        val system = count("SELECT id FROM expense_categories WHERE system_key = 'OTHER'")
+        assertEquals(1L, count("SELECT is_system FROM expense_categories WHERE id = $system"))
         val own = insert("expense_categories", expenseCategoryRow("publicidad"))
 
         rejected(EXPENSE_CATEGORIES, update("expense_categories", system, "archived_at" to LATER))

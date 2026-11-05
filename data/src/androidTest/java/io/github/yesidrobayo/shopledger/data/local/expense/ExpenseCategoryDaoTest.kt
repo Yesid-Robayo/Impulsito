@@ -26,8 +26,8 @@ import org.junit.runner.RunWith
  * único entre las vigentes, orden por creación, archivo y reactivación, y la de otros gastos, que
  * nunca se archiva ni se borra. Con gastos, una categoría no se borra.
  *
- * Las listas se comparan con lo que ya traía la base al nacer, para que las pruebas sigan valiendo
- * cuando la base nazca con sus categorías iniciales.
+ * La base nace con sus categorías iniciales, así que las pruebas de esas filas usan las que ya
+ * trae, y las listas se comparan con lo que había al nacer.
  */
 @RunWith(AndroidJUnit4::class)
 internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
@@ -39,7 +39,7 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
         val seeded = seededExpenseCategory("OTHER", isSystem = 1)
         val own = expenseCategory("Arriendo del local", isFixed = 1)
 
-        val seededId = categories.insert(seeded)
+        val seededId = seededId("OTHER")
         val ownId = categories.insert(own)
 
         assertEquals(seeded.copy(id = seededId), categories.findById(seededId))
@@ -50,10 +50,11 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
 
     @Test
     fun keysAndActiveNamesCannotRepeatButUnnamedSeedsDoNotCollide() = runBlocking {
-        // Dos iniciales sin nombre: SQLite no compara nulos, así que no chocan.
-        categories.insert(seededExpenseCategory("RENT"))
-        categories.insert(seededExpenseCategory("UTILITIES"))
+        // Las nueve iniciales nacen sin nombre: SQLite no compara nulos, así que no chocan, y una
+        // más sin nombre tampoco. Su clave, en cambio, no se repite.
+        categories.insert(seededExpenseCategory("TEST_SEED"))
         constraintFailure(UNIQUE) { categories.insert(seededExpenseCategory("RENT")) }
+        constraintFailure(UNIQUE) { categories.insert(seededExpenseCategory("TEST_SEED")) }
 
         // Tildes, mayúsculas y espacios de más no hacen otro nombre: la guarda lo rechaza.
         val cleaningId = categories.insert(expenseCategory("Limpieza Baño"))
@@ -85,22 +86,23 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
         // El orden es el de creación, no el alfabético ni el del texto traducido.
         val zeta = categories.insert(expenseCategory("Zapatos de trabajo"))
         val alfa = categories.insert(expenseCategory("Agua"))
-        val seeded = categories.insert(seededExpenseCategory("TRANSPORT"))
+        val seeded = seededId("TRANSPORT")
 
         val active = Emissions(this, categories.observeActive().ids { it.id })
         val archived = Emissions(this, categories.observeArchived().ids { it.id })
         try {
-            active.awaitValue(before + listOf(zeta, alfa, seeded))
+            active.awaitValue(before + listOf(zeta, alfa))
             archived.awaitValue(emptyList())
 
             categories.setArchivedAt(zeta, archivedAt = LATER, updatedAt = LATER)
             categories.setArchivedAt(seeded, archivedAt = LATER, updatedAt = LATER)
-            active.awaitValue(before + listOf(alfa))
-            archived.awaitValue(listOf(zeta, seeded))
+            active.awaitValue(before - seeded + listOf(alfa))
+            // La inicial nació antes que las de la persona.
+            archived.awaitValue(listOf(seeded, zeta))
 
             // Reactivada, vuelve a su lugar de creación.
             categories.setArchivedAt(zeta, archivedAt = null, updatedAt = MUCH_LATER)
-            active.awaitValue(before + listOf(zeta, alfa))
+            active.awaitValue(before - seeded + listOf(zeta, alfa))
             archived.awaitValue(listOf(seeded))
         } finally {
             active.stop()
@@ -112,7 +114,7 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
     @Test
     fun updateChangesWhatThePersonWritesAndKeepsTheRest() = runBlocking {
         val seeded = seededExpenseCategory("WAGES")
-        val id = categories.insert(seeded)
+        val id = seededId("WAGES")
         categories.setArchivedAt(id, archivedAt = LATER, updatedAt = LATER)
 
         // La persona renombra una inicial: desde ahí se muestra su nombre, y la clave se queda.
@@ -135,7 +137,7 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
     @Test
     fun theOtherExpensesCategoryIsNeverArchivedNorDeleted() = runBlocking {
         val other = seededExpenseCategory("OTHER", isSystem = 1)
-        val id = categories.insert(other)
+        val id = seededId("OTHER")
 
         assertEquals(0, categories.setArchivedAt(id, archivedAt = LATER, updatedAt = LATER))
         assertEquals(0, categories.delete(id))
@@ -196,6 +198,10 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
             functionsOf(ExpenseCategoryDao::class.java),
         )
     }
+
+    /** El id de la categoría inicial de clave [systemKey], que la base trae desde que nace. */
+    private suspend fun seededId(systemKey: String): Long =
+        count("SELECT id FROM expense_categories WHERE system_key = '$systemKey'")
 
     private companion object {
         const val MISSING_ID = 999L

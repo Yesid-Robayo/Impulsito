@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Portugués de Brasil. Textos de la guía de redacción. -->
+    <!-- Datos iniciales: el texto visible de una fila con clave y sin nombre, hasta que la persona lo edite.
+         Cada recurso es seed_<tabla>_<clave en minúsculas>. -->
+
+    <!-- Categorías de gasto iniciales. -->
+    <string name="seed_expense_categories_rent">Aluguel</string>
+    <string name="seed_expense_categories_utilities">Contas de consumo</string>
+    <string name="seed_expense_categories_internet_phone">Internet e telefone</string>
+    <string name="seed_expense_categories_transport">Transporte</string>
+    <string name="seed_expense_categories_packaging_supplies">Embalagens e insumos</string>
+    <string name="seed_expense_categories_advertising">Publicidade</string>
+    <string name="seed_expense_categories_taxes_fees">Impostos e taxas</string>
+    <string name="seed_expense_categories_wages">Salários</string>
+    <string name="seed_expense_categories_other">Outros</string>
+
+    <!-- Unidades iniciales. -->
+    <string name="seed_units_unit">Unidade</string>
+    <string name="seed_units_kilogram">Quilograma</string>
+    <string name="seed_units_gram">Grama</string>
+    <string name="seed_units_liter">Litro</string>
+    <string name="seed_units_milliliter">Mililitro</string>
+    <string name="seed_units_pound">Libra</string>
+    <string name="seed_units_ounce">Onça</string>
+    <string name="seed_units_gallon">Galão</string>
+    <string name="seed_units_meter">Metro</string>
+    <string name="seed_units_box">Caixa</string>
+    <string name="seed_units_pack">Pacote</string>
+    <string name="seed_units_dozen">Dúzia</string>
+
+    <!-- Métodos de pago iniciales: genéricos, sin marcas. -->
+    <string name="seed_payment_methods_cash">Dinheiro</string>
+    <string name="seed_payment_methods_card">Cartão</string>
+    <string name="seed_payment_methods_transfer">Transferência</string>
+    <string name="seed_payment_methods_wallet">Carteira digital</string>
+    <string name="seed_payment_methods_on_account">A prazo</string>
+    <string name="seed_payment_methods_other">Outro</string>
+
+    <!-- Lista de precios inicial. -->
+    <string name="seed_price_lists_default">Tabela geral</string>
+
+    <!-- Ubicación inicial. -->
+    <string name="seed_locations_main">Principal</string>
+
+    <!-- Cuenta de dinero inicial. -->
+    <string name="seed_money_accounts_cash">Dinheiro</string>
+
+    <!-- Símbolo de cada unidad inicial, que va junto al número y sin plural: 1,500 kg. -->
+    <string name="unit_symbol_unit">un</string>
+    <string name="unit_symbol_kilogram">kg</string>
+    <string name="unit_symbol_gram">g</string>
+    <string name="unit_symbol_liter">L</string>
+    <string name="unit_symbol_milliliter">mL</string>
+    <string name="unit_symbol_pound">lb</string>
+    <string name="unit_symbol_ounce">oz</string>
+    <string name="unit_symbol_gallon">gal</string>
+    <string name="unit_symbol_meter">m</string>
+    <string name="unit_symbol_box">cx</string>
+    <string name="unit_symbol_pack">pct</string>
+    <string name="unit_symbol_dozen">dz</string>
+
+    <!-- Cantidad escrita con palabras de cada unidad inicial, como la lee TalkBack: un patrón plural de ICU,
+         cuya categoría sale de los decimales visibles. # es la cantidad con el formato regional del negocio. -->
+    <string name="unit_qty_unit">{qty, plural, one {# unidade} many {# de unidades} other {# unidades}}</string>
+    <string name="unit_qty_kilogram">{qty, plural, one {# quilograma} many {# de quilogramas} other {# quilogramas}}</string>
+    <string name="unit_qty_gram">{qty, plural, one {# grama} many {# de gramas} other {# gramas}}</string>
+    <string name="unit_qty_liter">{qty, plural, one {# litro} many {# de litros} other {# litros}}</string>
+    <string name="unit_qty_milliliter">{qty, plural, one {# mililitro} many {# de mililitros} other {# mililitros}}</string>
+    <string name="unit_qty_pound">{qty, plural, one {# libra} many {# de libras} other {# libras}}</string>
+    <string name="unit_qty_ounce">{qty, plural, one {# onça} many {# de onças} other {# onças}}</string>
+    <string name="unit_qty_gallon">{qty, plural, one {# galão} many {# de galões} other {# galões}}</string>
+    <string name="unit_qty_meter">{qty, plural, one {# metro} many {# de metros} other {# metros}}</string>
+    <string name="unit_qty_box">{qty, plural, one {# caixa} many {# de caixas} other {# caixas}}</string>
+    <string name="unit_qty_pack">{qty, plural, one {# pacote} many {# de pacotes} other {# pacotes}}</string>
+    <string name="unit_qty_dozen">{qty, plural, one {# dúzia} many {# de dúzias} other {# dúzias}}</string>
+</resources>

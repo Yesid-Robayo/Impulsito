@@ -3,11 +3,11 @@ package io.github.yesidrobayo.shopledger.data.repository
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
 import io.github.yesidrobayo.shopledger.data.local.expense.expense
-import io.github.yesidrobayo.shopledger.data.local.expense.seededExpenseCategory
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryDetails
 import io.github.yesidrobayo.shopledger.domain.model.settings.AppLockTimeout
@@ -204,12 +204,16 @@ internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
 
     @Test
     fun theSystemExpenseCategoryNeverLeavesAndOneWithExpensesIsOnlyArchived() = runBlocking {
-        val other = database.expenseCategoryDao().insert(
-            seededExpenseCategory("OTHER", isSystem = 1),
-        )
+        // La base nace con las categorías iniciales, y la de otros gastos es la del sistema.
+        val initial = expenseCategories.observe(ArchiveFilter.ACTIVE).first()
+        val other = initial.single { it.isSystem }.id
+        val initialIds = initial.map { it.id }
 
         expenseCategories.observe(ArchiveFilter.ACTIVE).test {
-            assertEquals(listOf("OTHER"), awaitItem().map { it.systemKey })
+            assertEquals(
+                SeedTable.EXPENSE_CATEGORIES.systemKeys,
+                awaitItem().map { it.systemKey },
+            )
             val details = ExpenseCategoryDetails("Arriendo", "arriendo", isFixed = true)
             val rent = commit { expenseCategories.insert(details, AT) }
             val created =
@@ -222,7 +226,7 @@ internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
                     createdAt = AT,
                     updatedAt = AT,
                 )
-            assertEquals(listOf(other, rent), awaitItem().map { it.id })
+            assertEquals(initialIds + rent, awaitItem().map { it.id })
             assertEquals(created, expenseCategories.findById(rent))
             assertEquals(created, expenseCategories.findActiveByNormalizedName("arriendo"))
 
@@ -232,7 +236,7 @@ internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
             database.expenseDao().insert(expense(rent))
             assertTrue(expenseCategories.hasExpenses(rent))
             commit { expenseCategories.setArchivedAt(rent, LATER_AT, LATER_AT) }
-            assertEquals(listOf(other), awaitItem().map { it.id })
+            assertEquals(initialIds, awaitItem().map { it.id })
             assertEquals(
                 listOf(rent),
                 expenseCategories.observe(ArchiveFilter.ARCHIVED).first().map {

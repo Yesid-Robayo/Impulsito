@@ -3,6 +3,8 @@ package io.github.yesidrobayo.shopledger.data.local
 import androidx.room3.RoomDatabase
 import androidx.sqlite.SQLiteConnection
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.OTHER_EXPENSE_CATEGORY
+import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.settings.AppLockTimeout
@@ -17,8 +19,8 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 /**
  * Crea, al nacer la base, las filas que la app necesita desde la primera pantalla: la única de
  * `app_settings` y la única de `backup_state`, las dos con `id` 1, la cuenta de dinero `CASH`, las
- * unidades iniciales, la ubicación inicial, los seis métodos de pago y la lista de precios
- * inicial.
+ * unidades iniciales, la ubicación inicial, los seis métodos de pago, la lista de precios inicial
+ * y las categorías de gasto iniciales: las filas de [SeedTable].
  *
  * Room llama a [onCreate] solo cuando crea la base, dentro de la misma transacción exclusiva en
  * que crea las tablas y antes de fijar la versión: si una inserción falla, no queda ni la base a
@@ -29,8 +31,9 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
  * negocio nace sin moneda, y el formato, la zona y la semana salen de [initialRegion], que lee el
  * sistema solo cuando la base nace. Las filas iniciales de un catálogo llevan solo su clave estable
  * en inglés, sin nombre ni símbolo: el texto visible sale de los recursos traducibles de esa clave,
- * en el idioma de la interfaz, hasta que la persona lo edite. [clock] da el instante de
- * `updated_at`, y el de `created_at` donde lo hay.
+ * en el idioma de la interfaz, hasta que la persona lo edite. Ninguna es un dato del negocio: una
+ * base recién nacida sigue vacía para el respaldo. [clock] da el instante de `updated_at`, y el de
+ * `created_at` donde lo hay.
  */
 internal class InitialRowsCallback(
     private val clock: Clock,
@@ -75,6 +78,25 @@ internal class InitialRowsCallback(
             statement.bindLong(2, now)
             statement.step()
         }
+        insertExpenseCategories(connection, now)
+    }
+
+    /**
+     * Las categorías de gasto iniciales, en el orden en que se ofrecen, sin nombre y sin marcar
+     * ninguna como gasto fijo: eso lo decide la persona, para su punto de equilibrio. Solo la de
+     * otros gastos es del sistema, para que siempre haya dónde anotar un gasto.
+     */
+    private fun insertExpenseCategories(connection: SQLiteConnection, now: Long) {
+        connection.prepare(INSERT_EXPENSE_CATEGORY_SQL).use { statement ->
+            for (systemKey in SeedTable.EXPENSE_CATEGORIES.systemKeys) {
+                statement.reset()
+                statement.bindText(1, systemKey)
+                statement.bindLong(2, if (systemKey == OTHER_EXPENSE_CATEGORY) 1L else 0L)
+                statement.bindLong(3, now)
+                statement.bindLong(4, now)
+                statement.step()
+            }
+        }
     }
 
     /**
@@ -96,6 +118,11 @@ internal class InitialRowsCallback(
         }
     }
 }
+
+/** Una categoría de gasto inicial, sin nombre, vigente y sin marcar como gasto fijo. */
+private const val INSERT_EXPENSE_CATEGORY_SQL =
+    "INSERT INTO expense_categories (system_key, name, normalized_name, is_system, is_fixed, " +
+        "archived_at, created_at, updated_at) VALUES (?, NULL, NULL, ?, 0, NULL, ?, ?)"
 
 /**
  * Los tipos de los métodos iniciales, en su orden. La clave estable de cada uno es el nombre de
