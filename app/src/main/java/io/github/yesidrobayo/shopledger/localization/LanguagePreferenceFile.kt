@@ -98,12 +98,36 @@ class LanguagePreferenceFile(
         syncDirectory(folder)
     }
 
+    /**
+     * Si el idioma del archivo ya pasó a Android, lo que ocurre una sola vez, en el primer arranque
+     * en Android 13 o superior. Toca el disco, como [directory].
+     */
+    val handedToSystem: Boolean get() = File(directory(), HANDED_TO_SYSTEM_NAME).isFile
+
+    /**
+     * Deja la marca de [handedToSystem]. Es un archivo vacío: perderla en un corte de energía solo
+     * repite el paso, que no cambia nada si Android ya tiene un idioma.
+     *
+     * @throws IOException si no se pudo crear.
+     */
+    fun markHandedToSystem() {
+        val folder = directory()
+        folder.mkdirs()
+        val marker = File(folder, HANDED_TO_SYSTEM_NAME)
+        if (!marker.createNewFile() && !marker.isFile) {
+            throw IOException("No se pudo crear la marca del paso del idioma a Android")
+        }
+    }
+
     companion object {
         /** El nombre del archivo dentro de `noBackupFilesDir`. */
         const val FILE_NAME = "ui-language"
 
         /** El temporal de la escritura, que solo existe mientras dura. */
         const val TEMPORARY_NAME = "$FILE_NAME.tmp"
+
+        /** La marca de que el idioma del archivo ya pasó a Android 13 o superior, junto al archivo. */
+        const val HANDED_TO_SYSTEM_NAME = "$FILE_NAME.handed-to-system"
 
         /** Una etiqueta y su salto de línea caben con holgura. */
         const val MAX_BYTES = 64

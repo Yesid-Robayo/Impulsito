@@ -2,13 +2,19 @@ package io.github.yesidrobayo.shopledger.di
 
 import android.app.Application
 import io.github.yesidrobayo.shopledger.data.DataGraph
+import io.github.yesidrobayo.shopledger.data.UserTextPort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.localization.AndroidLocalePlatform
+import io.github.yesidrobayo.shopledger.localization.AndroidUserTextPort
 import io.github.yesidrobayo.shopledger.localization.AppLanguage
 import io.github.yesidrobayo.shopledger.localization.LanguagePreferenceFile
+import io.github.yesidrobayo.shopledger.localization.LocalizedContextProvider
+import io.github.yesidrobayo.shopledger.localization.LocalizedSurfaces
+import io.github.yesidrobayo.shopledger.localization.installedVersionOf
+import io.github.yesidrobayo.shopledger.notification.NotificationChannels
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,14 +46,36 @@ class AppContainer(application: Application) {
     /**
      * El idioma de la interfaz, guardado fuera de la base. Crearlo no toca el disco: el proceso lo
      * aplica después, antes de la primera actividad.
+     *
+     * Elegir uno vuelve a escribir en ese idioma los textos de fuera de la app, con
+     * [localizedSurfaces], que se declara más abajo: solo se usa al elegir, cuando ya existe.
      */
-    val language =
+    val language: AppLanguage =
         AppLanguage(
             file = LanguagePreferenceFile({ application.noBackupFilesDir }),
             platform = AndroidLocalePlatform(application),
             log = log,
             ioContext = dispatchers.io,
             mainContext = dispatchers.main,
+            afterChoice = { localizedSurfaces.refreshLocalizedSurfaces() },
+        )
+
+    /** El contexto en el idioma de la interfaz para lo que corre fuera de una actividad. */
+    val localizedContext: LocalizedContextProvider =
+        LocalizedContextProvider(application, language.language)
+
+    /** Los textos de los trabajos en segundo plano de la capa de datos, en el idioma elegido. */
+    val userText: UserTextPort = AndroidUserTextPort(localizedContext)
+
+    /** Los textos que viven fuera de la app, como los nombres de los canales de avisos. */
+    val localizedSurfaces: LocalizedSurfaces =
+        LocalizedSurfaces(
+            contexts = localizedContext,
+            surfaces = listOf(NotificationChannels(application, NotificationChannels.APP_CHANNELS)),
+            directory = { application.noBackupFilesDir },
+            installedVersion = { installedVersionOf(application) },
+            log = log,
+            ioContext = dispatchers.io,
         )
 
     /**

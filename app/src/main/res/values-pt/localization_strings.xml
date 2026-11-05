@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Portugués. -->
+
+    <!-- La etiqueta del idioma de esta carpeta, igual a su sufijo. No es un texto para la persona: dice en qué idioma
+         respondieron los recursos. Con ella la app sabe si los textos que viven fuera de ella, como el nombre de un canal de
+         avisos, quedaron en otro idioma. Una carpeta de idioma nueva lleva aquí su propia etiqueta. -->
+    <string name="resources_language">pt</string>
+</resources>

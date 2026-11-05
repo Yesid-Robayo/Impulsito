@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Solo para el APK de pruebas: la app no lo lleva. La biblioteca de pruebas de los trabajos en segundo plano trae el
+  proveedor de arranque de androidx en su manifiesto, pero sus clases ya vienen en la app y no entran en este APK. Si el
+  sistema abre el proceso de este APK, por ejemplo para la actividad vacía de las pruebas, el proveedor no encuentra su
+  clase, el proceso se cierra y su diálogo de error tapa la pantalla de las pruebas que siguen. Las pruebas corren en el
+  proceso de la app, que tiene su propio proveedor.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="remove" />
+    </application>
+</manifest>

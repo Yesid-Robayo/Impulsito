@@ -169,6 +169,30 @@ class LanguageDeviceTest {
     }
 
     @Test
+    fun onReachingAndroid13TheSavedLanguageIsHandedToAndroidOnce() {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        // Como un teléfono que llega a Android 13: Android sin idioma para la app, y el archivo con
+        // el idioma elegido antes, sin la marca del paso.
+        clearAndroidLanguage()
+        val file = LanguagePreferenceFile({ testDirectory })
+        file.write(chosen("es"))
+        val language = languageInTestFolder()
+
+        runBlocking { language.syncWithSystem() }
+
+        assertEquals("es", localeManager().applicationLocales.toLanguageTags())
+        assertEquals(chosen("es"), language.language.value)
+        assertTrue(file.handedToSystem)
+
+        // Después manda Android: la persona vuelve al idioma del teléfono desde sus ajustes.
+        clearAndroidLanguage()
+        runBlocking { language.syncWithSystem() }
+
+        assertTrue(localeManager().applicationLocales.isEmpty)
+        assertEquals(LanguageRead.Found(UiLanguage.System), file.read())
+    }
+
+    @Test
     fun fromAndroid13TheStartLeavesTheLanguageToAndroid() {
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         LanguagePreferenceFile({ testDirectory }).write(chosen("es"))
@@ -188,6 +212,13 @@ class LanguageDeviceTest {
     )
 
     private fun appLanguageFile() = LanguagePreferenceFile({ app.noBackupFilesDir })
+
+    // Quita el idioma de Android para la app, y espera a que el proceso lo copie a su archivo.
+    private fun clearAndroidLanguage() {
+        if (localeManager().applicationLocales.isEmpty) return
+        localeManager().applicationLocales = LocaleList.getEmptyLocaleList()
+        awaitAppFile(UiLanguage.System)
+    }
 
     private fun localeManager(): LocaleManager = app.getSystemService(LocaleManager::class.java)
 

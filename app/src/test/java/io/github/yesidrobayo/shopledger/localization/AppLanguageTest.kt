@@ -40,7 +40,10 @@ class AppLanguageTest {
             {},
         )
     }
-    private val language by lazy { AppLanguage(file, platform, log, dispatcher, dispatcher) }
+    private var choicesSeen = 0
+    private val language by lazy {
+        AppLanguage(file, platform, log, dispatcher, dispatcher) { choicesSeen += 1 }
+    }
 
     // Android 8 a 12L: el archivo manda.
 
@@ -134,6 +137,24 @@ class AppLanguageTest {
     }
 
     @Test
+    fun anAppliedChoiceRunsTheFollowUpAfterSaving() = runTest(dispatcher) {
+        platform.systemManages = false
+        language.choose(chosen("pt"))
+
+        assertEquals(1, choicesSeen)
+    }
+
+    @Test
+    fun aChoiceThatCannotBeSavedHasNoFollowUp() = runTest(dispatcher) {
+        platform.systemManages = false
+        blockWrites()
+
+        language.choose(chosen("pt"))
+
+        assertEquals(0, choicesSeen)
+    }
+
+    @Test
     fun aChoiceThatCannotBeSavedIsNotApplied() = runTest(dispatcher) {
         platform.systemManages = false
         file.write(chosen("es"))
@@ -193,6 +214,7 @@ class AppLanguageTest {
     fun goingBackToThePhoneLanguageInAndroidIsSaved() = runTest(dispatcher) {
         platform.systemManages = true
         file.write(chosen("es"))
+        file.markHandedToSystem()
         platform.system = UiLanguage.System
 
         language.syncWithSystem()
@@ -261,6 +283,113 @@ class AppLanguageTest {
         assertEquals(emptyList<UiLanguage>(), platform.applied)
         assertEquals(LanguageRead.Found(chosen("pt")), file.read())
         assertEquals(chosen("pt"), language.language.value)
+    }
+
+    // El paso a Android 13: una sola vez, solo si Android no tiene idioma.
+
+    @Test
+    fun theFirstSyncOnAndroid13HandsTheSavedLanguageToAndroid() = runTest(dispatcher) {
+        platform.systemManages = true
+        file.write(chosen("es"))
+        platform.system = UiLanguage.System
+
+        language.syncWithSystem()
+
+        assertEquals(listOf(chosen("es")), platform.systemSet)
+        assertEquals(chosen("es"), language.language.value)
+        assertEquals(LanguageRead.Found(chosen("es")), file.read())
+        assertTrue(file.handedToSystem)
+        assertEquals(
+            listOf("El idioma guardado antes de Android 13 pasó a los ajustes de Android"),
+            log.texts,
+        )
+    }
+
+    @Test
+    fun afterTheHandoffAndroidRulesEvenWithoutALanguage() = runTest(dispatcher) {
+        platform.systemManages = true
+        file.write(chosen("es"))
+        platform.system = UiLanguage.System
+        language.syncWithSystem()
+        // La persona vuelve al idioma del teléfono desde los ajustes de Android.
+        platform.system = UiLanguage.System
+
+        language.syncWithSystem()
+
+        assertEquals(listOf(chosen("es")), platform.systemSet)
+        assertEquals(LanguageRead.Found(UiLanguage.System), file.read())
+        assertEquals(UiLanguage.System, language.language.value)
+    }
+
+    @Test
+    fun aLanguageAlreadyInAndroidIsNotReplacedByTheFile() = runTest(dispatcher) {
+        platform.systemManages = true
+        file.write(chosen("es"))
+        platform.system = chosen("pt")
+
+        language.syncWithSystem()
+
+        assertEquals(emptyList<UiLanguage>(), platform.systemSet)
+        assertEquals(LanguageRead.Found(chosen("pt")), file.read())
+        assertTrue(file.handedToSystem)
+    }
+
+    @Test
+    fun withoutAChosenLanguageThereIsNothingToHand() = runTest(dispatcher) {
+        platform.systemManages = true
+        file.write(UiLanguage.System)
+        platform.system = UiLanguage.System
+
+        language.syncWithSystem()
+
+        assertEquals(emptyList<UiLanguage>(), platform.systemSet)
+        assertTrue(file.handedToSystem)
+    }
+
+    @Test
+    fun beforeAndroid13NothingIsHanded() = runTest(dispatcher) {
+        platform.systemManages = false
+        file.write(chosen("es"))
+
+        language.syncWithSystem()
+
+        assertFalse(file.handedToSystem)
+        assertEquals(emptyList<UiLanguage>(), platform.systemSet)
+    }
+
+    @Test
+    fun aHandoffMarkThatCannotBeSavedIsLoggedAndTheSyncGoesOn() = runTest(dispatcher) {
+        platform.systemManages = true
+        file.write(chosen("es"))
+        platform.system = UiLanguage.System
+        // Una carpeta con contenido en el lugar de la marca impide crearla como archivo.
+        File(directory, LanguagePreferenceFile.HANDED_TO_SYSTEM_NAME).apply { mkdirs() }
+            .resolve("inside")
+            .writeText("x")
+
+        language.syncWithSystem()
+
+        assertEquals(chosen("es"), language.language.value)
+        assertEquals(
+            listOf(
+                "El idioma guardado antes de Android 13 pasó a los ajustes de Android",
+                "No se pudo completar el paso del idioma a Android: se repite al arrancar: " +
+                    "error=java.io.IOException",
+            ),
+            log.texts,
+        )
+    }
+
+    @Test
+    fun aFolderThatCannotBeReachedDoesNotStopTheSync() = runTest(dispatcher) {
+        platform.systemManages = true
+        platform.system = chosen("pt")
+        failDirectory = true
+
+        language.syncWithSystem()
+
+        assertEquals(chosen("pt"), language.language.value)
+        assertTrue(log.texts.isNotEmpty())
     }
 
     @Test

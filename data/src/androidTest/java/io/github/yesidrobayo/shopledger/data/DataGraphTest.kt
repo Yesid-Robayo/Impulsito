@@ -58,10 +58,39 @@ class DataGraphTest {
 
     @Test
     fun creatingTheGraphDoesNotTouchTheDisk() {
-        DataGraph(context, Dispatchers.IO, FIXED_CLOCK, file, log)
+        DataGraph(context, Dispatchers.IO, FIXED_CLOCK, { file }, log)
 
         assertFalse(file.exists())
         assertTrue(log.lines.isEmpty())
+    }
+
+    @Test
+    fun theDatabasePathIsAskedOnlyWhenOpeningAndOnTheDiskContext() = runBlocking {
+        // Pedir la carpeta de bases toca el disco: Android la crea si falta. Crear el grafo ocurre
+        // en el hilo principal al arrancar, así que la ruta solo se pide al abrir.
+        val executor = Executors.newSingleThreadExecutor { Thread(it, IO_THREAD) }
+        try {
+            val askedFrom = mutableListOf<String>()
+            val graph =
+                DataGraph(
+                    context,
+                    executor.asCoroutineDispatcher(),
+                    FIXED_CLOCK,
+                    {
+                        askedFrom += Thread.currentThread().name
+                        file
+                    },
+                    log,
+                )
+            assertTrue(askedFrom.isEmpty())
+
+            graph.open()
+            graph.open()
+
+            assertEquals(listOf(IO_THREAD), askedFrom)
+        } finally {
+            executor.shutdown()
+        }
     }
 
     @Test
@@ -122,7 +151,7 @@ class DataGraphTest {
                     context,
                     io,
                     FIXED_CLOCK,
-                    file,
+                    { file },
                     object : EventLog {
                         override fun write(level: LogLevel, line: LogLine) {
                             writerThread.complete(Thread.currentThread().name)
@@ -183,7 +212,7 @@ class DataGraphTest {
         assertTrue(graph.open() is DataAccess.Ready)
     }
 
-    private fun graph(): DataGraph = DataGraph(context, Dispatchers.IO, FIXED_CLOCK, file, log)
+    private fun graph(): DataGraph = DataGraph(context, Dispatchers.IO, FIXED_CLOCK, { file }, log)
 
     /** Una base de una versión más nueva de la app, con sus filas: Room no la sabe abrir. */
     private fun writeNewerDatabase() {

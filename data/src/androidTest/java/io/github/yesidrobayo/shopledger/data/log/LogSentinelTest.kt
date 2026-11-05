@@ -135,7 +135,7 @@ class LogSentinelTest {
     }
 
     private fun graph(): DataGraph =
-        DataGraph(context, Dispatchers.IO, FIXED_CLOCK, file, AndroidEventLog())
+        DataGraph(context, Dispatchers.IO, FIXED_CLOCK, { file }, AndroidEventLog())
 
     private suspend fun writeSentinelBusiness(ports: DataPorts) {
         val profile =

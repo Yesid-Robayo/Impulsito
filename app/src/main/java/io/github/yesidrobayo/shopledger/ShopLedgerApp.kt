@@ -20,6 +20,10 @@ import kotlinx.coroutines.launch
  * crear el contenedor: el modo seguro tras varios fallos seguidos y la restauración pendiente, que
  * debe terminar antes de que nada abra la base. El idioma no depende de ellas, porque no vive en la
  * base y restaurar no lo cambia.
+ *
+ * Los textos que viven fuera de la app, como los nombres de los canales de avisos, se revisan al
+ * arrancar y con cada cambio de configuración: un idioma cambiado con la app cerrada, o desde los
+ * ajustes de Android, llega por uno de los dos caminos.
  */
 class ShopLedgerApp : Application() {
     /** Las dependencias de la app. Existe desde [onCreate] hasta que el proceso termina. */
@@ -46,19 +50,23 @@ class ShopLedgerApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.language.applyAtProcessStart()
-        syncLanguageWithSystem()
+        followLanguage()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        // Desde Android 13, un idioma cambiado en los ajustes de Android con la app abierta llega
-        // por aquí.
-        syncLanguageWithSystem()
+        // Desde Android 13, el idioma elegido en la app o en los ajustes de Android llega por aquí
+        // después de elegirlo, y en cualquier versión, el del teléfono cuando la app lo sigue.
+        followLanguage()
     }
 
-    // Desde Android 13 lo que diga Android manda, y se copia al archivo de idioma fuera del hilo
-    // principal. Antes no hace nada.
-    private fun syncLanguageWithSystem() {
-        container.applicationScope.launch { container.language.syncWithSystem() }
+    // Fuera del hilo principal. Desde Android 13 lo que diga Android manda y se copia al archivo de
+    // idioma; antes eso no hace nada. Después, los textos de fuera de la app se vuelven a escribir
+    // solo si cambió el idioma de sus recursos o la versión instalada.
+    private fun followLanguage() {
+        container.applicationScope.launch {
+            container.language.syncWithSystem()
+            container.localizedSurfaces.refreshLocalizedSurfaces()
+        }
     }
 }

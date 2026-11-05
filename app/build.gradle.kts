@@ -131,6 +131,9 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
+    // Un trabajo de prueba, como los de la capa de datos, comprueba que recibe sus textos por el puerto y en el idioma
+    // elegido. Solo en las pruebas: la app todavía no tiene trabajos en segundo plano.
+    androidTestImplementation(libs.androidx.work.testing)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

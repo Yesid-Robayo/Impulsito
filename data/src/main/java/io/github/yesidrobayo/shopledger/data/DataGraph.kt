@@ -38,12 +38,15 @@ import kotlinx.coroutines.withContext
  * Una sola instancia por proceso: la base abierta vive en ella.
  *
  * @param ioContext contexto de las lecturas y escrituras del disco, fuera del hilo principal.
+ * @param databaseFile da el archivo de la base. Se pide al abrir, en [ioContext], y no al crear esta
+ *   clase: pedir la carpeta de bases toca el disco, porque Android la crea si falta, y crear esta
+ *   clase ocurre en el hilo principal al arrancar el proceso.
  */
 class DataGraph internal constructor(
     private val context: Context,
     private val ioContext: CoroutineContext,
     private val clock: Clock,
-    private val databaseFile: File,
+    private val databaseFile: () -> File,
     /** El único punto de registro de la app. */
     val log: EventLog,
 ) {
@@ -56,7 +59,7 @@ class DataGraph internal constructor(
         context.applicationContext,
         ioContext,
         clock,
-        DatabaseFiles.databaseFile(context),
+        { DatabaseFiles.databaseFile(context) },
         AndroidEventLog(),
     )
 
@@ -81,16 +84,18 @@ class DataGraph internal constructor(
 
     private suspend fun openDatabase(): DataAccess {
         val started = TimeSource.Monotonic.markNow()
-        val database =
+        // La ruta se pide aquí, ya en el contexto del disco.
+        val (file, database) =
             try {
-                AppDatabase.open(context, databaseFile, ioContext, clock)
+                val path = databaseFile()
+                path to AppDatabase.open(context, path, ioContext, clock)
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (failure: Exception) {
                 log.error(DataEvent.DATABASE_OPEN_FAILED, failure)
                 return DataAccess.Unavailable
             }
-        val opened = DataAccess.Ready(DataPorts(database, databaseFile, ioContext, clock))
+        val opened = DataAccess.Ready(DataPorts(database, file, ioContext, clock))
         ready = opened
         log.info(
             DataEvent.DATABASE_OPENED,

@@ -32,10 +32,17 @@ import kotlinx.coroutines.withContext
  * archivo al abrir la app y cuando cambia la configuración. Las llamadas a Android van fuera del
  * hilo principal, porque el sistema puede leer su disco dentro de ellas.
  *
+ * **Al llegar a Android 13.** Un idioma elegido en Android 8 a 12L vive solo en el archivo, y
+ * Android arranca sin idioma para la app. La primera vez, [syncWithSystem] se lo pasa a Android
+ * antes de copiar en sentido contrario, y deja una marca para no hacerlo nunca más: actualizar el
+ * teléfono no cambia el idioma de la app.
+ *
  * Una sola instancia por proceso: el idioma en memoria y el cerrojo de las escrituras viven en ella.
  *
  * @param ioContext contexto del disco y de las llamadas a Android que pueden tocarlo.
  * @param mainContext el hilo principal, donde AppCompat aplica el idioma a las actividades.
+ * @param afterChoice corre cuando [choose] aplicó un idioma, fuera del cerrojo de este idioma: ahí
+ *   la app vuelve a escribir en el idioma nuevo los textos que viven fuera de ella.
  */
 class AppLanguage(
     private val file: LanguagePreferenceFile,
@@ -43,6 +50,7 @@ class AppLanguage(
     private val log: EventLog,
     private val ioContext: CoroutineContext,
     private val mainContext: CoroutineContext,
+    private val afterChoice: suspend () -> Unit = {},
 ) {
     private val mutex = Mutex()
     private val current = MutableStateFlow<UiLanguage>(UiLanguage.System)
@@ -81,6 +89,9 @@ class AppLanguage(
      * donde llega un idioma cambiado en los ajustes de Android con la app abierta. En Android 8 a
      * 12L no hace nada: ahí el archivo manda.
      *
+     * La primera vez en Android 13 o superior, antes de copiar, le pasa a Android el idioma que el
+     * archivo trae de Android 8 a 12L, si Android no tiene ninguno.
+     *
      * Nunca lanza: si no puede escribir, lo registra, y el idioma en pantalla sigue siendo el de
      * Android.
      */
@@ -88,6 +99,7 @@ class AppLanguage(
         if (!platform.systemManagesAppLanguage) return
         mutex.withLock {
             withContext(ioContext) {
+                handToSystemOnce()
                 val system = platform.systemAppLanguage()
                 current.value = system
                 // Sin archivo y siguiendo al teléfono no hay nada que copiar: es un teléfono nuevo.
@@ -111,9 +123,18 @@ class AppLanguage(
      *   actividades, y después lo copia al archivo. Si el archivo no se pudo escribir, el idioma
      *   igual cambió, porque Android manda, y el arranque siguiente vuelve a copiarlo.
      *
+     * Después corre `afterChoice`, que en la app vuelve a escribir los textos de fuera de ella, y
+     * solo entonces devuelve.
+     *
      * No cambia el formato regional ni la moneda.
      */
-    suspend fun choose(language: UiLanguage): LanguageChoice = mutex.withLock {
+    suspend fun choose(language: UiLanguage): LanguageChoice {
+        val choice = chooseLocked(language)
+        if (choice == LanguageChoice.Applied) afterChoice()
+        return choice
+    }
+
+    private suspend fun chooseLocked(language: UiLanguage): LanguageChoice = mutex.withLock {
         if (platform.systemManagesAppLanguage) {
             withContext(ioContext) {
                 platform.setSystemAppLanguage(language)
@@ -126,6 +147,24 @@ class AppLanguage(
             current.value = language
             withContext(mainContext) { platform.applyToActivities(language) }
             LanguageChoice.Applied
+        }
+    }
+
+    // Lo que pide el paso a Android 13: una sola vez, y solo si el archivo trae un idioma elegido y
+    // Android no tiene ninguno. Con la marca puesta manda Android, aunque después la persona vuelva
+    // al idioma del teléfono desde sus ajustes. Si la marca no se puede guardar, se repite en el
+    // arranque siguiente, lo que solo cambia algo si Android sigue sin idioma.
+    private fun handToSystemOnce() {
+        try {
+            if (file.handedToSystem) return
+            val saved = readFile().language
+            if (saved is UiLanguage.Chosen && platform.systemAppLanguage() == UiLanguage.System) {
+                platform.setSystemAppLanguage(saved)
+                log.info(LanguageEvent.GIVEN_TO_SYSTEM)
+            }
+            file.markHandedToSystem()
+        } catch (failure: IOException) {
+            log.warn(LanguageEvent.HANDOFF_FAILED, failure)
         }
     }
 
@@ -174,4 +213,6 @@ internal enum class LanguageEvent(override val text: String) : LogEvent {
     FILE_READ_FAILED("No se pudo leer el archivo de idioma: sigue al teléfono"),
     FILE_WRITE_FAILED("No se pudo guardar el idioma"),
     TAKEN_FROM_SYSTEM("El idioma de los ajustes de Android reemplazó al guardado"),
+    GIVEN_TO_SYSTEM("El idioma guardado antes de Android 13 pasó a los ajustes de Android"),
+    HANDOFF_FAILED("No se pudo completar el paso del idioma a Android: se repite al arrancar"),
 }
