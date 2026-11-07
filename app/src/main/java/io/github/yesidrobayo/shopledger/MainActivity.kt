@@ -34,8 +34,9 @@ import kotlinx.coroutines.launch
  *
  * La paleta y el modo viven en la base, que se abre fuera del hilo principal. Hasta leerlos se ve
  * solo el papel de la paleta predeterminada, sin contenido: así no aparece un destello de otros
- * colores. Si la base no abre, la navegación sigue con la paleta predeterminada y el tema del
- * teléfono; la pantalla de rescate llega con la compuerta del arranque.
+ * colores. Mientras la compuerta del arranque copia y migra, también se ve solo ese papel. Si la
+ * compuerta manda al rescate, la navegación sigue con la paleta predeterminada y el tema del
+ * teléfono, hasta que exista la pantalla de rescate.
  *
  * Es una [AppCompatActivity] porque en Android 8 a 12 el idioma elegido dentro de la app solo se
  * aplica a ese tipo de actividad. Sigue siendo una `FragmentActivity`, así que el desbloqueo con
@@ -65,8 +66,9 @@ class MainActivity : AppCompatActivity() {
                             .collect { shownAppearance.value = it }
                     }
 
-                // La causa ya quedó registrada por su clase.
-                DataAccess.Unavailable -> dataUnavailable.value = true
+                // La causa ya quedó registrada. La pantalla de rescate todavía no existe: hasta
+                // entonces sigue la navegación, que no lee la base.
+                is DataAccess.Rescue -> dataUnavailable.value = true
             }
         }
         setContent {

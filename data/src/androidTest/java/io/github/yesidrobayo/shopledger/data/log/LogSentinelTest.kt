@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.data.log
 
 import android.util.Log
+import androidx.sqlite.SQLiteException
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -8,7 +9,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.DataGraph
 import io.github.yesidrobayo.shopledger.data.DataPorts
+import io.github.yesidrobayo.shopledger.data.RescueCause
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.inspectWithoutRoom
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
@@ -43,23 +46,26 @@ import org.junit.runner.RunWith
  * sus fallas, y al final el registro del sistema, leído como `adb logcat -d`, no trae ninguno.
  *
  * Hoy recorre lo que existe: los ajustes del negocio, un producto con su precio, una escritura que
- * la base rechaza, una base ajena que no abre y una falla no prevista con todos los centinelas en
- * su mensaje. Cada tarea que agrega un camino con datos, como la venta, el respaldo, la
+ * la base rechaza, una base de una app más nueva y otra dañada, que van al rescate, y una falla no
+ * prevista con todos los centinelas en su mensaje. Cada tarea que agrega un camino con datos, como la venta, el respaldo, la
  * restauración o un trabajo en segundo plano, lo suma aquí con los mismos valores.
  */
 @RunWith(AndroidJUnit4::class)
 class LogSentinelTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val file = testDatabaseFile(context, "log-sentinel-test.db")
+    private val markerDirectory = File(context.noBackupFilesDir, "log-sentinel-test")
 
     @Before
     fun clean() {
         deleteDatabaseFiles(file)
+        markerDirectory.deleteRecursively()
     }
 
     @After
     fun cleanUp() {
         deleteDatabaseFiles(file)
+        markerDirectory.deleteRecursively()
     }
 
     @Test
@@ -114,15 +120,28 @@ class LogSentinelTest {
     }
 
     @Test
-    fun aDatabaseThatDoesNotOpenIsLoggedByItsClassOnly() = runBlocking {
+    fun aDatabaseFromANewerAppIsLoggedWithoutItsRows() = runBlocking {
         writeForeignDatabaseWithSentinels(file)
         val capture = LogcatCapture.start()
 
         val access = graph().open()
 
-        assertEquals(DataAccess.Unavailable, access)
+        assertEquals(DataAccess.Rescue(RescueCause.NewerVersion), access)
         capture.assertClean()
-        capture.assertAppLogged("La base no abrió: error=" + IllegalStateException::class.java.name)
+        capture.assertAppLogged("La base es de una versión más nueva de la app, y no se abre")
+    }
+
+    @Test
+    fun aDatabaseThatDoesNotOpenIsLoggedByItsClassOnly() = runBlocking {
+        // Un archivo dañado que trae los centinelas en sus bytes.
+        file.writeText(LogSentinels.all.joinToString(" ").repeat(50))
+        val capture = LogcatCapture.start()
+
+        val access = graph().open()
+
+        assertEquals(DataAccess.Rescue(RescueCause.OpenFailed), access)
+        capture.assertClean()
+        capture.assertAppLogged("La base no abrió: error=" + SQLiteException::class.java.name)
     }
 
     /** Una base de una versión más nueva de la app, con los centinelas en sus filas. */
@@ -134,8 +153,13 @@ class LogSentinelTest {
         }
     }
 
-    private fun graph(): DataGraph =
-        DataGraph(context, Dispatchers.IO, FIXED_CLOCK, { file }, AndroidEventLog())
+    private fun graph(): DataGraph = DataGraph(
+        context,
+        Dispatchers.IO,
+        FIXED_CLOCK,
+        { DatabaseFiles(file, markerDirectory) },
+        AndroidEventLog(),
+    )
 
     private suspend fun writeSentinelBusiness(ports: DataPorts) {
         val profile =

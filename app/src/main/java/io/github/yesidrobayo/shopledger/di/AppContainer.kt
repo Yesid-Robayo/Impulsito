@@ -24,9 +24,10 @@ import kotlinx.coroutines.SupervisorJob
  * sin bibliotecas de inyección ni objetos globales.
  *
  * Lo crea [io.github.yesidrobayo.shopledger.ShopLedgerApp] una sola vez por proceso, y vive lo
- * mismo que él. Crearlo es barato y no toca el disco: la base se abre con [DataGraph.open], fuera
- * del hilo principal, cuando la primera pantalla o el primer trabajo la piden. Las pantallas
- * reciben sus casos de uso desde aquí, y nunca las clases de `:data`.
+ * mismo que él. Crearlo es barato y no toca el disco: la base se abre fuera del hilo principal,
+ * con [DataGraph.open] cuando la pide la primera pantalla, o con [DataGraph.openForWork] cuando la
+ * pide un trabajo en segundo plano, que nunca migra. Las pantallas reciben sus casos de uso desde
+ * aquí, y nunca las clases de `:data`.
  *
  * Las pruebas no lo usan: construyen cada clase con dobles.
  */
