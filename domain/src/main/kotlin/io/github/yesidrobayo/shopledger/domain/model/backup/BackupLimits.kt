@@ -14,4 +14,10 @@ object BackupLimits {
      * bases mucho más grandes que el volumen de referencia.
      */
     const val MAX_BACKUP_DOWNLOAD_BYTES: Long = 512L * 1024 * 1024
+
+    /**
+     * La mayor base, sin comprimir, que se acepta restaurar: 1 GiB, más de siete veces el volumen
+     * de referencia. Una copia que diga ser más grande no cuenta como copia.
+     */
+    const val MAX_RESTORE_DECOMPRESSED_BYTES: Long = 1024L * 1024 * 1024
 }
