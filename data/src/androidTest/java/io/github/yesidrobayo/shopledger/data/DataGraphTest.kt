@@ -10,9 +10,11 @@ import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.PreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.local.PreMigrationResult
 import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
+import io.github.yesidrobayo.shopledger.data.local.fileUserVersion
 import io.github.yesidrobayo.shopledger.data.local.inspectWithoutRoom
 import io.github.yesidrobayo.shopledger.data.local.longValue
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
+import io.github.yesidrobayo.shopledger.data.local.texts
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.repository.AT
 import io.github.yesidrobayo.shopledger.data.transaction.FIXED_CLOCK
@@ -321,14 +323,14 @@ class DataGraphTest {
     }
 
     @Test
-    fun aWorkerNeverMigratesAndTheAppDoesNotWithoutItsCopy() = runBlocking {
+    fun aWorkerNeverMigratesAndTheAppDoesNotWithoutTheCopy() = runBlocking {
         AppDatabase.open(context, file, Dispatchers.IO, FIXED_CLOCK).close()
         files.markInitialized()
         // La app de la prueba compila una versión más: la base quedó en la anterior.
         val graph = graph(schemaVersion = AppDatabase.SCHEMA_VERSION + 1)
 
         assertEquals(WorkAccess.MigrationPending, graph.openForWork())
-        // Hoy la app todavía no hace la copia previa, así que no migra.
+        // Si la copia previa no se pudo hacer, la app tampoco migra.
         assertEquals(DataAccess.Rescue(RescueCause.PreMigrationCopyFailed), graph.open())
 
         val versions =
@@ -343,6 +345,30 @@ class DataGraphTest {
         assertEquals(
             AppDatabase.SCHEMA_VERSION.toLong(),
             inspectWithoutRoom(file) { it.longValue("PRAGMA user_version") },
+        )
+    }
+
+    @Test
+    fun theAppLeavesThePreviousCopyBeforeOpeningAnOlderDatabase() = runBlocking {
+        AppDatabase.open(context, file, Dispatchers.IO, FIXED_CLOCK).close()
+        files.markInitialized()
+        // Con la copia de la app: la de producción, en la carpeta de la marca.
+        val graph =
+            DataGraph(
+                context,
+                Dispatchers.IO,
+                FIXED_CLOCK,
+                { files },
+                log,
+                schemaVersion = AppDatabase.SCHEMA_VERSION + 1,
+            )
+
+        assertTrue(graph.open() is DataAccess.Ready)
+
+        assertEquals(AppDatabase.SCHEMA_VERSION, fileUserVersion(files.preMigrationCandidate))
+        assertEquals(
+            listOf("ok"),
+            inspectWithoutRoom(files.preMigrationCandidate) { it.texts("PRAGMA integrity_check") },
         )
     }
 

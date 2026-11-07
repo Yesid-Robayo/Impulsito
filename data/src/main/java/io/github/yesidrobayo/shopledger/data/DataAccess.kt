@@ -60,4 +60,12 @@ sealed interface RescueCause {
      * pierde filas sin fallar no tendría vuelta atrás.
      */
     data object PreMigrationCopyFailed : RescueCause
+
+    /**
+     * No cabe la copia previa a migrar, así que no se copió ni se migró, y la base quedó como
+     * estaba. La pantalla de rescate dice cuánto falta y ofrece `Reintentar`.
+     *
+     * @property missingBytes cuánto hay que liberar, en bytes.
+     */
+    data class NotEnoughSpace(val missingBytes: Long) : RescueCause
 }

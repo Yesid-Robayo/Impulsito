@@ -7,7 +7,7 @@ import io.github.yesidrobayo.shopledger.data.local.DatabaseGate
 import io.github.yesidrobayo.shopledger.data.local.GateCaller
 import io.github.yesidrobayo.shopledger.data.local.GateOutcome
 import io.github.yesidrobayo.shopledger.data.local.PreMigrationCopy
-import io.github.yesidrobayo.shopledger.data.local.PreMigrationResult
+import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -45,7 +45,7 @@ import kotlinx.coroutines.withContext
  *   clase ocurre en el hilo principal al arrancar el proceso.
  * @param schemaVersion la versión del esquema que compila la app. Solo las pruebas la cambian, para
  *   ver una base de una versión anterior sin tener todavía una segunda versión.
- * @param preMigrationCopy deja la copia previa a migrar de esos archivos.
+ * @param preMigrationCopy deja la copia previa a migrar de esos archivos, en `pre-migration/`.
  */
 class DataGraph internal constructor(
     private val context: Context,
@@ -55,7 +55,9 @@ class DataGraph internal constructor(
     /** El único punto de registro de la app. */
     val log: EventLog,
     private val schemaVersion: Int = AppDatabase.SCHEMA_VERSION,
-    private val preMigrationCopy: (DatabaseFiles) -> PreMigrationCopy = { noPreMigrationCopy },
+    private val preMigrationCopy: (DatabaseFiles) -> PreMigrationCopy = {
+        VacuumPreMigrationCopy(it, log)
+    },
 ) {
     private val mutex = Mutex()
 
@@ -147,14 +149,5 @@ class DataGraph internal constructor(
 
             is GateOutcome.Rescue -> DataAccess.Rescue(outcome.cause)
         }
-    }
-
-    private companion object {
-        /**
-         * Mientras la app no sepa hacer la copia previa, no migra: sin esa copia, un salto que
-         * pierde filas sin fallar no tendría vuelta atrás. Hoy no hay ningún salto, así que nunca
-         * se llega aquí.
-         */
-        val noPreMigrationCopy = PreMigrationCopy { PreMigrationResult.Failed }
     }
 }

@@ -26,13 +26,22 @@ import java.io.IOException
  * @param database ruta absoluta del archivo de la base.
  * @param noBackupDirectory carpeta de la marca; en la app, `noBackupFilesDir`.
  */
-internal class DatabaseFiles(val database: File, noBackupDirectory: File) {
+internal class DatabaseFiles(val database: File, val noBackupDirectory: File) {
     init {
         require(database.isAbsolute) { "La ruta de la base debe ser absoluta" }
     }
 
     /** La marca de que la base ya existió. Vacía: solo cuenta que exista. */
     val initializedMarker: File = File(noBackupDirectory, INITIALIZED_MARKER_NAME)
+
+    /** La carpeta de la copia previa a migrar. Nunca se sube. */
+    val preMigrationDirectory: File = File(noBackupDirectory, PRE_MIGRATION_DIRECTORY_NAME)
+
+    /** La copia previa a migrar: la última, entera y comprobada. */
+    val preMigrationCandidate: File = File(preMigrationDirectory, PRE_MIGRATION_CANDIDATE_NAME)
+
+    /** El temporal de la copia previa, mientras se escribe. Nunca tiene el nombre final. */
+    val preMigrationTemporary: File = File(preMigrationDirectory, PRE_MIGRATION_TEMPORARY_NAME)
 
     /** Qué hay en disco antes de abrir la base. Lee el disco. */
     fun state(): DatabaseFileState = when {
@@ -64,6 +73,11 @@ internal class DatabaseFiles(val database: File, noBackupDirectory: File) {
 
         /** El nombre de la marca, en `noBackupFilesDir`. */
         const val INITIALIZED_MARKER_NAME = "db_initialized"
+
+        /** La carpeta de la copia previa a migrar, en `noBackupFilesDir`. */
+        const val PRE_MIGRATION_DIRECTORY_NAME = "pre-migration"
+        const val PRE_MIGRATION_CANDIDATE_NAME = "candidate.db"
+        const val PRE_MIGRATION_TEMPORARY_NAME = "candidate.tmp"
 
         /**
          * La ruta absoluta de la base en [context]. Toca el disco: Android crea la carpeta de bases

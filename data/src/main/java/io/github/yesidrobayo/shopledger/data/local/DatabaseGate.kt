@@ -50,6 +50,9 @@ internal sealed interface PreMigrationResult {
     /** La copia está en disco y se puede migrar. */
     data object Ready : PreMigrationResult
 
+    /** No cabe la copia: no se migra. [missingBytes] es cuánto falta liberar. */
+    data class NotEnoughSpace(val missingBytes: Long) : PreMigrationResult
+
     /** No hay copia: no se migra. */
     data object Failed : PreMigrationResult
 }
@@ -141,8 +144,15 @@ internal class DatabaseGate<D : Any>(
         }
 
     private suspend fun migrate(version: Int): GateOutcome<D> {
-        when (preMigrationCopy.prepare(version)) {
+        when (val copy = preMigrationCopy.prepare(version)) {
             PreMigrationResult.Ready -> Unit
+
+            is PreMigrationResult.NotEnoughSpace ->
+                return rescue(
+                    RescueCause.NotEnoughSpace(copy.missingBytes),
+                    version,
+                    LogField.count("faltan_bytes", copy.missingBytes),
+                )
 
             PreMigrationResult.Failed ->
                 return rescue(RescueCause.PreMigrationCopyFailed, version)
@@ -188,7 +198,11 @@ internal class DatabaseGate<D : Any>(
         return GateOutcome.Opened(database)
     }
 
-    private fun rescue(cause: RescueCause, version: Int? = null): GateOutcome<D> {
+    private fun rescue(
+        cause: RescueCause,
+        version: Int? = null,
+        vararg extra: LogField,
+    ): GateOutcome<D> {
         val event =
             when (cause) {
                 RescueCause.DatabaseMissing -> DataEvent.DATABASE_MISSING
@@ -196,8 +210,9 @@ internal class DatabaseGate<D : Any>(
                 RescueCause.OpenFailed -> DataEvent.DATABASE_OPEN_FAILED
                 RescueCause.MigrationFailed -> DataEvent.MIGRATION_FAILED
                 RescueCause.PreMigrationCopyFailed -> DataEvent.PRE_MIGRATION_COPY_MISSING
+                is RescueCause.NotEnoughSpace -> DataEvent.PRE_MIGRATION_NO_SPACE
             }
-        if (version == null) log.error(event) else log.error(event, *versions(version))
+        if (version == null) log.error(event) else log.error(event, *versions(version), *extra)
         return GateOutcome.Rescue(cause)
     }
 
