@@ -2,13 +2,16 @@ package io.github.yesidrobayo.shopledger.data.local.backup
 
 import androidx.room3.Dao
 import androidx.room3.Query
+import io.github.yesidrobayo.shopledger.data.backup.NeutralCounts
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Lecturas y escrituras de la única fila de `backup_state`.
  *
- * No hay inserción ni borrado: la fila nace con la base y dura lo que ella. Las escrituras del
- * motor de respaldo llegan con él, cada una con un `UPDATE` de solo sus columnas.
+ * No hay inserción ni borrado: la fila nace con la base y dura lo que ella. Cada escritura del motor
+ * de respaldo es un `UPDATE` de solo sus columnas, nunca de la fila entera, para no perder un
+ * `change_seq` que una venta subió a la vez. No pasan por la transacción de los casos de uso ni
+ * cuentan como cambio.
  */
 @Dao
 internal interface BackupStateDao {
@@ -36,4 +39,104 @@ internal interface BackupStateDao {
             "first_unsynced_at = COALESCE(first_unsynced_at, :now) WHERE id = 1",
     )
     suspend fun markChanged(now: Long): Int
+
+    /**
+     * Si la base no tiene nada del negocio que respaldar: ni productos, proveedores ni clientes, ni
+     * ventas, compras, gastos, cotizaciones, pedidos ni movimientos de dinero. Una base así nunca
+     * sube, para que no tape en el destino una copia con datos.
+     */
+    @Query(NeutralCounts.IS_EMPTY)
+    suspend fun isEmpty(): Boolean
+
+    /** Anota que empezó una ejecución del respaldo, con el reloj de pared en milisegundos UTC. */
+    @Query("UPDATE backup_state SET last_attempt_at = :now WHERE id = 1")
+    suspend fun markAttempt(now: Long): Int
+
+    /**
+     * Guarda la intención de subida antes de escribir nada en el destino: si el proceso muere a
+     * mitad, la ejecución siguiente sabe qué copia estaba en camino.
+     */
+    @Query(
+        "UPDATE backup_state SET pending_generation = :generation, pending_seq = :seq, " +
+            "pending_sha256 = :sha256, pending_size_bytes = :sizeBytes WHERE id = 1",
+    )
+    suspend fun saveIntent(generation: Long, seq: Long, sha256: String, sizeBytes: Long): Int
+
+    /** Olvida la intención de subida: esa copia nunca se confirma. */
+    @Query(
+        "UPDATE backup_state SET pending_generation = NULL, pending_seq = NULL, " +
+            "pending_sha256 = NULL, pending_size_bytes = NULL WHERE id = 1",
+    )
+    suspend fun clearIntent(): Int
+
+    /**
+     * Anota que se envió el último byte de una copia. Es la base del intervalo en red medida, y no
+     * prueba nada de la copia: solo que esos datos ya se gastaron.
+     */
+    @Query("UPDATE backup_state SET last_upload_finished_at = :now WHERE id = 1")
+    suspend fun markUploadFinished(now: Long): Int
+
+    /** Deja [code] como el fallo de la última ejecución: el nombre guardado de su enum. */
+    @Query("UPDATE backup_state SET failure_code = :code WHERE id = 1")
+    suspend fun recordFailure(code: String): Int
+
+    /**
+     * Pasa el enlace a [linkState] si sigue conectado al destino [destinationId]. Si la persona
+     * desconectó o cambió de destino mientras tanto, no cambia nada y devuelve 0: lo que pasó con el
+     * destino anterior ya no importa.
+     */
+    @Query(
+        "UPDATE backup_state SET link_state = :linkState WHERE id = 1 " +
+            "AND link_state = 'CONNECTED' AND destination_id = :destinationId",
+    )
+    suspend fun leaveConnected(linkState: String, destinationId: String): Int
+
+    /**
+     * Detiene las copias por un conflicto de clase [kind] con el destino [destinationId], si sigue
+     * conectado a él. Devuelve 0 si ya no lo está.
+     */
+    @Query(
+        "UPDATE backup_state SET link_state = 'CONFLICT', conflict_kind = :kind, " +
+            "conflict_generation = :generation, conflict_device_id = :deviceId, " +
+            "conflict_file_ref = :fileRef WHERE id = 1 " +
+            "AND link_state = 'CONNECTED' AND destination_id = :destinationId",
+    )
+    suspend fun markConflict(
+        kind: String,
+        generation: Long?,
+        deviceId: String?,
+        fileRef: String?,
+        destinationId: String,
+    ): Int
+
+    /**
+     * Confirma una copia comprobada en el destino, en una sola sentencia, y solo si el destino
+     * sigue siendo [destinationId]: si la persona cambió de destino durante la subida, no cambia
+     * ninguna fila, devuelve 0, y la copia queda en el destino anterior sin confirmar.
+     *
+     * La copia pasa a ser la cabeza, `verified_seq` toma el `change_seq` que trae la copia, y la
+     * intención se borra. Si no llegaron cambios durante la copia, no queda ninguno sin copia; si
+     * llegaron, el más viejo sin copia es del instante de la copia, [copiedAt].
+     *
+     * @param failureCode nulo para una copia válida, o el fallo que la copia sube marcado.
+     */
+    @Query(
+        "UPDATE backup_state SET head_generation = :generation, head_device_id = :deviceId, " +
+            "head_file_ref = :fileRef, verified_seq = :seq, last_success_at = :now, " +
+            "consecutive_failures = 0, last_failure_kind = NULL, " +
+            "first_unsynced_at = CASE WHEN change_seq = :seq THEN NULL ELSE :copiedAt END, " +
+            "failure_code = :failureCode, invariant_failures = 0, " +
+            "pending_generation = NULL, pending_seq = NULL, pending_sha256 = NULL, " +
+            "pending_size_bytes = NULL WHERE id = 1 AND destination_id = :destinationId",
+    )
+    suspend fun confirm(
+        generation: Long,
+        deviceId: String,
+        fileRef: String,
+        seq: Long,
+        now: Long,
+        copiedAt: Long,
+        failureCode: String?,
+        destinationId: String,
+    ): Int
 }

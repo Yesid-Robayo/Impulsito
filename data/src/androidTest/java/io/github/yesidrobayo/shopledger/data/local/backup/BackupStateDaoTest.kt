@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.data.local.expense.expenseCategory
 import io.github.yesidrobayo.shopledger.data.local.functionsOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -97,13 +98,133 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
     }
 
     @Test
-    fun theDaoOnlyReadsAndMarksChanges() {
-        // La fila nace con la base. Las escrituras del respaldo llegan con él: una función nueva
-        // rompe esta prueba a propósito, y quien la agregue revisa que cambie solo sus columnas.
+    fun theDaoOnlyReadsMarksChangesAndWritesTheEngineColumns() {
+        // La fila nace con la base. Una función nueva rompe esta prueba a propósito, y quien la
+        // agregue revisa que cambie solo sus columnas, como la prueba de abajo.
         assertEquals(
-            setOf("observe", "get", "markChanged"),
+            setOf(
+                "observe",
+                "get",
+                "markChanged",
+                "isEmpty",
+                "markAttempt",
+                "saveIntent",
+                "clearIntent",
+                "markUploadFinished",
+                "recordFailure",
+                "leaveConnected",
+                "markConflict",
+                "confirm",
+            ),
             functionsOf(BackupStateDao::class.java),
         )
+    }
+
+    @Test
+    fun eachEngineWriteChangesOnlyItsColumns() = runBlocking {
+        execute(
+            "UPDATE backup_state SET link_state = 'CONNECTED', destination_kind = 'WEBDAV', " +
+                "destination_id = 'huella', change_seq = 3, first_unsynced_at = $LATER WHERE id = 1",
+        )
+        var before = requireNotNull(state.get())
+        suspend fun changed(expected: BackupStateEntity) {
+            val after = requireNotNull(state.get())
+            assertEquals(expected, after)
+            before = after
+        }
+
+        assertEquals(1, state.markAttempt(LATER))
+        changed(before.copy(lastAttemptAt = LATER))
+        assertEquals(1, state.saveIntent(4, 3, "ab".repeat(32), 1_234))
+        changed(
+            before.copy(
+                pendingGeneration = 4,
+                pendingSeq = 3,
+                pendingSha256 = "ab".repeat(32),
+                pendingSizeBytes = 1_234,
+            ),
+        )
+        assertEquals(1, state.markUploadFinished(MUCH_LATER))
+        changed(before.copy(lastUploadFinishedAt = MUCH_LATER))
+        assertEquals(1, state.recordFailure("QUOTA_EXCEEDED"))
+        changed(before.copy(failureCode = "QUOTA_EXCEEDED"))
+        assertEquals(1, state.clearIntent())
+        changed(
+            before.copy(
+                pendingGeneration = null,
+                pendingSeq = null,
+                pendingSha256 = null,
+                pendingSizeBytes = null,
+            ),
+        )
+
+        // Confirmar sin cambios nuevos: nada queda sin copia, y la intención se borra.
+        state.saveIntent(4, 3, "ab".repeat(32), 1_234)
+        before = requireNotNull(state.get())
+        assertEquals(0, state.confirm(4, "teléfono", "copia", 3, MUCH_LATER, LATER, null, "otra"))
+        changed(before)
+        assertEquals(1, state.confirm(4, "teléfono", "copia", 3, MUCH_LATER, LATER, null, "huella"))
+        changed(
+            before.copy(
+                headGeneration = 4,
+                headDeviceId = "teléfono",
+                headFileRef = "copia",
+                verifiedSeq = 3,
+                lastSuccessAt = MUCH_LATER,
+                firstUnsyncedAt = null,
+                failureCode = null,
+                pendingGeneration = null,
+                pendingSeq = null,
+                pendingSha256 = null,
+                pendingSizeBytes = null,
+            ),
+        )
+        // Con un cambio llegado durante la copia, queda pendiente desde el instante de la copia.
+        state.markChanged(MUCH_LATER)
+        before = requireNotNull(state.get())
+        assertEquals(
+            1,
+            state.confirm(5, "teléfono", "copia-5", 3, MUCH_LATER, LATER, null, "huella"),
+        )
+        changed(
+            before.copy(
+                headGeneration = 5,
+                headFileRef = "copia-5",
+                firstUnsyncedAt = LATER,
+            ),
+        )
+
+        // El enlace solo deja de estar conectado si sigue en el mismo destino.
+        assertEquals(0, state.markConflict("OTHER_DEVICE", null, null, null, "otra"))
+        assertEquals(0, state.leaveConnected("PERMISSION_LOST", "otra"))
+        changed(before.copy(headGeneration = 5, headFileRef = "copia-5", firstUnsyncedAt = LATER))
+        assertEquals(1, state.markConflict("OTHER_DEVICE", 7, "otro", "C", "huella"))
+        changed(
+            before.copy(
+                linkState = "CONFLICT",
+                conflictKind = "OTHER_DEVICE",
+                conflictGeneration = 7,
+                conflictDeviceId = "otro",
+                conflictFileRef = "C",
+            ),
+        )
+        assertEquals(0, state.leaveConnected("PERMISSION_LOST", "huella"))
+        execute("UPDATE backup_state SET link_state = 'CONNECTED' WHERE id = 1")
+        before = requireNotNull(state.get())
+        assertEquals(1, state.leaveConnected("PERMISSION_LOST", "huella"))
+        changed(before.copy(linkState = "PERMISSION_LOST"))
+    }
+
+    @Test
+    fun aDatabaseWithoutBusinessIsEmpty() = runBlocking {
+        assertTrue(state.isEmpty())
+        database.expenseCategoryDao().insert(expenseCategory("Transporte"))
+        // Una categoría de gasto sola no es negocio que respaldar.
+        assertTrue(state.isEmpty())
+        database.expenseDao().insert(
+            expense(database.expenseCategoryDao().insert(expenseCategory("Luz"))),
+        )
+        assertFalse(state.isEmpty())
     }
 
     /** Una falla inventada a propósito, sin mensaje. */

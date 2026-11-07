@@ -2,6 +2,8 @@ package io.github.yesidrobayo.shopledger.data.backup
 
 import android.system.ErrnoException
 import android.system.OsConstants
+import io.github.yesidrobayo.shopledger.data.destination.newSha256
+import io.github.yesidrobayo.shopledger.data.destination.toLowerHex
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
 import java.io.File
 import java.io.FileInputStream
@@ -11,7 +13,6 @@ import java.io.FilterOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import java.security.MessageDigest
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import kotlin.coroutines.CoroutineContext
@@ -160,7 +161,7 @@ internal class BackupPackager(
     private class Written(val raw: Sum, val file: Sum)
 
     private class Measure {
-        private val digest = MessageDigest.getInstance("SHA-256")
+        private val digest = newSha256()
         var size = 0L
             private set
 
@@ -171,7 +172,7 @@ internal class BackupPackager(
             size += length
         }
 
-        fun done(): Sum = Sum(size, lowerHex(digest.digest()))
+        fun done(): Sum = Sum(size, digest.digest().toLowerHex())
     }
 
     /** Cuenta y suma lo que pasa hacia el archivo, y se detiene al pasar el tope. */
@@ -219,17 +220,6 @@ internal class BackupPackager(
         const val BUFFER_BYTES = 64 * 1024
 
         const val BYTE_MASK = 0xFF
-
-        /** Hexadecimal sin pasar por el formato del idioma, que podría escribir otras cifras. */
-        fun lowerHex(bytes: ByteArray): String = buildString(bytes.size * 2) {
-            for (byte in bytes) {
-                val value = byte.toInt() and BYTE_MASK
-                append(HEX_DIGITS[value ushr 4])
-                append(HEX_DIGITS[value and 0x0F])
-            }
-        }
-
-        const val HEX_DIGITS = "0123456789abcdef"
     }
 }
 

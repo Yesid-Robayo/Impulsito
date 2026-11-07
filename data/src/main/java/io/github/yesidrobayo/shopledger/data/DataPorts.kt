@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.data
 
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
@@ -46,7 +47,8 @@ import kotlin.coroutines.CoroutineContext
  */
 class DataPorts internal constructor(
     database: AppDatabase,
-    databaseFile: File,
+    /** El archivo de la base abierta: el respaldo la copia desde aquí. */
+    internal val databaseFile: File,
     ioContext: CoroutineContext,
     clock: Clock,
 ) {
@@ -88,4 +90,7 @@ class DataPorts internal constructor(
     val expenseCategories: ExpenseCategoryRepository = RoomExpenseCategoryRepository(database)
 
     val expenses: ExpenseRepository = RoomExpenseRepository(database)
+
+    /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
+    internal val backupState: BackupStateDao = database.backupStateDao()
 }

@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- La biblioteca de trabajos pide servicio en primer plano, y ningún trabajo de la app lo usa: se quita.
+         La verificación del manifiesto fusionado falla si vuelve. -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:node="remove" />
 
     <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS. -->
     <application
@@ -25,6 +32,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- La biblioteca de trabajos arranca cuando la app la pide, con la fábrica de la capa de datos, y no sola al
+             abrir el proceso. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
     </application>
 
 </manifest>

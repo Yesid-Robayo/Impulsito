@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.res.Configuration
 import android.os.StrictMode
+import androidx.work.Configuration as WorkConfiguration
 import io.github.yesidrobayo.shopledger.di.AppContainer
 import kotlinx.coroutines.launch
 
@@ -24,8 +25,14 @@ import kotlinx.coroutines.launch
  * Los textos que viven fuera de la app, como los nombres de los canales de avisos, se revisan al
  * arrancar y con cada cambio de configuración: un idioma cambiado con la app cerrada, o desde los
  * ajustes de Android, llega por uno de los dos caminos.
+ *
+ * La biblioteca de trabajos no arranca sola al abrir el proceso: la primera vez que se la pide, lee
+ * aquí su configuración, con la fábrica de trabajos de la capa de datos. Eso pasa después de
+ * [onCreate], cuando el contenedor ya existe.
  */
-class ShopLedgerApp : Application() {
+class ShopLedgerApp :
+    Application(),
+    WorkConfiguration.Provider {
     /** Las dependencias de la app. Existe desde [onCreate] hasta que el proceso termina. */
     lateinit var container: AppContainer
         private set
@@ -45,6 +52,9 @@ class ShopLedgerApp : Application() {
             )
         }
     }
+
+    override val workManagerConfiguration: WorkConfiguration
+        get() = WorkConfiguration.Builder().setWorkerFactory(container.workerFactory).build()
 
     override fun onCreate() {
         super.onCreate()

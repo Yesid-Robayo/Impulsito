@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.di
 
 import android.app.Application
+import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.DataGraph
 import io.github.yesidrobayo.shopledger.data.UserTextPort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -43,6 +44,12 @@ class AppContainer(application: Application) {
 
     /** El único punto de registro de la app. */
     val log: EventLog = data.log
+
+    /**
+     * Crea los trabajos en segundo plano de la capa de datos, como el respaldo. Se arma la primera
+     * vez que la biblioteca de trabajos lo pide, no al arrancar el proceso.
+     */
+    val workerFactory: WorkerFactory get() = data.workerFactory
 
     /**
      * El idioma de la interfaz, guardado fuera de la base. Crearlo no toca el disco: el proceso lo

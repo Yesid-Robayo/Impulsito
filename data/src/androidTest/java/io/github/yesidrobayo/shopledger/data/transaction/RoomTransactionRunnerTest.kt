@@ -252,6 +252,45 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
         override suspend fun get(): BackupStateEntity? = null
 
         override suspend fun markChanged(now: Long): Int = 0
+
+        // Lo del motor de respaldo no se usa aquí: sin fila, tampoco cambiaría nada.
+        override suspend fun isEmpty(): Boolean = true
+
+        override suspend fun markAttempt(now: Long): Int = 0
+
+        override suspend fun saveIntent(
+            generation: Long,
+            seq: Long,
+            sha256: String,
+            sizeBytes: Long,
+        ): Int = 0
+
+        override suspend fun clearIntent(): Int = 0
+
+        override suspend fun markUploadFinished(now: Long): Int = 0
+
+        override suspend fun recordFailure(code: String): Int = 0
+
+        override suspend fun leaveConnected(linkState: String, destinationId: String): Int = 0
+
+        override suspend fun markConflict(
+            kind: String,
+            generation: Long?,
+            deviceId: String?,
+            fileRef: String?,
+            destinationId: String,
+        ): Int = 0
+
+        override suspend fun confirm(
+            generation: Long,
+            deviceId: String,
+            fileRef: String,
+            seq: Long,
+            now: Long,
+            copiedAt: Long,
+            failureCode: String?,
+            destinationId: String,
+        ): Int = 0
     }
 
     private companion object {

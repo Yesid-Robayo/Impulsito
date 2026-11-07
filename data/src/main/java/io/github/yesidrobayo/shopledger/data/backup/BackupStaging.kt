@@ -35,14 +35,22 @@ internal class BackupStaging(val directory: File, private val ioContext: Corouti
     fun compressedFile(generation: Long): File = file(generation, COMPRESSED_SUFFIX)
 
     /**
-     * Borra todo lo que quedó en la carpeta, salvo la copia comprimida de una subida pendiente.
+     * Los metadatos de la copia de la generación [generation], como `snapshot-g00000042.slmeta`.
+     * Quedan aquí hasta confirmar la copia: si una subida se corta entre el archivo y sus
+     * metadatos, se suben estos, sin generar otra copia. No toca el disco.
+     */
+    fun metaFile(generation: Long): File = file(generation, META_SUFFIX)
+
+    /**
+     * Borra todo lo que quedó en la carpeta, salvo la copia comprimida de una subida pendiente y sus
+     * metadatos.
      *
      * Un temporal del respaldo no debe quedar en el teléfono más de lo necesario. La única
      * excepción es la copia comprimida de [pendingGeneration], la generación que espera un
-     * reintento de subida: repetir la subida con el mismo archivo evita generar otra copia. Se
-     * conserva solo si tiene menos de [PENDING_UPLOAD_MAX_AGE]. Si el reloj dice que es del futuro,
-     * se borra: un reloj que retrocedió no puede conservarla para siempre, y borrarla solo obliga a
-     * generar otra.
+     * reintento de subida, con sus metadatos: repetir la subida con el mismo archivo evita generar
+     * otra copia. Cada uno se conserva solo si tiene menos de [PENDING_UPLOAD_MAX_AGE]. Si el reloj
+     * dice que es del futuro, se borra: un reloj que retrocedió no puede conservarlo para siempre,
+     * y borrarlo solo obliga a generar otra copia.
      *
      * Solo borra archivos. Las subcarpetas son de otros trabajos, que las limpian ellos mismos.
      *
@@ -50,9 +58,13 @@ internal class BackupStaging(val directory: File, private val ioContext: Corouti
      * @param now el instante del reloj del teléfono, con que se mide la edad del archivo.
      */
     suspend fun cleanUp(pendingGeneration: Long?, now: Instant): Unit = withContext(ioContext) {
-        val kept = pendingGeneration?.let(::compressedFile)?.takeIf { isFresh(it, now) }
+        val kept =
+            pendingGeneration
+                ?.let { listOf(compressedFile(it), metaFile(it)) }
+                .orEmpty()
+                .filter { isFresh(it, now) }
         for (file in directory.listFiles().orEmpty()) {
-            if (file.isFile && file != kept) file.delete()
+            if (file.isFile && file !in kept) file.delete()
         }
     }
 
@@ -75,6 +87,7 @@ internal class BackupStaging(val directory: File, private val ioContext: Corouti
         private const val SNAPSHOT_PREFIX = "snapshot-g"
         private const val DATABASE_SUFFIX = ".db"
         private const val COMPRESSED_SUFFIX = ".db.gz"
+        private const val META_SUFFIX = ".slmeta"
 
         /** Cifras mínimas de la generación en el nombre: así los nombres se ordenan como números. */
         private const val GENERATION_DIGITS = 8

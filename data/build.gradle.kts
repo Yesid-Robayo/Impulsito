@@ -64,6 +64,8 @@ dependencies {
     // El cliente HTTP del destino WebDAV: la plataforma no admite PROPFIND, MKCOL ni MOVE. Solo vive
     // en este módulo, y no llega a :app.
     implementation(libs.okhttp)
+    // Los trabajos en segundo plano, como el respaldo, que siguen aunque la app esté cerrada.
+    implementation(libs.androidx.work.runtime)
 
     // Las pruebas en la JVM comparan el catálogo del esquema con sus fuentes y lo generan, y prueban
     // lo del destino de copias que no necesita el analizador de XML del sistema.
@@ -79,6 +81,8 @@ dependencies {
     // Las lecturas de los repositorios devuelven Flow: Turbine espera cada emisión con un tope de
     // tiempo, sin colgar la prueba si no llega.
     androidTestImplementation(libs.turbine)
+    // El trabajo de respaldo corre en las pruebas con su fábrica, sin programarlo.
+    androidTestImplementation(libs.androidx.work.testing)
     // El generador de datos de prueba corre con cada fila de la matriz de configuraciones
     // regionales, que vive en los accesorios de prueba de :domain. Solo entra en el APK de pruebas.
     androidTestImplementation(testFixtures(project(":domain")))

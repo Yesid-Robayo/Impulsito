@@ -55,6 +55,14 @@ internal data class CopyIdentity(
 )
 
 /**
+ * La identidad que da el nombre de esta copia: la que deben repetir sus metadatos. La versión del
+ * esquema del nombre ya cabe en un entero de 32 bits y empieza en 1, igual que la que aceptan los
+ * metadatos.
+ */
+internal fun BackupFileName.identity(): CopyIdentity =
+    CopyIdentity(generation, schemaVersion.toLong(), devicePrefix)
+
+/**
  * Lo que la app sabe de una copia por su `.slmeta`.
  *
  * Una copia sin `.slmeta` válido no cuenta para decidir si se puede subir ni para podar, pero se
@@ -246,6 +254,20 @@ internal object SlMetaCodec {
         } else {
             CopyMetadata.Unusable(UnusableReason.NAME_MISMATCH)
         }
+    }
+
+    /**
+     * Lo que dicen los bytes de los metadatos de una copia sin nombre en el destino, como la de una
+     * ranura. Se leen con las mismas reglas que [decode], salvo la comparación con el nombre, que
+     * no existe: generación, esquema y teléfono salen de los propios metadatos.
+     *
+     * @param bytes el contenido de los metadatos, o `null` si no hay ninguno.
+     */
+    fun decodeUnnamed(bytes: ByteArray?): CopyMetadata {
+        if (bytes == null) return CopyMetadata.Unusable(UnusableReason.MISSING)
+        if (bytes.size > MAX_BYTES) return CopyMetadata.Unusable(UnusableReason.TOO_LARGE)
+        val meta = parse(bytes) ?: return CopyMetadata.Unusable(UnusableReason.MALFORMED)
+        return CopyMetadata.Valid(meta)
     }
 
     private fun parse(bytes: ByteArray): SlMeta? {

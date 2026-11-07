@@ -1,5 +1,7 @@
+import com.android.build.api.artifact.SingleArtifact
 import java.util.Properties
 import javax.inject.Inject
+import javax.xml.parsers.DocumentBuilderFactory
 
 plugins {
     alias(libs.plugins.android.application)
@@ -120,6 +122,8 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     // Un ViewModel por entrada de la pila, que se limpia al salir de ella.
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    // La app configura la biblioteca de trabajos con la fábrica de la capa de datos.
+    implementation(libs.androidx.work.runtime)
     testImplementation(libs.junit)
     // Los ViewModel se prueban en JVM: dispatchers de prueba en lugar del principal, y Turbine para leer cada estado.
     testImplementation(libs.kotlinx.coroutines.test)
@@ -132,8 +136,65 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     // Un trabajo de prueba, como los de la capa de datos, comprueba que recibe sus textos por el puerto y en el idioma
-    // elegido. Solo en las pruebas: la app todavía no tiene trabajos en segundo plano.
+    // elegido.
     androidTestImplementation(libs.androidx.work.testing)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+// Permisos que el manifiesto fusionado nunca lleva, aunque los pida una biblioteca. La biblioteca de trabajos pide el de servicio
+// en primer plano, y la app lo quita en su manifiesto: ningún trabajo pasa a primer plano. Si vuelve, por una versión nueva de una
+// biblioteca o porque alguien borró la línea que lo quita, check falla en cada variante.
+abstract class VerifyMergedPermissions : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val mergedManifest: RegularFileProperty
+
+    /** El comienzo del nombre de cada permiso prohibido: también cubre sus variantes por tipo de servicio. */
+    @get:Input
+    abstract val forbiddenPrefixes: ListProperty<String>
+
+    @TaskAction
+    fun verify() {
+        val androidNamespace = "http://schemas.android.com/apk/res/android"
+        val parser =
+            DocumentBuilderFactory
+                .newInstance()
+                .apply {
+                    isNamespaceAware = true
+                    // El manifiesto no declara entidades externas: nada de afuera entra al leerlo.
+                    setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+                }.newDocumentBuilder()
+        val document = parser.parse(mergedManifest.get().asFile)
+        val requested = mutableListOf<String>()
+        for (tag in listOf("uses-permission", "uses-permission-sdk-23")) {
+            val nodes = document.getElementsByTagName(tag)
+            for (index in 0 until nodes.length) {
+                val element = nodes.item(index) as org.w3c.dom.Element
+                requested += element.getAttributeNS(androidNamespace, "name")
+            }
+        }
+        val found = requested.filter { name -> forbiddenPrefixes.get().any { name.startsWith(it) } }
+        if (found.isNotEmpty()) {
+            throw GradleException(
+                "El manifiesto fusionado pide permisos prohibidos: ${found.joinToString()}",
+            )
+        }
+        logger.lifecycle("$name: ${requested.size} permisos, ninguno prohibido")
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val capitalized = variant.name.replaceFirstChar(Char::uppercaseChar)
+        val verify =
+            tasks.register<VerifyMergedPermissions>("verify${capitalized}MergedPermissions") {
+                group = "verification"
+                description =
+                    "Comprueba que el manifiesto fusionado de ${variant.name} no pida permisos prohibidos."
+                mergedManifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
+                forbiddenPrefixes.set(listOf("android.permission.FOREGROUND_SERVICE"))
+            }
+        tasks.named("check") { dependsOn(verify) }
+    }
 }

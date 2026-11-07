@@ -31,6 +31,7 @@ class BackupStagingTest {
         // Más de ocho cifras no se recortan: el nombre sigue siendo único.
         assertEquals(File("staging", "snapshot-g123456789.db"), names.snapshotFile(123_456_789))
         assertEquals(File("staging", "snapshot-g00000042.db.gz"), names.compressedFile(42))
+        assertEquals(File("staging", "snapshot-g00000042.slmeta"), names.metaFile(42))
     }
 
     @Test
@@ -44,6 +45,7 @@ class BackupStagingTest {
         val staging = staging()
         staging.snapshotFile(GENERATION).writeText("instantánea")
         staging.compressedFile(GENERATION).writeText("copia")
+        staging.metaFile(GENERATION).writeText("metadatos")
         File(staging.directory, "otro.tmp").writeText("resto")
 
         staging.cleanUp(pendingGeneration = null, now = WRITTEN_AT)
@@ -56,11 +58,33 @@ class BackupStagingTest {
         val staging = staging()
         staging.snapshotFile(GENERATION).writeText("instantánea")
         staging.compressedFile(GENERATION - 1).writeText("copia de antes")
+        staging.metaFile(GENERATION - 1).writeText("metadatos de antes")
         val pending = staging.compressedFile(GENERATION)
         pending.writeText("copia pendiente")
         pending.setLastModified(WRITTEN_AT.toEpochMilliseconds())
+        val meta = staging.metaFile(GENERATION)
+        meta.writeText("metadatos pendientes")
+        meta.setLastModified(WRITTEN_AT.toEpochMilliseconds())
 
         staging.cleanUp(GENERATION, WRITTEN_AT + 23.hours + 59.minutes)
+
+        assertEquals(
+            listOf(pending.name, meta.name).sorted(),
+            staging.directory.list()?.sorted(),
+        )
+    }
+
+    @Test
+    fun `the pending metadata follows its own age`() = runBlocking {
+        val staging = staging()
+        val pending = staging.compressedFile(GENERATION)
+        pending.writeText("copia pendiente")
+        pending.setLastModified(WRITTEN_AT.toEpochMilliseconds())
+        val meta = staging.metaFile(GENERATION)
+        meta.writeText("metadatos pendientes")
+        meta.setLastModified((WRITTEN_AT - 2.hours).toEpochMilliseconds())
+
+        staging.cleanUp(GENERATION, WRITTEN_AT + 22.hours + 30.minutes)
 
         assertEquals(listOf(pending.name), staging.directory.list()?.toList())
     }

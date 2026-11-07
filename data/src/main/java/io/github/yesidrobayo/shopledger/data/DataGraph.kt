@@ -1,6 +1,17 @@
 package io.github.yesidrobayo.shopledger.data
 
 import android.content.Context
+import androidx.work.WorkerFactory
+import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
+import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
+import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
+import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
+import io.github.yesidrobayo.shopledger.data.destination.ProductionDestinationOpener
+import io.github.yesidrobayo.shopledger.data.destination.WebDavCredentialStore
+import io.github.yesidrobayo.shopledger.data.destination.WebDavDestinationOpener
+import io.github.yesidrobayo.shopledger.data.destination.slots.ContentResolverDocumentAccess
+import io.github.yesidrobayo.shopledger.data.destination.slots.DocumentSlotDestination
+import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.DatabaseGate
@@ -10,6 +21,7 @@ import io.github.yesidrobayo.shopledger.data.local.PreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
+import io.github.yesidrobayo.shopledger.data.work.DataWorkerFactory
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogField
@@ -62,6 +74,55 @@ class DataGraph internal constructor(
     private val mutex = Mutex()
 
     @Volatile private var ready: DataAccess.Ready? = null
+
+    /** El cerrojo del respaldo: una ejecución a la vez en todo el proceso. */
+    private val backupMutex = Mutex()
+
+    /** El único cliente HTTP del proceso. Crearlo no abre ninguna conexión. */
+    private val http by lazy { HttpClientFactory.newClient() }
+
+    /** La credencial WebDAV sellada. Una sola instancia: su cerrojo vive en ella. */
+    private val webDavCredentials by lazy {
+        WebDavCredentialStore({ context.noBackupFilesDir }, ioContext)
+    }
+
+    /** El identificador de la instalación. Una sola instancia: su caché vive en ella. */
+    private val deviceIdentity by lazy {
+        DeviceIdentityStore.inNoBackupDir(context, ioContext)
+    }
+
+    /**
+     * El motor de respaldo sobre la base de la app y el destino conectado. Corre solo dentro de un
+     * trabajo en segundo plano, que pasa por [openForWork] y nunca migra.
+     */
+    internal val backupEngine: BackupEngine by lazy {
+        productionBackupEngine(
+            context = context,
+            ioContext = ioContext,
+            clock = clock,
+            log = log,
+            schemaVersion = schemaVersion,
+            openForWork = ::openForWork,
+            noBackupDirectory = { files().noBackupDirectory },
+            destinations =
+                ProductionDestinationOpener(WebDavDestinationOpener(http, webDavCredentials)) {
+                    DocumentSlotDestination(
+                        store = FileSlotStateStore.inNoBackupDir(context, ioContext),
+                        documents = ContentResolverDocumentAccess(context.contentResolver),
+                        clock = clock,
+                        ioContext = ioContext,
+                    )
+                },
+            deviceIdentity = { deviceIdentity },
+            mutex = backupMutex,
+        )
+    }
+
+    /**
+     * Crea los trabajos en segundo plano de esta capa con sus dependencias. La app la entrega a la
+     * biblioteca de trabajos al configurarla, y crearla no toca el disco.
+     */
+    val workerFactory: WorkerFactory by lazy { DataWorkerFactory(backupEngine, log) }
 
     /** La capa de datos de la app, con su base en la carpeta de bases y el registro de Android. */
     constructor(context: Context, ioContext: CoroutineContext, clock: Clock) : this(
