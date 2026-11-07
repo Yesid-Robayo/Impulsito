@@ -2,10 +2,14 @@ package io.github.yesidrobayo.shopledger.data.backup
 
 import android.content.Context
 import java.io.File
+import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
+import kotlinx.coroutines.withContext
 
 /**
- * La carpeta privada donde se arma cada copia antes de salir del teléfono, y los nombres de sus
- * archivos.
+ * La carpeta privada donde se arma cada copia antes de salir del teléfono, los nombres de sus
+ * archivos y su limpieza.
  *
  * Vive en `noBackupFilesDir`: es privada de la app, el sistema nunca la respalda ni la transfiere
  * a otro teléfono y, a diferencia de la caché, no la limpia a mitad de una subida. Está en el mismo
@@ -15,21 +19,62 @@ import java.io.File
  * destino: así nada que llegue de afuera puede elegir dónde se escribe.
  *
  * @property directory la carpeta, que se crea al escribir el primer archivo.
+ * @param ioContext contexto de la limpieza, fuera del hilo principal.
  */
-internal class BackupStaging(val directory: File) {
+internal class BackupStaging(val directory: File, private val ioContext: CoroutineContext) {
     /**
      * La salida de la instantánea de la generación [generation], como `snapshot-g00000042.db`.
      * No toca el disco.
      */
-    fun snapshotFile(generation: Long): File =
-        File(directory, "$SNAPSHOT_PREFIX${generationText(generation)}$DATABASE_SUFFIX")
+    fun snapshotFile(generation: Long): File = file(generation, DATABASE_SUFFIX)
+
+    /**
+     * La copia comprimida de la generación [generation], la que se sube, como
+     * `snapshot-g00000042.db.gz`. No toca el disco.
+     */
+    fun compressedFile(generation: Long): File = file(generation, COMPRESSED_SUFFIX)
+
+    /**
+     * Borra todo lo que quedó en la carpeta, salvo la copia comprimida de una subida pendiente.
+     *
+     * Un temporal del respaldo no debe quedar en el teléfono más de lo necesario. La única
+     * excepción es la copia comprimida de [pendingGeneration], la generación que espera un
+     * reintento de subida: repetir la subida con el mismo archivo evita generar otra copia. Se
+     * conserva solo si tiene menos de [PENDING_UPLOAD_MAX_AGE]. Si el reloj dice que es del futuro,
+     * se borra: un reloj que retrocedió no puede conservarla para siempre, y borrarla solo obliga a
+     * generar otra.
+     *
+     * Solo borra archivos. Las subcarpetas son de otros trabajos, que las limpian ellos mismos.
+     *
+     * @param pendingGeneration la generación que espera un reintento, o `null` si no hay ninguna.
+     * @param now el instante del reloj del teléfono, con que se mide la edad del archivo.
+     */
+    suspend fun cleanUp(pendingGeneration: Long?, now: Instant): Unit = withContext(ioContext) {
+        val kept = pendingGeneration?.let(::compressedFile)?.takeIf { isFresh(it, now) }
+        for (file in directory.listFiles().orEmpty()) {
+            if (file.isFile && file != kept) file.delete()
+        }
+    }
+
+    private fun isFresh(file: File, now: Instant): Boolean {
+        if (!file.isFile) return false
+        val age = now - Instant.fromEpochMilliseconds(file.lastModified())
+        return !age.isNegative() && age < PENDING_UPLOAD_MAX_AGE
+    }
+
+    private fun file(generation: Long, suffix: String): File =
+        File(directory, "$SNAPSHOT_PREFIX${generationText(generation)}$suffix")
 
     companion object {
         /** El nombre de la carpeta dentro de `noBackupFilesDir`. */
         const val DIRECTORY_NAME = "backup-staging"
 
+        /** Lo más que se conserva la copia comprimida de una subida pendiente. */
+        val PENDING_UPLOAD_MAX_AGE = 24.hours
+
         private const val SNAPSHOT_PREFIX = "snapshot-g"
         private const val DATABASE_SUFFIX = ".db"
+        private const val COMPRESSED_SUFFIX = ".db.gz"
 
         /** Cifras mínimas de la generación en el nombre: así los nombres se ordenan como números. */
         private const val GENERATION_DIGITS = 8
@@ -38,8 +83,8 @@ internal class BackupStaging(val directory: File) {
          * La de la app, en `noBackupFilesDir`. Pedir esa carpeta toca el disco, porque Android la
          * crea si falta: se llama fuera del hilo principal.
          */
-        fun inNoBackupDir(context: Context): BackupStaging =
-            BackupStaging(File(context.noBackupFilesDir, DIRECTORY_NAME))
+        fun inNoBackupDir(context: Context, ioContext: CoroutineContext): BackupStaging =
+            BackupStaging(File(context.noBackupFilesDir, DIRECTORY_NAME), ioContext)
 
         /**
          * La generación con al menos [GENERATION_DIGITS] cifras ASCII, rellenas con ceros a la

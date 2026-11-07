@@ -49,7 +49,8 @@ import org.junit.runner.RunWith
 class SnapshotCreatorTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val database = testDatabaseFile(context, "snapshot-source.db")
-    private val staging = BackupStaging(File(context.noBackupFilesDir, "snapshot-test"))
+    private val staging =
+        BackupStaging(File(context.noBackupFilesDir, "snapshot-test"), Dispatchers.IO)
 
     @Before
     fun clean() {
