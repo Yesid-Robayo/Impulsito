@@ -66,6 +66,15 @@ internal enum class SkipReason {
      * restaura. El fallo queda a la vista y los cambios siguen sin respaldar.
      */
     UNRESTORABLE_NOT_WRITTEN,
+
+    /**
+     * Con datos móviles, o con la nube del teléfono, el intervalo entre copias automáticas sigue
+     * corriendo: la espera vuelve a calcular el retraso al vencer.
+     */
+    WAITING_FOR_INTERVAL,
+
+    /** Con `Solo con Wi-Fi` y datos móviles: espera a la subida que corre sin datos móviles. */
+    WAITING_FOR_UNMETERED,
 }
 
 /** Por qué una ejecución se reintenta más tarde. */
@@ -121,6 +130,7 @@ internal enum class BackupEvent(override val text: String) : LogEvent {
     PRUNE_FAILED("La poda falló, y la copia nueva sigue confirmada"),
     PRUNE_DONE("Poda terminada"),
     WORKER_FAILED("Falla no prevista del trabajo de respaldo"),
+    SCHEDULING_FAILED("Falla no prevista al programar el respaldo"),
 }
 
 /** Deja en el registro cómo terminó [run]: solo motivos, códigos y la generación. */

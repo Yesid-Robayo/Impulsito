@@ -9,6 +9,7 @@ import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
+import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 
 /**
@@ -18,16 +19,34 @@ import io.github.yesidrobayo.shopledger.domain.port.EventLog
  * Un nombre que no conoce lo deja a la fábrica por defecto de la biblioteca.
  *
  * @param backup el motor de respaldo, uno por proceso.
+ * @param scheduler programa el respaldo después de cada ejecución y al vencer la espera. Sin él,
+ *   como en las pruebas que corren el trabajo de subida solo, la espera queda a la fábrica por
+ *   defecto y nada se programa.
  */
-internal class DataWorkerFactory(private val backup: BackupEngine, private val log: EventLog) :
-    WorkerFactory() {
+internal class DataWorkerFactory(
+    private val backup: BackupEngine,
+    private val log: EventLog,
+    private val scheduler: BackupScheduler? = null,
+) : WorkerFactory() {
     override fun createWorker(
         appContext: Context,
         workerClassName: String,
         workerParameters: WorkerParameters,
     ): ListenableWorker? = when (workerClassName) {
         BackupWorker::class.java.name ->
-            BackupWorker(appContext, workerParameters, backup, log, { isMetered(appContext) })
+            BackupWorker(
+                appContext,
+                workerParameters,
+                backup,
+                log,
+                { isMetered(appContext) },
+                afterRun = { run, name -> scheduler?.onRunFinished(run, name) },
+            )
+
+        BackupTriggerWorker::class.java.name ->
+            scheduler?.let {
+                BackupTriggerWorker(appContext, workerParameters, it::onDebounceElapsed, log)
+            }
 
         else -> null
     }

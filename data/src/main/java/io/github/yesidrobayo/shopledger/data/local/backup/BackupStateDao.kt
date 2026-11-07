@@ -71,6 +71,13 @@ internal interface BackupStateDao {
     suspend fun markAttempt(now: Long): Int
 
     /**
+     * Devuelve el intento anterior, [previous], tras una ejecución que salió sin intentar subir: el
+     * reintento con el servicio lleno se cuenta desde el último intento real.
+     */
+    @Query("UPDATE backup_state SET last_attempt_at = :previous WHERE id = 1")
+    suspend fun restoreAttempt(previous: Long?): Int
+
+    /**
      * Guarda la intención de subida antes de escribir nada en el destino: si el proceso muere a
      * mitad, la ejecución siguiente sabe qué copia estaba en camino.
      */

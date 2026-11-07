@@ -36,8 +36,13 @@ import kotlin.time.TimeSource
  * plano, que la app no usa. Por eso cada ejecución sale sola antes del tope del sistema, con
  * [BACKUP_TIME_BUDGET].
  *
+ * Al terminar, le pasa el final a [afterRun] con el nombre único de este trabajo: una copia
+ * comprobada cancela la otra subida, y si quedaron cambios vuelve a empezar la espera.
+ *
  * @param engine el motor de respaldo, con la base y el destino de la app.
  * @param metering dice si la red activa es medida.
+ * @param afterRun lo que se programa después de una ejecución. Una falla ahí no cambia el
+ *   resultado del trabajo: queda en el registro con su clase.
  */
 internal class BackupWorker(
     context: Context,
@@ -46,6 +51,7 @@ internal class BackupWorker(
     private val log: EventLog,
     private val metering: () -> Boolean,
     private val budget: Duration = BACKUP_TIME_BUDGET,
+    private val afterRun: suspend (BackupRun, String?) -> Unit = { _, _ -> },
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val control = WorkerControl(TimeSource.Monotonic.markNow()) { isStopped }
@@ -56,6 +62,8 @@ internal class BackupWorker(
         ) {
             is Contained.Done -> {
                 log.report(contained.value)
+                val ownName = tags.firstOrNull { it in BackupWorkNames.UPLOADS }
+                log.contain(BackupEvent.SCHEDULING_FAILED) { afterRun(contained.value, ownName) }
                 resultOf(contained.value)
             }
 
@@ -76,13 +84,15 @@ internal class BackupWorker(
         override fun remainingMillis(): Long? =
             (budget - started.elapsedNow()).inWholeMilliseconds.coerceAtLeast(0)
 
-        // Cortar una subida porque la red pasó a medida es de la compuerta de red, que llega con la
-        // programación de los trabajos.
+        // El corte por red medida lo decide la compuerta del motor, que sabe si con datos móviles
+        // esta copia habría tenido que esperar.
         override fun meteredStop(): Boolean = false
 
         override fun isMetered(): Boolean = metering()
 
         override fun isBackupNow(): Boolean = inputData.getBoolean(KEY_BACKUP_NOW, false)
+
+        override fun isPastInterval(): Boolean = inputData.getBoolean(KEY_PAST_INTERVAL, false)
     }
 
     companion object {
@@ -97,6 +107,12 @@ internal class BackupWorker(
          * es una copia automática.
          */
         const val KEY_BACKUP_NOW = "backup_now"
+
+        /**
+         * La entrada del trabajo que dice que el cambio más viejo sin copia ya lleva un día: la
+         * copia sale sin esperar el intervalo de datos móviles.
+         */
+        const val KEY_PAST_INTERVAL = "past_interval"
 
         /** Lo que hace el sistema después de una ejecución. */
         internal fun resultOf(run: BackupRun): Result = when (run) {

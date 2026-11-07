@@ -208,6 +208,12 @@ internal interface TransferControl {
      */
     fun isBackupNow(): Boolean = false
 
+    /**
+     * Si esta copia automática sale sin esperar el intervalo de datos móviles, porque el cambio más
+     * viejo sin copia ya lleva un día. Solo lo mira el motor, en su compuerta de red.
+     */
+    fun isPastInterval(): Boolean = false
+
     companion object {
         /** Sin tope ni detención: para lo que la persona pidió y espera en pantalla. */
         val Unbounded: TransferControl =

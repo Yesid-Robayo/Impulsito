@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolic
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -17,6 +18,14 @@ class BackupTimingsTest {
         assertEquals(7.days, BackupTimings.HUMAN_CHECK)
         assertEquals(60.minutes, BackupTimings.SLOT_MIN_INTERVAL)
         assertEquals(6L, BackupTimings.TRANSPORT_FAILURES_BEFORE_PERSISTENT)
+    }
+
+    @Test
+    fun `the scheduling deadlines are the design values`() {
+        // Entre 1 y 2 minutos tras el último cambio, y una racha nunca pospone más de 10 minutos.
+        assertEquals(90.seconds, BackupTimings.BACKUP_DEBOUNCE)
+        assertEquals(10.minutes, BackupTimings.BACKUP_MAX_WAIT)
+        assertEquals(24.hours, BackupTimings.QUOTA_RETRY)
     }
 
     @Test

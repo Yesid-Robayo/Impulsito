@@ -53,6 +53,8 @@ import kotlin.coroutines.CoroutineContext
  *
  * @param backupStatusEnvironment lo que el estado del respaldo lee fuera de la base. Los puertos
  *   que se arman a mano, sin la app, no tienen nada fuera de ella.
+ * @param commitListener lo que corre tras confirmar un cambio del negocio: programar la copia. Los
+ *   puertos que se arman a mano no programan nada.
  */
 class DataPorts internal constructor(
     private val database: AppDatabase,
@@ -66,13 +68,14 @@ class DataPorts internal constructor(
      */
     restoreLock: RestoreLock,
     backupStatusEnvironment: BackupStatusEnvironment = BackupStatusEnvironment.Detached,
+    commitListener: CommitListener = CommitListener {},
 ) {
     /**
      * Abre cada escritura del negocio en una sola transacción, y cuenta el cambio para la copia.
      *
-     * Con una restauración en curso no entra ninguna. Mientras no hay respaldo programado, una
-     * confirmación no avisa a nadie: el cambio igual queda contado en la base, y el respaldo lo
-     * verá al llegar.
+     * Con una restauración en curso no entra ninguna. Tras confirmar, [commitListener] programa
+     * la copia; si eso falla, el cambio igual queda contado en la base, y el respaldo lo ve en el
+     * siguiente evento.
      */
     val transactions: TransactionRunner =
         RoomTransactionRunner(
@@ -81,7 +84,7 @@ class DataPorts internal constructor(
             restoreLock = restoreLock,
             storageSpace = DatabaseStorageSpace(databaseFile, ioContext),
             clock = clock,
-            commitListener = CommitListener {},
+            commitListener = commitListener,
         )
 
     val settings: AppSettingsRepository = RoomAppSettingsRepository(database, restoreLock)

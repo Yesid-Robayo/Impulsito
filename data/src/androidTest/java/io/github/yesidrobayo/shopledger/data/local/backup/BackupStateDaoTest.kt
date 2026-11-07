@@ -111,6 +111,7 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "catalogCount",
                 "forceUpload",
                 "markAttempt",
+                "restoreAttempt",
                 "saveIntent",
                 "clearIntent",
                 "markUploadFinished",
@@ -143,6 +144,10 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
         }
 
         assertEquals(1, state.markAttempt(LATER))
+        changed(before.copy(lastAttemptAt = LATER))
+        assertEquals(1, state.restoreAttempt(null))
+        changed(before.copy(lastAttemptAt = null))
+        assertEquals(1, state.restoreAttempt(LATER))
         changed(before.copy(lastAttemptAt = LATER))
         assertEquals(1, state.saveIntent(4, 3, "ab".repeat(32), 1_234))
         changed(

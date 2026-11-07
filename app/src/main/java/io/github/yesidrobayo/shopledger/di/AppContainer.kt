@@ -2,12 +2,16 @@ package io.github.yesidrobayo.shopledger.di
 
 import android.app.Application
 import androidx.work.WorkerFactory
+import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.DataGraph
 import io.github.yesidrobayo.shopledger.data.UserTextPort
+import io.github.yesidrobayo.shopledger.domain.model.backup.AppOpenUpload
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupStatusUseCase
+import io.github.yesidrobayo.shopledger.lifecycle.AppLifecycleObserver
 import io.github.yesidrobayo.shopledger.localization.AndroidLocalePlatform
 import io.github.yesidrobayo.shopledger.localization.AndroidUserTextPort
 import io.github.yesidrobayo.shopledger.localization.AppLanguage
@@ -97,5 +101,24 @@ class AppContainer(application: Application) {
         CoroutineScope(
             SupervisorJob() + dispatchers.default +
                 log.failureHandler(AppEvent.BACKGROUND_WORK_FAILED),
+        )
+
+    /**
+     * El respaldo al abrir la app y al pasar a segundo plano. Al abrir, el estado del respaldo
+     * decide con la base abierta: si la base no abre sin riesgo, no hay nada que encolar.
+     */
+    val lifecycleObserver: AppLifecycleObserver =
+        AppLifecycleObserver(
+            scope = applicationScope,
+            appOpenUpload = {
+                when (val access = data.open()) {
+                    is DataAccess.Ready ->
+                        ObserveBackupStatusUseCase(access.ports.backupStatus, clock).onAppOpen()
+
+                    is DataAccess.Rescue -> AppOpenUpload.NONE
+                }
+            },
+            onAppOpened = { data.backupScheduler.onAppOpened(it) },
+            onAppBackgrounded = { data.backupScheduler.onAppBackgrounded() },
         )
 }

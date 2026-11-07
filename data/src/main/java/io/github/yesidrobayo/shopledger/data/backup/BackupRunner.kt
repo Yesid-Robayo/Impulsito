@@ -35,6 +35,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyInstant
 import io.github.yesidrobayo.shopledger.domain.model.backup.NewCopyMarks
 import io.github.yesidrobayo.shopledger.domain.model.backup.SlotCandidate
+import io.github.yesidrobayo.shopledger.domain.model.backup.UploadGateVerdict
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogField
@@ -55,14 +56,17 @@ import kotlinx.coroutines.withContext
  * Los pasos, en orden, con lo que pasa si fallan:
  *
  * 0. **Precondiciones.** Sin destino conectado, sin cambios pendientes o con la base vacía, termina
- *    sin hacer nada. Limpia los restos de la carpeta de preparación, salvo el archivo de una subida
- *    pendiente.
+ *    sin hacer nada. Una copia automática pasa además por la compuerta de red ([UploadGate]): con
+ *    datos móviles y el intervalo corriendo, o con `Solo con Wi-Fi`, termina sin hacer nada y sin
+ *    contar un intento. Limpia los restos de la carpeta de preparación, salvo el archivo de una
+ *    subida pendiente.
  * 1. **Espacio y tamaño.** El teléfono debe tener libre una vez y media la base, y la base no debe
  *    pasar de lo que una restauración acepta: si no, `LOCAL_STORAGE_LOW` o `BACKUP_TOO_LARGE`.
  * 2. y 3. **Destino y credencial.** Abre el destino que recuerda el estado. Si no deja entrar, el
  *    enlace pasa a acceso perdido.
  * 4. **Listar.** Lo que hay en el destino. Una lista con errores nunca es una carpeta vacía: se
- *    reintenta. Borra los temporales de este teléfono que dejó una subida cortada.
+ *    reintenta. Borra los temporales de este teléfono que dejó una subida cortada. Con el servicio
+ *    lleno, una copia automática que no cabría termina sin generar nada ([QuotaGate]).
  * 5. **Retomar.** Una subida que quedó sin confirmar se busca por su nombre, o con ranuras por su
  *    marca: si ya está entera, salta a comprobarla o a confirmarla, y si no llegó, sube otra vez el
  *    mismo archivo, con ranuras en la misma ranura. Lo que nunca se confirmó y no sirve se rechaza
@@ -80,7 +84,8 @@ import kotlinx.coroutines.withContext
  *    taparía una copia que sí se restaura.
  * 9. **Comprimir.** gzip con su suma, comprobado al releerlo, y los metadatos en la carpeta.
  * 10. **Intención y subida.** Guarda en el estado qué copia va en camino, y solo después escribe en
- *     el destino. Al enviar el último byte anota la hora.
+ *     el destino. Al enviar el último byte anota la hora, y también si la subida se corta en red
+ *     medida: esos datos ya se gastaron, y el intervalo cuenta desde ahí.
  * 11. **Comprobar.** Lo que el destino tiene debe ser lo que se subió: siempre el tamaño, y el
  *     contenido entero o una muestra según la red y el plazo ([verifyModeFor]). Si no coincide,
  *     `VERIFY_MISMATCH`: la generación se rechaza en disco antes de borrar la copia, y nunca se
@@ -107,6 +112,7 @@ import kotlinx.coroutines.withContext
  * @param verifyMode cuánto del contenido se lee para comprobar, según la red y el plazo, o nulo si
  *   hay que esperar una red no medida.
  * @param meteredAllowed si la política de la persona permite respaldar con datos móviles.
+ * @param uploadGate la compuerta de red de las copias automáticas.
  * @param transportFailures cuenta los fallos de transporte seguidos de cada ejecución que se
  *   reintenta, para dejar a la vista uno que no se resuelve solo.
  * @param snapshotValidation revisa la instantánea con el validador de las restauraciones.
@@ -139,6 +145,7 @@ internal class BackupRunner(
     private val freeSpace: (File) -> Long = File::getUsableSpace,
     private val verifyMode: (VerifyRequest) -> VerifyMode? = ::verifyModeFor,
     private val meteredAllowed: suspend () -> Boolean,
+    private val uploadGate: UploadGate = UploadGate.Open,
     private val transportFailures: TransportFailures = TransportFailures(state),
     private val snapshotValidation: SnapshotValidation =
         SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
@@ -147,10 +154,11 @@ internal class BackupRunner(
         UploadRecovery(state, staging, rejected, clock, log, ioContext, schemaVersion)
 
     /** Corre una ejecución entera. Solo lanza la cancelación, o una falla que nadie previó. */
-    suspend fun run(control: TransferControl): BackupRun = mutex.withLock {
+    suspend fun run(requested: TransferControl): BackupRun = mutex.withLock {
         val current =
             state.get() ?: return@withLock stop(StopCause.Failure(BackupFailureCode.UNEXPECTED))
         val attempt = Attempt(current.pendingGeneration)
+        val control = RunControl(requested)
         try {
             steps(current, control, attempt).also {
                 attempt.outcome = it
@@ -173,7 +181,7 @@ internal class BackupRunner(
 
     private suspend fun steps(
         current: BackupStateEntity,
-        control: TransferControl,
+        control: RunControl,
         attempt: Attempt,
     ): BackupRun {
         // Paso 0: precondiciones.
@@ -182,6 +190,7 @@ internal class BackupRunner(
             return BackupRun.Skipped(SkipReason.NOTHING_PENDING)
         }
         if (state.isEmpty()) return BackupRun.Skipped(SkipReason.EMPTY_DATABASE)
+        gate(link.kind, current, control)?.let { return it }
         withContext(ioContext) { staging.cleanUp(current.pendingGeneration, clock.now()) }
         state.markAttempt(clock.nowEpochMillis())
 
@@ -209,6 +218,11 @@ internal class BackupRunner(
         val device = deviceId()
         recovery.removeOwnTemporaries(destination, listing, device, control)
         interruption(control)?.let { return it }
+        if (quotaHolds(current, listing, control)) {
+            // No intentó subir: el intento anterior sigue siendo el que cuenta para el plazo.
+            state.restoreAttempt(current.lastAttemptAt)
+            return stop(StopCause.Failure(BackupFailureCode.QUOTA_EXCEEDED))
+        }
 
         // Paso 5: retomar la subida que quedó sin confirmar, o descartarla.
         val delivery =
@@ -268,7 +282,13 @@ internal class BackupRunner(
                     val uploaded =
                         when (val result = destination.upload(plan, control)) {
                             is DestinationResult.Success -> result.value
-                            is DestinationResult.Failure -> return failed(result.failure, link)
+
+                            is DestinationResult.Failure -> {
+                                if (spentMeteredData(destination, result.failure, control)) {
+                                    state.markUploadFinished(clock.nowEpochMillis())
+                                }
+                                return failed(result.failure, link)
+                            }
                         }
                     state.markUploadFinished(clock.nowEpochMillis())
                     uploaded
@@ -376,6 +396,73 @@ internal class BackupRunner(
             prune(destination, ConfirmedCopy(delivery.generation, stored.ref), control)
         }
         return BackupRun.Verified(delivery.generation, unrestorable = delivery.marks.fatal)
+    }
+
+    /**
+     * La compuerta de red del paso 0, para una copia automática. `Respaldar ahora` y la copia que
+     * ya lleva un día no la miran. Si deja pasar con una red sin datos móviles y con datos móviles
+     * habría hecho esperar, la subida se corta si la red pasa a medida.
+     */
+    private suspend fun gate(
+        kind: BackupDestinationKind,
+        current: BackupStateEntity,
+        control: RunControl,
+    ): BackupRun? {
+        if (control.isBackupNow() || control.isPastInterval()) return null
+        val metered = control.isMetered()
+        return when (uploadGate.check(kind, current.lastUploadFinishedAt, metered)) {
+            UploadGateVerdict.PROCEED -> {
+                control.cutOnMetered =
+                    kind == BackupDestinationKind.WEBDAV &&
+                    !metered &&
+                    uploadGate.check(kind, current.lastUploadFinishedAt, metered = true) !=
+                    UploadGateVerdict.PROCEED
+                null
+            }
+
+            UploadGateVerdict.WAIT_FOR_INTERVAL ->
+                BackupRun.Skipped(SkipReason.WAITING_FOR_INTERVAL)
+
+            UploadGateVerdict.WAIT_FOR_UNMETERED ->
+                BackupRun.Skipped(SkipReason.WAITING_FOR_UNMETERED)
+        }
+    }
+
+    /** Si el servicio sigue lleno para esta copia automática. */
+    private fun quotaHolds(
+        current: BackupStateEntity,
+        listing: CopyListing,
+        control: TransferControl,
+    ): Boolean = QuotaGate.holds(
+        failureCode = current.failureCode,
+        backupNow = control.isBackupNow(),
+        quotaAvailableBytes = listing.quotaAvailableBytes,
+        expectedBytes =
+            current.pendingSizeBytes
+                ?: listing.copies.firstOrNull { it.ref.value == current.headFileRef }?.sizeBytes,
+        lastAttemptAt = current.lastAttemptAt,
+        nowMillis = clock.nowEpochMillis(),
+    )
+
+    /**
+     * Si una subida a WebDAV que no terminó pudo gastar datos móviles: se cortó porque la red pasó
+     * a medida, o falló o se detuvo con la red medida. Esos datos ya se gastaron, y sin anotarlo
+     * cada reintento enviaría el archivo entero otra vez sin contar el intervalo.
+     */
+    private fun spentMeteredData(
+        destination: BackupDestination,
+        failure: DestinationFailure,
+        control: TransferControl,
+    ): Boolean {
+        if (destination.kind != BackupDestinationKind.WEBDAV) return false
+        return when (failure) {
+            is DestinationFailure.Interrupted ->
+                failure.reason == InterruptReason.METERED || control.isMetered()
+
+            is DestinationFailure.Transient -> control.isMetered()
+
+            else -> false
+        }
     }
 
     /** Lo que mostró la segunda lista del paso 11. */

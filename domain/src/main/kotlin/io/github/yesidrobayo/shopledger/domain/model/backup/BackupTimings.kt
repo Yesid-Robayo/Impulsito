@@ -5,6 +5,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Los plazos con que el estado del respaldo decide qué mostrar. Son valores de diseño fijos, iguales
@@ -29,6 +30,25 @@ object BackupTimings {
      * cada escritura es una subida completa de la otra app.
      */
     val SLOT_MIN_INTERVAL: Duration = 60.minutes
+
+    /**
+     * Cuánto espera la copia después del último cambio, para juntar en una sola los cambios
+     * seguidos. Cada cambio nuevo vuelve a empezar la espera.
+     */
+    val BACKUP_DEBOUNCE: Duration = 90.seconds
+
+    /**
+     * Lo más que una racha de cambios puede posponer la copia: pasado esto desde el cambio más viejo
+     * sin copia, la subida se encola aunque sigan llegando cambios.
+     */
+    val BACKUP_MAX_WAIT: Duration = 10.minutes
+
+    /**
+     * Con el servicio lleno y sin un espacio libre que el servicio informe, cada cuánto una copia
+     * automática lo vuelve a intentar: no se puede saber antes si ya cabe, y cada intento sube la
+     * copia entera.
+     */
+    val QUOTA_RETRY: Duration = 24.hours
 
     /**
      * Los fallos de transporte seguidos tras los que el fallo queda a la vista como persistente. El

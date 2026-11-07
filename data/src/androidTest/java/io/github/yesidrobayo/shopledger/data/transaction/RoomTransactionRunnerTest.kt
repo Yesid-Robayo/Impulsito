@@ -264,6 +264,8 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
 
         override suspend fun markAttempt(now: Long): Int = 0
 
+        override suspend fun restoreAttempt(previous: Long?): Int = 0
+
         override suspend fun saveIntent(
             generation: Long,
             seq: Long,

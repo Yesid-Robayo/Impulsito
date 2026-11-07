@@ -112,6 +112,9 @@ class BackupDestinationsTest {
             )
         for ((method, status, expected) in cases) {
             fixture.connect(BackupDestinationKind.WEBDAV)
+            // Cada caso empieza sin el fallo del anterior: con el servicio lleno, una copia
+            // automática no generaría nada hasta el día siguiente.
+            fixture.sql("UPDATE backup_state SET failure_code = NULL WHERE id = 1")
             val (dav, server) =
                 dav { request -> FakeResponse.status(status).takeIf { request.method == method } }
 

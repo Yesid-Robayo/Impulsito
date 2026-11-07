@@ -74,6 +74,11 @@ internal fun productionBackupEngine(
                 ports.settings.get().preferences.meteredBackupPolicy !=
                     MeteredBackupPolicy.WIFI_ONLY
             },
+            uploadGate =
+                PolicyUploadGate(
+                    policy = { ports.settings.get().preferences.meteredBackupPolicy },
+                    clock = clock,
+                ),
             pruner =
                 RetentionPruner(
                     deviceId = { deviceIdentity().deviceId() },

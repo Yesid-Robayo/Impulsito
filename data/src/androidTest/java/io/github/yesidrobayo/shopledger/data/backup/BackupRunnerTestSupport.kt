@@ -43,7 +43,11 @@ internal const val TEST_DESTINATION_ID = "0123456789abcdef0123456789abcdef"
  * Una base de la app en un archivo propio de la prueba, abierta por la capa de datos, con su
  * carpeta de preparación del respaldo y un reloj que la prueba mueve.
  */
-internal class BackupFixture(private val context: Context, name: String) {
+internal class BackupFixture(
+    private val context: Context,
+    name: String,
+    private val workQueue: ((Context) -> BackupWorkQueue)? = null,
+) {
     val file: File = testDatabaseFile(context, "$name.db")
     val noBackup = File(context.noBackupFilesDir, name)
     val stagingDir: File = File(noBackup, BackupStaging.DIRECTORY_NAME)
@@ -85,8 +89,14 @@ internal class BackupFixture(private val context: Context, name: String) {
         noBackup.deleteRecursively()
     }
 
-    private fun newGraph() =
-        DataGraph(context, Dispatchers.IO, clock, { DatabaseFiles(file, noBackup) }, log)
+    private fun newGraph() = DataGraph(
+        context,
+        Dispatchers.IO,
+        clock,
+        { DatabaseFiles(file, noBackup) },
+        log,
+        workQueue = workQueue,
+    )
 
     /** Conecta el destino [kind] en el estado del respaldo, como lo deja la conexión. */
     fun connect(kind: BackupDestinationKind = BackupDestinationKind.WEBDAV) = sql(
@@ -136,6 +146,7 @@ internal class BackupFixture(private val context: Context, name: String) {
         packager: BackupPackager = BackupPackager(Dispatchers.IO),
         staging: BackupStaging = BackupStaging(stagingDir, Dispatchers.IO),
         verifyMode: (VerifyRequest) -> VerifyMode? = ::verifyModeFor,
+        uploadGate: UploadGate = UploadGate.Open,
     ): BackupRunner = BackupRunner(
         state = ports.backupState,
         databaseFile = file,
@@ -160,6 +171,7 @@ internal class BackupFixture(private val context: Context, name: String) {
         meteredAllowed = {
             ports.settings.get().preferences.meteredBackupPolicy != MeteredBackupPolicy.WIFI_ONLY
         },
+        uploadGate = uploadGate,
     )
 
     fun advance(by: Duration) {
@@ -191,6 +203,7 @@ internal class TestControl(
     var stopped: Boolean = false,
     var metered: Boolean = false,
     var backupNow: Boolean = false,
+    var pastInterval: Boolean = false,
 ) : TransferControl {
     override fun isStopped(): Boolean = stopped
 
@@ -201,6 +214,8 @@ internal class TestControl(
     override fun isMetered(): Boolean = metered
 
     override fun isBackupNow(): Boolean = backupNow
+
+    override fun isPastInterval(): Boolean = pastInterval
 }
 
 /** Guarda cada línea en memoria. Puede escribirse desde varios hilos a la vez. */

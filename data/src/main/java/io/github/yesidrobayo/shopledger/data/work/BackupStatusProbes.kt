@@ -29,6 +29,22 @@ internal object BackupWorkNames {
 
     /** Los dos, que el estado del respaldo mira juntos. */
     val UPLOADS = listOf(UPLOAD, UPLOAD_UNMETERED)
+
+    /**
+     * La espera que junta los cambios seguidos: cada cambio la vuelve a empezar, y al vencer encola
+     * la subida. Es un trabajo aparte porque reemplazar una subida que corre la cortaría.
+     */
+    const val DEBOUNCE = "backup-debounce"
+
+    /** Los tres que una restauración detiene antes de leer el destino. */
+    val ALL = listOf(DEBOUNCE, UPLOAD_UNMETERED, UPLOAD)
+
+    /** La otra subida de [name], la que se cancela cuando [name] deja una copia comprobada. */
+    fun otherUpload(name: String): String? = when (name) {
+        UPLOAD -> UPLOAD_UNMETERED
+        UPLOAD_UNMETERED -> UPLOAD
+        else -> null
+    }
 }
 
 /**

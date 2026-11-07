@@ -3,12 +3,18 @@ package io.github.yesidrobayo.shopledger.data
 import android.content.Context
 import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
+import io.github.yesidrobayo.shopledger.data.backup.BackupEvent
+import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
+import io.github.yesidrobayo.shopledger.data.backup.BackupWorkQueue
 import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
 import io.github.yesidrobayo.shopledger.data.backup.DurableFileOps
 import io.github.yesidrobayo.shopledger.data.backup.RestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.RestoreFiles
 import io.github.yesidrobayo.shopledger.data.backup.RestoreLockFile
+import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
 import io.github.yesidrobayo.shopledger.data.backup.RoomRestoredDatabaseVerifier
+import io.github.yesidrobayo.shopledger.data.backup.ScheduleFacts
+import io.github.yesidrobayo.shopledger.data.backup.ScheduledBackupWork
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestore
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestoreGate
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
@@ -30,17 +36,23 @@ import io.github.yesidrobayo.shopledger.data.local.PreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
+import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
 import io.github.yesidrobayo.shopledger.data.work.DataWorkerFactory
+import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.error
+import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.domain.port.info
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -68,6 +80,8 @@ import kotlinx.coroutines.withContext
  * @param schemaVersion la versión del esquema que compila la app. Solo las pruebas la cambian, para
  *   ver una base de una versión anterior sin tener todavía una segunda versión.
  * @param preMigrationCopy deja la copia previa a migrar de esos archivos, en `pre-migration/`.
+ * @param workQueue los trabajos del respaldo en la biblioteca de trabajos. Sin ella, como en las
+ *   capas de datos que las pruebas arman a mano, confirmar un cambio no programa nada.
  */
 class DataGraph internal constructor(
     private val context: Context,
@@ -80,6 +94,7 @@ class DataGraph internal constructor(
     private val preMigrationCopy: (DatabaseFiles) -> PreMigrationCopy = {
         VacuumPreMigrationCopy(it, log)
     },
+    private val workQueue: ((Context) -> BackupWorkQueue)? = null,
 ) {
     private val mutex = Mutex()
 
@@ -113,6 +128,50 @@ class DataGraph internal constructor(
         }
     }
 
+    /**
+     * Lo corto que sigue a una confirmación, como programar la copia. Una falla se registra solo con
+     * su clase y no detiene a lo demás.
+     */
+    private val backgroundScope =
+        CoroutineScope(
+            SupervisorJob() + ioContext + log.failureHandler(BackupEvent.SCHEDULING_FAILED),
+        )
+
+    /**
+     * Programa el respaldo: traduce cada cambio confirmado, la app que se abre o pasa a segundo
+     * plano y `Respaldar ahora` a trabajos en segundo plano. Crearlo no toca el disco.
+     */
+    val backupScheduler: BackupScheduler by lazy {
+        BackupScheduler(
+            facts = ::scheduleFacts,
+            restorePending = {
+                withContext(ioContext) { RestoreMarkers(files().noBackupDirectory).present() }
+            },
+            queue = workQueue?.invoke(context) ?: BackupWorkQueue.Detached,
+            clock = clock,
+        )
+    }
+
+    /** Lo que la pausa de una restauración hace con los trabajos programados. */
+    private val scheduledBackupWork =
+        object : ScheduledBackupWork {
+            override suspend fun cancel() = backupScheduler.cancelForRestore()
+
+            override suspend fun awaitNoneRunning() = backupScheduler.awaitNoneRunning()
+
+            override fun resume() {
+                backgroundScope.launch { backupScheduler.resumeAfterRestore() }
+            }
+        }
+
+    /** Tras confirmar un cambio, la copia se programa aparte: la escritura no espera por ella. */
+    private val commitListener =
+        if (workQueue == null) {
+            CommitListener {}
+        } else {
+            CommitListener { backgroundScope.launch { backupScheduler.onDataChanged() } }
+        }
+
     private val restoreMutex = Mutex()
     private var restoreCoordinator: RestoreCoordinator? = null
 
@@ -131,6 +190,7 @@ class DataGraph internal constructor(
                 ports = { ready?.ports },
                 destinations = destinations,
                 backupMutex = backupMutex,
+                scheduledWork = scheduledBackupWork,
             )
         }.also { restoreCoordinator = it }
     }
@@ -158,16 +218,36 @@ class DataGraph internal constructor(
      * Crea los trabajos en segundo plano de esta capa con sus dependencias. La app la entrega a la
      * biblioteca de trabajos al configurarla, y crearla no toca el disco.
      */
-    val workerFactory: WorkerFactory by lazy { DataWorkerFactory(backupEngine, log) }
+    val workerFactory: WorkerFactory by lazy {
+        DataWorkerFactory(backupEngine, log, backupScheduler)
+    }
 
-    /** La capa de datos de la app, con su base en la carpeta de bases y el registro de Android. */
+    /**
+     * La capa de datos de la app, con su base en la carpeta de bases, el registro de Android y los
+     * trabajos del respaldo en la biblioteca de trabajos del sistema.
+     */
     constructor(context: Context, ioContext: CoroutineContext, clock: Clock) : this(
-        context.applicationContext,
-        ioContext,
-        clock,
-        { DatabaseFiles.of(context) },
-        AndroidEventLog(),
+        context = context.applicationContext,
+        ioContext = ioContext,
+        clock = clock,
+        files = { DatabaseFiles.of(context) },
+        log = AndroidEventLog(),
+        workQueue = ::WorkManagerBackupQueue,
     )
+
+    /**
+     * Lo que el programador del respaldo mira del estado guardado, con la compuerta de los trabajos:
+     * nulo si la base todavía no se puede abrir sin riesgo, como con una migración pendiente.
+     */
+    private suspend fun scheduleFacts(): ScheduleFacts? = when (val access = openForWork()) {
+        is DataAccess.Ready ->
+            ScheduleFacts.of(
+                access.ports.backupState.get(),
+                access.ports.settings.get().preferences.meteredBackupPolicy,
+            )
+
+        WorkAccess.MigrationPending, WorkAccess.RestorePending, is DataAccess.Rescue -> null
+    }
 
     /**
      * Abre la base para la app en primer plano, una sola vez por proceso, y entrega sus puertos.
@@ -253,6 +333,7 @@ class DataGraph internal constructor(
                                 databaseFiles.noBackupDirectory,
                                 ioContext,
                             ),
+                        commitListener = commitListener,
                     )
                 if (pendingRestore.takeEncryptionChanged()) {
                     recordEncryptionChanged(ports, clock, log)

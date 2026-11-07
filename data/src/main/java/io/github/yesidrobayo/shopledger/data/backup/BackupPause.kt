@@ -21,19 +21,53 @@ internal interface BackupPause {
 /**
  * La pausa con el cerrojo del respaldo del proceso, el mismo que toma cada ejecución: tomarlo
  * espera a la que corre, y retenerlo deja esperando a la siguiente. Las que empiezan con el cerrojo
- * de la restauración ya tomado ven sus marcas y salen sin abrir la base. Una que ya esperaba solo
- * corre al reanudar, cuando la restauración se canceló, o nunca, porque el proceso se reinicia.
+ * de la restauración ya tomado ven sus marcas y salen sin abrir la base.
  *
- * Cancelar los trabajos programados y comprobar con la biblioteca de trabajos que ninguno corre
- * llega con la programación del respaldo, que hoy no existe: sin ella, ningún trabajo se encola
- * solo.
+ * Antes de tomarlo cancela la espera y las dos subidas programadas, así una que corre se detiene en
+ * su siguiente revisión en vez de terminar la copia, y una que esperaba no corre. Con el cerrojo ya
+ * tomado comprueba con la biblioteca de trabajos que ninguno figura corriendo. Mientras dura la
+ * pausa nada se encola, porque el cerrojo de la restauración ya está en el disco. Al reanudar, lo
+ * pendiente se vuelve a encolar.
+ *
+ * @param work los trabajos programados del respaldo. Sin ellos, solo el cerrojo.
  */
-internal class MutexBackupPause(private val mutex: Mutex) : BackupPause {
+internal class MutexBackupPause(
+    private val mutex: Mutex,
+    private val work: ScheduledBackupWork = ScheduledBackupWork.None,
+) : BackupPause {
     override suspend fun pause() {
+        work.cancel()
         mutex.lock(this)
+        work.awaitNoneRunning()
     }
 
     override fun resume() {
-        if (mutex.holdsLock(this)) mutex.unlock(this)
+        if (!mutex.holdsLock(this)) return
+        mutex.unlock(this)
+        work.resume()
+    }
+}
+
+/** Lo que la pausa de una restauración hace con los trabajos programados del respaldo. */
+internal interface ScheduledBackupWork {
+    /** Cancela la espera y las dos subidas. */
+    suspend fun cancel()
+
+    /** Espera a que ninguno de los tres figure corriendo. */
+    suspend fun awaitNoneRunning()
+
+    /** Vuelve a encolar lo pendiente. No espera: corre aparte. */
+    fun resume()
+
+    companion object {
+        /** Sin trabajos programados, como en las pruebas que solo miran el cerrojo. */
+        val None: ScheduledBackupWork =
+            object : ScheduledBackupWork {
+                override suspend fun cancel() = Unit
+
+                override suspend fun awaitNoneRunning() = Unit
+
+                override fun resume() = Unit
+            }
     }
 }

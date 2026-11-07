@@ -118,6 +118,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // El ciclo de vida del proceso: el respaldo sale al pasar la app a segundo plano y se revisa al abrirla.
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     // Un ViewModel por entrada de la pila, que se limpia al salir de ella.

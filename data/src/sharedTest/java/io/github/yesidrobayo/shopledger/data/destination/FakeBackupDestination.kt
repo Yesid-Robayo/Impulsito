@@ -419,6 +419,9 @@ internal class FakeBackupDestination(
         control.isStopped() ->
             DestinationResult.Failure(DestinationFailure.Interrupted(InterruptReason.STOPPED))
 
+        control.meteredStop() ->
+            DestinationResult.Failure(DestinationFailure.Interrupted(InterruptReason.METERED))
+
         control.remainingMillis()?.let { it <= 0 } == true ->
             DestinationResult.Failure(DestinationFailure.Interrupted(InterruptReason.OUT_OF_TIME))
 

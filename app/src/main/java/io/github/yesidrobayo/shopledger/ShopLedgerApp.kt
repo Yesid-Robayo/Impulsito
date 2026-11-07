@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.res.Configuration
 import android.os.StrictMode
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration as WorkConfiguration
 import io.github.yesidrobayo.shopledger.di.AppContainer
 import kotlinx.coroutines.launch
@@ -61,6 +62,9 @@ class ShopLedgerApp :
         container = AppContainer(this)
         container.language.applyAtProcessStart()
         followLanguage()
+        // Solo avisa cuando una pantalla se abre o la app entera pasa a segundo plano: un proceso
+        // que el sistema arranca para un trabajo no lo dispara.
+        ProcessLifecycleOwner.get().lifecycle.addObserver(container.lifecycleObserver)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
