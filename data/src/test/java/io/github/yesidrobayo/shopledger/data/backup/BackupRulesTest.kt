@@ -21,67 +21,11 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Las reglas del motor de respaldo que no necesitan la base: la guarda que decide si se sube, qué
- * copias del destino cuentan para ella, qué destino está conectado, los conteos neutros y que los
- * códigos que el motor guarda son los que admite la tabla.
+ * Las reglas del motor de respaldo que no necesitan la base: qué copias del destino cuentan para la
+ * guarda, qué destino está conectado, los conteos neutros y que los códigos que el motor guarda son
+ * los que admite la tabla. La guarda tiene sus propias pruebas.
  */
 class BackupRulesTest {
-    @Test
-    fun `an empty destination or an older one uploads above everything this base wrote`() {
-        assertEquals(GuardDecision.Upload(1), decide())
-        assertEquals(GuardDecision.Upload(8), decide(head = 7, headDevice = OWN))
-        assertEquals(
-            GuardDecision.Upload(8),
-            decide(listOf(copy(5, OTHER), copy(6, OWN)), head = 7, headDevice = OWN),
-        )
-        // La generación nueva salta por encima de una subida que no se confirmó.
-        assertEquals(GuardDecision.Upload(10), decide(head = 7, headDevice = OWN, pending = 9))
-    }
-
-    @Test
-    fun `the head of this base uploads the next one`() {
-        assertEquals(
-            GuardDecision.Upload(8),
-            decide(listOf(copy(7, OWN), copy(3, OTHER)), head = 7, headDevice = OWN),
-        )
-        // La cabeza la puede haber escrito otro teléfono, si esta base la adoptó al restaurar.
-        assertEquals(
-            GuardDecision.Upload(8),
-            decide(listOf(copy(7, OTHER)), head = 7, headDevice = OTHER),
-        )
-    }
-
-    @Test
-    fun `anything newer, foreign or from a newer app holds`() {
-        // Más nueva que la cabeza, propia o ajena.
-        assertEquals(GuardDecision.Hold, decide(listOf(copy(8, OWN)), head = 7, headDevice = OWN))
-        assertEquals(GuardDecision.Hold, decide(listOf(copy(8, OTHER)), head = 7, headDevice = OWN))
-        assertEquals(GuardDecision.Hold, decide(listOf(copy(1, OTHER))))
-        // La misma generación, con una copia de otro teléfono: un empate siempre detiene.
-        assertEquals(
-            GuardDecision.Hold,
-            decide(listOf(copy(7, OWN), copy(7, OTHER)), head = 7, headDevice = OWN),
-        )
-        // Una cabeza de una versión más nueva de la app, aunque sea más vieja que la de la base.
-        assertEquals(
-            GuardDecision.Hold,
-            decide(listOf(copy(3, OTHER, schema = APP_SCHEMA + 1L)), head = 7, headDevice = OWN),
-        )
-    }
-
-    @Test
-    fun `the own unconfirmed upload is not a newer head`() {
-        assertEquals(
-            GuardDecision.Upload(9),
-            decide(listOf(copy(7, OWN), copy(8, OWN)), head = 7, headDevice = OWN, pending = 8),
-        )
-        // La misma generación de otro teléfono sí cuenta.
-        assertEquals(
-            GuardDecision.Hold,
-            decide(listOf(copy(8, OTHER)), head = 7, headDevice = OWN, pending = 8),
-        )
-    }
-
     @Test
     fun `only copies with valid metadata of their own name and size count`() {
         val good = listed(copy(4, OWN))
@@ -103,7 +47,10 @@ class BackupRulesTest {
             )
 
         // La de la ranura no tiene nombre: sus metadatos se leen solos.
-        assertEquals(listOf(copy(4, OWN), copy(4, OWN)), known)
+        assertEquals(
+            listOf(copy(4, OWN), copy(4, OWN).copy(ref = CopyRef("A"))),
+            known,
+        )
     }
 
     @Test
@@ -165,22 +112,24 @@ class BackupRulesTest {
             .map { it.trim().removeSurrounding("'") }
     }
 
-    private fun decide(
-        copies: List<KnownCopy> = emptyList(),
-        head: Long = 0,
-        headDevice: String? = null,
-        pending: Long? = null,
-    ): GuardDecision =
-        HeadOrderGuard.decide(GuardInput(copies, OWN, head, headDevice, pending, APP_SCHEMA))
-
     private fun copy(generation: Long, device: String, schema: Long = APP_SCHEMA.toLong()) =
-        KnownCopy(generation, device, schema)
+        KnownCopy(
+            ref = CopyRef(nameOf(generation, device, schema).fileName),
+            generation = generation,
+            deviceId = device,
+            schemaVersion = schema,
+            format = 1,
+            records = 10,
+            catalogCount = 3,
+        )
 
-    private fun nameOf(copy: KnownCopy) = BackupFileName(
-        copy.generation,
-        copy.schemaVersion.toInt(),
+    private fun nameOf(copy: KnownCopy) = nameOf(copy.generation, copy.deviceId, copy.schemaVersion)
+
+    private fun nameOf(generation: Long, device: String, schema: Long) = BackupFileName(
+        generation,
+        schema.toInt(),
         requireNotNull(CopyInstant.parse("20261107T120000Z")),
-        copy.deviceId.take(8),
+        device.take(8),
         BackupFileFormat.GZIP,
     )
 
@@ -253,7 +202,6 @@ class BackupRulesTest {
 
     private companion object {
         const val OWN = "7f3a9c1e-0b2d-4c6e-8f10-23456789abcd"
-        const val OTHER = "0c4d2e7a-91b3-4f5e-a6d7-8899aabbccdd"
         const val APP_SCHEMA = 1
     }
 }

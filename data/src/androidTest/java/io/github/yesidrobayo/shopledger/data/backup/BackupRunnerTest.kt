@@ -428,9 +428,15 @@ class BackupRunnerTest {
         val cases =
             mapOf(
                 Operation.LIST to
-                    (DestinationFailure.ChangedOutside to BackupConflictKind.OTHER_DEVICE),
+                    (
+                        DestinationFailure.ChangedOutside(CopyRef("B")) to
+                            BackupConflictKind.OTHER_DEVICE
+                        ),
                 Operation.PLAN to
-                    (DestinationFailure.NoSafeSlot to BackupConflictKind.LOCAL_SHRUNK),
+                    (
+                        DestinationFailure.NoSafeSlot(CopyRef("A")) to
+                            BackupConflictKind.LOCAL_SHRUNK
+                        ),
             )
         for ((operation, case) in cases) {
             fixture.connect(BackupDestinationKind.DOCUMENT_SLOTS)
@@ -444,6 +450,10 @@ class BackupRunnerTest {
             val state = fixture.state()
             assertEquals("CONFLICT", state.linkState)
             assertEquals(kind.name, state.conflictKind)
+            // La ranura queda para crear un archivo nuevo en su lugar, sin generación: de ese lado
+            // no hay una copia que contar.
+            assertEquals(if (operation == Operation.LIST) "B" else "A", state.conflictFileRef)
+            assertNull(state.conflictGeneration)
             assertFalse(destination.calls.contains(Operation.UPLOAD))
         }
     }
@@ -497,17 +507,76 @@ class BackupRunnerTest {
     }
 
     @Test
-    fun aNewerCopyOfAnotherPhoneHoldsTheUploadWithoutTouchingAnything() = runBlocking {
+    fun aNewerCopyOfAnotherPhoneIsAConflictWithoutTouchingAnything() = runBlocking {
         fixture.addProduct("Pan de prueba")
         val destination = FakeBackupDestination()
-        putForeignCopy(destination, generation = 5, deviceId = OTHER_DEVICE_ID)
+        val foreign = putForeignCopy(destination, generation = 5, deviceId = OTHER_DEVICE_ID)
 
         val run = fixture.runner(destination).run(control)
 
-        assertEquals(BackupRun.Skipped(SkipReason.GUARD_HOLD), run)
+        assertEquals(BackupRun.Stopped(StopCause.Conflict(BackupConflictKind.OTHER_DEVICE)), run)
         assertEquals(listOf(Operation.LIST), destination.calls)
         assertEquals(emptyList<String>(), fixture.stagingFiles())
-        assertNull(fixture.state().pendingGeneration)
+        val state = fixture.state()
+        assertNull(state.pendingGeneration)
+        assertEquals("CONFLICT", state.linkState)
+        assertEquals(5L, state.conflictGeneration)
+        assertEquals(OTHER_DEVICE_ID, state.conflictDeviceId)
+        assertEquals(foreign.fileName, state.conflictFileRef)
+        // Un conflicto espera a la persona: la ejecución siguiente no hace nada.
+        fixture.addProduct("Leche de prueba")
+        assertEquals(
+            BackupRun.Skipped(SkipReason.NOT_CONNECTED),
+            fixture.runner(destination).run(control),
+        )
+    }
+
+    @Test
+    fun aHeadFromANewerAppStopsWithTheCodeToUpdate() = runBlocking {
+        fixture.addProduct("Pan de prueba")
+        val destination = FakeBackupDestination()
+        putForeignCopy(
+            destination,
+            generation = 5,
+            deviceId = OTHER_DEVICE_ID,
+            schemaVersion = AppDatabase.SCHEMA_VERSION + 1,
+        )
+
+        val run = fixture.runner(destination).run(control)
+
+        assertEquals(
+            BackupRun.Stopped(StopCause.Failure(BackupFailureCode.CLOUD_SCHEMA_NEWER)),
+            run,
+        )
+        assertEquals("CLOUD_SCHEMA_NEWER", fixture.state().failureCode)
+        assertEquals("CONNECTED", fixture.state().linkState)
+        assertEquals(listOf(Operation.LIST), destination.calls)
+    }
+
+    @Test
+    fun aBaseWithFewerRecordsThanItsOwnHeadIsAShrunkBase() = runBlocking {
+        fixture.addProduct("Pan de prueba")
+        val destination = FakeBackupDestination()
+        assertTrue(fixture.runner(destination).run(control) is BackupRun.Verified)
+        val head = fixture.state()
+        // La cabeza que la base confirmó dice tener más de lo que la base tiene ahora, como tras
+        // una migración que perdiera filas.
+        val name = requireNotNull(head.headFileRef)
+        val parsed = requireNotNull(BackupFileName.parse(name))
+        val meta = requireNotNull(destination.file(parsed.metaFileName))
+        val decoded = SlMetaCodec.decode(meta, parsed.identity()) as CopyMetadata.Valid
+        destination.putFile(
+            parsed.metaFileName,
+            SlMetaCodec.encode(decoded.meta.copy(records = decoded.meta.records + 50)),
+        )
+        fixture.addProduct("Leche de prueba")
+
+        val run = fixture.runner(destination).run(control)
+
+        assertEquals(BackupRun.Stopped(StopCause.Conflict(BackupConflictKind.LOCAL_SHRUNK)), run)
+        val state = fixture.state()
+        assertEquals(head.headGeneration, state.conflictGeneration)
+        assertEquals(name, state.conflictFileRef)
     }
 
     @Test
@@ -572,11 +641,12 @@ class BackupRunnerTest {
         destination: FakeBackupDestination,
         generation: Long,
         deviceId: String,
-    ) {
+        schemaVersion: Int = AppDatabase.SCHEMA_VERSION,
+    ): BackupFileName {
         val name =
             BackupFileName(
                 generation,
-                AppDatabase.SCHEMA_VERSION,
+                schemaVersion,
                 requireNotNull(CopyInstant.of(fixture.now)),
                 deviceId.take(8),
                 BackupFileFormat.GZIP,
@@ -592,7 +662,7 @@ class BackupRunnerTest {
                     deviceId = deviceId,
                     deviceLabel = null,
                     generation = generation,
-                    schemaVersion = AppDatabase.SCHEMA_VERSION.toLong(),
+                    schemaVersion = schemaVersion.toLong(),
                     appVersion = null,
                     sha256 = FakeBackupDestination.sha256(bytes),
                     rawSize = 4_096,
@@ -603,6 +673,7 @@ class BackupRunnerTest {
                 ),
             ),
         )
+        return name
     }
 
     /** Una poda que solo acepta correr con la copia nueva ya confirmada en el estado. */

@@ -165,7 +165,10 @@ class FakeBackupDestinationTest {
     fun slotsWithoutASafePlaceRefuseToPlan() = runBlocking<Unit> {
         val destination =
             FakeBackupDestination(BackupDestinationKind.DOCUMENT_SLOTS) { _, _, _ -> null }
-        assertEquals(DestinationFailure.NoSafeSlot, destination.planUpload(copy, null).failure())
+        assertEquals(
+            DestinationFailure.NoSafeSlot(null),
+            destination.planUpload(copy, null).failure(),
+        )
     }
 
     private fun StoredCopy.withMeta(bytes: ByteArray) = StoredCopy(ref, sizeBytes, sha256, bytes)
@@ -197,6 +200,9 @@ class FakeBackupDestinationTest {
                 meta,
                 SlotCandidate(NewCopyMarks(valid = false, fatal = true), 0, 0),
             )
-        assertEquals(DestinationFailure.NoSafeSlot, destination.planUpload(fatal, null).failure())
+        assertEquals(
+            DestinationFailure.NoSafeSlot(null),
+            destination.planUpload(fatal, null).failure(),
+        )
     }
 }

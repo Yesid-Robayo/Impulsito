@@ -107,6 +107,8 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "get",
                 "markChanged",
                 "isEmpty",
+                "recordCount",
+                "catalogCount",
                 "markAttempt",
                 "saveIntent",
                 "clearIntent",
@@ -114,6 +116,8 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "recordFailure",
                 "leaveConnected",
                 "markConflict",
+                "keepThisPhone",
+                "reopenAfterConflict",
                 "confirm",
             ),
             functionsOf(BackupStateDao::class.java),
@@ -213,6 +217,64 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
         before = requireNotNull(state.get())
         assertEquals(1, state.leaveConnected("PERMISSION_LOST", "huella"))
         changed(before.copy(linkState = "PERMISSION_LOST"))
+    }
+
+    @Test
+    fun keepingThisPhoneLeavesTheConflictOnlyForItsDestination() = runBlocking {
+        execute(
+            "UPDATE backup_state SET link_state = 'CONFLICT', destination_kind = 'WEBDAV', " +
+                "destination_id = 'huella', change_seq = 3, verified_seq = 1, " +
+                "head_generation = 2, head_device_id = 'este', head_file_ref = 'copia-2', " +
+                "conflict_kind = 'OTHER_DEVICE', conflict_generation = 7, " +
+                "conflict_device_id = 'otro', conflict_file_ref = 'copia-7' WHERE id = 1",
+        )
+        var before = requireNotNull(state.get())
+        val cleared =
+            { entity: BackupStateEntity ->
+                entity.copy(
+                    linkState = "CONNECTED",
+                    conflictKind = null,
+                    conflictGeneration = null,
+                    conflictDeviceId = null,
+                    conflictFileRef = null,
+                    changeSeq = entity.changeSeq + 1,
+                    firstUnsyncedAt = LATER,
+                )
+            }
+
+        assertEquals(0, state.keepThisPhone(7, "otro", "copia-7", LATER, "otra"))
+        assertEquals(0, state.reopenAfterConflict(LATER, "otra"))
+        assertEquals(before, state.get())
+        assertEquals(1, state.keepThisPhone(7, "otro", "copia-7", LATER, "huella"))
+        assertEquals(
+            cleared(before).copy(
+                headGeneration = 7,
+                headDeviceId = "otro",
+                headFileRef = "copia-7",
+                shrinkAcceptedGeneration = 7,
+            ),
+            state.get(),
+        )
+        // Ya no está en conflicto: no se sale dos veces.
+        assertEquals(0, state.keepThisPhone(7, "otro", "copia-7", MUCH_LATER, "huella"))
+
+        execute(
+            "UPDATE backup_state SET link_state = 'CONFLICT', conflict_kind = 'CLOUD_AHEAD' WHERE id = 1",
+        )
+        before = requireNotNull(state.get())
+        assertEquals(1, state.reopenAfterConflict(MUCH_LATER, "huella"))
+        // El primer cambio sin copia ya tenía instante: lo conserva.
+        assertEquals(cleared(before), state.get())
+    }
+
+    @Test
+    fun theGuardCountsTheActiveDatabaseLikeACopy() = runBlocking {
+        assertEquals(0L, state.recordCount())
+        assertEquals(0L, state.catalogCount())
+        val category = database.expenseCategoryDao().insert(expenseCategory("Luz"))
+        database.expenseDao().insert(expense(category))
+        assertEquals(1L, state.recordCount())
+        assertEquals(0L, state.catalogCount())
     }
 
     @Test

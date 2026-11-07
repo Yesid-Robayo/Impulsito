@@ -84,7 +84,9 @@ internal class DocumentSlotDestination(
                     is DocumentResult.Error -> return@withLock failureOf(result.error, state)
                     is DocumentResult.Ok -> result.value
                 }
-                checkSize(info, expected)?.let { return@withLock DestinationResult.Failure(it) }
+                checkSize(info, expected, slot)?.let {
+                    return@withLock DestinationResult.Failure(it)
+                }
             }
             val copies = BackupSlot.entries.mapNotNull { slot ->
                 val record = state[slot].copy ?: return@mapNotNull null
@@ -110,7 +112,9 @@ internal class DocumentSlotDestination(
                 UploadPlan(copy, CopyRef(choice.slot.name)),
             )
 
-            is SlotChoice.AllLocked -> DestinationResult.Failure(DestinationFailure.NoSafeSlot)
+            is SlotChoice.AllLocked -> DestinationResult.Failure(
+                DestinationFailure.NoSafeSlot(choice.conflictSlot?.let { CopyRef(it.name) }),
+            )
 
             // El motor nunca pide lugar para una copia fatal, y si lo hiciera no se escribe.
             SlotChoice.FatalCopy -> DestinationResult.Failure(
@@ -136,7 +140,7 @@ internal class DocumentSlotDestination(
             is DocumentResult.Ok -> result.value
         }
         entry.expectedSize?.let { expected ->
-            checkSize(info, expected)?.let { return@withLock DestinationResult.Failure(it) }
+            checkSize(info, expected, slot)?.let { return@withLock DestinationResult.Failure(it) }
         }
         val record = SlotRecord(
             generation = copy.name.generation,
@@ -319,12 +323,15 @@ internal class DocumentSlotDestination(
     }
 
     /** El fallo del tamaño de un documento, o nulo si es el que la app espera. */
-    private fun checkSize(info: DocumentInfo, expected: Long): DestinationFailure? =
-        when (info.sizeBytes) {
-            null -> DestinationFailure.Unsupported(UnsupportedReason.PROVIDER_REJECTED)
-            expected -> null
-            else -> DestinationFailure.ChangedOutside
-        }
+    private fun checkSize(
+        info: DocumentInfo,
+        expected: Long,
+        slot: BackupSlot,
+    ): DestinationFailure? = when (info.sizeBytes) {
+        null -> DestinationFailure.Unsupported(UnsupportedReason.PROVIDER_REJECTED)
+        expected -> null
+        else -> DestinationFailure.ChangedOutside(CopyRef(slot.name))
+    }
 
     /**
      * Abre para escribir. Si el proveedor rechaza el modo, y el documento sigue con su permiso y

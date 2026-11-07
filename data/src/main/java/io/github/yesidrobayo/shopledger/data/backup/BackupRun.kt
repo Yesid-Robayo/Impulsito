@@ -52,9 +52,6 @@ internal enum class SkipReason {
     /** La base no tiene nada del negocio: nunca tapa una copia con datos. */
     EMPTY_DATABASE,
 
-    /** El destino tiene algo que la guarda no resuelve sin preguntar. */
-    GUARD_HOLD,
-
     /** La persona cambió de destino durante la subida: la copia no se confirma en el nuevo. */
     DESTINATION_CHANGED,
 }

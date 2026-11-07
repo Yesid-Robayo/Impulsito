@@ -48,6 +48,14 @@ internal interface BackupStateDao {
     @Query(NeutralCounts.IS_EMPTY)
     suspend fun isEmpty(): Boolean
 
+    /** Los registros de la base activa, de las tablas que solo crecen, para la guarda. */
+    @Query(NeutralCounts.RECORD_COUNT)
+    suspend fun recordCount(): Long
+
+    /** Los productos, proveedores y clientes de la base activa, para la guarda. */
+    @Query(NeutralCounts.CATALOG_COUNT)
+    suspend fun catalogCount(): Long
+
     /** Anota que empezó una ejecución del respaldo, con el reloj de pared en milisegundos UTC. */
     @Query("UPDATE backup_state SET last_attempt_at = :now WHERE id = 1")
     suspend fun markAttempt(now: Long): Int
@@ -108,6 +116,43 @@ internal interface BackupStateDao {
         fileRef: String?,
         destinationId: String,
     ): Int
+
+    /**
+     * Deja de esperar a la persona porque eligió quedarse con este teléfono, si el enlace sigue en
+     * conflicto con el destino [destinationId]. Devuelve 0 si ya no lo está.
+     *
+     * La cabeza del destino pasa a ser la que esta base conoce, y queda aceptada aunque tenga más
+     * datos que la base: la guarda ya no la toma por una pérdida. Fuerza una subida, que va por
+     * encima de esa cabeza y no borra nada.
+     */
+    @Query(
+        "UPDATE backup_state SET head_generation = :generation, head_device_id = :deviceId, " +
+            "head_file_ref = :fileRef, shrink_accepted_generation = :generation, " +
+            "link_state = 'CONNECTED', conflict_kind = NULL, conflict_generation = NULL, " +
+            "conflict_device_id = NULL, conflict_file_ref = NULL, " +
+            "change_seq = change_seq + 1, first_unsynced_at = COALESCE(first_unsynced_at, :now) " +
+            "WHERE id = 1 AND link_state = 'CONFLICT' AND destination_id = :destinationId",
+    )
+    suspend fun keepThisPhone(
+        generation: Long,
+        deviceId: String,
+        fileRef: String,
+        now: Long,
+        destinationId: String,
+    ): Int
+
+    /**
+     * Sale del conflicto con el destino [destinationId] sin tocar la cabeza conocida: el destino
+     * ya no tiene cabeza que proteger, porque la persona borró sus copias. Fuerza una subida.
+     * Devuelve 0 si el enlace ya no está en conflicto con ese destino.
+     */
+    @Query(
+        "UPDATE backup_state SET link_state = 'CONNECTED', conflict_kind = NULL, " +
+            "conflict_generation = NULL, conflict_device_id = NULL, conflict_file_ref = NULL, " +
+            "change_seq = change_seq + 1, first_unsynced_at = COALESCE(first_unsynced_at, :now) " +
+            "WHERE id = 1 AND link_state = 'CONFLICT' AND destination_id = :destinationId",
+    )
+    suspend fun reopenAfterConflict(now: Long, destinationId: String): Int
 
     /**
      * Confirma una copia comprobada en el destino, en una sola sentencia, y solo si el destino

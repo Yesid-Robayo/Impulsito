@@ -62,7 +62,10 @@ import kotlinx.coroutines.withContext
  *    reintenta.
  * 5. **Retomar.** Una subida que quedó sin confirmar todavía no se retoma: la copia nueva lleva una
  *    generación mayor, y la anterior queda en el destino sin confirmar, sin pisar nada.
- * 6. **Guarda.** Decide si se puede subir y con qué generación. Si no, no genera nada.
+ * 6. **Guarda.** [BackupGuard] decide si se puede subir y con qué generación, comparando la
+ *    cabeza del destino con lo que esta base conoce y tiene. Si el destino tiene algo que una copia
+ *    nueva taparía, el enlace queda en conflicto y la persona decide; si la cabeza viene de una app
+ *    más nueva, `CLOUD_SCHEMA_NEWER`. En ningún caso genera nada.
  * 7. **Instantánea.** `VACUUM INTO` en una conexión propia, mientras la app sigue vendiendo.
  * 8. **Sello.** Limpia de la instantánea lo que no viaja en una copia, corre `integrity_check` y lee
  *    los conteos. Una instantánea dañada nunca sube: `LOCAL_CORRUPT`.
@@ -108,7 +111,7 @@ internal class BackupRunner(
     private val appVersion: String?,
     private val deviceLabel: String?,
     private val mutex: Mutex,
-    private val guard: CopyGuard = HeadOrderGuard,
+    private val guard: CopyGuard = BackupGuard,
     private val pruner: CopyPruner = CopyPruner.None,
     private val freeSpace: (File) -> Long = File::getUsableSpace,
     private val verifyMode: (TransferControl) -> VerifyMode = ::verifyModeFor,
@@ -177,7 +180,21 @@ internal class BackupRunner(
         val generation =
             when (val decision = guard.decide(guardInput(listing, current, device))) {
                 is GuardDecision.Upload -> decision.generation
-                GuardDecision.Hold -> return BackupRun.Skipped(SkipReason.GUARD_HOLD)
+
+                GuardDecision.Empty -> return BackupRun.Skipped(SkipReason.EMPTY_DATABASE)
+
+                is GuardDecision.Refused -> return stop(StopCause.Failure(decision.code))
+
+                is GuardDecision.Conflict ->
+                    return conflict(
+                        decision.kind,
+                        link,
+                        ConflictMark(
+                            decision.head.generation,
+                            decision.head.deviceId,
+                            decision.head.ref,
+                        ),
+                    )
             }
 
         // Pasos 7 a 9: la copia.
@@ -414,10 +431,23 @@ internal class BackupRunner(
             DestinationFailure.VerifyMismatch ->
                 stop(StopCause.Failure(BackupFailureCode.VERIFY_MISMATCH))
 
-            DestinationFailure.ChangedOutside -> conflict(BackupConflictKind.OTHER_DEVICE, link)
+            // De ese lado no hay generación ni teléfono: solo la ranura que cambió.
+            is DestinationFailure.ChangedOutside ->
+                conflict(
+                    BackupConflictKind.OTHER_DEVICE,
+                    link,
+                    ConflictMark(null, null, failure.ref),
+                )
 
             // Ninguna ranura deja escribir sin tapar una copia con más datos: la persona decide.
-            DestinationFailure.NoSafeSlot -> conflict(BackupConflictKind.LOCAL_SHRUNK, link)
+            // Sin generación, a diferencia de la pérdida de datos que ve la guarda: así se sabe
+            // que las tres ranuras quedaron bloqueadas.
+            is DestinationFailure.NoSafeSlot ->
+                conflict(
+                    BackupConflictKind.LOCAL_SHRUNK,
+                    link,
+                    ConflictMark(null, null, failure.conflictRef),
+                )
 
             // Falló el disco del teléfono, no el destino: se reintenta, y se ve como falta de
             // espacio, la causa más probable.
@@ -440,8 +470,21 @@ internal class BackupRunner(
         return BackupRun.Stopped(StopCause.PermissionLost)
     }
 
-    private suspend fun conflict(kind: BackupConflictKind, link: ConnectedDestination): BackupRun {
-        state.markConflict(kind.name, null, null, null, link.destinationId)
+    /** Lo que el conflicto guarda del lado del destino. Cada dato puede faltar. */
+    private class ConflictMark(val generation: Long?, val deviceId: String?, val ref: CopyRef?)
+
+    private suspend fun conflict(
+        kind: BackupConflictKind,
+        link: ConnectedDestination,
+        mark: ConflictMark,
+    ): BackupRun {
+        state.markConflict(
+            kind.name,
+            mark.generation,
+            mark.deviceId,
+            mark.ref?.value,
+            link.destinationId,
+        )
         return BackupRun.Stopped(StopCause.Conflict(kind))
     }
 
@@ -470,7 +513,7 @@ internal class BackupRunner(
         else -> null
     }
 
-    private fun guardInput(
+    private suspend fun guardInput(
         listing: CopyListing,
         current: BackupStateEntity,
         device: String,
@@ -481,6 +524,16 @@ internal class BackupRunner(
         headDeviceId = current.headDeviceId,
         pendingGeneration = current.pendingGeneration,
         appSchemaVersion = schemaVersion,
+        local =
+            LocalCounts(
+                // El paso 0 ya salió con la base vacía.
+                isEmpty = false,
+                records = state.recordCount(),
+                catalogCount = state.catalogCount(),
+                pendingChanges = current.changeSeq - current.verifiedSeq,
+            ),
+        shrinkAcceptedGeneration = current.shrinkAcceptedGeneration,
+        highestOwnGeneration = highestOwnGeneration(listing, device),
     )
 
     private fun headRefOf(current: BackupStateEntity): CopyRef? =
@@ -526,12 +579,43 @@ internal fun knownCopies(listing: CopyListing): List<KnownCopy> =
                 ?: SlMetaCodec.decodeUnnamed(bytes)
         val meta = (decoded as? CopyMetadata.Valid)?.meta ?: return@mapNotNull null
         if (meta.fileSize != copy.sizeBytes) return@mapNotNull null
-        KnownCopy(meta.generation, meta.deviceId, meta.schemaVersion)
+        KnownCopy(
+            ref = copy.ref,
+            generation = meta.generation,
+            deviceId = meta.deviceId,
+            schemaVersion = meta.schemaVersion,
+            format = meta.format,
+            records = meta.records,
+            catalogCount = meta.catalogCount,
+        )
     }
+
+/**
+ * La mayor generación que el destino muestra de [deviceId] por los nombres, cuente o no para
+ * decidir: copias sin metadatos o con otro tamaño, metadatos sueltos y temporales. Una copia nueva
+ * con esa generación chocaría con un nombre que ya está. 0 si no hay ninguna.
+ */
+internal fun highestOwnGeneration(listing: CopyListing, deviceId: String): Long {
+    // El nombre lleva los primeros 8 caracteres del teléfono, igual que al subir.
+    val prefix = deviceId.take(8)
+    val named =
+        listing.copies.mapNotNull { it.name } +
+            listing.orphanMetas.mapNotNull { BackupFileName.parseMeta(it.value) } +
+            listing.temporaries.mapNotNull { temporary ->
+                val base = temporary.ref.value.removeSuffix(BackupFileName.TEMPORARY_SUFFIX)
+                BackupFileName.parse(base) ?: BackupFileName.parseMeta(base)
+            }
+    return named.filter { it.devicePrefix == prefix }.maxOfOrNull(BackupFileName::generation) ?: 0
+}
 
 /** El destino conectado del estado, o nulo si no hay uno al que subir. */
 internal fun connectedOf(current: BackupStateEntity): ConnectedDestination? {
     if (current.linkState != BackupLinkState.CONNECTED.name) return null
+    return destinationOf(current)
+}
+
+/** El destino que recuerda el estado, en cualquier estado del enlace, o nulo si no hay uno. */
+internal fun destinationOf(current: BackupStateEntity): ConnectedDestination? {
     val kind =
         BackupDestinationKind.entries.firstOrNull { it.name == current.destinationKind }
             ?: return null
@@ -550,8 +634,8 @@ internal fun failureName(failure: DestinationFailure): DestinationFailureName = 
     DestinationFailure.QuotaExceeded -> DestinationFailureName.QUOTA_EXCEEDED
     DestinationFailure.LocalStorage -> DestinationFailureName.LOCAL_STORAGE
     DestinationFailure.VerifyMismatch -> DestinationFailureName.VERIFY_MISMATCH
-    DestinationFailure.ChangedOutside -> DestinationFailureName.CHANGED_OUTSIDE
-    DestinationFailure.NoSafeSlot -> DestinationFailureName.NO_SAFE_SLOT
+    is DestinationFailure.ChangedOutside -> DestinationFailureName.CHANGED_OUTSIDE
+    is DestinationFailure.NoSafeSlot -> DestinationFailureName.NO_SAFE_SLOT
     DestinationFailure.Incomplete -> DestinationFailureName.INCOMPLETE
     is DestinationFailure.Transient -> DestinationFailureName.TRANSIENT
     is DestinationFailure.Interrupted -> DestinationFailureName.INTERRUPTED

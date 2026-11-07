@@ -244,14 +244,14 @@ class DocumentSlotDestinationTest {
         docC.noTruncate = true
         // La ranura está vacía según el estado, pero el documento ya tiene bytes: no es lo
         // esperado.
-        assertEquals(DestinationFailure.ChangedOutside, uploadFailure(outgoing(4, bytes(4, 40))))
+        assertEquals(changedOutside("C"), uploadFailure(outgoing(4, bytes(4, 40))))
 
         // Con la ranura a medias, el documento puede tener cualquier cosa, y se escribe encima.
         val stored = destination.upload(
             UploadPlan(outgoing(4, bytes(4, 40)), CopyRef("C")),
             control,
         )
-        assertEquals(DestinationResult.Failure(DestinationFailure.ChangedOutside), stored)
+        assertEquals(DestinationResult.Failure(changedOutside("C")), stored)
         store.save(
             requireNotNull(
                 store.state,
@@ -272,7 +272,7 @@ class DocumentSlotDestinationTest {
     @Test
     fun listingContrastsTheSizeOfEverySlotThatIsNotHalfWritten() = runBlocking<Unit> {
         docB.reportedSize = oldB.size + 1L
-        assertEquals(DestinationFailure.ChangedOutside, destination.listCopies(control).failure())
+        assertEquals(changedOutside("B"), destination.listCopies(control).failure())
 
         docB.reportedSize = null
         docB.sizeUnknown = true
@@ -337,7 +337,7 @@ class DocumentSlotDestinationTest {
         docA.reportedSize = 1
         val plan = UploadPlan(outgoing(4, bytes(4, 40)), CopyRef("A"))
 
-        assertEquals(DestinationFailure.ChangedOutside, destination.upload(plan, control).failure())
+        assertEquals(changedOutside("A"), destination.upload(plan, control).failure())
         assertTrue(documents.opened.isEmpty())
         assertEquals(record(2, oldA), store.state?.get(BackupSlot.A)?.copy)
     }
@@ -391,7 +391,7 @@ class DocumentSlotDestinationTest {
         documents.docs[URI_C]?.bytes = bytes(1, 5)
         val poorer = outgoing(4, bytes(4, 40), valid = false, records = 10)
         assertEquals(
-            DestinationFailure.NoSafeSlot,
+            DestinationFailure.NoSafeSlot(CopyRef("A")),
             destination.planUpload(poorer, CopyRef("C")).failure(),
         )
     }
@@ -678,4 +678,6 @@ class DocumentSlotDestinationTest {
         fun unsupported(reason: UnsupportedReason): DestinationFailure =
             DestinationFailure.Unsupported(reason)
     }
+
+    private fun changedOutside(slot: String) = DestinationFailure.ChangedOutside(CopyRef(slot))
 }

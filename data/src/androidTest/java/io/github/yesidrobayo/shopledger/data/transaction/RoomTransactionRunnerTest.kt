@@ -256,6 +256,10 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
         // Lo del motor de respaldo no se usa aquí: sin fila, tampoco cambiaría nada.
         override suspend fun isEmpty(): Boolean = true
 
+        override suspend fun recordCount(): Long = 0
+
+        override suspend fun catalogCount(): Long = 0
+
         override suspend fun markAttempt(now: Long): Int = 0
 
         override suspend fun saveIntent(
@@ -280,6 +284,16 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
             fileRef: String?,
             destinationId: String,
         ): Int = 0
+
+        override suspend fun keepThisPhone(
+            generation: Long,
+            deviceId: String,
+            fileRef: String,
+            now: Long,
+            destinationId: String,
+        ): Int = 0
+
+        override suspend fun reopenAfterConflict(now: Long, destinationId: String): Int = 0
 
         override suspend fun confirm(
             generation: Long,

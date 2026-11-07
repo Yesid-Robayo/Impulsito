@@ -54,14 +54,20 @@ internal sealed interface DestinationFailure {
     /**
      * Un documento de las ranuras cambió por fuera de la app: otro teléfono, o la persona, lo
      * escribió. No se escribe nada hasta que la persona decida.
+     *
+     * @property ref la ranura que cambió, para que la persona pueda crear un archivo nuevo en su
+     *   lugar sin tocar el anterior. Nula si el destino no sabe cuál fue.
      */
-    data object ChangedOutside : DestinationFailure
+    data class ChangedOutside(val ref: CopyRef?) : DestinationFailure
 
     /**
      * Las ranuras no dejan ningún lugar donde escribir sin tapar algo que hay que conservar. La
      * copia nueva tiene menos datos que lo guardado, y la persona decide.
+     *
+     * @property conflictRef la ranura que el conflicto muestra: la reserva que protege más
+     *   registros. Nula si ninguna protege datos de más que la cabeza.
      */
-    data object NoSafeSlot : DestinationFailure
+    data class NoSafeSlot(val conflictRef: CopyRef?) : DestinationFailure
 
     /**
      * La respuesta se leyó bien, pero traía un error dentro. Una lista así nunca significa carpeta

@@ -179,7 +179,7 @@ class DocumentSlotDeviceTest {
         // Un documento que cambió de tamaño por fuera no se pisa.
         writeAll(SlotTestProvider.uriOf(authority, "c"), byteArrayOf(1))
         assertEquals(
-            DestinationFailure.ChangedOutside,
+            DestinationFailure.ChangedOutside(CopyRef("C")),
             destination.listCopies(TransferControl.Unbounded).failure(),
         )
         // Uno sin tamaño conocido no sirve para las ranuras.

@@ -130,7 +130,7 @@ internal class FakeBackupDestination(
             BackupDestinationKind.DOCUMENT_SLOTS -> {
                 val ref =
                     slotChooser(copy, slots.toMap(), headFileRef)
-                        ?: return DestinationResult.Failure(DestinationFailure.NoSafeSlot)
+                        ?: return DestinationResult.Failure(DestinationFailure.NoSafeSlot(null))
                 DestinationResult.Success(UploadPlan(copy, ref))
             }
         }
