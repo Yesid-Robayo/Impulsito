@@ -46,6 +46,8 @@ internal class BackupFixture(private val context: Context, name: String) {
     val file: File = testDatabaseFile(context, "$name.db")
     val noBackup = File(context.noBackupFilesDir, name)
     val stagingDir: File = File(noBackup, BackupStaging.DIRECTORY_NAME)
+    val rejectedFile: File = File(noBackup, RejectedGenerationStore.FILE_NAME)
+    val rejected = RejectedGenerationStore(rejectedFile, Dispatchers.IO)
     val log = MemoryLog()
 
     /**
@@ -147,6 +149,7 @@ internal class BackupFixture(private val context: Context, name: String) {
         appVersion = "1.0.0",
         deviceLabel = "Fabricante Modelo",
         mutex = Mutex(),
+        rejected = rejected,
         pruner = pruner,
         freeSpace = freeSpace,
         verifyMode = verifyMode,

@@ -275,7 +275,7 @@ class BackupRunnerTest {
     }
 
     @Test
-    fun aDeathMidUploadLeavesTheGoodCopyAndNoFinalNameAndStartsOver() = runBlocking {
+    fun aDeathMidUploadLeavesTheGoodCopyAndNoFinalNameAndUploadsTheSameFileAgain() = runBlocking {
         fixture.addProduct("Pan de prueba")
         val destination = FakeBackupDestination()
         fixture.runner(destination).run(control)
@@ -310,27 +310,32 @@ class BackupRunnerTest {
         fixture.advance(1.minutes)
         val retried = fixture.runner(destination).run(control)
 
-        // Empieza de cero, por encima de la subida que no se confirmó.
-        assertEquals(BackupRun.Verified(3), retried)
+        // Sube otra vez el mismo archivo, con la misma generación, y el temporal ya no está.
+        assertEquals(BackupRun.Verified(2), retried)
         good.zip(goodBytes).forEach { (name, bytes) ->
             assertArrayEquals(bytes, destination.file(name))
         }
-        assertEquals(3L, fixture.state().headGeneration)
+        assertTrue(destination.fileNames.none { it.endsWith(BackupFileName.TEMPORARY_SUFFIX) })
+        assertEquals(2L, fixture.state().headGeneration)
         assertNull(fixture.state().pendingGeneration)
         assertEquals(emptyList<String>(), fixture.stagingFiles())
     }
 
     @Test
-    fun aDeathAfterTheFileLeavesACopyWithoutMetadataThatDoesNotDecide() = runBlocking {
+    fun aDeathAfterTheFileUploadsOnlyTheMetadataAndConfirmsThatCopy() = runBlocking {
         fixture.addProduct("Pan de prueba")
         val destination = FakeBackupDestination()
         destination.crashUploadAfter = UploadStep.AFTER_FILE
 
         fixture.runner(destination).run(control)
+        val before = destination.calls.size
         val retried = fixture.runner(destination).run(control)
 
-        // La copia sin metadatos no cuenta para la guarda: la siguiente sube sin detenerse.
-        assertEquals(BackupRun.Verified(2), retried)
+        // El archivo ya estaba entero: solo faltaban sus metadatos, que esperaban en el teléfono.
+        assertEquals(BackupRun.Verified(1), retried)
+        val calls = destination.calls.drop(before)
+        assertFalse(Operation.UPLOAD in calls)
+        assertTrue(Operation.UPLOAD_META in calls)
     }
 
     @Test

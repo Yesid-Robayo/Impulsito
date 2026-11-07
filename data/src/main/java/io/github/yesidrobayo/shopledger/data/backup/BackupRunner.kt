@@ -59,9 +59,10 @@ import kotlinx.coroutines.withContext
  * 2. y 3. **Destino y credencial.** Abre el destino que recuerda el estado. Si no deja entrar, el
  *    enlace pasa a acceso perdido.
  * 4. **Listar.** Lo que hay en el destino. Una lista con errores nunca es una carpeta vacía: se
- *    reintenta.
- * 5. **Retomar.** Una subida que quedó sin confirmar todavía no se retoma: la copia nueva lleva una
- *    generación mayor, y la anterior queda en el destino sin confirmar, sin pisar nada.
+ *    reintenta. Borra los temporales de este teléfono que dejó una subida cortada.
+ * 5. **Retomar.** Una subida que quedó sin confirmar se busca por su nombre: si ya está entera,
+ *    salta a comprobarla, y si no llegó, sube otra vez el mismo archivo. Lo que nunca se confirmó y
+ *    no sirve se rechaza en disco antes de borrarlo, y nunca se adopta ([UploadRecovery]).
  * 6. **Guarda.** [BackupGuard] decide si se puede subir y con qué generación, comparando la
  *    cabeza del destino con lo que esta base conoce y tiene. Si el destino tiene algo que una copia
  *    nueva taparía, el enlace queda en conflicto y la persona decide; si la cabeza viene de una app
@@ -102,6 +103,7 @@ import kotlinx.coroutines.withContext
  * @param appVersion la versión de la app para los metadatos, si tiene la forma que aceptan.
  * @param deviceLabel fabricante y modelo del teléfono para los metadatos, ya limpios.
  * @param mutex el cerrojo del respaldo, uno por proceso.
+ * @param rejected las generaciones propias rechazadas, que nunca se adoptan ni se repiten.
  */
 internal class BackupRunner(
     private val state: BackupStateDao,
@@ -119,6 +121,7 @@ internal class BackupRunner(
     private val appVersion: String?,
     private val deviceLabel: String?,
     private val mutex: Mutex,
+    rejected: RejectedGenerationStore,
     private val guard: CopyGuard = BackupGuard,
     private val pruner: CopyPruner = CopyPruner.None,
     private val freeSpace: (File) -> Long = File::getUsableSpace,
@@ -127,6 +130,8 @@ internal class BackupRunner(
     private val snapshotValidation: SnapshotValidation =
         SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
 ) {
+    private val recovery = UploadRecovery(state, staging, rejected, clock, log, ioContext)
+
     /** Corre una ejecución entera. Solo lanza la cancelación, o una falla que nadie previó. */
     suspend fun run(control: TransferControl): BackupRun = mutex.withLock {
         val current =
@@ -187,56 +192,70 @@ internal class BackupRunner(
                 is DestinationResult.Success -> listed.value
                 is DestinationResult.Failure -> return failed(listed.failure, link)
             }
+        val device = deviceId()
+        recovery.removeOwnTemporaries(destination, listing, device, control)
         interruption(control)?.let { return it }
 
-        // Paso 6: guarda.
-        val device = deviceId()
-        val generation =
-            when (val decision = guard.decide(guardInput(listing, current, device))) {
-                is GuardDecision.Upload -> decision.generation
+        // Paso 5: retomar la subida que quedó sin confirmar, o descartarla.
+        val delivery =
+            when (
+                val recovered = recovery.recover(
+                    destination,
+                    listing,
+                    current,
+                    device,
+                    control,
+                )
+            ) {
+                is Recovery.Resume -> recovered.delivery
 
-                GuardDecision.Empty -> return BackupRun.Skipped(SkipReason.EMPTY_DATABASE)
+                is Recovery.Failed -> return failed(recovered.failure, link)
 
-                is GuardDecision.Refused -> return stop(StopCause.Failure(decision.code))
+                Recovery.LocalFailure -> return BackupRun.Retry(RetryReason.LOCAL_FAILURE)
 
-                is GuardDecision.Conflict ->
-                    return conflict(
-                        decision.kind,
-                        link,
-                        ConflictMark(
-                            decision.head.generation,
-                            decision.head.deviceId,
-                            decision.head.ref,
-                        ),
-                    )
+                is Recovery.StartOver -> {
+                    attempt.pendingGeneration = recovered.pendingGeneration
+                    when (val made = newCopy(listing, current, device, recovered, link, control)) {
+                        is Made.Copy -> made.copy
+                        is Made.Stop -> return made.run
+                    }
+                }
             }
-
-        // Pasos 7 a 9: la copia.
-        val copy =
-            when (val made = makeCopy(generation, device, destination.kind, control)) {
-                is Made.Copy -> made.copy
-                is Made.Stop -> return made.run
-            }
+        interruption(control)?.let { return it }
 
         // Paso 10: intención y subida.
-        val plan =
-            when (val planned = destination.planUpload(copy.outgoing, headRefOf(current))) {
-                is DestinationResult.Success -> planned.value
-                is DestinationResult.Failure -> return failed(planned.failure, link)
-            }
-        interruption(control)?.let { return it }
-        state.saveIntent(generation, copy.changeSeq, copy.outgoing.sha256, copy.outgoing.sizeBytes)
-        attempt.pendingGeneration = generation
         val stored =
-            when (val uploaded = destination.upload(plan, control)) {
-                is DestinationResult.Success -> uploaded.value
-                is DestinationResult.Failure -> return failed(uploaded.failure, link)
+            when (delivery) {
+                is Delivery.Verify -> delivery.stored
+
+                is Delivery.Upload -> {
+                    val outgoing = delivery.copy
+                    val plan =
+                        when (val planned = destination.planUpload(outgoing, headRefOf(current))) {
+                            is DestinationResult.Success -> planned.value
+                            is DestinationResult.Failure -> return failed(planned.failure, link)
+                        }
+                    interruption(control)?.let { return it }
+                    state.saveIntent(
+                        delivery.generation,
+                        delivery.changeSeq,
+                        outgoing.sha256,
+                        outgoing.sizeBytes,
+                    )
+                    attempt.pendingGeneration = delivery.generation
+                    val uploaded =
+                        when (val result = destination.upload(plan, control)) {
+                            is DestinationResult.Success -> result.value
+                            is DestinationResult.Failure -> return failed(result.failure, link)
+                        }
+                    state.markUploadFinished(clock.nowEpochMillis())
+                    uploaded
+                }
             }
-        state.markUploadFinished(clock.nowEpochMillis())
 
         // Paso 11: comprobar.
-        val mode = verifyMode(control)
-        when (val verified = destination.verify(stored, mode, copy.outgoing.file, control)) {
+        val mode = verifyModeOf(delivery, control)
+        when (val verified = destination.verify(stored, mode, delivery.localFile, control)) {
             is DestinationResult.Success -> Unit
 
             is DestinationResult.Failure -> {
@@ -255,10 +274,11 @@ internal class BackupRunner(
             is DestinationResult.Failure -> return failed(confirmed.failure, link)
         }
         val rows =
-            if (copy.marks.fatal) {
-                // La app no la restaura: es la cabeza, pero los cambios siguen sin respaldar.
+            if (delivery.marks.fatal) {
+                // La app no la restaura: es la cabeza, pero los cambios siguen sin respaldar. Una
+                // copia retomada trae la marca de sus metadatos.
                 state.confirmUnrestorable(
-                    generation = generation,
+                    generation = delivery.generation,
                     deviceId = device,
                     fileRef = stored.ref.value,
                     failureCode = BackupFailureCode.LOCAL_INVARIANT_FATAL.name,
@@ -266,37 +286,87 @@ internal class BackupRunner(
                 )
             } else {
                 state.confirm(
-                    generation = generation,
+                    generation = delivery.generation,
                     deviceId = device,
                     fileRef = stored.ref.value,
-                    seq = copy.changeSeq,
+                    seq = delivery.changeSeq,
                     now = clock.nowEpochMillis(),
-                    copiedAt = copy.createdAtMillis,
+                    copiedAt = delivery.createdAtMillis,
                     failureCode =
-                        BackupFailureCode.LOCAL_INVARIANT.name.takeUnless { copy.marks.valid },
+                        BackupFailureCode.LOCAL_INVARIANT.name.takeUnless { delivery.marks.valid },
                     destinationId = link.destinationId,
                 )
             }
         if (rows == 0) return BackupRun.Skipped(SkipReason.DESTINATION_CHANGED)
         attempt.pendingGeneration = null
 
-        // Paso 13: podar, solo ahora.
-        if (destination.kind == BackupDestinationKind.WEBDAV) {
-            prune(destination, ConfirmedCopy(generation, stored.ref), control)
+        // Paso 13: podar, solo ahora, y no si la copia no se leyó: el contenido sigue sin comprobar.
+        if (destination.kind == BackupDestinationKind.WEBDAV && mode != VerifyMode.SIZE_AND_META) {
+            prune(destination, ConfirmedCopy(delivery.generation, stored.ref), control)
         }
-        return BackupRun.Verified(generation, unrestorable = copy.marks.fatal)
+        return BackupRun.Verified(delivery.generation, unrestorable = delivery.marks.fatal)
     }
 
-    /** Una copia lista para subir, con lo que sale de su instantánea y de su revisión. */
-    private class ReadyCopy(
-        val outgoing: OutgoingCopy,
-        val changeSeq: Long,
-        val createdAtMillis: Long,
-        val marks: NewCopyMarks,
-    )
+    /**
+     * Pasos 6 a 9: la guarda y una copia nueva. [recovered] dice qué quedó rechazado y si la
+     * intención sigue en el estado.
+     */
+    private suspend fun newCopy(
+        listing: CopyListing,
+        current: BackupStateEntity,
+        device: String,
+        recovered: Recovery.StartOver,
+        link: ConnectedDestination,
+        control: TransferControl,
+    ): Made {
+        // Paso 6: guarda.
+        val input =
+            guardInput(
+                listing,
+                current.copy(pendingGeneration = recovered.pendingGeneration),
+                device,
+                recovered.rejected,
+            )
+        val generation =
+            when (val decision = guard.decide(input)) {
+                is GuardDecision.Upload -> decision.generation
+
+                GuardDecision.Empty ->
+                    return Made.Stop(BackupRun.Skipped(SkipReason.EMPTY_DATABASE))
+
+                is GuardDecision.Refused -> return Made.Stop(stop(StopCause.Failure(decision.code)))
+
+                is GuardDecision.Conflict ->
+                    return Made.Stop(
+                        conflict(
+                            decision.kind,
+                            link,
+                            ConflictMark(
+                                decision.head.generation,
+                                decision.head.deviceId,
+                                decision.head.ref,
+                            ),
+                        ),
+                    )
+            }
+
+        // Pasos 7 a 9: la copia.
+        return makeCopy(generation, device, link.kind, control)
+    }
+
+    /**
+     * Cuánto se lee al comprobar. Sin el archivo local no hay con qué comparar una muestra: con red
+     * no medida se lee entera, y con red medida solo se miden tamaño y metadatos.
+     */
+    private fun verifyModeOf(delivery: Delivery, control: TransferControl): VerifyMode = when {
+        delivery.localFile != null -> verifyMode(control)
+        control.isMetered() -> VerifyMode.SIZE_AND_META
+        else -> VerifyMode.FULL
+    }
 
     private sealed interface Made {
-        class Copy(val copy: ReadyCopy) : Made
+        /** Una copia lista para subir, con lo que sale de su instantánea. */
+        class Copy(val copy: Delivery.Upload) : Made
 
         class Stop(val run: BackupRun) : Made
     }
@@ -413,7 +483,7 @@ internal class BackupRunner(
                 candidate = SlotCandidate(marks, sealed.records, sealed.catalogCount),
             )
         return Made.Copy(
-            ReadyCopy(outgoing, sealed.changeSeq, now.toEpochMilliseconds(), marks),
+            Delivery.Upload(outgoing, generation, sealed.changeSeq, now.toEpochMilliseconds()),
         )
     }
 
@@ -564,10 +634,12 @@ internal class BackupRunner(
         else -> null
     }
 
+    /** Lo que mira la guarda, con las generaciones propias rechazadas, que nunca se confirmaron. */
     private suspend fun guardInput(
         listing: CopyListing,
         current: BackupStateEntity,
         device: String,
+        rejected: Set<Long>,
     ): GuardInput = GuardInput(
         copies = knownCopies(listing),
         deviceId = device,
@@ -585,6 +657,7 @@ internal class BackupRunner(
             ),
         shrinkAcceptedGeneration = current.shrinkAcceptedGeneration,
         highestOwnGeneration = highestOwnGeneration(listing, device),
+        rejectedGenerations = rejected,
     )
 
     private fun headRefOf(current: BackupStateEntity): CopyRef? =

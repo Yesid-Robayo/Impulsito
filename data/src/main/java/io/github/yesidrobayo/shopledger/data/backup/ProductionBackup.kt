@@ -40,6 +40,11 @@ internal fun productionBackupEngine(
     restoreMarkers = { RestoreMarkers(noBackupDirectory()) },
     openForWork = openForWork,
     runnerFor = { ports ->
+        val rejected =
+            RejectedGenerationStore(
+                File(noBackupDirectory(), RejectedGenerationStore.FILE_NAME),
+                ioContext,
+            )
         BackupRunner(
             state = ports.backupState,
             databaseFile = ports.databaseFile,
@@ -57,10 +62,12 @@ internal fun productionBackupEngine(
             appVersion = appVersionOf(context),
             deviceLabel = SlMetaCodec.deviceLabel(Build.MANUFACTURER, Build.MODEL),
             mutex = mutex,
+            rejected = rejected,
             pruner =
                 RetentionPruner(
                     deviceId = { deviceIdentity().deviceId() },
                     log = log,
+                    marks = { RetentionMarks(rejectedGenerations = rejected.load()) },
                     forceUpload = { ports.backupState.forceUpload(clock.nowEpochMillis()) },
                 ),
         )

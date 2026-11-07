@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.data.backup.BackupRun
 import io.github.yesidrobayo.shopledger.data.backup.BackupRunner
 import io.github.yesidrobayo.shopledger.data.backup.BackupStaging
 import io.github.yesidrobayo.shopledger.data.backup.DatabaseBackupEngine
+import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
 import io.github.yesidrobayo.shopledger.data.backup.SnapshotCreator
 import io.github.yesidrobayo.shopledger.data.backup.SnapshotSealer
@@ -147,6 +148,11 @@ class BackupLogSentinelTest {
                         appVersion = null,
                         deviceLabel = null,
                         mutex = Mutex(),
+                        rejected =
+                            RejectedGenerationStore(
+                                File(noBackup, RejectedGenerationStore.FILE_NAME),
+                                Dispatchers.IO,
+                            ),
                     )
                 },
                 ioContext = Dispatchers.IO,
