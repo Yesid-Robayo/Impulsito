@@ -736,12 +736,6 @@ class BackupRunnerTest {
         assertEquals(0, pruner.calls)
     }
 
-    @Test
-    fun aMeteredNetworkSamplesAndAnUnmeteredOneReadsItAll() = runBlocking {
-        assertEquals(VerifyMode.FULL, verifyModeFor(TestControl(metered = false)))
-        assertEquals(VerifyMode.SAMPLE, verifyModeFor(TestControl(metered = true)))
-    }
-
     /** Una copia de otro teléfono, con sus metadatos, como si la hubiera subido él. */
     private fun putForeignCopy(
         destination: FakeBackupDestination,

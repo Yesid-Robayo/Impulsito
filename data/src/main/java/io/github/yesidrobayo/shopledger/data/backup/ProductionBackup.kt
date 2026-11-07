@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.data.WorkAccess
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.domain.model.backup.MetaValueForm
+import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import java.io.File
@@ -45,6 +46,11 @@ internal fun productionBackupEngine(
                 File(noBackupDirectory(), RejectedGenerationStore.FILE_NAME),
                 ioContext,
             )
+        val fullVerify =
+            FullVerifyGenerationStore(
+                File(noBackupDirectory(), FullVerifyGenerationStore.FILE_NAME),
+                ioContext,
+            )
         BackupRunner(
             state = ports.backupState,
             databaseFile = ports.databaseFile,
@@ -63,11 +69,21 @@ internal fun productionBackupEngine(
             deviceLabel = SlMetaCodec.deviceLabel(Build.MANUFACTURER, Build.MODEL),
             mutex = mutex,
             rejected = rejected,
+            fullVerify = fullVerify,
+            meteredAllowed = {
+                ports.settings.get().preferences.meteredBackupPolicy !=
+                    MeteredBackupPolicy.WIFI_ONLY
+            },
             pruner =
                 RetentionPruner(
                     deviceId = { deviceIdentity().deviceId() },
                     log = log,
-                    marks = { RetentionMarks(rejectedGenerations = rejected.load()) },
+                    marks = {
+                        RetentionMarks(
+                            rejectedGenerations = rejected.load(),
+                            fullVerifyGeneration = fullVerify.load(),
+                        )
+                    },
                     forceUpload = { ports.backupState.forceUpload(clock.nowEpochMillis()) },
                 ),
         )

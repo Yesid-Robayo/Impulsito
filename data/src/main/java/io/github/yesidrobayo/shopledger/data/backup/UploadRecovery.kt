@@ -366,6 +366,33 @@ internal class UploadRecovery(
     }
 
     /**
+     * Paso 11: la copia [generation] no coincidió al comprobarla, y nunca se confirma. La anota como
+     * rechazada, en disco, y solo después limpia la intención y la borra, con sus metadatos; si el
+     * borrado falla, o el proceso muere antes, la recuperación la borra después y nunca la adopta.
+     *
+     * Si no puede anotarla, no toca nada: ni la copia ni la intención. Devuelve `false`, y la
+     * ejecución se reintenta: la siguiente la vuelve a comprobar, y la rechaza con la marca ya en
+     * disco. Así nunca queda en el destino una copia mala sin intención ni marca.
+     */
+    suspend fun rejectMismatch(
+        destination: BackupDestination,
+        generation: Long,
+        ref: CopyRef,
+        control: TransferControl,
+    ): Boolean {
+        try {
+            rejected.add(generation)
+        } catch (failure: IOException) {
+            log.warn(RecoveryEvent.REJECTED_NOT_SAVED, failure)
+            return false
+        }
+        log.warn(RecoveryEvent.REJECTED, LogField.id("generación", generation))
+        state.clearIntent()
+        if (deleteAll(destination, listOf(ref), control)) forget(generation)
+        return true
+    }
+
+    /**
      * Descarta la copia [generation], que nunca se confirmó: primero la anota como rechazada, en
      * disco, y solo después la borra. Si el borrado falla, queda rechazada y la próxima ejecución lo
      * intenta otra vez.

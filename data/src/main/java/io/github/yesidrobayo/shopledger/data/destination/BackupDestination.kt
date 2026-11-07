@@ -202,6 +202,12 @@ internal interface TransferControl {
      */
     fun isMetered(): Boolean
 
+    /**
+     * Si la persona pidió esta copia con `Respaldar ahora`. Solo lo mira el motor, que entonces la
+     * lee entera al comprobarla si la red no es medida: ningún destino cambia por esto.
+     */
+    fun isBackupNow(): Boolean = false
+
     companion object {
         /** Sin tope ni detención: para lo que la persona pidió y espera en pantalla. */
         val Unbounded: TransferControl =

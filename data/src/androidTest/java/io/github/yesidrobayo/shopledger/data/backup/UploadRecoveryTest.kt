@@ -265,7 +265,7 @@ class UploadRecoveryTest {
     }
 
     @Test
-    fun withoutTheLocalFileARecoveredCopyIsReadWholeOrOnlyMeasuredAndThenNotPruned() = runBlocking {
+    fun withoutTheLocalFileARecoveredCopyIsReadWholeAndThenPruned() = runBlocking {
         for (metered in listOf(false, true)) {
             withFixture("metered-$metered") { own ->
                 val fake = FakeBackupDestination()
@@ -283,14 +283,11 @@ class UploadRecoveryTest {
                 val run =
                     own.runner(destination, pruner = pruner).run(TestControl(metered = metered))
 
+                // Una copia retomada siempre se lee entera; en red medida, porque la política de
+                // la prueba lo permite.
                 assertEquals(BackupRun.Verified(2), run)
-                if (metered) {
-                    assertEquals(listOf(VerifyMode.SIZE_AND_META), destination.modes)
-                    assertEquals(0, pruner.calls)
-                } else {
-                    assertEquals(listOf(VerifyMode.FULL), destination.modes)
-                    assertEquals(1, pruner.calls)
-                }
+                assertEquals(listOf(VerifyMode.FULL), destination.modes)
+                assertEquals(1, pruner.calls)
             }
         }
     }

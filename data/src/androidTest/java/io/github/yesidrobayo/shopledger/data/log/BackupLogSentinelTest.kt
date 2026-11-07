@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.data.backup.BackupRun
 import io.github.yesidrobayo.shopledger.data.backup.BackupRunner
 import io.github.yesidrobayo.shopledger.data.backup.BackupStaging
 import io.github.yesidrobayo.shopledger.data.backup.DatabaseBackupEngine
+import io.github.yesidrobayo.shopledger.data.backup.FullVerifyGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
 import io.github.yesidrobayo.shopledger.data.backup.SnapshotCreator
@@ -151,6 +152,13 @@ class BackupLogSentinelTest {
                         rejected =
                             RejectedGenerationStore(
                                 File(noBackup, RejectedGenerationStore.FILE_NAME),
+                                Dispatchers.IO,
+                            ),
+                        // Esta prueba nunca retoma una copia: la política no decide nada.
+                        meteredAllowed = { false },
+                        fullVerify =
+                            FullVerifyGenerationStore(
+                                File(noBackup, FullVerifyGenerationStore.FILE_NAME),
                                 Dispatchers.IO,
                             ),
                     )

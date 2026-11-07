@@ -242,4 +242,15 @@ internal interface BackupStateDao {
      */
     @Query("UPDATE backup_state SET invariant_failures = :count WHERE id = 1")
     suspend fun recordInvariantFailures(count: Long): Int
+
+    /**
+     * Anota que la copia recién confirmada se leyó entera del destino y su suma coincidió, si el
+     * destino sigue siendo [destinationId]. Solo una lectura completa lo escribe: una muestra no ve
+     * el centro del archivo. Devuelve 0 si la persona cambió de destino.
+     */
+    @Query(
+        "UPDATE backup_state SET last_full_verify_at = :now WHERE id = 1 " +
+            "AND destination_id = :destinationId",
+    )
+    suspend fun markFullVerify(now: Long, destinationId: String): Int
 }

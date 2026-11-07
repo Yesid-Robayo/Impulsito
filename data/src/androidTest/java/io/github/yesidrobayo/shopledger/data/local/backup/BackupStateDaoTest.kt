@@ -123,6 +123,7 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "confirm",
                 "confirmUnrestorable",
                 "recordInvariantFailures",
+                "markFullVerify",
             ),
             functionsOf(BackupStateDao::class.java),
         )
@@ -202,10 +203,16 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
             ),
         )
 
+        // La lectura completa solo se anota si el destino sigue siendo el mismo.
+        assertEquals(0, state.markFullVerify(MUCH_LATER, "otra"))
+        changed(before.copy(headGeneration = 5, headFileRef = "copia-5", firstUnsyncedAt = LATER))
+        assertEquals(1, state.markFullVerify(MUCH_LATER, "huella"))
+        changed(before.copy(lastFullVerifyAt = MUCH_LATER))
+
         // El enlace solo deja de estar conectado si sigue en el mismo destino.
         assertEquals(0, state.markConflict("OTHER_DEVICE", null, null, null, "otra"))
         assertEquals(0, state.leaveConnected("PERMISSION_LOST", "otra"))
-        changed(before.copy(headGeneration = 5, headFileRef = "copia-5", firstUnsyncedAt = LATER))
+        changed(before)
         assertEquals(1, state.markConflict("OTHER_DEVICE", 7, "otro", "C", "huella"))
         changed(
             before.copy(

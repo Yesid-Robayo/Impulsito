@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.data.destination.ListedMeta
 import io.github.yesidrobayo.shopledger.data.destination.OutgoingCopy
 import io.github.yesidrobayo.shopledger.data.destination.SlMeta
 import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
+import io.github.yesidrobayo.shopledger.data.destination.StoredCopy
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.data.destination.VerifyMode
 import io.github.yesidrobayo.shopledger.data.destination.identity
@@ -77,10 +78,14 @@ import kotlinx.coroutines.withContext
  * 9. **Comprimir.** gzip con su suma, comprobado al releerlo, y los metadatos en la carpeta.
  * 10. **Intención y subida.** Guarda en el estado qué copia va en camino, y solo después escribe en
  *     el destino. Al enviar el último byte anota la hora.
- * 11. **Comprobar.** Lo que el destino tiene debe ser lo que se subió. Si no, `VERIFY_MISMATCH`, y
- *     esa copia nunca se confirma.
+ * 11. **Comprobar.** Lo que el destino tiene debe ser lo que se subió: siempre el tamaño, y el
+ *     contenido entero o una muestra según la red y el plazo ([verifyModeFor]). Si no coincide,
+ *     `VERIFY_MISMATCH`: la generación se rechaza en disco antes de borrar la copia, y nunca se
+ *     confirma. Después lista otra vez: una copia de otro teléfono igual o más nueva es un
+ *     conflicto, y una lista que no muestra la copia nueva no deja podar.
  * 12. **Confirmar.** En una sola sentencia, y solo si el destino sigue siendo el de esta ejecución.
  *     Una copia fatal pasa a ser la cabeza, pero los cambios siguen sin respaldar.
+ *     Una lectura completa que coincidió queda anotada para el plazo y para la poda.
  * 13. **Podar.** Solo después de confirmar, y un fallo ahí no invalida la copia.
  * 14. **Terminar.** Borra los temporales en un `finally`, salvo el archivo de una subida que se
  *     reintenta, que se conserva hasta un día.
@@ -96,7 +101,9 @@ import kotlinx.coroutines.withContext
  * @param guard decide si se sube y con qué generación.
  * @param pruner poda el destino tras confirmar.
  * @param freeSpace los bytes libres para la app en la carpeta dada.
- * @param verifyMode cuánto del contenido se lee para comprobar, según la red.
+ * @param verifyMode cuánto del contenido se lee para comprobar, según la red y el plazo, o nulo si
+ *   hay que esperar una red no medida.
+ * @param meteredAllowed si la política de la persona permite respaldar con datos móviles.
  * @param transportFailures cuenta los fallos de transporte seguidos de cada ejecución que se
  *   reintenta, para dejar a la vista uno que no se resuelve solo.
  * @param snapshotValidation revisa la instantánea con el validador de las restauraciones.
@@ -104,6 +111,7 @@ import kotlinx.coroutines.withContext
  * @param deviceLabel fabricante y modelo del teléfono para los metadatos, ya limpios.
  * @param mutex el cerrojo del respaldo, uno por proceso.
  * @param rejected las generaciones propias rechazadas, que nunca se adoptan ni se repiten.
+ * @param fullVerify la generación de la última copia leída entera, que la poda conserva.
  */
 internal class BackupRunner(
     private val state: BackupStateDao,
@@ -122,10 +130,12 @@ internal class BackupRunner(
     private val deviceLabel: String?,
     private val mutex: Mutex,
     rejected: RejectedGenerationStore,
+    private val fullVerify: FullVerifyGenerationStore,
     private val guard: CopyGuard = BackupGuard,
     private val pruner: CopyPruner = CopyPruner.None,
     private val freeSpace: (File) -> Long = File::getUsableSpace,
-    private val verifyMode: (TransferControl) -> VerifyMode = ::verifyModeFor,
+    private val verifyMode: (VerifyRequest) -> VerifyMode? = ::verifyModeFor,
+    private val meteredAllowed: suspend () -> Boolean,
     private val transportFailures: TransportFailures = TransportFailures(state),
     private val snapshotValidation: SnapshotValidation =
         SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
@@ -254,19 +264,43 @@ internal class BackupRunner(
             }
 
         // Paso 11: comprobar.
-        val mode = verifyModeOf(delivery, control)
-        when (val verified = destination.verify(stored, mode, delivery.localFile, control)) {
-            is DestinationResult.Success -> Unit
+        val webDav = destination.kind == BackupDestinationKind.WEBDAV
+        val mode =
+            verifyMode(verifyRequest(delivery, current, control))
+                // Una copia retomada no se comprueba por muestra, y la política no deja leerla
+                // entera con datos móviles: queda para una red no medida, con su archivo.
+                ?: return BackupRun.Retry(
+                    RetryReason.INTERRUPTED,
+                    interruptReason = InterruptReason.METERED,
+                )
+        val fullyRead =
+            when (val verified = destination.verify(stored, mode, delivery.localFile, control)) {
+                is DestinationResult.Success -> verified.value.fullyRead
 
-            is DestinationResult.Failure -> {
-                if (verified.failure == DestinationFailure.VerifyMismatch) {
-                    // Esa copia nunca se confirma, ni después por otra vía.
-                    state.clearIntent()
-                    attempt.pendingGeneration = null
+                is DestinationResult.Failure -> {
+                    if (verified.failure == DestinationFailure.VerifyMismatch) {
+                        // Esa copia nunca se confirma, ni después por otra vía: con WebDAV se
+                        // rechaza en disco antes de borrarla. Si el disco no deja anotarla, todo
+                        // queda como estaba y se reintenta, lo más probable por falta de espacio.
+                        if (!webDav) {
+                            state.clearIntent()
+                        } else if (
+                            !recovery.rejectMismatch(
+                                destination,
+                                delivery.generation,
+                                stored.ref,
+                                control,
+                            )
+                        ) {
+                            state.recordFailure(BackupFailureCode.LOCAL_STORAGE_LOW.name)
+                            return BackupRun.Retry(RetryReason.LOCAL_STATE_NOT_SAVED)
+                        }
+                        attempt.pendingGeneration = null
+                    }
+                    return failed(verified.failure, link)
                 }
-                return failed(verified.failure, link)
             }
-        }
+        val relisted = if (webDav) relist(destination, stored, delivery, device, control) else null
 
         // Paso 12: confirmar.
         when (val confirmed = destination.confirm(stored)) {
@@ -299,12 +333,77 @@ internal class BackupRunner(
             }
         if (rows == 0) return BackupRun.Skipped(SkipReason.DESTINATION_CHANGED)
         attempt.pendingGeneration = null
+        if (webDav && fullyRead) markFullVerify(delivery.generation, link)
+        relisted?.conflict?.let { foreign ->
+            // La copia nueva está comprobada y queda como cabeza, pero otro teléfono subió a la
+            // vez: las copias se detienen hasta que la persona decida, y nada se poda.
+            state.markConflict(
+                BackupConflictKind.OTHER_DEVICE.name,
+                foreign.generation,
+                foreign.deviceId,
+                null,
+                link.destinationId,
+            )
+            return BackupRun.Stopped(StopCause.Conflict(BackupConflictKind.OTHER_DEVICE))
+        }
 
-        // Paso 13: podar, solo ahora, y no si la copia no se leyó: el contenido sigue sin comprobar.
-        if (destination.kind == BackupDestinationKind.WEBDAV && mode != VerifyMode.SIZE_AND_META) {
+        // Paso 13: podar, solo ahora. No si la copia no se leyó, porque su contenido sigue sin
+        // comprobar, ni si la segunda lista no la mostró, porque quizá viene de una caché.
+        if (webDav && mode != VerifyMode.SIZE_AND_META && relisted?.showsTheCopy == true) {
             prune(destination, ConfirmedCopy(delivery.generation, stored.ref), control)
         }
         return BackupRun.Verified(delivery.generation, unrestorable = delivery.marks.fatal)
+    }
+
+    /** Lo que mostró la segunda lista del paso 11. */
+    private class Relisted(val conflict: KnownCopy?, val showsTheCopy: Boolean)
+
+    /**
+     * Lista otra vez, tras comprobar. Una copia de otro teléfono con generación igual o mayor que la
+     * nueva es un conflicto: dos teléfonos subieron a la vez. Si la lista falla, o no trae la copia
+     * nueva, la copia sigue comprobada y esa ejecución no poda: nunca se decide con una lista que
+     * quizá viene de una caché.
+     */
+    private suspend fun relist(
+        destination: BackupDestination,
+        stored: StoredCopy,
+        delivery: Delivery,
+        device: String,
+        control: TransferControl,
+    ): Relisted {
+        val listing =
+            when (val listed = destination.listCopies(control)) {
+                is DestinationResult.Success -> listed.value
+
+                is DestinationResult.Failure -> {
+                    log.warn(
+                        VerifyEvent.RELIST_FAILED,
+                        LogField.state("fallo", failureName(listed.failure)),
+                    )
+                    return Relisted(conflict = null, showsTheCopy = false)
+                }
+            }
+        val conflict =
+            knownCopies(listing).firstOrNull {
+                it.deviceId != device && it.generation >= delivery.generation
+            }
+        val shows = listing.copies.any { it.ref == stored.ref && it.sizeBytes == stored.sizeBytes }
+        if (!shows) log.warn(VerifyEvent.COPY_NOT_RELISTED)
+        return Relisted(conflict, shows)
+    }
+
+    /**
+     * Anota la lectura completa que coincidió: `last_full_verify_at`, para el plazo, y la
+     * generación, para que la poda la conserve. Si el archivo no se escribe, la poda conserva la
+     * anterior: nada se pierde.
+     */
+    private suspend fun markFullVerify(generation: Long, link: ConnectedDestination) {
+        state.markFullVerify(clock.nowEpochMillis(), link.destinationId)
+        try {
+            fullVerify.advanceTo(generation)
+        } catch (failure: IOException) {
+            log.warn(VerifyEvent.FULL_VERIFY_NOT_SAVED, failure)
+        }
     }
 
     /**
@@ -354,15 +453,21 @@ internal class BackupRunner(
         return makeCopy(generation, device, link.kind, control)
     }
 
-    /**
-     * Cuánto se lee al comprobar. Sin el archivo local no hay con qué comparar una muestra: con red
-     * no medida se lee entera, y con red medida solo se miden tamaño y metadatos.
-     */
-    private fun verifyModeOf(delivery: Delivery, control: TransferControl): VerifyMode = when {
-        delivery.localFile != null -> verifyMode(control)
-        control.isMetered() -> VerifyMode.SIZE_AND_META
-        else -> VerifyMode.FULL
-    }
+    private suspend fun verifyRequest(
+        delivery: Delivery,
+        current: BackupStateEntity,
+        control: TransferControl,
+    ) = VerifyRequest(
+        metered = control.isMetered(),
+        backupNow = control.isBackupNow(),
+        resumed = delivery is Delivery.Verify,
+        // Solo se lee la política cuando decide algo: una copia retomada en red medida.
+        meteredAllowed =
+            delivery is Delivery.Verify && control.isMetered() && !control.isBackupNow() &&
+                meteredAllowed(),
+        lastFullVerifyAtMillis = current.lastFullVerifyAt,
+        nowMillis = clock.nowEpochMillis(),
+    )
 
     private sealed interface Made {
         /** Una copia lista para subir, con lo que sale de su instantánea. */
@@ -782,10 +887,6 @@ internal fun destinationOf(current: BackupStateEntity): ConnectedDestination? {
     val id = current.destinationId ?: return null
     return ConnectedDestination(kind, id, current.destinationFolder)
 }
-
-/** Con red no medida se lee la copia entera, y con red medida solo una muestra. */
-internal fun verifyModeFor(control: TransferControl): VerifyMode =
-    if (control.isMetered()) VerifyMode.SAMPLE else VerifyMode.FULL
 
 /** El nombre del fallo del destino para el registro: un código, nunca datos. */
 internal fun failureName(failure: DestinationFailure): DestinationFailureName = when (failure) {

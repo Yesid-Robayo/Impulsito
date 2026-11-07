@@ -81,6 +81,8 @@ internal class BackupWorker(
         override fun meteredStop(): Boolean = false
 
         override fun isMetered(): Boolean = metering()
+
+        override fun isBackupNow(): Boolean = inputData.getBoolean(KEY_BACKUP_NOW, false)
     }
 
     companion object {
@@ -89,6 +91,12 @@ internal class BackupWorker(
          * agota su tiempo con frecuencia puede llevar a la app a un grupo con menos ejecuciones.
          */
         val BACKUP_TIME_BUDGET: Duration = 8.minutes
+
+        /**
+         * La entrada del trabajo que dice que lo pidió la persona con `Respaldar ahora`. Sin ella,
+         * es una copia automática.
+         */
+        const val KEY_BACKUP_NOW = "backup_now"
 
         /** Lo que hace el sistema después de una ejecución. */
         internal fun resultOf(run: BackupRun): Result = when (run) {

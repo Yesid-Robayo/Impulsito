@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
 import io.github.yesidrobayo.shopledger.data.repository.AT
 import io.github.yesidrobayo.shopledger.data.repository.newProduct
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogLevel
@@ -48,6 +49,8 @@ internal class BackupFixture(private val context: Context, name: String) {
     val stagingDir: File = File(noBackup, BackupStaging.DIRECTORY_NAME)
     val rejectedFile: File = File(noBackup, RejectedGenerationStore.FILE_NAME)
     val rejected = RejectedGenerationStore(rejectedFile, Dispatchers.IO)
+    val fullVerifyFile: File = File(noBackup, FullVerifyGenerationStore.FILE_NAME)
+    val fullVerify = FullVerifyGenerationStore(fullVerifyFile, Dispatchers.IO)
     val log = MemoryLog()
 
     /**
@@ -132,7 +135,7 @@ internal class BackupFixture(private val context: Context, name: String) {
         snapshots: SnapshotCreator = SnapshotCreator(file, Dispatchers.IO),
         packager: BackupPackager = BackupPackager(Dispatchers.IO),
         staging: BackupStaging = BackupStaging(stagingDir, Dispatchers.IO),
-        verifyMode: (TransferControl) -> VerifyMode = { VerifyMode.FULL },
+        verifyMode: (VerifyRequest) -> VerifyMode? = ::verifyModeFor,
     ): BackupRunner = BackupRunner(
         state = ports.backupState,
         databaseFile = file,
@@ -150,9 +153,13 @@ internal class BackupFixture(private val context: Context, name: String) {
         deviceLabel = "Fabricante Modelo",
         mutex = Mutex(),
         rejected = rejected,
+        fullVerify = fullVerify,
         pruner = pruner,
         freeSpace = freeSpace,
         verifyMode = verifyMode,
+        meteredAllowed = {
+            ports.settings.get().preferences.meteredBackupPolicy != MeteredBackupPolicy.WIFI_ONLY
+        },
     )
 
     fun advance(by: Duration) {
@@ -180,8 +187,11 @@ internal class RecordingPruner : CopyPruner {
 }
 
 /** Lo que el trabajo da al destino, que la prueba detiene a pedido. */
-internal class TestControl(var stopped: Boolean = false, var metered: Boolean = false) :
-    TransferControl {
+internal class TestControl(
+    var stopped: Boolean = false,
+    var metered: Boolean = false,
+    var backupNow: Boolean = false,
+) : TransferControl {
     override fun isStopped(): Boolean = stopped
 
     override fun remainingMillis(): Long? = null
@@ -189,6 +199,8 @@ internal class TestControl(var stopped: Boolean = false, var metered: Boolean = 
     override fun meteredStop(): Boolean = false
 
     override fun isMetered(): Boolean = metered
+
+    override fun isBackupNow(): Boolean = backupNow
 }
 
 /** Guarda cada línea en memoria. Puede escribirse desde varios hilos a la vez. */
