@@ -3,7 +3,9 @@ package io.github.yesidrobayo.shopledger.data.backup
 import io.github.yesidrobayo.shopledger.data.destination.newSha256
 import io.github.yesidrobayo.shopledger.data.destination.toLowerHex
 import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
+import io.github.yesidrobayo.shopledger.domain.port.Clock
 import java.io.File
+import kotlin.time.Instant
 import kotlinx.coroutines.runBlocking
 
 /** Cómo responde la verificación de la base nueva. */
@@ -93,7 +95,7 @@ internal class SwapHarness(private val workDirectory: File) {
             }
             val ops = DurableFileOps(directorySync = { check(it.isDirectory) }, listener = listener)
             try {
-                val restore = StartupRestore(files, ops)
+                val restore = StartupRestore(files, ops, CLOCK)
                 val result = runBlocking { restore.verifyAndFinish(FakeOpen(scenario, files)) }
                 finished = result !is StartupRestoreResult.VerificationPending && boot >= plan.size
             } catch (_: SimulatedDeath) {
@@ -121,6 +123,11 @@ internal class SwapHarness(private val workDirectory: File) {
             write(files.safetyCopies[0].database, SAFETY)
             write(files.safetyCopies[0].facts, "{}")
         }
+        // La base que apartó una restauración anterior, dentro de sus 30 días: nunca se pisa.
+        write(
+            File(File(files.damagedDirectory, EARLIER_FOLDER), DatabaseFiles.DATABASE_NAME),
+            EARLIER,
+        )
         write(files.lock, "")
         val sha = if (scenario.verify == VerifyBehavior.SHA_BAD) OTHER_SHA else sha(NEW)
         RestoreJournalStore(files, DurableFileOps(directorySync = {})).write(
@@ -147,17 +154,21 @@ internal class SwapHarness(private val workDirectory: File) {
         expect("queda la clave pendiente", !files.pendingKey.exists())
         if (scenario.shouldRestore) {
             expect("no quedó la base nueva: $main", main?.startsWith(NEW) == true)
-            val oldKept = read(files.damaged)
+            val aside = files.damagedDirectory.listFiles().orEmpty()
+                .filter { it.name != EARLIER_FOLDER }
             if (scenario.hadActive && !scenario.safetyOk) {
-                expect("la base original no se apartó", oldKept == OLD)
-                if (scenario.oldWal) {
+                val folder = aside.singleOrNull()
+                expect("la base original no se apartó en una sola carpeta: $aside", folder != null)
+                val kept = folder?.let { File(it, DatabaseFiles.DATABASE_NAME) }
+                expect("la base original no se apartó", kept != null && read(kept) == OLD)
+                if (scenario.oldWal && kept != null) {
                     expect(
-                        "su -wal no se apartó",
-                        read(files.damagedWal) == OLD_WAL,
+                        "su -wal no se apartó con ella",
+                        read(RestoreFiles.sideFile(kept, RestoreFiles.WAL_SUFFIX)) == OLD_WAL,
                     )
                 }
             } else {
-                expect("se apartó una base sin motivo", oldKept == null)
+                expect("se apartó una base sin motivo: $aside", aside.isEmpty())
             }
             expect("quedó un -wal viejo junto a la nueva", read(files.databaseWal) != OLD_WAL)
             val key = if (scenario.encrypted) NEW_KEY else OLD_KEY
@@ -186,6 +197,11 @@ internal class SwapHarness(private val workDirectory: File) {
                 )
             }
         }
+        expect(
+            "se pisó la base apartada por una restauración anterior",
+            read(File(File(files.damagedDirectory, EARLIER_FOLDER), DatabaseFiles.DATABASE_NAME)) ==
+                EARLIER,
+        )
         if (scenario.safetyOk && scenario.hadActive && !scenario.undo) {
             expect(
                 "se perdió la copia de seguridad",
@@ -218,6 +234,13 @@ internal class SwapHarness(private val workDirectory: File) {
         private const val MAX_CLEAN_BOOTS = 3
         const val OLD = "base vieja"
         const val OLD_WAL = "wal de la base vieja"
+        const val EARLIER = "base apartada antes"
+
+        /** El nombre de su carpeta: un instante de antes, del mismo reloj fijo. */
+        const val EARLIER_FOLDER = "1800000000000"
+
+        /** Un reloj fijo: cada restauración del caso aparta en el mismo instante que la anterior. */
+        val CLOCK = Clock { Instant.fromEpochMilliseconds(EARLIER_FOLDER.toLong()) }
         const val NEW = "base nueva"
         const val NEW_WAL = "wal de la base nueva"
         const val OPENED = " abierta"

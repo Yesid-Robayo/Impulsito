@@ -226,7 +226,7 @@ class DataGraph internal constructor(
         val restoreFiles = RestoreFiles(databaseFiles)
         val operations = DurableFileOps()
         val pendingRestore =
-            StartupRestoreGate(StartupRestore(restoreFiles, operations), log) { open ->
+            StartupRestoreGate(StartupRestore(restoreFiles, operations, clock), log) { open ->
                 RoomRestoredDatabaseVerifier(open)
             }
         val gate =

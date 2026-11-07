@@ -338,16 +338,7 @@ class RestoreCoordinatorTest {
             parentFile?.mkdirs()
             writeBytes(ByteArray(8192) { 7 })
         }
-        val coordinator =
-            coordinator(
-                safetyCopies =
-                    SafetyCopyStore(
-                        files,
-                        ops,
-                        Dispatchers.IO,
-                        SnapshotCreator(damaged, Dispatchers.IO),
-                    ),
-            )
+        val coordinator = coordinatorWithDamagedActive(damaged)
 
         assertEquals(
             RestoreStage.ConfirmWithoutSafetyCopy,
@@ -360,14 +351,103 @@ class RestoreCoordinatorTest {
         )
         reopen()
 
-        assertTrue("La base original se aparta", files.damaged.exists())
-        assertEquals(
-            1L,
-            inspectWithoutRoom(files.damaged) {
-                it.longValue("SELECT COUNT(*) FROM products")
-            },
-        )
+        val first = damagedOriginals().single()
+        assertEquals(1L, productsIn(first))
         assertFalse(files.previous.exists())
+
+        // Una segunda restauración sin copia de seguridad, dentro de los 30 días, no pisa la
+        // primera base apartada: queda cada una en su carpeta.
+        fixture.addProduct("Leche de prueba")
+        fixture.addProduct("Queso de prueba")
+        fixture.advance(1.minutes)
+        val again = coordinatorWithDamagedActive(damaged)
+        assertEquals(
+            RestoreStage.ConfirmWithoutSafetyCopy,
+            again.start(RestoreSource.Listed(listed(1))),
+        )
+        assertEquals(
+            RestoreStage.ReadyToRestart(0),
+            again.decide(RestoreDecision.ContinueWithoutSafetyCopy),
+        )
+        reopen()
+
+        val folders = damagedOriginals()
+        assertEquals(2, folders.size)
+        assertEquals(first, folders.first())
+        assertEquals(1L, productsIn(folders.first()))
+        assertEquals(3L, productsIn(folders.last()))
+    }
+
+    @Test
+    fun aDatabaseWaitingInPreviousAtTheStartIsKeptAsideWithTheUnreadableJournal() =
+        runBlocking<Unit> {
+            fixture.addProduct("Pan de prueba")
+            assertEquals(BackupRun.Verified(1), fixture.runner(destination).run(control))
+            // Lo que deja un diario ilegible: la base original en previous/, y el diario apartado.
+            files.previousDirectory.mkdirs()
+            files.previous.writeText("base original de prueba")
+            RestoreFiles.sideFile(files.previous, RestoreFiles.WAL_SUFFIX).writeText("su -wal")
+            files.journalUnreadable.writeText("{\"state\":")
+
+            assertEquals(
+                RestoreStage.ReadyToRestart(0),
+                coordinator().start(RestoreSource.Listed(listed(1))),
+            )
+
+            val aside = damagedOriginals().single()
+            assertEquals("base original de prueba", File(aside, "shopledger.db").readText())
+            assertEquals("su -wal", File(aside, "shopledger.db-wal").readText())
+            assertEquals("{\"state\":", File(aside, "journal.bad").readText())
+            assertTrue("El diario ilegible sigue hasta terminar", files.journalUnreadable.exists())
+            reopen()
+
+            assertFalse("Una restauración terminada lo retira", files.journalUnreadable.exists())
+            assertTrue(File(aside, "shopledger.db").exists())
+            assertEquals(1L, count("products"))
+        }
+
+    @Test
+    fun withTheDatabaseUnreadableTheConnectionComesFromTheLink() = runBlocking<Unit> {
+        fixture.addProduct("Pan de prueba")
+        assertEquals(BackupRun.Verified(1), fixture.runner(destination).run(control))
+        fixture.sql(
+            "UPDATE backup_state SET destination_kind = NULL, destination_id = NULL, " +
+                "destination_folder = NULL, link_state = 'NOT_CONNECTED' WHERE id = 1",
+        )
+        val link =
+            DestinationColumns(
+                kind = "WEBDAV",
+                account = "persona@example.com",
+                id = TEST_DESTINATION_ID,
+                folder = "https://dav.example.com/app/",
+            )
+
+        val stage =
+            coordinator(active = { null }, linkColumns = { link })
+                .start(RestoreSource.Listed(listed(1)))
+
+        assertEquals(RestoreStage.ReadyToRestart(0), stage)
+        reopen()
+        val state = fixture.state()
+        assertEquals(BackupLinkState.CONNECTED.name, state.linkState)
+        assertEquals("WEBDAV", state.destinationKind)
+        assertEquals("persona@example.com", state.destinationAccount)
+        assertEquals(TEST_DESTINATION_ID, state.destinationId)
+        assertEquals("https://dav.example.com/app/", state.destinationFolder)
+        assertEquals(state.changeSeq, state.verifiedSeq)
+    }
+
+    /** La preparación con una base activa que no se deja copiar, como una dañada. */
+    private fun coordinatorWithDamagedActive(damaged: File) = coordinator(
+        safetyCopies =
+            SafetyCopyStore(files, ops, Dispatchers.IO, SnapshotCreator(damaged, Dispatchers.IO)),
+    )
+
+    private fun damagedOriginals(): List<File> =
+        DamagedOriginals(files, ops, fixture.clock).folders()
+
+    private fun productsIn(folder: File): Long = inspectWithoutRoom(File(folder, "shopledger.db")) {
+        it.longValue("SELECT COUNT(*) FROM products")
     }
 
     @Test
@@ -510,6 +590,8 @@ class RestoreCoordinatorTest {
         migrator: CandidateMigrator = CandidateMigrator { error("Esta prueba no migra") },
         appSchemaVersion: Int = AppDatabase.SCHEMA_VERSION,
         deviceSecure: Boolean = true,
+        active: suspend () -> ActiveDatabase? = { activeDatabaseOf(fixture.ports) },
+        linkColumns: suspend () -> DestinationColumns? = { null },
     ): RestoreCoordinator {
         val validator = CandidateValidator(Dispatchers.IO, appSchemaVersion)
         return RestoreCoordinator(
@@ -517,8 +599,8 @@ class RestoreCoordinatorTest {
             ops = ops,
             lock = RestoreLockFile(files, ops, fixture.clock, Dispatchers.IO),
             pause = MutexBackupPause(backupMutex),
-            active = { activeDatabaseOf(fixture.ports) },
-            linkColumns = { null },
+            active = active,
+            linkColumns = linkColumns,
             destinations = { DestinationOpen.Opened(target) },
             unpacker = CandidateUnpacker(Dispatchers.IO),
             validator = validator,

@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data.backup
 
 import io.github.yesidrobayo.shopledger.data.destination.newSha256
 import io.github.yesidrobayo.shopledger.data.destination.toLowerHex
+import io.github.yesidrobayo.shopledger.domain.port.Clock
 import java.io.File
 import java.io.FileInputStream
 
@@ -27,7 +28,11 @@ internal sealed interface StartupRestoreResult<out D> {
     /** Volvió la base vieja, o no había ninguna que devolver y la carpeta quedó sin base. */
     data class RolledBack(val databasePresent: Boolean) : StartupRestoreResult<Nothing>
 
-    /** El diario no se entiende. Se apartó sin tocar ninguna base, y toca el rescate. */
+    /**
+     * Hay un diario que no se entiende, apartado como `journal.bad` sin tocar ninguna base. Toca el
+     * rescate, en cada arranque, hasta que una restauración termine: sin el diario no se sabe si la
+     * base de la carpeta de bases es la buena.
+     */
     data object UnreadableJournal : StartupRestoreResult<Nothing>
 }
 
@@ -67,12 +72,21 @@ internal sealed interface RestoredDatabaseCheck<out D> {
  * Al deshacer una restauración, la copia de seguridad que se restaura espera como `undo-source` y
  * no se pierde hasta que el reemplazo queda verificado: si se revierte, o la preparación murió,
  * vuelve a su nombre.
+ *
+ * Un diario ilegible se aparta como `journal.bad`, y mientras exista, cada arranque va al rescate:
+ * podría haber un candidato sin verificar en la carpeta de bases y la base vieja en `previous/`.
+ * Solo una restauración que termina lo retira.
+ *
+ * @param clock da el nombre de la carpeta donde se aparta la base original sin copia de seguridad.
  */
 internal class StartupRestore(
     private val files: RestoreFiles,
     private val ops: DurableFileOps,
+    clock: Clock,
     private val journalStore: RestoreJournalStore = RestoreJournalStore(files, ops),
 ) {
+    private val damaged = DamagedOriginals(files, ops, clock)
+
     private var encryptionChanged = false
 
     /** Avanza el reemplazo hasta donde no haga falta abrir la base. */
@@ -80,7 +94,11 @@ internal class StartupRestore(
         val journal = when (val read = journalStore.read()) {
             RestoreJournalRead.Absent -> {
                 cleanUpWithoutJournal()
-                return StartupRestoreResult.NoRestore
+                return if (files.journalUnreadable.exists()) {
+                    StartupRestoreResult.UnreadableJournal
+                } else {
+                    StartupRestoreResult.NoRestore
+                }
             }
 
             RestoreJournalRead.Unreadable -> {
@@ -134,7 +152,13 @@ internal class StartupRestore(
 
                 RestoreJournalState.ROLLED_BACK -> {
                     finishRollBack()
-                    return StartupRestoreResult.RolledBack(files.database.exists())
+                    // Lo que volvió es lo que había antes de esta restauración: con un diario
+                    // ilegible anterior, tampoco se sabe si es la base buena.
+                    return if (files.journalUnreadable.exists()) {
+                        StartupRestoreResult.UnreadableJournal
+                    } else {
+                        StartupRestoreResult.RolledBack(files.database.exists())
+                    }
                 }
 
                 RestoreJournalState.DONE -> {
@@ -249,10 +273,9 @@ internal class StartupRestore(
             ops.delete(files.previousWal)
             ops.delete(files.previousShm)
         } else {
-            // Sin copia de seguridad, la base original se aparta 30 días en vez de borrarse.
-            ops.move(files.previous, files.damaged, replace = true)
-            ops.move(files.previousWal, files.damagedWal, replace = true)
-            ops.move(files.previousShm, files.damagedShm, replace = true)
+            // Sin copia de seguridad, la base original se aparta 30 días en vez de borrarse, en su
+            // propia carpeta: nunca pisa la de una restauración anterior.
+            damaged.setAsidePrevious()
         }
         ops.delete(files.candidate)
         ops.createMarker(files.initializedMarker)
@@ -263,6 +286,9 @@ internal class StartupRestore(
         for (copy in files.safetyCopies) {
             if (!copy.database.exists()) ops.delete(copy.facts)
         }
+        // La base nueva quedó verificada: un diario ilegible anterior ya no dice nada de ella. Su
+        // copia para soporte quedó junto a la base que se apartó al empezar.
+        ops.delete(files.journalUnreadable)
         ops.delete(files.lock)
         journalStore.delete()
     }

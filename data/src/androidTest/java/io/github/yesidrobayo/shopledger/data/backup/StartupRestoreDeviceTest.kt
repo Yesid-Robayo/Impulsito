@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.data.local.longValue
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogLevel
 import io.github.yesidrobayo.shopledger.domain.port.LogLine
+import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -108,6 +109,15 @@ class StartupRestoreDeviceTest {
         )
         assertTrue(files.journalUnreadable.exists())
         assertEquals(oldRecords, recordsIn(files.database))
+        // Cada arranque siguiente vuelve al rescate, también para un trabajo: sin el diario no se
+        // sabe qué base es la buena, y nada se abre en silencio.
+        for (caller in GateCaller.entries) {
+            assertEquals(
+                GateOutcome.Rescue(RescueCause.RestoreJournalUnreadable),
+                gate().pass(caller),
+            )
+        }
+        assertEquals(oldRecords, recordsIn(files.database))
     }
 
     @Test
@@ -144,6 +154,7 @@ class StartupRestoreDeviceTest {
                         StartupRestore(
                             files,
                             ops,
+                            SystemClock,
                         ).verifyAndFinish(RoomRestoredDatabaseVerifier(::open))
                     }
                 } catch (_: Death) {
@@ -231,7 +242,10 @@ class StartupRestoreDeviceTest {
         log = NO_LOG,
         preMigrationCopy = { PreMigrationResult.Failed },
         pendingRestore =
-            StartupRestoreGate(StartupRestore(files, DurableFileOps()), NO_LOG) { open ->
+            StartupRestoreGate(
+                StartupRestore(files, DurableFileOps(), SystemClock),
+                NO_LOG,
+            ) { open ->
                 RoomRestoredDatabaseVerifier(open)
             },
     ) { file -> open(file) }

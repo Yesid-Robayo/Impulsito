@@ -52,11 +52,11 @@ internal class RestoreFiles(val databaseFiles: DatabaseFiles) {
     val previousWal: File = sideFile(previous, WAL_SUFFIX)
     val previousShm: File = sideFile(previous, SHM_SUFFIX)
 
-    /** La base original cuando no se pudo hacer copia de seguridad. Se conserva 30 días. */
+    /**
+     * Las bases originales que se apartaron porque no hubo copia de seguridad, una carpeta por
+     * restauración. Se conservan 30 días.
+     */
     val damagedDirectory: File = File(restoreDirectory, "damaged-original")
-    val damaged: File = File(damagedDirectory, DatabaseFiles.DATABASE_NAME)
-    val damagedWal: File = sideFile(damaged, WAL_SUFFIX)
-    val damagedShm: File = sideFile(damaged, SHM_SUFFIX)
 
     /** Las copias locales de seguridad: la última y, si guardaba cambios sin subir, la anterior. */
     val safetyCopies: List<SafetyCopyFiles> =

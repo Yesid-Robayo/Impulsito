@@ -73,7 +73,8 @@ internal fun interface CandidateMigrator {
  * Los pasos van en el orden de la documentación, y cada uno solo corre si el anterior pasó:
  *
  * 1. **Cerrojo.** Con un diario pendiente no empieza: el arranque termina primero ese reemplazo. Si
- *    no, toma `restore/in_progress`, y desde ahí ninguna escritura entra en la base.
+ *    no, toma `restore/in_progress`, y desde ahí ninguna escritura entra en la base. Una base que
+ *    espera en `previous/` se aparta en `damaged-original/` antes de seguir.
  * 2. **Pausa.** Ninguna ejecución del respaldo corre hasta terminar o cancelar.
  * 3. **Espacio.** Tres veces la base de la copia y 50 MiB, o nueve veces el archivo si no se sabe
  *    cuánto ocupa descomprimido. Si no cabe, dice cuánto falta y no baja nada.
@@ -130,6 +131,7 @@ internal class RestoreCoordinator(
 ) {
     private val mutex = Mutex()
     private var session: Session? = null
+    private val damaged = DamagedOriginals(files, ops, clock)
 
     /** Empieza a preparar la restauración desde [source], tras la confirmación de la persona. */
     suspend fun start(source: RestoreSource): RestoreStage = mutex.withLock {
@@ -203,6 +205,7 @@ internal class RestoreCoordinator(
         if (withContext(ioContext) { files.journal.exists() }) return RestoreStage.Busy
         val takenAt = lock.acquire() ?: return RestoreStage.Busy
         val current = Session(source, takenAt).also { session = it }
+        withContext(ioContext) { setAsideLeftovers() }
         // Paso 2.
         pause.pause()
         current.paused = true
@@ -216,6 +219,22 @@ internal class RestoreCoordinator(
         fetch(current, meta)?.let { return it }
         current.activeDatabase = active()
         return validate(current)
+    }
+
+    /**
+     * Una base en `previous/` al empezar es la original de un reemplazo cuyo diario no se entendió:
+     * se aparta entera en su propia carpeta antes de seguir, con una copia del diario ilegible para
+     * soporte. El diario sigue en su sitio hasta que esta restauración termine.
+     */
+    private fun setAsideLeftovers() {
+        val folder = damaged.setAsidePrevious() ?: return
+        if (files.journalUnreadable.exists()) {
+            ops.copyAtomically(
+                files.journalUnreadable,
+                File(folder, DamagedOriginals.UNREADABLE_JOURNAL_NAME),
+                File(folder, DamagedOriginals.UNREADABLE_JOURNAL_NAME + TEMPORARY_SUFFIX),
+            )
+        }
     }
 
     private suspend fun resume(current: Session, decision: RestoreDecision): RestoreStage =
@@ -725,6 +744,7 @@ internal class RestoreCoordinator(
 
         const val SPACE_MARGIN_BYTES = 50L * 1024 * 1024
         const val BUFFER_BYTES = 64 * 1024
+        const val TEMPORARY_SUFFIX = ".tmp"
 
         /** Sin contadores de la base activa, la copia de seguridad cuenta como sin subir. */
         const val UNKNOWN_CHANGE_SEQ = 1L
