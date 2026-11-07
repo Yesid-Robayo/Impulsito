@@ -57,6 +57,10 @@ internal class DatabaseBackupEngine(
 
             WorkAccess.MigrationPending -> BackupRun.Retry(RetryReason.MIGRATION_PENDING)
 
+            // La compuerta vio una restauración que solo la app en primer plano termina: la base
+            // puede cambiar entera, igual que con las marcas de arriba.
+            WorkAccess.RestorePending -> BackupRun.Retry(RetryReason.RESTORE_IN_PROGRESS)
+
             is DataAccess.Rescue -> BackupRun.Retry(RetryReason.DATABASE_UNAVAILABLE)
         }
     }

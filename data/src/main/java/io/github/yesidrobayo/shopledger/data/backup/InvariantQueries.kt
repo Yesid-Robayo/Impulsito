@@ -23,7 +23,10 @@ internal class InvariantQuery(val label: String, val check: CandidateCheck, val 
  * el validador.
  */
 internal object InvariantQueries {
-    /** Las consultas del modelo de datos, copiadas tal cual. */
+    /**
+     * Las consultas del modelo de datos, copiadas tal cual, en su orden. Las corre el validador y
+     * las revisa el generador de datos de prueba.
+     */
     val MODEL: List<InvariantQuery> =
         listOf(
             InvariantQuery(
@@ -78,6 +81,21 @@ internal object InvariantQueries {
                 SELECT s.id
                 FROM sales s
                 WHERE NOT EXISTS (SELECT 1 FROM sale_lines l WHERE l.sale_id = s.id);
+                """.trimIndent(),
+            ),
+            InvariantQuery(
+                "I-04, compras",
+                CandidateCheck.COST_AND_TOTALS,
+                """
+                SELECT p.id
+                FROM purchases p
+                JOIN (
+                  SELECT purchase_id, SUM(line_total) AS total, SUM(tax_amount) AS tax, SUM(cost_amount) AS cost
+                  FROM purchase_lines
+                  GROUP BY purchase_id
+                ) l ON l.purchase_id = p.id
+                WHERE p.total <> l.total OR p.tax_total <> l.tax OR p.cost_total <> l.cost
+                   OR p.net_total <> l.total - l.tax OR p.total <> p.net_total + p.tax_total;
                 """.trimIndent(),
             ),
             InvariantQuery(
@@ -390,30 +408,4 @@ internal object InvariantQueries {
                 """.trimIndent(),
             ),
         )
-
-    /**
-     * Los totales de cada compra son las sumas de sus líneas: `total` de `line_total`, `tax_total`
-     * de `tax_amount`, `cost_total` de `cost_amount`, y `net_total` la diferencia. El modelo de datos
-     * lo dice de la compra, pero no le da consulta; sin ella, un total corrido nunca pediría
-     * recalcular.
-     */
-    val PURCHASE_TOTALS: InvariantQuery =
-        InvariantQuery(
-            "I-04, compras",
-            CandidateCheck.COST_AND_TOTALS,
-            """
-            SELECT p.id
-            FROM purchases p
-            JOIN (
-              SELECT purchase_id, SUM(line_total) AS total, SUM(tax_amount) AS tax, SUM(cost_amount) AS cost
-              FROM purchase_lines
-              GROUP BY purchase_id
-            ) l ON l.purchase_id = p.id
-            WHERE p.total <> l.total OR p.tax_total <> l.tax OR p.cost_total <> l.cost
-               OR p.net_total <> l.total - l.tax OR p.total <> p.net_total + p.tax_total;
-            """.trimIndent(),
-        )
-
-    /** Todas las que corre el validador. */
-    val ALL: List<InvariantQuery> = MODEL + PURCHASE_TOTALS
 }

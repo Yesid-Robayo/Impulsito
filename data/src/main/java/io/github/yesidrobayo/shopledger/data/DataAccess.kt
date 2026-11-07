@@ -36,6 +36,12 @@ sealed interface WorkAccess {
      * `retry()` y el sistema lo vuelve a correr más tarde, cuando la app ya la migró.
      */
     data object MigrationPending : WorkAccess
+
+    /**
+     * Una restauración espera que la app verifique la base nueva. El trabajo no abrió la base y
+     * devuelve `retry()`.
+     */
+    data object RestorePending : WorkAccess
 }
 
 /** Por qué la app va al rescate. Cada causa tiene su texto en la pantalla de rescate. */
@@ -68,4 +74,16 @@ sealed interface RescueCause {
      * @property missingBytes cuánto hay que liberar, en bytes.
      */
     data class NotEnoughSpace(val missingBytes: Long) : RescueCause
+
+    /**
+     * El diario de una restauración no se entiende. Se apartó sin tocar ninguna base, y la pantalla
+     * de rescate solo ofrece reintentar y la información para soporte.
+     */
+    data object RestoreJournalUnreadable : RescueCause
+
+    /**
+     * Una restauración se deshizo y no había una base anterior que devolver: no queda base. Se
+     * restaura de nuevo desde el destino, y Room no crea una vacía.
+     */
+    data object RestoreLeftNoDatabase : RescueCause
 }

@@ -10,8 +10,10 @@ import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
 import io.github.yesidrobayo.shopledger.data.DataGraph
+import io.github.yesidrobayo.shopledger.data.WorkAccess
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupRun
+import io.github.yesidrobayo.shopledger.data.backup.DatabaseBackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.MemoryLog
 import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
 import io.github.yesidrobayo.shopledger.data.backup.RetryReason
@@ -98,6 +100,24 @@ class BackupWorkerTest {
             assertEquals(marker.name, ListenableWorker.Result.retry(), result)
             assertFalse(marker.name, file.exists())
         }
+    }
+
+    @Test
+    fun aRestoreTheGateFindsIsRetriedWithoutOpeningTheDatabase() = runBlocking {
+        // Sin marcas en la carpeta del trabajo, pero la compuerta ve una restauración que solo la
+        // app en primer plano termina: tampoco se abre la base.
+        val engine =
+            DatabaseBackupEngine(
+                restoreMarkers = { RestoreMarkers(noBackup) },
+                openForWork = { WorkAccess.RestorePending },
+                runnerFor = { error("La base no debía abrirse") },
+                ioContext = Dispatchers.IO,
+            )
+
+        assertEquals(
+            BackupRun.Retry(RetryReason.RESTORE_IN_PROGRESS),
+            engine.run(TransferControl.Unbounded),
+        )
     }
 
     @Test

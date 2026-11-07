@@ -43,7 +43,7 @@ class CandidateValidatorTest {
 
         // Cada consulta de invariantes da cero filas sobre datos sanos.
         inspectWithoutRoom(candidate) { connection ->
-            for (query in InvariantQueries.ALL) {
+            for (query in InvariantQueries.MODEL) {
                 assertEquals(query.label, 0L, connection.countRows(query.sql))
             }
         }

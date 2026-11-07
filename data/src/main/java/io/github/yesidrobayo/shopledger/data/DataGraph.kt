@@ -4,6 +4,11 @@ import android.content.Context
 import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
+import io.github.yesidrobayo.shopledger.data.backup.DurableFileOps
+import io.github.yesidrobayo.shopledger.data.backup.RestoreFiles
+import io.github.yesidrobayo.shopledger.data.backup.RoomRestoredDatabaseVerifier
+import io.github.yesidrobayo.shopledger.data.backup.StartupRestore
+import io.github.yesidrobayo.shopledger.data.backup.StartupRestoreGate
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
 import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
 import io.github.yesidrobayo.shopledger.data.destination.ProductionDestinationOpener
@@ -155,6 +160,9 @@ class DataGraph internal constructor(
 
         // La app en primer plano es quien migra: la compuerta nunca le pide esperar.
         WorkAccess.MigrationPending -> error("La app en primer plano nunca espera una migración")
+
+        // Tampoco una restauración: es ella quien verifica la base nueva.
+        WorkAccess.RestorePending -> error("La app en primer plano nunca espera una restauración")
     }
 
     /**
@@ -191,6 +199,11 @@ class DataGraph internal constructor(
                 ioContext = ioContext,
                 log = log,
                 preMigrationCopy = preMigrationCopy(databaseFiles),
+                pendingRestore =
+                    StartupRestoreGate(
+                        StartupRestore(RestoreFiles(databaseFiles), DurableFileOps()),
+                        log,
+                    ) { open -> RoomRestoredDatabaseVerifier(open) },
             ) { file -> AppDatabase.open(context, file, ioContext, clock) }
         return when (val outcome = gate.pass(caller)) {
             is GateOutcome.Opened -> {
@@ -207,6 +220,8 @@ class DataGraph internal constructor(
             }
 
             GateOutcome.MigrationPending -> WorkAccess.MigrationPending
+
+            GateOutcome.RestorePending -> WorkAccess.RestorePending
 
             is GateOutcome.Rescue -> DataAccess.Rescue(outcome.cause)
         }

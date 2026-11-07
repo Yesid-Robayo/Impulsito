@@ -99,6 +99,9 @@ val schemaCatalogSources =
 tasks.withType<Test>().configureEach {
     systemProperty("schemaCatalog.schemaDir", appDatabaseSchemas.asFile.absolutePath)
     systemProperty("schemaCatalog.sourceDir", schemaCatalogSources.asFile.absolutePath)
+    // Las dos muertes seguidas del reemplazo en todos sus escenarios: -PswapFull=true. Tarda
+    // minutos, así que check corre solo los que cambian el camino de la recuperación.
+    systemProperty("swap.full", providers.gradleProperty("swapFull").getOrElse("false"))
     // El JSON también se lee como archivo: si cambia, las pruebas vuelven a correr.
     inputs
         .dir(appDatabaseSchemas)

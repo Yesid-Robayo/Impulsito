@@ -70,7 +70,7 @@ internal class CandidateDataCheck(
         add(CandidateCheck.VALUE_RANGES, rangeProblems(connection))
         add(CandidateCheck.COPY_METADATA_MATCH, copyMetadataProblems(connection))
         add(CandidateCheck.EMPTY_OVER_DATA, emptyOverDataProblems(connection))
-        for (query in InvariantQueries.ALL) add(query.check, connection.countRows(query.sql))
+        for (query in InvariantQueries.MODEL) add(query.check, connection.countRows(query.sql))
         val costs = CostReplays.of(connection)
         add(CandidateCheck.COST_AND_TOTALS, costs.count { it.drifted }.toLong())
         add(CandidateCheck.UNDERIVABLE_COHERENCE, costs.count { !it.replayed }.toLong())

@@ -32,8 +32,46 @@ internal sealed interface GateOutcome<out D> {
     /** Hace falta migrar y quien pidió pasar es un trabajo: la base no se abrió. */
     data object MigrationPending : GateOutcome<Nothing>
 
+    /**
+     * Una restauración espera que la app verifique la base nueva, y quien pidió pasar es un trabajo:
+     * la base no se abrió.
+     */
+    data object RestorePending : GateOutcome<Nothing>
+
     /** La base no se puede abrir sin riesgo. Nada se tocó. */
     data class Rescue(val cause: RescueCause) : GateOutcome<Nothing>
+}
+
+/**
+ * Termina, antes de abrir la base, una restauración que quedó a medias: la compuerta la pide en
+ * cuanto alguien quiere pasar, y nada abre la base antes.
+ */
+internal fun interface PendingRestore<D> {
+    /**
+     * Avanza la restauración pendiente para [caller]. Si hay que verificar la base nueva, la abre
+     * con [open], la misma apertura de la compuerta.
+     */
+    suspend fun finish(caller: GateCaller, open: suspend (File) -> D): RestoreStep<D>
+
+    companion object {
+        /** Sin restauración que terminar. */
+        fun <D> none(): PendingRestore<D> = PendingRestore { _, _ -> RestoreStep.Continue }
+    }
+}
+
+/** En qué dejó la restauración pendiente a la compuerta. */
+internal sealed interface RestoreStep<out D> {
+    /** No había nada que terminar, o ya terminó sin abrir la base: la compuerta sigue su camino. */
+    data object Continue : RestoreStep<Nothing>
+
+    /** La base nueva quedó verificada, y [database] es la base ya abierta. */
+    data class Restored<D>(val database: D) : RestoreStep<D>
+
+    /** Hay que verificar la base nueva, y eso solo lo hace la app en primer plano. */
+    data object WaitForApp : RestoreStep<Nothing>
+
+    /** No se puede abrir la base sin riesgo. */
+    data class Rescue(val cause: RescueCause) : RestoreStep<Nothing>
 }
 
 /**
@@ -62,6 +100,8 @@ internal sealed interface PreMigrationResult {
  * si abrirla es seguro, y retiene a la interfaz y a los trabajos mientras tanto.
  *
  * Lo que decide, en orden:
+ * 0. **Restauración pendiente.** Si un reemplazo de la base quedó a medias, lo termina o lo deshace
+ *    antes de mirar nada más. Verificar la base nueva solo lo hace la app: un trabajo espera.
  * 1. **Base que falta.** Si la marca de base creada existe y el archivo no, Room no se abre:
  *    crearía una base vacía encima del negocio. Va al rescate.
  * 2. **Instalación nueva.** Sin archivo y sin marca, Room crea la base y después se deja la marca.
@@ -84,6 +124,7 @@ internal sealed interface PreMigrationResult {
  *
  * @param schemaVersion la versión del esquema que compila la app.
  * @param preMigrationCopy deja la copia previa a migrar.
+ * @param pendingRestore termina una restauración pendiente antes de todo lo demás.
  * @param openDatabase abre la base con Room, y la migra si hace falta. Lanza si no abre.
  */
 internal class DatabaseGate<D : Any>(
@@ -92,6 +133,7 @@ internal class DatabaseGate<D : Any>(
     private val ioContext: CoroutineContext,
     private val log: EventLog,
     private val preMigrationCopy: PreMigrationCopy,
+    private val pendingRestore: PendingRestore<D> = PendingRestore.none(),
     private val openDatabase: suspend (File) -> D,
 ) {
     init {
@@ -100,6 +142,12 @@ internal class DatabaseGate<D : Any>(
 
     /** Decide si [caller] pasa, y le abre la base si es seguro. */
     suspend fun pass(caller: GateCaller): GateOutcome<D> = withContext(ioContext) {
+        when (val restore = pendingRestore.finish(caller, openDatabase)) {
+            RestoreStep.Continue -> Unit
+            is RestoreStep.Restored -> return@withContext opened(restore.database)
+            RestoreStep.WaitForApp -> return@withContext GateOutcome.RestorePending
+            is RestoreStep.Rescue -> return@withContext rescue(restore.cause)
+        }
         when (files.state()) {
             DatabaseFileState.MISSING -> rescue(RescueCause.DatabaseMissing)
             DatabaseFileState.NEVER_CREATED -> open()
@@ -211,6 +259,8 @@ internal class DatabaseGate<D : Any>(
                 RescueCause.MigrationFailed -> DataEvent.MIGRATION_FAILED
                 RescueCause.PreMigrationCopyFailed -> DataEvent.PRE_MIGRATION_COPY_MISSING
                 is RescueCause.NotEnoughSpace -> DataEvent.PRE_MIGRATION_NO_SPACE
+                RescueCause.RestoreJournalUnreadable -> DataEvent.RESTORE_JOURNAL_UNREADABLE
+                RescueCause.RestoreLeftNoDatabase -> DataEvent.RESTORE_LEFT_NO_DATABASE
             }
         if (version == null) log.error(event) else log.error(event, *versions(version), *extra)
         return GateOutcome.Rescue(cause)
