@@ -120,6 +120,8 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "keepThisPhone",
                 "reopenAfterConflict",
                 "confirm",
+                "confirmUnrestorable",
+                "recordInvariantFailures",
             ),
             functionsOf(BackupStateDao::class.java),
         )
@@ -317,6 +319,60 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
         assertEquals(0L, confirmed.consecutiveFailures)
         assertNull(confirmed.lastFailureKind)
         assertNull(confirmed.failureCode)
+    }
+
+    @Test
+    fun anUnrestorableCopyBecomesTheHeadButLeavesTheChangesPending() = runBlocking {
+        execute(
+            "UPDATE backup_state SET link_state = 'CONNECTED', destination_kind = 'WEBDAV', " +
+                "destination_id = 'huella', change_seq = 3, first_unsynced_at = $LATER, " +
+                "consecutive_failures = 2, last_failure_kind = 'TLS' WHERE id = 1",
+        )
+        state.saveIntent(4, 3, "ab".repeat(32), 1_234)
+        val before = requireNotNull(state.get())
+
+        assertEquals(
+            0,
+            state.confirmUnrestorable(4, "teléfono", "copia", "LOCAL_INVARIANT_FATAL", "otra"),
+        )
+        assertEquals(before, state.get())
+        assertEquals(
+            1,
+            state.confirmUnrestorable(4, "teléfono", "copia", "LOCAL_INVARIANT_FATAL", "huella"),
+        )
+        assertEquals(
+            before.copy(
+                headGeneration = 4,
+                headDeviceId = "teléfono",
+                headFileRef = "copia",
+                consecutiveFailures = 0,
+                lastFailureKind = null,
+                failureCode = "LOCAL_INVARIANT_FATAL",
+                pendingGeneration = null,
+                pendingSeq = null,
+                pendingSha256 = null,
+                pendingSizeBytes = null,
+            ),
+            state.get(),
+        )
+    }
+
+    @Test
+    fun theCountOfRepairsStaysOnlyWithACopyThatStillNeedsThem() = runBlocking {
+        execute(
+            "UPDATE backup_state SET link_state = 'CONNECTED', destination_kind = 'WEBDAV', " +
+                "destination_id = 'huella', change_seq = 3 WHERE id = 1",
+        )
+        assertEquals(1, state.recordInvariantFailures(2))
+        assertEquals(2L, state.get()?.invariantFailures)
+
+        state.confirm(1, "teléfono", "copia-1", 3, MUCH_LATER, LATER, "LOCAL_INVARIANT", "huella")
+        assertEquals(2L, state.get()?.invariantFailures)
+        assertEquals("LOCAL_INVARIANT", state.get()?.failureCode)
+
+        state.confirm(2, "teléfono", "copia-2", 3, MUCH_LATER, LATER, null, "huella")
+        assertEquals(0L, state.get()?.invariantFailures)
+        assertNull(state.get()?.failureCode)
     }
 
     @Test

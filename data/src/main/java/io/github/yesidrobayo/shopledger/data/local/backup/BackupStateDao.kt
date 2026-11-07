@@ -177,14 +177,17 @@ internal interface BackupStateDao {
      * intención se borra. Si no llegaron cambios durante la copia, no queda ninguno sin copia; si
      * llegaron, el más viejo sin copia es del instante de la copia, [copiedAt].
      *
-     * @param failureCode nulo para una copia válida, o el fallo que la copia sube marcado.
+     * @param failureCode nulo para una copia válida, o el fallo que la copia sube marcado. Con una
+     *   copia de saldos por recalcular se conserva `invariant_failures`, que dejó la revisión de la
+     *   instantánea; con cualquier otra vuelve a 0.
      */
     @Query(
         "UPDATE backup_state SET head_generation = :generation, head_device_id = :deviceId, " +
             "head_file_ref = :fileRef, verified_seq = :seq, last_success_at = :now, " +
             "consecutive_failures = 0, last_failure_kind = NULL, " +
             "first_unsynced_at = CASE WHEN change_seq = :seq THEN NULL ELSE :copiedAt END, " +
-            "failure_code = :failureCode, invariant_failures = 0, " +
+            "failure_code = :failureCode, invariant_failures = CASE WHEN :failureCode = " +
+            "'LOCAL_INVARIANT' THEN invariant_failures ELSE 0 END, " +
             "pending_generation = NULL, pending_seq = NULL, pending_sha256 = NULL, " +
             "pending_size_bytes = NULL WHERE id = 1 AND destination_id = :destinationId",
     )
@@ -198,4 +201,35 @@ internal interface BackupStateDao {
         failureCode: String?,
         destinationId: String,
     ): Int
+
+    /**
+     * Confirma una copia que la app no podría restaurar, comprobada en el destino, en una sola
+     * sentencia y solo si el destino sigue siendo [destinationId]. Devuelve 0 si no lo es.
+     *
+     * La copia pasa a ser la cabeza, para que la guarda la reconozca como propia, y deja
+     * [failureCode] a la vista. Los cambios siguen sin respaldar: `verified_seq`, `last_success_at`
+     * y `first_unsynced_at` no cambian, así que el aviso de un día sin copia llega a su hora. Los
+     * fallos de transporte vuelven a 0, porque el destino respondió, y la intención se borra.
+     */
+    @Query(
+        "UPDATE backup_state SET head_generation = :generation, head_device_id = :deviceId, " +
+            "head_file_ref = :fileRef, consecutive_failures = 0, last_failure_kind = NULL, " +
+            "failure_code = :failureCode, pending_generation = NULL, pending_seq = NULL, " +
+            "pending_sha256 = NULL, pending_size_bytes = NULL " +
+            "WHERE id = 1 AND destination_id = :destinationId",
+    )
+    suspend fun confirmUnrestorable(
+        generation: Long,
+        deviceId: String,
+        fileRef: String,
+        failureCode: String,
+        destinationId: String,
+    ): Int
+
+    /**
+     * Guarda cuántos elementos tienen un saldo que recalcular según la última revisión: 0 si
+     * ninguno. Es el número del aviso, sin decir cuáles.
+     */
+    @Query("UPDATE backup_state SET invariant_failures = :count WHERE id = 1")
+    suspend fun recordInvariantFailures(count: Long): Int
 }

@@ -68,13 +68,18 @@ import kotlinx.coroutines.withContext
  *    más nueva, `CLOUD_SCHEMA_NEWER`. En ningún caso genera nada.
  * 7. **Instantánea.** `VACUUM INTO` en una conexión propia, mientras la app sigue vendiendo.
  * 8. **Sello.** Limpia de la instantánea lo que no viaja en una copia, corre `integrity_check` y lee
- *    los conteos. Una instantánea dañada nunca sube: `LOCAL_CORRUPT`.
+ *    los conteos. Una instantánea dañada nunca sube: `LOCAL_CORRUPT`. Después la revisa el mismo
+ *    validador de las restauraciones. Con saldos por recalcular, la copia sube igual, marcada como
+ *    no válida, y la base activa guarda cuántos elementos son. Si la app no podría restaurarla,
+ *    con WebDAV sube marcada como fatal, solo para un rescate manual, y con ranuras no se escribe:
+ *    taparía una copia que sí se restaura.
  * 9. **Comprimir.** gzip con su suma, comprobado al releerlo, y los metadatos en la carpeta.
  * 10. **Intención y subida.** Guarda en el estado qué copia va en camino, y solo después escribe en
  *     el destino. Al enviar el último byte anota la hora.
  * 11. **Comprobar.** Lo que el destino tiene debe ser lo que se subió. Si no, `VERIFY_MISMATCH`, y
  *     esa copia nunca se confirma.
  * 12. **Confirmar.** En una sola sentencia, y solo si el destino sigue siendo el de esta ejecución.
+ *     Una copia fatal pasa a ser la cabeza, pero los cambios siguen sin respaldar.
  * 13. **Podar.** Solo después de confirmar, y un fallo ahí no invalida la copia.
  * 14. **Terminar.** Borra los temporales en un `finally`, salvo el archivo de una subida que se
  *     reintenta, que se conserva hasta un día.
@@ -93,6 +98,7 @@ import kotlinx.coroutines.withContext
  * @param verifyMode cuánto del contenido se lee para comprobar, según la red.
  * @param transportFailures cuenta los fallos de transporte seguidos de cada ejecución que se
  *   reintenta, para dejar a la vista uno que no se resuelve solo.
+ * @param snapshotValidation revisa la instantánea con el validador de las restauraciones.
  * @param appVersion la versión de la app para los metadatos, si tiene la forma que aceptan.
  * @param deviceLabel fabricante y modelo del teléfono para los metadatos, ya limpios.
  * @param mutex el cerrojo del respaldo, uno por proceso.
@@ -118,6 +124,8 @@ internal class BackupRunner(
     private val freeSpace: (File) -> Long = File::getUsableSpace,
     private val verifyMode: (TransferControl) -> VerifyMode = ::verifyModeFor,
     private val transportFailures: TransportFailures = TransportFailures(state),
+    private val snapshotValidation: SnapshotValidation =
+        SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
 ) {
     /** Corre una ejecución entera. Solo lanza la cancelación, o una falla que nadie previó. */
     suspend fun run(control: TransferControl): BackupRun = mutex.withLock {
@@ -205,7 +213,7 @@ internal class BackupRunner(
 
         // Pasos 7 a 9: la copia.
         val copy =
-            when (val made = makeCopy(generation, device, control)) {
+            when (val made = makeCopy(generation, device, destination.kind, control)) {
                 is Made.Copy -> made.copy
                 is Made.Stop -> return made.run
             }
@@ -247,29 +255,42 @@ internal class BackupRunner(
             is DestinationResult.Failure -> return failed(confirmed.failure, link)
         }
         val rows =
-            state.confirm(
-                generation = generation,
-                deviceId = device,
-                fileRef = stored.ref.value,
-                seq = copy.changeSeq,
-                now = clock.nowEpochMillis(),
-                copiedAt = copy.createdAtMillis,
-                failureCode = null,
-                destinationId = link.destinationId,
-            )
+            if (copy.marks.fatal) {
+                // La app no la restaura: es la cabeza, pero los cambios siguen sin respaldar.
+                state.confirmUnrestorable(
+                    generation = generation,
+                    deviceId = device,
+                    fileRef = stored.ref.value,
+                    failureCode = BackupFailureCode.LOCAL_INVARIANT_FATAL.name,
+                    destinationId = link.destinationId,
+                )
+            } else {
+                state.confirm(
+                    generation = generation,
+                    deviceId = device,
+                    fileRef = stored.ref.value,
+                    seq = copy.changeSeq,
+                    now = clock.nowEpochMillis(),
+                    copiedAt = copy.createdAtMillis,
+                    failureCode =
+                        BackupFailureCode.LOCAL_INVARIANT.name.takeUnless { copy.marks.valid },
+                    destinationId = link.destinationId,
+                )
+            }
         if (rows == 0) return BackupRun.Skipped(SkipReason.DESTINATION_CHANGED)
         attempt.pendingGeneration = null
 
         // Paso 13: podar, solo ahora.
         if (destination.kind == BackupDestinationKind.WEBDAV) prune(destination, control)
-        return BackupRun.Verified(generation)
+        return BackupRun.Verified(generation, unrestorable = copy.marks.fatal)
     }
 
-    /** Una copia lista para subir, con lo que sale de su instantánea. */
+    /** Una copia lista para subir, con lo que sale de su instantánea y de su revisión. */
     private class ReadyCopy(
         val outgoing: OutgoingCopy,
         val changeSeq: Long,
         val createdAtMillis: Long,
+        val marks: NewCopyMarks,
     )
 
     private sealed interface Made {
@@ -281,6 +302,7 @@ internal class BackupRunner(
     private suspend fun makeCopy(
         generation: Long,
         device: String,
+        kind: BackupDestinationKind,
         control: TransferControl,
     ): Made {
         val now = clock.now()
@@ -317,6 +339,24 @@ internal class BackupRunner(
             IntegrityResult.Damaged -> return stopWith(BackupFailureCode.LOCAL_CORRUPT)
             is IntegrityResult.Failed -> return localFailure(integrity.cause)
         }
+        val marks =
+            when (val verdict = snapshotValidation.check(snapshot.file)) {
+                is SnapshotVerdict.Checked -> {
+                    if (verdict.repairCases > 0) state.recordInvariantFailures(verdict.repairCases)
+                    verdict.marks
+                }
+
+                SnapshotVerdict.Corrupt -> return stopWith(BackupFailureCode.LOCAL_CORRUPT)
+
+                is SnapshotVerdict.Failed -> return localFailure(verdict.cause)
+            }
+        if (marks.fatal && kind == BackupDestinationKind.DOCUMENT_SLOTS) {
+            // Escribirla tapa una ranura que sí se restaura: no se escribe, y los cambios siguen
+            // sin respaldar hasta una copia que la app pueda restaurar.
+            state.recordFailure(BackupFailureCode.LOCAL_INVARIANT_FATAL.name)
+            return Made.Stop(BackupRun.Skipped(SkipReason.UNRESTORABLE_NOT_WRITTEN))
+        }
+        interruption(control)?.let { return Made.Stop(it) }
         val rawSize = snapshot.file.length()
         if (rawSize > BackupLimits.MAX_RESTORE_DECOMPRESSED_BYTES) {
             return stopWith(BackupFailureCode.BACKUP_TOO_LARGE)
@@ -334,9 +374,6 @@ internal class BackupRunner(
                 PackageResult.Mismatch -> return stopWith(BackupFailureCode.UNEXPECTED)
                 is PackageResult.Failed -> return localFailure(result.cause)
             }
-        // Hasta que esté el validador de la restauración sobre la instantánea, la copia sale
-        // válida si pasó `integrity_check`.
-        val marks = NewCopyMarks(valid = true, fatal = false)
         val meta =
             SlMeta(
                 format = PLAIN_FORMAT,
@@ -373,7 +410,9 @@ internal class BackupRunner(
                 metaBytes = metaBytes,
                 candidate = SlotCandidate(marks, sealed.records, sealed.catalogCount),
             )
-        return Made.Copy(ReadyCopy(outgoing, sealed.changeSeq, now.toEpochMilliseconds()))
+        return Made.Copy(
+            ReadyCopy(outgoing, sealed.changeSeq, now.toEpochMilliseconds(), marks),
+        )
     }
 
     /** Deja los metadatos junto a la copia, para subirlos si la subida se corta entre los dos. */

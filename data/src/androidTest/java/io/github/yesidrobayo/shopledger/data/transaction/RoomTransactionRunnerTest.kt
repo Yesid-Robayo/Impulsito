@@ -311,6 +311,16 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
             failureCode: String?,
             destinationId: String,
         ): Int = 0
+
+        override suspend fun confirmUnrestorable(
+            generation: Long,
+            deviceId: String,
+            fileRef: String,
+            failureCode: String,
+            destinationId: String,
+        ): Int = 0
+
+        override suspend fun recordInvariantFailures(count: Long): Int = 0
     }
 
     private companion object {

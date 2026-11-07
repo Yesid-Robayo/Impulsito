@@ -16,8 +16,14 @@ import io.github.yesidrobayo.shopledger.domain.port.warn
  * terminar, reintentar más tarde o detenerse hasta un evento nuevo.
  */
 internal sealed interface BackupRun {
-    /** La copia [generation] quedó en el destino, comprobada y confirmada. */
-    data class Verified(val generation: Long) : BackupRun
+    /**
+     * La copia [generation] quedó en el destino, comprobada y confirmada.
+     *
+     * @property unrestorable la app no podría restaurar esa copia: subió solo para un rescate
+     *   manual, y los cambios siguen sin respaldar. Repetirla sin un cambio nuevo daría otra igual,
+     *   así que no se encola otra copia por esos cambios.
+     */
+    data class Verified(val generation: Long, val unrestorable: Boolean = false) : BackupRun
 
     /** No había nada que subir, o no se debía subir. Nada falló. */
     data class Skipped(val reason: SkipReason) : BackupRun
@@ -54,6 +60,12 @@ internal enum class SkipReason {
 
     /** La persona cambió de destino durante la subida: la copia no se confirma en el nuevo. */
     DESTINATION_CHANGED,
+
+    /**
+     * La app no podría restaurar la copia, y con ranuras no se escribe: taparía una que sí se
+     * restaura. El fallo queda a la vista y los cambios siguen sin respaldar.
+     */
+    UNRESTORABLE_NOT_WRITTEN,
 }
 
 /** Por qué una ejecución se reintenta más tarde. */
@@ -101,6 +113,7 @@ internal sealed interface StopCause {
 /** Los eventos del registro del respaldo. Solo llevan códigos, conteos y duraciones. */
 internal enum class BackupEvent(override val text: String) : LogEvent {
     COPY_VERIFIED("Copia verificada y confirmada"),
+    COPY_UNRESTORABLE("Copia confirmada solo para un rescate: la app no la restaura"),
     RUN_SKIPPED("Respaldo sin nada que subir"),
     RUN_RETRY("Respaldo para más tarde"),
     RUN_STOPPED("Respaldo detenido"),
@@ -113,7 +126,11 @@ internal enum class BackupEvent(override val text: String) : LogEvent {
 internal fun EventLog.report(run: BackupRun) {
     when (run) {
         is BackupRun.Verified ->
-            info(BackupEvent.COPY_VERIFIED, LogField.id("generación", run.generation))
+            if (run.unrestorable) {
+                warn(BackupEvent.COPY_UNRESTORABLE, LogField.id("generación", run.generation))
+            } else {
+                info(BackupEvent.COPY_VERIFIED, LogField.id("generación", run.generation))
+            }
 
         is BackupRun.Skipped -> info(BackupEvent.RUN_SKIPPED, LogField.state("motivo", run.reason))
 
