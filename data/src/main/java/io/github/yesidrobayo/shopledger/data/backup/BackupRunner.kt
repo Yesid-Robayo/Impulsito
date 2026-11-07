@@ -21,6 +21,8 @@ import io.github.yesidrobayo.shopledger.data.destination.SlMeta
 import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.data.destination.StoredCopy
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
+import io.github.yesidrobayo.shopledger.data.destination.UploadPlan
+import io.github.yesidrobayo.shopledger.data.destination.VerifiedCopy
 import io.github.yesidrobayo.shopledger.data.destination.VerifyMode
 import io.github.yesidrobayo.shopledger.data.destination.identity
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
@@ -61,9 +63,10 @@ import kotlinx.coroutines.withContext
  *    enlace pasa a acceso perdido.
  * 4. **Listar.** Lo que hay en el destino. Una lista con errores nunca es una carpeta vacía: se
  *    reintenta. Borra los temporales de este teléfono que dejó una subida cortada.
- * 5. **Retomar.** Una subida que quedó sin confirmar se busca por su nombre: si ya está entera,
- *    salta a comprobarla, y si no llegó, sube otra vez el mismo archivo. Lo que nunca se confirmó y
- *    no sirve se rechaza en disco antes de borrarlo, y nunca se adopta ([UploadRecovery]).
+ * 5. **Retomar.** Una subida que quedó sin confirmar se busca por su nombre, o con ranuras por su
+ *    marca: si ya está entera, salta a comprobarla o a confirmarla, y si no llegó, sube otra vez el
+ *    mismo archivo, con ranuras en la misma ranura. Lo que nunca se confirmó y no sirve se rechaza
+ *    en disco antes de borrarlo, y nunca se adopta ([UploadRecovery]).
  * 6. **Guarda.** [BackupGuard] decide si se puede subir y con qué generación, comparando la
  *    cabeza del destino con lo que esta base conoce y tiene. Si el destino tiene algo que una copia
  *    nueva taparía, el enlace queda en conflicto y la persona decide; si la cabeza viene de una app
@@ -140,7 +143,8 @@ internal class BackupRunner(
     private val snapshotValidation: SnapshotValidation =
         SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
 ) {
-    private val recovery = UploadRecovery(state, staging, rejected, clock, log, ioContext)
+    private val recovery =
+        UploadRecovery(state, staging, rejected, clock, log, ioContext, schemaVersion)
 
     /** Corre una ejecución entera. Solo lanza la cancelación, o una falla que nadie previó. */
     suspend fun run(control: TransferControl): BackupRun = mutex.withLock {
@@ -238,13 +242,21 @@ internal class BackupRunner(
             when (delivery) {
                 is Delivery.Verify -> delivery.stored
 
+                is Delivery.Reread -> delivery.stored
+
+                is Delivery.Recorded -> delivery.stored
+
                 is Delivery.Upload -> {
                     val outgoing = delivery.copy
+                    // Una ranura a medias con este mismo archivo se reescribe ahí: nunca en otra.
                     val plan =
-                        when (val planned = destination.planUpload(outgoing, headRefOf(current))) {
-                            is DestinationResult.Success -> planned.value
-                            is DestinationResult.Failure -> return failed(planned.failure, link)
-                        }
+                        delivery.fixedRef?.let { UploadPlan(outgoing, it) }
+                            ?: when (
+                                val planned = destination.planUpload(outgoing, headRefOf(current))
+                            ) {
+                                is DestinationResult.Success -> planned.value
+                                is DestinationResult.Failure -> return failed(planned.failure, link)
+                            }
                     interruption(control)?.let { return it }
                     state.saveIntent(
                         delivery.generation,
@@ -273,8 +285,17 @@ internal class BackupRunner(
                     RetryReason.INTERRUPTED,
                     interruptReason = InterruptReason.METERED,
                 )
+        // Una ranura que la recuperación ya releyó, o ya anotó, no se lee otra vez.
+        val reread = delivery is Delivery.Reread || delivery is Delivery.Recorded
         val fullyRead =
-            when (val verified = destination.verify(stored, mode, delivery.localFile, control)) {
+            when (
+                val verified =
+                    if (reread) {
+                        DestinationResult.Success(VerifiedCopy(fullyRead = true))
+                    } else {
+                        destination.verify(stored, mode, delivery.localFile, control)
+                    }
+            ) {
                 is DestinationResult.Success -> verified.value.fullyRead
 
                 is DestinationResult.Failure -> {
@@ -302,10 +323,12 @@ internal class BackupRunner(
             }
         val relisted = if (webDav) relist(destination, stored, delivery, device, control) else null
 
-        // Paso 12: confirmar.
-        when (val confirmed = destination.confirm(stored)) {
-            is DestinationResult.Success -> Unit
-            is DestinationResult.Failure -> return failed(confirmed.failure, link)
+        // Paso 12: confirmar. Con ranuras, primero en el estado de las ranuras, salvo que ya estuviera.
+        if (delivery !is Delivery.Recorded) {
+            when (val confirmed = destination.confirm(stored)) {
+                is DestinationResult.Success -> Unit
+                is DestinationResult.Failure -> return failed(confirmed.failure, link)
+            }
         }
         val rows =
             if (delivery.marks.fatal) {

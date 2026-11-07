@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.data.destination.StoredCopy
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.data.destination.UploadPlan
+import io.github.yesidrobayo.shopledger.data.destination.VerifyMode
 import io.github.yesidrobayo.shopledger.data.destination.identity
 import io.github.yesidrobayo.shopledger.data.destination.newSha256
 import io.github.yesidrobayo.shopledger.data.destination.toLowerHex
@@ -59,12 +60,18 @@ internal sealed interface Delivery {
     val marks: NewCopyMarks
     val localFile: File?
 
-    /** Falta subirla: una copia nueva, o una retomada que no llegó al destino. */
+    /**
+     * Falta subirla: una copia nueva, o una retomada que no llegó al destino.
+     *
+     * @property fixedRef el lugar donde debe ir, sin volver a elegirlo: la ranura que quedó a medias
+     *   con este mismo archivo. Nulo si el destino elige.
+     */
     class Upload(
         val copy: OutgoingCopy,
         override val generation: Long,
         override val changeSeq: Long,
         override val createdAtMillis: Long,
+        val fixedRef: CopyRef? = null,
     ) : Delivery {
         override val marks: NewCopyMarks get() = copy.candidate.marks
         override val localFile: File get() = copy.file
@@ -79,6 +86,34 @@ internal sealed interface Delivery {
         override val marks: NewCopyMarks,
         override val localFile: File?,
     ) : Delivery
+
+    /**
+     * Solo con ranuras: la ranura a medias ya se releyó y es exactamente este archivo. Falta anotarla
+     * en el estado de las ranuras y confirmarla, sin escribir ni leer otra vez.
+     */
+    class Reread(
+        val stored: StoredCopy,
+        override val generation: Long,
+        override val changeSeq: Long,
+        override val createdAtMillis: Long,
+        override val marks: NewCopyMarks,
+    ) : Delivery {
+        override val localFile: File? get() = null
+    }
+
+    /**
+     * Solo con ranuras: el estado de las ranuras ya la anota como comprobada. Falta solo confirmarla
+     * en la base.
+     */
+    class Recorded(
+        val stored: StoredCopy,
+        override val generation: Long,
+        override val changeSeq: Long,
+        override val createdAtMillis: Long,
+        override val marks: NewCopyMarks,
+    ) : Delivery {
+        override val localFile: File? get() = null
+    }
 }
 
 /** Lo que decidió la recuperación del paso 5. */
@@ -123,11 +158,24 @@ internal sealed interface Recovery {
  *
  * Antes que nada, reintenta borrar lo que siga rechazado, sin detener la copia si falla.
  *
- * Con ranuras todavía no retoma: la intención queda, y la copia nueva sube con una generación mayor.
+ * Con ranuras, por el estado de las ranuras, sin lista remota:
+ *
+ * - **Una ranura tiene `G` confirmada, con la suma de la intención:** ya se releyó. Solo falta
+ *   confirmarla en la base.
+ * - **Una ranura quedó a medias con los metadatos de este archivo:** la relee, hasta un byte de más.
+ *   Si coincide, la confirma sin escribir, con los metadatos que guardó la marca. Si no, la reescribe
+ *   con el mismo archivo, en esa misma ranura y nunca en otra; sin el archivo, empieza de nuevo.
+ * - **La marca no trae metadatos, o son de otro archivo, o ninguna ranura menciona `G`:** empieza de
+ *   nuevo. La ranura a medias sigue así, y la regla de turnos la usa primero.
+ *
+ * Antes de confirmar por recuperación repasa el tamaño de las otras ranuras: un documento que cambió
+ * por fuera es un conflicto, y la intención sigue.
  *
  * Solo registra códigos y generaciones, nunca un nombre de archivo.
  *
  * @param rejected las generaciones rechazadas, en `no_backup`.
+ * @param schemaVersion la versión del esquema de esta app, para nombrar una copia retomada que no
+ *   trae metadatos legibles. Con ranuras, la búsqueda solo usa la generación.
  */
 internal class UploadRecovery(
     private val state: BackupStateDao,
@@ -136,6 +184,7 @@ internal class UploadRecovery(
     private val clock: Clock,
     private val log: EventLog,
     private val ioContext: CoroutineContext,
+    private val schemaVersion: Int,
 ) {
     /**
      * Borra los temporales de este teléfono que quedaron de una subida cortada. Los de otro no se
@@ -170,14 +219,13 @@ internal class UploadRecovery(
         // Solo WebDAV rechaza y borra: las ranuras no se borran nunca.
         if (webDav) retryRejected(destination, listing, device, before, control)
         val rejectedThisRun = before
-        val generation = current.pendingGeneration
-        if (generation == null || !webDav) {
-            return Recovery.StartOver(rejectedThisRun, generation)
-        }
+        val generation =
+            current.pendingGeneration ?: return Recovery.StartOver(rejectedThisRun, null)
         val intent = intentOf(current)
-        if (generation in before || intent == null) {
+        if ((webDav && generation in before) || intent == null) {
             return startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
         }
+        if (!webDav) return recoverSlot(destination, intent, device, rejectedThisRun, control)
         val matches = listing.copies.filter { isOwn(it, generation, device) }
         val name =
             when (matches.size) {
@@ -220,6 +268,166 @@ internal class UploadRecovery(
                 startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
         }
     }
+
+    /** Con ranuras: lo que dice el estado de las ranuras de la subida `G`. */
+    private suspend fun recoverSlot(
+        destination: BackupDestination,
+        intent: Intent,
+        device: String,
+        rejectedThisRun: Set<Long>,
+        control: TransferControl,
+    ): Recovery {
+        val generation = intent.generation
+        val createdAt =
+            CopyInstant.of(clock.now())
+                ?: return startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
+        // El estado de las ranuras se busca por generación: el nombre no se guarda en ninguna.
+        val probe =
+            BackupFileName(
+                generation,
+                schemaVersion,
+                createdAt,
+                device.take(DEVICE_PREFIX_LENGTH),
+                BackupFileFormat.GZIP,
+            )
+        val location =
+            when (
+                val located =
+                    destination.locatePending(
+                        PendingCopy(probe, intent.sizeBytes, intent.sha256),
+                        control,
+                    )
+            ) {
+                is DestinationResult.Success -> located.value
+                is DestinationResult.Failure -> return Recovery.Failed(located.failure)
+            }
+        return when (location) {
+            is PendingLocation.Confirmed -> {
+                otherSlotsUnchanged(destination, control)?.let { return it }
+                log.info(RecoveryEvent.RESUMED, LogField.id("generación", generation))
+                Recovery.Resume(
+                    Delivery.Recorded(
+                        stored = location.copy,
+                        generation = generation,
+                        changeSeq = intent.seq,
+                        createdAtMillis = clock.nowEpochMillis(),
+                        marks = slotMarks(location.copy.metaBytes),
+                    ),
+                )
+            }
+
+            is PendingLocation.Uploaded ->
+                resumeHalfWritten(destination, location, intent, device, rejectedThisRun, control)
+
+            // Ninguna ranura la menciona: la escritura no empezó. O la marca no describe este
+            // archivo. Es trabajo local, y no gasta ninguna subida.
+            PendingLocation.Absent, PendingLocation.Stale, is PendingLocation.WrongSize ->
+                startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
+        }
+    }
+
+    /**
+     * La ranura quedó a medias con la marca de este archivo: la relee, y si es este archivo la
+     * confirma sin escribir. Si no, la reescribe con el mismo archivo, en la misma ranura.
+     */
+    private suspend fun resumeHalfWritten(
+        destination: BackupDestination,
+        location: PendingLocation.Uploaded,
+        intent: Intent,
+        device: String,
+        rejectedThisRun: Set<Long>,
+        control: TransferControl,
+    ): Recovery {
+        val generation = intent.generation
+        val stored = location.copy
+        // Lo que confirma sale de la marca, que guardó los metadatos de este archivo. Sin ellos, o
+        // con los de otro archivo, la regla de turnos protegería la copia equivocada.
+        val meta =
+            (location.meta as? ListedMeta.Present)?.bytes?.let(::slotMeta)
+                ?.takeIf {
+                    it.generation == generation && it.deviceId == device &&
+                        it.sha256 == intent.sha256 && it.fileSize == intent.sizeBytes
+                }
+                ?: return startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
+        // Una copia que la app no restaura nunca va a una ranura: taparía una que sí se restaura.
+        // Una marca que lo diga no se confirma ni se reescribe.
+        if (meta.fatal) return startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
+        val marks = NewCopyMarks(meta.valid, meta.fatal)
+        when (val read = destination.verify(stored, VerifyMode.FULL, null, control)) {
+            is DestinationResult.Success -> {
+                otherSlotsUnchanged(destination, control)?.let { return it }
+                log.info(RecoveryEvent.RESUMED, LogField.id("generación", generation))
+                return Recovery.Resume(
+                    Delivery.Reread(stored, generation, intent.seq, clock.nowEpochMillis(), marks),
+                )
+            }
+
+            is DestinationResult.Failure ->
+                if (read.failure != DestinationFailure.VerifyMismatch) {
+                    return Recovery.Failed(read.failure)
+                }
+        }
+        val file =
+            localFileFor(intent)
+                ?: return startOver(rejectedThisRun, generation, RecoveryEvent.NO_LOCAL_FILE)
+        val createdAt =
+            CopyInstant.of(clock.now())
+                ?: return startOver(rejectedThisRun, generation, RecoveryEvent.NO_LOCAL_FILE)
+        if (meta.format != PLAIN_FORMAT || meta.schemaVersion > Int.MAX_VALUE) {
+            return startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
+        }
+        val name =
+            BackupFileName(
+                generation = generation,
+                schemaVersion = meta.schemaVersion.toInt(),
+                createdAt = createdAt,
+                devicePrefix = device.take(DEVICE_PREFIX_LENGTH),
+                format = BackupFileFormat.GZIP,
+            )
+        val outgoing =
+            OutgoingCopy(
+                file = file,
+                name = name,
+                sizeBytes = intent.sizeBytes,
+                sha256 = intent.sha256,
+                metaBytes = stored.metaBytes.copyOf(),
+                candidate = candidateOf(meta),
+            )
+        log.info(RecoveryEvent.UPLOAD_AGAIN, LogField.id("generación", generation))
+        return Recovery.Resume(
+            Delivery.Upload(
+                outgoing,
+                generation,
+                intent.seq,
+                clock.nowEpochMillis(),
+                fixedRef = stored.ref,
+            ),
+        )
+    }
+
+    /**
+     * Antes de confirmar por recuperación, repasa el tamaño de las otras ranuras: entre la marca y
+     * ahora, otro teléfono o la persona pudo escribirlas. Nulo si siguen como la app las dejó.
+     */
+    private suspend fun otherSlotsUnchanged(
+        destination: BackupDestination,
+        control: TransferControl,
+    ): Recovery? = when (val listed = destination.listCopies(control)) {
+        is DestinationResult.Success -> null
+        is DestinationResult.Failure -> Recovery.Failed(listed.failure)
+    }
+
+    /** Los metadatos que guardó una ranura, si se leen. Son entrada no confiable. */
+    private fun slotMeta(bytes: ByteArray): SlMeta? =
+        (SlMetaCodec.decodeUnnamed(bytes) as? CopyMetadata.Valid)?.meta
+
+    /**
+     * Lo que dijo el validador de una copia ya anotada en su ranura. Si sus metadatos no se leen,
+     * no se la da por válida: la regla de turnos nunca la protege como la última buena.
+     */
+    private fun slotMarks(bytes: ByteArray): NewCopyMarks =
+        slotMeta(bytes)?.let { NewCopyMarks(it.valid, it.fatal) }
+            ?: NewCopyMarks(valid = false, fatal = false)
 
     /** La intención guardada, completa y con su forma, o nula si no se puede usar. */
     private class Intent(
