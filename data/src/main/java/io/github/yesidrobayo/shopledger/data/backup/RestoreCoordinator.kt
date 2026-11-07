@@ -355,8 +355,8 @@ internal class RestoreCoordinator(
         is DestinationFailure.PermissionLost,
         DestinationFailure.QuotaExceeded,
         DestinationFailure.VerifyMismatch,
-        DestinationFailure.ChangedOutside,
-        DestinationFailure.NoSafeSlot,
+        is DestinationFailure.ChangedOutside,
+        is DestinationFailure.NoSafeSlot,
         -> RestoreStage.Refused(RestoreRefusal.Download(failure))
     }
 
