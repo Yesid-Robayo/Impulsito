@@ -260,6 +260,8 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
 
         override suspend fun catalogCount(): Long = 0
 
+        override suspend fun forceUpload(now: Long): Int = 0
+
         override suspend fun markAttempt(now: Long): Int = 0
 
         override suspend fun saveIntent(

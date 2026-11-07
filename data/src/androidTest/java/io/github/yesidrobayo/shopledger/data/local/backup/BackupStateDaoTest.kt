@@ -109,6 +109,7 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "isEmpty",
                 "recordCount",
                 "catalogCount",
+                "forceUpload",
                 "markAttempt",
                 "saveIntent",
                 "clearIntent",
@@ -268,6 +269,19 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
         assertEquals(1, state.reopenAfterConflict(MUCH_LATER, "huella"))
         // El primer cambio sin copia ya tenía instante: lo conserva.
         assertEquals(cleared(before), state.get())
+    }
+
+    @Test
+    fun forcingAnUploadIsOneMoreChangeThatKeepsTheOldestInstant() = runBlocking {
+        var before = requireNotNull(state.get())
+        assertEquals(1, state.forceUpload(LATER))
+        assertEquals(
+            before.copy(changeSeq = before.changeSeq + 1, firstUnsyncedAt = LATER),
+            state.get(),
+        )
+        before = requireNotNull(state.get())
+        assertEquals(1, state.forceUpload(MUCH_LATER))
+        assertEquals(before.copy(changeSeq = before.changeSeq + 1), state.get())
     }
 
     @Test

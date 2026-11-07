@@ -57,6 +57,12 @@ internal fun productionBackupEngine(
             appVersion = appVersionOf(context),
             deviceLabel = SlMetaCodec.deviceLabel(Build.MANUFACTURER, Build.MODEL),
             mutex = mutex,
+            pruner =
+                RetentionPruner(
+                    deviceId = { deviceIdentity().deviceId() },
+                    log = log,
+                    forceUpload = { ports.backupState.forceUpload(clock.nowEpochMillis()) },
+                ),
         )
     },
     ioContext = ioContext,

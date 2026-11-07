@@ -157,17 +157,22 @@ internal class BackupFixture(private val context: Context, name: String) {
     }
 }
 
-/** Una poda que anota cuándo la llamaron, sin borrar nada. */
+/** Una poda que anota cuándo la llamaron y con qué copia, sin borrar nada. */
 internal class RecordingPruner : CopyPruner {
     var calls = 0
         private set
 
+    var lastConfirmed: ConfirmedCopy? = null
+        private set
+
     override suspend fun prune(
         destination: BackupDestination,
+        confirmed: ConfirmedCopy,
         control: TransferControl,
-    ): DestinationResult<Unit> {
+    ): DestinationResult<PruneReport> {
         calls++
-        return DestinationResult.Success(Unit)
+        lastConfirmed = confirmed
+        return DestinationResult.Success(PruneReport(PruneResult.PRUNED, 0))
     }
 }
 

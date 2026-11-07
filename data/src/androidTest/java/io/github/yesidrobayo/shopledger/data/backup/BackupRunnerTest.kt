@@ -153,6 +153,30 @@ class BackupRunnerTest {
     }
 
     @Test
+    fun theRetentionPruneRunsAfterConfirmingAndKeepsTheNewestOfTheDay() = runBlocking {
+        val destination = FakeBackupDestination()
+        val pruner = RetentionPruner(deviceId = { TEST_DEVICE_ID }, log = fixture.log)
+        // Las tres copias deben caer en el mismo día UTC.
+        if (fixture.now.epochSeconds % SECONDS_PER_DAY > SECONDS_PER_DAY - 600) {
+            fixture.advance(20.minutes)
+        }
+        for (generation in 1L..3L) {
+            fixture.addProduct("Producto de prueba $generation")
+            assertEquals(
+                BackupRun.Verified(generation),
+                fixture.runner(destination, pruner = pruner).run(control),
+            )
+            fixture.advance(1.minutes)
+        }
+
+        // Las tres son del mismo día: queda la cabeza, con sus metadatos.
+        val head = requireNotNull(fixture.state().headFileRef)
+        val parsed = requireNotNull(BackupFileName.parse(head))
+        assertEquals(listOf(head, parsed.metaFileName).sorted(), destination.fileNames.sorted())
+        assertEquals(3L, parsed.generation)
+    }
+
+    @Test
     fun withSlotsTheCopyGoesToTheChosenSlotAndIsNeverPruned() = runBlocking {
         fixture.addProduct("Pan de prueba")
         fixture.connect(BackupDestinationKind.DOCUMENT_SLOTS)
@@ -761,13 +785,15 @@ class BackupRunnerTest {
 
         override suspend fun prune(
             destination: BackupDestination,
+            confirmed: ConfirmedCopy,
             control: TransferControl,
-        ): DestinationResult<Unit> {
+        ): DestinationResult<PruneReport> {
             calls++
-            assertNotNull(fixture.state().headFileRef)
+            assertEquals(fixture.state().headFileRef, confirmed.ref.value)
+            assertEquals(fixture.state().headGeneration, confirmed.generation)
             assertNull(fixture.state().pendingGeneration)
             assertEquals(Operation.CONFIRM, this.destination.calls.last())
-            return DestinationResult.Success(Unit)
+            return DestinationResult.Success(PruneReport(PruneResult.PRUNED, 0))
         }
     }
 
@@ -784,5 +810,9 @@ class BackupRunnerTest {
             afterUpload()
             return result
         }
+    }
+
+    private companion object {
+        const val SECONDS_PER_DAY = 86_400L
     }
 }

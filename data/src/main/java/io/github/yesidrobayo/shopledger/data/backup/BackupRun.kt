@@ -119,6 +119,7 @@ internal enum class BackupEvent(override val text: String) : LogEvent {
     RUN_STOPPED("Respaldo detenido"),
     LOCAL_FAILURE("Falla local al armar la copia"),
     PRUNE_FAILED("La poda falló, y la copia nueva sigue confirmada"),
+    PRUNE_DONE("Poda terminada"),
     WORKER_FAILED("Falla no prevista del trabajo de respaldo"),
 }
 

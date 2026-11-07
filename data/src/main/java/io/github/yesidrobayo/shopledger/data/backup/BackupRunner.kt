@@ -281,7 +281,9 @@ internal class BackupRunner(
         attempt.pendingGeneration = null
 
         // Paso 13: podar, solo ahora.
-        if (destination.kind == BackupDestinationKind.WEBDAV) prune(destination, control)
+        if (destination.kind == BackupDestinationKind.WEBDAV) {
+            prune(destination, ConfirmedCopy(generation, stored.ref), control)
+        }
         return BackupRun.Verified(generation, unrestorable = copy.marks.fatal)
     }
 
@@ -447,8 +449,12 @@ internal class BackupRunner(
         if (freeSpace(staging.directory) < needed) BackupFailureCode.LOCAL_STORAGE_LOW else null
     }
 
-    private suspend fun prune(destination: BackupDestination, control: TransferControl) {
-        when (val pruned = pruner.prune(destination, control)) {
+    private suspend fun prune(
+        destination: BackupDestination,
+        confirmed: ConfirmedCopy,
+        control: TransferControl,
+    ) {
+        when (val pruned = pruner.prune(destination, confirmed, control)) {
             is DestinationResult.Success -> Unit
 
             is DestinationResult.Failure ->
@@ -603,14 +609,50 @@ internal class BackupRunner(
 internal fun interface CopyPruner {
     suspend fun prune(
         destination: BackupDestination,
+        confirmed: ConfirmedCopy,
         control: TransferControl,
-    ): DestinationResult<Unit>
+    ): DestinationResult<PruneReport>
 
     companion object {
         /** No poda nada: todas las copias quedan. */
-        val None = CopyPruner { _, _ -> DestinationResult.Success(Unit) }
+        val None =
+            CopyPruner { _, _, _ ->
+                DestinationResult.Success(PruneReport(PruneResult.NOT_APPLICABLE, 0))
+            }
     }
 }
+
+/**
+ * La copia que el respaldo acaba de confirmar: la poda no corre si no la ve en la lista.
+ *
+ * @property ref su nombre en el destino.
+ */
+internal data class ConfirmedCopy(val generation: Long, val ref: CopyRef)
+
+/** Cómo terminó una poda. */
+internal enum class PruneResult {
+    /** Se podó lo que la regla dice, hasta el tope de la ejecución. */
+    PRUNED,
+
+    /** Con ranuras no hay poda. */
+    NOT_APPLICABLE,
+
+    /** La copia nueva no aparece en la lista, o no con su tamaño: la lista no se cree. */
+    INCOMPLETE_LISTING,
+
+    /** Hay una copia de otro teléfono tan nueva como la confirmada: eso lo decide la persona. */
+    FOREIGN_AHEAD,
+
+    /** Una copia por podar tiene más registros que la cabeza, sin una fijada que los cubra. */
+    BLOCKED_BY_RECORDS,
+}
+
+/**
+ * Lo que hizo una poda.
+ *
+ * @property deleted cuántos archivos borró.
+ */
+internal data class PruneReport(val result: PruneResult, val deleted: Int)
 
 /**
  * Las copias del destino cuyos metadatos se pueden creer: válidos, del mismo nombre que su copia y

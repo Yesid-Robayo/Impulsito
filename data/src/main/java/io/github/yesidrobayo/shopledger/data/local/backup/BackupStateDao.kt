@@ -56,6 +56,16 @@ internal interface BackupStateDao {
     @Query(NeutralCounts.CATALOG_COUNT)
     suspend fun catalogCount(): Long
 
+    /**
+     * Fuerza una subida: la copia que el destino tiene ya no es la que esta base confirmó, y los
+     * datos dejan de contar como respaldados. Es un cambio más, como el de un caso de uso.
+     */
+    @Query(
+        "UPDATE backup_state SET change_seq = change_seq + 1, " +
+            "first_unsynced_at = COALESCE(first_unsynced_at, :now) WHERE id = 1",
+    )
+    suspend fun forceUpload(now: Long): Int
+
     /** Anota que empezó una ejecución del respaldo, con el reloj de pared en milisegundos UTC. */
     @Query("UPDATE backup_state SET last_attempt_at = :now WHERE id = 1")
     suspend fun markAttempt(now: Long): Int
