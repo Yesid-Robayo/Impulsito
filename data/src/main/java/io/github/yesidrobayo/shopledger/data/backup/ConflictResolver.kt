@@ -31,7 +31,7 @@ import kotlinx.coroutines.sync.withLock
  *
  * Corre bajo el mismo cerrojo que el respaldo: nunca decide a la vez que una subida.
  *
- * @param pinner fija las copias de la cabeza con WebDAV. Sin él, conservar este teléfono con
+ * @param pinner fija las copias de la cabeza con WebDAV. Si no puede, conservar este teléfono con
  *   WebDAV no se confirma: sin fijar la cabeza, la poda podría borrarla.
  * @param mutex el cerrojo del respaldo, uno por proceso.
  */
@@ -42,7 +42,7 @@ internal class ConflictResolver(
     private val clock: Clock,
     private val schemaVersion: Int,
     private val mutex: Mutex,
-    private val pinner: HeadPinner = HeadPinner.Unavailable,
+    private val pinner: HeadPinner = CopyPinning,
 ) {
     /**
      * Lo que el diálogo del conflicto compara: los datos de cada lado. Lee el destino, así que

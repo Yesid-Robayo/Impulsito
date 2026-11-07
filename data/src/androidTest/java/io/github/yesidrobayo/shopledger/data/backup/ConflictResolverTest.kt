@@ -15,10 +15,12 @@ import io.github.yesidrobayo.shopledger.data.destination.SlMeta
 import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.data.destination.TransientKind
+import io.github.yesidrobayo.shopledger.data.destination.identity
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupConflictKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyInstant
+import kotlin.time.Duration.Companion.days
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import org.junit.After
@@ -90,6 +92,34 @@ class ConflictResolverTest {
         assertEquals(BackupRun.Verified(6), fixture.runner(destination).run(control))
         assertTrue(destination.fileNames.contains(foreign.fileName))
         assertTrue(destination.calls.none { it == Operation.DELETE })
+    }
+
+    @Test
+    fun scenarioAKeepingAFreshStartLeavesTheBusinessCopyForTenDays() = runBlocking {
+        // Teléfono nuevo, empezar de cero y una venta, frente a la copia del negocio de otro.
+        fixture.addProduct("Pan de prueba")
+        val destination = FakeBackupDestination()
+        val business =
+            putCopy(destination, generation = 40, deviceId = OTHER_DEVICE_ID, records = 5_000)
+        assertConflict(BackupConflictKind.OTHER_DEVICE, fixture.runner(destination).run(control))
+
+        val outcome = resolver(destination, CopyPinning).keepThisPhone(true, control)
+
+        // La cabeza de la nube queda fijada antes de subir.
+        assertEquals(KeepOutcome.Kept, outcome)
+        assertEquals(true, metaOf(destination, business)?.pinned)
+        val pruner = RetentionPruner(deviceId = { TEST_DEVICE_ID }, log = fixture.log)
+        for (day in 1..10) {
+            fixture.addProduct("Producto del día $day")
+            assertTrue(
+                fixture.runner(destination, pruner = pruner).run(control) is BackupRun.Verified,
+            )
+            fixture.advance(1.days)
+        }
+
+        // Tras 10 días de copias pequeñas, la copia del negocio sigue, con todos sus registros.
+        assertTrue(destination.fileNames.contains(business.fileName))
+        assertEquals(5_000L, metaOf(destination, business)?.records)
     }
 
     @Test
@@ -317,6 +347,11 @@ class ConflictResolverTest {
             null,
             true,
         )
+    }
+
+    private fun metaOf(destination: FakeBackupDestination, name: BackupFileName): SlMeta? {
+        val bytes = destination.file(name.metaFileName) ?: return null
+        return (SlMetaCodec.decode(bytes, name.identity()) as? CopyMetadata.Valid)?.meta
     }
 
     private fun generationIn(destination: FakeBackupDestination, slot: String): Long? {

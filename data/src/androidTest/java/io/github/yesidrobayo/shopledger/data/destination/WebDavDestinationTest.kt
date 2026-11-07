@@ -693,6 +693,27 @@ class WebDavDestinationTest {
     }
 
     @Test
+    fun replacingTheMetaGoesThroughATemporaryNameAndMovesOverTheOldOne() = runBlocking<Unit> {
+        val (dav, server) = dav()
+        dav.files[copyPath] = content
+        dav.files[metaPath] = meta
+        val destination = destination(server)
+        val pinned = """{"sl_kind":"backup","sl_generation":"42","sl_pinned":1}""".toByteArray()
+
+        destination.replaceMeta(CopyRef(name.fileName), pinned, control).value()
+
+        assertArrayEquals(pinned, dav.files[metaPath])
+        assertArrayEquals(content, dav.files[copyPath])
+        assertFalse(dav.files.containsKey("$metaPath.sltmp"))
+        val requests = server.requests
+        assertEquals(listOf("PUT", "MOVE"), requests.map { it.method })
+        assertEquals("$metaPath.sltmp", requests[0].path)
+        // El único reemplazo que hace la app: pisa los metadatos anteriores.
+        assertEquals("T", requests[1].header("Overwrite"))
+        assertTrue(requests[1].header("Destination").orEmpty().endsWith(metaPath))
+    }
+
+    @Test
     fun deleteRemovesTheCopyThenItsMetaAndOnlyAppFiles() = runBlocking<Unit> {
         val (dav, server) = dav()
         dav.files[copyPath] = content

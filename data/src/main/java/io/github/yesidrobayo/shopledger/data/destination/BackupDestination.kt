@@ -139,6 +139,19 @@ internal interface BackupDestination {
     suspend fun readMeta(ref: CopyRef, control: TransferControl): DestinationResult<ListedMeta>
 
     /**
+     * Reemplaza los metadatos de la copia [ref] por [metaBytes], para fijarla o liberarla: es el
+     * único reemplazo que hace la app. Con WebDAV sube los nuevos a un nombre temporal y los mueve
+     * encima de los anteriores. Un corte puede dejar la copia sin metadatos, que entonces no cuenta
+     * ni se poda: quien llama relee para saber si quedaron. Las ranuras no se fijan: responden
+     * [DestinationFailure.Unsupported].
+     */
+    suspend fun replaceMeta(
+        ref: CopyRef,
+        metaBytes: ByteArray,
+        control: TransferControl,
+    ): DestinationResult<Unit>
+
+    /**
      * Borra [ref] y, si es una copia, sus metadatos. Si ya no estaba, también es éxito. Solo para
      * podar con WebDAV y para descartar una copia que nunca se confirmó o un temporal de este
      * teléfono: nunca una carpeta, y nunca algo que la app no escribió. Las ranuras no se borran:

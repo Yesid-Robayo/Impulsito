@@ -289,6 +289,12 @@ internal class DocumentSlotDestination(
         DestinationResult.Success(DownloadedCopy(read.sizeBytes, read.sha256))
     }
 
+    override suspend fun replaceMeta(
+        ref: CopyRef,
+        metaBytes: ByteArray,
+        control: TransferControl,
+    ): DestinationResult<Unit> = notForSlots()
+
     override suspend fun readMeta(
         ref: CopyRef,
         control: TransferControl,

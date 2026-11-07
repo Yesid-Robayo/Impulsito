@@ -256,6 +256,51 @@ internal class WebDavDestination(
         }
     }
 
+    override suspend fun replaceMeta(
+        ref: CopyRef,
+        metaBytes: ByteArray,
+        control: TransferControl,
+    ): DestinationResult<Unit> {
+        val name = requireCopyName(ref)
+        val metaName = name.metaFileName
+        val temporary = folder.file(metaName + BackupFileName.TEMPORARY_SUFFIX)
+        when (
+            val sent =
+                retryingPut(control) {
+                    client.putBytes(temporary, metaBytes, META_CONTENT_TYPE, control)
+                }
+        ) {
+            is PutResult.Stored -> Unit
+
+            // La copia está en su carpeta: si la carpeta falta, la copia tampoco está.
+            is PutResult.MissingFolder -> return failure(DestinationFailure.Incomplete)
+
+            is PutResult.Failed -> return failure(sent.failure.toDestination())
+        }
+        // El único reemplazo que hace la app: los metadatos nuevos tapan a los anteriores. Si el
+        // servicio borra los anteriores y falla al mover, la copia queda sin metadatos: no cuenta
+        // ni se poda, y el intento siguiente repite.
+        return when (
+            val moved =
+                retrying(control) {
+                    client.move(
+                        temporary,
+                        folder.file(metaName),
+                        overwrite = true,
+                        control = control,
+                    )
+                }
+        ) {
+            is MoveResult.Moved -> DestinationResult.Success(Unit)
+
+            // Quien llama relee los metadatos: solo eso dice si quedaron.
+            MoveResult.NotFound, MoveResult.TargetExists, MoveResult.Conflict ->
+                failure(DestinationFailure.Incomplete)
+
+            is MoveResult.Failed -> failure(moved.failure.toDestination())
+        }
+    }
+
     override suspend fun readMeta(
         ref: CopyRef,
         control: TransferControl,

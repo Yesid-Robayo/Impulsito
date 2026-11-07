@@ -257,6 +257,24 @@ internal object SlMetaCodec {
     }
 
     /**
+     * Los mismos metadatos de [bytes], con la marca de fijada en [pinned], o `null` si [bytes] no
+     * son los metadatos válidos de la copia [identity].
+     *
+     * Cambia solo esa clave y conserva las demás tal como venían, también las que esta versión no
+     * conoce: una versión más nueva de la app pudo agregarlas, y fijar no debe borrarlas.
+     */
+    fun withPinned(bytes: ByteArray, identity: CopyIdentity, pinned: Boolean): ByteArray? {
+        if (decode(bytes, identity) !is CopyMetadata.Valid) return null
+        val members = FlatJson.parse(bytes.decodeToString()) ?: return null
+        val key = BackupMetaKey.PINNED.wireName
+        val kept = members.filterKeys { it != key }.toList()
+        val marked = if (pinned) kept + (key to FlatJson.Value.Number(FLAG)) else kept
+        val out = FlatJson.write(marked).encodeToByteArray()
+        val check = decode(out, identity) as? CopyMetadata.Valid ?: return null
+        return out.takeIf { check.meta.pinned == pinned }
+    }
+
+    /**
      * Lo que dicen los bytes de los metadatos de una copia sin nombre en el destino, como la de una
      * ranura. Se leen con las mismas reglas que [decode], salvo la comparación con el nombre, que
      * no existe: generación, esquema y teléfono salen de los propios metadatos.

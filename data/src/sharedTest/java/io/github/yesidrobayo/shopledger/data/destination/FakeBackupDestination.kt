@@ -38,6 +38,7 @@ internal class FakeBackupDestination(
         LOCATE,
         DOWNLOAD,
         READ_META,
+        REPLACE_META,
         DELETE,
     }
 
@@ -278,6 +279,30 @@ internal class FakeBackupDestination(
         }
         sink.write(bytes)
         return DestinationResult.Success(DownloadedCopy(bytes.size.toLong(), sha256(bytes)))
+    }
+
+    /**
+     * Cuántos reemplazos de metadatos se cortan tras borrar los anteriores, como un servidor que
+     * falla a mitad del movimiento con reemplazo.
+     */
+    var crashReplaceMeta: Int = 0
+
+    override suspend fun replaceMeta(
+        ref: CopyRef,
+        metaBytes: ByteArray,
+        control: TransferControl,
+    ): DestinationResult<Unit> {
+        injected(Operation.REPLACE_META)?.let { return it }
+        if (kind != BackupDestinationKind.WEBDAV) return unsupported()
+        val metaName = ref.value + BackupFileName.META_SUFFIX
+        if (crashReplaceMeta > 0) {
+            crashReplaceMeta--
+            files.remove(metaName)
+            files[metaName + BackupFileName.TEMPORARY_SUFFIX] = metaBytes.copyOf()
+            return DestinationResult.Failure(DestinationFailure.Incomplete)
+        }
+        files[metaName] = metaBytes.copyOf()
+        return DestinationResult.Success(Unit)
     }
 
     override suspend fun readMeta(
