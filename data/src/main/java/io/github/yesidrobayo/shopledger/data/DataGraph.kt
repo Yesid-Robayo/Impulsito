@@ -5,11 +5,15 @@ import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
 import io.github.yesidrobayo.shopledger.data.backup.DurableFileOps
+import io.github.yesidrobayo.shopledger.data.backup.RestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.RestoreFiles
+import io.github.yesidrobayo.shopledger.data.backup.RestoreLockFile
 import io.github.yesidrobayo.shopledger.data.backup.RoomRestoredDatabaseVerifier
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestore
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestoreGate
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
+import io.github.yesidrobayo.shopledger.data.backup.productionRestoreCoordinator
+import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
 import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
 import io.github.yesidrobayo.shopledger.data.destination.ProductionDestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.WebDavCredentialStore
@@ -96,6 +100,40 @@ class DataGraph internal constructor(
         DeviceIdentityStore.inNoBackupDir(context, ioContext)
     }
 
+    /** Abre el destino conectado, para el respaldo y para restaurar. Crearlo no abre nada. */
+    private val destinations by lazy {
+        ProductionDestinationOpener(WebDavDestinationOpener(http, webDavCredentials)) {
+            DocumentSlotDestination(
+                store = FileSlotStateStore.inNoBackupDir(context, ioContext),
+                documents = ContentResolverDocumentAccess(context.contentResolver),
+                clock = clock,
+                ioContext = ioContext,
+            )
+        }
+    }
+
+    private val restoreMutex = Mutex()
+    private var restoreCoordinator: RestoreCoordinator? = null
+
+    /**
+     * La preparación de restauraciones, una por proceso. Se pide fuera del hilo principal: pedir los
+     * archivos de la base toca el disco. Funciona también sin la base abierta, como en el rescate.
+     */
+    internal suspend fun restoreCoordinator(): RestoreCoordinator = restoreMutex.withLock {
+        restoreCoordinator ?: withContext(ioContext) {
+            productionRestoreCoordinator(
+                context = context,
+                ioContext = ioContext,
+                clock = clock,
+                log = log,
+                files = RestoreFiles(files()),
+                ports = { ready?.ports },
+                destinations = destinations,
+                backupMutex = backupMutex,
+            )
+        }.also { restoreCoordinator = it }
+    }
+
     /**
      * El motor de respaldo sobre la base de la app y el destino conectado. Corre solo dentro de un
      * trabajo en segundo plano, que pasa por [openForWork] y nunca migra.
@@ -109,15 +147,7 @@ class DataGraph internal constructor(
             schemaVersion = schemaVersion,
             openForWork = ::openForWork,
             noBackupDirectory = { files().noBackupDirectory },
-            destinations =
-                ProductionDestinationOpener(WebDavDestinationOpener(http, webDavCredentials)) {
-                    DocumentSlotDestination(
-                        store = FileSlotStateStore.inNoBackupDir(context, ioContext),
-                        documents = ContentResolverDocumentAccess(context.contentResolver),
-                        clock = clock,
-                        ioContext = ioContext,
-                    )
-                },
+            destinations = destinations,
             deviceIdentity = { deviceIdentity },
             mutex = backupMutex,
         )
@@ -192,6 +222,12 @@ class DataGraph internal constructor(
                 log.error(DataEvent.DATABASE_OPEN_FAILED, failure)
                 return DataAccess.Rescue(RescueCause.OpenFailed)
             }
+        val restoreFiles = RestoreFiles(databaseFiles)
+        val operations = DurableFileOps()
+        val pendingRestore =
+            StartupRestoreGate(StartupRestore(restoreFiles, operations), log) { open ->
+                RoomRestoredDatabaseVerifier(open)
+            }
         val gate =
             DatabaseGate(
                 files = databaseFiles,
@@ -199,18 +235,22 @@ class DataGraph internal constructor(
                 ioContext = ioContext,
                 log = log,
                 preMigrationCopy = preMigrationCopy(databaseFiles),
-                pendingRestore =
-                    StartupRestoreGate(
-                        StartupRestore(RestoreFiles(databaseFiles), DurableFileOps()),
-                        log,
-                    ) { open -> RoomRestoredDatabaseVerifier(open) },
+                pendingRestore = pendingRestore,
             ) { file -> AppDatabase.open(context, file, ioContext, clock) }
         return when (val outcome = gate.pass(caller)) {
             is GateOutcome.Opened -> {
-                val opened =
-                    DataAccess.Ready(
-                        DataPorts(outcome.database, databaseFiles.database, ioContext, clock),
+                val ports =
+                    DataPorts(
+                        database = outcome.database,
+                        databaseFile = databaseFiles.database,
+                        ioContext = ioContext,
+                        clock = clock,
+                        restoreLock = RestoreLockFile(restoreFiles, operations, clock, ioContext),
                     )
+                if (pendingRestore.takeEncryptionChanged()) {
+                    recordEncryptionChanged(ports, clock, log)
+                }
+                val opened = DataAccess.Ready(ports)
                 ready = opened
                 log.info(
                     DataEvent.DATABASE_OPENED,

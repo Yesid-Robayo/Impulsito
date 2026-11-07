@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.repository
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
 import io.github.yesidrobayo.shopledger.data.local.expense.expense
+import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -52,9 +53,9 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
-    private val settings by lazy { RoomAppSettingsRepository(database) }
+    private val settings by lazy { RoomAppSettingsRepository(database, RestoreLock { false }) }
     private val expenseCategories by lazy { RoomExpenseCategoryRepository(database) }
-    private val alerts by lazy { RoomLowStockAlertRepository(database) }
+    private val alerts by lazy { RoomLowStockAlertRepository(database, RestoreLock { false }) }
 
     @Test
     fun theSettingsStartNeutralAndOnlyTheProfileCountsAsAChange() = runBlocking {

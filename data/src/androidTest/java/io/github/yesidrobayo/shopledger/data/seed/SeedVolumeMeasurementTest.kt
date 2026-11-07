@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.inspectWithoutRoom
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
+import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import io.github.yesidrobayo.shopledger.domain.rule.ReportPeriods
@@ -134,7 +135,7 @@ internal class SeedVolumeMeasurementTest {
                 }
             log("mes, $name: ${summary(times)}")
         }
-        val ports = DataPorts(database, target, Dispatchers.IO, SystemClock)
+        val ports = DataPorts(database, target, Dispatchers.IO, SystemClock, RestoreLock { false })
         val month = ReportPeriods.month(BusinessDate(LocalDate(2026, 10, 1)))
         val times =
             List(ROUNDS + 1) {
@@ -152,7 +153,7 @@ internal class SeedVolumeMeasurementTest {
      * la transacción, como el caso de uso.
      */
     private suspend fun measureSale(database: AppDatabase, config: SeedConfig) {
-        val ports = DataPorts(database, target, Dispatchers.IO, SystemClock)
+        val ports = DataPorts(database, target, Dispatchers.IO, SystemClock, RestoreLock { false })
         val sales = SeedSaleWriter.on(database, ports, config)
         val times =
             List(ROUNDS + 1) {

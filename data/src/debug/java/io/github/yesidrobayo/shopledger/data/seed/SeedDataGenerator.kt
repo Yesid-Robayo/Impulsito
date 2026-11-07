@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room3.useReaderConnection
 import io.github.yesidrobayo.shopledger.data.DataPorts
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import java.io.File
 import kotlin.coroutines.CoroutineContext
@@ -67,7 +68,7 @@ class SeedDataGenerator(
                 initialRegion = { config.initialRegion },
             )
         try {
-            val ports = DataPorts(database, databaseFile, ioContext, clock)
+            val ports = DataPorts(database, databaseFile, ioContext, clock, RestoreLock { false })
             val random = SeedRandom(seed)
             val stock = SeedStock(ports.stockLedger)
             val books = SeedBooks(database)

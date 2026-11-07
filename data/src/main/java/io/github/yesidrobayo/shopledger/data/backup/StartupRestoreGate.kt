@@ -18,6 +18,9 @@ import java.io.File
  * verificación de la base nueva abre Room, y por eso solo la hace la app en primer plano; un trabajo
  * espera y devuelve `retry()`.
  *
+ * Si el reemplazo terminado promovió el código de una copia cifrada, lo recuerda hasta que la
+ * compuerta abre la base: el evento de auditoría se escribe en la base nueva, y antes no hay dónde.
+ *
  * @param verifierOf arma el verificador con la apertura de la compuerta.
  */
 internal class StartupRestoreGate<D>(
@@ -25,6 +28,14 @@ internal class StartupRestoreGate<D>(
     private val log: EventLog,
     private val verifierOf: (suspend (File) -> D) -> RestoredDatabaseVerifier<D>,
 ) : PendingRestore<D> {
+    @Volatile private var encryptionChanged = false
+
+    /**
+     * Si un reemplazo terminado en este proceso dejó vigente el código de una copia cifrada, y
+     * todavía no se anotó. Devuelve `true` una sola vez.
+     */
+    fun takeEncryptionChanged(): Boolean = encryptionChanged.also { encryptionChanged = false }
+
     override suspend fun finish(caller: GateCaller, open: suspend (File) -> D): RestoreStep<D> =
         when (val files = startupRestore.runFileSteps()) {
             StartupRestoreResult.NoRestore -> RestoreStep.Continue
@@ -38,6 +49,7 @@ internal class StartupRestoreGate<D>(
 
             is StartupRestoreResult.Restored -> {
                 log.info(DataEvent.RESTORE_FINISHED)
+                if (files.encryptionChanged) encryptionChanged = true
                 RestoreStep.Continue
             }
 
@@ -55,6 +67,7 @@ internal class StartupRestoreGate<D>(
         when (val result = startupRestore.verifyAndFinish(verifierOf(open))) {
             is StartupRestoreResult.Restored -> {
                 log.info(DataEvent.RESTORE_FINISHED)
+                if (result.encryptionChanged) encryptionChanged = true
                 result.database?.let { RestoreStep.Restored(it) } ?: RestoreStep.Continue
             }
 

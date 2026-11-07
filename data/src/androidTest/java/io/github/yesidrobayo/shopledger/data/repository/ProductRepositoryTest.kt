@@ -27,6 +27,7 @@ import io.github.yesidrobayo.shopledger.data.local.saleLineComponent
 import io.github.yesidrobayo.shopledger.data.local.stock.lot
 import io.github.yesidrobayo.shopledger.data.local.transferLineRow
 import io.github.yesidrobayo.shopledger.data.local.transferRow
+import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -226,7 +227,7 @@ internal class ProductRepositoryTest : RepositoryTest() {
             manualChange(rice, priceListId, oldPrice = 2_000, newPrice = 2_500),
         )
         commit {
-            RoomLowStockAlertRepository(database).insert(
+            RoomLowStockAlertRepository(database, RestoreLock { false }).insert(
                 NewLowStockAlert(
                     rice,
                     QuantityMilli.ZERO,

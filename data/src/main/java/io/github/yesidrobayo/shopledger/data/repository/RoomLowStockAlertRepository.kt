@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data.repository
 
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.stock.LowStockAlertEntity
+import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationStatus
@@ -16,9 +17,11 @@ import kotlinx.coroutines.flow.map
  * Las alertas de stock bajo sobre `low_stock_alerts`, que también son la bandeja de salida de sus
  * avisos. Que haya a lo sumo una activa por producto lo impone la guarda de la tabla.
  */
-internal class RoomLowStockAlertRepository(database: AppDatabase) : LowStockAlertRepository {
+internal class RoomLowStockAlertRepository(database: AppDatabase, restoreLock: RestoreLock) :
+    LowStockAlertRepository {
     private val alerts = database.lowStockAlertDao()
     private val writes = RepositoryWrites(database)
+    private val standalone = StandaloneWrites(restoreLock)
 
     override fun observeActive(): Flow<List<LowStockAlert>> =
         alerts.observeActive().map { rows -> rows.map(::toAlert) }.distinctUntilChanged()
@@ -57,7 +60,7 @@ internal class RoomLowStockAlertRepository(database: AppDatabase) : LowStockAler
      * producto eliminado, y eso puede pasar entre lanzar el aviso y guardar qué pasó con él.
      */
     override suspend fun setNotificationStatus(id: Long, status: LowStockNotificationStatus) {
-        writes.standalone { alerts.setNotificationStatus(id, status.name) }
+        standalone.write { alerts.setNotificationStatus(id, status.name) }
     }
 
     private fun toAlert(row: LowStockAlertEntity): LowStockAlert = LowStockAlert(

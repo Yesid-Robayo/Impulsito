@@ -42,9 +42,9 @@ internal const val TEST_DESTINATION_ID = "0123456789abcdef0123456789abcdef"
  * Una base de la app en un archivo propio de la prueba, abierta por la capa de datos, con su
  * carpeta de preparación del respaldo y un reloj que la prueba mueve.
  */
-internal class BackupFixture(context: Context, name: String) {
+internal class BackupFixture(private val context: Context, name: String) {
     val file: File = testDatabaseFile(context, "$name.db")
-    private val noBackup = File(context.noBackupFilesDir, name)
+    val noBackup = File(context.noBackupFilesDir, name)
     val stagingDir: File = File(noBackup, BackupStaging.DIRECTORY_NAME)
     val log = MemoryLog()
 
@@ -54,8 +54,7 @@ internal class BackupFixture(context: Context, name: String) {
      */
     var now: Instant = Instant.fromEpochSeconds(System.currentTimeMillis() / 1000 + 3_600)
     val clock = Clock { now }
-    private val graph =
-        DataGraph(context, Dispatchers.IO, clock, { DatabaseFiles(file, noBackup) }, log)
+    private var graph = newGraph()
     lateinit var ports: DataPorts
         private set
 
@@ -65,10 +64,24 @@ internal class BackupFixture(context: Context, name: String) {
         ports = (graph.open() as DataAccess.Ready).ports
     }
 
+    /**
+     * Abre la base como un proceso nuevo, sin borrar nada: el arranque termina lo que haya quedado
+     * pendiente, como un reemplazo. Los puertos anteriores ya no se usan.
+     */
+    suspend fun reopen(): DataAccess {
+        graph = newGraph()
+        val access = graph.open()
+        if (access is DataAccess.Ready) ports = access.ports
+        return access
+    }
+
     fun close() {
         deleteDatabaseFiles(file)
         noBackup.deleteRecursively()
     }
+
+    private fun newGraph() =
+        DataGraph(context, Dispatchers.IO, clock, { DatabaseFiles(file, noBackup) }, log)
 
     /** Conecta el destino [kind] en el estado del respaldo, como lo deja la conexión. */
     fun connect(kind: BackupDestinationKind = BackupDestinationKind.WEBDAV) = sql(

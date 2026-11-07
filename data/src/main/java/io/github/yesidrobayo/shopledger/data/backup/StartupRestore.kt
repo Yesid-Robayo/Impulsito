@@ -275,7 +275,13 @@ internal class StartupRestore(
         ops.delete(files.candidate)
         ops.delete(files.pendingKey)
         ops.delete(files.incoming)
+        // La copia de seguridad a medio escribir nunca tuvo nombre final.
+        ops.delete(files.safetyCopyTemporary)
+        ops.delete(
+            RestoreFiles.sideFile(files.safetyCopyTemporary, RestoreFiles.ROLLBACK_JOURNAL_SUFFIX),
+        )
         returnUndoSource(files, ops)
+        ops.delete(files.lockTemporary)
         ops.delete(files.lock)
     }
 }

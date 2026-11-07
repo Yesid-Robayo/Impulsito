@@ -4,6 +4,7 @@ import androidx.room3.executeSQL
 import androidx.room3.useWriterConnection
 import androidx.sqlite.SQLiteException
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
@@ -104,7 +105,7 @@ internal class StoredValuesTest : RepositoryTest() {
         // Una tabla que no existe es un error de programación: sigue su camino tal cual, sin
         // disfrazarse de regla rota ni de disco lleno.
         for (attempt in listOf<suspend () -> Unit>({
-            writes.standalone { missingTable() }
+            StandaloneWrites(RestoreLock { false }).write { missingTable() }
         }, {
             runner.write {
                 writes.inTransaction { missingTable() }

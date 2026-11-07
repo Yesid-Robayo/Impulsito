@@ -28,6 +28,9 @@ internal class RestoreFiles(val databaseFiles: DatabaseFiles) {
     /** El cerrojo de la preparación: mientras exista, nada escribe ni sube. */
     val lock: File = File(restoreDirectory, "in_progress")
 
+    /** El temporal del cerrojo, mientras se escribe. */
+    val lockTemporary: File = File(restoreDirectory, "in_progress.tmp")
+
     val journal: File = File(restoreDirectory, "journal.json")
     val journalTemporary: File = File(restoreDirectory, "journal.tmp")
 

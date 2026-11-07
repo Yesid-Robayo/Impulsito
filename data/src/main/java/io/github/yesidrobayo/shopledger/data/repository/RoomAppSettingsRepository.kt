@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data.repository
 
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsEntity
+import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.settings.AppLockTimeout
@@ -38,13 +39,16 @@ import kotlinx.datetime.isoDayNumber
  *
  * El perfil del negocio se escribe dentro de la transacción del caso de uso y cuenta como cambio.
  * Cada preferencia y el fin del primer uso se escriben solos, con una sentencia que toca solo su
- * columna: no cuentan como cambio, y dos pantallas que cambian dos preferencias no se pisan.
+ * columna: no cuentan como cambio, y dos pantallas que cambian dos preferencias no se pisan. Como
+ * toda escritura, no entran mientras se restaura la base.
  *
  * Sin la fila, la base está rota: nada aquí la crea ni la inventa.
  */
-internal class RoomAppSettingsRepository(database: AppDatabase) : AppSettingsRepository {
+internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: RestoreLock) :
+    AppSettingsRepository {
     private val settings = database.appSettingsDao()
     private val writes = RepositoryWrites(database)
+    private val standalone = StandaloneWrites(restoreLock)
 
     override fun observe(): Flow<AppSettings> =
         settings.observe().map { toSettings(it ?: brokenRow()) }.distinctUntilChanged()
@@ -66,7 +70,7 @@ internal class RoomAppSettingsRepository(database: AppDatabase) : AppSettingsRep
     override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant) {
         val at = updatedAt.toStoredMillis()
         val changed =
-            writes.standalone {
+            standalone.write {
                 when (change) {
                     is PreferenceChange.Theme -> settings.updateThemeMode(change.mode.name, at)
 
@@ -96,7 +100,7 @@ internal class RoomAppSettingsRepository(database: AppDatabase) : AppSettingsRep
 
     override suspend fun markOnboardingCompleted(completedAt: Instant) {
         requireOneRow(
-            writes.standalone {
+            standalone.write {
                 settings.markOnboardingCompleted(completedAt.toStoredMillis())
             },
         )

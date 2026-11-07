@@ -1,6 +1,9 @@
 package io.github.yesidrobayo.shopledger.data
 
+import androidx.room3.executeSQL
+import androidx.room3.useWriterConnection
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
@@ -46,30 +49,35 @@ import kotlin.coroutines.CoroutineContext
  * [transactions].
  */
 class DataPorts internal constructor(
-    database: AppDatabase,
+    private val database: AppDatabase,
     /** El archivo de la base abierta: el respaldo la copia desde aquí. */
     internal val databaseFile: File,
     ioContext: CoroutineContext,
     clock: Clock,
+    /**
+     * El cerrojo de la restauración: mientras está tomado, ni las escrituras de los casos de uso ni
+     * las que van solas entran en la base.
+     */
+    restoreLock: RestoreLock,
 ) {
     /**
      * Abre cada escritura del negocio en una sola transacción, y cuenta el cambio para la copia.
      *
-     * Dos partes esperan a las tareas que las construyen. Mientras no hay restauración, nadie toma
-     * su cerrojo. Mientras no hay respaldo programado, una confirmación no avisa a nadie: el cambio
-     * igual queda contado en la base, y el respaldo lo verá al llegar.
+     * Con una restauración en curso no entra ninguna. Mientras no hay respaldo programado, una
+     * confirmación no avisa a nadie: el cambio igual queda contado en la base, y el respaldo lo
+     * verá al llegar.
      */
     val transactions: TransactionRunner =
         RoomTransactionRunner(
             database = database,
             changeCounter = BackupStateChangeCounter(database.backupStateDao()),
-            restoreLock = RestoreLock { false },
+            restoreLock = restoreLock,
             storageSpace = DatabaseStorageSpace(databaseFile, ioContext),
             clock = clock,
             commitListener = CommitListener {},
         )
 
-    val settings: AppSettingsRepository = RoomAppSettingsRepository(database)
+    val settings: AppSettingsRepository = RoomAppSettingsRepository(database, restoreLock)
 
     val categories: CategoryRepository = RoomCategoryRepository(database)
 
@@ -81,7 +89,8 @@ class DataPorts internal constructor(
 
     val stockLedger: StockLedgerRepository = RoomStockLedgerRepository(database)
 
-    val lowStockAlerts: LowStockAlertRepository = RoomLowStockAlertRepository(database)
+    val lowStockAlerts: LowStockAlertRepository =
+        RoomLowStockAlertRepository(database, restoreLock)
 
     val purchases: PurchaseRepository = RoomPurchaseRepository(database)
 
@@ -93,4 +102,19 @@ class DataPorts internal constructor(
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()
+
+    /** El registro de auditoría, para lo que la capa de datos anota por su cuenta. */
+    internal val auditEvents: AuditEventDao = database.auditEventDao()
+
+    /**
+     * Cierra la base para que el arranque siguiente la reemplace: pasa el `-wal` al archivo y
+     * cierra todas sus conexiones. Después, nada de estos puertos sirve, y el proceso se reinicia.
+     */
+    internal suspend fun closeForRestore() {
+        try {
+            database.useWriterConnection { it.executeSQL("PRAGMA wal_checkpoint(TRUNCATE)") }
+        } finally {
+            database.close()
+        }
+    }
 }

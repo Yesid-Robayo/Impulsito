@@ -22,6 +22,7 @@ import io.github.yesidrobayo.shopledger.data.seed.SeedProfile
 import io.github.yesidrobayo.shopledger.data.seed.SeedSaleWriter
 import io.github.yesidrobayo.shopledger.data.seed.assertInvariantsHold
 import io.github.yesidrobayo.shopledger.data.seed.seedConfigOf
+import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import java.io.File
@@ -73,7 +74,8 @@ class SnapshotCreatorTest {
         val creator = SnapshotCreator(database, Dispatchers.IO)
         val live = AppDatabase.open(context, database, Dispatchers.IO)
         try {
-            val ports = DataPorts(live, database, Dispatchers.IO, SystemClock)
+            val ports =
+                DataPorts(live, database, Dispatchers.IO, SystemClock, RestoreLock { false })
             val sales = SeedSaleWriter.on(live, ports, config)
             val copying = AtomicBoolean(false)
             val writing = AtomicBoolean(true)

@@ -22,4 +22,11 @@ internal enum class DataEvent(override val text: String) : LogEvent {
     RESTORE_LEFT_TO_APP("Restauración pendiente, que espera a la app"),
     RESTORE_JOURNAL_UNREADABLE("Diario de restauración ilegible, apartado sin tocar ninguna base"),
     RESTORE_LEFT_NO_DATABASE("Restauración deshecha sin base que devolver, y no se abre"),
+    RESTORE_PREPARED("Restauración preparada, falta reiniciar"),
+    RESTORE_CANCELLED("Restauración cancelada, la base no cambió"),
+    RESTORE_REFUSED("Copia rechazada, la base no cambió"),
+    RESTORE_NO_SPACE("Sin espacio para restaurar, la base no cambió"),
+    RESTORE_FAILED("La preparación de la restauración falló, la base no cambió"),
+    RESTORE_CLOSE_FAILED("No se pudo cerrar la base tras preparar la restauración"),
+    RESTORE_AUDIT_FAILED("No se pudo anotar la restauración en la auditoría"),
 }
