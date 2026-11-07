@@ -89,6 +89,20 @@ internal interface BackupStateDao {
     suspend fun recordFailure(code: String): Int
 
     /**
+     * Cuenta un fallo de transporte más, de clase [kind], el nombre guardado de su enum. Al llegar
+     * a [limit] fallos seguidos deja [persistentCode] como el fallo a la vista; antes, el fallo que
+     * hubiera sigue igual. Todo en una sentencia, para que dos ejecuciones no pierdan una cuenta.
+     *
+     * El contador vuelve a 0 solo con una copia confirmada, en [confirm].
+     */
+    @Query(
+        "UPDATE backup_state SET consecutive_failures = consecutive_failures + 1, " +
+            "last_failure_kind = :kind, failure_code = CASE WHEN consecutive_failures + 1 >= " +
+            ":limit THEN :persistentCode ELSE failure_code END WHERE id = 1",
+    )
+    suspend fun recordTransportFailure(kind: String, limit: Long, persistentCode: String): Int
+
+    /**
      * Pasa el enlace a [linkState] si sigue conectado al destino [destinationId]. Si la persona
      * desconectó o cambió de destino mientras tanto, no cambia nada y devuelve 0: lo que pasó con el
      * destino anterior ya no importa.

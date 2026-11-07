@@ -91,6 +91,8 @@ import kotlinx.coroutines.withContext
  * @param pruner poda el destino tras confirmar.
  * @param freeSpace los bytes libres para la app en la carpeta dada.
  * @param verifyMode cuánto del contenido se lee para comprobar, según la red.
+ * @param transportFailures cuenta los fallos de transporte seguidos de cada ejecución que se
+ *   reintenta, para dejar a la vista uno que no se resuelve solo.
  * @param appVersion la versión de la app para los metadatos, si tiene la forma que aceptan.
  * @param deviceLabel fabricante y modelo del teléfono para los metadatos, ya limpios.
  * @param mutex el cerrojo del respaldo, uno por proceso.
@@ -115,6 +117,7 @@ internal class BackupRunner(
     private val pruner: CopyPruner = CopyPruner.None,
     private val freeSpace: (File) -> Long = File::getUsableSpace,
     private val verifyMode: (TransferControl) -> VerifyMode = ::verifyModeFor,
+    private val transportFailures: TransportFailures = TransportFailures(state),
 ) {
     /** Corre una ejecución entera. Solo lanza la cancelación, o una falla que nadie previó. */
     suspend fun run(control: TransferControl): BackupRun = mutex.withLock {
@@ -122,7 +125,10 @@ internal class BackupRunner(
             state.get() ?: return@withLock stop(StopCause.Failure(BackupFailureCode.UNEXPECTED))
         val attempt = Attempt(current.pendingGeneration)
         try {
-            steps(current, control, attempt).also { attempt.outcome = it }
+            steps(current, control, attempt).also {
+                attempt.outcome = it
+                transportFailures.record(it)
+            }
         } finally {
             withContext(NonCancellable + ioContext) {
                 staging.cleanUp(attempt.keptGeneration(), clock.now())

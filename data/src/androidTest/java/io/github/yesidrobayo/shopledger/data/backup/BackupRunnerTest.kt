@@ -408,6 +408,83 @@ class BackupRunnerTest {
     }
 
     @Test
+    fun sixTlsFailuresInARowLeaveTheTransportFailurePersistentUntilACopyIsConfirmed() =
+        runBlocking {
+            fixture.addProduct("Pan de prueba")
+            val destination = FakeBackupDestination()
+            destination.failNext(
+                Operation.UPLOAD,
+                DestinationFailure.Transient(TransientKind.TLS),
+                times = 6,
+            )
+
+            for (attempt in 1L..5L) {
+                fixture.runner(destination).run(control)
+                assertEquals(attempt, fixture.state().consecutiveFailures)
+                assertEquals("TLS", fixture.state().lastFailureKind)
+                // Antes del sexto, solo es una espera que se reintenta: nada a la vista.
+                assertNull(fixture.state().failureCode)
+            }
+            fixture.runner(destination).run(control)
+            assertEquals(6L, fixture.state().consecutiveFailures)
+            assertEquals("TLS", fixture.state().lastFailureKind)
+            assertEquals(BackupFailureCode.TRANSPORT_PERSISTENT.name, fixture.state().failureCode)
+
+            // El trabajo sigue reintentando, y la primera copia confirmada borra todo.
+            assertTrue(fixture.runner(destination).run(control) is BackupRun.Verified)
+            assertEquals(0L, fixture.state().consecutiveFailures)
+            assertNull(fixture.state().lastFailureKind)
+            assertNull(fixture.state().failureCode)
+        }
+
+    @Test
+    fun eachTransportClassIsKeptAndRunningOutOfTimeCountsAsNetwork() = runBlocking {
+        fixture.addProduct("Pan de prueba")
+        val expected =
+            mapOf(
+                DestinationFailure.Transient(TransientKind.NETWORK) to "NETWORK",
+                DestinationFailure.Transient(TransientKind.SERVER_ERROR) to "HTTP_5XX",
+                DestinationFailure.Transient(TransientKind.RATE_LIMIT) to "RATE_LIMIT",
+                // Una subida cortada por el tiempo no dejó nada: cuenta, como red.
+                DestinationFailure.Interrupted(InterruptReason.OUT_OF_TIME) to "NETWORK",
+            )
+        var count = 0L
+        for ((failure, kind) in expected) {
+            val destination = FakeBackupDestination()
+            destination.failNext(Operation.UPLOAD, failure)
+
+            fixture.runner(destination).run(control)
+
+            count++
+            assertEquals(count, fixture.state().consecutiveFailures)
+            assertEquals(kind, fixture.state().lastFailureKind)
+        }
+    }
+
+    @Test
+    fun stoppingOrALocalFailureIsNotATransportFailure() = runBlocking {
+        fixture.addProduct("Pan de prueba")
+        val notCounted =
+            listOf(
+                DestinationFailure.Interrupted(InterruptReason.STOPPED),
+                DestinationFailure.Interrupted(InterruptReason.METERED),
+                DestinationFailure.Incomplete,
+                DestinationFailure.LocalStorage,
+            )
+        for (failure in notCounted) {
+            val destination = FakeBackupDestination()
+            destination.failNext(Operation.UPLOAD, failure)
+
+            assertTrue(fixture.runner(destination).run(control) is BackupRun.Retry)
+        }
+        control.stopped = true
+        fixture.runner(FakeBackupDestination()).run(control)
+
+        assertEquals(0L, fixture.state().consecutiveFailures)
+        assertNull(fixture.state().lastFailureKind)
+    }
+
+    @Test
     fun anIncompleteListingIsRetriedWithoutCopyingTheDatabase() = runBlocking {
         fixture.addProduct("Pan de prueba")
         val destination = FakeBackupDestination()

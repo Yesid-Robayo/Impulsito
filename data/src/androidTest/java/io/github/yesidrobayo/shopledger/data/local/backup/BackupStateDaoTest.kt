@@ -114,6 +114,7 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "clearIntent",
                 "markUploadFinished",
                 "recordFailure",
+                "recordTransportFailure",
                 "leaveConnected",
                 "markConflict",
                 "keepThisPhone",
@@ -275,6 +276,47 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
         database.expenseDao().insert(expense(category))
         assertEquals(1L, state.recordCount())
         assertEquals(0L, state.catalogCount())
+    }
+
+    @Test
+    fun transportFailuresCountUpAndTurnPersistentAtTheLimitUntilAConfirmedCopy() = runBlocking {
+        execute(
+            "UPDATE backup_state SET link_state = 'CONNECTED', destination_kind = 'WEBDAV', " +
+                "destination_id = 'huella', change_seq = 3, first_unsynced_at = $LATER, " +
+                "failure_code = 'VERIFY_MISMATCH' WHERE id = 1",
+        )
+        val initial = requireNotNull(state.get())
+
+        // Antes del tope, el fallo que había sigue a la vista y solo cambian la cuenta y la clase.
+        for (count in 1L..5L) {
+            val kind = if (count % 2 == 0L) "HTTP_5XX" else "TLS"
+            assertEquals(1, state.recordTransportFailure(kind, 6, "TRANSPORT_PERSISTENT"))
+            assertEquals(
+                initial.copy(consecutiveFailures = count, lastFailureKind = kind),
+                state.get(),
+            )
+        }
+        assertEquals(1, state.recordTransportFailure("TLS", 6, "TRANSPORT_PERSISTENT"))
+        assertEquals(
+            initial.copy(
+                consecutiveFailures = 6,
+                lastFailureKind = "TLS",
+                failureCode = "TRANSPORT_PERSISTENT",
+            ),
+            state.get(),
+        )
+        // Después del tope sigue contando, y sigue persistente.
+        state.recordFailure("VERIFY_MISMATCH")
+        state.recordTransportFailure("RATE_LIMIT", 6, "TRANSPORT_PERSISTENT")
+        assertEquals(7L, state.get()?.consecutiveFailures)
+        assertEquals("TRANSPORT_PERSISTENT", state.get()?.failureCode)
+
+        // Solo una copia confirmada vuelve la cuenta a cero.
+        state.confirm(1, "teléfono", "copia", 3, MUCH_LATER, LATER, null, "huella")
+        val confirmed = requireNotNull(state.get())
+        assertEquals(0L, confirmed.consecutiveFailures)
+        assertNull(confirmed.lastFailureKind)
+        assertNull(confirmed.failureCode)
     }
 
     @Test

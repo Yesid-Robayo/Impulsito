@@ -275,6 +275,12 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
 
         override suspend fun recordFailure(code: String): Int = 0
 
+        override suspend fun recordTransportFailure(
+            kind: String,
+            limit: Long,
+            persistentCode: String,
+        ): Int = 0
+
         override suspend fun leaveConnected(linkState: String, destinationId: String): Int = 0
 
         override suspend fun markConflict(

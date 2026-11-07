@@ -31,6 +31,7 @@ import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
 import io.github.yesidrobayo.shopledger.data.work.DataWorkerFactory
+import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogField
@@ -246,6 +247,12 @@ class DataGraph internal constructor(
                         ioContext = ioContext,
                         clock = clock,
                         restoreLock = RestoreLockFile(restoreFiles, operations, clock, ioContext),
+                        backupStatusEnvironment =
+                            productionBackupStatusEnvironment(
+                                context,
+                                databaseFiles.noBackupDirectory,
+                                ioContext,
+                            ),
                     )
                 if (pendingRestore.takeEncryptionChanged()) {
                     recordEncryptionChanged(ports, clock, log)
