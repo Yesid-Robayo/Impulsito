@@ -36,13 +36,17 @@ import io.github.yesidrobayo.shopledger.data.local.PreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
+import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
+import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
 import io.github.yesidrobayo.shopledger.data.work.DataWorkerFactory
 import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
+import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogField
+import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.error
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.domain.port.info
@@ -82,6 +86,8 @@ import kotlinx.coroutines.withContext
  * @param preMigrationCopy deja la copia previa a migrar de esos archivos, en `pre-migration/`.
  * @param workQueue los trabajos del respaldo en la biblioteca de trabajos. Sin ella, como en las
  *   capas de datos que las pruebas arman a mano, confirmar un cambio no programa nada.
+ * @param currentPolicy las versiones de la política y los términos que publica la app. Solo las
+ *   pruebas la cambian, para ver qué pasa cuando sube una versión.
  */
 class DataGraph internal constructor(
     private val context: Context,
@@ -95,6 +101,7 @@ class DataGraph internal constructor(
         VacuumPreMigrationCopy(it, log)
     },
     private val workQueue: ((Context) -> BackupWorkQueue)? = null,
+    private val currentPolicy: PolicyVersions = PolicyVersions.CURRENT,
 ) {
     private val mutex = Mutex()
 
@@ -137,6 +144,22 @@ class DataGraph internal constructor(
             SupervisorJob() + ioContext + log.failureHandler(BackupEvent.SCHEDULING_FAILED),
         )
 
+    /** La compuerta de la política, una por proceso. Crearla no toca el disco. */
+    private val consentGate by lazy {
+        PolicyConsentGate(
+            file = PolicyConsentFile({ files().noBackupDirectory }, ioContext),
+            current = currentPolicy,
+            log = log,
+            onAccepted = { backgroundScope.launch { backupScheduler.onPolicyAccepted() } },
+        )
+    }
+
+    /**
+     * La aceptación de la política y los términos en este teléfono. Sin la versión vigente, ninguna
+     * copia sale a la nube, y lo demás sigue igual. No necesita la base abierta.
+     */
+    val policyConsent: PolicyConsentPort get() = consentGate
+
     /**
      * Programa el respaldo: traduce cada cambio confirmado, la app que se abre o pasa a segundo
      * plano y `Respaldar ahora` a trabajos en segundo plano. Crearlo no toca el disco.
@@ -147,6 +170,7 @@ class DataGraph internal constructor(
             restorePending = {
                 withContext(ioContext) { RestoreMarkers(files().noBackupDirectory).present() }
             },
+            policyAccepted = consentGate::allowsUploads,
             queue = workQueue?.invoke(context) ?: BackupWorkQueue.Detached,
             clock = clock,
         )
@@ -211,6 +235,7 @@ class DataGraph internal constructor(
             destinations = destinations,
             deviceIdentity = { deviceIdentity },
             mutex = backupMutex,
+            policyAccepted = consentGate::allowsUploads,
         )
     }
 
@@ -331,6 +356,7 @@ class DataGraph internal constructor(
                             productionBackupStatusEnvironment(
                                 context,
                                 databaseFiles.noBackupDirectory,
+                                consentGate,
                                 ioContext,
                             ),
                         commitListener = commitListener,

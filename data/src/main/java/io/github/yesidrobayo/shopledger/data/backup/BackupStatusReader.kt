@@ -13,6 +13,8 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -29,6 +31,9 @@ import kotlinx.coroutines.withContext
  * @param network la red activa, en este momento.
  * @param firstHandoffAt con la nube del teléfono, la primera copia entregada, en milisegundos UTC,
  *   o nulo. Lee el disco.
+ * @param changes emite al empezar a mirarlo, y otra vez cuando cambia algo de esto que no pasa por
+ *   `backup_state`, como aceptar la política: así el estado se calcula otra vez sin esperar a la
+ *   siguiente venta.
  */
 internal class BackupStatusEnvironment(
     val restorePending: () -> Boolean,
@@ -36,13 +41,15 @@ internal class BackupStatusEnvironment(
     val uploadWork: suspend () -> BackupUploadWork,
     val network: () -> BackupNetwork,
     val firstHandoffAt: suspend () -> Long?,
+    val changes: Flow<Unit> = flowOf(Unit),
 ) {
     companion object {
         /**
          * Sin nada fuera de la base: ninguna restauración, ningún trabajo, ninguna red ni ranuras.
          * Lo usan los puertos que se arman a mano, como los de las pruebas y el generador de datos.
          *
-         * La política cuenta como aceptada mientras la app no la pregunte: nada la pausa todavía.
+         * La política cuenta como aceptada: esos puertos no tienen a quién preguntarle, y la
+         * compuerta de la app la lee de su archivo.
          */
         val Detached =
             BackupStatusEnvironment(
@@ -60,7 +67,8 @@ internal class BackupStatusEnvironment(
  * base tiene algo del negocio, la política con datos móviles y lo que dé [environment].
  *
  * Vuelve a leer cada vez que cambia `backup_state`, que es lo que cambia con cada venta y con cada
- * copia. El resto se lee en ese momento, fuera del hilo principal.
+ * copia, y cada vez que [BackupStatusEnvironment.changes] avisa. El resto se lee en ese momento,
+ * fuera del hilo principal.
  *
  * @param meteredPolicy cada cuánto se respalda con datos móviles, de los ajustes.
  */
@@ -74,7 +82,9 @@ internal class BackupStatusReader(
         withContext(ioContext) { factsOf(state.get()) }
 
     override fun observe(): Flow<BackupStatusFacts> =
-        state.observe().map { factsOf(it) }.flowOn(ioContext)
+        combine(state.observe(), environment.changes) { row, _ -> row }
+            .map { factsOf(it) }
+            .flowOn(ioContext)
 
     private suspend fun factsOf(row: BackupStateEntity?): BackupStatusFacts = backupStatusFacts(
         row = row,

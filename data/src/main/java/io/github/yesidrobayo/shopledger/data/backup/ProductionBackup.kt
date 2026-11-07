@@ -25,6 +25,8 @@ import kotlinx.coroutines.sync.Mutex
  * @param destinations abre el destino conectado.
  * @param deviceIdentity el identificador de la instalación, uno por proceso.
  * @param mutex el cerrojo del respaldo, uno por proceso.
+ * @param policyAccepted si la persona aceptó la versión vigente de la política y los términos. Lee
+ *   el disco.
  */
 internal fun productionBackupEngine(
     context: Context,
@@ -37,6 +39,7 @@ internal fun productionBackupEngine(
     destinations: DestinationOpener,
     deviceIdentity: () -> DeviceIdentityStore,
     mutex: Mutex,
+    policyAccepted: suspend () -> Boolean,
 ): BackupEngine = DatabaseBackupEngine(
     restoreMarkers = { RestoreMarkers(noBackupDirectory()) },
     openForWork = openForWork,
@@ -74,6 +77,7 @@ internal fun productionBackupEngine(
                 ports.settings.get().preferences.meteredBackupPolicy !=
                     MeteredBackupPolicy.WIFI_ONLY
             },
+            policyAccepted = policyAccepted,
             uploadGate =
                 PolicyUploadGate(
                     policy = { ports.settings.get().preferences.meteredBackupPolicy },

@@ -156,6 +156,8 @@ class BackupLogSentinelTest {
                             ),
                         // Esta prueba nunca retoma una copia: la política no decide nada.
                         meteredAllowed = { false },
+                        // La copia de esta prueba sale: la política está aceptada.
+                        policyAccepted = { true },
                         fullVerify =
                             FullVerifyGenerationStore(
                                 File(noBackup, FullVerifyGenerationStore.FILE_NAME),

@@ -30,15 +30,21 @@ import kotlin.time.Instant
  * **Nada se encola con una restauración en curso o a medias:** la base puede cambiar entera, y el
  * arranque retoma el respaldo al terminar.
  *
+ * **Sin la versión vigente de la política aceptada, nada que vaya al destino se encola:** ni la
+ * espera ni las subidas. `Respaldar ahora` pide aceptarla, y al aceptar se encola lo pendiente.
+ *
  * Nada de esto usa la red ni espera a ella, y nada lleva datos del negocio.
  *
  * @param facts lo que el estado guardado dice, o nulo si la base todavía no se puede leer, como
  *   con una migración pendiente.
  * @param restorePending si hay una restauración en curso o a medias. Lee el disco.
+ * @param policyAccepted si la persona aceptó la versión vigente de la política y los términos. Lee
+ *   el disco.
  */
 class BackupScheduler internal constructor(
     private val facts: suspend () -> ScheduleFacts?,
     private val restorePending: suspend () -> Boolean,
+    private val policyAccepted: suspend () -> Boolean,
     private val queue: BackupWorkQueue,
     private val clock: Clock,
 ) {
@@ -48,7 +54,7 @@ class BackupScheduler internal constructor(
      * la app no podría restaurar: esa no reinicia el cambio más viejo, y cada venta subiría otra.
      */
     internal suspend fun onDataChanged() {
-        if (restorePending()) return
+        if (paused()) return
         queue.restartDebounce(BackupTimings.BACKUP_DEBOUNCE)
         val current = uploadable() ?: return
         if (current.failureCode == BackupFailureCode.LOCAL_INVARIANT_FATAL.name) return
@@ -62,7 +68,7 @@ class BackupScheduler internal constructor(
      * no se puede leer, para que la espera se reintente sin perder el cambio.
      */
     internal suspend fun onDebounceElapsed(): Boolean {
-        if (restorePending()) return true
+        if (paused()) return true
         val current = facts() ?: return false
         if (current.isUploadable) enqueueUpload(current, pastInterval = false)
         return true
@@ -98,6 +104,7 @@ class BackupScheduler internal constructor(
         if (restorePending()) return BackupNowRequest.RESTORE_IN_PROGRESS
         val current = facts() ?: return BackupNowRequest.UNAVAILABLE
         val kind = current.connectedKind ?: return BackupNowRequest.NOT_CONNECTED
+        if (!policyAccepted()) return BackupNowRequest.POLICY_PENDING
         if (queue.uploadWork() == BackupUploadWork.RUNNING) return BackupNowRequest.ALREADY_RUNNING
         queue.replaceUpload(needsNetwork = needsNetwork(kind), kind = RunKind.BACKUP_NOW)
         return BackupNowRequest.QUEUED
@@ -115,6 +122,16 @@ class BackupScheduler internal constructor(
     }
 
     /**
+     * La persona aceptó la versión vigente de la política: lo que quedó pendiente durante la pausa
+     * se encola, como al conectar.
+     */
+    suspend fun onPolicyAccepted() {
+        if (paused()) return
+        val current = uploadable() ?: return
+        enqueueUpload(current, pastInterval = false)
+    }
+
+    /**
      * Terminó una ejecución del trabajo [workName]. Una copia comprobada cancela la otra subida: en
      * una racha siempre queda algo pendiente, y la otra subiría otra copia en seguida. Si quedaron
      * cambios, vuelve a empezar la espera, salvo tras una copia que la app no podría restaurar, que
@@ -125,7 +142,7 @@ class BackupScheduler internal constructor(
         when (run) {
             is BackupRun.Verified -> {
                 cancelOtherUpload(workName)
-                if (run.unrestorable || restorePending()) return
+                if (run.unrestorable || paused()) return
                 if (facts()?.hasPending == true) {
                     queue.restartDebounce(BackupTimings.BACKUP_DEBOUNCE)
                 }
@@ -134,14 +151,13 @@ class BackupScheduler internal constructor(
             is BackupRun.Skipped ->
                 when (run.reason) {
                     SkipReason.WAITING_FOR_INTERVAL ->
-                        if (!restorePending()) {
-                            queue.restartDebounce(BackupTimings.BACKUP_DEBOUNCE)
-                        }
+                        if (!paused()) queue.restartDebounce(BackupTimings.BACKUP_DEBOUNCE)
 
                     // Con la nube del teléfono, la copia que la app no restauraría no se escribió.
                     SkipReason.UNRESTORABLE_NOT_WRITTEN -> cancelOtherUpload(workName)
 
                     SkipReason.NOT_CONNECTED,
+                    SkipReason.POLICY_PENDING,
                     SkipReason.NOTHING_PENDING,
                     SkipReason.EMPTY_DATABASE,
                     SkipReason.DESTINATION_CHANGED,
@@ -174,8 +190,18 @@ class BackupScheduler internal constructor(
         enqueueUpload(current, pastInterval = false)
     }
 
-    /** El estado, si hay un destino conectado y algo que subir. */
-    private suspend fun uploadable(): ScheduleFacts? = facts()?.takeIf { it.isUploadable }
+    /**
+     * El estado, si hay un destino conectado, algo que subir y la política aceptada. Todo lo que
+     * encola una subida pasa por aquí.
+     */
+    private suspend fun uploadable(): ScheduleFacts? =
+        facts()?.takeIf { it.isUploadable && policyAccepted() }
+
+    /**
+     * Si nada del destino se puede encolar ahora: hay una restauración en curso, o falta aceptar la
+     * versión vigente de la política.
+     */
+    private suspend fun paused(): Boolean = restorePending() || !policyAccepted()
 
     private suspend fun enqueueUpload(current: ScheduleFacts, pastInterval: Boolean) {
         val kind = current.connectedKind ?: return
@@ -216,6 +242,12 @@ enum class BackupNowRequest {
 
     /** No hay un destino conectado. */
     NOT_CONNECTED,
+
+    /**
+     * Falta aceptar la versión vigente de la política y los términos: la pantalla la muestra, y al
+     * aceptarla la copia sale.
+     */
+    POLICY_PENDING,
 
     /** Hay una restauración en curso: la copia sale cuando termine. */
     RESTORE_IN_PROGRESS,

@@ -18,11 +18,13 @@ import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
 import io.github.yesidrobayo.shopledger.data.repository.AT
 import io.github.yesidrobayo.shopledger.data.repository.newProduct
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogLevel
 import io.github.yesidrobayo.shopledger.domain.port.LogLine
+import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import java.io.File
 import kotlin.time.Duration
@@ -63,6 +65,12 @@ internal class BackupFixture(
      */
     var now: Instant = Instant.fromEpochSeconds(System.currentTimeMillis() / 1000 + 3_600)
     val clock = Clock { now }
+
+    /**
+     * Las versiones de la política que publica la app. Cambiarla vale desde [reopen], como una
+     * compilación nueva.
+     */
+    var currentPolicy: PolicyVersions = PolicyVersions.CURRENT
     private var graph = newGraph()
     lateinit var ports: DataPorts
         private set
@@ -89,6 +97,12 @@ internal class BackupFixture(
         noBackup.deleteRecursively()
     }
 
+    /** La aceptación de la política en la carpeta de esta prueba, con la capa de datos de ahora. */
+    val policyConsent: PolicyConsentPort get() = graph.policyConsent
+
+    /** Lo que programa el respaldo, con la capa de datos de ahora. */
+    val scheduler: BackupScheduler get() = graph.backupScheduler
+
     private fun newGraph() = DataGraph(
         context,
         Dispatchers.IO,
@@ -96,6 +110,7 @@ internal class BackupFixture(
         { DatabaseFiles(file, noBackup) },
         log,
         workQueue = workQueue,
+        currentPolicy = currentPolicy,
     )
 
     /** Conecta el destino [kind] en el estado del respaldo, como lo deja la conexión. */
@@ -147,6 +162,7 @@ internal class BackupFixture(
         staging: BackupStaging = BackupStaging(stagingDir, Dispatchers.IO),
         verifyMode: (VerifyRequest) -> VerifyMode? = ::verifyModeFor,
         uploadGate: UploadGate = UploadGate.Open,
+        policyAccepted: suspend () -> Boolean = { true },
     ): BackupRunner = BackupRunner(
         state = ports.backupState,
         databaseFile = file,
@@ -171,6 +187,7 @@ internal class BackupFixture(
         meteredAllowed = {
             ports.settings.get().preferences.meteredBackupPolicy != MeteredBackupPolicy.WIFI_ONLY
         },
+        policyAccepted = policyAccepted,
         uploadGate = uploadGate,
     )
 

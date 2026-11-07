@@ -7,13 +7,17 @@ import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStor
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotEntry
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotState
 import io.github.yesidrobayo.shopledger.data.destination.slots.WriteMode
+import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
+import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNetwork
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
+import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
+import io.github.yesidrobayo.shopledger.domain.port.PolicyAcceptance
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupStatusUseCase
 import java.io.File
 import kotlin.time.Duration.Companion.hours
@@ -33,8 +37,8 @@ import org.junit.runner.RunWith
 /**
  * El estado del respaldo leído de la base real: al abrir la app un día después, un cambio sin copia
  * se ve como un día sin copia aunque ningún trabajo haya corrido, y también con el reloj atrasado.
- * Lo que se lee fuera de la base, como las marcas de una restauración y el estado de las ranuras,
- * sale de sus archivos.
+ * Lo que se lee fuera de la base, como las marcas de una restauración, la aceptación de la política
+ * y el estado de las ranuras, sale de sus archivos.
  */
 @RunWith(AndroidJUnit4::class)
 class BackupStatusDeviceTest {
@@ -149,9 +153,20 @@ class BackupStatusDeviceTest {
 
     @Test
     fun theAppReadsTheRestoreMarksAndTheSlotStateFromTheirFiles() = runBlocking {
-        val app = productionBackupStatusEnvironment(context, outside, Dispatchers.IO)
+        val consent =
+            PolicyConsentGate(
+                PolicyConsentFile({ outside }, Dispatchers.IO),
+                PolicyVersions.CURRENT,
+                fixture.log,
+                onAccepted = {},
+            )
+        val app = productionBackupStatusEnvironment(context, outside, consent, Dispatchers.IO)
 
         assertFalse(app.restorePending())
+        // Sin aceptar la política, las copias en la nube quedan en pausa.
+        assertFalse(app.policyAccepted())
+        assertEquals(PolicyAcceptance.SAVED, consent.acceptCurrent())
+        assertTrue(app.policyAccepted())
         assertNull(app.firstHandoffAt())
         // Sin trabajos encolados, ninguno corre ni espera.
         assertEquals(BackupUploadWork.NONE, app.uploadWork())

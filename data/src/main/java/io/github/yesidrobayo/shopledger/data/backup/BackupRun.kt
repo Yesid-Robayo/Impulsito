@@ -52,6 +52,12 @@ internal enum class SkipReason {
     /** No hay destino conectado, o el enlace espera a la persona. */
     NOT_CONNECTED,
 
+    /**
+     * Falta aceptar la versión vigente de la política y los términos: ninguna copia sale a la nube
+     * hasta entonces, ni siquiera con `Respaldar ahora`. Al aceptarla se encola lo pendiente.
+     */
+    POLICY_PENDING,
+
     /** Todos los cambios ya tienen copia, y no hay ninguna subida a medias. */
     NOTHING_PENDING,
 

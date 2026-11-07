@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.data.backup.BackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
 import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
+import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNetwork
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
 import java.io.File
@@ -49,24 +50,25 @@ internal object BackupWorkNames {
 
 /**
  * Lo que el estado del respaldo lee del teléfono en la app: las marcas de una restauración en
- * [noBackupDirectory], los trabajos de subida, la red y el estado de las ranuras.
+ * [noBackupDirectory], la aceptación de la política en [consent], los trabajos de subida, la red y
+ * el estado de las ranuras. Aceptar la política vuelve a calcular el estado.
  *
  * Nada de esto usa la red ni espera a ella.
  */
 internal fun productionBackupStatusEnvironment(
     context: Context,
     noBackupDirectory: File,
+    consent: PolicyConsentGate,
     ioContext: CoroutineContext,
 ): BackupStatusEnvironment {
     val slots = FileSlotStateStore(noBackupDirectory, ioContext)
     return BackupStatusEnvironment(
         restorePending = { RestoreMarkers(noBackupDirectory).present() },
-        // La política se pregunta con su propia compuerta, que todavía no existe: nada pausa las
-        // copias mientras tanto.
-        policyAccepted = { true },
+        policyAccepted = consent::allowsUploads,
         uploadWork = { uploadWorkOf(context) },
         network = { backupNetworkOf(context) },
         firstHandoffAt = { (slots.load() as? SlotStateLoad.Loaded)?.state?.firstHandoffAt },
+        changes = consent.changes,
     )
 }
 

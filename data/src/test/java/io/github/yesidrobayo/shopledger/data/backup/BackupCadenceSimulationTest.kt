@@ -164,6 +164,7 @@ class BackupCadenceSimulationTest {
                     )
                 },
                 restorePending = { false },
+                policyAccepted = { true },
                 queue = queue,
                 clock = Clock { now },
             )

@@ -47,8 +47,8 @@ import org.junit.runner.RunWith
 /**
  * Los trabajos del respaldo en la biblioteca de trabajos de prueba: nombres, etiquetas, red,
  * retraso y entrada de cada uno; reemplazar y conservar; que conservar admite un trabajo nuevo
- * cuando el anterior terminó; la pausa de una restauración; y que una venta confirmada en la base
- * real deja la espera encolada.
+ * cuando el anterior terminó; la pausa de una restauración; que una venta confirmada en la base
+ * real deja la espera encolada; y que sin aceptar la política no se encola nada hasta aceptarla.
  */
 @RunWith(AndroidJUnit4::class)
 class BackupSchedulingDeviceTest {
@@ -207,6 +207,7 @@ class BackupSchedulingDeviceTest {
         try {
             fixture.open()
             fixture.connect()
+            fixture.policyConsent.acceptCurrent()
 
             fixture.addProduct("Pan de prueba")
 
@@ -217,6 +218,34 @@ class BackupSchedulingDeviceTest {
                     .first { infos -> infos.any { it.state == WorkInfo.State.ENQUEUED } }
                     .single()
             assertEquals(90_000L, work.initialDelayMillis)
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun withoutThePolicyASaleQueuesNothingAndAcceptingQueuesTheUploads() = runBlocking {
+        val fixture =
+            BackupFixture(context, "backup-policy-scheduling-test", ::WorkManagerBackupQueue)
+        try {
+            fixture.open()
+            fixture.connect()
+            fixture.addProduct("Pan de prueba")
+            // Directo, sin esperar a la programación que sigue a la venta, que tampoco encola.
+            fixture.scheduler.onDataChanged()
+            assertTrue(fixture.scheduler.onDebounceElapsed())
+            fixture.scheduler.onAppBackgrounded()
+            val query = WorkQuery.fromUniqueWorkNames(BackupWorkNames.ALL)
+            assertEquals(emptyList<WorkInfo>(), manager.getWorkInfos(query).get())
+
+            fixture.policyConsent.acceptCurrent()
+
+            // Lo pendiente sale al aceptar, aparte de la escritura del archivo.
+            for (name in BackupWorkNames.UPLOADS) {
+                manager
+                    .getWorkInfosForUniqueWorkFlow(name)
+                    .first { infos -> infos.any { it.state == WorkInfo.State.ENQUEUED } }
+            }
         } finally {
             fixture.close()
         }

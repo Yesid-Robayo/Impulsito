@@ -55,11 +55,12 @@ import kotlinx.coroutines.withContext
  *
  * Los pasos, en orden, con lo que pasa si fallan:
  *
- * 0. **Precondiciones.** Sin destino conectado, sin cambios pendientes o con la base vacía, termina
- *    sin hacer nada. Una copia automática pasa además por la compuerta de red ([UploadGate]): con
- *    datos móviles y el intervalo corriendo, o con `Solo con Wi-Fi`, termina sin hacer nada y sin
- *    contar un intento. Limpia los restos de la carpeta de preparación, salvo el archivo de una
- *    subida pendiente.
+ * 0. **Precondiciones.** Sin destino conectado, sin la versión vigente de la política aceptada, sin
+ *    cambios pendientes o con la base vacía, termina sin hacer nada, también con `Respaldar ahora`:
+ *    sin aceptar la política no sale ninguna copia a la nube. Una copia automática pasa además por
+ *    la compuerta de red ([UploadGate]): con datos móviles y el intervalo corriendo, o con `Solo con
+ *    Wi-Fi`, termina sin hacer nada y sin contar un intento. Limpia los restos de la carpeta de
+ *    preparación, salvo el archivo de una subida pendiente.
  * 1. **Espacio y tamaño.** El teléfono debe tener libre una vez y media la base, y la base no debe
  *    pasar de lo que una restauración acepta: si no, `LOCAL_STORAGE_LOW` o `BACKUP_TOO_LARGE`.
  * 2. y 3. **Destino y credencial.** Abre el destino que recuerda el estado. Si no deja entrar, el
@@ -112,6 +113,7 @@ import kotlinx.coroutines.withContext
  * @param verifyMode cuánto del contenido se lee para comprobar, según la red y el plazo, o nulo si
  *   hay que esperar una red no medida.
  * @param meteredAllowed si la política de la persona permite respaldar con datos móviles.
+ * @param policyAccepted si la persona aceptó la versión vigente de la política y los términos.
  * @param uploadGate la compuerta de red de las copias automáticas.
  * @param transportFailures cuenta los fallos de transporte seguidos de cada ejecución que se
  *   reintenta, para dejar a la vista uno que no se resuelve solo.
@@ -145,6 +147,7 @@ internal class BackupRunner(
     private val freeSpace: (File) -> Long = File::getUsableSpace,
     private val verifyMode: (VerifyRequest) -> VerifyMode? = ::verifyModeFor,
     private val meteredAllowed: suspend () -> Boolean,
+    private val policyAccepted: suspend () -> Boolean,
     private val uploadGate: UploadGate = UploadGate.Open,
     private val transportFailures: TransportFailures = TransportFailures(state),
     private val snapshotValidation: SnapshotValidation =
@@ -186,6 +189,7 @@ internal class BackupRunner(
     ): BackupRun {
         // Paso 0: precondiciones.
         val link = connectedOf(current) ?: return BackupRun.Skipped(SkipReason.NOT_CONNECTED)
+        if (!policyAccepted()) return BackupRun.Skipped(SkipReason.POLICY_PENDING)
         if (current.changeSeq == current.verifiedSeq && current.pendingGeneration == null) {
             return BackupRun.Skipped(SkipReason.NOTHING_PENDING)
         }

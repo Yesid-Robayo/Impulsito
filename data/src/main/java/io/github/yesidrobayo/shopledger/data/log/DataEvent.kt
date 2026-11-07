@@ -29,4 +29,6 @@ internal enum class DataEvent(override val text: String) : LogEvent {
     RESTORE_FAILED("La preparación de la restauración falló, la base no cambió"),
     RESTORE_CLOSE_FAILED("No se pudo cerrar la base tras preparar la restauración"),
     RESTORE_AUDIT_FAILED("No se pudo anotar la restauración en la auditoría"),
+    POLICY_CONSENT_SAVED("Aceptación de la política guardada"),
+    POLICY_CONSENT_NOT_SAVED("No se pudo guardar la aceptación de la política"),
 }

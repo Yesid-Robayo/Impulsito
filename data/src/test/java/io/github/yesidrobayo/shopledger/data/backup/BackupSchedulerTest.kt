@@ -17,12 +17,14 @@ import org.junit.Test
 /**
  * Qué encola cada evento del respaldo: la venta confirmada, la espera que vence, la app que se abre
  * o pasa a segundo plano, `Respaldar ahora`, el cambio de política y el final de cada subida. Con
- * una restauración en curso, ningún evento encola nada.
+ * una restauración en curso, o sin aceptar la versión vigente de la política y los términos, ningún
+ * evento encola nada.
  */
 class BackupSchedulerTest {
     private var now = Instant.parse("2026-11-07T15:00:00Z")
     private val queue = FakeWorkQueue { now }
     private var restore = false
+    private var accepted = true
     private var facts: ScheduleFacts? =
         ScheduleFacts(
             connectedKind = BackupDestinationKind.WEBDAV,
@@ -32,7 +34,8 @@ class BackupSchedulerTest {
             failureCode = null,
             policy = MeteredBackupPolicy.EVERY_60_MIN,
         )
-    private val scheduler = BackupScheduler({ facts }, { restore }, queue, Clock { now })
+    private val scheduler =
+        BackupScheduler({ facts }, { restore }, { accepted }, queue, Clock { now })
 
     @Test
     fun aChangeAlwaysRestartsTheWaitAndNothingElseWhileTheStreakIsShort() = runBlocking {
@@ -246,6 +249,7 @@ class BackupSchedulerTest {
                 BackupRun.Skipped(SkipReason.WAITING_FOR_UNMETERED),
                 BackupRun.Skipped(SkipReason.NOTHING_PENDING),
                 BackupRun.Skipped(SkipReason.NOT_CONNECTED),
+                BackupRun.Skipped(SkipReason.POLICY_PENDING),
                 BackupRun.Skipped(SkipReason.EMPTY_DATABASE),
                 BackupRun.Skipped(SkipReason.DESTINATION_CHANGED),
                 BackupRun.Retry(RetryReason.TRANSIENT),
@@ -290,5 +294,71 @@ class BackupSchedulerTest {
             ),
             queue.calls,
         )
+    }
+
+    @Test
+    fun withoutThePolicyAcceptedNoEventQueuesAnything() = runBlocking {
+        accepted = false
+        facts = facts?.copy(firstUnsyncedAt = now - 1.minutes - 10.minutes)
+
+        scheduler.onDataChanged()
+        assertTrue(scheduler.onDebounceElapsed())
+        scheduler.onAppBackgrounded()
+        scheduler.onAppOpened(AppOpenUpload.PAST_INTERVAL)
+        scheduler.onAppOpened(AppOpenUpload.RESPECTING_INTERVAL)
+        scheduler.onPolicyAccepted()
+        scheduler.onRunFinished(BackupRun.Verified(2), null)
+        scheduler.onRunFinished(BackupRun.Skipped(SkipReason.WAITING_FOR_INTERVAL), null)
+        scheduler.onRunFinished(BackupRun.Skipped(SkipReason.POLICY_PENDING), null)
+        scheduler.resumeAfterRestore()
+
+        assertEquals(emptyList<String>(), queue.calls)
+    }
+
+    @Test
+    fun withoutThePolicyAcceptedChangingTheMobilePolicyOnlyDropsTheOldUpload() = runBlocking {
+        accepted = false
+
+        scheduler.onMeteredPolicyChanged()
+
+        assertEquals(listOf("cancel backup-upload"), queue.calls)
+    }
+
+    @Test
+    fun backupNowAsksToAcceptThePolicyOnlyWithADestination() = runBlocking {
+        accepted = false
+        assertEquals(BackupNowRequest.POLICY_PENDING, scheduler.backupNow())
+
+        // Sin destino, lo primero es conectarlo.
+        facts = facts?.copy(connectedKind = null)
+        assertEquals(BackupNowRequest.NOT_CONNECTED, scheduler.backupNow())
+        assertEquals(emptyList<String>(), queue.calls)
+    }
+
+    @Test
+    fun acceptingThePolicyQueuesWhatWasPendingWithTheRestOfTheInterval() = runBlocking {
+        accepted = false
+        scheduler.onDataChanged()
+        assertEquals(emptyList<String>(), queue.calls)
+
+        accepted = true
+        scheduler.onPolicyAccepted()
+
+        assertEquals(listOf("keep unmetered", "keep upload 40m con red"), queue.calls)
+    }
+
+    @Test
+    fun acceptingThePolicyWithNothingToUploadQueuesNothing() = runBlocking {
+        facts = facts?.copy(hasPending = false)
+        scheduler.onPolicyAccepted()
+
+        facts = facts?.copy(hasPending = true, connectedKind = null)
+        scheduler.onPolicyAccepted()
+
+        restore = true
+        facts = facts?.copy(connectedKind = BackupDestinationKind.WEBDAV)
+        scheduler.onPolicyAccepted()
+
+        assertEquals(emptyList<String>(), queue.calls)
     }
 }
