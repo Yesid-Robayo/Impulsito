@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data.backup
 
 import io.github.yesidrobayo.shopledger.data.work.BackupWorkNames
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupTimings
 import io.github.yesidrobayo.shopledger.domain.model.backup.UploadGateVerdict
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -20,7 +21,8 @@ import org.junit.Test
 /**
  * El ritmo de las copias con el programador real, segundo a segundo, sobre una biblioteca de
  * trabajos en memoria: las ventas, la espera, las dos subidas, el cerrojo que deja correr una a la
- * vez y la compuerta del paso 0. Cuenta cuántas copias salen en cada caso del documento de pruebas.
+ * vez y la compuerta del paso 0. Cuenta cuántas copias salen en cada caso del documento de pruebas,
+ * con WebDAV y con la nube del teléfono.
  */
 class BackupCadenceSimulationTest {
     @Test
@@ -122,22 +124,104 @@ class BackupCadenceSimulationTest {
         assertTrue(sim.copies[1].finished - sim.copies[0].finished < 60.minutes)
     }
 
+    @Test
+    fun aSaleEveryMinuteForThreeHoursWithThePhoneCloudGivesAtMostOneCopyPerHourWithAnyNetwork() {
+        // Sin red, con Wi-Fi, con datos móviles y con la red cambiando cada 7 minutos entre las
+        // tres: la nube del teléfono no mira la red, y el ritmo es el mismo en todos los casos.
+        val networks =
+            mapOf<String, (Duration) -> Network>(
+                "modo avión" to { Network.NONE },
+                "Wi-Fi" to { Network.UNMETERED },
+                "datos móviles" to { Network.METERED },
+                "cambiante" to { Network.entries[(it.inWholeMinutes / 7 % 3).toInt()] },
+            )
+        for ((name, network) in networks) {
+            for (uploadTakes in listOf(5.seconds, 75.seconds)) {
+                val case = "$name, subida de $uploadTakes"
+                // La política de datos móviles tampoco cuenta: ni siquiera solo con Wi-Fi.
+                val sim =
+                    Simulation(
+                        uploadTakes = uploadTakes,
+                        policy = MeteredBackupPolicy.WIFI_ONLY,
+                        kind = BackupDestinationKind.DOCUMENT_SLOTS,
+                        network = network,
+                    )
+                sim.run(everyMinuteFor(3.hours), until = 4.hours + 30.minutes)
+
+                // La primera sale con la espera máxima, a los 10 minutos, y cada una de las
+                // siguientes a la hora de terminar la anterior: tres dentro de las 3 horas, y
+                // una más con las ventas ya terminadas.
+                assertEquals(case, 3, sim.copies.count { it.started < 3.hours })
+                assertEquals(case, 4, sim.copies.size)
+                sim.copies.zipWithNext().forEach { (a, b) ->
+                    assertTrue(
+                        "$case ${b.started - a.finished}",
+                        b.started - a.finished >= BackupTimings.SLOT_MIN_INTERVAL,
+                    )
+                }
+                assertTrue(case, sim.allChangesBackedUp())
+                // Nunca hubo una subida que pidiera red, ni la que espera una red sin datos
+                // móviles.
+                assertTrue(case, sim.queue.calls.none { it == "keep unmetered" })
+                assertTrue(case, sim.queue.calls.none { "con red" in it })
+            }
+        }
+    }
+
+    @Test
+    fun backupNowWithThePhoneCloudAndNoNetworkWritesInsideTheInterval() {
+        val sim =
+            Simulation(
+                kind = BackupDestinationKind.DOCUMENT_SLOTS,
+                network = { Network.NONE },
+            )
+        // La copia de los 10 minutos deja pendiente la venta de los 11.
+        sim.run(everyMinuteFor(12.minutes), until = 12.minutes)
+        assertEquals(1, sim.copies.size)
+        assertFalse(sim.allChangesBackedUp())
+
+        runBlocking { assertEquals(BackupNowRequest.QUEUED, sim.scheduler.backupNow()) }
+        sim.run(emptyList(), until = 14.minutes)
+
+        assertEquals(2, sim.copies.size)
+        assertTrue(sim.copies[1].finished - sim.copies[0].finished < 5.minutes)
+        assertTrue(sim.allChangesBackedUp())
+        assertTrue(sim.queue.calls.contains("replace upload sin red BACKUP_NOW"))
+    }
+
     private fun everyMinuteFor(length: Duration): List<Duration> =
         (0 until length.inWholeMinutes).map { it.minutes }
+
+    /** La red activa en un instante: ninguna, con datos móviles o sin ellos. */
+    private enum class Network { NONE, METERED, UNMETERED }
 
     /** Una copia: cuándo empezó y cuándo terminó de enviarse, desde el inicio de la simulación. */
     private data class Copy(val started: Duration, val finished: Duration)
 
     /**
-     * Un teléfono con WebDAV conectado, que vende a las horas dadas. Cada subida tarda
-     * [uploadTakes], y la instantánea se toma al empezar, como el paso 7. [unmetered] dice, para
-     * cada instante, si la red activa es sin datos móviles.
+     * Un teléfono con el destino [kind] conectado, WebDAV si no se dice otro, que vende a las horas
+     * dadas. Cada subida tarda [uploadTakes], y la instantánea se toma al empezar, como el paso 7.
+     * [network] dice, para cada instante, qué red está activa. Sin red, un trabajo que pide red no
+     * empieza, y la compuerta la ve como medida, igual que el trabajo de subida.
      */
     private class Simulation(
         val uploadTakes: Duration = 5.seconds,
         val policy: MeteredBackupPolicy = MeteredBackupPolicy.EVERY_60_MIN,
-        val unmetered: (Duration) -> Boolean = { true },
+        val kind: BackupDestinationKind = BackupDestinationKind.WEBDAV,
+        val network: (Duration) -> Network = { Network.UNMETERED },
     ) {
+        /** Con WebDAV y una red siempre activa, que [unmetered] dice si es sin datos móviles. */
+        constructor(
+            uploadTakes: Duration = 5.seconds,
+            policy: MeteredBackupPolicy = MeteredBackupPolicy.EVERY_60_MIN,
+            unmetered: (Duration) -> Boolean,
+        ) : this(
+            uploadTakes,
+            policy,
+            BackupDestinationKind.WEBDAV,
+            { if (unmetered(it)) Network.UNMETERED else Network.METERED },
+        )
+
         private val start = Instant.parse("2026-11-07T08:00:00Z")
         private var elapsed = Duration.ZERO
         private val now get() = start + elapsed
@@ -155,7 +239,7 @@ class BackupCadenceSimulationTest {
             BackupScheduler(
                 facts = {
                     ScheduleFacts(
-                        connectedKind = BackupDestinationKind.WEBDAV,
+                        connectedKind = kind,
                         hasPending = changeSeq > verifiedSeq,
                         firstUnsyncedAt = firstUnsyncedAt,
                         lastUploadFinishedAt = lastUploadFinishedAt,
@@ -211,9 +295,11 @@ class BackupCadenceSimulationTest {
             if (inFlight != null) return
             val ready =
                 queue.queued.entries.firstOrNull { (name, work) ->
+                    val active = network(elapsed)
                     name in BackupWorkNames.UPLOADS &&
                         work.notBefore <= now &&
-                        (name != BackupWorkNames.UPLOAD_UNMETERED || unmetered(elapsed))
+                        (!work.needsNetwork || active != Network.NONE) &&
+                        (name != BackupWorkNames.UPLOAD_UNMETERED || active == Network.UNMETERED)
                 } ?: return
             val (name, work) = ready
             queue.queued.remove(name)
@@ -233,9 +319,9 @@ class BackupCadenceSimulationTest {
             if (work.kind != RunKind.AUTOMATIC) return null
             val verdict =
                 UploadCadence.gate(
-                    BackupDestinationKind.WEBDAV,
+                    kind,
                     policy,
-                    metered = !unmetered(elapsed),
+                    metered = network(elapsed) != Network.UNMETERED,
                     lastUploadFinishedAt,
                     now,
                 )

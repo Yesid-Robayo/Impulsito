@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.data.destination.StoredCopy
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.data.destination.TransientKind
 import io.github.yesidrobayo.shopledger.data.destination.UploadPlan
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -30,7 +31,8 @@ import org.junit.runner.RunWith
  * La compuerta de red del paso 0 y la cuota antes de generar, con la base real y el destino falso:
  * con datos móviles una copia automática respeta el intervalo de la política, `Respaldar ahora` y
  * la copia que ya lleva un día no lo miran, un corte en red medida cuenta como subida, y con el
- * servicio lleno una copia automática que no cabe no genera nada.
+ * servicio lleno una copia automática que no cabe no genera nada. Con la nube del teléfono, el
+ * intervalo propio de esa nube vale con cualquier red o sin ella, y `Respaldar ahora` lo ignora.
  */
 @RunWith(AndroidJUnit4::class)
 class BackupCadenceTest {
@@ -254,6 +256,59 @@ class BackupCadenceTest {
         )
         fixture.advance(1.hours)
         assertEquals(BackupRun.Verified(2), fixture.runner(destination).run(control))
+    }
+
+    @Test
+    fun withThePhoneCloudASaleEveryMinuteForThreeHoursGivesOneCopyPerHourWithAnyNetwork() =
+        runBlocking {
+            // Lo peor que puede pasar: una subida automática despierta cada minuto, como si
+            // conservar hubiera dejado vivo un trabajo viejo. La compuerta es lo único que hace
+            // cumplir el intervalo, con la red que haya. Sin red el trabajo la ve como medida, y
+            // solo con Wi-Fi tampoco detiene a la nube del teléfono.
+            fixture.connect(BackupDestinationKind.DOCUMENT_SLOTS)
+            fixture.sql("UPDATE app_settings SET metered_backup_policy = 'WIFI_ONLY' WHERE id = 1")
+            val destination = FakeBackupDestination(BackupDestinationKind.DOCUMENT_SLOTS)
+            val written = mutableListOf<Long>()
+
+            for (minute in 0L until 180L) {
+                fixture.addProduct("Producto de prueba $minute")
+                control.metered = minute % 3 != 0L
+                when (val run = fixture.runner(destination, uploadGate = gate).run(control)) {
+                    is BackupRun.Verified -> written += minute
+                    BackupRun.Skipped(SkipReason.WAITING_FOR_INTERVAL) -> Unit
+                    else -> throw AssertionError("Minuto $minute: $run")
+                }
+                fixture.advance(1.minutes)
+            }
+
+            assertEquals(listOf(0L, 60L, 120L), written)
+            assertEquals(3, destination.calls.count { it == Operation.UPLOAD })
+        }
+
+    @Test
+    fun withThePhoneCloudAndNoNetworkBackupNowWritesInsideTheInterval() = runBlocking {
+        fixture.connect(BackupDestinationKind.DOCUMENT_SLOTS)
+        val destination = FakeBackupDestination(BackupDestinationKind.DOCUMENT_SLOTS)
+        // Sin red, el trabajo ve la red como medida.
+        control.metered = true
+        fixture.addProduct("Pan de prueba")
+        assertEquals(
+            BackupRun.Verified(1),
+            fixture.runner(destination, uploadGate = gate).run(control),
+        )
+        fixture.addProduct("Leche de prueba")
+        fixture.advance(5.minutes)
+        assertEquals(
+            BackupRun.Skipped(SkipReason.WAITING_FOR_INTERVAL),
+            fixture.runner(destination, uploadGate = gate).run(control),
+        )
+
+        control.backupNow = true
+        assertEquals(
+            BackupRun.Verified(2),
+            fixture.runner(destination, uploadGate = gate).run(control),
+        )
+        assertEquals(fixture.now.toEpochMilliseconds(), fixture.state().lastUploadFinishedAt)
     }
 
     /** Una primera copia confirmada con Wi-Fi y un cambio después. Da los archivos del destino. */
