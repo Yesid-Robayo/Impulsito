@@ -16,5 +16,13 @@
             android:name="io.github.yesidrobayo.shopledger.data.transaction.WriterProcessService"
             android:exported="false"
             android:process=":writer" />
+        <!--
+          Documentos de ranuras en la caché del APK de pruebas, con fallos a pedido. No se exporta:
+          solo lo abre la prueba, en su mismo proceso, y ninguna prueba toca una nube real.
+        -->
+        <provider
+            android:name="io.github.yesidrobayo.shopledger.data.destination.slots.SlotTestProvider"
+            android:authorities="${applicationId}.slottest"
+            android:exported="false" />
     </application>
 </manifest>

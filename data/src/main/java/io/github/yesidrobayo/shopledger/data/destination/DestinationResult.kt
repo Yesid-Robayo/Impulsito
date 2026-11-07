@@ -38,6 +38,14 @@ internal sealed interface DestinationFailure {
     data object QuotaExceeded : DestinationFailure
 
     /**
+     * No se pudo guardar en el teléfono el estado que acompaña al destino, como el de las ranuras:
+     * falló el disco del teléfono, no el destino ni la red. Lo guardado antes sigue intacto, y si
+     * era la marca de una escritura, el documento no llegó a abrirse. El trabajo se reintenta más
+     * tarde, y nunca se cuenta como un fallo de red.
+     */
+    data object LocalStorage : DestinationFailure
+
+    /**
      * Lo que se subió no está, o no es lo que se subió. La copia nunca se confirma, ni después por
      * otra vía.
      */
