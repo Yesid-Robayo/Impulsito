@@ -6,6 +6,8 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.yesidrobayo.shopledger.data.backup.CandidateSchema
+import io.github.yesidrobayo.shopledger.data.backup.masterRows
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.catalog.FIXED_CLOCK
 import io.github.yesidrobayo.shopledger.data.local.catalog.FIXED_REGION
@@ -65,7 +67,7 @@ class SchemaCatalogDatabaseTest {
         val catalog = SchemaCatalog.current
 
         inspectWithoutRoom(file) { connection ->
-            assertEquals(emptyList<String>(), connection.differencesFrom(catalog))
+            assertEquals(emptyList<String>(), CandidateSchema.differences(connection, catalog))
             assertEquals(catalog.version.toLong(), connection.longValue("PRAGMA user_version"))
             assertEquals(
                 listOf(catalog.identityHash),
@@ -90,7 +92,8 @@ class SchemaCatalogDatabaseTest {
 
         // Room crea las tablas desde el JSON, sin guardas: es la base que deja una migración antes
         // de que la app la abra.
-        val beforeOpening = inspectWithoutRoom(file) { it.differencesFrom(SchemaCatalog.current) }
+        val beforeOpening =
+            inspectWithoutRoom(file) { CandidateSchema.differences(it, SchemaCatalog.current) }
         assertEquals(
             SchemaCatalog.current.triggers.map { "falta la guarda ${it.name}" },
             beforeOpening,
@@ -99,7 +102,10 @@ class SchemaCatalogDatabaseTest {
         AppDatabase.open(context, file, Dispatchers.IO, FIXED_CLOCK) { FIXED_REGION }.close()
 
         inspectWithoutRoom(file) {
-            assertEquals(emptyList<String>(), it.differencesFrom(SchemaCatalog.current))
+            assertEquals(
+                emptyList<String>(),
+                CandidateSchema.differences(it, SchemaCatalog.current),
+            )
         }
     }
 
@@ -115,7 +121,10 @@ class SchemaCatalogDatabaseTest {
             // SQLite guarda el nombre nuevo entre comillas dobles: el texto ya no es el de Room.
             assertTrue(before, before.startsWith("CREATE TABLE `tags`"))
             assertTrue(after, after.startsWith("CREATE TABLE \"tags\""))
-            assertEquals(emptyList<String>(), connection.differencesFrom(SchemaCatalog.current))
+            assertEquals(
+                emptyList<String>(),
+                CandidateSchema.differences(connection, SchemaCatalog.current),
+            )
         }
     }
 
@@ -134,13 +143,13 @@ class SchemaCatalogDatabaseTest {
                 assertNotEquals(
                     change.toString(),
                     emptyList<String>(),
-                    connection.differencesFrom(SchemaCatalog.current),
+                    CandidateSchema.differences(connection, SchemaCatalog.current),
                 )
                 for (sql in undo) connection.execSQL(sql)
                 assertEquals(
                     undo.toString(),
                     emptyList<String>(),
-                    connection.differencesFrom(SchemaCatalog.current),
+                    CandidateSchema.differences(connection, SchemaCatalog.current),
                 )
             }
 
