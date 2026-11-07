@@ -9,29 +9,10 @@ import io.github.yesidrobayo.shopledger.data.DataPorts
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.inspectWithoutRoom
-import io.github.yesidrobayo.shopledger.data.local.money.MoneyMovementEntity
-import io.github.yesidrobayo.shopledger.data.local.payment.SalePaymentEntity
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
-import io.github.yesidrobayo.shopledger.data.local.texts
-import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
-import io.github.yesidrobayo.shopledger.domain.model.Money
-import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
-import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
-import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
-import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
-import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
-import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
-import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
-import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
-import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.rule.ReportPeriods
-import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockPlan
-import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockSubject
-import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
-import io.github.yesidrobayo.shopledger.domain.rule.timesQuantity
-import java.io.File
 import java.io.OutputStream
 import java.util.zip.GZIPOutputStream
 import kotlin.time.TimeSource
@@ -40,7 +21,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -173,166 +153,14 @@ internal class SeedVolumeMeasurementTest {
      */
     private suspend fun measureSale(database: AppDatabase, config: SeedConfig) {
         val ports = DataPorts(database, target, Dispatchers.IO, SystemClock)
-        val ids =
-            database.useReaderConnection { connection ->
-                connection.texts(TEN_PRODUCTS).map { it.toLong() }
-            }
-        assertEquals(LINES, ids.size)
-        val cash = requireNotNull(database.paymentMethodDao().findBySystemKey("CASH"))
-        val account = requireNotNull(cash.moneyAccountId)
+        val sales = SeedSaleWriter.on(database, ports, config)
         val times =
             List(ROUNDS + 1) {
                 val mark = TimeSource.Monotonic.markNow()
-                ports.transactions.write {
-                    writeSale(database, ports, ids, cash.id, account, config)
-                    TxResult.Commit(Unit)
-                }
+                sales.write()
                 mark.elapsedNow().inWholeMicroseconds
             }.drop(1)
-        log("venta de $LINES líneas: ${summary(times)}")
-    }
-
-    private suspend fun writeSale(
-        database: AppDatabase,
-        ports: DataPorts,
-        ids: List<Long>,
-        methodId: Long,
-        account: Long,
-        config: SeedConfig,
-    ) {
-        val now = SystemClock.now()
-        val date = BusinessDate.of(now, config.zone)
-        val quantity = QuantityMilli(UNIT)
-        val products = ports.products.findByIds(ids).sortedBy { it.id }
-        val lines =
-            products.map { product ->
-                val state = CostState(product.onHand, product.averageCost, product.stockValue)
-                val plan =
-                    checked(StockModeRules.planLine(LineStockSubject.Tracked(state, quantity)))
-                val exit = requireNotNull(plan as? LineStockPlan.Direct).exit
-                Triple(product, exit, checked(product.salePrice.timesQuantity(quantity)))
-            }
-        val total = lines.fold(Money.ZERO) { sum, line -> sum + line.third }
-        val cost = lines.fold(Money.ZERO) { sum, line -> sum + line.second.cost }
-        val saleId =
-            ports.sales.insert(
-                NewSale(
-                    netTotal = total,
-                    taxTotal = Money.ZERO,
-                    total = total,
-                    totalCost = cost,
-                    totalReplacementCost = Money.ZERO,
-                    orderAdjustment = Money.ZERO,
-                    tipAmount = Money.ZERO,
-                    cashRoundingAmount = Money.ZERO,
-                    amountDue = total,
-                    customerId = null,
-                    priceListId = DEFAULT_PRICE_LIST,
-                    locationId = MAIN_LOCATION,
-                    cashSessionId = null,
-                    quoteId = null,
-                    orderId = null,
-                    note = null,
-                    occurredAt = now,
-                    businessDate = date,
-                    createdAt = now,
-                ),
-            )
-        for ((product, exit, amount) in lines) {
-            val lineId =
-                ports.sales.insertLine(
-                    saleId,
-                    NewSaleLine(
-                        productId = product.id,
-                        unitId = product.details.baseUnitId,
-                        unitFactor = QuantityMilli(UNIT),
-                        enteredQuantity = quantity,
-                        quantity = quantity,
-                        unitPrice = product.salePrice,
-                        unitCost = exit.unitCost,
-                        lineDiscount = Money.ZERO,
-                        orderAdjustmentShare = Money.ZERO,
-                        netAmount = amount,
-                        taxRate = BasisPoints.ZERO,
-                        taxNameSnapshot = null,
-                        taxAmount = Money.ZERO,
-                        lineTotal = amount,
-                        lineCost = exit.cost,
-                        unitReplacementCost = Money.ZERO,
-                        lineReplacementCost = Money.ZERO,
-                        productNameSnapshot = product.details.name,
-                        stockEffect = LineStockEffect.DIRECT,
-                        parentLineId = null,
-                        priceListId = DEFAULT_PRICE_LIST,
-                    ),
-                )
-            ports.stockLedger.append(
-                NewStockMovement(
-                    movement = exit.saleMovement(StockKey(product.id, MAIN_LOCATION, lotId = null)),
-                    reason = null,
-                    unitCost = exit.unitCost,
-                    totalCost = -exit.cost,
-                    balanceAfter = exit.stateAfter.onHand,
-                    averageCostAfter = exit.stateAfter.averageCost,
-                    stockValueAfter = exit.stateAfter.stockValue,
-                    source = StockMovementSource(saleLineId = lineId),
-                    note = null,
-                    occurredAt = now,
-                    businessDate = date,
-                    createdAt = now,
-                ),
-            )
-        }
-        val paymentId =
-            database.salePaymentDao().insert(
-                SalePaymentEntity(
-                    saleId = saleId,
-                    paymentMethodId = methodId,
-                    methodNameSnapshot = "Efectivo",
-                    methodKindSnapshot = "CASH",
-                    amount = total.minor,
-                    feeAmount = 0L,
-                    settlementDate = date.toString(),
-                    moneyAccountId = account,
-                    tenderedAmount = null,
-                    changeAmount = null,
-                    tenderCurrencyCode = null,
-                    tenderCurrencyDecimals = null,
-                    tenderAmount = null,
-                    fxRateMicro = null,
-                    createdAt = now.toEpochMilliseconds(),
-                ),
-            )
-        val balance = database.moneyMovementDao().lastBalanceAfter(account) ?: 0L
-        database.moneyMovementDao().insert(
-            MoneyMovementEntity(
-                moneyAccountId = account,
-                type = "SALE_RECEIPT",
-                amount = total.minor,
-                balanceAfter = balance + total.minor,
-                availableDate = date.toString(),
-                transferGroupId = null,
-                fxRateMicro = null,
-                salePaymentId = paymentId,
-                customerLedgerEntryId = null,
-                supplierLedgerEntryId = null,
-                expenseId = null,
-                purchaseId = null,
-                saleReturnId = null,
-                purchaseReturnId = null,
-                cashSessionId = null,
-                reversesMovementId = null,
-                note = null,
-                occurredAt = now.toEpochMilliseconds(),
-                businessDate = date.toString(),
-                createdAt = now.toEpochMilliseconds(),
-            ),
-        )
-        database.moneyAccountDao().setBalance(
-            account,
-            balance + total.minor,
-            now.toEpochMilliseconds(),
-        )
+        log("venta de ${SeedSaleWriter.LINES} líneas: ${summary(times)}")
     }
 
     /** Mediana, percentil 95 y máximo, en milisegundos con un decimal. */
@@ -367,15 +195,6 @@ internal class SeedVolumeMeasurementTest {
         const val ARGUMENT = "seedVolume"
         const val ROUNDS = 20
         const val P95 = 95
-        const val LINES = 10
-        const val UNIT = 1_000L
-        const val MAIN_LOCATION = 1L
-        const val DEFAULT_PRICE_LIST = 1L
-
-        const val TEN_PRODUCTS =
-            "SELECT CAST(id AS TEXT) FROM products WHERE stock_mode = 'TRACKED' " +
-                "AND archived_at IS NULL AND base_unit_id = " +
-                "(SELECT id FROM units WHERE system_key = 'UNIT') ORDER BY id LIMIT 10"
 
         /** La búsqueda por texto contenido del modelo de datos, con el término ya normalizado. */
         const val SEARCH_SQL =
