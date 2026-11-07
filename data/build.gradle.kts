@@ -39,6 +39,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    sourceSets {
+        // El destino falso de las copias y el servidor WebDAV falso sirven a las pruebas en la JVM y
+        // a las del dispositivo: viven una sola vez, en una carpeta que ven las dos.
+        getByName("test").kotlin.directories += "src/sharedTest/java"
+        getByName("androidTest").kotlin.directories += "src/sharedTest/java"
+    }
 }
 
 room3 {
@@ -54,8 +61,12 @@ dependencies {
     implementation(libs.androidx.room3.runtime)
     implementation(libs.androidx.sqlite.bundled)
     ksp(libs.androidx.room3.compiler)
+    // El cliente HTTP del destino WebDAV: la plataforma no admite PROPFIND, MKCOL ni MOVE. Solo vive
+    // en este módulo, y no llega a :app.
+    implementation(libs.okhttp)
 
-    // Las pruebas en la JVM solo comparan el catálogo del esquema con sus fuentes, y lo generan.
+    // Las pruebas en la JVM comparan el catálogo del esquema con sus fuentes y lo generan, y prueban
+    // lo del destino de copias que no necesita el analizador de XML del sistema.
     testImplementation(libs.junit)
 
     // La base se prueba en el dispositivo, con el mismo driver que la app.
