@@ -10,6 +10,7 @@ import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
+import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 
 /**
@@ -22,11 +23,14 @@ import io.github.yesidrobayo.shopledger.domain.port.EventLog
  * @param scheduler programa el respaldo después de cada ejecución y al vencer la espera. Sin él,
  *   como en las pruebas que corren el trabajo de subida solo, la espera queda a la fábrica por
  *   defecto y nada se programa.
+ * @param maintenance el mantenimiento diario. Sin él, como en esas pruebas, su trabajo queda a la
+ *   fábrica por defecto.
  */
 internal class DataWorkerFactory(
     private val backup: BackupEngine,
     private val log: EventLog,
     private val scheduler: BackupScheduler? = null,
+    private val maintenance: DailyMaintenance? = null,
 ) : WorkerFactory() {
     override fun createWorker(
         appContext: Context,
@@ -47,6 +51,9 @@ internal class DataWorkerFactory(
             scheduler?.let {
                 BackupTriggerWorker(appContext, workerParameters, it::onDebounceElapsed, log)
             }
+
+        DailyMaintenanceWorker::class.java.name ->
+            maintenance?.let { DailyMaintenanceWorker(appContext, workerParameters, it, log) }
 
         else -> null
     }

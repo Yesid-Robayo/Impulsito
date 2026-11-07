@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.localization.LanguagePreferenceFile
 import io.github.yesidrobayo.shopledger.localization.LocalizedContextProvider
 import io.github.yesidrobayo.shopledger.localization.LocalizedSurfaces
 import io.github.yesidrobayo.shopledger.localization.installedVersionOf
+import io.github.yesidrobayo.shopledger.notification.AndroidBackupNotifier
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,8 +44,12 @@ class AppContainer(application: Application) {
     /** El reloj del teléfono. La zona de la fecha de negocio sale de los ajustes, nunca de aquí. */
     val clock: Clock = SystemClock
 
-    /** La capa de datos. Su base todavía no está abierta. */
-    val data: DataGraph = DataGraph(application, dispatchers.io, clock)
+    /**
+     * La capa de datos. Su base todavía no está abierta. Las notificaciones del respaldo, que se
+     * declaran más abajo, se piden al lanzar una, cuando ya existen.
+     */
+    val data: DataGraph =
+        DataGraph(application, dispatchers.io, clock, notifier = { backupNotifier })
 
     /** El único punto de registro de la app. */
     val log: EventLog = data.log
@@ -78,6 +83,10 @@ class AppContainer(application: Application) {
 
     /** Los textos de los trabajos en segundo plano de la capa de datos, en el idioma elegido. */
     val userText: UserTextPort = AndroidUserTextPort(localizedContext)
+
+    /** Las notificaciones del respaldo, en el idioma de la interfaz. */
+    val backupNotifier: AndroidBackupNotifier =
+        AndroidBackupNotifier(application, localizedContext)
 
     /** Los textos que viven fuera de la app, como los nombres de los canales de avisos. */
     val localizedSurfaces: LocalizedSurfaces =

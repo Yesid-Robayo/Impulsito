@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.rule.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
@@ -27,6 +28,9 @@ import kotlin.time.Instant
  *
  * Con cualquier plazo, una hora anterior a la guardada cuenta como plazo vencido: un reloj raro
  * nunca esconde un aviso.
+ *
+ * Los avisos van aparte del estado ([BackupStatusReport.notices]): se calculan con cualquier estado
+ * y ninguno lo cambia.
  */
 object BackupStatusResolver {
     /** El estado de [facts] en el instante [now]. */
@@ -37,7 +41,21 @@ object BackupStatusResolver {
             status = status,
             pendingChanges = pendingChanges,
             savingSoon = status == BackupStatus.PENDING && savingSoon(facts, now),
+            notices = noticesOf(facts),
         )
+    }
+
+    /**
+     * Los avisos que van junto a cualquier estado. Los de espacio miran el teléfono y la base, no el
+     * destino: también avisan sin destino conectado. El de la copia cerca del límite mira aquí solo
+     * la base; el tamaño de la cabeza lo trae la lista del destino, en la pantalla del respaldo.
+     */
+    private fun noticesOf(facts: BackupStatusFacts): Set<BackupNotice> = buildSet {
+        val storage = facts.storage ?: return@buildSet
+        if (StorageNoticeRule.lowDeviceStorage(storage)) add(BackupNotice.LOW_DEVICE_STORAGE)
+        if (StorageNoticeRule.nearCopyLimit(headFileBytes = null, storage.databaseBytes)) {
+            add(BackupNotice.COPY_NEAR_LIMIT)
+        }
     }
 
     private fun statusOf(facts: BackupStatusFacts, pending: Boolean, now: Instant): BackupStatus {

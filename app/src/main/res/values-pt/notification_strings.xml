@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Portugués. -->
+
+    <!-- El canal del respaldo, como lo muestran los ajustes de Android. Su ID no cambia nunca: solo su nombre sigue al
+         idioma. -->
+    <string name="notif_channel_backup">Cópia de segurança</string>
+
+    <!-- Un día sin copia, con un destino conectado. Sin montos ni nombres: se ve entera con el teléfono bloqueado. -->
+    <string name="notif_backup_stale_title">Um dia sem cópia</string>
+    <string name="notif_backup_stale_body">Tocar para revisar a cópia.</string>
+</resources>

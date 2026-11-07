@@ -183,6 +183,22 @@ class BackupScheduler internal constructor(
         queue.awaitNoneRunning(BackupWorkNames.ALL)
     }
 
+    /**
+     * Reconcilia el respaldo al arrancar, a diario y tras reemplazar la base: deja programado el
+     * mantenimiento diario y, si hay cambios sin copia, un destino conectado y ningún trabajo de
+     * subida esperando ni corriendo, encola la subida. También tras un fallo o una copia que la app
+     * no podría restaurar: esa no se repite sola, y esta es una de sus salidas.
+     *
+     * Con una restauración en curso no encola nada: el arranque la termina y vuelve a llamar aquí.
+     */
+    internal suspend fun reconcile() {
+        if (restorePending()) return
+        queue.keepDailyMaintenance()
+        val current = uploadable() ?: return
+        if (queue.uploadWork() != BackupUploadWork.NONE) return
+        enqueueUpload(current, pastInterval = false)
+    }
+
     /** La restauración se canceló: lo que quedó pendiente vuelve a encolarse. */
     internal suspend fun resumeAfterRestore() {
         if (restorePending()) return
@@ -335,6 +351,12 @@ internal interface BackupWorkQueue {
 
     /** Espera a que ninguno de [names] figure corriendo. */
     suspend fun awaitNoneRunning(names: List<String>)
+
+    /**
+     * Deja programado el mantenimiento diario, salvo que ya lo esté: conservar el que existe no
+     * mueve su próxima ejecución.
+     */
+    suspend fun keepDailyMaintenance() {}
 
     companion object {
         /**

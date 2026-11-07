@@ -9,9 +9,12 @@ package io.github.yesidrobayo.shopledger.domain.model.backup
  * @property savingSoon con [BackupStatus.PENDING], la espera todavía es la corta y el texto puede
  *   decir que se guardan en un momento. Pasado ese margen, dice que todavía no se pudo hacer la
  *   copia. Con cualquier otro estado es falso.
+ * @property notices los avisos que se muestran junto al estado, sea cual sea: ninguno lo cambia, y
+ *   ningún estado los esconde.
  */
 data class BackupStatusReport(
     val status: BackupStatus,
     val pendingChanges: Long,
     val savingSoon: Boolean,
+    val notices: Set<BackupNotice> = emptySet(),
 )

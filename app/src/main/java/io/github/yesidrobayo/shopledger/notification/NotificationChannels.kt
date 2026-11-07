@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
+import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.localization.LocalizedSurface
 
 /**
@@ -43,10 +44,24 @@ class NotificationChannels(
 
     companion object {
         /**
-         * Los canales de la app. Todavía no hay avisos: cada uno suma aquí su canal cuando llega,
-         * con un ID que no cambia nunca.
+         * El canal del respaldo: un día sin copia y, después, lo que detiene las copias hasta que
+         * la persona actúe. Nace con la importancia de siempre, y desde ahí la decide la persona.
          */
-        val APP_CHANNELS: List<NotificationChannelSpec> = emptyList()
+        const val BACKUP_CHANNEL_ID = "backup"
+
+        /**
+         * Los canales de la app. Cada aviso suma aquí su canal cuando llega, con un ID que no cambia
+         * nunca.
+         */
+        val APP_CHANNELS: List<NotificationChannelSpec> =
+            listOf(
+                NotificationChannelSpec(
+                    id = BACKUP_CHANNEL_ID,
+                    name = R.string.notif_channel_backup,
+                    description = null,
+                    importance = ChannelImportance.DEFAULT,
+                ),
+            )
     }
 }
 

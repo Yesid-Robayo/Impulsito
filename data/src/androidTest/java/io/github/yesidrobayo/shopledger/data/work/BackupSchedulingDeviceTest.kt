@@ -17,9 +17,12 @@ import androidx.work.WorkerParameters
 import androidx.work.testing.SynchronousExecutor
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
+import io.github.yesidrobayo.shopledger.data.BackupNotifier
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupFixture
 import io.github.yesidrobayo.shopledger.data.backup.BackupRun
+import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
+import io.github.yesidrobayo.shopledger.data.backup.MaintenanceAccess
 import io.github.yesidrobayo.shopledger.data.backup.MemoryLog
 import io.github.yesidrobayo.shopledger.data.backup.MutexBackupPause
 import io.github.yesidrobayo.shopledger.data.backup.RunKind
@@ -27,11 +30,14 @@ import io.github.yesidrobayo.shopledger.data.backup.ScheduledBackupWork
 import io.github.yesidrobayo.shopledger.data.backup.SkipReason
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
+import io.github.yesidrobayo.shopledger.domain.port.Clock
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -48,7 +54,8 @@ import org.junit.runner.RunWith
  * Los trabajos del respaldo en la biblioteca de trabajos de prueba: nombres, etiquetas, red,
  * retraso y entrada de cada uno; reemplazar y conservar; que conservar admite un trabajo nuevo
  * cuando el anterior terminó; la pausa de una restauración; que una venta confirmada en la base
- * real deja la espera encolada; y que sin aceptar la política no se encola nada hasta aceptarla.
+ * real deja la espera encolada; que sin aceptar la política no se encola nada hasta aceptarla; y
+ * el mantenimiento diario, periódico y sin condiciones.
  */
 @RunWith(AndroidJUnit4::class)
 class BackupSchedulingDeviceTest {
@@ -340,6 +347,77 @@ class BackupSchedulingDeviceTest {
             log.lines,
         )
     }
+
+    @Test
+    fun theDailyMaintenanceRunsEveryDayWithoutConditionsAndKeepsItsSchedule() = runBlocking {
+        queue.keepDailyMaintenance()
+        val first = single(BackupWorkNames.DAILY_MAINTENANCE)
+        queue.keepDailyMaintenance()
+
+        val kept = single(BackupWorkNames.DAILY_MAINTENANCE)
+        assertEquals(first.id, kept.id)
+        assertEquals(24.hours.inWholeMilliseconds, kept.periodicityInfo?.repeatIntervalMillis)
+        // Nunca usa la red, y corre también sin cargador.
+        assertEquals(NetworkType.NOT_REQUIRED, kept.constraints.requiredNetworkType)
+        assertFalse(kept.constraints.requiresCharging())
+        assertFalse(kept.constraints.requiresBatteryNotLow())
+        assertFalse(kept.constraints.requiresDeviceIdle())
+        assertTrue(BackupWorkNames.DAILY_MAINTENANCE in kept.tags)
+        // Una restauración no lo detiene: no está entre los trabajos que cancela.
+        assertFalse(BackupWorkNames.DAILY_MAINTENANCE in BackupWorkNames.ALL)
+    }
+
+    @Test
+    fun theMaintenanceWorkerRetriesOnlyWhileTheDatabaseWaitsAndHidesFailures() = runBlocking {
+        val log = MemoryLog()
+        val cases =
+            listOf(
+                maintenance(open = { MaintenanceAccess.Unavailable }, log = log) to
+                    ListenableWorker.Result.success(),
+                maintenance(open = { MaintenanceAccess.Waiting }, log = log) to
+                    ListenableWorker.Result.retry(),
+                maintenance(open = { error("falla de prueba") }, log = log) to
+                    ListenableWorker.Result.success(),
+            )
+        for ((maintenance, expected) in cases) {
+            val worker =
+                TestListenableWorkerBuilder<DailyMaintenanceWorker>(context)
+                    .setWorkerFactory(
+                        object : WorkerFactory() {
+                            override fun createWorker(
+                                appContext: Context,
+                                workerClassName: String,
+                                workerParameters: WorkerParameters,
+                            ) = DailyMaintenanceWorker(
+                                appContext,
+                                workerParameters,
+                                maintenance,
+                                log,
+                            )
+                        },
+                    ).build()
+            assertEquals(expected, worker.doWork())
+        }
+        assertEquals(
+            listOf(
+                "Falla no prevista del mantenimiento diario: error=" +
+                    IllegalStateException::class.java.name,
+            ),
+            log.lines,
+        )
+    }
+
+    private fun maintenance(open: suspend () -> MaintenanceAccess, log: MemoryLog) =
+        DailyMaintenance(
+            clock = Clock { Instant.parse("2026-11-07T15:00:00Z") },
+            log = log,
+            mutex = Mutex(),
+            restorePending = { false },
+            open = open,
+            reconcile = {},
+            notifier = { BackupNotifier.None },
+            cleanUp = {},
+        )
 
     private fun suspendingAnswer(answer: () -> Boolean): suspend () -> Boolean = { answer() }
 

@@ -2,11 +2,13 @@ package io.github.yesidrobayo.shopledger.data.work
 
 import android.content.Context
 import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.Operation
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkQuery
@@ -17,6 +19,7 @@ import io.github.yesidrobayo.shopledger.data.backup.RunKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -86,6 +89,22 @@ internal class WorkManagerBackupQueue(private val context: Context) : BackupWork
         }
     }
 
+    override suspend fun keepDailyMaintenance() {
+        // Sin restricciones: no usa la red, y debe correr también sin cargador ni Wi-Fi.
+        val request =
+            PeriodicWorkRequestBuilder<DailyMaintenanceWorker>(
+                MAINTENANCE_PERIOD.inWholeMilliseconds,
+                TimeUnit.MILLISECONDS,
+            ).addTag(BackupWorkNames.DAILY_MAINTENANCE)
+                .build()
+        manager()
+            ?.enqueueUniquePeriodicWork(
+                BackupWorkNames.DAILY_MAINTENANCE,
+                ExistingPeriodicWorkPolicy.KEEP,
+                request,
+            )?.done()
+    }
+
     private suspend fun enqueue(
         name: String,
         policy: ExistingWorkPolicy,
@@ -138,5 +157,8 @@ internal class WorkManagerBackupQueue(private val context: Context) : BackupWork
 
     private companion object {
         val AWAIT_LIMIT = 2.minutes
+
+        /** Cada cuánto corre el mantenimiento diario. */
+        val MAINTENANCE_PERIOD = 24.hours
     }
 }

@@ -260,4 +260,26 @@ internal interface BackupStateDao {
             "AND destination_id = :destinationId",
     )
     suspend fun markFullVerify(now: Long, destinationId: String): Int
+
+    /**
+     * Deja lo que encontró la verificación diaria de la base activa: [count] elementos con un saldo
+     * que no coincide con su libro, y el fallo `LOCAL_INVARIANT` a la vista. Un fallo distinto que
+     * ya estaba se conserva, porque su salida es otra y el programador lo mira: la copia siguiente
+     * revisa lo mismo y lo deja al confirmarse.
+     *
+     * Solo se llama con [count] mayor que 0: una base sana no cambia nada, y el aviso lo borra una
+     * copia válida.
+     */
+    @Query(
+        "UPDATE backup_state SET invariant_failures = :count, failure_code = CASE WHEN " +
+            "failure_code IS NULL THEN 'LOCAL_INVARIANT' ELSE failure_code END WHERE id = 1",
+    )
+    suspend fun recordActiveInvariantFailures(count: Long): Int
+
+    /**
+     * Anota que salió la notificación de un día sin copia, con el reloj de pared en milisegundos
+     * UTC: la siguiente espera un día desde aquí.
+     */
+    @Query("UPDATE backup_state SET last_stale_notice_at = :now WHERE id = 1")
+    suspend fun markStaleNotice(now: Long): Int
 }

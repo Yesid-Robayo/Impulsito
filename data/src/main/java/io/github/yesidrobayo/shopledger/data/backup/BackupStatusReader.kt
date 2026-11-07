@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNetwork
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
+import io.github.yesidrobayo.shopledger.domain.model.backup.DeviceStorage
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
 import kotlin.coroutines.CoroutineContext
@@ -34,6 +35,8 @@ import kotlinx.coroutines.withContext
  * @param changes emite al empezar a mirarlo, y otra vez cuando cambia algo de esto que no pasa por
  *   `backup_state`, como aceptar la política: así el estado se calcula otra vez sin esperar a la
  *   siguiente venta.
+ * @param storage el espacio libre del teléfono y lo que ocupa la base, para los avisos de espacio,
+ *   o nulo si no se pudo leer. Lee el disco.
  */
 internal class BackupStatusEnvironment(
     val restorePending: () -> Boolean,
@@ -42,6 +45,7 @@ internal class BackupStatusEnvironment(
     val network: () -> BackupNetwork,
     val firstHandoffAt: suspend () -> Long?,
     val changes: Flow<Unit> = flowOf(Unit),
+    val storage: () -> DeviceStorage? = { null },
 ) {
     companion object {
         /**
@@ -95,6 +99,7 @@ internal class BackupStatusReader(
         firstHandoffAt = environment.firstHandoffAt(),
         meteredPolicy = meteredPolicy(),
         network = environment.network(),
+        storage = environment.storage(),
     )
 }
 
@@ -115,6 +120,7 @@ internal fun backupStatusFacts(
     firstHandoffAt: Long?,
     meteredPolicy: MeteredBackupPolicy,
     network: BackupNetwork,
+    storage: DeviceStorage? = null,
 ): BackupStatusFacts = BackupStatusFacts(
     restoreInProgress = restoreInProgress,
     linkState =
@@ -138,4 +144,5 @@ internal fun backupStatusFacts(
     lastHumanCheckAt = row?.lastHumanCheckAt?.let(Instant::fromEpochMilliseconds),
     meteredPolicy = meteredPolicy,
     network = network,
+    storage = storage,
 )

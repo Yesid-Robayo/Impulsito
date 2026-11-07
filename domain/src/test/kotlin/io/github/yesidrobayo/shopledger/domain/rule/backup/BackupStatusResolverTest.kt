@@ -4,10 +4,12 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKin
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNetwork
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
+import io.github.yesidrobayo.shopledger.domain.model.backup.DeviceStorage
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
@@ -463,6 +465,44 @@ class BackupStatusResolverTest {
         assertEquals(
             0,
             BackupStatusResolver.resolve(upToDate.copy(verifiedSeq = 41), now).pendingChanges,
+        )
+    }
+
+    @Test
+    fun `space notices go with any status and never change it`() {
+        val mib = 1024L * 1024
+        val low = DeviceStorage(usableBytes = 100 * mib, databaseBytes = 10 * mib)
+        val disconnected = upToDate.copy(linkState = BackupLinkState.NOT_CONNECTED, storage = low)
+        val failed = upToDate.copy(failureCode = BackupFailureCode.QUOTA_EXCEEDED, storage = low)
+
+        val withoutDestination = BackupStatusResolver.resolve(disconnected, now)
+        val withAFailure = BackupStatusResolver.resolve(failed, now)
+
+        assertEquals(BackupStatus.NOT_CONNECTED, withoutDestination.status)
+        assertEquals(setOf(BackupNotice.LOW_DEVICE_STORAGE), withoutDestination.notices)
+        assertEquals(BackupStatus.FAILED, withAFailure.status)
+        assertEquals(setOf(BackupNotice.LOW_DEVICE_STORAGE), withAFailure.notices)
+    }
+
+    @Test
+    fun `a base near the restore limit warns while the copy keeps going`() {
+        val gib = 1024L * 1024 * 1024
+        val near = DeviceStorage(usableBytes = 10 * gib, databaseBytes = gib * 9 / 10)
+
+        val report = BackupStatusResolver.resolve(upToDate.copy(storage = near), now)
+
+        assertEquals(BackupStatus.UP_TO_DATE, report.status)
+        assertEquals(setOf(BackupNotice.COPY_NEAR_LIMIT), report.notices)
+    }
+
+    @Test
+    fun `without reading the space there is no space notice`() {
+        val ample = DeviceStorage(usableBytes = 10L * 1024 * 1024 * 1024, databaseBytes = 1)
+
+        assertEquals(emptySet<BackupNotice>(), BackupStatusResolver.resolve(upToDate, now).notices)
+        assertEquals(
+            emptySet<BackupNotice>(),
+            BackupStatusResolver.resolve(upToDate.copy(storage = ample), now).notices,
         )
     }
 }

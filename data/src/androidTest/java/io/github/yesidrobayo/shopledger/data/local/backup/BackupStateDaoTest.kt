@@ -125,6 +125,8 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "confirmUnrestorable",
                 "recordInvariantFailures",
                 "markFullVerify",
+                "recordActiveInvariantFailures",
+                "markStaleNotice",
             ),
             functionsOf(BackupStateDao::class.java),
         )
@@ -213,6 +215,17 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
         changed(before.copy(headGeneration = 5, headFileRef = "copia-5", firstUnsyncedAt = LATER))
         assertEquals(1, state.markFullVerify(MUCH_LATER, "huella"))
         changed(before.copy(lastFullVerifyAt = MUCH_LATER))
+
+        // La verificación diaria deja el número y su fallo, sin tapar otro fallo que ya estaba.
+        assertEquals(1, state.recordActiveInvariantFailures(2))
+        changed(before.copy(invariantFailures = 2, failureCode = "LOCAL_INVARIANT"))
+        state.recordFailure("QUOTA_EXCEEDED")
+        before = requireNotNull(state.get())
+        assertEquals(1, state.recordActiveInvariantFailures(3))
+        changed(before.copy(invariantFailures = 3))
+        // La notificación de un día sin copia solo anota su hora.
+        assertEquals(1, state.markStaleNotice(MUCH_LATER))
+        changed(before.copy(lastStaleNoticeAt = MUCH_LATER))
 
         // El enlace solo deja de estar conectado si sigue en el mismo destino.
         assertEquals(0, state.markConflict("OTHER_DEVICE", null, null, null, "otra"))

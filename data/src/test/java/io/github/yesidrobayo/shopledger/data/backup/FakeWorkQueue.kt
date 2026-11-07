@@ -58,6 +58,10 @@ internal class FakeWorkQueue(private val now: () -> Instant) : BackupWorkQueue {
         calls += "await none running"
     }
 
+    override suspend fun keepDailyMaintenance() {
+        calls += "keep maintenance"
+    }
+
     /** Conservar: un trabajo nuevo solo entra si no hay otro con ese nombre encolado o corriendo. */
     private fun keep(name: String, work: Queued) {
         if (name !in queued && name !in running) queued[name] = work

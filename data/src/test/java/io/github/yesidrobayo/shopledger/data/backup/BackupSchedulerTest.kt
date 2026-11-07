@@ -273,8 +273,71 @@ class BackupSchedulerTest {
         scheduler.onRunFinished(BackupRun.Verified(2), null)
         scheduler.onRunFinished(BackupRun.Skipped(SkipReason.WAITING_FOR_INTERVAL), null)
         scheduler.resumeAfterRestore()
+        scheduler.reconcile()
 
         assertEquals(emptyList<String>(), queue.calls)
+    }
+
+    @Test
+    fun reconcileKeepsTheMaintenanceAndQueuesWhatIsPendingWithoutAnUpload() = runBlocking {
+        scheduler.reconcile()
+
+        assertEquals(
+            listOf("keep maintenance", "keep unmetered", "keep upload 40m con red"),
+            queue.calls,
+        )
+    }
+
+    @Test
+    fun reconcileRetakesACopyThatTheAppCouldNotRestore() = runBlocking {
+        // Esa copia no se repite sola: reconciliar es una de sus salidas.
+        facts = facts?.copy(failureCode = BackupFailureCode.LOCAL_INVARIANT_FATAL.name)
+
+        scheduler.reconcile()
+
+        assertEquals(
+            listOf("keep maintenance", "keep unmetered", "keep upload 40m con red"),
+            queue.calls,
+        )
+    }
+
+    @Test
+    fun reconcileLeavesAnUploadThatWaitsOrRuns() = runBlocking {
+        queue.keepUpload(5.minutes, needsNetwork = true)
+        queue.calls.clear()
+
+        scheduler.reconcile()
+        queue.running += BackupWorkNames.UPLOAD
+        queue.queued.clear()
+        scheduler.reconcile()
+
+        assertEquals(listOf("keep maintenance", "keep maintenance"), queue.calls)
+    }
+
+    @Test
+    fun reconcileWithThePolicyPendingKeepsOnlyTheLocalMaintenance() = runBlocking {
+        // El mantenimiento no sale al destino: la pausa de la política no lo detiene.
+        accepted = false
+
+        scheduler.reconcile()
+
+        assertEquals(listOf("keep maintenance"), queue.calls)
+    }
+
+    @Test
+    fun reconcileWithNothingToUploadOnlyKeepsTheMaintenance() = runBlocking {
+        facts = facts?.copy(hasPending = false)
+        scheduler.reconcile()
+        facts = facts?.copy(hasPending = true, connectedKind = null)
+        scheduler.reconcile()
+        // Con la base todavía sin leer, el mantenimiento queda igual.
+        facts = null
+        scheduler.reconcile()
+
+        assertEquals(
+            listOf("keep maintenance", "keep maintenance", "keep maintenance"),
+            queue.calls,
+        )
     }
 
     @Test

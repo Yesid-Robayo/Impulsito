@@ -6,17 +6,21 @@ import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupEvent
 import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
 import io.github.yesidrobayo.shopledger.data.backup.BackupWorkQueue
+import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
 import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
 import io.github.yesidrobayo.shopledger.data.backup.DurableFileOps
+import io.github.yesidrobayo.shopledger.data.backup.MaintenanceAccess
 import io.github.yesidrobayo.shopledger.data.backup.RestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.RestoreFiles
 import io.github.yesidrobayo.shopledger.data.backup.RestoreLockFile
 import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
+import io.github.yesidrobayo.shopledger.data.backup.RoomMaintenanceDatabase
 import io.github.yesidrobayo.shopledger.data.backup.RoomRestoredDatabaseVerifier
 import io.github.yesidrobayo.shopledger.data.backup.ScheduleFacts
 import io.github.yesidrobayo.shopledger.data.backup.ScheduledBackupWork
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestore
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestoreGate
+import io.github.yesidrobayo.shopledger.data.backup.cleanUpExpiredLocalCopies
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.productionRestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
@@ -88,6 +92,8 @@ import kotlinx.coroutines.withContext
  *   capas de datos que las pruebas arman a mano, confirmar un cambio no programa nada.
  * @param currentPolicy las versiones de la política y los términos que publica la app. Solo las
  *   pruebas la cambian, para ver qué pasa cuando sube una versión.
+ * @param notifier las notificaciones del respaldo, que la interfaz implementa con sus textos. Se
+ *   pide al lanzar una, no al crear esta clase.
  */
 class DataGraph internal constructor(
     private val context: Context,
@@ -102,6 +108,7 @@ class DataGraph internal constructor(
     },
     private val workQueue: ((Context) -> BackupWorkQueue)? = null,
     private val currentPolicy: PolicyVersions = PolicyVersions.CURRENT,
+    private val notifier: () -> BackupNotifier = { BackupNotifier.None },
 ) {
     private val mutex = Mutex()
 
@@ -244,20 +251,58 @@ class DataGraph internal constructor(
      * biblioteca de trabajos al configurarla, y crearla no toca el disco.
      */
     val workerFactory: WorkerFactory by lazy {
-        DataWorkerFactory(backupEngine, log, backupScheduler)
+        DataWorkerFactory(backupEngine, log, backupScheduler, dailyMaintenance)
+    }
+
+    /**
+     * El mantenimiento diario del respaldo: verifica la base, limpia lo local vencido, reconcilia
+     * el respaldo y avisa un día sin copia. Crearlo no toca el disco.
+     */
+    internal val dailyMaintenance: DailyMaintenance by lazy {
+        DailyMaintenance(
+            clock = clock,
+            log = log,
+            mutex = backupMutex,
+            restorePending = {
+                withContext(ioContext) { RestoreMarkers(files().noBackupDirectory).present() }
+            },
+            open = {
+                when (val access = openForWork()) {
+                    is DataAccess.Ready ->
+                        MaintenanceAccess.Ready(RoomMaintenanceDatabase(access.ports, ioContext))
+
+                    WorkAccess.MigrationPending, WorkAccess.RestorePending ->
+                        MaintenanceAccess.Waiting
+
+                    is DataAccess.Rescue -> MaintenanceAccess.Unavailable
+                }
+            },
+            reconcile = backupScheduler::reconcile,
+            notifier = notifier,
+            cleanUp = { now ->
+                val restoreFiles = withContext(ioContext) { RestoreFiles(files()) }
+                cleanUpExpiredLocalCopies(restoreFiles, clock, log, ioContext, now)
+            },
+        )
     }
 
     /**
      * La capa de datos de la app, con su base en la carpeta de bases, el registro de Android y los
      * trabajos del respaldo en la biblioteca de trabajos del sistema.
      */
-    constructor(context: Context, ioContext: CoroutineContext, clock: Clock) : this(
+    constructor(
+        context: Context,
+        ioContext: CoroutineContext,
+        clock: Clock,
+        notifier: () -> BackupNotifier = { BackupNotifier.None },
+    ) : this(
         context = context.applicationContext,
         ioContext = ioContext,
         clock = clock,
         files = { DatabaseFiles.of(context) },
         log = AndroidEventLog(),
         workQueue = ::WorkManagerBackupQueue,
+        notifier = notifier,
     )
 
     /**
@@ -358,6 +403,7 @@ class DataGraph internal constructor(
                                 databaseFiles.noBackupDirectory,
                                 consentGate,
                                 ioContext,
+                                databaseFiles.database,
                             ),
                         commitListener = commitListener,
                     )
@@ -366,6 +412,9 @@ class DataGraph internal constructor(
                 }
                 val opened = DataAccess.Ready(ports)
                 ready = opened
+                // Al arrancar, y tras reemplazar la base: retoma lo pendiente y deja programado el
+                // mantenimiento. Va aparte: la apertura no espera por él.
+                if (workQueue != null) backgroundScope.launch { backupScheduler.reconcile() }
                 log.info(
                     DataEvent.DATABASE_OPENED,
                     LogField.durationMillis("duración", started.elapsedNow().inWholeMilliseconds),
