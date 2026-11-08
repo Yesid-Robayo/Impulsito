@@ -9,4 +9,8 @@
     <!-- Un día sin copia, con un destino conectado. Sin montos ni nombres: se ve entera con el teléfono bloqueado. -->
     <string name="notif_backup_stale_title">A day without a backup</string>
     <string name="notif_backup_stale_body">Tap to check the backup.</string>
+
+    <!-- Con la nube del teléfono, toca revisar que la copia aparezca. %1$s es el nombre de esa nube, que no se traduce. -->
+    <string name="notif_backup_check_title">The backup in %1$s needs checking</string>
+    <string name="notif_backup_check_body">Tap to see what time the file should show.</string>
 </resources>

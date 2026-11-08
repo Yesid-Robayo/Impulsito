@@ -26,6 +26,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.SlotCandidate
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import java.io.ByteArrayOutputStream
 import java.io.File
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -97,6 +98,35 @@ class DocumentSlotDestinationTest {
         assertArrayEquals(oldB, docB.bytes)
         val listed = destination.listCopies(control).value().copies.map { it.ref.value }
         assertEquals(listOf("A", "B", "C"), listed)
+    }
+
+    @Test
+    fun theFirstHandoffIsKeptWhileTheSlotsRotate() = runBlocking<Unit> {
+        // Cada día una copia nueva va a otra ranura; los días para revisar la nube siguen
+        // contando desde la primera entrega.
+        for (day in 0..3) {
+            val later =
+                DocumentSlotDestination(
+                    store,
+                    documents,
+                    Clock { now + day.days },
+                    Dispatchers.Unconfined,
+                )
+            val generation = 4L + day
+            val head = requireNotNull(store.state).slots.entries
+                .filter { it.value.copy != null }
+                .maxBy { it.value.copy?.generation ?: 0 }
+                .key
+            val plan = later.planUpload(
+                outgoing(generation, bytes(generation.toInt(), 500 + day)),
+                CopyRef(head.name),
+            ).value()
+            val stored = later.upload(plan, control).value()
+            later.verify(stored, VerifyMode.SAMPLE, null, control).value()
+            later.confirm(stored).value()
+        }
+
+        assertEquals(now.toEpochMilliseconds(), store.state?.firstHandoffAt)
     }
 
     @Test

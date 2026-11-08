@@ -41,21 +41,45 @@ object BackupStatusResolver {
             status = status,
             pendingChanges = pendingChanges,
             savingSoon = status == BackupStatus.PENDING && savingSoon(facts, now),
-            notices = noticesOf(facts),
+            notices = noticesOf(facts, now),
         )
     }
 
     /**
-     * Los avisos que van junto a cualquier estado. Los de espacio miran el teléfono y la base, no el
-     * destino: también avisan sin destino conectado. El de la copia cerca del límite mira aquí solo
-     * la base; el tamaño de la cabeza lo trae la lista del destino, en la pantalla del respaldo.
+     * Los avisos que van junto a cualquier estado, para que ningún fallo los esconda.
+     *
+     * - Los de espacio miran el teléfono y la base, no el destino: también avisan sin destino
+     *   conectado. El de la copia cerca del límite mira aquí solo la base; el tamaño de la cabeza lo
+     *   trae la lista del destino, en la pantalla del respaldo.
+     * - La revisión pendiente es la misma condición que el estado [BackupStatus.CHECK_DUE], con un
+     *   destino conectado: un fallo o un día sin copia le ganan como estado, y el aviso sigue.
+     * - La lectura completa vencida mira, con WebDAV conectado, la última lectura entera o, sin
+     *   ninguna, la conexión. Sin ninguna de las dos no hay con qué medir.
      */
-    private fun noticesOf(facts: BackupStatusFacts): Set<BackupNotice> = buildSet {
-        val storage = facts.storage ?: return@buildSet
-        if (StorageNoticeRule.lowDeviceStorage(storage)) add(BackupNotice.LOW_DEVICE_STORAGE)
-        if (StorageNoticeRule.nearCopyLimit(headFileBytes = null, storage.databaseBytes)) {
-            add(BackupNotice.COPY_NEAR_LIMIT)
+    private fun noticesOf(facts: BackupStatusFacts, now: Instant): Set<BackupNotice> = buildSet {
+        facts.storage?.let { storage ->
+            if (StorageNoticeRule.lowDeviceStorage(storage)) add(BackupNotice.LOW_DEVICE_STORAGE)
+            if (StorageNoticeRule.nearCopyLimit(headFileBytes = null, storage.databaseBytes)) {
+                add(BackupNotice.COPY_NEAR_LIMIT)
+            }
         }
+        if (facts.linkState == BackupLinkState.NOT_CONNECTED) return@buildSet
+        val kind = facts.destinationKind
+        if (kind == BackupDestinationKind.DOCUMENT_SLOTS && isCheckDue(facts, now)) {
+            add(BackupNotice.HUMAN_CHECK_DUE)
+        }
+        if (kind == BackupDestinationKind.WEBDAV && fullReadOverdue(facts, now)) {
+            add(BackupNotice.FULL_READ_OVERDUE)
+        }
+    }
+
+    /**
+     * Con WebDAV, pasaron [BackupTimings.FULL_READ_NOTICE] desde la última lectura entera o, sin
+     * ninguna, desde la conexión. Sin ninguna de las dos no hay con qué medir.
+     */
+    private fun fullReadOverdue(facts: BackupStatusFacts, now: Instant): Boolean {
+        val since = facts.lastFullVerifyAt ?: facts.connectedAt ?: return false
+        return expired(since, BackupTimings.FULL_READ_NOTICE, now)
     }
 
     private fun statusOf(facts: BackupStatusFacts, pending: Boolean, now: Instant): BackupStatus {

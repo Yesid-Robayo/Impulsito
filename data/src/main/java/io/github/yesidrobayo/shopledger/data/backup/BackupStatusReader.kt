@@ -37,6 +37,8 @@ import kotlinx.coroutines.withContext
  *   siguiente venta.
  * @param storage el espacio libre del teléfono y lo que ocupa la base, para los avisos de espacio,
  *   o nulo si no se pudo leer. Lee el disco.
+ * @param connectedAt cuándo se conectó el destino, en milisegundos UTC, según `link.json`, o nulo.
+ *   Lee el disco.
  */
 internal class BackupStatusEnvironment(
     val restorePending: () -> Boolean,
@@ -46,6 +48,7 @@ internal class BackupStatusEnvironment(
     val firstHandoffAt: suspend () -> Long?,
     val changes: Flow<Unit> = flowOf(Unit),
     val storage: () -> DeviceStorage? = { null },
+    val connectedAt: suspend () -> Long? = { null },
 ) {
     companion object {
         /**
@@ -100,6 +103,7 @@ internal class BackupStatusReader(
         meteredPolicy = meteredPolicy(),
         network = environment.network(),
         storage = environment.storage(),
+        connectedAt = environment.connectedAt(),
     )
 }
 
@@ -121,6 +125,7 @@ internal fun backupStatusFacts(
     meteredPolicy: MeteredBackupPolicy,
     network: BackupNetwork,
     storage: DeviceStorage? = null,
+    connectedAt: Long? = null,
 ): BackupStatusFacts = BackupStatusFacts(
     restoreInProgress = restoreInProgress,
     linkState =
@@ -145,4 +150,6 @@ internal fun backupStatusFacts(
     meteredPolicy = meteredPolicy,
     network = network,
     storage = storage,
+    lastFullVerifyAt = row?.lastFullVerifyAt?.let(Instant::fromEpochMilliseconds),
+    connectedAt = connectedAt?.let(Instant::fromEpochMilliseconds),
 )

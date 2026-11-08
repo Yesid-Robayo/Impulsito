@@ -130,14 +130,14 @@ class DailyMaintenanceDeviceTest {
         fixture.advance(20.hours)
         maintenance.run()
 
-        assertEquals(listOf(BackupNotification.STALE), shown)
+        assertEquals(listOf(BackupNotification.Stale), shown)
         assertEquals(
             fixture.now.toEpochMilliseconds() - 20.hours.inWholeMilliseconds,
             fixture.state().lastStaleNoticeAt,
         )
         fixture.advance(4.hours)
         maintenance.run()
-        assertEquals(listOf(BackupNotification.STALE, BackupNotification.STALE), shown)
+        assertEquals(listOf(BackupNotification.Stale, BackupNotification.Stale), shown)
     }
 
     @Test

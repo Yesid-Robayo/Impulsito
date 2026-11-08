@@ -26,6 +26,12 @@ object BackupTimings {
     val HUMAN_CHECK: Duration = 7.days
 
     /**
+     * Cuánto puede pasar con WebDAV sin leer una copia entera antes de avisarlo. Con datos móviles
+     * cada copia se comprueba por tamaño y una muestra, y el centro del archivo queda sin leer.
+     */
+    val FULL_READ_NOTICE: Duration = 7.days
+
+    /**
      * Lo menos que pasa entre dos escrituras automáticas en la nube del teléfono, con cualquier red:
      * cada escritura es una subida completa de la otra app.
      */

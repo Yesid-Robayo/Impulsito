@@ -2,6 +2,8 @@ package io.github.yesidrobayo.shopledger.data.backup
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.yesidrobayo.shopledger.data.destination.DestinationLink
+import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.FakeBackupDestination
 import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotEntry
@@ -12,6 +14,7 @@ import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNetwork
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
@@ -46,6 +49,7 @@ class BackupStatusDeviceTest {
     private val fixture = BackupFixture(context, "backup-status-test")
     private val outside = File(context.noBackupFilesDir, "backup-status-test-outside")
     private var firstHandoffAt: Long? = null
+    private var connectedAt: Long? = null
     private var restorePending = false
 
     /** Sin red de verdad ni trabajos: lo que el teléfono diría está fijo en la prueba. */
@@ -58,6 +62,7 @@ class BackupStatusDeviceTest {
                 BackupNetwork(validated = true, metered = false, dataSaverRestricted = false)
             },
             firstHandoffAt = { firstHandoffAt },
+            connectedAt = { connectedAt },
         )
 
     private lateinit var status: ObserveBackupStatusUseCase
@@ -130,6 +135,49 @@ class BackupStatusDeviceTest {
     }
 
     @Test
+    fun withSlotsTheCheckNoticeStaysInSightBehindAFailureAndNeverSaysAllSaved() = runBlocking {
+        fixture.addProduct("Pan de prueba")
+        assertTrue(fixture.runner(FakeBackupDestination()).run(TestControl()) is BackupRun.Verified)
+        fixture.connect(BackupDestinationKind.DOCUMENT_SLOTS)
+        firstHandoffAt = fixture.now.toEpochMilliseconds()
+        fixture.advance(24.hours * 7)
+        fixture.sql("UPDATE backup_state SET failure_code = 'LOCAL_INVARIANT' WHERE id = 1")
+
+        val report = status.current()
+
+        assertEquals(BackupStatus.FAILED, report.status)
+        assertTrue(BackupNotice.HUMAN_CHECK_DUE in report.notices)
+        // Revisar lo quita, y con ranuras nunca se dice que todo está guardado.
+        fixture.sql(
+            "UPDATE backup_state SET failure_code = NULL, " +
+                "last_human_check_at = ${fixture.now.toEpochMilliseconds()} WHERE id = 1",
+        )
+        val checked = status.current()
+        assertEquals(BackupStatus.HANDED_OFF, checked.status)
+        assertFalse(BackupNotice.HUMAN_CHECK_DUE in checked.notices)
+    }
+
+    @Test
+    fun withWebDavAWeekWithoutAWholeReadIsANoticeAndTheStatusStays() = runBlocking {
+        fixture.addProduct("Pan de prueba")
+        assertTrue(fixture.runner(FakeBackupDestination()).run(TestControl()) is BackupRun.Verified)
+        connectedAt = fixture.now.toEpochMilliseconds()
+        fixture.sql("UPDATE backup_state SET last_full_verify_at = NULL WHERE id = 1")
+        fixture.advance(24.hours * 7)
+
+        val report = status.current()
+        assertEquals(BackupStatus.UP_TO_DATE, report.status)
+        assertTrue(BackupNotice.FULL_READ_OVERDUE in report.notices)
+
+        // Una lectura completa la quita.
+        fixture.ports.backupState.markFullVerify(
+            fixture.now.toEpochMilliseconds(),
+            TEST_DESTINATION_ID,
+        )
+        assertFalse(BackupNotice.FULL_READ_OVERDUE in status.current().notices)
+    }
+
+    @Test
     fun sixTransportFailuresShowAsFailedAndADayLaterAsStale() = runBlocking {
         fixture.addProduct("Pan de prueba")
         fixture.sql(
@@ -181,6 +229,19 @@ class BackupStatusDeviceTest {
         FileSlotStateStore(outside, Dispatchers.IO)
             .save(slotState(firstHandoffAt = 1_793_876_400_000))
         assertEquals(1_793_876_400_000, app.firstHandoffAt())
+        assertEquals("Nube", slotProviderLabel(outside, Dispatchers.IO))
+
+        assertNull(app.connectedAt())
+        DestinationLinkStore({ outside }, Dispatchers.IO).write(
+            DestinationLink(
+                kind = BackupDestinationKind.WEBDAV,
+                account = "persona",
+                destinationId = TEST_DESTINATION_ID,
+                folderUrl = "https://dav.example.com/app/",
+                connectedAtMillis = 1_793_000_000_000,
+            ),
+        )
+        assertEquals(1_793_000_000_000, app.connectedAt())
     }
 
     private fun slotState(firstHandoffAt: Long) = SlotState(

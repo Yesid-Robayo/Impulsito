@@ -505,4 +505,113 @@ class BackupStatusResolverTest {
             BackupStatusResolver.resolve(upToDate.copy(storage = ample), now).notices,
         )
     }
+
+    private fun notices(facts: BackupStatusFacts, at: Instant = now): Set<BackupNotice> =
+        BackupStatusResolver.resolve(facts, at).notices
+
+    @Test
+    fun `a pending check stays in sight behind a failure or a day without a copy`() {
+        val due = slots.copy(lastHumanCheckAt = now - 7.days)
+        val repairable = due.copy(failureCode = BackupFailureCode.LOCAL_INVARIANT)
+        val stale = due.copy(changeSeq = 41, firstUnsyncedAt = now - 25.hours)
+
+        assertEquals(BackupStatus.FAILED, status(repairable))
+        assertEquals(setOf(BackupNotice.HUMAN_CHECK_DUE), notices(repairable))
+        assertEquals(BackupStatus.STALE, status(stale))
+        assertEquals(setOf(BackupNotice.HUMAN_CHECK_DUE), notices(stale))
+        assertEquals(BackupStatus.CHECK_DUE, status(due))
+        assertEquals(setOf(BackupNotice.HUMAN_CHECK_DUE), notices(due))
+    }
+
+    @Test
+    fun `the pending check counts from the first hand-off without any check`() {
+        val never = slots.copy(lastHumanCheckAt = null, firstHandoffAt = now - 7.days)
+
+        assertEquals(setOf(BackupNotice.HUMAN_CHECK_DUE), notices(never))
+        assertEquals(
+            emptySet<BackupNotice>(),
+            notices(never.copy(firstHandoffAt = now - 7.days + 1.milliseconds)),
+        )
+        // Sin ninguna entrega no hay copia que revisar.
+        assertEquals(emptySet<BackupNotice>(), notices(never.copy(firstHandoffAt = null)))
+        // Un reloj atrasado nunca la esconde.
+        assertEquals(
+            setOf(BackupNotice.HUMAN_CHECK_DUE),
+            notices(slots.copy(lastHumanCheckAt = now + 1.hours)),
+        )
+    }
+
+    @Test
+    fun `with constant sales the check wins over the waits and its notice goes with it`() {
+        val selling =
+            slots.copy(
+                lastHumanCheckAt = now - 8.days,
+                changeSeq = 45,
+                firstUnsyncedAt = now - 1.minutes,
+                network = BackupNetwork.NONE,
+                uploadWork = BackupUploadWork.ENQUEUED,
+            )
+
+        assertEquals(BackupStatus.CHECK_DUE, status(selling))
+        assertEquals(setOf(BackupNotice.HUMAN_CHECK_DUE), notices(selling))
+    }
+
+    @Test
+    fun `without a destination or with WebDAV there is no pending check`() {
+        val due = slots.copy(lastHumanCheckAt = now - 9.days)
+
+        assertEquals(
+            emptySet<BackupNotice>(),
+            notices(due.copy(linkState = BackupLinkState.NOT_CONNECTED)),
+        )
+        assertEquals(
+            emptySet<BackupNotice>(),
+            notices(due.copy(destinationKind = BackupDestinationKind.WEBDAV)),
+        )
+        assertEquals(emptySet<BackupNotice>(), notices(due.copy(destinationKind = null)))
+    }
+
+    @Test
+    fun `with WebDAV seven days without a whole read give a notice and the status stays`() {
+        val read = upToDate.copy(connectedAt = now - 60.days, lastFullVerifyAt = now - 7.days)
+
+        assertEquals(BackupStatus.UP_TO_DATE, status(read))
+        assertEquals(setOf(BackupNotice.FULL_READ_OVERDUE), notices(read))
+        assertEquals(
+            emptySet<BackupNotice>(),
+            notices(read.copy(lastFullVerifyAt = now - 7.days + 1.milliseconds)),
+        )
+        // Un reloj atrasado ante la última lectura nunca la esconde.
+        assertEquals(
+            setOf(BackupNotice.FULL_READ_OVERDUE),
+            notices(read.copy(lastFullVerifyAt = now + 1.hours)),
+        )
+    }
+
+    @Test
+    fun `without any whole read the seven days count from the connection`() {
+        val never = upToDate.copy(lastFullVerifyAt = null, connectedAt = now - 7.days)
+
+        assertEquals(setOf(BackupNotice.FULL_READ_OVERDUE), notices(never))
+        assertEquals(
+            emptySet<BackupNotice>(),
+            notices(never.copy(connectedAt = now - 6.days)),
+        )
+        // Sin la hora de la conexión no hay con qué medir.
+        assertEquals(emptySet<BackupNotice>(), notices(never.copy(connectedAt = null)))
+        // Sin destino, o con ranuras, no aplica.
+        assertEquals(
+            emptySet<BackupNotice>(),
+            notices(never.copy(linkState = BackupLinkState.NOT_CONNECTED)),
+        )
+        assertEquals(
+            emptySet<BackupNotice>(),
+            notices(
+                never.copy(
+                    destinationKind = BackupDestinationKind.DOCUMENT_SLOTS,
+                    firstHandoffAt = now - 1.days,
+                ),
+            ),
+        )
+    }
 }

@@ -2,7 +2,9 @@ package io.github.yesidrobayo.shopledger.data.backup
 
 import io.github.yesidrobayo.shopledger.data.BackupNotification
 import io.github.yesidrobayo.shopledger.data.BackupNotifier
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogLevel
@@ -139,7 +141,7 @@ class DailyMaintenanceTest {
         database.lastNotice = now - 23.hours
         maintenance.run()
 
-        assertEquals(listOf(BackupNotification.STALE), shown)
+        assertEquals(listOf(BackupNotification.Stale), shown)
         assertEquals(listOf(now), database.notices)
     }
 
@@ -150,7 +152,7 @@ class DailyMaintenanceTest {
 
         maintenance.run()
 
-        assertEquals(listOf(BackupNotification.STALE), shown)
+        assertEquals(listOf(BackupNotification.Stale), shown)
     }
 
     @Test
@@ -174,6 +176,38 @@ class DailyMaintenanceTest {
     }
 
     @Test
+    fun aPendingCheckNotifiesEveryDayWithAnyStatusAndTheNameOfThatCloud() = runBlocking {
+        database.alerts = setOf(BackupNotice.HUMAN_CHECK_DUE)
+        database.status = BackupStatus.FAILED
+        maintenance.run()
+        database.status = BackupStatus.STALE
+        maintenance.run()
+
+        assertEquals(
+            listOf(
+                BackupNotification.CheckDue("Nube"),
+                BackupNotification.Stale,
+                BackupNotification.CheckDue("Nube"),
+            ),
+            shown,
+        )
+        // No usa la marca de un día sin copia: esa es de la otra notificación.
+        assertEquals(listOf(now), database.notices)
+    }
+
+    @Test
+    fun withoutTheNameOfTheCloudOrWithoutTheNoticeThereIsNoCheckNotification() = runBlocking {
+        database.alerts = setOf(BackupNotice.HUMAN_CHECK_DUE)
+        database.provider = null
+        maintenance.run()
+        database.provider = "Nube"
+        database.alerts = setOf(BackupNotice.FULL_READ_OVERDUE, BackupNotice.LOW_DEVICE_STORAGE)
+        maintenance.run()
+
+        assertEquals(emptyList<BackupNotification>(), shown)
+    }
+
+    @Test
     fun aFailingStepDoesNotStopTheNotification() = runBlocking {
         database.status = BackupStatus.STALE
         val failing =
@@ -190,7 +224,7 @@ class DailyMaintenanceTest {
 
         assertEquals(MaintenanceRun.DONE, failing.run())
 
-        assertEquals(listOf(BackupNotification.STALE), shown)
+        assertEquals(listOf(BackupNotification.Stale), shown)
     }
 
     private class FakeMaintenanceDatabase : MaintenanceDatabase {
@@ -198,6 +232,8 @@ class DailyMaintenanceTest {
         var checks = 0
         val recorded = mutableListOf<Long>()
         var status = BackupStatus.UP_TO_DATE
+        var alerts = emptySet<BackupNotice>()
+        var provider: String? = "Nube"
         var lastNotice: Instant? = null
         val notices = mutableListOf<Instant>()
 
@@ -210,7 +246,10 @@ class DailyMaintenanceTest {
             recorded += count
         }
 
-        override suspend fun status(now: Instant): BackupStatus = status
+        override suspend fun report(now: Instant): BackupStatusReport =
+            BackupStatusReport(status, pendingChanges = 0, savingSoon = false, notices = alerts)
+
+        override suspend fun providerLabel(): String? = provider
 
         override suspend fun lastStaleNoticeAt(): Instant? = lastNotice
 

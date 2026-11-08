@@ -58,7 +58,7 @@ class BackupNotifierDeviceTest {
             .refresh(app.container.localizedContext.context())
         val allowed = NotificationManagerCompat.from(app).areNotificationsEnabled()
 
-        val shown = notifier.show(BackupNotification.STALE)
+        val shown = notifier.show(BackupNotification.Stale)
 
         assertEquals(allowed, shown)
         val posted = if (shown) awaitPosted(1).singleOrNull() else posted().singleOrNull()
@@ -82,12 +82,31 @@ class BackupNotifierDeviceTest {
     }
 
     @Test
+    fun aPendingCheckNamesThatCloudAndGoesAlongsideADayWithoutACopy() = runBlocking {
+        NotificationChannels(app, NotificationChannels.APP_CHANNELS)
+            .refresh(app.container.localizedContext.context())
+        if (!notifier.show(BackupNotification.CheckDue("Nube"))) return@runBlocking
+        notifier.show(BackupNotification.Stale)
+
+        val texts: Context = app.container.localizedContext.context()
+        val titles =
+            awaitPosted(2).map {
+                it.notification.extras.getString(Notification.EXTRA_TITLE)
+            }
+        assertEquals(2, titles.size)
+        assertEquals(
+            true,
+            texts.getString(R.string.notif_backup_check_title, "Nube") in titles,
+        )
+    }
+
+    @Test
     fun aSecondOneReplacesTheFirstInsteadOfPilingUp() = runBlocking {
         NotificationChannels(app, NotificationChannels.APP_CHANNELS)
             .refresh(app.container.localizedContext.context())
-        if (!notifier.show(BackupNotification.STALE)) return@runBlocking
+        if (!notifier.show(BackupNotification.Stale)) return@runBlocking
 
-        notifier.show(BackupNotification.STALE)
+        notifier.show(BackupNotification.Stale)
 
         assertEquals(1, awaitPosted(2).size)
     }

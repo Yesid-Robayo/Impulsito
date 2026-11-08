@@ -48,7 +48,7 @@ class AndroidBackupNotifier(
             NotificationCompat
                 .Builder(app, NotificationChannels.BACKUP_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(context.getString(content.title))
+                .setContentTitle(context.getString(content.title, *content.titleArgs))
                 .setContentText(context.getString(content.body))
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -100,19 +100,32 @@ class AndroidBackupNotifier(
     }
 }
 
-/** El número fijo y los textos de una notificación. */
+/**
+ * El número fijo y los textos de una notificación.
+ *
+ * @property titleArgs los valores del título, como el nombre de la nube, que no se traducen.
+ */
 private class BackupNotificationContent(
     val id: Int,
     @param:StringRes val title: Int,
     @param:StringRes val body: Int,
+    val titleArgs: Array<Any> = emptyArray(),
 )
 
 /** Los textos de cada notificación. Una nueva sin textos no compila. */
 private fun BackupNotification.content(): BackupNotificationContent = when (this) {
-    BackupNotification.STALE ->
+    BackupNotification.Stale ->
         BackupNotificationContent(
             id = 1,
             title = R.string.notif_backup_stale_title,
             body = R.string.notif_backup_stale_body,
+        )
+
+    is BackupNotification.CheckDue ->
+        BackupNotificationContent(
+            id = 2,
+            title = R.string.notif_backup_check_title,
+            body = R.string.notif_backup_check_body,
+            titleArgs = arrayOf(providerLabel),
         )
 }

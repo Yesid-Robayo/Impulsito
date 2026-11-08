@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.data.backup.cleanUpExpiredLocalCopies
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.productionRestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
+import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
 import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
 import io.github.yesidrobayo.shopledger.data.destination.ProductionDestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.WebDavCredentialStore
@@ -269,7 +270,12 @@ class DataGraph internal constructor(
             open = {
                 when (val access = openForWork()) {
                     is DataAccess.Ready ->
-                        MaintenanceAccess.Ready(RoomMaintenanceDatabase(access.ports, ioContext))
+                        MaintenanceAccess.Ready(
+                            RoomMaintenanceDatabase(access.ports, ioContext) {
+                                val directory = withContext(ioContext) { files().noBackupDirectory }
+                                slotProviderLabel(directory, ioContext)
+                            },
+                        )
 
                     WorkAccess.MigrationPending, WorkAccess.RestorePending ->
                         MaintenanceAccess.Waiting

@@ -3,7 +3,11 @@ package io.github.yesidrobayo.shopledger.data.backup
 import io.github.yesidrobayo.shopledger.data.BackupNotification
 import io.github.yesidrobayo.shopledger.data.BackupNotifier
 import io.github.yesidrobayo.shopledger.data.DataPorts
+import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
+import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogEvent
@@ -13,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.port.info
 import io.github.yesidrobayo.shopledger.domain.port.warn
 import io.github.yesidrobayo.shopledger.domain.rule.backup.BackupStatusResolver
 import io.github.yesidrobayo.shopledger.domain.rule.backup.StaleNotificationRule
+import java.io.File
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Instant
 import kotlinx.coroutines.sync.Mutex
@@ -36,6 +41,9 @@ import kotlinx.coroutines.withContext
  *    repite sola.
  * 4. **Avisa un día sin copia** con una notificación local, como mucho una cada 24 horas, y nunca
  *    sin destino conectado: esa persona ya tiene su aviso permanente.
+ * 5. **Avisa la revisión pendiente** con la nube del teléfono, una vez en cada mantenimiento, sea
+ *    cual sea el estado: entregada no es subida, y solo la persona puede comprobar que la copia
+ *    aparece. Una nueva reemplaza a la de ayer.
  *
  * Los dos primeros pasos van bajo el cerrojo del respaldo, sin esperarlo: con una copia en curso,
  * esa copia ya corre la misma revisión sobre lo que sube, y con una restauración en curso la base y
@@ -88,7 +96,11 @@ internal class DailyMaintenance(
             log.info(MaintenanceEvent.BACKUP_BUSY)
         }
         log.contain(BackupEvent.SCHEDULING_FAILED) { reconcile() }
-        log.contain(MaintenanceEvent.NOTICE_FAILED) { noticeStale(database, now) }
+        log.contain(MaintenanceEvent.NOTICE_FAILED) {
+            val report = database.report(now)
+            noticeStale(database, report.status, now)
+            if (BackupNotice.HUMAN_CHECK_DUE in report.notices) noticeCheckDue(database)
+        }
         return MaintenanceRun.DONE
     }
 
@@ -108,17 +120,30 @@ internal class DailyMaintenance(
         }
     }
 
-    private suspend fun noticeStale(database: MaintenanceDatabase, now: Instant) {
-        val due = StaleNotificationRule.isDue(
-            database.status(now),
-            database.lastStaleNoticeAt(),
-            now,
-        )
-        if (!due) return
+    private suspend fun noticeStale(
+        database: MaintenanceDatabase,
+        status: BackupStatus,
+        now: Instant,
+    ) {
+        if (!StaleNotificationRule.isDue(status, database.lastStaleNoticeAt(), now)) return
         // Solo cuenta la que salió: si el sistema no la deja salir, mañana se intenta de nuevo.
-        if (notifier().show(BackupNotification.STALE)) {
+        if (notifier().show(BackupNotification.Stale)) {
             database.markStaleNotice(now)
             log.info(MaintenanceEvent.STALE_NOTIFIED)
+        } else {
+            log.info(MaintenanceEvent.NOTIFICATION_BLOCKED)
+        }
+    }
+
+    /**
+     * La revisión pendiente sale en cada mantenimiento, una vez al día, sin anotar nada: es el
+     * mismo aviso hasta que la persona revise. Sin el nombre de la nube, `slots.json` no se pudo
+     * leer, y la revisión tampoco podría estar pendiente.
+     */
+    private suspend fun noticeCheckDue(database: MaintenanceDatabase) {
+        val provider = database.providerLabel() ?: return
+        if (notifier().show(BackupNotification.CheckDue(provider))) {
+            log.info(MaintenanceEvent.CHECK_DUE_NOTIFIED)
         } else {
             log.info(MaintenanceEvent.NOTIFICATION_BLOCKED)
         }
@@ -154,8 +179,11 @@ internal interface MaintenanceDatabase {
     /** Deja [count] elementos con un saldo que recalcular, y el fallo de invariantes a la vista. */
     suspend fun recordInvariantFailures(count: Long)
 
-    /** El estado del respaldo en [now], con el mismo cálculo que la pantalla. */
-    suspend fun status(now: Instant): BackupStatus
+    /** El estado del respaldo y sus avisos en [now], con el mismo cálculo que la pantalla. */
+    suspend fun report(now: Instant): BackupStatusReport
+
+    /** Con la nube del teléfono, el nombre de esa nube según `slots.json`, o nulo. */
+    suspend fun providerLabel(): String?
 
     /** Cuándo salió la última notificación de un día sin copia, o nulo si nunca. */
     suspend fun lastStaleNoticeAt(): Instant?
@@ -164,9 +192,16 @@ internal interface MaintenanceDatabase {
     suspend fun markStaleNotice(now: Instant)
 }
 
-/** El mantenimiento sobre la base de la app, con sus puertos abiertos. */
-internal class RoomMaintenanceDatabase(private val ports: DataPorts, ioContext: CoroutineContext) :
-    MaintenanceDatabase {
+/**
+ * El mantenimiento sobre la base de la app, con sus puertos abiertos.
+ *
+ * @param providerLabel lee el nombre de la nube del teléfono en `slots.json`.
+ */
+internal class RoomMaintenanceDatabase(
+    private val ports: DataPorts,
+    ioContext: CoroutineContext,
+    private val providerLabel: suspend () -> String? = { null },
+) : MaintenanceDatabase {
     private val check = ActiveInvariantCheck(ports.databaseFile, ioContext)
 
     override suspend fun invariants(): ActiveInvariants = check.check()
@@ -175,8 +210,10 @@ internal class RoomMaintenanceDatabase(private val ports: DataPorts, ioContext: 
         ports.backupState.recordActiveInvariantFailures(count)
     }
 
-    override suspend fun status(now: Instant): BackupStatus =
-        BackupStatusResolver.resolve(ports.backupStatus.current(), now).status
+    override suspend fun report(now: Instant): BackupStatusReport =
+        BackupStatusResolver.resolve(ports.backupStatus.current(), now)
+
+    override suspend fun providerLabel(): String? = providerLabel.invoke()
 
     override suspend fun lastStaleNoticeAt(): Instant? =
         ports.backupState.get()?.lastStaleNoticeAt?.let(Instant::fromEpochMilliseconds)
@@ -185,6 +222,21 @@ internal class RoomMaintenanceDatabase(private val ports: DataPorts, ioContext: 
         ports.backupState.markStaleNotice(now.toEpochMilliseconds())
     }
 }
+
+/**
+ * Con la nube del teléfono, el nombre de esa nube según `slots.json` en [noBackupDirectory], de la
+ * lista fija de proveedores: las tres ranuras son de la misma. Nulo si no hay ranuras o el archivo
+ * no se lee.
+ */
+internal suspend fun slotProviderLabel(
+    noBackupDirectory: File,
+    ioContext: CoroutineContext,
+): String? = (FileSlotStateStore(noBackupDirectory, ioContext).load() as? SlotStateLoad.Loaded)
+    ?.state
+    ?.slots
+    ?.values
+    ?.firstOrNull()
+    ?.providerLabel
 
 /**
  * Borra lo local vencido en [now]: las copias de seguridad de una restauración y las bases
@@ -216,6 +268,7 @@ internal enum class MaintenanceEvent(override val text: String) : LogEvent {
         "Respaldo o restauración en curso: la verificación y la limpieza quedan para mañana",
     ),
     STALE_NOTIFIED("Notificación de un día sin copia lanzada"),
+    CHECK_DUE_NOTIFIED("Notificación de revisar la copia en la nube lanzada"),
     NOTIFICATION_BLOCKED("La notificación del respaldo no puede salir"),
     NOTICE_FAILED("Falla no prevista al avisar un día sin copia"),
     WORKER_FAILED("Falla no prevista del mantenimiento diario"),

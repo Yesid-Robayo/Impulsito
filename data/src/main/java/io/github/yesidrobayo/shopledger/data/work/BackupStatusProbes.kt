@@ -8,6 +8,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import io.github.yesidrobayo.shopledger.data.backup.BackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
+import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
@@ -59,8 +60,8 @@ internal object BackupWorkNames {
 /**
  * Lo que el estado del respaldo lee del teléfono en la app: las marcas de una restauración en
  * [noBackupDirectory], la aceptación de la política en [consent], los trabajos de subida, la red,
- * el estado de las ranuras y el espacio libre junto a [databaseFile]. Aceptar la política vuelve a
- * calcular el estado.
+ * el estado de las ranuras, la hora de la conexión en `link.json` y el espacio libre junto a
+ * [databaseFile]. Aceptar la política vuelve a calcular el estado.
  *
  * Nada de esto usa la red ni espera a ella.
  */
@@ -72,6 +73,7 @@ internal fun productionBackupStatusEnvironment(
     databaseFile: File? = null,
 ): BackupStatusEnvironment {
     val slots = FileSlotStateStore(noBackupDirectory, ioContext)
+    val links = DestinationLinkStore({ noBackupDirectory }, ioContext)
     return BackupStatusEnvironment(
         restorePending = { RestoreMarkers(noBackupDirectory).present() },
         policyAccepted = consent::allowsUploads,
@@ -80,6 +82,7 @@ internal fun productionBackupStatusEnvironment(
         firstHandoffAt = { (slots.load() as? SlotStateLoad.Loaded)?.state?.firstHandoffAt },
         changes = consent.changes,
         storage = { databaseFile?.let(::deviceStorageOf) },
+        connectedAt = { links.read()?.connectedAtMillis },
     )
 }
 

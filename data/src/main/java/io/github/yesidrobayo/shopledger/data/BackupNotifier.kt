@@ -28,7 +28,18 @@ fun interface BackupNotifier {
  * Una notificación del respaldo. Es una lista cerrada: quien implementa el puerto le da a cada una
  * sus textos, y una sin textos no compila.
  */
-enum class BackupNotification {
+sealed interface BackupNotification {
     /** El cambio más viejo sin copia lleva un día o más, con un destino conectado. */
-    STALE,
+    data object Stale : BackupNotification
+
+    /**
+     * Con la nube del teléfono, toca revisar en esa nube que la copia aparezca. Sale con cualquier
+     * estado, también con un fallo: entregada no es subida, y solo la persona puede comprobarlo.
+     *
+     * @property providerLabel el nombre de esa nube, de la lista fija de proveedores de la app.
+     */
+    data class CheckDue(val providerLabel: String) : BackupNotification {
+        // El nombre es de la lista fija, pero no hace falta en un registro.
+        override fun toString(): String = "CheckDue"
+    }
 }
