@@ -8,11 +8,13 @@ import io.github.yesidrobayo.shopledger.data.UserTextPort
 import io.github.yesidrobayo.shopledger.domain.model.backup.AppOpenUpload
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
+import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupStatusUseCase
 import io.github.yesidrobayo.shopledger.lifecycle.AppLifecycleObserver
 import io.github.yesidrobayo.shopledger.localization.AndroidLocalePlatform
+import io.github.yesidrobayo.shopledger.localization.AndroidPaymentMethodNames
 import io.github.yesidrobayo.shopledger.localization.AndroidUserTextPort
 import io.github.yesidrobayo.shopledger.localization.AppLanguage
 import io.github.yesidrobayo.shopledger.localization.LanguagePreferenceFile
@@ -83,6 +85,13 @@ class AppContainer(application: Application) {
 
     /** Los textos de los trabajos en segundo plano de la capa de datos, en el idioma elegido. */
     val userText: UserTextPort = AndroidUserTextPort(localizedContext)
+
+    /**
+     * El nombre de los métodos de pago iniciales en el idioma de la interfaz, que una venta congela
+     * al cobrar con uno que nadie renombró.
+     */
+    val paymentMethodNames: PaymentMethodNames =
+        AndroidPaymentMethodNames { localizedContext.context().resources }
 
     /** Las notificaciones del respaldo, en el idioma de la interfaz. */
     val backupNotifier: AndroidBackupNotifier =

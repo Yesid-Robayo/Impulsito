@@ -8,6 +8,9 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettings
 import io.github.yesidrobayo.shopledger.domain.rule.ReportPeriods
 import kotlin.time.Instant
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.toInstant
 
 /**
  * El calendario del negocio: la zona con que se fecha cada registro y el día en que empiezan sus
@@ -23,6 +26,19 @@ data class BusinessCalendar(val zone: BusinessTimeZone, val weekStartDay: DayOfW
 
     /** El instante [occurredAt] y su fecha de negocio, las dos formas que guarda un registro. */
     fun stamp(occurredAt: Instant): RecordTime = RecordTime(occurredAt, businessDateOf(occurredAt))
+
+    /**
+     * El instante y la fecha de un registro atrasado, con fecha de negocio [date] elegida por la
+     * persona: las 12:00 de ese día en la zona del negocio, y la fecha tal cual.
+     *
+     * El mediodía queda lejos de los dos bordes del día, así que un cambio de horario nunca lo
+     * pasa a otra fecha. El registro igual toma su lugar en el libro por orden de llegada, no por
+     * esta hora. Quien llama decide antes que [date] no sea hoy ni una fecha futura.
+     */
+    fun stampBackdated(date: BusinessDate): RecordTime {
+        val noon = LocalDateTime(date.date, LocalTime(BACKDATED_HOUR, 0))
+        return RecordTime(noon.toInstant(zone.timeZone), date)
+    }
 
     /** El día de [date]. */
     fun day(date: BusinessDate): ReportPeriod.Day = ReportPeriods.day(date)
@@ -44,6 +60,9 @@ data class BusinessCalendar(val zone: BusinessTimeZone, val weekStartDay: DayOfW
         ReportPeriods.endInstantExclusive(period, zone)
 
     companion object {
+        /** La hora local que recibe un registro con fecha pasada. */
+        private const val BACKDATED_HOUR = 12
+
         /**
          * El calendario de los ajustes regionales [regional], o [BusinessCalendarResult.UnknownZone]
          * si este teléfono no conoce la zona guardada.
