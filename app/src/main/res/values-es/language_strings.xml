@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Idioma de la interfaz: el selector, sus avisos y el enlace al formato regional. -->
+    <string name="language_notice">El idioma no cambia la moneda ni el formato de números.</string>
+    <string name="language_system">Igual que el teléfono</string>
+    <string name="language_current">Ahora: %1$s</string>
+    <string name="language_format_action">Formato de números y fechas</string>
+    <string name="language_system_settings_help">También se puede cambiar en los ajustes de Android</string>
+    <string name="language_error_save">No se pudo guardar el idioma. La app sigue en %1$s.</string>
+    <string name="language_updated">Idioma actualizado</string>
+    <string name="language_fallback_help">Si el teléfono usa otro idioma, la app se muestra en inglés.</string>
+</resources>

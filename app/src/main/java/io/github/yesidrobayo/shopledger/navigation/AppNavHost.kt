@@ -30,6 +30,7 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.placeholder.EmptyContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderAction
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
@@ -106,6 +107,13 @@ private fun entryOf(key: NavKey, navigator: AppNavigator): NavEntry<NavKey> {
 private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
     when (key) {
         AppNavKey.ProductList -> ProductListRoute(navigator)
+
+        AppNavKey.LanguageSettings ->
+            LanguageSettingsRoute(
+                onBack = { navigator.back() },
+                onOpenFormat = { navigator.open(AppNavKey.RegionalSettings()) },
+            )
+
         else -> PlaceholderRoute(key, navigator)
     }
 }
