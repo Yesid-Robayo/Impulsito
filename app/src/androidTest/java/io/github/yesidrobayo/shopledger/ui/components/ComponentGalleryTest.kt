@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -195,6 +196,37 @@ private enum class GalleryPage(val content: @Composable () -> Unit, val scrolls:
     NOTICES({ NoticesPage() }),
     STRUCTURE({ StructurePage() }),
     ONBOARDING({ OnboardingPage() }, scrolls = false),
+    FAB({ FabPage(outlined = false) }, scrolls = false),
+    FAB_OUTLINED({ FabPage(outlined = true) }, scrolls = false),
+}
+
+/** El botón flotante sobre una lista, abajo a la derecha, como lo usan las pantallas. */
+@Composable
+private fun FabPage(outlined: Boolean) {
+    val s = PreviewSamples
+    Box(Modifier.fillMaxSize()) {
+        // Como en las pantallas: la lista a lo sumo de 600 dp y centrada, el botón en la esquina.
+        Column(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).align(Alignment.TopCenter)) {
+            SectionHeader(stringResource(R.string.nav_products))
+            listOf(
+                s.SHORT_NAME,
+                s.SECOND_NAME,
+                s.THIRD_NAME,
+                s.LONG_NAME,
+                s.CATEGORY_A,
+                s.CATEGORY_B,
+            )
+                .forEach {
+                    SettingsRow(it, SettingsRowAction.Navigation {}, summary = s.TOOL_DETAIL)
+                }
+        }
+        TonalFab(
+            text = stringResource(R.string.product_new_title),
+            onClick = {},
+            modifier = Modifier.align(Alignment.BottomEnd),
+            outlined = outlined,
+        )
+    }
 }
 
 @Composable
