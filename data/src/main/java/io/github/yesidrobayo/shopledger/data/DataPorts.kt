@@ -18,6 +18,8 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomStockLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomSystemRowRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomUnitRepository
 import io.github.yesidrobayo.shopledger.data.transaction.BackupStateChangeCounter
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
 import io.github.yesidrobayo.shopledger.data.transaction.DatabaseStorageSpace
@@ -36,7 +38,9 @@ import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
+import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
+import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import java.io.File
 import kotlin.coroutines.CoroutineContext
 
@@ -96,6 +100,10 @@ class DataPorts internal constructor(
     val products: ProductRepository = RoomProductRepository(database)
 
     val priceHistory: PriceHistoryRepository = RoomPriceHistoryRepository(database)
+
+    val units: UnitRepository = RoomUnitRepository(database)
+
+    val systemRows: SystemRowRepository = RoomSystemRowRepository(database)
 
     val stockLedger: StockLedgerRepository = RoomStockLedgerRepository(database)
 

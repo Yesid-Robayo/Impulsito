@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.port
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewProduct
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
@@ -42,6 +43,13 @@ interface ProductRepository {
      * Con historia ya no se borra, y su unidad base y su modo de stock ya no cambian.
      */
     suspend fun hasHistory(id: Long): Boolean
+
+    /**
+     * Cómo lo usan otros productos del catálogo: como componente, como extra o como su producto
+     * principal de variantes. No es historia, pero mientras exista impide eliminarlo. Vacío si
+     * nada lo usa.
+     */
+    suspend fun catalogLinks(id: Long): Set<CatalogLink>
 
     /** Crea el producto, sin stock, y devuelve su id. */
     suspend fun insert(product: NewProduct): Long

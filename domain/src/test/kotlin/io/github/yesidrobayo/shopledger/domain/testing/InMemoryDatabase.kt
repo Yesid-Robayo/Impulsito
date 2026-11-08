@@ -2,8 +2,16 @@ package io.github.yesidrobayo.shopledger.domain.testing
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChange
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
+import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +27,10 @@ internal data class ProductStockHeader(
  * Las tablas de [InMemoryDatabase], inmutables: cada escritura produce otra copia, así que deshacer
  * una transacción es volver a la copia de antes.
  *
+ * Las tablas del catálogo guardan los productos sin su estado de stock, que vive en [productStock]
+ * como lo deja el libro. [catalogLinks] y [productsWithOtherHistory] dicen qué usa a un producto
+ * desde tablas que estas pruebas no modelan.
+ *
  * [lastIds] guarda el último id dado por tabla, y se deshace con todo lo demás: una base con ids
  * que nunca se reutilizan tampoco consume ids en una transacción revertida. [changeSeq] cuenta los
  * cambios confirmados que aún no se respaldan.
@@ -28,6 +40,15 @@ internal data class Tables(
     val purchaseLines: Map<Long, PurchaseLine> = emptyMap(),
     val movements: Map<Long, StockMovementRecord> = emptyMap(),
     val productStock: Map<Long, ProductStockHeader> = emptyMap(),
+    val products: Map<Long, Product> = emptyMap(),
+    val categories: Map<Long, Category> = emptyMap(),
+    val suppliers: Map<Long, Supplier> = emptyMap(),
+    val units: Map<Long, MeasureUnit> = emptyMap(),
+    val systemRows: Map<SystemRow, Long> = emptyMap(),
+    val priceChanges: Map<Long, PriceChange> = emptyMap(),
+    val alerts: Map<Long, LowStockAlert> = emptyMap(),
+    val catalogLinks: Map<Long, Set<CatalogLink>> = emptyMap(),
+    val productsWithOtherHistory: Set<Long> = emptySet(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )
@@ -91,6 +112,15 @@ internal class InMemoryDatabase {
         writesInTransaction++
         if (writesInTransaction == failAtWrite) throw failure()
         working = change(tables)
+    }
+
+    /**
+     * Deja [change] confirmado sin transacción ni cambio contado: es el estado del que parte una
+     * prueba, no una escritura de un caso de uso.
+     */
+    fun seed(change: (Tables) -> Tables) {
+        check(working == null) { "Sembrar dentro de una transacción" }
+        committed.value = change(committed.value)
     }
 
     /** Da el id siguiente de [table], como una clave que nunca se reutiliza. */

@@ -80,6 +80,18 @@ internal interface ProductDao {
     )
     suspend fun hasHistory(id: Long): Boolean
 
+    /** Si es componente de algún producto hecho de componentes. */
+    @Query("SELECT EXISTS (SELECT 1 FROM product_components WHERE component_product_id = :id)")
+    suspend fun isComponent(id: Long): Boolean
+
+    /** Si es extra de algún otro producto. */
+    @Query("SELECT EXISTS (SELECT 1 FROM product_modifiers WHERE modifier_product_id = :id)")
+    suspend fun isExtra(id: Long): Boolean
+
+    /** Si algún producto lo nombra como su principal de variantes. */
+    @Query("SELECT EXISTS (SELECT 1 FROM products WHERE parent_product_id = :id)")
+    suspend fun hasVariants(id: Long): Boolean
+
     /** Devuelve el id nuevo. El repositorio lo crea sin stock: saldo y valor en cero. */
     @Insert
     suspend fun insert(product: ProductEntity): Long

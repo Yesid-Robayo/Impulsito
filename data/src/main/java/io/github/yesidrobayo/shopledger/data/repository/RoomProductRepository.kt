@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewProduct
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
@@ -51,6 +52,16 @@ internal class RoomProductRepository(database: AppDatabase) : ProductRepository 
         products.findActiveByBarcode(barcode)?.let(::toProduct)
 
     override suspend fun hasHistory(id: Long): Boolean = products.hasHistory(id)
+
+    /**
+     * Las tres relaciones del catálogo que apuntan al producto con una llave `RESTRICT`: si alguna
+     * existe, borrarlo fallaría. Se leen una por una para decir cuál lo impide.
+     */
+    override suspend fun catalogLinks(id: Long): Set<CatalogLink> = buildSet {
+        if (products.isComponent(id)) add(CatalogLink.COMPONENT)
+        if (products.isExtra(id)) add(CatalogLink.EXTRA)
+        if (products.hasVariants(id)) add(CatalogLink.VARIANT_PARENT)
+    }
 
     override suspend fun insert(product: NewProduct): Long = writes.inTransaction {
         val details = product.details

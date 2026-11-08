@@ -76,6 +76,30 @@ object LowStockEvaluator {
         }
     }
 
+    /**
+     * Qué le pasa a la alerta de un producto cuando su estado bajo cambia sin que se mueva el stock:
+     * nace un producto, cambia su mínimo o su modo de stock, o se reactiva.
+     *
+     * Nunca es un cruce que merezca aviso: la persona está viendo la pantalla. Si el producto queda
+     * bajo y no tiene alerta activa, [LowStockTransition.Crossed] pide crearla callada, para que la
+     * siguiente venta no avise por un cruce que no hubo. Si deja de estar bajo, o deja de vigilarse,
+     * y tenía una activa, [LowStockTransition.Rearmed] pide resolverla.
+     */
+    fun evaluateWithoutMovement(
+        stockMode: ProductStockMode,
+        isArchived: Boolean,
+        onHand: QuantityMilli,
+        minStock: QuantityMilli,
+        hasActiveAlert: Boolean,
+    ): LowStockTransition {
+        val isLowNow = isLow(stockMode, isArchived, onHand, minStock)
+        return when {
+            isLowNow && !hasActiveAlert -> LowStockTransition.Crossed(onHand, minStock)
+            !isLowNow && hasActiveAlert -> LowStockTransition.Rearmed
+            else -> LowStockTransition.Unchanged
+        }
+    }
+
     private fun isWatched(stockMode: ProductStockMode, isArchived: Boolean): Boolean =
         stockMode == ProductStockMode.TRACKED && !isArchived
 }
