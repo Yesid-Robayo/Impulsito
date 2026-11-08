@@ -296,6 +296,8 @@ internal class SaleWorld(
     val unitRepository: UnitRepository = object : UnitRepository {
         override fun observeActive(): Flow<List<MeasureUnit>> = unused()
 
+        override fun observeAll(): Flow<List<MeasureUnit>> = unused()
+
         override suspend fun findById(id: Long): MeasureUnit? = units[id]
     }
 
