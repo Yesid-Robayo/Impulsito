@@ -63,6 +63,33 @@ object TaxCalculator {
     }
 
     /**
+     * El impuesto de una línea de compra y lo que suma al costo del producto.
+     *
+     * [entered] es lo que escribió la persona para la línea: con el impuesto incluido, el total
+     * pagado; con el impuesto sumado, el neto, al que se suma el impuesto; sin impuesto, el total.
+     * El reparto es el mismo de [line].
+     *
+     * Con [taxRecoverable], el impuesto no entra en el costo: quien compra lo descuenta de lo que
+     * cobra, así que su costo es el neto. Si no, el impuesto es parte de lo que le costó el producto
+     * y el costo es todo lo pagado. Si es recuperable o no lo decide la persona con quien lleve su
+     * contabilidad: la app no conoce ninguna ley.
+     *
+     * Rechaza lo mismo que [line]: un total sobre el tope de un documento, o que no cabe en `Long`.
+     */
+    fun purchaseLine(
+        entered: Money,
+        mode: TaxMode,
+        rate: BasisPoints,
+        taxRecoverable: Boolean,
+    ): Checked<PurchaseLineTax> = line(entered, mode, rate).map { split ->
+        PurchaseLineTax(
+            lineTotal = split.lineTotal,
+            taxAmount = split.taxAmount,
+            costAmount = if (taxRecoverable) split.netAmount else split.lineTotal,
+        )
+    }
+
+    /**
      * El precio de catálogo sin impuesto, que es la base del margen de un producto.
      *
      * Solo con el impuesto incluido el precio escrito lleva impuesto, y la base sale hacia atrás:
