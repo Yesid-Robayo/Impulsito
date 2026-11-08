@@ -30,6 +30,7 @@ import java.io.File
 import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 
 /** Un teléfono inventado: los primeros 8 caracteres van en el nombre de cada copia. */
@@ -93,6 +94,17 @@ internal class BackupFixture(
     }
 
     fun close() {
+        // Cada prueba abre su base: se cierra para no agotar los archivos abiertos del proceso, que
+        // en Android 8 tiene un tope que la suite entera alcanza. Si la prueba ya la cerró, cerrarla
+        // otra vez no cambia nada que importe aquí.
+        if (::ports.isInitialized) {
+            runBlocking {
+                try {
+                    ports.closeForRestore()
+                } catch (_: Exception) {
+                }
+            }
+        }
         deleteDatabaseFiles(file)
         noBackup.deleteRecursively()
     }
