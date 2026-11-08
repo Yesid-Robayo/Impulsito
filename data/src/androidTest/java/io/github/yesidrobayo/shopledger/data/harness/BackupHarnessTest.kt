@@ -10,11 +10,22 @@ import io.github.yesidrobayo.shopledger.data.backup.CandidateFixtures
 import io.github.yesidrobayo.shopledger.data.backup.MemoryLog
 import io.github.yesidrobayo.shopledger.data.backup.RestoreFiles
 import io.github.yesidrobayo.shopledger.data.crypto.KeystoreSealer
+import io.github.yesidrobayo.shopledger.data.destination.BackupFileFormat
+import io.github.yesidrobayo.shopledger.data.destination.BackupFileName
+import io.github.yesidrobayo.shopledger.data.destination.CopyListing
+import io.github.yesidrobayo.shopledger.data.destination.CopyRef
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
+import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
+import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
+import io.github.yesidrobayo.shopledger.data.destination.FakeBackupDestination
 import io.github.yesidrobayo.shopledger.data.destination.FakeHttpServer
 import io.github.yesidrobayo.shopledger.data.destination.FakeResponse
 import io.github.yesidrobayo.shopledger.data.destination.InMemoryWebDav
+import io.github.yesidrobayo.shopledger.data.destination.ListedCopy
+import io.github.yesidrobayo.shopledger.data.destination.ListedMeta
 import io.github.yesidrobayo.shopledger.data.destination.RecordedRequest
+import io.github.yesidrobayo.shopledger.data.destination.SlMeta
+import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.data.destination.TEST_PASSWORD
 import io.github.yesidrobayo.shopledger.data.destination.TEST_USER
 import io.github.yesidrobayo.shopledger.data.destination.WebDavConnector
@@ -28,6 +39,7 @@ import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
+import io.github.yesidrobayo.shopledger.domain.model.backup.CopyInstant
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyConsentStatus
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import java.io.ByteArrayOutputStream
@@ -64,6 +76,10 @@ class BackupHarnessTest {
     private val links = DestinationLinkStore({ noBackup }, Dispatchers.IO)
     private val slots = FileSlotStateStore(noBackup, Dispatchers.IO)
     private val documents = FakeDocuments()
+    private val credentialFile = File(noBackup, HarnessCredentialFile.FILE_NAME)
+
+    /** Lo que responde el destino al restaurar desde la lista: por defecto, uno vacío. */
+    private var opener = DestinationOpener { DestinationOpen.Opened(FakeBackupDestination()) }
     private val servers = ArrayList<FakeHttpServer>()
     private val clock = Clock { NOW }
     private var graph = newGraph()
@@ -102,9 +118,11 @@ class BackupHarnessTest {
         restore = graph::restoreCoordinator,
         policy = graph.policyConsent,
         connector = WebDavConnector(http, credentials, links),
+        destinations = { opener.open(it) },
         links = links,
         slots = slots,
         documents = documents,
+        credentialFile = credentialFile,
         clock = clock,
         ioContext = Dispatchers.IO,
     )
@@ -194,6 +212,61 @@ class BackupHarnessTest {
             graph.backupMutex.unlock()
         }
         assertNull(state().destinationKind)
+    }
+
+    // Conectar con el archivo de la cuenta
+
+    @Test
+    fun theCredentialFileConnectsLikeTheFieldsAndIsDeleted() = runBlocking<Unit> {
+        val (dav, http) = dav()
+        writeCredentialFile(
+            "# cuenta de prueba inventada",
+            "${HarnessCredentialFile.URL_KEY}= $BASE_URL ",
+            "${HarnessCredentialFile.USER_KEY}=$TEST_USER",
+            "${HarnessCredentialFile.PASSWORD_KEY}=$TEST_PASSWORD",
+        )
+
+        val result = harness(http).connectWebDavFromFile(APP_NAME)
+
+        assertEquals(HarnessResult.Done("CONNECTED"), result)
+        assertFalse("El archivo se borra al leerlo", credentialFile.exists())
+        assertTrue("/dav/$APP_NAME/" in dav.collections)
+        val state = state()
+        assertEquals(BackupDestinationKind.WEBDAV.name, state.destinationKind)
+        assertEquals(TEST_USER, state.destinationAccount)
+        assertEquals("$BASE_URL$APP_NAME/", state.destinationFolder)
+    }
+
+    @Test
+    fun aMissingOrIncompleteCredentialFileConnectsNothing() = runBlocking<Unit> {
+        val (_, http) = dav()
+        assertEquals(
+            HarnessResult.Stopped("CREDENTIAL_FILE_MISSING"),
+            harness(http).connectWebDavFromFile(APP_NAME),
+        )
+
+        writeCredentialFile(
+            "${HarnessCredentialFile.URL_KEY}=$BASE_URL",
+            "${HarnessCredentialFile.USER_KEY}=$TEST_USER",
+        )
+        assertEquals(
+            HarnessResult.Stopped("CREDENTIAL_FILE_INVALID"),
+            harness(http).connectWebDavFromFile(APP_NAME),
+        )
+        assertFalse("Un archivo que no sirve también se borra", credentialFile.exists())
+
+        // Una prueba de conexión que falla también deja el archivo borrado.
+        val (_, refusing) = dav { FakeResponse.status(401) }
+        writeCredentialFile(
+            "${HarnessCredentialFile.URL_KEY}=$BASE_URL",
+            "${HarnessCredentialFile.USER_KEY}=$TEST_USER",
+            "${HarnessCredentialFile.PASSWORD_KEY}=$TEST_PASSWORD",
+        )
+        val rejected = harness(refusing).connectWebDavFromFile(APP_NAME)
+        assertTrue(rejected.code, rejected.code.endsWith("CredentialRejected"))
+        assertFalse(credentialFile.exists())
+        assertNull(state().destinationKind)
+        assertNull(links.read())
     }
 
     // Ranuras
@@ -349,7 +422,79 @@ class BackupHarnessTest {
         assertEquals(0L, ports().backupState.catalogCount())
     }
 
+    @Test
+    fun restoringTheNewestCopyNeedsADestinationThatOpensWithCopies() = runBlocking<Unit> {
+        ports()
+        assertEquals(HarnessRestore.Stopped("NOT_CONNECTED"), harness().restoreNewestCopy())
+
+        val (_, http) = dav()
+        harness(http).connectWebDav(BASE_URL, TEST_USER, TEST_PASSWORD, APP_NAME)
+        opener = DestinationOpener { DestinationOpen.PermissionLost }
+        assertEquals(HarnessRestore.Stopped("PERMISSION_LOST"), harness().restoreNewestCopy())
+        opener = DestinationOpener { DestinationOpen.RetryLater }
+        assertEquals(HarnessRestore.Stopped("RETRY_LATER"), harness().restoreNewestCopy())
+
+        opener = DestinationOpener { DestinationOpen.Opened(FakeBackupDestination()) }
+        assertEquals(HarnessRestore.Stopped("NO_COPIES"), harness().restoreNewestCopy())
+        assertFalse(RestoreFiles(DatabaseFiles(file, noBackup)).lock.exists())
+    }
+
+    @Test
+    fun theNewestCopyIsTheHighestGenerationWithValidMetadata() {
+        val older = listedCopy(3)
+        val newest = listedCopy(5)
+        val withoutMeta = listedCopy(9, ListedMeta.Missing)
+        val mismatched =
+            listedCopy(8, ListedMeta.Present(SlMetaCodec.encode(metaOf(7))))
+
+        assertEquals(
+            newest,
+            newestListedCopy(listing(older, withoutMeta, newest, mismatched)),
+        )
+        assertNull(newestListedCopy(listing(withoutMeta, mismatched)))
+        assertNull(newestListedCopy(listing()))
+    }
+
     // Apoyo
+
+    private fun writeCredentialFile(vararg lines: String) {
+        noBackup.mkdirs()
+        credentialFile.writeText(lines.joinToString("\n"))
+    }
+
+    private fun listing(vararg copies: ListedCopy) =
+        CopyListing(copies.toList(), emptyList(), emptyList(), null)
+
+    private fun listedCopy(
+        generation: Long,
+        meta: ListedMeta = ListedMeta.Present(SlMetaCodec.encode(metaOf(generation))),
+    ): ListedCopy {
+        val name =
+            BackupFileName(
+                generation,
+                SCHEMA,
+                requireNotNull(CopyInstant.parse("20261107T120000Z")),
+                DEVICE.take(8),
+                BackupFileFormat.GZIP,
+            )
+        return ListedCopy(CopyRef(name.fileName), name, 1_234, meta)
+    }
+
+    private fun metaOf(generation: Long) = SlMeta(
+        format = 1,
+        keyId = null,
+        deviceId = DEVICE,
+        deviceLabel = null,
+        generation = generation,
+        schemaVersion = SCHEMA.toLong(),
+        appVersion = null,
+        sha256 = "ab".repeat(32),
+        rawSize = 4_096,
+        fileSize = 1_234,
+        records = 10,
+        catalogCount = 3,
+        valid = true,
+    )
 
     /** Tres documentos de Drive, nuevos y vacíos, en orden A, B y C. */
     private fun driveSlots(): List<String> = listOf("a", "b", "c").map { letter ->
@@ -418,5 +563,7 @@ class BackupHarnessTest {
         const val APP_NAME = "TiendaDePrueba"
         const val DRIVE = "com.google.android.apps.docs.storage"
         const val PICKED = "content://example.documents/document/copia"
+        const val DEVICE = "7f3a9c1e-0b2d-4c6e-8f10-23456789abcd"
+        const val SCHEMA = 1
     }
 }

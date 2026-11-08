@@ -45,10 +45,12 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 internal class HarnessCallbacks(
     val acceptPolicy: () -> Unit,
     val connect: (url: String, username: String, password: String) -> Unit,
+    val connectFromFile: () -> Unit,
     val prepareSlots: () -> Unit,
     val recordChanges: () -> Unit,
     val backupNow: () -> Unit,
     val pickRestoreFile: () -> Unit,
+    val restoreNewest: () -> Unit,
     val answer: (RestoreAnswer) -> Unit,
     val cancelRestore: () -> Unit,
     val restart: () -> Unit,
@@ -133,7 +135,12 @@ private fun ReadyContent(state: HarnessUiState.Ready, callbacks: HarnessCallback
             state = actionState(HarnessAction.POLICY),
         )
     }
-    WebDavSection(busy, actionState(HarnessAction.WEBDAV), callbacks.connect)
+    WebDavSection(
+        busy,
+        actionState(HarnessAction.WEBDAV),
+        callbacks.connect,
+        callbacks.connectFromFile,
+    )
     Section(R.string.harness_section_slots) {
         Body(stringResource(R.string.harness_slots_hint))
         PrimaryActionButton(
@@ -196,6 +203,7 @@ private fun WebDavSection(
     busy: Boolean,
     connectState: ActionState,
     onConnect: (String, String, String) -> Unit,
+    onConnectFromFile: () -> Unit,
 ) {
     // Solo en memoria, sin estado guardado: la contraseña nunca va a un Bundle.
     var url by remember { mutableStateOf("") }
@@ -243,6 +251,14 @@ private fun WebDavSection(
             enabled = !busy,
             state = connectState,
         )
+        Body(stringResource(R.string.harness_webdav_file_hint))
+        PrimaryActionButton(
+            text = stringResource(R.string.harness_connect_from_file),
+            onClick = onConnectFromFile,
+            variant = ActionVariant.OUTLINED,
+            enabled = !busy,
+            state = connectState,
+        )
     }
 }
 
@@ -255,7 +271,14 @@ private fun RestoreSection(
 ) {
     Section(R.string.harness_section_restore) {
         when (phase) {
-            RestorePhase.Idle ->
+            RestorePhase.Idle -> {
+                PrimaryActionButton(
+                    text = stringResource(R.string.harness_restore_newest),
+                    onClick = callbacks.restoreNewest,
+                    variant = ActionVariant.OUTLINED,
+                    enabled = !busy,
+                    state = restoreState,
+                )
                 PrimaryActionButton(
                     text = stringResource(R.string.harness_restore_pick),
                     onClick = callbacks.pickRestoreFile,
@@ -263,6 +286,7 @@ private fun RestoreSection(
                     enabled = !busy,
                     state = restoreState,
                 )
+            }
 
             is RestorePhase.Asking -> {
                 Body(

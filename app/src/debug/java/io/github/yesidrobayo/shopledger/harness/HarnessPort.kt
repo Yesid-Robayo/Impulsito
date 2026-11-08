@@ -33,6 +33,9 @@ internal interface HarnessPort {
 
     suspend fun connectWebDav(url: String, username: String, password: String): HarnessResult
 
+    /** Conecta la cuenta de prueba que llegó por `adb` al archivo privado, y lo borra. */
+    suspend fun connectWebDavFromFile(): HarnessResult
+
     suspend fun prepareSlots(uris: List<String>): HarnessResult
 
     suspend fun recordInventedChanges(count: Int): HarnessResult
@@ -40,6 +43,9 @@ internal interface HarnessPort {
     suspend fun backupNow(): BackupNowRequest
 
     suspend fun restoreFromFile(uri: String): HarnessRestore
+
+    /** Restaura la copia más reciente que lista el destino conectado. */
+    suspend fun restoreNewestCopy(): HarnessRestore
 
     suspend fun answer(answer: RestoreAnswer): HarnessRestore
 
@@ -81,6 +87,9 @@ internal class DataHarnessPort(
         password: String,
     ): HarnessResult = harness.connectWebDav(url, username, password, appName)
 
+    override suspend fun connectWebDavFromFile(): HarnessResult =
+        harness.connectWebDavFromFile(appName)
+
     override suspend fun prepareSlots(uris: List<String>): HarnessResult =
         harness.prepareSlots(uris)
 
@@ -90,6 +99,8 @@ internal class DataHarnessPort(
     override suspend fun backupNow(): BackupNowRequest = harness.backupNow()
 
     override suspend fun restoreFromFile(uri: String): HarnessRestore = harness.restoreFromFile(uri)
+
+    override suspend fun restoreNewestCopy(): HarnessRestore = harness.restoreNewestCopy()
 
     override suspend fun answer(answer: RestoreAnswer): HarnessRestore = harness.answer(answer)
 

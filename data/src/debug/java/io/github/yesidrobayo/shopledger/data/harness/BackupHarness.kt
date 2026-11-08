@@ -13,14 +13,26 @@ import io.github.yesidrobayo.shopledger.data.backup.RestoreSource
 import io.github.yesidrobayo.shopledger.data.backup.RestoreStage
 import io.github.yesidrobayo.shopledger.data.backup.SafetyCopy
 import io.github.yesidrobayo.shopledger.data.destination.ConnectResult
+import io.github.yesidrobayo.shopledger.data.destination.ConnectedDestination
+import io.github.yesidrobayo.shopledger.data.destination.CopyListing
+import io.github.yesidrobayo.shopledger.data.destination.CopyMetadata
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLink
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
+import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
+import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
+import io.github.yesidrobayo.shopledger.data.destination.DestinationResult
+import io.github.yesidrobayo.shopledger.data.destination.ListedCopy
+import io.github.yesidrobayo.shopledger.data.destination.ListedMeta
+import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
+import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.data.destination.WebDavConnector
+import io.github.yesidrobayo.shopledger.data.destination.identity
 import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateStore
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyConsentStatus
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -28,6 +40,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import java.io.File
 import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -55,6 +68,10 @@ import kotlinx.coroutines.withContext
  * - **Los datos que registra son inventados,** con el prefijo de nombre que le da la pantalla.
  * - **Nada corre a la vez que una copia:** conectar y preparar toman el cerrojo del respaldo sin
  *   esperar, y con una copia o una restauración en curso responden que está ocupado.
+ * - **Una cuenta real entra por un archivo, no por la pantalla:** para probar con un servicio de
+ *   verdad desde un emulador, la cuenta llega por `adb` a un archivo privado que se borra al leerlo.
+ * - **Se restaura lo que lista el destino:** la copia más reciente con metadatos válidos, por el
+ *   mismo camino que el de la lista de copias, con su suma esperada.
  *
  * Los resultados son códigos cortos, sin datos del negocio ni de la cuenta: la pantalla los muestra
  * tal cual.
@@ -66,9 +83,11 @@ class BackupHarness internal constructor(
     private val restore: suspend () -> RestoreCoordinator,
     private val policy: PolicyConsentPort,
     private val connector: WebDavConnector,
+    private val destinations: DestinationOpener,
     private val links: DestinationLinkStore,
     private val slots: SlotStateStore,
     private val documents: HarnessDocuments,
+    private val credentialFile: File,
     private val clock: Clock,
     private val ioContext: CoroutineContext,
 ) {
@@ -93,9 +112,11 @@ class BackupHarness internal constructor(
                 graph.webDavCredentials,
                 DestinationLinkStore({ context.noBackupFilesDir }, ioContext),
             ),
+        destinations = graph.destinations,
         links = DestinationLinkStore({ context.noBackupFilesDir }, ioContext),
         slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
         documents = ResolverHarnessDocuments(context.applicationContext.contentResolver),
+        credentialFile = File(context.noBackupFilesDir, HarnessCredentialFile.FILE_NAME),
         clock = clock,
         ioContext = ioContext,
     )
@@ -156,6 +177,23 @@ class BackupHarness internal constructor(
 
             ConnectResult.SaveFailed -> HarnessResult.Stopped("SAVE_FAILED")
         }
+    }
+
+    /**
+     * Conecta la cuenta WebDAV de prueba que llegó en el archivo de [HarnessCredentialFile], en la
+     * carpeta sin copia de la app, como [connectWebDav]. El archivo se borra apenas se lee, también
+     * si no sirve o si la prueba de conexión falla.
+     */
+    suspend fun connectWebDavFromFile(appName: String): HarnessResult = when (
+        val read =
+            withContext(ioContext) { HarnessCredentialFile.readAndDelete(credentialFile) }
+    ) {
+        HarnessCredentialFile.Read.Missing -> HarnessResult.Stopped("CREDENTIAL_FILE_MISSING")
+
+        HarnessCredentialFile.Read.Invalid -> HarnessResult.Stopped("CREDENTIAL_FILE_INVALID")
+
+        is HarnessCredentialFile.Read.Account ->
+            connectWebDav(read.url.trim(), read.username.trim(), read.password, appName)
     }
 
     /**
@@ -291,6 +329,32 @@ class BackupHarness internal constructor(
         return restore().start(source).toHarness()
     }
 
+    /**
+     * Empieza a restaurar la copia más reciente que lista el destino conectado, por el camino de la
+     * lista de copias: baja la copia y la compara con la suma de sus metadatos antes de revisarla.
+     * Si no hay destino, no abre o no tiene copias con metadatos válidos, no empieza nada.
+     */
+    suspend fun restoreNewestCopy(): HarnessRestore {
+        val ports = ready() ?: return HarnessRestore.Stopped(UNAVAILABLE)
+        val link = ports.backupState.get()?.connected()
+            ?: return HarnessRestore.Stopped(NOT_CONNECTED)
+        val destination =
+            when (val opened = destinations.open(link)) {
+                is DestinationOpen.Opened -> opened.destination
+                DestinationOpen.PermissionLost -> return HarnessRestore.Stopped("PERMISSION_LOST")
+                DestinationOpen.RetryLater -> return HarnessRestore.Stopped("RETRY_LATER")
+            }
+        val listing =
+            when (val listed = destination.listCopies(TransferControl.Unbounded)) {
+                is DestinationResult.Success -> listed.value
+
+                is DestinationResult.Failure ->
+                    return HarnessRestore.Stopped("LIST_FAILED ${codeOf(listed.failure)}")
+            }
+        val newest = newestListedCopy(listing) ?: return HarnessRestore.Stopped("NO_COPIES")
+        return restore().start(RestoreSource.Listed(newest)).toHarness()
+    }
+
     /** Sigue la restauración detenida con lo que respondió la persona. */
     suspend fun answer(answer: RestoreAnswer): HarnessRestore {
         val decision =
@@ -343,6 +407,18 @@ class BackupHarness internal constructor(
         else -> codeOf(reason)
     }
 
+    /** El destino conectado según el estado guardado, o nulo si no hay ninguno. */
+    private fun BackupStateEntity.connected(): ConnectedDestination? {
+        if (linkState == BackupLinkState.NOT_CONNECTED.name) return null
+        val kind = BackupDestinationKind.entries.firstOrNull { it.name == destinationKind }
+        val id = destinationId
+        return if (kind == null || id == null) {
+            null
+        } else {
+            ConnectedDestination(kind, id, destinationFolder)
+        }
+    }
+
     private suspend fun ready(): DataPorts? = when (val access = open()) {
         is DataAccess.Ready -> access.ports
         is DataAccess.Rescue -> null
@@ -353,10 +429,30 @@ class BackupHarness internal constructor(
         const val SLOTS_DESTINATION_ID = "document-slots"
         const val BUSY = "BUSY"
         const val UNAVAILABLE = "DATABASE_UNAVAILABLE"
+        const val NOT_CONNECTED = "NOT_CONNECTED"
 
         /** Solo el nombre de la clase: un texto o una referencia de archivo nunca salen de aquí. */
         fun codeOf(value: Any): String = value::class.simpleName ?: "UNKNOWN"
     }
+}
+
+/**
+ * La copia más reciente de [listing]: la de mayor generación entre las que traen metadatos válidos
+ * que coinciden con su nombre, y entre dos de la misma generación, la de referencia menor, como
+ * elige la restauración la cabeza. Sin metadatos válidos una copia no entra: no habría suma con que
+ * comparar lo que se baja.
+ */
+internal fun newestListedCopy(listing: CopyListing): ListedCopy? {
+    val valid =
+        listing.copies.mapNotNull { copy ->
+            val bytes = (copy.meta as? ListedMeta.Present)?.bytes ?: return@mapNotNull null
+            val decoded =
+                copy.name?.let { SlMetaCodec.decode(bytes, it.identity()) }
+                    ?: SlMetaCodec.decodeUnnamed(bytes)
+            (decoded as? CopyMetadata.Valid)?.meta?.let { copy to it.generation }
+        }
+    val top = valid.maxOfOrNull { it.second } ?: return null
+    return valid.filter { it.second == top }.minByOrNull { it.first.ref.value }?.first
 }
 
 /** Cómo terminó una acción del arnés, con un código corto para la pantalla. */

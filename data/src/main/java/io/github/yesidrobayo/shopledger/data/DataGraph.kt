@@ -145,7 +145,7 @@ class DataGraph internal constructor(
     }
 
     /** Abre el destino conectado, para el respaldo y para restaurar. Crearlo no abre nada. */
-    private val destinations by lazy {
+    internal val destinations by lazy {
         ProductionDestinationOpener(WebDavDestinationOpener(http, webDavCredentials)) {
             DocumentSlotDestination(
                 store = FileSlotStateStore.inNoBackupDir(context, ioContext),

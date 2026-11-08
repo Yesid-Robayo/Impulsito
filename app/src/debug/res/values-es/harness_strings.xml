@@ -20,6 +20,8 @@
     <string name="harness_webdav_user">Usuario</string>
     <string name="harness_webdav_password">Contraseña de app</string>
     <string name="harness_connect">Probar y conectar</string>
+    <string name="harness_webdav_file_hint">O envía una cuenta de prueba por adb al archivo privado del arnés. Se borra apenas se lee.</string>
+    <string name="harness_connect_from_file">Conectar con el archivo</string>
     <string name="harness_section_slots">Archivos en la nube del teléfono</string>
     <string name="harness_slots_hint">Se crean tres archivos en el selector, en orden A, B y C. Solo se acepta la nube aprobada.</string>
     <string name="harness_prepare_slots">Preparar tres archivos</string>
@@ -32,6 +34,7 @@
     <string name="harness_supplier_prefix">Proveedor de prueba</string>
     <string name="harness_section_restore">Restaurar desde un archivo</string>
     <string name="harness_restore_pick">Buscar un archivo</string>
+    <string name="harness_restore_newest">Restaurar la copia más reciente del destino</string>
     <string name="harness_restore_question">La restauración pregunta: %1$s (%2$d)</string>
     <string name="harness_restore_continue">Continuar</string>
     <string name="harness_restore_discard_first">Descartar la primera copia de seguridad</string>

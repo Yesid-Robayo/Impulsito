@@ -20,6 +20,8 @@
     <string name="harness_webdav_user">User</string>
     <string name="harness_webdav_password">App password</string>
     <string name="harness_connect">Test and connect</string>
+    <string name="harness_webdav_file_hint">Or send a test account through adb to the private harness file. It is deleted as soon as it is read.</string>
+    <string name="harness_connect_from_file">Connect with the file</string>
     <string name="harness_section_slots">Phone cloud files</string>
     <string name="harness_slots_hint">Three files are created in the picker, in order A, B and C. Only the approved cloud is accepted.</string>
     <string name="harness_prepare_slots">Prepare three files</string>
@@ -31,6 +33,7 @@
     <string name="harness_supplier_prefix">Test supplier</string>
     <string name="harness_section_restore">Restore from a file</string>
     <string name="harness_restore_pick">Find a file</string>
+    <string name="harness_restore_newest">Restore the newest copy in the destination</string>
     <string name="harness_restore_question">The restore asks: %1$s (%2$d)</string>
     <string name="harness_restore_continue">Continue</string>
     <string name="harness_restore_discard_first">Discard the first safety copy</string>

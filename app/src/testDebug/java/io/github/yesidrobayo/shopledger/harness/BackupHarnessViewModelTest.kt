@@ -95,6 +95,18 @@ class BackupHarnessViewModelTest {
     }
 
     @Test
+    fun connectingWithTheFileGoesThroughThePortWithoutFields() = runHarness {
+        viewModel.connectWebDavFromFile()
+
+        assertEquals(1, port.fileConnects)
+        assertNull(port.connected)
+        assertEquals(
+            HarnessOutcome(HarnessAction.WEBDAV, true, "CONNECTED_WITH_COPIES"),
+            ready().outcome,
+        )
+    }
+
+    @Test
     fun onlyOneActionRunsAtATime() = runHarness {
         val release = CompletableDeferred<Unit>()
         port.changesGate = release
@@ -146,6 +158,23 @@ class BackupHarnessViewModelTest {
     }
 
     @Test
+    fun theNewestCopyOfTheDestinationIsRestoredLikeAFile() = runHarness {
+        port.restoreStages += HarnessRestore.ReadyToRestart(0)
+        viewModel.restoreNewestCopy()
+        assertEquals(RestorePhase.ReadyToRestart(0), ready().restore)
+        assertEquals(
+            HarnessOutcome(HarnessAction.RESTORE, true, "READY_TO_RESTART"),
+            ready().outcome,
+        )
+
+        viewModel.cancelRestore()
+        port.restoreStages += HarnessRestore.Stopped("NO_COPIES")
+        viewModel.restoreNewestCopy()
+        assertEquals(RestorePhase.Idle, ready().restore)
+        assertEquals(HarnessOutcome(HarnessAction.RESTORE, false, "NO_COPIES"), ready().outcome)
+    }
+
+    @Test
     fun aStoppedOrCancelledRestoreGoesBackToTheStart() = runHarness {
         port.restoreStages += HarnessRestore.Question(RestoreQuestion.REPAIR, 3)
         viewModel.restoreFromFile("content://example.documents/document/copia")
@@ -166,6 +195,7 @@ class BackupHarnessViewModelTest {
         val reports = MutableStateFlow<BackupStatusReport?>(REPORT)
         var policy = PolicyConsentStatus.NEVER_ACCEPTED
         var connected: Triple<String, String, String>? = null
+        var fileConnects = 0
         var changesGate: CompletableDeferred<Unit>? = null
         var slotsFailure: Exception? = null
         var backupNowCalls = 0
@@ -192,6 +222,11 @@ class BackupHarnessViewModelTest {
             return HarnessResult.Stopped("CredentialRejected")
         }
 
+        override suspend fun connectWebDavFromFile(): HarnessResult {
+            fileConnects++
+            return HarnessResult.Done("CONNECTED_WITH_COPIES")
+        }
+
         override suspend fun prepareSlots(uris: List<String>): HarnessResult {
             slotsFailure?.let { throw it }
             return HarnessResult.Done("SLOTS_PREPARED")
@@ -209,6 +244,8 @@ class BackupHarnessViewModelTest {
 
         override suspend fun restoreFromFile(uri: String): HarnessRestore =
             restoreStages.removeFirst()
+
+        override suspend fun restoreNewestCopy(): HarnessRestore = restoreStages.removeFirst()
 
         override suspend fun answer(answer: RestoreAnswer): HarnessRestore {
             answers += answer

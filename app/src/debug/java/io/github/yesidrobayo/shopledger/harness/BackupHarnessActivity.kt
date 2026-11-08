@@ -27,6 +27,13 @@ import io.github.yesidrobayo.shopledger.ui.theme.DefaultColorPalette
  * No se exporta ni tiene filtros: solo la abre la propia app, cuando la actividad principal recibe
  * el extra de [io.github.yesidrobayo.shopledger.DebugEntry]. Las ranuras se crean una por una con el
  * selector del sistema, en orden A, B y C, y se entregan juntas.
+ *
+ * Para una cuenta real, la cuenta entra por la entrada estándar de `adb` al archivo privado del
+ * arnés, nunca como texto escrito en la pantalla ni en una línea de comandos:
+ *
+ * `adb shell "run-as <paquete> sh -c 'umask 077; cat > no_backup/harness-credential'" < archivo`
+ *
+ * y luego `Conectar con el archivo`, que lo lee y lo borra.
  */
 class BackupHarnessActivity : AppCompatActivity() {
     private val viewModel: BackupHarnessViewModel by viewModels {
@@ -85,6 +92,7 @@ class BackupHarnessActivity : AppCompatActivity() {
             HarnessCallbacks(
                 acceptPolicy = viewModel::acceptPolicy,
                 connect = viewModel::connectWebDav,
+                connectFromFile = viewModel::connectWebDavFromFile,
                 prepareSlots = {
                     createdSlots.clear()
                     launchNextSlot()
@@ -92,6 +100,7 @@ class BackupHarnessActivity : AppCompatActivity() {
                 recordChanges = viewModel::recordInventedChanges,
                 backupNow = viewModel::backupNow,
                 pickRestoreFile = { pickRestoreFile.launch(arrayOf(ANY_FILE)) },
+                restoreNewest = viewModel::restoreNewestCopy,
                 answer = viewModel::answer,
                 cancelRestore = viewModel::cancelRestore,
                 restart = ::restartForRestore,

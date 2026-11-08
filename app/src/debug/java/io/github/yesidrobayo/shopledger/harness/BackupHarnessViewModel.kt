@@ -113,6 +113,10 @@ internal class BackupHarnessViewModel(private val port: HarnessPort) : ViewModel
         port.connectWebDav(url.trim(), username.trim(), password).toOutcome(it)
     }
 
+    fun connectWebDavFromFile() = run(HarnessAction.WEBDAV) {
+        port.connectWebDavFromFile().toOutcome(it)
+    }
+
     fun prepareSlots(uris: List<String>) = run(HarnessAction.SLOTS) {
         port.prepareSlots(uris).toOutcome(it)
     }
@@ -128,6 +132,10 @@ internal class BackupHarnessViewModel(private val port: HarnessPort) : ViewModel
 
     fun restoreFromFile(uri: String) = run(HarnessAction.RESTORE) {
         restoreOutcome(it, port.restoreFromFile(uri))
+    }
+
+    fun restoreNewestCopy() = run(HarnessAction.RESTORE) {
+        restoreOutcome(it, port.restoreNewestCopy())
     }
 
     fun answer(answer: RestoreAnswer) = run(HarnessAction.RESTORE) {
