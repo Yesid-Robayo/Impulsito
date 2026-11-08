@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Métodos de pago: la lista, el formulario y el orden. Textos de la guía de redacción. -->
+    <string name="payment_method_menu_sort">Ordenar</string>
+    <string name="payment_method_fee_summary">Comisión %1$s + %2$s</string>
+    <string name="payment_method_fee_percent_only">Comisión %1$s</string>
+    <string name="payment_method_group_archived">Archivados (%1$d)</string>
+    <string name="payment_method_new_action">Nuevo método</string>
+    <string name="payment_method_edit_title">Editar método</string>
+    <string name="payment_method_name">Nombre</string>
+    <string name="payment_method_kind">Tipo</string>
+    <string name="payment_method_kind_cash">Efectivo</string>
+    <string name="payment_method_kind_card">Tarjeta</string>
+    <string name="payment_method_kind_transfer">Transferencia</string>
+    <string name="payment_method_kind_wallet">Billetera</string>
+    <string name="payment_method_kind_on_account">A crédito</string>
+    <string name="payment_method_kind_other">Otro</string>
+    <string name="payment_method_on_account_requires">Exige un cliente</string>
+    <string name="payment_method_section_fee">Comisión</string>
+    <string name="payment_method_fee_percent">Comisión en porcentaje</string>
+    <string name="payment_method_fee_fixed">Comisión fija</string>
+    <string name="payment_method_settlement">Días para acreditar</string>
+    <string name="payment_method_adjustment">Recargo o descuento por este método</string>
+    <string name="payment_method_section_instructions">Datos de cobro</string>
+    <string name="payment_method_instructions">Instrucciones de cobro</string>
+    <string name="payment_method_manual_notice">%1$s solo registra. El pago se confirma a mano en la otra app o en el banco.</string>
+    <string name="payment_method_save_action">Guardar método</string>
+    <string name="payment_method_empty_title">Sin métodos activos</string>
+    <string name="payment_method_empty_body">Para vender se necesita al menos un método.</string>
+    <string name="payment_method_last_active">Se necesita al menos un método activo</string>
+    <string name="payment_method_archive_confirm_title">¿Archivar %1$s?</string>
+    <string name="payment_method_archive_confirm_body">Deja de aparecer en ventas nuevas. Las ventas registradas lo conservan.</string>
+    <string name="payment_method_archive_confirm_action">Archivar método</string>
+    <string name="payment_method_delete_confirm_title">¿Eliminar %1$s?</string>
+    <string name="payment_method_delete_confirm_body">No se ha usado en ninguna venta, así que se borra por completo.</string>
+    <string name="payment_method_delete_confirm_action">Eliminar método</string>
+    <string name="payment_method_error_name_empty">Escribir el nombre del método</string>
+    <string name="payment_method_error_name_long">Usar máximo 40 caracteres</string>
+    <string name="payment_method_error_name_duplicate">Ya existe un método con ese nombre</string>
+    <string name="payment_method_error_fee_range">Usar un porcentaje entre 0 y 100</string>
+    <string name="payment_method_error_fee_fixed">Escribir una comisión de cero o más</string>
+    <string name="payment_method_error_adjustment_range">Usar un porcentaje entre %1$s y %2$s</string>
+    <string name="payment_method_sort_title">Ordenar métodos</string>
+    <string name="payment_method_move_up">Mover arriba</string>
+    <string name="payment_method_move_down">Mover abajo</string>
+    <string name="payment_method_sort_save_action">Guardar orden</string>
+    <string name="payment_method_error_settlement_range">Usar máximo %1$s días</string>
+    <string name="payment_method_error_kind_locked">Ya hay ventas con este método: su tipo no cambia</string>
+    <string name="payment_method_error_account">La cuenta de este método ya no está disponible. Se puede elegir otra.</string>
+    <string name="payment_method_reactivate_name_taken">Otro método activo ya usa este nombre. Al renombrar uno de los dos, se puede reactivar.</string>
+    <string name="payment_method_has_sales">Este método ya tiene ventas: solo se puede archivar.</string>
+    <string name="payment_method_name_matches_initial">Ya existe el método %1$s.</string>
+    <string name="payment_method_name_matches_initial_action">Abrir %1$s</string>
+    <string name="payment_method_row_summary">%1$s · %2$s</string>
+    <string name="payment_method_sort_list_changed">La lista cambió mientras se ordenaba. Se muestra el orden de hoy.</string>
+    <string name="payment_method_a11y_drag_handle">Arrastrar para ordenar</string>
+    <string name="payment_method_a11y_archived_expanded">Desplegado</string>
+    <string name="payment_method_a11y_archived_collapsed">Plegado</string>
+    <string name="payment_method_cash_rounding_note">Redondeo de efectivo: %1$s</string>
+    <string name="error_value_high">Ese valor parece demasiado alto. Conviene revisarlo.</string>
+    <plurals name="error_text_long">
+        <item quantity="one">Máximo %1$d carácter</item>
+        <item quantity="many">Máximo %1$d de caracteres</item>
+        <item quantity="other">Máximo %1$d caracteres</item>
+    </plurals>
+    <plurals name="payment_method_settlement_days">
+        <item quantity="one">Acredita en %1$d día</item>
+        <item quantity="many">Acredita en %1$d de días</item>
+        <item quantity="other">Acredita en %1$d días</item>
+    </plurals>
+</resources>

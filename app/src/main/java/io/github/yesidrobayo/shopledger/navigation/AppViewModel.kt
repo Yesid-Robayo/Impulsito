@@ -45,9 +45,14 @@ sealed interface ScreenModel<out VM : ViewModel> {
  *
  * La base se abre con la compuerta del arranque, que nunca deja a Room crear una base vacía encima
  * de un negocio: si manda al rescate, no se arma ningún ViewModel.
+ *
+ * Con [key], cada valor tiene su propio ViewModel en la misma entrada de la pila: así un panel de
+ * detalle junto a su lista, como en una tableta, arma uno por cada elemento elegido. Sin [key], hay
+ * uno por pantalla.
  */
 @Composable
 inline fun <reified VM : ViewModel> rememberAppViewModel(
+    key: String? = null,
     noinline create: (ScreenDependencies) -> VM,
 ): ScreenModel<VM> {
     val container = (LocalContext.current.applicationContext as ShopLedgerApp).container
@@ -62,7 +67,10 @@ inline fun <reified VM : ViewModel> rememberAppViewModel(
         is DataAccess.Ready -> {
             val dependencies = ScreenDependencies(current.ports, container)
             ScreenModel.Ready(
-                viewModel(factory = viewModelFactory { initializer { create(dependencies) } }),
+                viewModel(
+                    key = key,
+                    factory = viewModelFactory { initializer { create(dependencies) } },
+                ),
             )
         }
     }

@@ -106,6 +106,10 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object PaymentMethods : AppNavKey
 
+    /** Crear un método de pago si [methodId] es nulo, o editarlo. */
+    @Serializable
+    data class PaymentMethodEdit(val methodId: Long? = null) : AppNavKey
+
     /** El cobro lee la venta en curso de un estado de la actividad: no lleva argumentos. */
     @Serializable
     data object Checkout : AppNavKey

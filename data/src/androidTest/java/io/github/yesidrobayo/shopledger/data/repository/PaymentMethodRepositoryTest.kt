@@ -135,9 +135,16 @@ internal class PaymentMethodRepositoryTest : RepositoryTest() {
         )
         val delete = DeletePaymentMethodUseCase(runner, methods)
         assertEquals(DeletePaymentMethodResult.HasSalePayments, delete(id))
+        // Renombrarlo y archivarlo no cambia lo que su venta guardó del método.
+        val edit = EditPaymentMethodUseCase(runner, methods, clock)
+        val renamed = draft("Tarjeta nueva", PaymentMethodKind.WALLET, adjustment = 0)
+        assertEquals(SavePaymentMethodResult.Saved(id), edit(id, renamed))
         val archive = ArchivePaymentMethodUseCase(runner, methods, clock)
         assertEquals(ArchivePaymentMethodResult.Archived, archive(id))
         assertEquals(LATER_AT, methods.findById(id)?.archivedAt)
+        val payment = database.salePaymentDao().findBySale(saleId).single()
+        assertEquals("Tarjeta", payment.methodNameSnapshot)
+        assertEquals("CARD", payment.methodKindSnapshot)
     }
 
     @Test

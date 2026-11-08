@@ -163,6 +163,16 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     AppNavKey.PaymentMethods -> detail(R.string.payment_method_title, settings)
 
+    is AppNavKey.PaymentMethodEdit ->
+        detail(
+            if (key.methodId == null) {
+                R.string.payment_method_new_action
+            } else {
+                R.string.payment_method_edit_title
+            },
+            settings,
+        )
+
     AppNavKey.ReceiptTemplate -> detail(R.string.receipt_template_title, settings)
 
     AppNavKey.Printers -> detail(R.string.printer_title, settings)

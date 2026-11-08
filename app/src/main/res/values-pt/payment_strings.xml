@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Métodos de pago en portugués: la lista, el formulario y el orden. -->
+    <string name="payment_method_menu_sort">Ordenar</string>
+    <string name="payment_method_fee_summary">Taxa %1$s + %2$s</string>
+    <string name="payment_method_fee_percent_only">Taxa %1$s</string>
+    <string name="payment_method_group_archived">Arquivadas (%1$d)</string>
+    <string name="payment_method_new_action">Nova forma</string>
+    <string name="payment_method_edit_title">Editar forma de pagamento</string>
+    <string name="payment_method_name">Nome</string>
+    <string name="payment_method_kind">Tipo</string>
+    <string name="payment_method_kind_cash">Dinheiro</string>
+    <string name="payment_method_kind_card">Cartão</string>
+    <string name="payment_method_kind_transfer">Transferência</string>
+    <string name="payment_method_kind_wallet">Carteira digital</string>
+    <string name="payment_method_kind_on_account">A prazo</string>
+    <string name="payment_method_kind_other">Outro</string>
+    <string name="payment_method_on_account_requires">Exige um cliente</string>
+    <string name="payment_method_section_fee">Taxa</string>
+    <string name="payment_method_fee_percent">Taxa percentual</string>
+    <string name="payment_method_fee_fixed">Taxa fixa</string>
+    <string name="payment_method_settlement">Dias para creditar</string>
+    <string name="payment_method_adjustment">Acréscimo ou desconto nesta forma de pagamento</string>
+    <string name="payment_method_section_instructions">Dados de cobrança</string>
+    <string name="payment_method_instructions">Instruções de cobrança</string>
+    <string name="payment_method_manual_notice">%1$s apenas registra. O pagamento é confirmado manualmente no outro app ou no banco.</string>
+    <string name="payment_method_save_action">Salvar forma de pagamento</string>
+    <string name="payment_method_empty_title">Sem formas de pagamento ativas</string>
+    <string name="payment_method_empty_body">É preciso ter ao menos uma forma de pagamento para vender.</string>
+    <string name="payment_method_last_active">É preciso ter ao menos uma forma de pagamento ativa</string>
+    <string name="payment_method_archive_confirm_title">Arquivar %1$s?</string>
+    <string name="payment_method_archive_confirm_body">Deixa de aparecer em novas vendas. As vendas registradas a mantêm.</string>
+    <string name="payment_method_archive_confirm_action">Arquivar forma de pagamento</string>
+    <string name="payment_method_delete_confirm_title">Excluir %1$s?</string>
+    <string name="payment_method_delete_confirm_body">Não foi usada em nenhuma venda, então será excluída por completo.</string>
+    <string name="payment_method_delete_confirm_action">Excluir forma de pagamento</string>
+    <string name="payment_method_error_name_empty">Informar o nome da forma de pagamento</string>
+    <string name="payment_method_error_name_long">Usar no máximo 40 caracteres</string>
+    <string name="payment_method_error_name_duplicate">Já existe uma forma de pagamento com esse nome</string>
+    <string name="payment_method_error_fee_range">Usar uma porcentagem de 0 a 100</string>
+    <string name="payment_method_error_fee_fixed">Informar uma taxa de zero ou mais</string>
+    <string name="payment_method_error_adjustment_range">Usar uma porcentagem de %1$s a %2$s</string>
+    <string name="payment_method_sort_title">Ordenar formas de pagamento</string>
+    <string name="payment_method_move_up">Mover para cima</string>
+    <string name="payment_method_move_down">Mover para baixo</string>
+    <string name="payment_method_sort_save_action">Salvar ordem</string>
+    <string name="payment_method_error_settlement_range">Usar no máximo %1$s dias</string>
+    <string name="payment_method_error_kind_locked">Esta forma de pagamento já tem vendas: o tipo não muda</string>
+    <string name="payment_method_error_account">A conta desta forma de pagamento não está mais disponível. É possível escolher outra.</string>
+    <string name="payment_method_reactivate_name_taken">Outra forma de pagamento ativa já usa este nome. Ao renomear uma das duas, é possível reativá-la.</string>
+    <string name="payment_method_has_sales">Esta forma de pagamento já tem vendas: só pode ser arquivada.</string>
+    <string name="payment_method_name_matches_initial">A forma de pagamento %1$s já existe.</string>
+    <string name="payment_method_name_matches_initial_action">Abrir %1$s</string>
+    <string name="payment_method_row_summary">%1$s · %2$s</string>
+    <string name="payment_method_sort_list_changed">A lista mudou durante a ordenação. A ordem atual é mostrada.</string>
+    <string name="payment_method_a11y_drag_handle">Arrastar para ordenar</string>
+    <string name="payment_method_a11y_archived_expanded">Expandido</string>
+    <string name="payment_method_a11y_archived_collapsed">Recolhido</string>
+    <string name="payment_method_cash_rounding_note">Arredondamento em dinheiro: %1$s</string>
+    <string name="error_value_high">Esse valor parece alto demais. Convém revisá-lo.</string>
+    <plurals name="error_text_long">
+        <item quantity="one">Máximo de %1$d caractere</item>
+        <item quantity="many">Máximo de %1$d de caracteres</item>
+        <item quantity="other">Máximo de %1$d caracteres</item>
+    </plurals>
+    <plurals name="payment_method_settlement_days">
+        <item quantity="one">Credita em %1$d dia</item>
+        <item quantity="many">Credita em %1$d de dias</item>
+        <item quantity="other">Credita em %1$d dias</item>
+    </plurals>
+</resources>

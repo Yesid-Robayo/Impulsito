@@ -32,6 +32,8 @@ import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodFormRoute
+import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodsRoute
 import io.github.yesidrobayo.shopledger.ui.placeholder.EmptyContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderAction
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
@@ -125,6 +127,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.TaxSettings ->
             TaxSettingsRoute(onBack = { navigator.back() }) { PlaceholderRoute(key, navigator) }
 
+        AppNavKey.PaymentMethods -> PaymentMethodsRoute(navigator)
+        is AppNavKey.PaymentMethodEdit -> PaymentMethodFormRoute(key, navigator)
         else -> PlaceholderRoute(key, navigator)
     }
 }

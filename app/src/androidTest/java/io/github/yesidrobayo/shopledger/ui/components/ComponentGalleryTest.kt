@@ -594,6 +594,17 @@ private fun FieldsPage() {
             WholeNumberField("3650", {}, stringResource(R.string.form_amount))
         }
     }
+    Group("AdaptiveFieldRow") {
+        val percent = stringResource(R.string.term_margin)
+        val amount = stringResource(R.string.form_amount)
+        AdaptiveFieldRow(
+            firstLabel = percent,
+            secondLabel = amount,
+            modifier = side,
+            first = { PercentField("2,75", {}, percent, it) },
+            second = { MoneyField("100", {}, amount, it) },
+        )
+    }
     Group("AppTextField") {
         Column(side, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
             AppTextField(s.LONG_NAME, {}, stringResource(R.string.form_name))
