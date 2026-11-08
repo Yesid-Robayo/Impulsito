@@ -38,12 +38,16 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.FieldError
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
 import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
 import io.github.yesidrobayo.shopledger.ui.components.PercentField
+import io.github.yesidrobayo.shopledger.ui.components.PhotoThumb
+import io.github.yesidrobayo.shopledger.ui.components.PhotoThumbSize
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
@@ -57,13 +61,14 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 /**
  * El formulario de un método de pago, nuevo o guardado. Es puro: todo llega en [uiState] y sale por
  * [onAction]. Los campos guardan lo escrito tal cual, y un error, del campo o de la base, nunca lo
- * borra.
+ * borra. [onPickImage] abre el selector de fotos del sistema, sin permisos; lo da la ruta.
  */
 @Composable
 fun PaymentMethodFormScreen(
     uiState: PaymentMethodFormUiState,
     onAction: (PaymentMethodFormAction) -> Unit,
     modifier: Modifier = Modifier,
+    onPickImage: () -> Unit = {},
 ) {
     val editing = uiState as? PaymentMethodFormUiState.Editing
     Column(
@@ -111,6 +116,7 @@ fun PaymentMethodFormScreen(
                     FormFields(
                         uiState,
                         onAction,
+                        onPickImage,
                         Modifier.widthIn(max = AppTheme.sizes.maxContentWidth),
                     )
                 }
@@ -158,6 +164,7 @@ private fun FormMenu(
 private fun FormFields(
     editing: PaymentMethodFormUiState.Editing,
     onAction: (PaymentMethodFormAction) -> Unit,
+    onPickImage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val spacing = AppTheme.spacing
@@ -234,6 +241,7 @@ private fun FormFields(
             imeAction = ImeAction.Default,
             modifier = side,
         )
+        InstructionsImage(editing, onAction, onPickImage, side)
         NoticeCard(
             text =
                 stringResource(
@@ -404,6 +412,65 @@ private fun FormDialogs(
                 onDismiss = { onAction(PaymentMethodFormAction.DismissDialog) },
                 variant = ConfirmVariant.DESTRUCTIVE,
             )
+    }
+}
+
+/**
+ * La imagen de cobro, como un código QR: su miniatura con `Elegir imagen` y `Quitar imagen`, o solo
+ * `Elegir imagen`. Se recodifica sin EXIF al elegirla y se asigna al guardar el método.
+ */
+@Composable
+private fun InstructionsImage(
+    editing: PaymentMethodFormUiState.Editing,
+    onAction: (PaymentMethodFormAction) -> Unit,
+    onPickImage: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val spacing = AppTheme.spacing
+    val label = stringResource(R.string.payment_method_qr)
+    val image =
+        when (val chosen = editing.form.image) {
+            is FormImage.Saved -> chosen.image
+            is FormImage.Picked -> chosen.image
+            FormImage.None -> null
+        }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        val choose = stringResource(R.string.payment_method_qr_add_action)
+        val chooseState = if (editing.importingImage) ActionState.WORKING else ActionState.IDLE
+        if (image == null) {
+            PrimaryActionButton(choose, onPickImage, ActionVariant.OUTLINED, state = chooseState)
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val photo = rememberStoredPhoto(image)
+                if (photo != null) PhotoThumb(photo, label, size = PhotoThumbSize.DETAIL)
+                Column(Modifier.weight(1f)) {
+                    InlineTextButton(choose, onPickImage)
+                    InlineTextButton(
+                        stringResource(R.string.payment_method_qr_remove_action),
+                        { onAction(PaymentMethodFormAction.RemoveImage) },
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+        editing.imageProblem?.let { problem ->
+            FieldError(
+                stringResource(
+                    when (problem) {
+                        ImageProblem.UNREADABLE -> R.string.payment_method_error_image
+                        ImageProblem.OUT_OF_SPACE -> R.string.error_device_storage
+                    },
+                ),
+            )
+        }
     }
 }
 

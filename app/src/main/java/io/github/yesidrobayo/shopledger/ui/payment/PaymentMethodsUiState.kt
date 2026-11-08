@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.payment
 
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 
 /** Lo que muestra la lista de métodos de pago. */
@@ -15,12 +16,14 @@ sealed interface PaymentMethodsUiState {
      * [archivedExpanded]. Si [active] está vacía, todos quedaron archivados y la pantalla lo dice.
      *
      * [sorting] es el orden que la persona arma, mientras ordena, o `null` fuera de ese modo.
+     * [images] son las imágenes de cobro, por el id de su método, para las miniaturas.
      */
     data class Ready(
         val active: List<PaymentMethodRecord>,
         val archived: List<PaymentMethodRecord>,
         val archivedExpanded: Boolean = false,
         val sorting: SortingState? = null,
+        val images: Map<Long, StoredImage> = emptyMap(),
     ) : PaymentMethodsUiState
 }
 

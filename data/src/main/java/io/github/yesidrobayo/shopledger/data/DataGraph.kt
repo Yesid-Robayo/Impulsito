@@ -52,15 +52,18 @@ import io.github.yesidrobayo.shopledger.data.local.PreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
+import io.github.yesidrobayo.shopledger.data.media.MediaImporter
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
 import io.github.yesidrobayo.shopledger.data.work.DataWorkerFactory
 import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
+import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.error
@@ -137,6 +140,18 @@ class DataGraph internal constructor(
     /** La credencial WebDAV sellada. Una sola instancia: su cerrojo vive en ella. */
     internal val webDavCredentials by lazy {
         WebDavCredentialStore({ context.noBackupFilesDir }, ioContext)
+    }
+
+    /**
+     * Trae las imágenes que elige la persona, recodificadas y sin EXIF, a `filesDir/media/`. No
+     * escribe en la base: el caso de uso anota cada imagen en su transacción.
+     */
+    val imageImporter: ImageImporter by lazy {
+        MediaImporter(
+            resolver = context.contentResolver,
+            mediaDirectory = { File(context.filesDir, StoredImage.FOLDER) },
+            ioContext = ioContext,
+        )
     }
 
     /** El identificador de la instalación. Una sola instancia: su caché vive en ella. */

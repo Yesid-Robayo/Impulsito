@@ -1,5 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.payment
 
+import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
@@ -9,11 +11,14 @@ import io.github.yesidrobayo.shopledger.domain.port.TxResult
  * Elimina un método de pago que nunca se usó en una venta, como uno creado por error.
  *
  * Con ventas no se elimina, aunque estén anuladas: se archiva, para que sus ventas sigan apuntando
- * a él. Tampoco el único vigente.
+ * a él. Tampoco el único vigente. Su imagen de cobro, si nada más la usa, queda marcada para
+ * borrarse más adelante.
  */
 class DeletePaymentMethodUseCase(
     private val transactions: TransactionRunner,
     private val methods: PaymentMethodRepository,
+    private val media: MediaAssetRepository,
+    private val clock: Clock,
 ) {
     suspend operator fun invoke(id: Long): DeletePaymentMethodResult = try {
         transactions.write { delete(id) }
@@ -34,6 +39,7 @@ class DeletePaymentMethodUseCase(
         }
         if (refused != null) return TxResult.Rollback(refused)
         methods.delete(id)
+        releaseImage(media, method.details.instructionsMediaId, clock.now())
         return TxResult.Commit(DeletePaymentMethodResult.Deleted)
     }
 }

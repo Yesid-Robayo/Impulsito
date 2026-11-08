@@ -3,6 +3,9 @@ package io.github.yesidrobayo.shopledger.ui.payment
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MediaKind
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodDetails
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
@@ -13,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
@@ -22,6 +26,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.payment.ArchivePaymentMet
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.CreatePaymentMethodUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.DeletePaymentMethodUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.EditPaymentMethodUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.FindPaymentImagesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.ImportPaymentImageUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.LoadPaymentMethodOptionsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObservePaymentMethodsUseCase
@@ -49,7 +55,14 @@ internal val NUMBERS = FormNumbers(COMMA, COMMA, currencyDecimals = 2)
  */
 internal class FakePaymentMethods :
     PaymentMethodRepository,
+    MediaAssetRepository,
     TransactionRunner {
+    val images = mutableMapOf<Long, StoredImage>()
+    val orphaned = mutableSetOf<Long>()
+
+    /** Lo que devuelve el importador de mentira al elegir una imagen. */
+    var nextImport: ImageImport = ImageImport.Unreadable
+
     val methods = MutableStateFlow<Map<Long, PaymentMethodRecord>>(emptyMap())
     val withSales = mutableSetOf<Long>()
     var failure: StorageFailure? = null
@@ -138,27 +151,49 @@ internal class FakePaymentMethods :
         methods.value = methods.value - id
     }
 
+    override suspend fun findIdBySha256(sha256: String): Long? =
+        images.entries.firstOrNull { it.value.sha256 == sha256 }?.key
+
+    override suspend fun findImage(id: Long): StoredImage? = images[id]
+
+    override suspend fun insert(image: StoredImage, kind: MediaKind, createdAt: Instant): Long {
+        val id = IMAGE_IDS + images.size
+        images[id] = image
+        return id
+    }
+
+    override suspend fun isReferenced(id: Long): Boolean =
+        methods.value.values.any { it.details.instructionsMediaId == id }
+
+    override suspend fun setOrphanedAt(id: Long, orphanedAt: Instant?) {
+        if (orphanedAt == null) orphaned -= id else orphaned += id
+    }
+
     private fun ordered(all: Collection<PaymentMethodRecord>, filter: ArchiveFilter) = all
         .filter { it.isArchived == (filter == ArchiveFilter.ARCHIVED) }
         .sortedWith(compareBy<PaymentMethodRecord> { it.sortOrder }.thenBy { it.id })
 
     fun formUseCases(clock: Clock = Clock { AT }) = PaymentMethodFormUseCases(
         observe = ObservePaymentMethodsUseCase(this),
-        loadOptions = LoadPaymentMethodOptionsUseCase(this, this),
-        create = CreatePaymentMethodUseCase(this, this, clock),
-        edit = EditPaymentMethodUseCase(this, this, clock),
+        loadOptions = LoadPaymentMethodOptionsUseCase(this, this, this),
+        create = CreatePaymentMethodUseCase(this, this, this, clock),
+        edit = EditPaymentMethodUseCase(this, this, this, clock),
         archive = ArchivePaymentMethodUseCase(this, this, clock),
         reactivate = ReactivatePaymentMethodUseCase(this, this, clock),
-        delete = DeletePaymentMethodUseCase(this, this),
+        delete = DeletePaymentMethodUseCase(this, this, this, clock),
         observeCashRounding = ObserveCashRoundingUseCase(NoSettings),
+        importImage = ImportPaymentImageUseCase { _, _ -> nextImport },
     )
 
     fun listViewModel() = PaymentMethodsViewModel(
         ObservePaymentMethodsUseCase(this),
         ReorderPaymentMethodsUseCase(this, this, Clock { AT }),
+        FindPaymentImagesUseCase(this, this),
     )
 
     companion object {
+        private const val IMAGE_IDS = 100L
+
         fun details(
             name: String?,
             kind: PaymentMethodKind,

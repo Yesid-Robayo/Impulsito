@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
+import io.github.yesidrobayo.shopledger.domain.testing.FakeMediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakePaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeTransactionRunner
 import io.github.yesidrobayo.shopledger.domain.testing.FixedClock
@@ -38,15 +39,16 @@ class PaymentMethodUseCasesTest {
     private val transactions = FakeTransactionRunner(database)
     private val methods = FakePaymentMethodRepository(database)
     private val clock = FixedClock(now)
+    private val media = FakeMediaAssetRepository(database)
 
-    private val create = CreatePaymentMethodUseCase(transactions, methods, clock)
-    private val edit = EditPaymentMethodUseCase(transactions, methods, clock)
+    private val create = CreatePaymentMethodUseCase(transactions, methods, media, clock)
+    private val edit = EditPaymentMethodUseCase(transactions, methods, media, clock)
     private val reorder = ReorderPaymentMethodsUseCase(transactions, methods, clock)
     private val archive = ArchivePaymentMethodUseCase(transactions, methods, clock)
     private val reactivate = ReactivatePaymentMethodUseCase(transactions, methods, clock)
-    private val delete = DeletePaymentMethodUseCase(transactions, methods)
+    private val delete = DeletePaymentMethodUseCase(transactions, methods, media, clock)
     private val observe = ObservePaymentMethodsUseCase(methods)
-    private val options = LoadPaymentMethodOptionsUseCase(transactions, methods)
+    private val options = LoadPaymentMethodOptionsUseCase(transactions, methods, media)
 
     private val wallet = PaymentMethodDraft(
         name = "Billetera del barrio",

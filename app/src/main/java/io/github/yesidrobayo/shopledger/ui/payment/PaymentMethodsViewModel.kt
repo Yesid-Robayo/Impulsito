@@ -3,7 +3,9 @@ package io.github.yesidrobayo.shopledger.ui.payment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.FindPaymentImagesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObservePaymentMethodsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ReorderPaymentMethodsResult
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ReorderPaymentMethodsUseCase
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -28,6 +31,7 @@ import kotlinx.coroutines.launch
 class PaymentMethodsViewModel(
     private val observe: ObservePaymentMethodsUseCase,
     private val reorder: ReorderPaymentMethodsUseCase,
+    private val findImages: FindPaymentImagesUseCase,
 ) : ViewModel() {
     private val state = MutableStateFlow<PaymentMethodsUiState>(PaymentMethodsUiState.Loading)
     private var reading: Job? = null
@@ -76,18 +80,22 @@ class PaymentMethodsViewModel(
             combine(observe(ArchiveFilter.ACTIVE), observe(ArchiveFilter.ARCHIVED)) { a, b ->
                 a to b
             }
+                // Las miniaturas se leen en el mismo flujo: una falla de lectura llega a `catch`.
+                .map { (active, archived) ->
+                    Listed(active, archived, findImages(active + archived))
+                }
                 .catch { failure ->
                     if (failure is CancellationException) throw failure
                     state.value = PaymentMethodsUiState.ReadError
-                }.collect { (active, archived) ->
+                }.collect { (active, archived, images) ->
                     state.update { current ->
                         when (current) {
                             is PaymentMethodsUiState.Ready ->
-                                current.copy(active = active, archived = archived)
+                                current.copy(active = active, archived = archived, images = images)
 
                             PaymentMethodsUiState.Loading,
                             PaymentMethodsUiState.ReadError,
-                            -> PaymentMethodsUiState.Ready(active, archived)
+                            -> PaymentMethodsUiState.Ready(active, archived, images = images)
                         }
                     }
                 }
@@ -131,6 +139,13 @@ class PaymentMethodsViewModel(
             if (current is PaymentMethodsUiState.Ready) change(current) else current
         }
     }
+
+    /** Lo leído de la base en cada cambio: las dos listas y sus imágenes. */
+    private data class Listed(
+        val active: List<PaymentMethodRecord>,
+        val archived: List<PaymentMethodRecord>,
+        val images: Map<Long, StoredImage>,
+    )
 
     internal companion object {
         /** [order] con el elemento de [from] llevado a [to]. Fuera de rango, queda igual. */

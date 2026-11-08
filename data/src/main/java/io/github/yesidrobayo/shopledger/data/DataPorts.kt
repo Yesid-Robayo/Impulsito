@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLowStockAlertRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomMediaAssetRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryRepository
@@ -37,6 +38,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
@@ -139,6 +141,8 @@ class DataPorts internal constructor(
     val taxRates: TaxRateRepository = RoomTaxRateRepository(database)
 
     val taxSettings: TaxSettingsRepository = RoomTaxSettingsRepository(database, settings)
+
+    val mediaAssets: MediaAssetRepository = RoomMediaAssetRepository(database)
 
     /**
      * Lo que el estado del respaldo lee del teléfono, para la pantalla de inicio y la del respaldo.

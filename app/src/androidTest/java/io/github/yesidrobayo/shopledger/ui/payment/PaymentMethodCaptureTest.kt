@@ -1,7 +1,9 @@
 package io.github.yesidrobayo.shopledger.ui.payment
 
 import android.graphics.Bitmap
+import android.graphics.Color.BLACK
 import android.graphics.Color.TRANSPARENT
+import android.graphics.Color.WHITE
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -20,14 +22,18 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodOptions
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.security.MessageDigest
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -138,6 +144,34 @@ class PaymentMethodCaptureTest {
                     },
                 )
             },
+            "form-image" to {
+                PaymentMethodFormScreen(
+                    PaymentMethodFormUiState.Editing(
+                        methodId = SAMPLE_ACTIVE[3].id,
+                        systemKey = null,
+                        form =
+                            PaymentMethodForm(
+                                name = SAMPLE_ACTIVE[3].details.name.orEmpty(),
+                                nameEdited = true,
+                                kind = PaymentMethodKind.WALLET,
+                                instructions = PreviewSamples.LONG_NAME,
+                                image = FormImage.Saved(sampleQr),
+                            ),
+                        options = PaymentMethodOptions(SAMPLE_ACTIVE[3], false, activeCount = 6),
+                    ),
+                    {},
+                )
+            },
+            "list-image" to {
+                PaymentMethodsScreen(
+                    PaymentMethodsUiState.Ready(
+                        SAMPLE_ACTIVE,
+                        emptyList(),
+                        images = mapOf(SAMPLE_ACTIVE[3].id to sampleQr),
+                    ),
+                    {},
+                )
+            },
             "form-locked" to {
                 PaymentMethodFormScreen(
                     PaymentMethodFormUiState.Editing(
@@ -150,6 +184,34 @@ class PaymentMethodCaptureTest {
                 )
             },
         )
+
+    /**
+     * Un código de cobro inventado: un tablero de cuadros, guardado en WebP en la carpeta de imágenes
+     * de la app como lo guardaría el importador.
+     */
+    private val sampleQr: StoredImage by lazy {
+        val side = 320
+        val cell = 20
+        val bitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+        for (y in 0 until side) {
+            for (x in 0 until side) {
+                val dark = ((x / cell) + (y / cell) * 3) % 2 == 0
+                bitmap.setPixel(x, y, if (dark) BLACK else WHITE)
+            }
+        }
+        val bytes = ByteArrayOutputStream().also {
+            @Suppress("DEPRECATION")
+            bitmap.compress(Bitmap.CompressFormat.WEBP, 90, it)
+        }.toByteArray()
+        val sha = MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { (it.toInt() and 0xFF).toString(16).padStart(2, '0') }
+        val image = StoredImage(sha, "image/webp", side, side, bytes.size.toLong())
+        val folder = File(instrumentation.targetContext.filesDir, StoredImage.FOLDER).apply {
+            mkdirs()
+        }
+        File(folder, image.fileName).writeBytes(bytes)
+        image
+    }
 
     @Test
     fun drawsEveryStateInBothPalettesAndModes() {

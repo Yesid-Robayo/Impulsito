@@ -56,6 +56,10 @@
     <string name="payment_method_a11y_drag_handle">Arrastrar para ordenar</string>
     <string name="payment_method_a11y_archived_expanded">Desplegado</string>
     <string name="payment_method_a11y_archived_collapsed">Plegado</string>
+    <string name="payment_method_qr">Imagen QR</string>
+    <string name="payment_method_qr_add_action">Elegir imagen</string>
+    <string name="payment_method_qr_remove_action">Quitar imagen</string>
+    <string name="payment_method_error_image">No se pudo leer esa imagen. Elegir otra.</string>
     <string name="payment_method_cash_rounding_note">Redondeo de efectivo: %1$s</string>
     <string name="error_value_high">Ese valor parece demasiado alto. Conviene revisarlo.</string>
     <plurals name="error_text_long">

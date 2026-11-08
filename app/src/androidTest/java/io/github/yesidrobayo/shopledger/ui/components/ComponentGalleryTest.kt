@@ -668,6 +668,13 @@ private fun FieldsPage() {
 @Composable
 private fun NoticesPage() {
     val s = PreviewSamples
+    Group("PhotoThumb") {
+        Row(side, horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
+            PhotoThumb(PhotoState.Pending, s.SHORT_NAME)
+            PhotoThumb(PhotoState.Unavailable, s.SHORT_NAME, size = PhotoThumbSize.TABLET)
+            PhotoThumb(PhotoState.Unavailable, s.SHORT_NAME, size = PhotoThumbSize.DETAIL)
+        }
+    }
     Group("NoticeCard") {
         Column(side, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
             NoticeCard(s.NOTICE_TEXT, NoticeVariant.INFO)

@@ -11,7 +11,8 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  * para que cambiar de idioma lo siga traduciendo. Un método de la persona siempre trae nombre.
  *
  * Los montos y porcentajes ya vienen como enteros: la pantalla los lee con el formato regional, y
- * aquí solo se revisa su rango. La imagen de cobro no va aquí: se elige aparte.
+ * aquí solo se revisa su rango. [image] dice qué pasa con la imagen de cobro, que ya llega
+ * recodificada y guardada en su archivo.
  */
 data class PaymentMethodDraft(
     val name: String?,
@@ -22,4 +23,5 @@ data class PaymentMethodDraft(
     val priceAdjustment: BasisPoints,
     val moneyAccountId: Long?,
     val instructionsText: String?,
+    val image: InstructionsImageChange = InstructionsImageChange.Keep,
 )

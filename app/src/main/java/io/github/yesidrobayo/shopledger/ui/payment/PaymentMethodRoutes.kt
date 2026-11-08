@@ -1,5 +1,8 @@
 package io.github.yesidrobayo.shopledger.ui.payment
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -22,6 +25,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.payment.ArchivePaymentMet
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.CreatePaymentMethodUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.DeletePaymentMethodUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.EditPaymentMethodUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.FindPaymentImagesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.ImportPaymentImageUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.LoadPaymentMethodOptionsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObservePaymentMethodsUseCase
@@ -57,6 +62,7 @@ fun PaymentMethodsRoute(navigator: AppNavigator) {
                         ports.paymentMethods,
                         dependencies.container.clock,
                     ),
+                findImages = FindPaymentImagesUseCase(ports.transactions, ports.mediaAssets),
             )
         }
     when (model) {
@@ -183,18 +189,22 @@ private fun PaymentMethodFormPane(
             val clock = dependencies.container.clock
             val methods = ports.paymentMethods
             val transactions = ports.transactions
+            val media = ports.mediaAssets
             PaymentMethodFormViewModel(
                 methodId = methodId,
                 useCases =
                     PaymentMethodFormUseCases(
                         observe = ObservePaymentMethodsUseCase(methods),
-                        loadOptions = LoadPaymentMethodOptionsUseCase(transactions, methods),
-                        create = CreatePaymentMethodUseCase(transactions, methods, clock),
-                        edit = EditPaymentMethodUseCase(transactions, methods, clock),
+                        loadOptions =
+                            LoadPaymentMethodOptionsUseCase(transactions, methods, media),
+                        create = CreatePaymentMethodUseCase(transactions, methods, media, clock),
+                        edit = EditPaymentMethodUseCase(transactions, methods, media, clock),
                         archive = ArchivePaymentMethodUseCase(transactions, methods, clock),
                         reactivate = ReactivatePaymentMethodUseCase(transactions, methods, clock),
-                        delete = DeletePaymentMethodUseCase(transactions, methods),
+                        delete = DeletePaymentMethodUseCase(transactions, methods, media, clock),
                         observeCashRounding = ObserveCashRoundingUseCase(ports.settings),
+                        importImage =
+                            ImportPaymentImageUseCase(dependencies.container.data.imageImporter),
                     ),
                 numbers =
                     FormNumbers(
@@ -214,7 +224,22 @@ private fun PaymentMethodFormPane(
             val state by viewModel.uiState.collectAsStateWithLifecycle()
             val finished = (state as? PaymentMethodFormUiState.Editing)?.finished == true
             LaunchedEffect(finished) { if (finished) onClose() }
+            // El selector de fotos del sistema: no pide permisos, y en Android viejos abre el de
+            // documentos. Lo elegido solo se lee una vez, al recodificarlo.
+            val picker =
+                rememberLauncherForActivityResult(
+                    ActivityResultContracts.PickVisualMedia(),
+                ) { uri ->
+                    if (uri != null) {
+                        viewModel.onAction(PaymentMethodFormAction.PickImage(uri.toString()))
+                    }
+                }
             PaymentMethodFormScreen(
+                onPickImage = {
+                    picker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                },
                 uiState = state,
                 onAction = { action ->
                     when (action) {
@@ -235,6 +260,8 @@ private fun PaymentMethodFormPane(
                         PaymentMethodFormAction.DismissDialog,
                         PaymentMethodFormAction.ConfirmDialog,
                         PaymentMethodFormAction.Reactivate,
+                        is PaymentMethodFormAction.PickImage,
+                        PaymentMethodFormAction.RemoveImage,
                         -> viewModel.onAction(action)
                     }
                 },

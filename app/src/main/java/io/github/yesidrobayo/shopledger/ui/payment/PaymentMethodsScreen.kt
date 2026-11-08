@@ -49,6 +49,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
@@ -59,6 +60,7 @@ import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
 import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
+import io.github.yesidrobayo.shopledger.ui.components.PhotoThumb
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
@@ -174,7 +176,7 @@ private fun MethodList(
                 }
             }
             items(state.active, key = { it.id }) { method ->
-                MethodRow(method, onClick = {
+                MethodRow(method, state.images[method.id], onClick = {
                     onAction(PaymentMethodsAction.OpenMethod(method.id))
                 })
             }
@@ -190,6 +192,7 @@ private fun MethodList(
                     items(state.archived, key = { it.id }) { method ->
                         MethodRow(
                             method,
+                            state.images[method.id],
                             onClick = { onAction(PaymentMethodsAction.OpenMethod(method.id)) },
                         )
                     }
@@ -208,7 +211,7 @@ private fun MethodList(
 
 /** Una fila de libreta: nombre arriba, tipo y comisión debajo, y acreditación si la hay. */
 @Composable
-private fun MethodRow(method: PaymentMethodRecord, onClick: () -> Unit) {
+private fun MethodRow(method: PaymentMethodRecord, image: StoredImage?, onClick: () -> Unit) {
     val spacing = AppTheme.spacing
     Column(Modifier.fillMaxWidth()) {
         Row(
@@ -222,6 +225,12 @@ private fun MethodRow(method: PaymentMethodRecord, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(spacing.s12),
         ) {
             MethodText(method, Modifier.weight(1f))
+            // La miniatura de su QR, solo si tiene uno: un método sin imagen no dibuja nada.
+            if (image != null) {
+                rememberStoredPhoto(image)?.let { photo ->
+                    PhotoThumb(photo, stringResource(R.string.payment_method_qr))
+                }
+            }
         }
         HorizontalDivider(
             thickness = AppTheme.sizes.hairline,

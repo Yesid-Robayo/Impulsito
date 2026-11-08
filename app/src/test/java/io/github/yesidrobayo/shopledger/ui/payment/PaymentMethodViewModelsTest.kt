@@ -2,6 +2,8 @@ package io.github.yesidrobayo.shopledger.ui.payment
 
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import kotlinx.coroutines.Dispatchers
@@ -282,6 +284,59 @@ class PaymentMethodViewModelsTest {
         assertEquals(FormNotice.SaveFailed(SaveProblem.OTHER), editing.notice)
         assertEquals("Vale", editing.form.name)
         assertFalse(editing.working)
+    }
+
+    @Test
+    fun aPickedImageIsAssignedOnSaveAndRemovingItReleasesIt() = runTest {
+        val qr = StoredImage("ab".repeat(32), "image/webp", 640, 640, 30_000)
+        base.nextImport = ImageImport.Imported(qr)
+        val form = PaymentMethodFormViewModel(3L, base.formUseCases(), NUMBERS)
+
+        form.onAction(PaymentMethodFormAction.PickImage("content://picker/1"))
+        val picked = form.uiState.value as PaymentMethodFormUiState.Editing
+        assertEquals(FormImage.Picked(qr), picked.form.image)
+        form.onAction(PaymentMethodFormAction.Save)
+
+        val imageId = requireNotNull(base.methods.value[3L]?.details?.instructionsMediaId)
+        assertEquals(qr, base.images[imageId])
+        // Abierto otra vez, la muestra como guardada; quitarla y guardar la deja sin uso.
+        val again = PaymentMethodFormViewModel(3L, base.formUseCases(), NUMBERS)
+        val saved = again.uiState.value as PaymentMethodFormUiState.Editing
+        assertEquals(FormImage.Saved(qr), saved.form.image)
+        again.onAction(PaymentMethodFormAction.RemoveImage)
+        again.onAction(PaymentMethodFormAction.Save)
+        assertNull(base.methods.value[3L]?.details?.instructionsMediaId)
+        assertTrue(imageId in base.orphaned)
+    }
+
+    @Test
+    fun anUnreadableImageChangesNothingAndSaysSo() = runTest {
+        val form = PaymentMethodFormViewModel(3L, base.formUseCases(), NUMBERS)
+        base.nextImport = ImageImport.Unreadable
+
+        form.onAction(PaymentMethodFormAction.PickImage("content://picker/2"))
+
+        val editing = form.uiState.value as PaymentMethodFormUiState.Editing
+        assertEquals(FormImage.None, editing.form.image)
+        assertEquals(ImageProblem.UNREADABLE, editing.imageProblem)
+        base.nextImport = ImageImport.OutOfSpace
+        form.onAction(PaymentMethodFormAction.PickImage("content://picker/3"))
+        assertEquals(
+            ImageProblem.OUT_OF_SPACE,
+            (form.uiState.value as PaymentMethodFormUiState.Editing).imageProblem,
+        )
+    }
+
+    @Test
+    fun theListFindsTheImageOfEachMethod() = runTest {
+        val qr = StoredImage("cd".repeat(32), "image/webp", 640, 640, 30_000)
+        base.images[100L] = qr
+        val card = requireNotNull(base.methods.value[2L])
+        base.put(card.copy(details = card.details.copy(instructionsMediaId = 100L)))
+
+        val ready = base.listViewModel().uiState.value as PaymentMethodsUiState.Ready
+
+        assertEquals(mapOf(2L to qr), ready.images)
     }
 
     @Test

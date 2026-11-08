@@ -56,6 +56,10 @@
     <string name="payment_method_a11y_drag_handle">Drag to sort</string>
     <string name="payment_method_a11y_archived_expanded">Expanded</string>
     <string name="payment_method_a11y_archived_collapsed">Collapsed</string>
+    <string name="payment_method_qr">QR image</string>
+    <string name="payment_method_qr_add_action">Choose image</string>
+    <string name="payment_method_qr_remove_action">Remove image</string>
+    <string name="payment_method_error_image">That image could not be read. Choose another.</string>
     <string name="payment_method_cash_rounding_note">Cash rounding: %1$s</string>
     <string name="error_value_high">That value looks too high. Check it.</string>
     <plurals name="error_text_long">

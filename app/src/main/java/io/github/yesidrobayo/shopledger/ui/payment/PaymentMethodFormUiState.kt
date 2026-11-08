@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.payment
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodOptions
 
@@ -20,7 +21,26 @@ data class PaymentMethodForm(
     val settlementDays: String = "",
     val priceAdjustment: String = "",
     val instructions: String = "",
+    val image: FormImage = FormImage.None,
 )
+
+/** La imagen de cobro en el formulario, como un código QR. */
+sealed interface FormImage {
+    /** Sin imagen: nunca la tuvo, o la persona la quitó. */
+    data object None : FormImage
+
+    /** La que ya tenía guardada el método. */
+    data class Saved(val image: StoredImage) : FormImage
+
+    /** Una recién elegida, ya recodificada y en su archivo, que se asigna al guardar. */
+    data class Picked(val image: StoredImage) : FormImage
+}
+
+/** Por qué no se pudo traer la imagen elegida. Nada cambió, y se puede elegir otra. */
+enum class ImageProblem {
+    UNREADABLE,
+    OUT_OF_SPACE,
+}
 
 /** Los campos que pueden tener un error propio. */
 enum class FormField {
@@ -104,6 +124,8 @@ sealed interface PaymentMethodFormUiState {
         val working: Boolean = false,
         val finished: Boolean = false,
         val cashRounding: Money = Money.ZERO,
+        val importingImage: Boolean = false,
+        val imageProblem: ImageProblem? = null,
     ) : PaymentMethodFormUiState
 }
 
@@ -136,6 +158,11 @@ sealed interface PaymentMethodFormAction {
     data object ConfirmDialog : PaymentMethodFormAction
 
     data object Reactivate : PaymentMethodFormAction
+
+    /** La persona eligió una imagen en el selector del sistema; [source] es su documento. */
+    data class PickImage(val source: String) : PaymentMethodFormAction
+
+    data object RemoveImage : PaymentMethodFormAction
 
     /** Abre el método inicial cuyo nombre coincide con el escrito. */
     data class OpenMethod(val id: Long) : PaymentMethodFormAction

@@ -58,6 +58,7 @@ internal data class Tables(
     val taxSettings: TaxSettings = TaxSettings(TaxMode.NONE, null, purchaseTaxRecoverable = false),
     /** La tasa de cada producto que tiene una: id del producto a id de la tasa. */
     val productTaxRateIds: Map<Long, Long> = emptyMap(),
+    val mediaAssets: Map<Long, MediaAssetRow> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

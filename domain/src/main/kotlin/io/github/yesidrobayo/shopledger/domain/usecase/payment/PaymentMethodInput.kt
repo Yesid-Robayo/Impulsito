@@ -1,11 +1,15 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.payment
 
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MediaKind
+import io.github.yesidrobayo.shopledger.domain.model.payment.InstructionsImageChange
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodDraft
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodInputError
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
+import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.rule.payment.PaymentMethodCheck
 import io.github.yesidrobayo.shopledger.domain.rule.payment.PaymentMethodRules
+import kotlin.time.Instant
 
 /**
  * Revisa [draft] con sus reglas y con lo que solo sabe la base, dentro de la transacción que lo va
@@ -60,4 +64,38 @@ internal suspend fun checkDraft(
             proposed.copy(instructionsMediaId = editing?.details?.instructionsMediaId),
         )
     }
+}
+
+/**
+ * El id de la imagen de cobro que queda tras [change], anotándola si es nueva. [current] es la que
+ * tenía el método. Una imagen que ya estaba anotada, quizá marcada como sin uso, vuelve a usarse:
+ * dos imágenes iguales son una sola fila.
+ */
+internal suspend fun imageIdAfter(
+    media: MediaAssetRepository,
+    change: InstructionsImageChange,
+    current: Long?,
+    at: Instant,
+): Long? = when (change) {
+    InstructionsImageChange.Keep -> current
+
+    InstructionsImageChange.Remove -> null
+
+    is InstructionsImageChange.Use -> {
+        val existing = media.findIdBySha256(change.image.sha256)
+        if (existing == null) {
+            media.insert(change.image, MediaKind.PAYMENT_QR, at)
+        } else {
+            media.setOrphanedAt(existing, orphanedAt = null)
+            existing
+        }
+    }
+}
+
+/**
+ * Si la imagen [previous] dejó de usarse, la marca desde [at] para que la limpieza la borre más
+ * adelante. Se llama después de escribir el método, para que su referencia ya no cuente.
+ */
+internal suspend fun releaseImage(media: MediaAssetRepository, previous: Long?, at: Instant) {
+    if (previous != null && !media.isReferenced(previous)) media.setOrphanedAt(previous, at)
 }

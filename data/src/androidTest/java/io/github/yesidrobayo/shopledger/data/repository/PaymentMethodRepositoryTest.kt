@@ -45,11 +45,12 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 internal class PaymentMethodRepositoryTest : RepositoryTest() {
     private val methods by lazy { RoomPaymentMethodRepository(database) }
+    private val media by lazy { RoomMediaAssetRepository(database) }
     private val clock = Clock { LATER_AT }
 
     @Test
     fun theSixInitialMethodsWorkWithTheUseCasesWithoutBrands() = runBlocking {
-        val edit = EditPaymentMethodUseCase(runner, methods, clock)
+        val edit = EditPaymentMethodUseCase(runner, methods, media, clock)
         val archive = ArchivePaymentMethodUseCase(runner, methods, clock)
         val reactivate = ReactivatePaymentMethodUseCase(runner, methods, clock)
         val reorder = ReorderPaymentMethodsUseCase(runner, methods, clock)
@@ -112,7 +113,7 @@ internal class PaymentMethodRepositoryTest : RepositoryTest() {
 
         val method = requireNotNull(methods.findById(id))
         assertEquals(PaymentMethodKind.OTHER, method.details.kind)
-        val edit = EditPaymentMethodUseCase(runner, methods, clock)
+        val edit = EditPaymentMethodUseCase(runner, methods, media, clock)
         assertEquals(
             SavePaymentMethodResult.Saved(id),
             edit(id, draft("Cupón", PaymentMethodKind.OTHER, adjustment = 0, feeRate = 100)),
@@ -133,10 +134,10 @@ internal class PaymentMethodRepositoryTest : RepositoryTest() {
             StorageFailure.INVARIANT_VIOLATION,
             storageFailureOf { commit { methods.delete(id) } },
         )
-        val delete = DeletePaymentMethodUseCase(runner, methods)
+        val delete = DeletePaymentMethodUseCase(runner, methods, media, clock)
         assertEquals(DeletePaymentMethodResult.HasSalePayments, delete(id))
         // Renombrarlo y archivarlo no cambia lo que su venta guardó del método.
-        val edit = EditPaymentMethodUseCase(runner, methods, clock)
+        val edit = EditPaymentMethodUseCase(runner, methods, media, clock)
         val renamed = draft("Tarjeta nueva", PaymentMethodKind.WALLET, adjustment = 0)
         assertEquals(SavePaymentMethodResult.Saved(id), edit(id, renamed))
         val archive = ArchivePaymentMethodUseCase(runner, methods, clock)
@@ -153,7 +154,7 @@ internal class PaymentMethodRepositoryTest : RepositoryTest() {
 
         assertEquals(
             DeletePaymentMethodResult.Deleted,
-            DeletePaymentMethodUseCase(runner, methods)(id),
+            DeletePaymentMethodUseCase(runner, methods, media, clock)(id),
         )
 
         assertNull(methods.findById(id))

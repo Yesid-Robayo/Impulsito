@@ -28,6 +28,18 @@ internal interface MediaAssetDao {
     )
     suspend fun findOrphanedBefore(orphanedBefore: Long): List<MediaAssetEntity>
 
+    /**
+     * Si algo la usa: un producto, un método de pago, un comprobante o el logo. Sin uso, se marca
+     * huérfana y la limpieza la borra más adelante.
+     */
+    @Query(
+        "SELECT EXISTS (SELECT 1 FROM products WHERE photo_media_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM payment_methods WHERE instructions_media_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM document_attachments WHERE media_asset_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM app_settings WHERE receipt_logo_media_id = :id)",
+    )
+    suspend fun isReferenced(id: Long): Boolean
+
     /** Devuelve el id nuevo. Falla si la imagen ya existe. */
     @Insert
     suspend fun insert(asset: MediaAssetEntity): Long

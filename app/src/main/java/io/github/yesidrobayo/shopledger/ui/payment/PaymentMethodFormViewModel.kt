@@ -6,6 +6,8 @@ import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
+import io.github.yesidrobayo.shopledger.domain.model.payment.InstructionsImageChange
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodDraft
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodInputError
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
@@ -19,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.payment.CreatePaymentMeth
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.DeletePaymentMethodResult
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.DeletePaymentMethodUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.EditPaymentMethodUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.ImportPaymentImageUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.LoadPaymentMethodOptionsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObservePaymentMethodsUseCase
@@ -41,6 +44,7 @@ class PaymentMethodFormUseCases(
     val reactivate: ReactivatePaymentMethodUseCase,
     val delete: DeletePaymentMethodUseCase,
     val observeCashRounding: ObserveCashRoundingUseCase,
+    val importImage: ImportPaymentImageUseCase,
 )
 
 /**
@@ -117,6 +121,13 @@ class PaymentMethodFormViewModel(
 
             PaymentMethodFormAction.Reactivate -> reactivate()
 
+            is PaymentMethodFormAction.PickImage -> importImage(action.source)
+
+            PaymentMethodFormAction.RemoveImage ->
+                updateEditing {
+                    it.copy(form = it.form.copy(image = FormImage.None), imageProblem = null)
+                }
+
             // La navegación la resuelve la ruta.
             PaymentMethodFormAction.Back,
             is PaymentMethodFormAction.OpenMethod,
@@ -145,7 +156,10 @@ class PaymentMethodFormViewModel(
                     PaymentMethodFormUiState.Editing(
                         methodId = methodId,
                         systemKey = options.method.systemKey,
-                        form = formOf(options.method),
+                        form =
+                            formOf(options.method).copy(
+                                image = options.image?.let(FormImage::Saved) ?: FormImage.None,
+                            ),
                         options = options,
                         cashRounding = cashRounding,
                     )
@@ -388,8 +402,56 @@ class PaymentMethodFormViewModel(
                 priceAdjustment = adjustment,
                 moneyAccountId = currentAccount(),
                 instructionsText = form.instructions,
+                image = imageChange(form.image),
             )
         return ReadForm(draft, emptyMap())
+    }
+
+    /**
+     * Qué pasa con la imagen al guardar: la elegida se asigna; sin imagen, se quita la que tenía; la
+     * que ya estaba queda igual.
+     */
+    private fun imageChange(image: FormImage): InstructionsImageChange = when (image) {
+        is FormImage.Picked -> InstructionsImageChange.Use(image.image)
+
+        is FormImage.Saved -> InstructionsImageChange.Keep
+
+        FormImage.None ->
+            if (currentImageId() == null) {
+                InstructionsImageChange.Keep
+            } else {
+                InstructionsImageChange.Remove
+            }
+    }
+
+    private fun currentImageId(): Long? = (state.value as? PaymentMethodFormUiState.Editing)
+        ?.options
+        ?.method
+        ?.details
+        ?.instructionsMediaId
+
+    /**
+     * Trae la imagen elegida, recodificada y sin EXIF, sin asignarla todavía: se asigna al guardar,
+     * con lo demás del formulario.
+     */
+    private fun importImage(source: String) {
+        val editing = state.value as? PaymentMethodFormUiState.Editing ?: return
+        if (editing.importingImage) return
+        updateEditing { it.copy(importingImage = true, imageProblem = null) }
+        viewModelScope.launch {
+            val result = useCases.importImage(source)
+            updateEditing { current ->
+                val idle = current.copy(importingImage = false)
+                when (result) {
+                    is ImageImport.Imported ->
+                        idle.copy(form = idle.form.copy(image = FormImage.Picked(result.image)))
+
+                    ImageImport.Unreadable -> idle.copy(imageProblem = ImageProblem.UNREADABLE)
+
+                    ImageImport.OutOfSpace -> idle.copy(imageProblem = ImageProblem.OUT_OF_SPACE)
+                }
+            }
+        }
     }
 
     /** La cuenta que ya tenía el método: este formulario todavía no la cambia. */
