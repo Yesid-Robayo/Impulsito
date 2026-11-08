@@ -157,9 +157,12 @@ private fun NumberField(
     )
 }
 
-/** El error de un campo: icono y mensaje debajo, para que no dependa del borde rojo. */
+/**
+ * El error de un campo: icono y mensaje debajo, para que no dependa del borde rojo. Lo comparten
+ * todos los campos del catálogo.
+ */
 @Composable
-private fun FieldError(message: String) {
+internal fun FieldError(message: String) {
     Row(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),

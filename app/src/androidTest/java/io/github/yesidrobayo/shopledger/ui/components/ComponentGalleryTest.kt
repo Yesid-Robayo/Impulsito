@@ -553,6 +553,18 @@ private fun FieldsPage() {
             QuantityField("1,25", {}, stringResource(R.string.form_amount), s.KILOGRAM)
         }
     }
+    Group("AppTextField") {
+        Column(side, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+            AppTextField(s.LONG_NAME, {}, stringResource(R.string.form_name))
+            AppTextField("", {}, stringResource(R.string.form_name))
+            AppTextField(
+                s.SHORT_NAME,
+                {},
+                stringResource(R.string.form_name),
+                error = stringResource(R.string.state_error_read),
+            )
+        }
+    }
     Group("DateField") {
         Column(side, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
             DateField(stringResource(R.string.form_date), today, {}, today, DayOfWeek.MONDAY)

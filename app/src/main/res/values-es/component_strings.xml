@@ -28,6 +28,7 @@
     <string name="onboarding_step_progress">Paso %1$d de %2$d</string>
 
     <!-- Campos. -->
+    <string name="form_name">Nombre</string>
     <string name="form_amount">Valor</string>
     <string name="form_date">Fecha</string>
 
