@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Centro Negocio: búsqueda, secciones, grupos y las herramientas que ya tienen pantalla. -->
+    <string name="hub_search_hint">Buscar ferramenta</string>
+    <string name="hub_section_in_use">Em uso</string>
+    <string name="hub_section_more">Mais ferramentas</string>
+    <string name="hub_group_money">Dinheiro</string>
+    <string name="hub_group_sales_documents">Vendas e documentos</string>
+    <string name="hub_group_prices">Preços</string>
+    <string name="hub_group_catalog_inventory">Catálogo e estoque</string>
+    <string name="hub_group_reports">Relatórios</string>
+    <string name="hub_first_use_body">As ferramentas passam para Em uso com o primeiro registro.</string>
+    <string name="hub_search_empty">Sem resultados para \"%1$s\"</string>
+    <string name="hub_help_row">Ajuda</string>
+    <string name="hub_tool_units">Unidades e conversões</string>
+    <string name="hub_tool_units_desc">Comprar por caixa e vender por unidade</string>
+</resources>

@@ -65,6 +65,7 @@ import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseDao
 import io.github.yesidrobayo.shopledger.data.local.expense.ExpenseEntity
 import io.github.yesidrobayo.shopledger.data.local.expense.RecurringExpenseDao
 import io.github.yesidrobayo.shopledger.data.local.expense.RecurringExpenseEntity
+import io.github.yesidrobayo.shopledger.data.local.experience.ModuleUsageDao
 import io.github.yesidrobayo.shopledger.data.local.guard.SchemaGuards
 import io.github.yesidrobayo.shopledger.data.local.guard.SchemaGuardsCallback
 import io.github.yesidrobayo.shopledger.data.local.migration.AppMigrations
@@ -331,6 +332,8 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun cashSessionCountDao(): CashSessionCountDao
 
     abstract fun auditEventDao(): AuditEventDao
+
+    abstract fun moduleUsageDao(): ModuleUsageDao
 
     abstract fun businessGoalDao(): BusinessGoalDao
 

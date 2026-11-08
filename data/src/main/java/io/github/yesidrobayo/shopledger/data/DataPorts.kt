@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLowStockAlertRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
@@ -34,6 +35,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
@@ -126,6 +128,9 @@ class DataPorts internal constructor(
     val expenses: ExpenseRepository = RoomExpenseRepository(database)
 
     val paymentMethods: PaymentMethodRepository = RoomPaymentMethodRepository(database)
+
+    /** Qué herramientas del centro `Negocio` tienen datos. Solo lee. */
+    val moduleUsage: ModuleUsageSource = RoomModuleUsageSource(database)
 
     /**
      * Lo que el estado del respaldo lee del teléfono, para la pantalla de inicio y la del respaldo.

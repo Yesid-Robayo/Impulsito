@@ -14,13 +14,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.collapse
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.expand
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -116,6 +121,69 @@ fun ToolRow(
     }
 }
 
+/**
+ * El encabezado plegable de un grupo del centro `Negocio`: el nombre del grupo, cuántas herramientas
+ * guarda y una flecha que apunta abajo si está plegado y arriba si está abierto. Toda la fila se
+ * toca; TalkBack la lee como encabezado y dice si está abierta o plegada.
+ */
+@Composable
+fun ToolGroupRow(
+    title: String,
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .heightIn(min = AppTheme.sizes.listRowSingle)
+                .clickable(role = Role.Button, onClick = onToggle)
+                .semantics(mergeDescendants = true) {
+                    heading()
+                    if (expanded) {
+                        collapse {
+                            onToggle()
+                            true
+                        }
+                    } else {
+                        expand {
+                            onToggle()
+                            true
+                        }
+                    }
+                }.padding(start = AppTheme.spacing.s16, end = AppTheme.spacing.s8),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            count.toString(),
+            style = AppTheme.amounts.small,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Icon(
+            painter = painterResource(R.drawable.ic_chevron_right),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            // La flecha de la derecha, girada: abajo para abrir, arriba para plegar.
+            modifier =
+                Modifier
+                    .size(AppTheme.sizes.icon)
+                    .rotate(if (expanded) CHEVRON_UP else CHEVRON_DOWN),
+        )
+    }
+}
+
+private const val CHEVRON_DOWN = 90f
+private const val CHEVRON_UP = 270f
+
 @ThemePreviews
 @Composable
 private fun ToolRowPreview() {
@@ -124,6 +192,8 @@ private fun ToolRowPreview() {
         Column {
             ToolRow(s.TOOL_NAME, s.TOOL_DETAIL, {})
             ToolRow(s.TOOL_NAME, s.TOOL_DETAIL, {}, attention = s.TOOL_ATTENTION)
+            ToolGroupRow(s.CATEGORY_A, count = 2, expanded = false, onToggle = {})
+            ToolGroupRow(s.LONG_NAME, count = 10, expanded = true, onToggle = {})
         }
     }
 }

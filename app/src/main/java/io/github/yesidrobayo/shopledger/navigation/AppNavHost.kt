@@ -30,6 +30,7 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.placeholder.EmptyContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderAction
@@ -113,6 +114,9 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
                 onBack = { navigator.back() },
                 onOpenFormat = { navigator.open(AppNavKey.RegionalSettings()) },
             )
+
+        AppNavKey.BusinessHub ->
+            BusinessHubRoute(onOpen = { navigator.open(it) }, onBack = { navigator.back() })
 
         else -> PlaceholderRoute(key, navigator)
     }
