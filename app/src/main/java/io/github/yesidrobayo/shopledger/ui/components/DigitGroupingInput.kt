@@ -50,10 +50,32 @@ fun cleanNumberInput(text: String, symbols: NumberSymbols, maxDecimals: Int): St
 }
 
 /**
+ * Como [cleanNumberInput], y además conserva un signo menos al principio si [allowNegative]: el de la
+ * región, el guion del teclado o U+2212, guardado siempre como el de la región. Un signo en otro
+ * lugar se descarta, igual que cualquier otro carácter que no sea cifra.
+ */
+fun cleanSignedNumberInput(
+    text: String,
+    symbols: NumberSymbols,
+    maxDecimals: Int,
+    allowNegative: Boolean,
+): String {
+    val trimmed = text.trimStart()
+    val negative = allowNegative && trimmed.firstOrNull()?.let { isMinus(it, symbols) } == true
+    val digits = cleanNumberInput(if (negative) trimmed.drop(1) else text, symbols, maxDecimals)
+    return if (negative) symbols.minusSign + digits else digits
+}
+
+/** Los signos menos que se aceptan al escribir: el de la región, el guion y U+2212. */
+private fun isMinus(char: Char, symbols: NumberSymbols): Boolean =
+    char == symbols.minusSign || char == '-' || char == '−'
+
+/**
  * Dibuja los separadores de grupos de la región mientras se escribe, sin cambiar el texto guardado:
  * `1234567` se ve `1.234.567`, o `12,34,567` en una región con grupos de tres y dos.
  *
- * El texto que recibe ya pasó por [cleanNumberInput]: cifras y, a lo sumo, un separador decimal.
+ * El texto que recibe ya pasó por [cleanNumberInput] o [cleanSignedNumberInput]: cifras, a lo sumo
+ * un separador decimal y, delante, quizá el signo menos de la región, que no cuenta como cifra.
  */
 class DigitGroupingTransformation(private val symbols: NumberSymbols) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
@@ -68,7 +90,9 @@ class DigitGroupingTransformation(private val symbols: NumberSymbols) : VisualTr
                 it
             }
         }
-        val breaks = groupBreaks(integerEnd, grouping)
+        // El signo menos va delante de las cifras: los grupos se cuentan sin él.
+        val start = if (raw.startsWith(symbols.minusSign)) 1 else 0
+        val breaks = groupBreaks(integerEnd - start, grouping).map { it + start }.toSet()
         if (breaks.isEmpty()) return TransformedText(text, OffsetMapping.Identity)
         val shown =
             buildString {

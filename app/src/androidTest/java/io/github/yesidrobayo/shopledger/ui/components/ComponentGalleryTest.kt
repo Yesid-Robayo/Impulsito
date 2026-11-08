@@ -570,7 +570,7 @@ private fun FieldsPage() {
     val today = s.TODAY
     val calendar =
         BusinessCalendar(requireNotNull(BusinessTimeZone.of("Etc/UTC")), DayOfWeek.MONDAY)
-    Group("MoneyField · QuantityField") {
+    Group("MoneyField · QuantityField · PercentField · WholeNumberField") {
         Column(side, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
             MoneyField("1234567", {}, stringResource(R.string.form_amount))
             MoneyField(
@@ -583,6 +583,15 @@ private fun FieldsPage() {
                 error = stringResource(R.string.state_error_read),
             )
             QuantityField("1,25", {}, stringResource(R.string.form_amount), s.KILOGRAM)
+            PercentField("2,75", {}, stringResource(R.string.term_margin))
+            PercentField(
+                "-150",
+                {},
+                stringResource(R.string.term_margin),
+                allowNegative = true,
+                error = stringResource(R.string.state_error_read),
+            )
+            WholeNumberField("3650", {}, stringResource(R.string.form_amount))
         }
     }
     Group("AppTextField") {

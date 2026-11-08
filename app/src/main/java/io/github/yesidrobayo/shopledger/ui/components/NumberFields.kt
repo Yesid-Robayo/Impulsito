@@ -44,6 +44,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 /** Decimales que muestra una cantidad en milésimas. */
 private const val QUANTITY_DECIMALS = 3
 
+/** Decimales de un porcentaje en puntos básicos. */
+private const val PERCENT_DECIMALS = 2
+
 /**
  * Un campo de monto. El símbolo va antes o después de las cifras según el formato del negocio, en su
  * propia fuente, y los separadores de miles aparecen mientras se escribe.
@@ -117,6 +120,76 @@ fun QuantityField(
         imeAction = imeAction,
         prefix = null,
         suffix = AnnotatedString(unit.symbol),
+    )
+}
+
+/**
+ * Un campo de porcentaje, con el signo de porcentaje de la región al final y hasta dos decimales,
+ * que es lo que guarda un punto básico: `2,75` son 275.
+ *
+ * Guarda el texto limpio, como los demás campos numéricos, y el dominio lo lee con
+ * `NumberInputParser.percent` y los símbolos de `PercentFormatter.inputSymbols`, sin pasar nunca por
+ * un número con decimales binarios. Con [allowNegative] admite un signo menos al principio, para un
+ * recargo o un descuento: el teclado decimal casi siempre trae el guion.
+ *
+ * @param error el mensaje que dice cómo arreglarlo, o `null`. Se pasa al salir del campo o al
+ *   intentar guardar, nunca mientras se escribe.
+ */
+@Composable
+fun PercentField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    allowNegative: Boolean = false,
+    error: String? = null,
+    imeAction: ImeAction = ImeAction.Next,
+) {
+    val symbols = LocalAppFormats.current.percent.inputSymbols
+    NumberField(
+        value = value,
+        onValueChange = {
+            onValueChange(cleanSignedNumberInput(it, symbols, PERCENT_DECIMALS, allowNegative))
+        },
+        label = label,
+        symbols = symbols,
+        keyboardType = KeyboardType.Decimal,
+        modifier = modifier,
+        error = error,
+        imeAction = imeAction,
+        prefix = null,
+        suffix = AnnotatedString(symbols.percentSign.toString()),
+    )
+}
+
+/**
+ * Un campo de número entero sin signo, como unos días o un número de copias. Solo admite cifras, y
+ * [suffix] dice la unidad si el rótulo no la dice ya.
+ *
+ * Guarda el texto limpio: quien lo lee comprueba su tope y que no esté vacío.
+ */
+@Composable
+fun WholeNumberField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    suffix: String? = null,
+    error: String? = null,
+    imeAction: ImeAction = ImeAction.Next,
+) {
+    val symbols = LocalAppFormats.current.quantity.inputSymbols
+    NumberField(
+        value = value,
+        onValueChange = { onValueChange(cleanNumberInput(it, symbols, maxDecimals = 0)) },
+        label = label,
+        symbols = symbols,
+        keyboardType = KeyboardType.Number,
+        modifier = modifier,
+        error = error,
+        imeAction = imeAction,
+        prefix = null,
+        suffix = suffix?.let(::AnnotatedString),
     )
 }
 
@@ -238,6 +311,15 @@ private fun NumberFieldsPreview() {
                 error = stringResource(R.string.state_error_read),
             )
             QuantityField("1,25", {}, stringResource(R.string.form_amount), PreviewSamples.KILOGRAM)
+            PercentField("2,75", {}, stringResource(R.string.term_margin))
+            PercentField(
+                "-150",
+                {},
+                stringResource(R.string.term_margin),
+                allowNegative = true,
+                error = stringResource(R.string.state_error_read),
+            )
+            WholeNumberField("30", {}, stringResource(R.string.form_amount))
         }
     }
 }

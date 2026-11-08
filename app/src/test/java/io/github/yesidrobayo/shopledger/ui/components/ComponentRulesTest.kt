@@ -93,6 +93,32 @@ class ComponentRulesTest {
     }
 
     @Test
+    fun aLeadingMinusSurvivesOnlyWhereNegativesAreAllowed() {
+        // El guion del teclado, U+2212 y el de la región se guardan como el de la región.
+        val regionMinus = commaDecimal.copy(minusSign = '−')
+        assertEquals("−2,5", cleanSignedNumberInput(" -2.5", regionMinus, 2, true))
+        assertEquals("−2,5", cleanSignedNumberInput("−2,5", regionMinus, 2, true))
+        assertEquals("-150", cleanSignedNumberInput("-150", commaDecimal, 2, true))
+        // Sin negativos, o con el signo en otro lugar, el signo se descarta.
+        assertEquals("150", cleanSignedNumberInput("-150", commaDecimal, 2, false))
+        assertEquals("150", cleanSignedNumberInput("15-0", commaDecimal, 2, true))
+        assertEquals("", cleanSignedNumberInput("", commaDecimal, 2, true))
+        assertEquals("12,34", cleanSignedNumberInput("12,345", commaDecimal, 2, true))
+    }
+
+    @Test
+    fun theMinusSignDoesNotCountAsADigitWhenGrouping() {
+        val shown = DigitGroupingTransformation(commaDecimal).filter(AnnotatedString("-1234,5"))
+
+        assertEquals("-1.234,5", shown.text.text)
+        assertEquals(
+            "-100",
+            DigitGroupingTransformation(commaDecimal).filter(AnnotatedString("-100")).text.text,
+        )
+        assertEquals(4, shown.offsetMapping.originalToTransformed(3))
+    }
+
+    @Test
     fun aShortNumberHasNoSeparator() {
         assertEquals(
             "123",
