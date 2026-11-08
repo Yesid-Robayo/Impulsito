@@ -40,9 +40,13 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object ProductList : AppNavKey
 
-    /** Crear un producto si [productId] es nulo, o editarlo. */
+    /**
+     * Crear un producto si [productId] es nulo, o editarlo. [prefillName] es lo que la persona ya
+     * escribió en una búsqueda sin resultados, para no escribirlo dos veces.
+     */
     @Serializable
-    data class ProductEdit(val productId: Long? = null) : AppNavKey
+    data class ProductEdit(val productId: Long? = null, val prefillName: String? = null) :
+        AppNavKey
 
     @Serializable
     data class ProductDetail(val productId: Long) : AppNavKey

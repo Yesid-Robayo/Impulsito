@@ -325,6 +325,9 @@ internal class FakeUnitRepository(private val database: InMemoryDatabase) : Unit
         tables.units.values.filter { !it.isArchived }.sortedBy { it.id }
     }
 
+    override fun observeAll(): Flow<List<MeasureUnit>> =
+        database.tables.map { tables -> tables.units.values.sortedBy { it.id } }
+
     override suspend fun findById(id: Long): MeasureUnit? = database.read().units[id]
 }
 

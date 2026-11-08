@@ -13,5 +13,11 @@ interface UnitRepository {
     /** Las vigentes, en el orden en que se crearon: las iniciales primero. */
     fun observeActive(): Flow<List<MeasureUnit>>
 
+    /**
+     * Todas, vigentes y archivadas, en el orden en que se crearon. Una lista de productos las
+     * necesita todas: un producto puede seguir en una unidad que ya se archivó.
+     */
+    fun observeAll(): Flow<List<MeasureUnit>>
+
     suspend fun findById(id: Long): MeasureUnit?
 }

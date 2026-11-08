@@ -29,6 +29,8 @@
     <string name="empty_catalog_title">El catálogo está vacío</string>
     <string name="empty_catalog_body">Un producto con precio y costo muestra cuánto deja cada venta.</string>
     <string name="empty_catalog_action">Crear producto</string>
+    <string name="empty_search_body">Se puede revisar la escritura o crear el producto.</string>
+    <string name="empty_search_action">Crear producto</string>
     <string name="empty_stats_title">Los números aparecerán con la primera venta</string>
     <string name="empty_stats_action">Registrar venta</string>
 

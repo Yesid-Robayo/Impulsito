@@ -32,6 +32,8 @@
     <string name="empty_catalog_title">The catalog is empty</string>
     <string name="empty_catalog_body">A product with a price and a cost shows what each sale leaves.</string>
     <string name="empty_catalog_action">Create product</string>
+    <string name="empty_search_body">Check the spelling or create the product.</string>
+    <string name="empty_search_action">Create product</string>
     <string name="empty_stats_title">Numbers will appear with the first sale</string>
     <string name="empty_stats_action">Record sale</string>
 

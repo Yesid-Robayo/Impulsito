@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -16,6 +17,11 @@ internal class RoomUnitRepository(database: AppDatabase) : UnitRepository {
     // Room vuelve a emitir con cualquier cambio de la tabla: una lista igual no se repite.
     override fun observeActive(): Flow<List<MeasureUnit>> =
         units.observeActive().map { rows -> rows.map(::toUnit) }.distinctUntilChanged()
+
+    override fun observeAll(): Flow<List<MeasureUnit>> =
+        combine(units.observeActive(), units.observeArchived()) { active, archived ->
+            (active + archived).sortedBy { it.id }.map(::toUnit)
+        }.distinctUntilChanged()
 
     override suspend fun findById(id: Long): MeasureUnit? = units.findById(id)?.let(::toUnit)
 
