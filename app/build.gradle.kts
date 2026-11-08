@@ -139,6 +139,9 @@ dependencies {
     androidTestImplementation(testFixtures(project(":domain")))
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    // Las pruebas de Compose esperan con Espresso, y la versión que trae Compose falla desde Android 37: busca por reflexión un
+    // método que ya no existe. Esta es la de la misma tanda que el runner. Solo pruebas: no entra en ningún APK de la app.
+    androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     // Un trabajo de prueba, como los de la capa de datos, comprueba que recibe sus textos por el puerto y en el idioma
