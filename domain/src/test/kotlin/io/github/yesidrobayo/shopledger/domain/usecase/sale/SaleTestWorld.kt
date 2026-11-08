@@ -59,6 +59,7 @@ internal data class SaleTables(
     val payments: Map<Long, SalePayment> = emptyMap(),
     val movements: Map<Long, StockMovementRecord> = emptyMap(),
     val methods: Map<Long, SalePaymentMethod> = emptyMap(),
+    val salesWithActiveReturns: Set<Long> = emptySet(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )
@@ -258,6 +259,9 @@ internal class SaleWorld(
             if (sale == null || sale.status != DocumentStatus.ACTIVE) brokenRule()
             write { it.copy(sales = it.sales + (id to sale.copy(voiding = voiding))) }
         }
+
+        override suspend fun hasActiveReturns(saleId: Long): Boolean =
+            saleId in read().salesWithActiveReturns
     }
 
     val payments: SalePaymentRepository = object : SalePaymentRepository {
@@ -352,6 +356,15 @@ internal class SaleWorld(
         systemRows = systemRowRepository,
         ledger = ledger,
         methodNames = methodNames,
+        clock = clock,
+    )
+
+    fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(
+        transactions = transactions,
+        settings = settings,
+        products = products,
+        sales = sales,
+        ledger = ledger,
         clock = clock,
     )
 

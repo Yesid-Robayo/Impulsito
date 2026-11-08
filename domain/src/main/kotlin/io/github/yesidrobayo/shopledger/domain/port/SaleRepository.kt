@@ -39,4 +39,10 @@ interface SaleRepository {
 
     /** Anula una venta activa. Es lo único que cambia en ella después de confirmarse. */
     suspend fun markVoided(id: Long, voiding: Voiding)
+
+    /**
+     * Si la venta tiene alguna devolución activa. Una venta así no se anula: lo que falta se
+     * devuelve.
+     */
+    suspend fun hasActiveReturns(saleId: Long): Boolean
 }
