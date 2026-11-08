@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.model.settings.ReceiptSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettings
+import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettingsInput
 import io.github.yesidrobayo.shopledger.domain.model.settings.RevenueLimit
 import io.github.yesidrobayo.shopledger.domain.model.settings.SaleSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
@@ -47,6 +48,7 @@ import kotlinx.datetime.isoDayNumber
 internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: RestoreLock) :
     AppSettingsRepository {
     private val settings = database.appSettingsDao()
+    private val moneyAccounts = database.moneyAccountDao()
     private val writes = RepositoryWrites(database)
     private val standalone = StandaloneWrites(restoreLock)
 
@@ -70,6 +72,45 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
     override suspend fun lockCurrency(lockedAt: Instant): Boolean = writes.inTransaction {
         // Solo la primera vez: la sentencia no toca una moneda ya bloqueada y devuelve 0.
         settings.lockCurrency(lockedAt.toStoredMillis()) == 1
+    }
+
+    override suspend fun updateRegional(input: RegionalSettingsInput, updatedAt: Instant) {
+        writes.inTransaction {
+            val at = updatedAt.toStoredMillis()
+            val unlocked = settings.get()?.currencyLockedAt == null
+            requireOneRow(
+                settings.updateRegional(
+                    currencyCode = input.currencyCode.code,
+                    currencyDecimals = input.currencyDecimals.toLong(),
+                    currencySymbol = input.currencySymbol,
+                    cashRounding = input.cashRounding.minor,
+                    formatLocale = input.formatLocaleTag,
+                    zoneId = input.businessTimeZoneId,
+                    weekStartDay = input.weekStartDay.isoDayNumber.toLong(),
+                    csvSeparator = input.csvSeparator.name,
+                    updatedAt = at,
+                ),
+            )
+            // La cuenta de efectivo inicial nace sin moneda, como el negocio, y la sigue hasta el
+            // bloqueo. Después ya no cambia: tiene movimientos, y la moneda tampoco cambia.
+            val cash = moneyAccounts.findBySystemKey(INITIAL_CASH_ACCOUNT)
+            if (unlocked &&
+                cash != null &&
+                (
+                    cash.currencyCode != input.currencyCode.code ||
+                        cash.currencyDecimals != input.currencyDecimals.toLong()
+                    )
+            ) {
+                requireOneRow(
+                    moneyAccounts.setCurrency(
+                        id = cash.id,
+                        currencyCode = input.currencyCode.code,
+                        currencyDecimals = input.currencyDecimals.toLong(),
+                        updatedAt = at,
+                    ),
+                )
+            }
+        }
     }
 
     override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant) {
@@ -205,5 +246,8 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
 
     private companion object {
         val STORED_TIME = Regex("[0-9]{2}:[0-9]{2}")
+
+        /** La clave de la cuenta de efectivo con que nace el negocio. */
+        const val INITIAL_CASH_ACCOUNT = "CASH"
     }
 }

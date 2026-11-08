@@ -162,6 +162,9 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 "updateBusinessTimeZone",
                 "updateWeekStartDay",
                 "updateTaxSettings",
+                // Cambia solo las columnas regionales: lo comprueba RegionalSettingsRepositoryTest
+                // comparando la fila entera antes y después.
+                "updateRegional",
                 "markOnboardingCompleted",
             ),
             functionsOf(AppSettingsDao::class.java),

@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
@@ -42,6 +43,9 @@ sealed interface SettingsRowAction {
  * Una fila de ajustes: título y, si hace falta, una línea de valor debajo. Toda la fila es un solo
  * foco y un solo objetivo táctil: con un interruptor, TalkBack lee el título, «interruptor» y su
  * estado.
+ *
+ * @param warning lo que falta resolver en este ajuste, como `Sin confirmar`: va en una etiqueta de
+ *   aviso con su icono, debajo del valor, para que no dependa del color.
  */
 @Composable
 fun SettingsRow(
@@ -49,6 +53,7 @@ fun SettingsRow(
     action: SettingsRowAction,
     modifier: Modifier = Modifier,
     summary: String? = null,
+    warning: String? = null,
 ) {
     val spacing = AppTheme.spacing
     val interaction =
@@ -89,6 +94,9 @@ fun SettingsRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (warning != null) {
+                StatusTag(warning, icon = R.drawable.ic_warning, tone = StatusTone.WARNING)
             }
         }
         when (action) {
@@ -154,6 +162,12 @@ private fun SettingsRowPreview() {
                 summary = s.NOTICE_TEXT,
             )
             SettingsRow(s.TOOL_NAME, SettingsRowAction.Navigation {}, summary = s.TOOL_DETAIL)
+            SettingsRow(
+                s.LONG_NAME,
+                SettingsRowAction.Navigation {},
+                summary = s.TOOL_DETAIL,
+                warning = stringResource(R.string.region_currency_unconfirmed),
+            )
             SettingsRow(
                 s.SHORT_NAME,
                 SettingsRowAction.Value {

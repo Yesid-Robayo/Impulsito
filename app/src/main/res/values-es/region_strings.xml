@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Configuración regional: moneda, decimales, símbolo, redondeo, formatos, zona y semana. -->
+    <string name="region_notice_device">Estos valores salen del teléfono. Se pueden cambiar antes de confirmar.</string>
+    <string name="region_section_currency">Moneda</string>
+    <string name="region_currency">Moneda del negocio</string>
+    <string name="region_currency_search_hint">Buscar moneda</string>
+    <string name="region_currency_unconfirmed">Sin confirmar</string>
+    <string name="region_decimals">Decimales</string>
+    <string name="region_symbol_optional">Símbolo (opcional)</string>
+    <string name="region_symbol_help">De 1 a 8 caracteres. Vacío usa el símbolo habitual de la moneda.</string>
+    <string name="region_preview_title">Vista previa</string>
+    <string name="region_preview_amount">Monto</string>
+    <string name="region_preview_negative">Monto negativo</string>
+    <string name="region_preview_quantity">Cantidad</string>
+    <string name="region_preview_date">Fecha</string>
+    <string name="region_preview_time">Hora</string>
+    <string name="region_section_cash">Efectivo</string>
+    <string name="region_cash_rounding">Redondeo de efectivo</string>
+    <string name="region_cash_rounding_zero_hint">En cero no se redondea</string>
+    <string name="region_cash_rounding_example">Ejemplo: %1$s se cobra como %2$s</string>
+    <string name="region_section_formats">Formatos</string>
+    <string name="region_format_locale">Formato de números y fechas</string>
+    <string name="region_format_locale_help">No depende del idioma de la app</string>
+    <string name="region_format_search_hint">Buscar región</string>
+    <string name="region_time_zone">Zona horaria del negocio</string>
+    <string name="region_time_zone_search_hint">Buscar ciudad o zona</string>
+    <string name="region_week_start">Primer día de la semana</string>
+    <string name="region_csv_separator">Separador de CSV</string>
+    <string name="region_csv_semicolon">Punto y coma</string>
+    <string name="region_csv_comma">Coma</string>
+    <string name="region_csv_tab">Tabulador</string>
+    <string name="region_confirm_action">Confirmar configuración</string>
+    <string name="region_save_action">Guardar cambios</string>
+    <string name="region_saved">Configuración guardada</string>
+    <string name="region_error_no_currency">Elegir una moneda para continuar</string>
+    <string name="region_locked_help">La moneda y los decimales ya no cambian porque hay registros con dinero</string>
+    <string name="region_lock_warning">Se bloquea con el primer registro con dinero</string>
+    <string name="region_decimals_iso_help">Decimales según el estándar: %1$d. Se usará el valor elegido.</string>
+    <string name="region_symbol_unavailable">Este símbolo no se puede mostrar en este teléfono. Se usará el código %1$s.</string>
+    <string name="region_error_symbol_length">Usar entre 1 y 8 caracteres</string>
+    <string name="region_zone_confirm_title">¿Cambiar la zona horaria?</string>
+    <string name="region_zone_confirm_body">Los registros guardados conservan su fecha. Los nuevos usan la zona elegida.</string>
+    <string name="region_zone_confirm_action">Cambiar zona</string>
+    <!-- El grupo de Ajustes que lleva a la configuración regional y al idioma. -->
+    <string name="settings_group_region">Región e idioma</string>
+    <!-- Errores de campo que comparten otras pantallas. -->
+    <string name="field_error_number">Escribir un número</string>
+    <string name="error_value_high">Ese valor parece demasiado alto. Conviene revisarlo.</string>
+    <plurals name="error_money_decimals">
+        <item quantity="one">Máximo %1$d decimal</item>
+        <item quantity="many">Máximo %1$d de decimales</item>
+        <item quantity="other">Máximo %1$d decimales</item>
+    </plurals>
+</resources>

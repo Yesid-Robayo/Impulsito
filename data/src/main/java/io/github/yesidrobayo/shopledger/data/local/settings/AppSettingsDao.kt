@@ -132,6 +132,33 @@ internal interface AppSettingsDao {
         updatedAt: Long,
     ): Int
 
+    /**
+     * Cambia toda la configuración regional que confirmó la persona. Es un dato del negocio, así
+     * que va dentro de la transacción del caso de uso y cuenta como cambio.
+     *
+     * Con la moneda bloqueada, la guarda rechaza otro código u otros decimales, y deja pasar los
+     * mismos: así el resto de la configuración se guarda con una sola sentencia. No toca el
+     * bloqueo ni la moneda de referencia, y ninguna fecha de negocio ya escrita se recalcula.
+     */
+    @Query(
+        "UPDATE app_settings SET currency_code = :currencyCode, " +
+            "currency_decimals = :currencyDecimals, currency_symbol = :currencySymbol, " +
+            "cash_rounding = :cashRounding, format_locale = :formatLocale, " +
+            "business_time_zone = :zoneId, week_start_day = :weekStartDay, " +
+            "csv_separator = :csvSeparator, updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateRegional(
+        currencyCode: String,
+        currencyDecimals: Long,
+        currencySymbol: String?,
+        cashRounding: Long,
+        formatLocale: String,
+        zoneId: String,
+        weekStartDay: Long,
+        csvSeparator: String,
+        updatedAt: Long,
+    ): Int
+
     /** Marca el fin del primer uso en [completedAt], que también queda como último cambio. */
     @Query(
         "UPDATE app_settings SET onboarding_completed_at = :completedAt, " +

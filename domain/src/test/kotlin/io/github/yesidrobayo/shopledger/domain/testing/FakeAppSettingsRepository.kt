@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.NoticeSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.model.settings.ReceiptSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettings
+import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettingsInput
 import io.github.yesidrobayo.shopledger.domain.model.settings.SaleSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
@@ -89,8 +90,9 @@ fun appSettings(regional: RegionalSettings): AppSettings = AppSettings(
 
 /**
  * Los ajustes en memoria. [settings] se cambia a mano para simular que la persona cambió un ajuste.
- * El bloqueo de la moneda se escribe como lo hace la base, y cada llamada queda en [lockCalls]; las
- * demás escrituras del puerto no hacen falta en estas pruebas y fallan si alguien las usa.
+ * El bloqueo de la moneda se escribe como lo hace la base, y cada llamada queda en [lockCalls]. La
+ * configuración regional se escribe y queda anotada en [regionalWrites]. Las demás escrituras del
+ * puerto no hacen falta en estas pruebas y fallan si alguien las usa.
  */
 class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
     val settings = MutableStateFlow(initial)
@@ -122,6 +124,32 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
                 regional = current.regional.copy(currency = currency.copy(lockedAt = lockedAt)),
             )
         return true
+    }
+
+    /** Cada configuración regional escrita, con su instante, en orden. */
+    val regionalWrites = mutableListOf<Pair<RegionalSettingsInput, Instant>>()
+
+    override suspend fun updateRegional(input: RegionalSettingsInput, updatedAt: Instant) {
+        regionalWrites += input to updatedAt
+        val current = settings.value
+        settings.value =
+            current.copy(
+                updatedAt = updatedAt,
+                regional =
+                    current.regional.copy(
+                        currency =
+                            current.regional.currency.copy(
+                                code = input.currencyCode,
+                                decimals = input.currencyDecimals,
+                                symbol = input.currencySymbol,
+                            ),
+                        cashRounding = input.cashRounding,
+                        formatLocaleTag = input.formatLocaleTag,
+                        businessTimeZoneId = input.businessTimeZoneId,
+                        weekStartDay = input.weekStartDay,
+                        csvSeparator = input.csvSeparator,
+                    ),
+            )
     }
 
     override suspend fun updateProfile(profile: BusinessProfile, updatedAt: Instant): Unit =

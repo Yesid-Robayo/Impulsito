@@ -41,6 +41,8 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderScreen
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
 import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductListRoute
+import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryScreen
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 
@@ -129,6 +131,19 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         AppNavKey.PaymentMethods -> PaymentMethodsRoute(navigator)
         is AppNavKey.PaymentMethodEdit -> PaymentMethodFormRoute(key, navigator)
+
+        // Una entrada mínima a la región y al idioma, hasta que exista la pantalla completa.
+        AppNavKey.Settings ->
+            SettingsEntryScreen(onOpen = { navigator.open(it) }, onBack = { navigator.back() })
+
+        is AppNavKey.RegionalSettings ->
+            RegionalSettingsRoute(
+                firstRun = key.firstRun,
+                onBack = { navigator.back() },
+                // El primer uso sigue con su paso siguiente; hasta que exista, vuelve.
+                onConfirmed = { navigator.back() },
+            )
+
         else -> PlaceholderRoute(key, navigator)
     }
 }
