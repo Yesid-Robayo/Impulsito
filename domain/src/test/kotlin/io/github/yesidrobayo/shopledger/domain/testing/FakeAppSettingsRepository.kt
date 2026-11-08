@@ -88,8 +88,9 @@ fun appSettings(regional: RegionalSettings): AppSettings = AppSettings(
 )
 
 /**
- * Los ajustes en memoria. [settings] se cambia a mano para simular que la persona cambió un ajuste;
- * las escrituras del puerto no hacen falta en estas pruebas y fallan si alguien las usa.
+ * Los ajustes en memoria. [settings] se cambia a mano para simular que la persona cambió un ajuste.
+ * El bloqueo de la moneda se escribe como lo hace la base, y cada llamada queda en [lockCalls]; las
+ * demás escrituras del puerto no hacen falta en estas pruebas y fallan si alguien las usa.
  */
 class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
     val settings = MutableStateFlow(initial)
@@ -103,6 +104,24 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
     override suspend fun get(): AppSettings {
         reads += 1
         return settings.value
+    }
+
+    /** El instante de cada llamada a [lockCurrency], en orden, haya bloqueado o no. */
+    val lockCalls = mutableListOf<Instant>()
+
+    override suspend fun lockCurrency(lockedAt: Instant): Boolean {
+        lockCalls += lockedAt
+        val current = settings.value
+        val currency = current.regional.currency
+        // Como la guarda de la base: sin moneda confirmada, el bloqueo se rechaza.
+        check(currency.code.isConfirmed) { "La base rechaza bloquear una moneda sin confirmar" }
+        if (currency.isLocked) return false
+        settings.value =
+            current.copy(
+                updatedAt = lockedAt,
+                regional = current.regional.copy(currency = currency.copy(lockedAt = lockedAt)),
+            )
+        return true
     }
 
     override suspend fun updateProfile(profile: BusinessProfile, updatedAt: Instant): Unit =

@@ -67,6 +67,11 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
         }
     }
 
+    override suspend fun lockCurrency(lockedAt: Instant): Boolean = writes.inTransaction {
+        // Solo la primera vez: la sentencia no toca una moneda ya bloqueada y devuelve 0.
+        settings.lockCurrency(lockedAt.toStoredMillis()) == 1
+    }
+
     override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant) {
         val at = updatedAt.toStoredMillis()
         val changed =

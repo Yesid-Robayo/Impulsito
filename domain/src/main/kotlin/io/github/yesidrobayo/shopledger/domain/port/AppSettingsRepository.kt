@@ -23,6 +23,19 @@ interface AppSettingsRepository {
     suspend fun updateProfile(profile: BusinessProfile, updatedAt: Instant)
 
     /**
+     * Bloquea la moneda del negocio en [lockedAt], con el primer registro con dinero. Solo dentro
+     * de [TransactionRunner.write], la misma transacción que escribe ese registro: si el registro
+     * no se guarda, la moneda tampoco queda bloqueada.
+     *
+     * Solo la primera vez: con la moneda ya bloqueada no cambia nada y devuelve `false`, así que
+     * llamarlo en cada registro es seguro. Sin moneda confirmada la base lo rechaza: quien llama lo
+     * revisa antes, con `CurrencyLock`.
+     *
+     * @return `true` si este llamado puso el bloqueo.
+     */
+    suspend fun lockCurrency(lockedAt: Instant): Boolean
+
+    /**
      * Cambia la única preferencia que dice [change]. Fuera de [TransactionRunner.write]: no cuenta
      * como un cambio sin respaldar.
      */
