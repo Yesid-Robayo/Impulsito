@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.settings.AppSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
+import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettingsInput
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
@@ -230,4 +231,7 @@ internal object NoSettings : AppSettingsRepository {
         error("Solo lectura")
 
     override suspend fun markOnboardingCompleted(completedAt: Instant) = error("Solo lectura")
+
+    override suspend fun updateRegional(input: RegionalSettingsInput, updatedAt: Instant) =
+        error("Solo lectura")
 }

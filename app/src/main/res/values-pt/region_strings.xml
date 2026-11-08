@@ -45,8 +45,6 @@
     <!-- El grupo de Ajustes que lleva a la configuración regional y al idioma. -->
     <string name="settings_group_region">Região e idioma</string>
     <!-- Errores de campo que comparten otras pantallas. -->
-    <string name="field_error_number">Escrever um número</string>
-    <string name="error_value_high">Esse valor parece alto demais. Convém revisá-lo.</string>
     <plurals name="error_money_decimals">
         <item quantity="one">Máximo de %1$d casa decimal</item>
         <item quantity="many">Máximo de %1$d de casas decimais</item>

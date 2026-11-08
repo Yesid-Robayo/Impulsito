@@ -61,12 +61,6 @@
     <string name="payment_method_qr_remove_action">Remover imagem</string>
     <string name="payment_method_error_image">Não foi possível ler essa imagem. Escolher outra.</string>
     <string name="payment_method_cash_rounding_note">Arredondamento em dinheiro: %1$s</string>
-    <string name="error_value_high">Esse valor parece alto demais. Convém revisá-lo.</string>
-    <plurals name="error_text_long">
-        <item quantity="one">Máximo de %1$d caractere</item>
-        <item quantity="many">Máximo de %1$d de caracteres</item>
-        <item quantity="other">Máximo de %1$d caracteres</item>
-    </plurals>
     <plurals name="payment_method_settlement_days">
         <item quantity="one">Credita em %1$d dia</item>
         <item quantity="many">Credita em %1$d de dias</item>

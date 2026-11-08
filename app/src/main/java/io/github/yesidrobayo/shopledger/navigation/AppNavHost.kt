@@ -130,6 +130,7 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
             TaxSettingsRoute(onBack = { navigator.back() }) { PlaceholderRoute(key, navigator) }
 
         AppNavKey.PaymentMethods -> PaymentMethodsRoute(navigator)
+
         is AppNavKey.PaymentMethodEdit -> PaymentMethodFormRoute(key, navigator)
 
         // Una entrada mínima a la región y al idioma, hasta que exista la pantalla completa.
