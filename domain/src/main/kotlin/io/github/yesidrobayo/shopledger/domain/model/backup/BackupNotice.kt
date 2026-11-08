@@ -30,4 +30,10 @@ enum class BackupNotice {
      * cambia, porque el tamaño y la muestra sí se comprobaron.
      */
     FULL_READ_OVERDUE,
+
+    /**
+     * Con WebDAV, el servicio informa un espacio libre en el que caben menos de 3 copias. Avisa antes
+     * de que una copia no quepa; sin un tope informado no hay aviso.
+     */
+    SERVICE_NEARLY_FULL,
 }

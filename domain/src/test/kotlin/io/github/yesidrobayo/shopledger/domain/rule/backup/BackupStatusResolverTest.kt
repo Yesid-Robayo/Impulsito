@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
 import io.github.yesidrobayo.shopledger.domain.model.backup.DeviceStorage
+import io.github.yesidrobayo.shopledger.domain.model.backup.ServiceSpace
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
@@ -610,6 +611,35 @@ class BackupStatusResolverTest {
                 never.copy(
                     destinationKind = BackupDestinationKind.DOCUMENT_SLOTS,
                     firstHandoffAt = now - 1.days,
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `with WebDAV a nearly full service is a notice and the status stays`() {
+        val mib = 1024L * 1024
+        val full = upToDate.copy(
+            serviceSpace = ServiceSpace(
+                availableBytes = 100 * mib,
+                copyBytes =
+                    50 * mib,
+            ),
+        )
+
+        assertEquals(BackupStatus.UP_TO_DATE, status(full))
+        assertEquals(setOf(BackupNotice.SERVICE_NEARLY_FULL), notices(full))
+        assertEquals(
+            emptySet<BackupNotice>(),
+            notices(full.copy(serviceSpace = ServiceSpace(150 * mib, 50 * mib))),
+        )
+        // Con la nube del teléfono la app no conoce ese espacio.
+        assertEquals(
+            emptySet<BackupNotice>(),
+            notices(
+                full.copy(
+                    destinationKind = BackupDestinationKind.DOCUMENT_SLOTS,
+                    firstHandoffAt = now,
                 ),
             ),
         )

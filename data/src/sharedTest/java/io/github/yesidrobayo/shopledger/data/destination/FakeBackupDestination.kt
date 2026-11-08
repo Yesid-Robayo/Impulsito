@@ -67,6 +67,9 @@ internal class FakeBackupDestination(
     private val failures = HashMap<Operation, ArrayDeque<DestinationFailure>>()
     private val recorded = ArrayList<Operation>()
 
+    /** Lo que pasa mientras se baja una copia, como la persona que cambia de destino a la vez. */
+    var onDownload: () -> Unit = {}
+
     /** Espacio libre que informa la lista, o nulo si no hay tope conocido. */
     var quotaAvailableBytes: Long? = null
 
@@ -267,6 +270,7 @@ internal class FakeBackupDestination(
     ): DestinationResult<DownloadedCopy> {
         injected(Operation.DOWNLOAD)?.let { return it }
         stopped(control)?.let { return it }
+        onDownload()
         val bytes =
             when (kind) {
                 BackupDestinationKind.WEBDAV -> files[ref.value]

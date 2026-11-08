@@ -101,6 +101,20 @@ class DocumentSlotDestinationTest {
     }
 
     @Test
+    fun anUnreadableCopyStaysButNoLongerCountsAsValid() = runBlocking<Unit> {
+        destination.markUnreadable(CopyRef("B")).value()
+
+        val state = requireNotNull(store.state)
+        assertFalse(requireNotNull(state[BackupSlot.B].copy).facts.valid)
+        assertEquals(3L, state[BackupSlot.B].copy?.generation)
+        assertArrayEquals(oldB, docB.bytes)
+        // Las demás no cambian, y una ranura vacía no tiene qué marcar.
+        assertTrue(requireNotNull(state[BackupSlot.A].copy).facts.valid)
+        destination.markUnreadable(CopyRef("C")).value()
+        assertNull(store.state?.get(BackupSlot.C)?.copy)
+    }
+
+    @Test
     fun theFirstHandoffIsKeptWhileTheSlotsRotate() = runBlocking<Unit> {
         // Cada día una copia nueva va a otra ranura; los días para revisar la nube siguen
         // contando desde la primera entrega.

@@ -32,6 +32,15 @@ object BackupTimings {
     val FULL_READ_NOTICE: Duration = 7.days
 
     /**
+     * Cada cuánto se contrasta con el destino que la cabeza siga ahí y que nadie subió algo más
+     * nuevo, y desde cuándo abrir la app vuelve a sondear.
+     */
+    val HEAD_PROBE: Duration = 7.days
+
+    /** Cada cuánto, con una red sin datos móviles, se baja la cabeza entera y se comprueba. */
+    val HEAD_DEEP_CHECK: Duration = 30.days
+
+    /**
      * Lo menos que pasa entre dos escrituras automáticas en la nube del teléfono, con cualquier red:
      * cada escritura es una subida completa de la otra app.
      */

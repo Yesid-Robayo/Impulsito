@@ -311,6 +311,32 @@ internal class DocumentSlotDestination(
     override suspend fun delete(ref: CopyRef, control: TransferControl): DestinationResult<Unit> =
         notForSlots()
 
+    /**
+     * La copia de la ranura [ref] no se pudo leer entera: queda como no válida en el estado de las
+     * ranuras, con su documento intacto. Así la elección de ranura ya no la cuenta como la copia
+     * válida más reciente. Una ranura que ya cambió de copia no se toca.
+     */
+    override suspend fun markUnreadable(ref: CopyRef): DestinationResult<Unit> = mutex.withLock {
+        val state = loadState() ?: return@withLock lost()
+        val slot = slotOf(ref)
+        val entry = state[slot]
+        val copy = entry.copy ?: return@withLock DestinationResult.Success(Unit)
+        if (!copy.facts.valid) return@withLock DestinationResult.Success(Unit)
+        val unreadable =
+            SlotRecord(
+                generation = copy.generation,
+                writtenAt = copy.writtenAt,
+                sizeBytes = copy.sizeBytes,
+                sha256 = copy.sha256,
+                facts = copy.facts.copy(valid = false),
+                metaBytes = copy.metaBytes,
+            )
+        saveOrFail<Unit>(state.with(slot, entry.copy(copy = unreadable)))?.let {
+            return@withLock it
+        }
+        DestinationResult.Success(Unit)
+    }
+
     private suspend fun loadState(): SlotState? = when (val load = store.load()) {
         is SlotStateLoad.Loaded -> load.state
         SlotStateLoad.Missing, SlotStateLoad.Unreadable -> null

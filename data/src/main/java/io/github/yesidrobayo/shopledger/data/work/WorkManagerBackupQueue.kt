@@ -16,6 +16,7 @@ import androidx.work.await
 import androidx.work.workDataOf
 import io.github.yesidrobayo.shopledger.data.backup.BackupWorkQueue
 import io.github.yesidrobayo.shopledger.data.backup.RunKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupTimings
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
@@ -105,6 +106,51 @@ internal class WorkManagerBackupQueue(private val context: Context) : BackupWork
             )?.done()
     }
 
+    override suspend fun keepHeadChecks(needsNetwork: Boolean) {
+        val manager = manager() ?: return
+        val probe =
+            PeriodicWorkRequestBuilder<HeadProbeWorker>(
+                HEAD_PROBE_PERIOD.inWholeMilliseconds,
+                TimeUnit.MILLISECONDS,
+            ).setConstraints(
+                Constraints.Builder().setRequiredNetworkType(networkFor(needsNetwork)).build(),
+            )
+                .addTag(BackupWorkNames.HEAD_PROBE)
+                .build()
+        manager
+            .enqueueUniquePeriodicWork(
+                BackupWorkNames.HEAD_PROBE,
+                ExistingPeriodicWorkPolicy.KEEP,
+                probe,
+            ).done()
+        val deep =
+            PeriodicWorkRequestBuilder<HeadProbeWorker>(
+                HEAD_DEEP_CHECK_PERIOD.inWholeMilliseconds,
+                TimeUnit.MILLISECONDS,
+            ).setConstraints(
+                Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build(),
+            )
+                .addTag(BackupWorkNames.HEAD_DEEP_CHECK)
+                .build()
+        manager
+            .enqueueUniquePeriodicWork(
+                BackupWorkNames.HEAD_DEEP_CHECK,
+                ExistingPeriodicWorkPolicy.KEEP,
+                deep,
+            ).done()
+    }
+
+    override suspend fun keepHeadProbeOnce(needsNetwork: Boolean) {
+        val request =
+            OneTimeWorkRequestBuilder<HeadProbeWorker>()
+                .setConstraints(
+                    Constraints.Builder().setRequiredNetworkType(networkFor(needsNetwork)).build(),
+                )
+                .addTag(BackupWorkNames.HEAD_PROBE_ONCE)
+                .build()
+        enqueue(BackupWorkNames.HEAD_PROBE_ONCE, ExistingWorkPolicy.KEEP, request)
+    }
+
     private suspend fun enqueue(
         name: String,
         policy: ExistingWorkPolicy,
@@ -160,5 +206,11 @@ internal class WorkManagerBackupQueue(private val context: Context) : BackupWork
 
         /** Cada cuánto corre el mantenimiento diario. */
         val MAINTENANCE_PERIOD = 24.hours
+
+        /** Cada cuánto corre la sonda de la cabeza. */
+        val HEAD_PROBE_PERIOD = BackupTimings.HEAD_PROBE
+
+        /** Cada cuánto corre la comprobación completa de la cabeza. */
+        val HEAD_DEEP_CHECK_PERIOD = BackupTimings.HEAD_DEEP_CHECK
     }
 }

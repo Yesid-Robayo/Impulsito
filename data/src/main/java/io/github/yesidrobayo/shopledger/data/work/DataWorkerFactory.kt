@@ -11,6 +11,8 @@ import androidx.work.WorkerParameters
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
 import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
+import io.github.yesidrobayo.shopledger.data.backup.HeadDeepCheck
+import io.github.yesidrobayo.shopledger.data.backup.HeadProbe
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 
 /**
@@ -25,12 +27,14 @@ import io.github.yesidrobayo.shopledger.domain.port.EventLog
  *   defecto y nada se programa.
  * @param maintenance el mantenimiento diario. Sin él, como en esas pruebas, su trabajo queda a la
  *   fábrica por defecto.
+ * @param headChecks la sonda y la comprobación completa de la cabeza. Sin ellas, lo mismo.
  */
 internal class DataWorkerFactory(
     private val backup: BackupEngine,
     private val log: EventLog,
     private val scheduler: BackupScheduler? = null,
     private val maintenance: DailyMaintenance? = null,
+    private val headChecks: Pair<HeadProbe, HeadDeepCheck>? = null,
 ) : WorkerFactory() {
     override fun createWorker(
         appContext: Context,
@@ -54,6 +58,13 @@ internal class DataWorkerFactory(
 
         DailyMaintenanceWorker::class.java.name ->
             maintenance?.let { DailyMaintenanceWorker(appContext, workerParameters, it, log) }
+
+        HeadProbeWorker::class.java.name ->
+            headChecks?.let { (probe, deep) ->
+                HeadProbeWorker(appContext, workerParameters, probe, deep, log, {
+                    isMetered(appContext)
+                })
+            }
 
         else -> null
     }

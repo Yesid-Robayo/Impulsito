@@ -7,6 +7,7 @@ import android.net.NetworkCapabilities
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import io.github.yesidrobayo.shopledger.data.backup.BackupStatusEnvironment
+import io.github.yesidrobayo.shopledger.data.backup.LastProbeStore
 import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
@@ -46,6 +47,15 @@ internal object BackupWorkNames {
      */
     const val DAILY_MAINTENANCE = "daily-maintenance"
 
+    /** La sonda semanal de la cabeza: que siga en el destino y que nadie subió algo más nuevo. */
+    const val HEAD_PROBE = "head-probe"
+
+    /** La misma sonda, una vez, al abrir la app con la última vencida, al reconectar o al aceptar. */
+    const val HEAD_PROBE_ONCE = "head-probe-once"
+
+    /** La comprobación completa de la cabeza, una vez al mes y con una red sin datos móviles. */
+    const val HEAD_DEEP_CHECK = "head-deep-check"
+
     /** Los tres que una restauración detiene antes de leer el destino. */
     val ALL = listOf(DEBOUNCE, UPLOAD_UNMETERED, UPLOAD)
 
@@ -60,8 +70,9 @@ internal object BackupWorkNames {
 /**
  * Lo que el estado del respaldo lee del teléfono en la app: las marcas de una restauración en
  * [noBackupDirectory], la aceptación de la política en [consent], los trabajos de subida, la red,
- * el estado de las ranuras, la hora de la conexión en `link.json` y el espacio libre junto a
- * [databaseFile]. Aceptar la política vuelve a calcular el estado.
+ * el estado de las ranuras, la hora de la conexión en `link.json`, el espacio del servicio en
+ * `last-probe` y el espacio libre junto a [databaseFile]. Aceptar la política vuelve a calcular el
+ * estado.
  *
  * Nada de esto usa la red ni espera a ella.
  */
@@ -74,6 +85,7 @@ internal fun productionBackupStatusEnvironment(
 ): BackupStatusEnvironment {
     val slots = FileSlotStateStore(noBackupDirectory, ioContext)
     val links = DestinationLinkStore({ noBackupDirectory }, ioContext)
+    val probes = LastProbeStore(File(noBackupDirectory, LastProbeStore.FILE_NAME), ioContext)
     return BackupStatusEnvironment(
         restorePending = { RestoreMarkers(noBackupDirectory).present() },
         policyAccepted = consent::allowsUploads,
@@ -83,6 +95,7 @@ internal fun productionBackupStatusEnvironment(
         changes = consent.changes,
         storage = { databaseFile?.let(::deviceStorageOf) },
         connectedAt = { links.read()?.connectedAtMillis },
+        serviceSpace = { probes.load()?.serviceSpace },
     )
 }
 

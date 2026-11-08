@@ -40,6 +40,7 @@ import kotlin.time.Instant
  * @param restorePending si hay una restauración en curso o a medias. Lee el disco.
  * @param policyAccepted si la persona aceptó la versión vigente de la política y los términos. Lee
  *   el disco.
+ * @param probeDue si la última sonda de la cabeza ya venció, según `last-probe`. Lee el disco.
  */
 class BackupScheduler internal constructor(
     private val facts: suspend () -> ScheduleFacts?,
@@ -47,6 +48,7 @@ class BackupScheduler internal constructor(
     private val policyAccepted: suspend () -> Boolean,
     private val queue: BackupWorkQueue,
     private val clock: Clock,
+    private val probeDue: suspend () -> Boolean = { false },
 ) {
     /**
      * Tras confirmar un cambio del negocio: siempre vuelve a empezar la espera. Si la racha ya lleva
@@ -89,9 +91,15 @@ class BackupScheduler internal constructor(
      * La app se abrió, con lo que decidió el estado del respaldo en ese momento: con la app a la
      * vista no aplican los ahorros de batería, y un teléfono que mata los trabajos en segundo plano
      * recupera aquí la copia que no salió.
+     *
+     * Con la última sonda de la cabeza vencida, encola además la sonda única: con la app poco usada
+     * el sistema le quita la red al trabajo semanal, y sin sondear el estado diría que todo está
+     * guardado sin mirar el destino.
      */
     suspend fun onAppOpened(upload: AppOpenUpload) {
-        if (upload == AppOpenUpload.NONE || restorePending()) return
+        if (paused()) return
+        if (probeDue()) probeOnce()
+        if (upload == AppOpenUpload.NONE) return
         val current = uploadable() ?: return
         enqueueUpload(current, pastInterval = upload == AppOpenUpload.PAST_INTERVAL)
     }
@@ -123,10 +131,12 @@ class BackupScheduler internal constructor(
 
     /**
      * La persona aceptó la versión vigente de la política: lo que quedó pendiente durante la pausa
-     * se encola, como al conectar.
+     * se encola, como al conectar, y la sonda única de la cabeza contrasta el destino.
      */
     suspend fun onPolicyAccepted() {
         if (paused()) return
+        // Durante la pausa nadie miró el destino: puede tener algo más nuevo.
+        probeOnce()
         val current = uploadable() ?: return
         enqueueUpload(current, pastInterval = false)
     }
@@ -184,9 +194,10 @@ class BackupScheduler internal constructor(
     }
 
     /**
-     * Reconcilia el respaldo al arrancar, a diario y tras reemplazar la base: deja programado el
-     * mantenimiento diario y, si hay cambios sin copia, un destino conectado y ningún trabajo de
-     * subida esperando ni corriendo, encola la subida. También tras un fallo o una copia que la app
+     * Reconcilia el respaldo al arrancar, a diario y tras reemplazar la base: deja programados el
+     * mantenimiento diario y, con un destino, la sonda y la comprobación de la cabeza. Si además hay
+     * cambios sin copia, un destino conectado y ningún trabajo de subida esperando ni corriendo,
+     * encola la subida. También tras un fallo o una copia que la app
      * no podría restaurar: esa no se repite sola, y esta es una de sus salidas.
      *
      * Con una restauración en curso no encola nada: el arranque la termina y vuelve a llamar aquí.
@@ -194,6 +205,7 @@ class BackupScheduler internal constructor(
     internal suspend fun reconcile() {
         if (restorePending()) return
         queue.keepDailyMaintenance()
+        facts()?.connectedKind?.let { queue.keepHeadChecks(needsNetwork(it)) }
         val current = uploadable() ?: return
         if (queue.uploadWork() != BackupUploadWork.NONE) return
         enqueueUpload(current, pastInterval = false)
@@ -238,6 +250,12 @@ class BackupScheduler internal constructor(
         } else {
             queue.keepUpload(delay, schedule.anyNetworkNeedsNetwork)
         }
+    }
+
+    /** Encola la sonda única de la cabeza, con la red que pida el destino conectado. */
+    private suspend fun probeOnce() {
+        val kind = facts()?.connectedKind ?: return
+        queue.keepHeadProbeOnce(needsNetwork(kind))
     }
 
     private suspend fun cancelOtherUpload(workName: String?) {
@@ -357,6 +375,15 @@ internal interface BackupWorkQueue {
      * mueve su próxima ejecución.
      */
     suspend fun keepDailyMaintenance() {}
+
+    /**
+     * Deja programadas la sonda semanal y la comprobación mensual de la cabeza, salvo que ya lo
+     * estén. Sin [needsNetwork], la sonda no espera a ninguna red, como con la nube del teléfono.
+     */
+    suspend fun keepHeadChecks(needsNetwork: Boolean) {}
+
+    /** Encola la sonda única de la cabeza, salvo que ya haya una encolada o corriendo. */
+    suspend fun keepHeadProbeOnce(needsNetwork: Boolean) {}
 
     companion object {
         /**

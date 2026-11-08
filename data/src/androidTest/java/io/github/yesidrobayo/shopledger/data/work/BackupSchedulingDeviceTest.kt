@@ -368,6 +368,29 @@ class BackupSchedulingDeviceTest {
     }
 
     @Test
+    fun theHeadChecksAreWeeklyAndMonthlyAndTheOneTimeProbeIsKept() = runBlocking {
+        queue.keepHeadChecks(needsNetwork = true)
+        queue.keepHeadChecks(needsNetwork = true)
+        val probe = single(BackupWorkNames.HEAD_PROBE)
+        val deep = single(BackupWorkNames.HEAD_DEEP_CHECK)
+
+        assertEquals(24.hours.inWholeMilliseconds * 7, probe.periodicityInfo?.repeatIntervalMillis)
+        assertEquals(NetworkType.CONNECTED, probe.constraints.requiredNetworkType)
+        assertTrue(BackupWorkNames.HEAD_PROBE in probe.tags)
+        assertEquals(24.hours.inWholeMilliseconds * 30, deep.periodicityInfo?.repeatIntervalMillis)
+        // La comprobación completa baja la cabeza entera: solo sin datos móviles.
+        assertEquals(NetworkType.UNMETERED, deep.constraints.requiredNetworkType)
+        assertTrue(BackupWorkNames.HEAD_DEEP_CHECK in deep.tags)
+
+        queue.keepHeadProbeOnce(needsNetwork = false)
+        val once = latest(BackupWorkNames.HEAD_PROBE_ONCE)
+        // Con la nube del teléfono la sonda no pide red.
+        assertEquals(NetworkType.NOT_REQUIRED, once.constraints.requiredNetworkType)
+        assertTrue(BackupWorkNames.HEAD_PROBE_ONCE in once.tags)
+        assertFalse(BackupWorkNames.HEAD_PROBE in BackupWorkNames.ALL)
+    }
+
+    @Test
     fun theMaintenanceWorkerRetriesOnlyWhileTheDatabaseWaitsAndHidesFailures() = runBlocking {
         val log = MemoryLog()
         val cases =

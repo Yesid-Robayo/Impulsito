@@ -62,6 +62,14 @@ internal class FakeWorkQueue(private val now: () -> Instant) : BackupWorkQueue {
         calls += "keep maintenance"
     }
 
+    override suspend fun keepHeadChecks(needsNetwork: Boolean) {
+        calls += "keep head checks ${network(needsNetwork)}"
+    }
+
+    override suspend fun keepHeadProbeOnce(needsNetwork: Boolean) {
+        calls += "probe once ${network(needsNetwork)}"
+    }
+
     /** Conservar: un trabajo nuevo solo entra si no hay otro con ese nombre encolado o corriendo. */
     private fun keep(name: String, work: Queued) {
         if (name !in queued && name !in running) queued[name] = work

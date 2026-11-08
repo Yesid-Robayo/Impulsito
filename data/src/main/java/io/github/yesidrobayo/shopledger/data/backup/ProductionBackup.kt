@@ -54,6 +54,11 @@ internal fun productionBackupEngine(
                 File(noBackupDirectory(), FullVerifyGenerationStore.FILE_NAME),
                 ioContext,
             )
+        val damaged =
+            DamagedGenerationStore(
+                File(noBackupDirectory(), DamagedGenerationStore.FILE_NAME),
+                ioContext,
+            )
         BackupRunner(
             state = ports.backupState,
             databaseFile = ports.databaseFile,
@@ -91,9 +96,11 @@ internal fun productionBackupEngine(
                         RetentionMarks(
                             rejectedGenerations = rejected.load(),
                             fullVerifyGeneration = fullVerify.load(),
+                            damagedGenerations = damaged.load(),
                         )
                     },
                     forceUpload = { ports.backupState.forceUpload(clock.nowEpochMillis()) },
+                    forgetDamaged = damaged::removeAll,
                 ),
         )
     },

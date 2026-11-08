@@ -331,6 +331,8 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
         override suspend fun recordActiveInvariantFailures(count: Long): Int = 0
 
         override suspend fun markStaleNotice(now: Long): Int = 0
+
+        override suspend fun markDrill(now: Long, result: String, destinationId: String): Int = 0
     }
 
     private companion object {

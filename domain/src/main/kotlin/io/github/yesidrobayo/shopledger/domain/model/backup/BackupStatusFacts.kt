@@ -27,6 +27,8 @@ import kotlin.time.Instant
  * @property lastFullVerifyAt con WebDAV, la última vez que se leyó entera una copia del servicio y su
  *   suma coincidió, o nulo si nunca.
  * @property connectedAt cuándo se conectó el destino, o nulo si no se sabe.
+ * @property serviceSpace con WebDAV, el espacio del servicio que vio la última sonda, o nulo si no
+ *   informó un tope.
  * @property storage el espacio del teléfono y lo que ocupa la base, o nulo si no se pudo leer. Solo
  *   sirve a los avisos de espacio: nunca cambia el estado.
  */
@@ -50,4 +52,5 @@ data class BackupStatusFacts(
     val storage: DeviceStorage? = null,
     val lastFullVerifyAt: Instant? = null,
     val connectedAt: Instant? = null,
+    val serviceSpace: ServiceSpace? = null,
 )

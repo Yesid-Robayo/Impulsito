@@ -283,7 +283,12 @@ class BackupSchedulerTest {
         scheduler.reconcile()
 
         assertEquals(
-            listOf("keep maintenance", "keep unmetered", "keep upload 40m con red"),
+            listOf(
+                "keep maintenance",
+                "keep head checks con red",
+                "keep unmetered",
+                "keep upload 40m con red",
+            ),
             queue.calls,
         )
     }
@@ -296,7 +301,12 @@ class BackupSchedulerTest {
         scheduler.reconcile()
 
         assertEquals(
-            listOf("keep maintenance", "keep unmetered", "keep upload 40m con red"),
+            listOf(
+                "keep maintenance",
+                "keep head checks con red",
+                "keep unmetered",
+                "keep upload 40m con red",
+            ),
             queue.calls,
         )
     }
@@ -311,7 +321,15 @@ class BackupSchedulerTest {
         queue.queued.clear()
         scheduler.reconcile()
 
-        assertEquals(listOf("keep maintenance", "keep maintenance"), queue.calls)
+        assertEquals(
+            listOf(
+                "keep maintenance",
+                "keep head checks con red",
+                "keep maintenance",
+                "keep head checks con red",
+            ),
+            queue.calls,
+        )
     }
 
     @Test
@@ -321,7 +339,8 @@ class BackupSchedulerTest {
 
         scheduler.reconcile()
 
-        assertEquals(listOf("keep maintenance"), queue.calls)
+        // La sonda y la comprobación quedan programadas: ellas mismas no tocan el destino en pausa.
+        assertEquals(listOf("keep maintenance", "keep head checks con red"), queue.calls)
     }
 
     @Test
@@ -335,7 +354,12 @@ class BackupSchedulerTest {
         scheduler.reconcile()
 
         assertEquals(
-            listOf("keep maintenance", "keep maintenance", "keep maintenance"),
+            listOf(
+                "keep maintenance",
+                "keep head checks con red",
+                "keep maintenance",
+                "keep maintenance",
+            ),
             queue.calls,
         )
     }
@@ -407,11 +431,15 @@ class BackupSchedulerTest {
         accepted = true
         scheduler.onPolicyAccepted()
 
-        assertEquals(listOf("keep unmetered", "keep upload 40m con red"), queue.calls)
+        // Durante la pausa nadie miró el destino: la sonda única lo contrasta.
+        assertEquals(
+            listOf("probe once con red", "keep unmetered", "keep upload 40m con red"),
+            queue.calls,
+        )
     }
 
     @Test
-    fun acceptingThePolicyWithNothingToUploadQueuesNothing() = runBlocking {
+    fun acceptingThePolicyWithNothingToUploadOnlyProbesTheDestination() = runBlocking {
         facts = facts?.copy(hasPending = false)
         scheduler.onPolicyAccepted()
 
@@ -422,6 +450,49 @@ class BackupSchedulerTest {
         facts = facts?.copy(connectedKind = BackupDestinationKind.WEBDAV)
         scheduler.onPolicyAccepted()
 
+        assertEquals(listOf("probe once con red"), queue.calls)
+    }
+
+    @Test
+    fun openingTheAppWithTheLastProbeOverdueProbesTheDestinationOnce() = runBlocking {
+        var due = true
+        val probing =
+            BackupScheduler({ facts }, { restore }, { accepted }, queue, Clock { now }) { due }
+
+        probing.onAppOpened(AppOpenUpload.NONE)
+        facts = facts?.copy(connectedKind = BackupDestinationKind.DOCUMENT_SLOTS)
+        probing.onAppOpened(AppOpenUpload.NONE)
+        due = false
+        probing.onAppOpened(AppOpenUpload.NONE)
+
+        // Con la nube del teléfono la sonda no pide red.
+        assertEquals(listOf("probe once con red", "probe once sin red"), queue.calls)
+    }
+
+    @Test
+    fun theOverdueProbeWaitsForTheRestoreThePolicyAndADestination() = runBlocking {
+        val probing =
+            BackupScheduler({ facts }, { restore }, { accepted }, queue, Clock { now }) { true }
+
+        restore = true
+        probing.onAppOpened(AppOpenUpload.PAST_INTERVAL)
+        restore = false
+        accepted = false
+        probing.onAppOpened(AppOpenUpload.PAST_INTERVAL)
+        accepted = true
+        facts = facts?.copy(connectedKind = null)
+        probing.onAppOpened(AppOpenUpload.NONE)
+
         assertEquals(emptyList<String>(), queue.calls)
+    }
+
+    @Test
+    fun reconcileWithThePhoneCloudKeepsAProbeWithoutNetwork() = runBlocking {
+        facts =
+            facts?.copy(connectedKind = BackupDestinationKind.DOCUMENT_SLOTS, hasPending = false)
+
+        scheduler.reconcile()
+
+        assertEquals(listOf("keep maintenance", "keep head checks sin red"), queue.calls)
     }
 }

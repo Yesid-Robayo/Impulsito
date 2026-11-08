@@ -5,11 +5,21 @@ import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupEvent
 import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
+import io.github.yesidrobayo.shopledger.data.backup.BackupStaging
 import io.github.yesidrobayo.shopledger.data.backup.BackupWorkQueue
+import io.github.yesidrobayo.shopledger.data.backup.CandidateUnpacker
+import io.github.yesidrobayo.shopledger.data.backup.CandidateValidator
 import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
+import io.github.yesidrobayo.shopledger.data.backup.DamagedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
 import io.github.yesidrobayo.shopledger.data.backup.DurableFileOps
+import io.github.yesidrobayo.shopledger.data.backup.FullVerifyGenerationStore
+import io.github.yesidrobayo.shopledger.data.backup.HeadDeepCheck
+import io.github.yesidrobayo.shopledger.data.backup.HeadProbe
+import io.github.yesidrobayo.shopledger.data.backup.LastProbeStore
 import io.github.yesidrobayo.shopledger.data.backup.MaintenanceAccess
+import io.github.yesidrobayo.shopledger.data.backup.ProbeAccess
+import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.RestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.RestoreFiles
 import io.github.yesidrobayo.shopledger.data.backup.RestoreLockFile
@@ -21,6 +31,7 @@ import io.github.yesidrobayo.shopledger.data.backup.ScheduledBackupWork
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestore
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestoreGate
 import io.github.yesidrobayo.shopledger.data.backup.cleanUpExpiredLocalCopies
+import io.github.yesidrobayo.shopledger.data.backup.probeAccess
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.productionRestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
@@ -55,6 +66,8 @@ import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.error
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.domain.port.info
+import io.github.yesidrobayo.shopledger.domain.rule.backup.HeadProbeRule
+import java.io.File
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
@@ -181,8 +194,72 @@ class DataGraph internal constructor(
             policyAccepted = consentGate::allowsUploads,
             queue = workQueue?.invoke(context) ?: BackupWorkQueue.Detached,
             clock = clock,
+            probeDue = {
+                val last = lastProbeStore().load()
+                HeadProbeRule.isDue(last?.at, clock.now())
+            },
         )
     }
+
+    /** La última sonda de la cabeza, en `no_backup/last-probe`. Pedirla toca el disco. */
+    private suspend fun lastProbeStore(): LastProbeStore = withContext(ioContext) {
+        LastProbeStore(File(files().noBackupDirectory, LastProbeStore.FILE_NAME), ioContext)
+    }
+
+    /** Las precondiciones de la sonda y de la comprobación de la cabeza. */
+    private suspend fun headCheckAccess(): ProbeAccess = probeAccess(
+        restorePending = {
+            withContext(ioContext) { RestoreMarkers(files().noBackupDirectory).present() }
+        },
+        policyAccepted = consentGate::allowsUploads,
+        access = ::openForWork,
+    )
+
+    /**
+     * La sonda de la cabeza: contrasta el estado con el destino, una vez por semana y al abrir con
+     * la última vencida. Crearla no toca el disco.
+     */
+    internal val headProbe: HeadProbe by lazy {
+        HeadProbe(
+            prepare = ::headCheckAccess,
+            destinations = destinations,
+            deviceId = { deviceIdentity.deviceId() },
+            schemaVersion = schemaVersion,
+            rejected = {
+                noBackupStore(RejectedGenerationStore.FILE_NAME, ::RejectedGenerationStore)
+            },
+            lastProbe = ::lastProbeStore,
+            mutex = backupMutex,
+            clock = clock,
+            log = log,
+        )
+    }
+
+    /**
+     * La comprobación completa de la cabeza, una vez al mes con una red sin datos móviles. Crearla
+     * no toca el disco.
+     */
+    internal val headDeepCheck: HeadDeepCheck by lazy {
+        HeadDeepCheck(
+            prepare = ::headCheckAccess,
+            destinations = destinations,
+            stagingDirectory = { File(files().noBackupDirectory, BackupStaging.DIRECTORY_NAME) },
+            unpacker = CandidateUnpacker(ioContext),
+            validator = CandidateValidator(ioContext),
+            fullVerify = {
+                noBackupStore(FullVerifyGenerationStore.FILE_NAME, ::FullVerifyGenerationStore)
+            },
+            damaged = { noBackupStore(DamagedGenerationStore.FILE_NAME, ::DamagedGenerationStore) },
+            mutex = backupMutex,
+            clock = clock,
+            log = log,
+            ioContext = ioContext,
+        )
+    }
+
+    /** Un archivo de la instalación en `noBackupFilesDir`. Pedir la carpeta toca el disco. */
+    private suspend fun <T> noBackupStore(name: String, create: (File, CoroutineContext) -> T): T =
+        withContext(ioContext) { create(File(files().noBackupDirectory, name), ioContext) }
 
     /** Lo que la pausa de una restauración hace con los trabajos programados. */
     private val scheduledBackupWork =
@@ -252,7 +329,13 @@ class DataGraph internal constructor(
      * biblioteca de trabajos al configurarla, y crearla no toca el disco.
      */
     val workerFactory: WorkerFactory by lazy {
-        DataWorkerFactory(backupEngine, log, backupScheduler, dailyMaintenance)
+        DataWorkerFactory(
+            backupEngine,
+            log,
+            backupScheduler,
+            dailyMaintenance,
+            headProbe to headDeepCheck,
+        )
     }
 
     /**

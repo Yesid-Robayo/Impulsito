@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNetwork
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
 import io.github.yesidrobayo.shopledger.domain.model.backup.DeviceStorage
+import io.github.yesidrobayo.shopledger.domain.model.backup.ServiceSpace
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
 import kotlin.coroutines.CoroutineContext
@@ -39,6 +40,8 @@ import kotlinx.coroutines.withContext
  *   o nulo si no se pudo leer. Lee el disco.
  * @param connectedAt cuándo se conectó el destino, en milisegundos UTC, según `link.json`, o nulo.
  *   Lee el disco.
+ * @param serviceSpace el espacio del servicio WebDAV que vio la última sonda, según `last-probe`, o
+ *   nulo. Lee el disco.
  */
 internal class BackupStatusEnvironment(
     val restorePending: () -> Boolean,
@@ -49,6 +52,7 @@ internal class BackupStatusEnvironment(
     val changes: Flow<Unit> = flowOf(Unit),
     val storage: () -> DeviceStorage? = { null },
     val connectedAt: suspend () -> Long? = { null },
+    val serviceSpace: suspend () -> ServiceSpace? = { null },
 ) {
     companion object {
         /**
@@ -104,6 +108,7 @@ internal class BackupStatusReader(
         network = environment.network(),
         storage = environment.storage(),
         connectedAt = environment.connectedAt(),
+        serviceSpace = environment.serviceSpace(),
     )
 }
 
@@ -126,6 +131,7 @@ internal fun backupStatusFacts(
     network: BackupNetwork,
     storage: DeviceStorage? = null,
     connectedAt: Long? = null,
+    serviceSpace: ServiceSpace? = null,
 ): BackupStatusFacts = BackupStatusFacts(
     restoreInProgress = restoreInProgress,
     linkState =
@@ -152,4 +158,5 @@ internal fun backupStatusFacts(
     storage = storage,
     lastFullVerifyAt = row?.lastFullVerifyAt?.let(Instant::fromEpochMilliseconds),
     connectedAt = connectedAt?.let(Instant::fromEpochMilliseconds),
+    serviceSpace = serviceSpace,
 )

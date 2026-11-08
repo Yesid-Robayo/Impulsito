@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.rule.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
 import io.github.yesidrobayo.shopledger.domain.model.backup.DeviceStorage
+import io.github.yesidrobayo.shopledger.domain.model.backup.ServiceSpace
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -63,5 +64,26 @@ class StorageNoticeRuleTest {
     @Test
     fun withoutAnySizeThereIsNoWarning() {
         assertFalse(StorageNoticeRule.nearCopyLimit(headFileBytes = null, databaseBytes = null))
+    }
+
+    @Test
+    fun theServiceWarnsWhenLessThanThreeCopiesFit() {
+        val copy = 50 * mib
+
+        assertTrue(StorageNoticeRule.serviceNearlyFull(ServiceSpace(150 * mib - 1, copy)))
+        assertFalse(StorageNoticeRule.serviceNearlyFull(ServiceSpace(150 * mib, copy)))
+    }
+
+    @Test
+    fun withoutACopyThereIsNothingToMeasureAndAHugeCopyAlwaysWarns() {
+        assertFalse(StorageNoticeRule.serviceNearlyFull(ServiceSpace(0, 0)))
+        assertTrue(
+            StorageNoticeRule.serviceNearlyFull(
+                ServiceSpace(
+                    Long.MAX_VALUE,
+                    Long.MAX_VALUE / 3 + 1,
+                ),
+            ),
+        )
     }
 }

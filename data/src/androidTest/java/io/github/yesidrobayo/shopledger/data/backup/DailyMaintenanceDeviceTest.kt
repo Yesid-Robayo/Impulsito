@@ -67,6 +67,9 @@ class DailyMaintenanceDeviceTest {
 
     @After
     fun close() {
+        // Cada prueba abre su base: se cierra para no agotar los archivos abiertos del proceso, que
+        // en Android 8 tiene un tope que la suite entera alcanza.
+        runBlocking { runCatching { fixture.ports.closeForRestore() } }
         fixture.close()
     }
 

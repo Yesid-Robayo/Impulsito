@@ -127,6 +127,7 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "markFullVerify",
                 "recordActiveInvariantFailures",
                 "markStaleNotice",
+                "markDrill",
             ),
             functionsOf(BackupStateDao::class.java),
         )
@@ -226,6 +227,11 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
         // La notificación de un día sin copia solo anota su hora.
         assertEquals(1, state.markStaleNotice(MUCH_LATER))
         changed(before.copy(lastStaleNoticeAt = MUCH_LATER))
+        // El simulacro de la cabeza solo se anota en el mismo destino.
+        assertEquals(0, state.markDrill(MUCH_LATER, "PASSED", "otra"))
+        changed(before)
+        assertEquals(1, state.markDrill(MUCH_LATER, "FAILED", "huella"))
+        changed(before.copy(lastDrillAt = MUCH_LATER, lastDrillResult = "FAILED"))
 
         // El enlace solo deja de estar conectado si sigue en el mismo destino.
         assertEquals(0, state.markConflict("OTHER_DEVICE", null, null, null, "otra"))

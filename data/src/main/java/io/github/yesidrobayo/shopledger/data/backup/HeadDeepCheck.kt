@@ -1,0 +1,285 @@
+package io.github.yesidrobayo.shopledger.data.backup
+
+import io.github.yesidrobayo.shopledger.data.destination.BackupDestination
+import io.github.yesidrobayo.shopledger.data.destination.CopyMetadata
+import io.github.yesidrobayo.shopledger.data.destination.CopyRef
+import io.github.yesidrobayo.shopledger.data.destination.DestinationFailure
+import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
+import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
+import io.github.yesidrobayo.shopledger.data.destination.DestinationResult
+import io.github.yesidrobayo.shopledger.data.destination.ListedMeta
+import io.github.yesidrobayo.shopledger.data.destination.SlMeta
+import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
+import io.github.yesidrobayo.shopledger.data.destination.TransferControl
+import io.github.yesidrobayo.shopledger.data.destination.identity
+import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDrillResult
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
+import io.github.yesidrobayo.shopledger.domain.model.backup.CandidateVerdict
+import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.EventLog
+import io.github.yesidrobayo.shopledger.domain.port.info
+import io.github.yesidrobayo.shopledger.domain.port.warn
+import java.io.File
+import java.io.IOException
+import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+
+/**
+ * La comprobación completa de la cabeza, una vez al mes y solo con una red sin datos móviles: el
+ * simulacro de restaurar, sin restaurar nada. Prueba que la copia que cuenta como la válida más
+ * reciente se puede restaurar de verdad, también el centro del archivo, que una muestra no ve.
+ *
+ * 1. Baja la cabeza a `backup-staging/deep-check/`, sin pasar del mayor archivo que se acepta.
+ *    Con la nube del teléfono la lee del proveedor: prueba lo que este teléfono recibe, no que la
+ *    otra app la haya subido.
+ * 2. La descomprime comparando la suma de sus metadatos, y le pasa el validador de las
+ *    restauraciones, como la preparación de una restauración, sobre un temporal.
+ * 3. Borra todo lo que bajó, pase lo que pase.
+ * 4. Solo entonces toma el cerrojo del respaldo, y solo para anotar: si el destino sigue siendo el
+ *    de esa lectura y esa cabeza sigue ahí. Una lectura del destino anterior no dice nada del
+ *    nuevo.
+ *
+ * - **Si pasa**, con WebDAV anota la lectura completa y quita la copia de las dañadas.
+ * - **Si falla**, deja `VERIFY_MISMATCH` a la vista, marca la copia como dañada, con WebDAV en
+ *   `damaged-generation` y con ranuras como no válida, y fuerza una subida. **Nunca la borra**: quizá
+ *   falló la lectura, o un validador nuevo.
+ * - **Sin espacio** se salta, y lo anota como saltada: no dice nada de la copia.
+ * - **Una cabeza que la app no restauraría** no se baja: ya se sabe, y su fallo sigue a la vista.
+ *
+ * Un fallo pasajero del destino se reintenta. No hace nada sin un destino conectado, sin la
+ * política aceptada o con una restauración a medias.
+ *
+ * @param prepare abre la base y mira las precondiciones.
+ * @param stagingDirectory la carpeta de preparación del respaldo. Pedirla toca el disco.
+ * @param freeSpace el espacio libre de una carpeta.
+ * @param mutex el cerrojo del respaldo, solo para anotar el resultado.
+ */
+internal class HeadDeepCheck(
+    private val prepare: suspend () -> ProbeAccess,
+    private val destinations: DestinationOpener,
+    private val stagingDirectory: suspend () -> File,
+    private val unpacker: CandidateUnpacker,
+    private val validator: CandidateValidator,
+    private val fullVerify: suspend () -> FullVerifyGenerationStore,
+    private val damaged: suspend () -> DamagedGenerationStore,
+    private val mutex: Mutex,
+    private val clock: Clock,
+    private val log: EventLog,
+    private val ioContext: CoroutineContext,
+    private val freeSpace: (File) -> Long = File::getUsableSpace,
+) {
+    /** Corre una comprobación. */
+    suspend fun run(control: TransferControl): ProbeRun {
+        val ready = when (val access = prepare()) {
+            is ProbeAccess.Ready -> access
+            ProbeAccess.Waiting -> return ProbeRun.RETRY
+            ProbeAccess.Nothing -> return ProbeRun.DONE
+        }
+        val state = ready.state
+        val link = ready.link
+        val current = state.get() ?: return ProbeRun.DONE
+        val headRef = headRefOf(current) ?: return ProbeRun.DONE
+        if (current.headGeneration <= 0) return ProbeRun.DONE
+        val destination =
+            when (val opened = destinations.open(link)) {
+                is DestinationOpen.Opened -> opened.destination
+
+                // El acceso perdido lo anota la sonda o el respaldo: esta solo comprueba la copia.
+                DestinationOpen.PermissionLost -> return ProbeRun.DONE
+
+                DestinationOpen.RetryLater -> return ProbeRun.RETRY
+            }
+        val head =
+            when (val found = headMeta(destination, headRef, current.headGeneration, control)) {
+                is Found.Meta -> found.meta
+
+                Found.Retry -> return ProbeRun.RETRY
+
+                // Una cabeza que falta o cuyo tamaño cambió la resuelve la sonda.
+                Found.None -> return ProbeRun.DONE
+            }
+        // Ya se sabe que la app no la restaura: no se baja, y su fallo sigue a la vista.
+        if (head.fatal) return ProbeRun.DONE
+        val staging = stagingDirectory()
+        val workDirectory = File(staging, DIRECTORY_NAME)
+        val outcome =
+            try {
+                check(destination, headRef, head, staging, workDirectory, control)
+            } finally {
+                withContext(NonCancellable + ioContext) { workDirectory.deleteRecursively() }
+            }
+        val result = when (outcome) {
+            Outcome.Retry -> return ProbeRun.RETRY
+            Outcome.Passed -> BackupDrillResult.PASSED
+            Outcome.Failed -> BackupDrillResult.FAILED
+            Outcome.NoSpace -> BackupDrillResult.SKIPPED
+        }
+        record(state, destination, link.destinationId, headRef, head, result, control)
+        return ProbeRun.DONE
+    }
+
+    private suspend fun check(
+        destination: BackupDestination,
+        ref: CopyRef,
+        head: SlMeta,
+        staging: File,
+        workDirectory: File,
+        control: TransferControl,
+    ): Outcome {
+        val needed = head.fileSize + head.rawSize
+        if (withContext(ioContext) { freeSpaceOf(staging) } < needed) return Outcome.NoSpace
+        val download = File(workDirectory, DOWNLOAD_NAME)
+        val candidate = File(workDirectory, CANDIDATE_NAME)
+        withContext(ioContext) { workDirectory.mkdirs() }
+        val downloaded =
+            try {
+                withContext(ioContext) {
+                    download.outputStream().use { sink ->
+                        destination.download(
+                            ref,
+                            sink,
+                            BackupLimits.MAX_BACKUP_DOWNLOAD_BYTES,
+                            control,
+                        )
+                    }
+                }
+            } catch (_: IOException) {
+                return Outcome.Retry
+            }
+        when (downloaded) {
+            is DestinationResult.Success -> Unit
+
+            is DestinationResult.Failure -> return when (downloaded.failure) {
+                DestinationFailure.Incomplete,
+                DestinationFailure.LocalStorage,
+                is DestinationFailure.Transient,
+                is DestinationFailure.Interrupted,
+                is DestinationFailure.PermissionLost,
+                -> Outcome.Retry
+
+                // No se pudo abrir lo que debía estar entero: la copia no se comprueba.
+                DestinationFailure.VerifyMismatch,
+                is DestinationFailure.Unsupported,
+                is DestinationFailure.ChangedOutside,
+                DestinationFailure.QuotaExceeded,
+                is DestinationFailure.NoSafeSlot,
+                -> Outcome.Failed
+            }
+        }
+        val unpacked = unpacker.unpack(download, candidate, head.sha256)
+        if (unpacked !is UnpackResult.Unpacked) return Outcome.Failed
+        val expected = ExpectedCopy(head.deviceId, head.generation, head.schemaVersion.toInt())
+        return when (val validation = validator.validate(candidate, CandidateContext(expected))) {
+            // Con saldos por recalcular se restaura igual, con aviso: solo lo fatal falla.
+            is CandidateValidation.Checked -> when (validation.verdict) {
+                is CandidateVerdict.Rejected -> Outcome.Failed
+                is CandidateVerdict.NeedsRepair, is CandidateVerdict.Restorable -> Outcome.Passed
+            }
+
+            is CandidateValidation.Refused -> Outcome.Failed
+
+            // Una falla del teléfono no dice nada de la copia.
+            is CandidateValidation.Failed -> Outcome.Retry
+        }
+    }
+
+    /**
+     * Anota el resultado bajo el cerrojo, si el destino sigue siendo el de la lectura y la cabeza
+     * leída sigue ahí con su generación. Si no, lo leído ya no dice nada y no se anota.
+     */
+    private suspend fun record(
+        state: BackupStateDao,
+        destination: BackupDestination,
+        destinationId: String,
+        ref: CopyRef,
+        head: SlMeta,
+        result: BackupDrillResult,
+        control: TransferControl,
+    ) = mutex.withLock {
+        val current = state.get()
+        val stillThere =
+            current?.destinationId == destinationId &&
+                headMeta(destination, ref, head.generation, control).let {
+                    it is Found.Meta && it.meta.sha256 == head.sha256
+                }
+        if (!stillThere) {
+            log.info(ProbeEvent.DEEP_CHECK_STALE)
+            return@withLock
+        }
+        val now = clock.nowEpochMillis()
+        if (state.markDrill(now, result.name, destinationId) == 0) return@withLock
+        val webDav = destination.kind == BackupDestinationKind.WEBDAV
+        when (result) {
+            BackupDrillResult.PASSED -> {
+                if (webDav) {
+                    state.markFullVerify(now, destinationId)
+                    fullVerify().advanceTo(head.generation)
+                    damaged().remove(head.generation)
+                }
+                log.info(ProbeEvent.DEEP_CHECK_PASSED)
+            }
+
+            BackupDrillResult.FAILED -> {
+                if (webDav) damaged().add(head.generation) else destination.markUnreadable(ref)
+                state.recordFailure(BackupFailureCode.VERIFY_MISMATCH.name)
+                // La cabeza dañada no puede seguir contando como la copia válida más reciente.
+                state.forceUpload(now)
+                log.warn(ProbeEvent.DEEP_CHECK_FAILED)
+            }
+
+            BackupDrillResult.SKIPPED -> log.info(ProbeEvent.DEEP_CHECK_SKIPPED)
+        }
+    }
+
+    /** Los metadatos válidos de la cabeza [ref], si la lista la muestra con [generation] y su tamaño. */
+    private suspend fun headMeta(
+        destination: BackupDestination,
+        ref: CopyRef,
+        generation: Long,
+        control: TransferControl,
+    ): Found {
+        val listing =
+            when (val listed = destination.listCopies(control)) {
+                is DestinationResult.Success -> listed.value
+                is DestinationResult.Failure -> return Found.Retry
+            }
+        val copy = listing.copies.firstOrNull { it.ref == ref } ?: return Found.None
+        val bytes = (copy.meta as? ListedMeta.Present)?.bytes ?: return Found.None
+        val decoded =
+            copy.name?.let { SlMetaCodec.decode(bytes, it.identity()) }
+                ?: SlMetaCodec.decodeUnnamed(bytes)
+        val meta = (decoded as? CopyMetadata.Valid)?.meta ?: return Found.None
+        if (meta.generation != generation || meta.fileSize != copy.sizeBytes) return Found.None
+        return Found.Meta(meta)
+    }
+
+    private fun freeSpaceOf(directory: File): Long {
+        var existing: File? = directory
+        while (existing != null && !existing.exists()) existing = existing.parentFile
+        return existing?.let(freeSpace) ?: 0
+    }
+
+    private sealed interface Found {
+        class Meta(val meta: SlMeta) : Found
+
+        data object None : Found
+
+        data object Retry : Found
+    }
+
+    private enum class Outcome { Passed, Failed, NoSpace, Retry }
+
+    companion object {
+        /** La carpeta de la comprobación dentro de `backup-staging/`. Se borra al terminar. */
+        const val DIRECTORY_NAME = "deep-check"
+
+        private const val DOWNLOAD_NAME = "head.download"
+        private const val CANDIDATE_NAME = "head.db"
+    }
+}

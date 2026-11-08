@@ -158,6 +158,14 @@ internal interface BackupDestination {
      * responden [DestinationFailure.Unsupported].
      */
     suspend fun delete(ref: CopyRef, control: TransferControl): DestinationResult<Unit>
+
+    /**
+     * Anota que la copia confirmada [ref] no se pudo leer entera: deja de contar como válida, sin
+     * borrarla. Con WebDAV no hace nada aquí, porque la marca vive en el teléfono; con la nube del
+     * teléfono queda en el estado de las ranuras, y la siguiente escritura no la toma por buena.
+     */
+    suspend fun markUnreadable(ref: CopyRef): DestinationResult<Unit> =
+        DestinationResult.Success(Unit)
 }
 
 /**

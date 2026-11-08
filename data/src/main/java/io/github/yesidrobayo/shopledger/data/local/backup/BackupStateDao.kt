@@ -282,4 +282,15 @@ internal interface BackupStateDao {
      */
     @Query("UPDATE backup_state SET last_stale_notice_at = :now WHERE id = 1")
     suspend fun markStaleNotice(now: Long): Int
+
+    /**
+     * Anota cómo terminó la comprobación completa de la cabeza, [result], el nombre guardado de su
+     * enum, si el destino sigue siendo [destinationId]. Devuelve 0 si la persona cambió de destino:
+     * lo leído del anterior ya no dice nada.
+     */
+    @Query(
+        "UPDATE backup_state SET last_drill_at = :now, last_drill_result = :result WHERE id = 1 " +
+            "AND destination_id = :destinationId",
+    )
+    suspend fun markDrill(now: Long, result: String, destinationId: String): Int
 }

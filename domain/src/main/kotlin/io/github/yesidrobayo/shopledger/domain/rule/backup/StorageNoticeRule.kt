@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.rule.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
 import io.github.yesidrobayo.shopledger.domain.model.backup.DeviceStorage
+import io.github.yesidrobayo.shopledger.domain.model.backup.ServiceSpace
 
 /**
  * Los avisos de espacio, que llegan antes de que algo falle. Ninguno detiene una copia, deja un
@@ -51,6 +52,20 @@ object StorageNoticeRule {
     /** El 80 % de la mayor base que se restaura. */
     private val DATABASE_NEAR_LIMIT_BYTES =
         eightyPercent(BackupLimits.MAX_RESTORE_DECOMPRESSED_BYTES)
+
+    /** Las copias que deben caber en el servicio para no avisar. */
+    const val SERVICE_COPIES: Long = 3
+
+    /**
+     * El servicio está casi lleno: en el espacio libre que informa caben menos de
+     * [SERVICE_COPIES] copias del tamaño de la cabeza. Sin copia todavía no hay con qué medir.
+     */
+    fun serviceNearlyFull(space: ServiceSpace): Boolean {
+        val copy = space.copyBytes
+        if (copy <= 0) return false
+        if (copy > Long.MAX_VALUE / SERVICE_COPIES) return true
+        return space.availableBytes < copy * SERVICE_COPIES
+    }
 
     /** El 80 % de [limit], redondeado hacia arriba: llegar a ese número es llegar al 80 %. */
     private fun eightyPercent(limit: Long): Long = (limit * 4 + 4) / 5

@@ -71,6 +71,12 @@ object BackupStatusResolver {
         if (kind == BackupDestinationKind.WEBDAV && fullReadOverdue(facts, now)) {
             add(BackupNotice.FULL_READ_OVERDUE)
         }
+        val space = facts.serviceSpace
+        if (kind == BackupDestinationKind.WEBDAV && space != null &&
+            StorageNoticeRule.serviceNearlyFull(space)
+        ) {
+            add(BackupNotice.SERVICE_NEARLY_FULL)
+        }
     }
 
     /**
