@@ -12,6 +12,8 @@
     <!-- Acciones y estados comunes. -->
     <string name="action_retry">Reintentar</string>
     <string name="state_error_read">No se pudo abrir esto.</string>
+    <string name="state_error_save">No se pudo guardar. Lo escrito sigue aquí.</string>
+    <string name="error_device_storage">El teléfono se quedó sin espacio. Al liberar un poco se puede reintentar.</string>
     <string name="a11y_back">Volver</string>
     <string name="a11y_close">Cerrar</string>
     <string name="a11y_settings">Ajustes</string>
@@ -37,6 +39,9 @@
     <string name="records_tab_purchases">Compras</string>
     <string name="product_new_title">Nuevo producto</string>
     <string name="action_edit">Editar</string>
+    <string name="action_archive">Archivar</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_reactivate">Reactivar</string>
     <string name="product_tab_suppliers">Proveedores</string>
     <string name="term_inventory">Inventario</string>
     <string name="bulk_title">Actualizar precios</string>

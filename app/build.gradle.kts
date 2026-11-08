@@ -118,6 +118,10 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // Las pantallas leen su estado con collectAsStateWithLifecycle y obtienen su ViewModel desde Compose. Ya llegaban
+    // con la navegación: aquí solo se declaran, porque el código las usa directamente.
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     // El ciclo de vida del proceso: el respaldo sale al pasar la app a segundo plano y se revisa al abrirla.
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.navigation3.runtime)

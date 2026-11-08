@@ -28,4 +28,12 @@ enum class StorageFailure {
 
     /** La base estaba ocupada por otro escritor, algo que con un solo escritor no debería pasar. */
     BUSY,
+    ;
+
+    /**
+     * Si la falla se arregla liberando espacio en el teléfono. Es lo único que la pantalla puede
+     * pedirle a la persona; ante las demás solo dice que no se guardó y que lo escrito sigue ahí.
+     * Así ninguna pantalla repite qué falla es cuál, ni necesita conocer esta lista.
+     */
+    val isOutOfSpace: Boolean get() = this == DISK_FULL
 }

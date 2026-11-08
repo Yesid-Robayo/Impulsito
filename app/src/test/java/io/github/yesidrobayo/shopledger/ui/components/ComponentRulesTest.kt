@@ -5,6 +5,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.withStyle
+import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
@@ -135,4 +136,10 @@ class ComponentRulesTest {
     }
 
     private fun date(year: Int, month: Int, day: Int) = BusinessDate(LocalDate(year, month, day))
+
+    @Test
+    fun aSaveFailureAsksToFreeSpaceOnlyWhenTheDiskIsFull() {
+        assertEquals(R.string.error_device_storage, saveErrorText(outOfSpace = true))
+        assertEquals(R.string.state_error_save, saveErrorText(outOfSpace = false))
+    }
 }

@@ -15,6 +15,8 @@
     <!-- Acciones y estados comunes. -->
     <string name="action_retry">Try again</string>
     <string name="state_error_read">This could not be opened.</string>
+    <string name="state_error_save">Could not save. What was entered is still here.</string>
+    <string name="error_device_storage">The phone is out of space. Free up some and try again.</string>
     <string name="a11y_back">Back</string>
     <string name="a11y_close">Close</string>
     <string name="a11y_settings">Settings</string>
@@ -40,6 +42,9 @@
     <string name="records_tab_purchases">Purchases</string>
     <string name="product_new_title">New product</string>
     <string name="action_edit">Edit</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_reactivate">Reactivate</string>
     <string name="product_tab_suppliers">Suppliers</string>
     <string name="term_inventory">Inventory</string>
     <string name="bulk_title">Update prices</string>

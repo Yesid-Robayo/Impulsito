@@ -20,6 +20,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.navigation.AppNavHost
+import io.github.yesidrobayo.shopledger.ui.format.BusinessDisplay
+import io.github.yesidrobayo.shopledger.ui.format.ProvideBusinessFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.Appearance
 import io.github.yesidrobayo.shopledger.ui.theme.DefaultColorPalette
@@ -38,12 +40,16 @@ import kotlinx.coroutines.launch
  * compuerta manda al rescate, la navegación sigue con la paleta predeterminada y el tema del
  * teléfono, hasta que exista la pantalla de rescate.
  *
+ * Con la paleta llegan el formato regional, la moneda y el modo discreto: toda pantalla con cifras
+ * los recibe de aquí, y cambian a la vez cuando la persona los cambia.
+ *
  * Es una [AppCompatActivity] porque en Android 8 a 12 el idioma elegido dentro de la app solo se
  * aplica a ese tipo de actividad. Sigue siendo una `FragmentActivity`, así que el desbloqueo con
  * huella o rostro también funciona aquí.
  */
 class MainActivity : AppCompatActivity() {
     private val shownAppearance = mutableStateOf<Appearance?>(null)
+    private val shownDisplay = mutableStateOf<BusinessDisplay?>(null)
     private val dataUnavailable = mutableStateOf(false)
 
     /** La paleta y el modo que leyó de los ajustes, o `null` mientras la base no responde. */
@@ -62,10 +68,14 @@ class MainActivity : AppCompatActivity() {
                         access.ports.settings
                             .observe()
                             .map {
-                                Appearance(it.preferences.colorPalette, it.preferences.themeMode)
+                                Appearance(it.preferences.colorPalette, it.preferences.themeMode) to
+                                    BusinessDisplay.of(it)
                             }
                             .distinctUntilChanged()
-                            .collect { shownAppearance.value = it }
+                            .collect { (appearance, display) ->
+                                shownAppearance.value = appearance
+                                shownDisplay.value = display
+                            }
                     }
 
                 // La causa ya quedó registrada. La pantalla de rescate todavía no existe: hasta
@@ -87,7 +97,7 @@ class MainActivity : AppCompatActivity() {
                 if (appearance == null && !dataUnavailable.value) {
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
                 } else {
-                    AppNavHost()
+                    ProvideBusinessFormats(shownDisplay.value) { AppNavHost() }
                 }
             }
         }

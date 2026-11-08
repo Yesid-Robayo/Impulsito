@@ -90,7 +90,21 @@ private fun entryOf(key: NavKey, navigator: AppNavigator): NavEntry<NavKey> {
     val appKey = requireNotNull(key as? AppNavKey) { "La pila solo guarda claves de la app" }
     val isRoot = TopLevelDestination.ofRoot(appKey) != null
     return NavEntry(key = key, metadata = if (isRoot) mapOf(TAB_ROOT to true) else emptyMap()) {
-        PlaceholderRoute(appKey, navigator)
+        ScreenRoute(appKey, navigator)
+    }
+}
+
+/**
+ * La pantalla de [key]: la suya, si ya existe, o su barra y su estado vacío mientras tanto.
+ *
+ * Cada pantalla nueva agrega aquí su línea, `AppNavKey.X -> XRoute(...)`, sin tocar las de las
+ * demás. Su Route obtiene el ViewModel con [rememberAppViewModel] y, si la base no abre, muestra
+ * [PlaceholderRoute]. El caso general existe solo mientras queden pantallas por construir.
+ */
+@Composable
+private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
+    when (key) {
+        else -> PlaceholderRoute(key, navigator)
     }
 }
 
@@ -135,7 +149,7 @@ private fun tabSwitch(): ContentTransform =
  * Las raíces muestran su estado vacío real, con la acción que lleva a empezar.
  */
 @Composable
-private fun PlaceholderRoute(key: AppNavKey, navigator: AppNavigator) {
+internal fun PlaceholderRoute(key: AppNavKey, navigator: AppNavigator) {
     val spec = screenSpecOf(key)
     val title = stringResource(spec.title)
     val navigationLabel =
