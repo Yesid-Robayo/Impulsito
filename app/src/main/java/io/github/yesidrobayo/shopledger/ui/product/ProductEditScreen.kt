@@ -1,0 +1,590 @@
+package io.github.yesidrobayo.shopledger.ui.product
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.Margin
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.SeedTable
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
+import io.github.yesidrobayo.shopledger.localization.SeedText
+import io.github.yesidrobayo.shopledger.ui.components.ActionState
+import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
+import io.github.yesidrobayo.shopledger.ui.components.AppCard
+import io.github.yesidrobayo.shopledger.ui.components.AppTextField
+import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
+import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
+import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
+import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.MoneyField
+import io.github.yesidrobayo.shopledger.ui.components.MoneySize
+import io.github.yesidrobayo.shopledger.ui.components.MoneyText
+import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
+import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
+import io.github.yesidrobayo.shopledger.ui.components.PickerField
+import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.QuantityField
+import io.github.yesidrobayo.shopledger.ui.components.SelectionSheet
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
+import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
+import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
+import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
+import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
+import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
+import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
+import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
+import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
+import kotlin.time.Instant
+
+/**
+ * Crear o editar un producto: nombre, categoría, unidad, precio y costo con la ganancia en vivo, y el
+ * stock. Lo opcional va plegado en `Más detalles`.
+ *
+ * Es pura: recibe el estado y avisa cada acción. El botón `Guardar producto` queda fijo abajo, sobre
+ * el teclado, y un error de guardado se ve arriba de él sin borrar nada de lo escrito. Con letra
+ * grande, precio y costo van uno bajo el otro. En una ventana ancha, el formulario va centrado a su
+ * ancho de lectura.
+ */
+@Composable
+fun ProductEditScreen(
+    uiState: ProductEditUiState,
+    onAction: (ProductEditAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val spacing = AppTheme.spacing
+    Column(
+        modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+            .imePadding(),
+    ) {
+        AppTopBar(
+            title =
+                if (uiState.isNew) {
+                    stringResource(R.string.product_new_title)
+                } else {
+                    uiState.form.name.ifBlank { stringResource(R.string.product_new_title) }
+                },
+            navigation = TopBarNavigation.CLOSE,
+            onNavigate = { onAction(ProductEditAction.Close) },
+            navigationLabel = stringResource(R.string.a11y_close),
+            titleStyle = MaterialTheme.typography.titleLarge,
+        )
+        when {
+            uiState.loading -> DelayedSkeleton { FormSkeleton() }
+
+            uiState.notFound ->
+                EmptyState(
+                    icon = R.drawable.ic_error,
+                    title = stringResource(R.string.state_error_read),
+                )
+
+            else -> {
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .align(Alignment.CenterHorizontally)
+                        .widthIn(max = AppTheme.sizes.maxContentWidth)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = spacing.s16, vertical = spacing.s8),
+                    verticalArrangement = Arrangement.spacedBy(spacing.s12),
+                ) { ProductFormFields(uiState, onAction) }
+                SaveBar(uiState, onAction, Modifier.align(Alignment.CenterHorizontally))
+            }
+        }
+    }
+    if (uiState.confirmingDiscard) {
+        ConfirmDialog(
+            title = stringResource(R.string.dialog_discard_title),
+            body = stringResource(R.string.dialog_discard_body),
+            confirmLabel = stringResource(R.string.dialog_discard_action),
+            onConfirm = { onAction(ProductEditAction.Discard) },
+            onDismiss = { onAction(ProductEditAction.KeepEditing) },
+        )
+    }
+}
+
+@Composable
+private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
+    val form = uiState.form
+    val unit = unitLabelOf(uiState.unit)
+    var choosingCategory by rememberSaveable { mutableStateOf(false) }
+    var choosingUnit by rememberSaveable { mutableStateOf(false) }
+    var moreDetails by rememberSaveable { mutableStateOf(form.barcode.isNotEmpty()) }
+
+    AppTextField(
+        value = form.name,
+        onValueChange = { onAction(ProductEditAction.NameChange(it)) },
+        label = stringResource(R.string.form_name),
+        error = uiState.errors[ProductEditField.NAME]?.let {
+            problemText(it, ProductEditField.NAME)
+        },
+        onLeave = { onAction(ProductEditAction.NameLeft) },
+    )
+    PickerField(
+        label = stringResource(R.string.form_category),
+        value = uiState.category?.details?.name ?: stringResource(R.string.term_no_category),
+        onClick = { choosingCategory = true },
+    )
+    PickerField(
+        label = stringResource(R.string.term_unit),
+        value = unitNameOf(uiState.unit),
+        onClick = { choosingUnit = true },
+        lockedReason = if (uiState.unitLocked) stringResource(R.string.unit_base_locked) else null,
+    )
+    PriceAndCost(uiState, onAction)
+    ProfitCard(uiState.profit)
+    if (uiState.isNew) {
+        QuantityField(
+            value = form.initialStock,
+            onValueChange = { onAction(ProductEditAction.InitialStockChange(it)) },
+            label = stringResource(R.string.product_initial_stock),
+            unit = unit,
+            error = uiState.errors[ProductEditField.INITIAL_STOCK]?.let { problemText(it, null) },
+        )
+    }
+    Column {
+        QuantityField(
+            value = form.minStock,
+            onValueChange = { onAction(ProductEditAction.MinStockChange(it)) },
+            label = stringResource(R.string.product_min_stock),
+            unit = unit,
+            error = uiState.errors[ProductEditField.MIN_STOCK]?.let { problemText(it, null) },
+        )
+        if (uiState.errors[ProductEditField.MIN_STOCK] == null) {
+            Text(
+                stringResource(R.string.product_min_stock_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    start = AppTheme.spacing.s16,
+                    top = AppTheme.spacing.s4,
+                ),
+            )
+        }
+    }
+    InlineTextButton(
+        text = stringResource(R.string.field_more_details),
+        onClick = { moreDetails = !moreDetails },
+    )
+    if (moreDetails) {
+        AppTextField(
+            value = form.barcode,
+            onValueChange = { onAction(ProductEditAction.BarcodeChange(it)) },
+            label = stringResource(R.string.product_barcode),
+            error = uiState.errors[ProductEditField.BARCODE]?.let { problemText(it, null) },
+            imeAction = ImeAction.Done,
+        )
+    }
+
+    if (choosingCategory) {
+        CategorySheet(uiState.categories, onAction) { choosingCategory = false }
+    }
+    if (choosingUnit) {
+        UnitSheet(uiState.units, onAction) { choosingUnit = false }
+    }
+}
+
+/** Precio y costo lado a lado; con letra grande, uno bajo el otro para que las cifras quepan. */
+@Composable
+private fun PriceAndCost(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
+    val stacked = LocalDensity.current.fontScale > STACK_FONT_SCALE
+    val price: @Composable (Modifier) -> Unit = { modifier ->
+        MoneyField(
+            value = uiState.form.salePrice,
+            onValueChange = { onAction(ProductEditAction.SalePriceChange(it)) },
+            label = stringResource(R.string.product_sale_price),
+            modifier = modifier,
+            error = uiState.errors[ProductEditField.SALE_PRICE]?.let { problemText(it, null) },
+        )
+    }
+    val cost: @Composable (Modifier) -> Unit = { modifier ->
+        if (uiState.costLocked) {
+            LockedCost(uiState.averageCost, modifier)
+        } else {
+            MoneyField(
+                value = uiState.form.cost,
+                onValueChange = { onAction(ProductEditAction.CostChange(it)) },
+                label = stringResource(R.string.term_cost),
+                modifier = modifier,
+                error = uiState.errors[ProductEditField.COST]?.let { problemText(it, null) },
+            )
+        }
+    }
+    if (stacked) {
+        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
+            price(Modifier.fillMaxWidth())
+            cost(Modifier.fillMaxWidth())
+        }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
+            price(Modifier.weight(1f))
+            cost(Modifier.weight(1f))
+        }
+    }
+}
+
+/**
+ * El costo de un producto con movimientos: lo lleva el libro, así que se ve sin poder escribirlo.
+ * Es un costo guardado, y en modo discreto se oculta.
+ */
+@Composable
+private fun LockedCost(cost: Money, modifier: Modifier) {
+    Column(modifier.padding(top = AppTheme.spacing.s8)) {
+        Text(
+            stringResource(R.string.term_cost),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        DiscreetValue { MoneyText(cost, MoneySize.ROW) }
+    }
+}
+
+/**
+ * La ganancia de cada unidad mientras se escriben precio y costo. Con pérdida, la tarjeta lo dice
+ * en el color de pérdida; sin costo, avisa que la ganancia real no se puede calcular. En modo
+ * discreto se oculta.
+ */
+@Composable
+private fun ProfitCard(profit: ProfitPreview) {
+    if (profit == ProfitPreview.NoPrice) return
+    AppCard(Modifier.fillMaxWidth()) {
+        val formats = LocalAppFormats.current
+        when (profit) {
+            ProfitPreview.NoPrice -> Unit
+
+            ProfitPreview.NoCost ->
+                Text(
+                    stringResource(R.string.product_no_cost_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+            is ProfitPreview.Profit -> DiscreetValue(style = MaterialTheme.typography.bodyLarge) {
+                val amount = rememberMoneyDisplay(profit.profit, formats.money)
+                val margin =
+                    when (val value = profit.margin) {
+                        is Margin.Defined -> formats.percent.format(value.value)
+                        Margin.NoData, Margin.OutOfRange -> NO_VALUE_TEXT
+                    }
+                Text(
+                    formatAnnotated(
+                        stringResource(R.string.product_profit_per_unit),
+                        amount.text,
+                        margin,
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+
+            is ProfitPreview.Loss -> DiscreetValue(style = MaterialTheme.typography.bodyLarge) {
+                val amount = rememberMoneyDisplay(profit.loss, formats.money)
+                Text(
+                    formatAnnotated(stringResource(R.string.product_loss_per_sale), amount.text),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AppTheme.colors.loss,
+                )
+            }
+        }
+    }
+}
+
+/** El botón fijo abajo, con el aviso de guardado encima si lo hay. */
+@Composable
+private fun SaveBar(
+    uiState: ProductEditUiState,
+    onAction: (ProductEditAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val spacing = AppTheme.spacing
+    // Al pie del formulario y a su mismo ancho, también en una ventana ancha.
+    Column(
+        modifier
+            .widthIn(max = AppTheme.sizes.maxContentWidth)
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = spacing.s16, vertical = spacing.s12),
+        verticalArrangement = Arrangement.spacedBy(spacing.s8),
+    ) {
+        when (val notice = uiState.notice) {
+            null -> Unit
+
+            is ProductEditNotice.SaveFailed ->
+                NoticeCard(stringResource(saveErrorText(notice.outOfSpace)), NoticeVariant.ERROR)
+
+            ProductEditNotice.CurrencyUnconfirmed ->
+                NoticeCard(
+                    text = stringResource(R.string.region_required_body),
+                    variant = NoticeVariant.WARNING,
+                    actionLabel = stringResource(R.string.region_required_action),
+                    onAction = { onAction(ProductEditAction.ConfirmCurrency) },
+                )
+        }
+        PrimaryActionButton(
+            text = stringResource(R.string.product_save),
+            onClick = { onAction(ProductEditAction.Save) },
+            variant = ActionVariant.PRIMARY,
+            modifier = Modifier.fillMaxWidth(),
+            state = if (uiState.saving) ActionState.WORKING else ActionState.IDLE,
+        )
+    }
+}
+
+@Composable
+private fun CategorySheet(
+    categories: List<Category>,
+    onAction: (ProductEditAction) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val normalized = TextNormalizer.normalize(query)
+    val shown = categories.filter { it.details.normalizedName.contains(normalized) }
+    val none = stringResource(R.string.term_no_category)
+    SelectionSheet(
+        title = stringResource(R.string.form_category),
+        items = listOf<Category?>(null) + shown,
+        key = { it?.id ?: NO_CATEGORY_KEY },
+        query = query,
+        onQueryChange = { query = it },
+        onDismissRequest = onDismiss,
+        searchHint = stringResource(R.string.form_category),
+        itemContent = { category ->
+            SettingsRow(
+                title = category?.details?.name ?: none,
+                action =
+                    SettingsRowAction.Navigation {
+                        onAction(ProductEditAction.CategoryChange(category?.id))
+                        onDismiss()
+                    },
+            )
+        },
+        onCreate = { name ->
+            onAction(ProductEditAction.CreateCategory(name))
+            onDismiss()
+        },
+    )
+}
+
+@Composable
+private fun UnitSheet(
+    units: List<MeasureUnit>,
+    onAction: (ProductEditAction) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val resources = LocalResources.current
+    val normalized = TextNormalizer.normalize(query)
+    val shown =
+        units.filter {
+            TextNormalizer.normalize(
+                SeedText.displayName(resources, SeedTable.UNITS, it.systemKey, it.name),
+            ).contains(normalized)
+        }
+    SelectionSheet(
+        title = stringResource(R.string.term_unit),
+        items = shown,
+        key = { it.id },
+        query = query,
+        onQueryChange = { query = it },
+        onDismissRequest = onDismiss,
+        searchHint = stringResource(R.string.term_unit),
+        itemContent = { unit ->
+            SettingsRow(
+                title = unitNameOf(unit),
+                summary = SeedText.unitSymbol(resources, unit.systemKey, unit.symbol),
+                action =
+                    SettingsRowAction.Navigation {
+                        onAction(ProductEditAction.UnitChange(unit.id))
+                        onDismiss()
+                    },
+            )
+        },
+    )
+}
+
+/** El nombre de una unidad, traducido si es una de las iniciales. */
+@Composable
+private fun unitNameOf(unit: MeasureUnit?): String {
+    if (unit == null) return ""
+    return SeedText.displayName(LocalResources.current, SeedTable.UNITS, unit.systemKey, unit.name)
+}
+
+@Composable
+private fun unitLabelOf(unit: MeasureUnit?): UnitLabel {
+    val resources = LocalResources.current
+    if (unit == null) return UnitLabel(stringResource(R.string.seed_units_unit), false)
+    val symbol =
+        SeedText.unitSymbol(resources, unit.systemKey, unit.symbol)
+            ?: SeedText.displayName(resources, SeedTable.UNITS, unit.systemKey, unit.name)
+    return UnitLabel(symbol, unit.allowsFraction, custom = unit.systemKey == null)
+}
+
+/** El texto de un problema de un campo. El nombre tiene sus propios textos. */
+@Composable
+private fun problemText(problem: FieldProblem, field: ProductEditField?): String = when (problem) {
+    FieldProblem.Empty -> stringResource(R.string.error_name_empty)
+
+    is FieldProblem.TooLong ->
+        if (field == ProductEditField.NAME) {
+            stringResource(R.string.error_name_long)
+        } else {
+            pluralStringResource(R.plurals.error_text_long, problem.max, problem.max)
+        }
+
+    is FieldProblem.Duplicate -> stringResource(R.string.error_name_duplicate)
+
+    FieldProblem.NotANumber, is FieldProblem.TooManyDecimals -> stringResource(
+        R.string.field_error_number,
+    )
+
+    FieldProblem.TooHigh -> stringResource(R.string.error_value_high)
+
+    FieldProblem.FractionNotAllowed -> stringResource(R.string.error_unit_decimals)
+}
+
+@Composable
+private fun FormSkeleton() {
+    Column(
+        Modifier.padding(AppTheme.spacing.s16),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
+    ) {
+        repeat(SKELETON_FIELDS) {
+            SkeletonBlock(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = AppTheme.spacing.s4),
+            )
+        }
+    }
+}
+
+private const val NO_CATEGORY_KEY = "none"
+private const val SKELETON_FIELDS = 6
+
+/** Desde esta escala de la letra, precio y costo no caben lado a lado. */
+private const val STACK_FONT_SCALE = 1.3f
+
+// ---------------------------------------------------------------- vistas previas
+
+private val PREVIEW_UNITS =
+    listOf(
+        MeasureUnit(1L, "UNIT", null, null, UnitKind.COUNT, false, null),
+        MeasureUnit(2L, "KILOGRAM", null, null, UnitKind.MASS, true, null),
+    )
+
+private val PREVIEW_CATEGORIES =
+    listOf(
+        Category(
+            id = 1L,
+            details = CategoryDetails("Granos", "granos", null),
+            createdAt = Instant.fromEpochMilliseconds(0L),
+            updatedAt = Instant.fromEpochMilliseconds(0L),
+        ),
+    )
+
+private fun previewState(
+    profit: ProfitPreview,
+    form: ProductEditForm =
+        ProductEditForm(
+            name = "Arroz 1 kg",
+            categoryId = 1L,
+            unitId = 1L,
+            salePrice = "5000",
+            cost = "3800",
+            initialStock = "24",
+            minStock = "5",
+        ),
+) = ProductEditUiState(
+    isNew = true,
+    form = form,
+    categories = PREVIEW_CATEGORIES,
+    units = PREVIEW_UNITS,
+    profit = profit,
+)
+
+@ThemePreviews
+@Composable
+private fun ProductEditPreview() {
+    PreviewTheme {
+        ProductEditScreen(
+            previewState(ProfitPreview.Profit(Money(1_200L), Margin.Defined(BasisPoints(2_400L)))),
+            {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun ProductEditLossPreview() {
+    PreviewTheme {
+        ProductEditScreen(
+            previewState(ProfitPreview.Loss(Money(200L))).copy(
+                notice = ProductEditNotice.SaveFailed(outOfSpace = true),
+                errors = mapOf(ProductEditField.NAME to FieldProblem.Duplicate("Arroz 1 kg")),
+            ),
+            {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun ProductEditLockedPreview() {
+    PreviewTheme(discreet = true) {
+        ProductEditScreen(
+            previewState(ProfitPreview.NoCost).copy(
+                isNew = false,
+                unitLocked = true,
+                costLocked = true,
+                averageCost = Money(3_800L),
+                notice = ProductEditNotice.CurrencyUnconfirmed,
+            ),
+            {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun ProductEditEmptyPreview() {
+    PreviewTheme {
+        ProductEditScreen(previewState(ProfitPreview.NoPrice, ProductEditForm(unitId = 1L)), {})
+    }
+}

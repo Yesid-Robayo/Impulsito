@@ -37,6 +37,7 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderAction
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderScreen
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
+import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductListRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 
@@ -108,6 +109,8 @@ private fun entryOf(key: NavKey, navigator: AppNavigator): NavEntry<NavKey> {
 private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
     when (key) {
         AppNavKey.ProductList -> ProductListRoute(navigator)
+
+        is AppNavKey.ProductEdit -> ProductEditRoute(key, navigator)
 
         AppNavKey.LanguageSettings ->
             LanguageSettingsRoute(

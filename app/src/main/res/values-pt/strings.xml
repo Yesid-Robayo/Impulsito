@@ -106,4 +106,36 @@
     <string name="a11y_money_amount">%1$s %2$s</string>
     <!-- TalkBack: un monto negativo. %1$s es el monto ya leído, con su moneda. -->
     <string name="a11y_minus_amount">Menos %1$s</string>
+    <!-- Crear o editar producto. -->
+    <string name="product_save">Salvar produto</string>
+    <string name="product_sale_price">Preço de venda</string>
+    <string name="product_initial_stock">Estoque inicial</string>
+    <string name="product_min_stock">Estoque mínimo</string>
+    <string name="product_min_stock_help">Haverá um aviso ao chegar a este número</string>
+    <string name="product_profit_per_unit">Lucro por unidade: %1$s · Margem %2$s</string>
+    <string name="product_loss_per_sale">Perda em cada venda: %1$s</string>
+    <string name="product_no_cost_hint">Sem custo não é possível calcular o lucro real</string>
+    <string name="product_fix_cost">Corrigir custo</string>
+    <string name="product_barcode">Código de barras</string>
+    <string name="form_category">Categoria</string>
+    <string name="unit_base_locked">Tem movimentos: a unidade base não muda</string>
+    <string name="field_more_details">Mais detalhes</string>
+    <string name="field_error_number">Escrever um número</string>
+    <string name="error_name_empty">Falta o nome do produto</string>
+    <string name="error_name_duplicate">Já existe um produto com esse nome</string>
+    <string name="error_name_long">Máximo de 80 caracteres</string>
+    <string name="error_value_high">Esse valor parece alto demais. Convém revisá-lo.</string>
+    <string name="error_unit_decimals">As unidades não têm decimais</string>
+    <string name="dialog_discard_title">Descartar as alterações?</string>
+    <string name="dialog_discard_body">O que foi digitado não será salvo.</string>
+    <string name="dialog_discard_action">Descartar</string>
+    <string name="dialog_discard_exit">Continuar editando</string>
+    <string name="region_required_title">Confirmar a moeda primeiro</string>
+    <string name="region_required_body">Para salvar registros com valores, é preciso definir a moeda do negócio. O que foi digitado é mantido.</string>
+    <string name="region_required_action">Escolher moeda</string>
+    <plurals name="error_text_long">
+        <item quantity="one">Máximo de %1$d caractere</item>
+        <item quantity="many">Máximo de %1$d de caracteres</item>
+        <item quantity="other">Máximo de %1$d caracteres</item>
+    </plurals>
 </resources>

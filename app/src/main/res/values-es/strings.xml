@@ -106,4 +106,36 @@
     <string name="a11y_money_amount">%1$s %2$s</string>
     <!-- TalkBack: un monto negativo. %1$s es el monto ya leído, con su moneda. -->
     <string name="a11y_minus_amount">Menos %1$s</string>
+    <!-- Crear o editar producto. -->
+    <string name="product_save">Guardar producto</string>
+    <string name="product_sale_price">Precio de venta</string>
+    <string name="product_initial_stock">Stock inicial</string>
+    <string name="product_min_stock">Stock mínimo</string>
+    <string name="product_min_stock_help">Se avisará al llegar a este número</string>
+    <string name="product_profit_per_unit">Ganancia por unidad: %1$s · Margen %2$s</string>
+    <string name="product_loss_per_sale">Pérdida en cada venta: %1$s</string>
+    <string name="product_no_cost_hint">Sin costo no se puede calcular la ganancia real</string>
+    <string name="product_fix_cost">Corregir costo</string>
+    <string name="product_barcode">Código de barras</string>
+    <string name="form_category">Categoría</string>
+    <string name="unit_base_locked">Tiene movimientos: la unidad base no cambia</string>
+    <string name="field_more_details">Más detalles</string>
+    <string name="field_error_number">Escribir un número</string>
+    <string name="error_name_empty">Falta el nombre del producto</string>
+    <string name="error_name_duplicate">Ya existe un producto con ese nombre</string>
+    <string name="error_name_long">Máximo 80 caracteres</string>
+    <string name="error_value_high">Ese valor parece demasiado alto. Conviene revisarlo.</string>
+    <string name="error_unit_decimals">Las unidades van sin decimales</string>
+    <string name="dialog_discard_title">¿Descartar los cambios?</string>
+    <string name="dialog_discard_body">Lo escrito no se guardará.</string>
+    <string name="dialog_discard_action">Descartar</string>
+    <string name="dialog_discard_exit">Seguir editando</string>
+    <string name="region_required_title">Confirmar la moneda primero</string>
+    <string name="region_required_body">Para guardar registros con dinero se necesita la moneda del negocio. Lo escrito se conserva.</string>
+    <string name="region_required_action">Elegir moneda</string>
+    <plurals name="error_text_long">
+        <item quantity="one">Máximo %1$d carácter</item>
+        <item quantity="many">Máximo %1$d de caracteres</item>
+        <item quantity="other">Máximo %1$d caracteres</item>
+    </plurals>
 </resources>

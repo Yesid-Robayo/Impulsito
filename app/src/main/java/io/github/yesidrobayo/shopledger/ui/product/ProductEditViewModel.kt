@@ -1,0 +1,466 @@
+package io.github.yesidrobayo.shopledger.ui.product
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.Limit
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
+import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogName
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogText
+import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/**
+ * El formulario para crear o editar un producto.
+ *
+ * Lo escrito se guarda tal cual mientras se escribe, y se lee como número solo para la tarjeta de
+ * ganancia y al guardar, con los símbolos del formato regional de [numbers]. Un error de un campo
+ * aparece al salir del nombre o al intentar guardar, nunca mientras se escribe, y lo escrito nunca
+ * se pierde por un error. Guardar corre una sola vez a la vez.
+ *
+ * @param productId el producto que se edita, o `null` para crear uno.
+ * @param prefillName el nombre con que empieza un producto nuevo, el de una búsqueda sin resultados.
+ */
+class ProductEditViewModel(
+    private val useCases: ProductEditOperations,
+    private val numbers: ProductNumberFormat,
+    private val productId: Long?,
+    prefillName: String?,
+) : ViewModel() {
+    private val state =
+        MutableStateFlow(
+            ProductEditUiState(
+                isNew = productId == null,
+                loading = productId != null,
+                form = ProductEditForm(name = prefillName.orEmpty()),
+            ),
+        )
+    val uiState: StateFlow<ProductEditUiState> = state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            useCases.choices().collect { choices ->
+                state.update { current ->
+                    // Un producto nuevo empieza en la unidad de conteo, la primera de las iniciales.
+                    val unitId = current.form.unitId ?: choices.units.firstOrNull()?.id
+                    current.copy(
+                        categories = choices.categories,
+                        units = choices.units,
+                        form = current.form.copy(unitId = unitId),
+                    )
+                }
+            }
+        }
+        if (productId != null) viewModelScope.launch { loadProduct(productId) }
+    }
+
+    fun onAction(action: ProductEditAction) {
+        when (action) {
+            is ProductEditAction.NameChange -> edit(ProductEditField.NAME) {
+                copy(name = action.name)
+            }
+
+            ProductEditAction.NameLeft -> checkName()
+
+            is ProductEditAction.CategoryChange -> edit(null) {
+                copy(categoryId = action.categoryId)
+            }
+
+            is ProductEditAction.CreateCategory -> createCategory(action.name)
+
+            is ProductEditAction.UnitChange -> edit(null) { copy(unitId = action.unitId) }
+
+            is ProductEditAction.SalePriceChange ->
+                edit(ProductEditField.SALE_PRICE) { copy(salePrice = action.text) }
+
+            is ProductEditAction.CostChange -> edit(ProductEditField.COST) {
+                copy(cost = action.text)
+            }
+
+            is ProductEditAction.InitialStockChange ->
+                edit(ProductEditField.INITIAL_STOCK) { copy(initialStock = action.text) }
+
+            is ProductEditAction.MinStockChange ->
+                edit(ProductEditField.MIN_STOCK) { copy(minStock = action.text) }
+
+            is ProductEditAction.BarcodeChange ->
+                edit(ProductEditField.BARCODE) { copy(barcode = action.text) }
+
+            ProductEditAction.Save -> save()
+
+            ProductEditAction.Close ->
+                state.update {
+                    if (it.dirty) it.copy(confirmingDiscard = true) else it.copy(closed = true)
+                }
+
+            ProductEditAction.KeepEditing -> state.update { it.copy(confirmingDiscard = false) }
+
+            ProductEditAction.Discard -> state.update {
+                it.copy(confirmingDiscard = false, closed = true)
+            }
+
+            // La pantalla abre la configuración regional; aquí no cambia nada.
+            ProductEditAction.ConfirmCurrency -> Unit
+        }
+    }
+
+    private suspend fun loadProduct(id: Long) {
+        val editing = useCases.load(id)
+        if (editing == null) {
+            state.update { it.copy(loading = false, notFound = true) }
+            return
+        }
+        val product = editing.product
+        val details = product.details
+        val cost =
+            if (details.stockMode ==
+                ProductStockMode.UNTRACKED
+            ) {
+                details.fixedUnitCost
+            } else {
+                product.initialCost
+            }
+        val catalogCost = MarginCalculator
+            .catalogUnitCost(product.onHand, product.stockValue, product.averageCost)
+            .valueOrNull() ?: product.averageCost
+        state.update { current ->
+            val form = ProductEditForm(
+                name = details.name,
+                categoryId = details.categoryId,
+                unitId = details.baseUnitId,
+                stockMode = details.stockMode,
+                salePrice = moneyText(product.salePrice),
+                cost = moneyText(cost),
+                minStock = quantityText(details.minStock),
+                barcode = details.barcode.orEmpty(),
+            )
+            current.copy(
+                loading = false,
+                form = form,
+                unitLocked = editing.lockedFields.isNotEmpty(),
+                costLocked = editing.costLocked,
+                averageCost = catalogCost,
+            ).withProfit()
+        }
+    }
+
+    /** Cambia el formulario con [change] y borra el error de [field], si lo tenía. */
+    private fun edit(field: ProductEditField?, change: ProductEditForm.() -> ProductEditForm) {
+        state.update { current ->
+            current.copy(
+                form = current.form.change(),
+                errors = if (field == null) current.errors else current.errors - field,
+                dirty = true,
+                notice = null,
+            ).withProfit()
+        }
+    }
+
+    private fun checkName() {
+        val name = state.value.form.name
+        viewModelScope.launch {
+            val problem = nameProblem(name) ?: useCases.nameClash(name, productId)?.let {
+                FieldProblem.Duplicate(it)
+            }
+            state.update { current ->
+                // Si siguió escribiendo, el error ya no corresponde a lo que hay.
+                if (current.form.name != name) return@update current
+                val errors = current.errors - ProductEditField.NAME
+                current.copy(
+                    errors =
+                        problem?.let { errors + (ProductEditField.NAME to it) } ?: errors,
+                )
+            }
+        }
+    }
+
+    private fun createCategory(name: String) {
+        viewModelScope.launch {
+            when (val result = useCases.createCategory(name)) {
+                is SaveCategoryResult.Saved -> edit(null) { copy(categoryId = result.categoryId) }
+
+                // Ya existía: se elige la que tiene ese nombre.
+                is SaveCategoryResult.DuplicateName -> {
+                    val existing = state.value.categories.firstOrNull {
+                        it.details.name ==
+                            result.existingName
+                    }
+                    if (existing != null) edit(null) { copy(categoryId = existing.id) }
+                }
+
+                is SaveCategoryResult.Invalid, SaveCategoryResult.NotFound -> Unit
+
+                is SaveCategoryResult.StorageFailed ->
+                    state.update {
+                        it.copy(notice = ProductEditNotice.SaveFailed(result.failure.isOutOfSpace))
+                    }
+            }
+        }
+    }
+
+    private fun save() {
+        val current = state.value
+        if (current.saving || current.loading) return
+        val read = readForm(current)
+        if (read.errors.isNotEmpty()) {
+            state.update { it.copy(errors = read.errors, notice = null) }
+            return
+        }
+        state.update { it.copy(saving = true, notice = null) }
+        viewModelScope.launch {
+            val form = requireNotNull(read.form)
+            val result =
+                if (productId == null) {
+                    useCases.create(form, read.initialStock)
+                } else {
+                    useCases.edit(productId, form)
+                }
+            state.update { it.copy(saving = false).withResult(result) }
+        }
+    }
+
+    private fun ProductEditUiState.withResult(result: SaveProductResult): ProductEditUiState =
+        when (result) {
+            is SaveProductResult.Saved -> copy(savedProductId = result.productId, dirty = false)
+
+            is SaveProductResult.Invalid -> copy(errors = errorsOf(result.issues))
+
+            is SaveProductResult.DuplicateName ->
+                copy(
+                    errors =
+                        errors +
+                            (ProductEditField.NAME to FieldProblem.Duplicate(result.existingName)),
+                )
+
+            is SaveProductResult.DuplicateBarcode ->
+                copy(
+                    errors =
+                        errors +
+                            (
+                                ProductEditField.BARCODE to FieldProblem.Duplicate(
+                                    result.existingName,
+                                )
+                                ),
+                )
+
+            is SaveProductResult.AboveLimit ->
+                copy(errors = errors + (ProductEditField.INITIAL_STOCK to FieldProblem.TooHigh))
+
+            SaveProductResult.CurrencyUnconfirmed -> copy(
+                notice = ProductEditNotice.CurrencyUnconfirmed,
+            )
+
+            is SaveProductResult.StorageFailed ->
+                copy(notice = ProductEditNotice.SaveFailed(result.failure.isOutOfSpace))
+
+            // Lo que el formulario ya impide o lo que cambió por debajo: no se guardó, y lo escrito
+            // sigue aquí para intentarlo otra vez.
+            is SaveProductResult.MissingReference, is SaveProductResult.LockedByHistory,
+            SaveProductResult.CostLockedByMovements, SaveProductResult.ArchivedPriceLocked,
+            SaveProductResult.NotFound, SaveProductResult.UnknownTimeZone,
+            -> copy(notice = ProductEditNotice.SaveFailed(outOfSpace = false))
+        }
+
+    /** Lo escrito, leído como un producto, o los errores de los campos que no se pueden leer. */
+    private class ReadForm(
+        val form: ProductForm?,
+        val initialStock: QuantityMilli,
+        val errors: Map<ProductEditField, FieldProblem>,
+    )
+
+    private fun readForm(current: ProductEditUiState): ReadForm {
+        val text = current.form
+        val errors = mutableMapOf<ProductEditField, FieldProblem>()
+        nameProblem(text.name)?.let { errors[ProductEditField.NAME] = it }
+        val price = money(text.salePrice) { errors[ProductEditField.SALE_PRICE] = it }
+        val cost = money(text.cost) { errors[ProductEditField.COST] = it }
+        val initial = quantity(text.initialStock, Limit.LINE_QUANTITY_MILLI) {
+            errors[ProductEditField.INITIAL_STOCK] = it
+        }
+        val minimum =
+            quantity(text.minStock, Limit.ON_HAND_MILLI) {
+                errors[ProductEditField.MIN_STOCK] =
+                    it
+            }
+        val unit = current.unit
+        if (unit != null && !unit.allowsFraction) {
+            if (!initial.isWholeUnits) {
+                errors[ProductEditField.INITIAL_STOCK] =
+                    FieldProblem.FractionNotAllowed
+            }
+            if (!minimum.isWholeUnits) {
+                errors[ProductEditField.MIN_STOCK] =
+                    FieldProblem.FractionNotAllowed
+            }
+        }
+        val barcode = CatalogText.barcode(text.barcode)
+        if (barcode != null && CatalogText.length(barcode) > CatalogText.BARCODE_MAX) {
+            errors[ProductEditField.BARCODE] = FieldProblem.TooLong(CatalogText.BARCODE_MAX)
+        }
+        // El nombre repetido que ya se vio al salir del campo se conserva hasta que cambie.
+        current.errors[ProductEditField.NAME]?.let {
+            if (it is FieldProblem.Duplicate) errors.putIfAbsent(ProductEditField.NAME, it)
+        }
+        if (errors.isNotEmpty()) return ReadForm(null, QuantityMilli.ZERO, errors)
+        val form = ProductForm(
+            name = text.name,
+            categoryId = text.categoryId,
+            baseUnitId = text.unitId,
+            stockMode = text.stockMode,
+            salePrice = price,
+            // Con el costo en el libro, se guarda el inicial tal como estaba.
+            cost = if (current.costLocked) initialCostOf(current) else cost,
+            minStock = minimum,
+            barcode = barcode,
+        )
+        return ReadForm(form, if (current.isNew) initial else QuantityMilli.ZERO, emptyMap())
+    }
+
+    private fun initialCostOf(current: ProductEditUiState): Money = money(current.form.cost) {}
+
+    private fun ProductEditUiState.withProfit(): ProductEditUiState {
+        val price = money(form.salePrice) {}
+        val cost = if (costLocked) averageCost else money(form.cost) {}
+        val profit = when {
+            price <= Money.ZERO -> ProfitPreview.NoPrice
+            cost <= Money.ZERO -> ProfitPreview.NoCost
+            cost > price -> ProfitPreview.Loss(cost - price)
+            else -> ProfitPreview.Profit(price - cost, MarginCalculator.margin(price, cost))
+        }
+        return copy(profit = profit)
+    }
+
+    private fun nameProblem(name: String): FieldProblem? = when {
+        CatalogText.name(
+            name,
+            CatalogText.PRODUCT_NAME_MAX,
+        ) == CatalogName.Empty -> FieldProblem.Empty
+
+        CatalogText.length(name.trim()) > CatalogText.PRODUCT_NAME_MAX ->
+            FieldProblem.TooLong(CatalogText.PRODUCT_NAME_MAX)
+
+        else -> null
+    }
+
+    /** Un monto por unidad entera; en blanco es cero. Un problema se informa por [problem]. */
+    private fun money(text: String, problem: (FieldProblem) -> Unit): Money = when (
+        val read = NumberInputParser.money(
+            text,
+            numbers.moneySymbols,
+            numbers.currencyDecimals,
+            Limit.UNIT_MONEY,
+        )
+    ) {
+        is NumberInput.Value -> read.value
+
+        NumberInput.Blank -> Money.ZERO
+
+        else -> {
+            problem(problemOf(read))
+            Money.ZERO
+        }
+    }
+
+    /** Una cantidad en milésimas hasta [limit]; en blanco es cero. */
+    private fun quantity(
+        text: String,
+        limit: Limit,
+        problem: (FieldProblem) -> Unit,
+    ): QuantityMilli =
+        when (val read = NumberInputParser.quantity(text, numbers.quantitySymbols, limit)) {
+            is NumberInput.Value -> read.value
+
+            NumberInput.Blank -> QuantityMilli.ZERO
+
+            else -> {
+                problem(problemOf(read))
+                QuantityMilli.ZERO
+            }
+        }
+
+    private fun problemOf(read: NumberInput<*>): FieldProblem = when (read) {
+        is NumberInput.TooManyDecimals -> FieldProblem.TooManyDecimals(read.allowed)
+        is NumberInput.TooLarge -> FieldProblem.TooHigh
+        is NumberInput.Value, NumberInput.Blank, NumberInput.Malformed -> FieldProblem.NotANumber
+    }
+
+    private fun errorsOf(issues: Set<ProductFormIssue>): Map<ProductEditField, FieldProblem> =
+        issues.associate { issue ->
+            when (issue) {
+                ProductFormIssue.NAME_EMPTY -> ProductEditField.NAME to FieldProblem.Empty
+
+                ProductFormIssue.NAME_TOO_LONG ->
+                    ProductEditField.NAME to FieldProblem.TooLong(CatalogText.PRODUCT_NAME_MAX)
+
+                ProductFormIssue.SALE_PRICE_OUT_OF_RANGE ->
+                    ProductEditField.SALE_PRICE to
+                        FieldProblem.TooHigh
+
+                ProductFormIssue.COST_OUT_OF_RANGE, ProductFormIssue.COST_NOT_APPLICABLE ->
+                    ProductEditField.COST to FieldProblem.TooHigh
+
+                ProductFormIssue.INITIAL_STOCK_OUT_OF_RANGE,
+                ProductFormIssue.STOCK_NOT_APPLICABLE,
+                ->
+                    ProductEditField.INITIAL_STOCK to FieldProblem.TooHigh
+
+                ProductFormIssue.INITIAL_STOCK_FRACTION_NOT_ALLOWED ->
+                    ProductEditField.INITIAL_STOCK to FieldProblem.FractionNotAllowed
+
+                ProductFormIssue.MIN_STOCK_OUT_OF_RANGE ->
+                    ProductEditField.MIN_STOCK to
+                        FieldProblem.TooHigh
+
+                ProductFormIssue.MIN_STOCK_FRACTION_NOT_ALLOWED ->
+                    ProductEditField.MIN_STOCK to FieldProblem.FractionNotAllowed
+
+                ProductFormIssue.BARCODE_TOO_LONG ->
+                    ProductEditField.BARCODE to FieldProblem.TooLong(CatalogText.BARCODE_MAX)
+            }
+        }
+
+    /** Un monto como texto editable: cifras y el separador decimal, sin ceros de más. */
+    private fun moneyText(amount: Money): String = if (amount ==
+        Money.ZERO
+    ) {
+        ""
+    } else {
+        decimalText(
+            amount.minor,
+            numbers.currencyDecimals,
+            numbers.moneySymbols.decimalSeparator,
+        )
+    }
+
+    private fun quantityText(quantity: QuantityMilli): String =
+        if (quantity == QuantityMilli.ZERO) {
+            ""
+        } else {
+            decimalText(quantity.milli, QUANTITY_DECIMALS, numbers.quantitySymbols.decimalSeparator)
+        }
+
+    private companion object {
+        const val QUANTITY_DECIMALS = 3
+        const val RADIX = 10L
+
+        fun decimalText(value: Long, decimals: Int, separator: Char): String {
+            var scale = 1L
+            repeat(decimals) { scale *= RADIX }
+            val whole = value / scale
+            val fraction = (value % scale).toString().padStart(decimals, '0').trimEnd('0')
+            return if (fraction.isEmpty()) whole.toString() else "$whole$separator$fraction"
+        }
+    }
+}
