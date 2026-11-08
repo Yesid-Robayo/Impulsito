@@ -129,13 +129,13 @@ class DataGraph internal constructor(
     @Volatile private var ready: DataAccess.Ready? = null
 
     /** El cerrojo del respaldo: una ejecución a la vez en todo el proceso. */
-    private val backupMutex = Mutex()
+    internal val backupMutex = Mutex()
 
     /** El único cliente HTTP del proceso. Crearlo no abre ninguna conexión. */
-    private val http by lazy { HttpClientFactory.newClient() }
+    internal val http by lazy { HttpClientFactory.newClient() }
 
     /** La credencial WebDAV sellada. Una sola instancia: su cerrojo vive en ella. */
-    private val webDavCredentials by lazy {
+    internal val webDavCredentials by lazy {
         WebDavCredentialStore({ context.noBackupFilesDir }, ioContext)
     }
 

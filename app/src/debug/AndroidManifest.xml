@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Solo debug: el arnés del respaldo, mientras no existan las pantallas de conectar, preparar los
+  archivos y restaurar. No se exporta ni tiene filtros: lo abre la actividad principal con un extra
+  de adb, y release no lo trae. La verificación del manifiesto de release falla si aparece ahí.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name=".harness.BackupHarnessActivity"
+            android:exported="false"
+            android:label="@string/harness_title"
+            android:windowSoftInputMode="adjustResize" />
+    </application>
+
+</manifest>

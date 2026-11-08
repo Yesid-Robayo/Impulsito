@@ -186,7 +186,59 @@ abstract class VerifyMergedPermissions : DefaultTask() {
     }
 }
 
+// El arnés del respaldo vive solo en el código de debug: sus clases no compilan en release, y su actividad solo la declara el
+// manifiesto de debug. Si alguien la mueve a main, o un manifiesto la vuelve a declarar, check falla en release.
+abstract class VerifyNoDebugHarness : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val mergedManifest: RegularFileProperty
+
+    /** El paquete del arnés, tal como empieza el nombre de sus componentes. */
+    @get:Input
+    abstract val harnessPackage: Property<String>
+
+    @TaskAction
+    fun verify() {
+        val androidNamespace = "http://schemas.android.com/apk/res/android"
+        val parser =
+            DocumentBuilderFactory
+                .newInstance()
+                .apply {
+                    isNamespaceAware = true
+                    setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+                }.newDocumentBuilder()
+        val document = parser.parse(mergedManifest.get().asFile)
+        val components = mutableListOf<String>()
+        for (tag in listOf("activity", "activity-alias", "service", "receiver", "provider")) {
+            val nodes = document.getElementsByTagName(tag)
+            for (index in 0 until nodes.length) {
+                val element = nodes.item(index) as org.w3c.dom.Element
+                components += element.getAttributeNS(androidNamespace, "name")
+            }
+        }
+        val found = components.filter { it.startsWith(harnessPackage.get()) }
+        if (found.isNotEmpty()) {
+            throw GradleException(
+                "El manifiesto de release declara el arnés de depuración: ${found.joinToString()}",
+            )
+        }
+        logger.lifecycle("$name: ${components.size} componentes, ninguno del arnés")
+    }
+}
+
 androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        val capitalized = variant.name.replaceFirstChar(Char::uppercaseChar)
+        val verify =
+            tasks.register<VerifyNoDebugHarness>("verify${capitalized}HasNoDebugHarness") {
+                group = "verification"
+                description =
+                    "Comprueba que ${variant.name} no declare el arnés de depuración del respaldo."
+                mergedManifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
+                harnessPackage.set("io.github.yesidrobayo.shopledger.harness.")
+            }
+        tasks.named("check") { dependsOn(verify) }
+    }
     onVariants { variant ->
         val capitalized = variant.name.replaceFirstChar(Char::uppercaseChar)
         val verify =

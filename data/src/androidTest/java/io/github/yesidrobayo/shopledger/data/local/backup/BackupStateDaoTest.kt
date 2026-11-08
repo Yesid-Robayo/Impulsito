@@ -128,6 +128,7 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "recordActiveInvariantFailures",
                 "markStaleNotice",
                 "markDrill",
+                "connectDestination",
             ),
             functionsOf(BackupStateDao::class.java),
         )
@@ -430,6 +431,99 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
             expense(database.expenseCategoryDao().insert(expenseCategory("Luz"))),
         )
         assertFalse(state.isEmpty())
+    }
+
+    @Test
+    fun connectingWritesTheDestinationAndForcesAnUpload() = runBlocking {
+        execute(
+            "UPDATE backup_state SET link_state = 'PERMISSION_LOST', " +
+                "destination_kind = 'WEBDAV', destination_account = 'persona', " +
+                "destination_id = 'huella', " +
+                "destination_folder = 'https://dav.example.com/app/', change_seq = 3, " +
+                "verified_seq = 3, head_generation = 4, head_device_id = 'este', " +
+                "head_file_ref = 'copia-4', last_full_verify_at = $LATER, " +
+                "last_drill_at = $LATER, last_drill_result = 'PASSED', " +
+                "last_human_check_at = $LATER, human_check_generation = 4, " +
+                "failure_code = 'QUOTA_EXCEEDED', pending_generation = 5 WHERE id = 1",
+        )
+        val before = requireNotNull(state.get())
+
+        // El mismo destino: vuelve a conectado, y la lectura completa sigue valiendo.
+        assertEquals(
+            1,
+            state.connectDestination(
+                "WEBDAV",
+                "persona",
+                "huella",
+                "https://dav.example.com/app/",
+                MUCH_LATER,
+            ),
+        )
+        val same = before.copy(
+            linkState = "CONNECTED",
+            lastHumanCheckAt = null,
+            humanCheckGeneration = null,
+            changeSeq = 4,
+            firstUnsyncedAt = MUCH_LATER,
+        )
+        assertEquals(same, state.get())
+
+        // Otro destino: la lectura completa y la comprobación eran del anterior. La cabeza, los fallos y la
+        // intención no cambian: la guarda los contrasta con la lista del destino nuevo.
+        assertEquals(
+            1,
+            state.connectDestination("DOCUMENT_SLOTS", null, "document-slots", null, LATER),
+        )
+        assertEquals(
+            same.copy(
+                destinationKind = "DOCUMENT_SLOTS",
+                destinationAccount = null,
+                destinationId = "document-slots",
+                destinationFolder = null,
+                lastFullVerifyAt = null,
+                lastDrillAt = null,
+                lastDrillResult = null,
+                changeSeq = 5,
+            ),
+            state.get(),
+        )
+    }
+
+    @Test
+    fun reconnectingTheSameDestinationKeepsItsConflict() = runBlocking {
+        execute(
+            "UPDATE backup_state SET link_state = 'CONFLICT', destination_kind = 'WEBDAV', " +
+                "destination_id = 'huella', conflict_kind = 'OTHER_DEVICE', " +
+                "conflict_generation = 7, conflict_device_id = 'otro', " +
+                "conflict_file_ref = 'copia-7' WHERE id = 1",
+        )
+        val before = requireNotNull(state.get())
+
+        // Volver a conectar no decide por la persona.
+        assertEquals(1, state.connectDestination("WEBDAV", "persona", "huella", "f/", LATER))
+        val reconnected = before.copy(
+            destinationAccount = "persona",
+            destinationFolder = "f/",
+            changeSeq = 1,
+            firstUnsyncedAt = LATER,
+        )
+        assertEquals(reconnected, state.get())
+
+        // Con otro destino, ese conflicto ya no importa.
+        assertEquals(1, state.connectDestination("WEBDAV", "persona", "otra", "g/", MUCH_LATER))
+        assertEquals(
+            reconnected.copy(
+                linkState = "CONNECTED",
+                conflictKind = null,
+                conflictGeneration = null,
+                conflictDeviceId = null,
+                conflictFileRef = null,
+                destinationId = "otra",
+                destinationFolder = "g/",
+                changeSeq = 2,
+            ),
+            state.get(),
+        )
     }
 
     /** Una falla inventada a propósito, sin mensaje. */

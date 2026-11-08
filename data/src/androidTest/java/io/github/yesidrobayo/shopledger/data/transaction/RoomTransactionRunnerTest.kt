@@ -333,6 +333,14 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
         override suspend fun markStaleNotice(now: Long): Int = 0
 
         override suspend fun markDrill(now: Long, result: String, destinationId: String): Int = 0
+
+        override suspend fun connectDestination(
+            kind: String,
+            account: String?,
+            destinationId: String,
+            folder: String?,
+            now: Long,
+        ): Int = 0
     }
 
     private companion object {

@@ -293,4 +293,47 @@ internal interface BackupStateDao {
             "AND destination_id = :destinationId",
     )
     suspend fun markDrill(now: Long, result: String, destinationId: String): Int
+
+    /**
+     * Deja conectado el destino [destinationId], de clase [kind], después de que su prueba pasó: la
+     * credencial ya está sellada, o las ranuras ya están en `slots.json`. Fuerza una subida, porque
+     * nada dice que ese destino tenga la copia de los datos de ahora, y devuelve 0 si falta la fila.
+     *
+     * - **La revisión de la persona se olvida:** era de otros archivos, o de otro destino.
+     * - **Un conflicto con el mismo destino sigue:** volver a conectarlo no decide por la persona. Con
+     *   otro destino, el conflicto anterior ya no importa y se borra.
+     * - **La lectura completa y la comprobación de la cabeza solo cuentan en su destino:** con otro,
+     *   se borran, y el aviso de una lectura vencida cuenta desde la conexión nueva.
+     *
+     * La cabeza conocida, los fallos y la intención de subida no cambian: la guarda los contrasta
+     * con la lista del destino en la ejecución siguiente.
+     *
+     * @param account el usuario WebDAV, o nulo con ranuras.
+     * @param folder la carpeta de copias WebDAV, o nula con ranuras.
+     */
+    @Query(
+        "UPDATE backup_state SET link_state = CASE WHEN link_state = 'CONFLICT' AND " +
+            "destination_id = :destinationId THEN 'CONFLICT' ELSE 'CONNECTED' END, " +
+            "conflict_kind = CASE WHEN destination_id = :destinationId THEN conflict_kind END, " +
+            "conflict_generation = CASE WHEN destination_id = :destinationId THEN " +
+            "conflict_generation END, conflict_device_id = CASE WHEN destination_id = " +
+            ":destinationId THEN conflict_device_id END, conflict_file_ref = CASE WHEN " +
+            "destination_id = :destinationId THEN conflict_file_ref END, " +
+            "last_full_verify_at = CASE WHEN destination_id = :destinationId THEN " +
+            "last_full_verify_at END, last_drill_at = CASE WHEN destination_id = :destinationId " +
+            "THEN last_drill_at END, last_drill_result = CASE WHEN destination_id = " +
+            ":destinationId THEN last_drill_result END, last_human_check_at = NULL, " +
+            "human_check_generation = NULL, " +
+            "destination_kind = :kind, destination_account = :account, " +
+            "destination_id = :destinationId, destination_folder = :folder, " +
+            "change_seq = change_seq + 1, first_unsynced_at = COALESCE(first_unsynced_at, :now) " +
+            "WHERE id = 1",
+    )
+    suspend fun connectDestination(
+        kind: String,
+        account: String?,
+        destinationId: String,
+        folder: String?,
+        now: Long,
+    ): Int
 }

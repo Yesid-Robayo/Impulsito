@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo debug: los textos del arnés del respaldo. Ninguna compilación de publicación los trae. -->
+<resources>
+    <string name="harness_title">Arnés del respaldo</string>
+    <string name="harness_debug_notice">Solo en compilaciones de depuración. Usar solo cuentas de prueba y datos inventados.</string>
+    <string name="harness_unavailable">La base no abre sin riesgo. El arnés no cambia nada.</string>
+    <string name="harness_section_status">Estado del respaldo</string>
+    <string name="harness_status_line">Estado: %1$s</string>
+    <string name="harness_pending_line">Cambios sin copia: %1$d</string>
+    <string name="harness_notices_line">Avisos: %1$s</string>
+    <string name="harness_link_line">Enlace: %1$s. Destino: %2$s</string>
+    <string name="harness_sequence_line">Secuencia de cambios %1$d, verificada %2$d, generación de la cabeza %3$d</string>
+    <string name="harness_failure_line">Fallo: %1$s, %2$d seguidos</string>
+    <string name="harness_none">ninguno</string>
+    <string name="harness_section_policy">Política y términos</string>
+    <string name="harness_policy_line">Aceptación: %1$s</string>
+    <string name="harness_accept_policy">Aceptar la versión vigente</string>
+    <string name="harness_section_webdav">Cuenta WebDAV de prueba</string>
+    <string name="harness_webdav_url">Dirección (https://)</string>
+    <string name="harness_webdav_user">Usuario</string>
+    <string name="harness_webdav_password">Contraseña de app</string>
+    <string name="harness_connect">Probar y conectar</string>
+    <string name="harness_section_slots">Archivos en la nube del teléfono</string>
+    <string name="harness_slots_hint">Se crean tres archivos en el selector, en orden A, B y C. Solo se acepta la nube aprobada.</string>
+    <string name="harness_prepare_slots">Preparar tres archivos</string>
+    <string name="harness_section_changes">Cambios inventados</string>
+    <plurals name="harness_record_changes">
+        <item quantity="one">Registrar %1$d proveedor inventado</item>
+        <item quantity="many">Registrar %1$d de proveedores inventados</item>
+        <item quantity="other">Registrar %1$d proveedores inventados</item>
+    </plurals>
+    <string name="harness_supplier_prefix">Proveedor de prueba</string>
+    <string name="harness_section_restore">Restaurar desde un archivo</string>
+    <string name="harness_restore_pick">Buscar un archivo</string>
+    <string name="harness_restore_question">La restauración pregunta: %1$s (%2$d)</string>
+    <string name="harness_restore_continue">Continuar</string>
+    <string name="harness_restore_discard_first">Descartar la primera copia de seguridad</string>
+    <string name="harness_restore_cancel">Cancelar la restauración</string>
+    <string name="harness_ready_line">Lista para reemplazar. Avisos de la copia: %1$d</string>
+    <string name="harness_restart">Reiniciar para reemplazar los datos</string>
+    <string name="harness_result_line">Último resultado, %1$s: %2$s</string>
+</resources>

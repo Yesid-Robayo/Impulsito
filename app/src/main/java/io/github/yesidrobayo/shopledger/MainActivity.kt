@@ -52,6 +52,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Solo en debug: un extra de adb abre el arnés del respaldo encima. En release no hace nada.
+        if (savedInstanceState == null) DebugEntry.openIfRequested(this, intent)
         val container = (application as ShopLedgerApp).container
         lifecycleScope.launch {
             when (val access = container.data.open()) {
