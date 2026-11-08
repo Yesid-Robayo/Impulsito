@@ -36,5 +36,13 @@ enum class PaymentMethodKind {
          */
         fun fromStoredOrNull(stored: String): PaymentMethodKind? =
             entries.firstOrNull { it.name == stored }
+
+        /**
+         * La clase guardada como [stored], o [OTHER] si no es ninguna de esta lista.
+         *
+         * Es la lectura de los métodos de la persona: una copia de una versión más nueva puede traer
+         * una clase que esta no conoce, y ese método se sigue mostrando y usando como "otro medio".
+         */
+        fun fromStoredOrOther(stored: String): PaymentMethodKind = fromStoredOrNull(stored) ?: OTHER
     }
 }

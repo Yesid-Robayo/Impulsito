@@ -25,4 +25,16 @@ class PaymentMethodKindTest {
         assertNull(PaymentMethodKind.fromStoredOrNull("VOUCHER"))
         assertNull(PaymentMethodKind.fromStoredOrNull(""))
     }
+
+    @Test
+    fun `an unknown stored kind is read as other`() {
+        // Una copia de una versión más nueva puede traer un medio que esta no conoce: el método se
+        // sigue usando, como otro medio, en vez de tratarse como daño.
+        for (kind in PaymentMethodKind.entries) {
+            assertEquals(kind, PaymentMethodKind.fromStoredOrOther(kind.name))
+        }
+        assertEquals(PaymentMethodKind.OTHER, PaymentMethodKind.fromStoredOrOther("VOUCHER"))
+        assertEquals(PaymentMethodKind.OTHER, PaymentMethodKind.fromStoredOrOther("cash"))
+        assertEquals(PaymentMethodKind.OTHER, PaymentMethodKind.fromStoredOrOther(""))
+    }
 }

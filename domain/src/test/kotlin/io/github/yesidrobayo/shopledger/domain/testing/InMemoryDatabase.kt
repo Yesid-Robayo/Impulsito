@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
+import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
@@ -49,6 +50,7 @@ internal data class Tables(
     val alerts: Map<Long, LowStockAlert> = emptyMap(),
     val catalogLinks: Map<Long, Set<CatalogLink>> = emptyMap(),
     val productsWithOtherHistory: Set<Long> = emptySet(),
+    val paymentMethods: Map<Long, PaymentMethodRecord> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

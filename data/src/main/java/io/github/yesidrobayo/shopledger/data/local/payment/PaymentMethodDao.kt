@@ -24,6 +24,14 @@ internal interface PaymentMethodDao {
     @Query("SELECT * FROM payment_methods WHERE archived_at IS NOT NULL ORDER BY sort_order, id")
     fun observeArchived(): Flow<List<PaymentMethodEntity>>
 
+    /** Los vigentes de una vez, para leerlos dentro de la transacción del caso de uso. */
+    @Query("SELECT * FROM payment_methods WHERE archived_at IS NULL ORDER BY sort_order, id")
+    suspend fun findActive(): List<PaymentMethodEntity>
+
+    /** El mayor orden, archivados incluidos, o `null` sin métodos: uno nuevo va después. */
+    @Query("SELECT MAX(sort_order) FROM payment_methods")
+    suspend fun maxSortOrder(): Long?
+
     @Query("SELECT * FROM payment_methods WHERE id = :id")
     suspend fun findById(id: Long): PaymentMethodEntity?
 
