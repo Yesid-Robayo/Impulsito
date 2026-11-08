@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.CashRounding
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.PriceSuggestion
+import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.timesQuantity
@@ -145,15 +146,11 @@ class RegionalMatrixMoneyTest(
     fun `the margin is measured without tax whatever the tax mode of the row`() {
         // Un precio de 10000 sin impuesto, que con 21 % incluido se escribe 12100.
         val writtenPrice = if (row.taxMode == TaxMode.INCLUDED) 12_100L else 10_000L
-        val net =
-            when (row.taxMode) {
-                TaxMode.INCLUDED -> mulDivRound(writtenPrice, 10_000, 10_000 + TAX_RATE.bp)
-                TaxMode.NONE, TaxMode.ADDED -> Checked.Value(writtenPrice)
-            }
-        assertEquals(Checked.Value(10_000L), net)
+        val net = TaxCalculator.catalogNetPrice(Money(writtenPrice), row.taxMode, TAX_RATE)
+        assertEquals(Checked.Value(Money(10_000L)), net)
         assertEquals(
             Margin.Defined(BasisPoints(2_000)),
-            margin(requireNotNull(net.valueOrNull()), 8_000),
+            MarginCalculator.margin(requireNotNull(net.valueOrNull()), Money(8_000)),
         )
         // Sobre el precio escrito, con el impuesto dentro, la ganancia parecería mayor.
         if (row.taxMode == TaxMode.INCLUDED) {
