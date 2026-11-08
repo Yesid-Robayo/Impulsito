@@ -23,6 +23,16 @@ internal interface TaxRateDao {
     @Query("SELECT * FROM tax_rates WHERE archived_at IS NOT NULL ORDER BY id")
     fun observeArchived(): Flow<List<TaxRateEntity>>
 
+    /**
+     * Cuántos productos, archivados o no, usa cada tasa, de nuevo cada vez que cambian los
+     * productos o las tasas. Las tasas sin productos no aparecen.
+     */
+    @Query(
+        "SELECT tax_rate_id AS taxRateId, COUNT(*) AS productCount FROM products " +
+            "WHERE tax_rate_id IS NOT NULL GROUP BY tax_rate_id ORDER BY tax_rate_id",
+    )
+    fun observeProductCounts(): Flow<List<TaxRateProductCount>>
+
     @Query("SELECT * FROM tax_rates WHERE id = :id")
     suspend fun findById(id: Long): TaxRateEntity?
 
@@ -76,3 +86,6 @@ internal interface TaxRateDao {
     @Query("DELETE FROM tax_rates WHERE id = :id")
     suspend fun delete(id: Long): Int
 }
+
+/** Cuántos productos usan la tasa [taxRateId]. */
+internal data class TaxRateProductCount(val taxRateId: Long, val productCount: Int)

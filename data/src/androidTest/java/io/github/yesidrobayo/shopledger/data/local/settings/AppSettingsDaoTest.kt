@@ -138,6 +138,7 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
         assertEquals(0, settings.lockCurrency(LATER))
         assertEquals(0, settings.updateBusinessTimeZone("Etc/GMT+5", LATER))
         assertEquals(0, settings.updateWeekStartDay(7, LATER))
+        assertEquals(0, settings.updateTaxSettings("ADDED", null, 1, LATER))
         assertEquals(0L, count("SELECT COUNT(*) FROM app_settings"))
     }
 
@@ -160,6 +161,7 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 "lockCurrency",
                 "updateBusinessTimeZone",
                 "updateWeekStartDay",
+                "updateTaxSettings",
                 "markOnboardingCompleted",
             ),
             functionsOf(AppSettingsDao::class.java),

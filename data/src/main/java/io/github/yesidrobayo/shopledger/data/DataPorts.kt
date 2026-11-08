@@ -22,6 +22,8 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomStockLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSystemRowRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomTaxRateRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomTaxSettingsRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomUnitRepository
 import io.github.yesidrobayo.shopledger.data.transaction.BackupStateChangeCounter
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
@@ -45,6 +47,8 @@ import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
+import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
+import io.github.yesidrobayo.shopledger.domain.port.TaxSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import java.io.File
@@ -131,6 +135,10 @@ class DataPorts internal constructor(
 
     /** Qué herramientas del centro `Negocio` tienen datos. Solo lee. */
     val moduleUsage: ModuleUsageSource = RoomModuleUsageSource(database)
+
+    val taxRates: TaxRateRepository = RoomTaxRateRepository(database)
+
+    val taxSettings: TaxSettingsRepository = RoomTaxSettingsRepository(database, settings)
 
     /**
      * Lo que el estado del respaldo lee del teléfono, para la pantalla de inicio y la del respaldo.

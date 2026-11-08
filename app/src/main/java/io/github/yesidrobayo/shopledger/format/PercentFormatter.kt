@@ -20,6 +20,9 @@ import java.math.BigDecimal
 class PercentFormatter(val formatLocale: FormatLocale) {
     private val percentFormat: DecimalFormat =
         fixedDecimalFormat(formatLocale.numberLocale, NumberFormat.PERCENTSTYLE, DISPLAY_DIGITS)
+    private val rateFormat: DecimalFormat =
+        fixedDecimalFormat(formatLocale.numberLocale, NumberFormat.PERCENTSTYLE, RATE_DIGITS)
+            .apply { minimumFractionDigits = DISPLAY_DIGITS }
     private val pointsFormat: DecimalFormat =
         fixedDecimalFormat(formatLocale.numberLocale, NumberFormat.NUMBERSTYLE, DISPLAY_DIGITS)
 
@@ -32,6 +35,18 @@ class PercentFormatter(val formatLocale: FormatLocale) {
 
     /** Un porcentaje, como un margen: `20,0 %`, `−20,0 %`. */
     fun format(rate: BasisPoints): String = percent(tenths(rate))
+
+    /**
+     * Una tasa que escribió la persona, como la de un impuesto, con todos sus decimales y al menos
+     * uno: `21,0 %`, `10,5 %`, `8,25 %`. A diferencia de [format], no redondea: mostrar `8,3 %` de
+     * una tasa de `8,25 %` diría otra tasa que la que se cobra.
+     */
+    fun formatRate(rate: BasisPoints): String {
+        // ICU multiplica por cien, así que recibe la fracción: 825 puntos son 0,0825, y 8,25 %.
+        val fraction = BigDecimal.valueOf(rate.bp, RATE_SCALE)
+        val text = synchronized(rateFormat) { rateFormat.format(fraction) }
+        return IcuTextNormalizer.normalizeNumber(text)
+    }
 
     /**
      * Una variación, siempre con signo: `+8,0 %`, `−3,2 %`. Sin cambio no lleva signo: `0,0 %`.
@@ -64,6 +79,12 @@ class PercentFormatter(val formatLocale: FormatLocale) {
     private companion object {
         /** Decimales que se muestran de un porcentaje. */
         const val DISPLAY_DIGITS = 1
+
+        /** Decimales que puede tener una tasa: los de un punto básico. */
+        const val RATE_DIGITS = 2
+
+        /** Una tasa en puntos básicos es una fracción con cuatro decimales. */
+        const val RATE_SCALE = 4
 
         /** Puntos básicos en un décimo de punto porcentual. */
         const val BASIS_POINTS_PER_TENTH = 10L

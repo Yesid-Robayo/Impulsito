@@ -25,6 +25,15 @@ class PercentFormatterTest(device: ForeignDevice) {
     }
 
     @Test
+    fun aTaxRateKeepsEveryDecimalItWasWrittenWith() {
+        assertEquals("21.0%", percent("en-US").formatRate(BasisPoints(2_100)))
+        assertEquals("10,5%", percent("pt-BR").formatRate(BasisPoints(1_050)))
+        assertEquals("8,25 %", percent("de-DE").formatRate(BasisPoints(825)))
+        assertEquals("%0,05", percent("tr-TR").formatRate(BasisPoints(5)))
+        assertEquals("100.0%", percent("en-US").formatRate(BasisPoints(10_000)))
+    }
+
+    @Test
     fun aNegativeMarginUsesTheTypographicMinus() {
         assertEquals("\u221220,0%", percent("pt-BR").format(BasisPoints(-2_000)))
         assertEquals("\u2212%20,0", percent("tr-TR").format(BasisPoints(-2_000)))

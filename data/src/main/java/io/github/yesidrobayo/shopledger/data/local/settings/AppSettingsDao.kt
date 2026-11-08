@@ -115,6 +115,23 @@ internal interface AppSettingsDao {
     )
     suspend fun updateWeekStartDay(weekStartDay: Long, updatedAt: Long): Int
 
+    /**
+     * Cambia cómo se cobra el impuesto, la tasa por defecto y si el impuesto de compra es
+     * recuperable. Es un dato del negocio: va dentro de la transacción del caso de uso y cuenta
+     * como cambio. La llave de la tasa por defecto rechaza una que no exista.
+     */
+    @Query(
+        "UPDATE app_settings SET tax_mode = :taxMode, default_tax_rate_id = :defaultTaxRateId, " +
+            "purchase_tax_recoverable = :purchaseTaxRecoverable, updated_at = :updatedAt " +
+            "WHERE id = 1",
+    )
+    suspend fun updateTaxSettings(
+        taxMode: String,
+        defaultTaxRateId: Long?,
+        purchaseTaxRecoverable: Long,
+        updatedAt: Long,
+    ): Int
+
     /** Marca el fin del primer uso en [completedAt], que también queda como último cambio. */
     @Query(
         "UPDATE app_settings SET onboarding_completed_at = :completedAt, " +

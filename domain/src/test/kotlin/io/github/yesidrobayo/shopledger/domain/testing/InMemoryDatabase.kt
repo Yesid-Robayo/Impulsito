@@ -12,8 +12,11 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
+import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -51,6 +54,10 @@ internal data class Tables(
     val catalogLinks: Map<Long, Set<CatalogLink>> = emptyMap(),
     val productsWithOtherHistory: Set<Long> = emptySet(),
     val paymentMethods: Map<Long, PaymentMethodRecord> = emptyMap(),
+    val taxRates: Map<Long, TaxRate> = emptyMap(),
+    val taxSettings: TaxSettings = TaxSettings(TaxMode.NONE, null, purchaseTaxRecoverable = false),
+    /** La tasa de cada producto que tiene una: id del producto a id de la tasa. */
+    val productTaxRateIds: Map<Long, Long> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

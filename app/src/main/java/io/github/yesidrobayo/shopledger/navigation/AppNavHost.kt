@@ -39,6 +39,7 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderScreen
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
 import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductListRoute
+import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 
 /**
@@ -120,6 +121,9 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         AppNavKey.BusinessHub ->
             BusinessHubRoute(onOpen = { navigator.open(it) }, onBack = { navigator.back() })
+
+        AppNavKey.TaxSettings ->
+            TaxSettingsRoute(onBack = { navigator.back() }) { PlaceholderRoute(key, navigator) }
 
         else -> PlaceholderRoute(key, navigator)
     }
