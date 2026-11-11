@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.sale
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleDetail
@@ -166,12 +167,32 @@ class SaleDetailViewModel(
                     methodName = row.methodNameSnapshot,
                     amount = row.amount,
                     settlesOn = row.settlementDate.takeIf { it > content.businessDate },
+                    fee = row.feeAmount,
+                    netReceived = row.netReceived,
                 )
             },
             results = SaleResults.of(sale, detail.payments),
+            charges = SaleDetailCharges(
+                taxes = taxesOf(detail),
+                orderAdjustment = content.orderAdjustment,
+                tip = content.tipAmount,
+                cashRounding = content.cashRoundingAmount,
+            ),
             note = content.note,
         )
     }
+
+    /**
+     * El impuesto de cada tasa, con el nombre que tenía al vender, en el orden de su primera línea.
+     * Una línea sin impuesto no aporta fila.
+     */
+    private fun taxesOf(detail: SaleDetail): List<SaleDetailTax> = detail.lines
+        .map { it.content }
+        .filter { it.taxAmount > Money.ZERO }
+        .groupBy { it.taxNameSnapshot }
+        .map { (name, lines) ->
+            SaleDetailTax(name, lines.fold(Money.ZERO) { sum, line -> sum + line.taxAmount })
+        }
 
     private sealed interface Content {
         data object Missing : Content

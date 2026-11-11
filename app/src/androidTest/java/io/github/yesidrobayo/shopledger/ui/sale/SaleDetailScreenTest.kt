@@ -69,6 +69,37 @@ class SaleDetailScreenTest {
     }
 
     @Test
+    fun eachPaymentShowsItsFeeAndNetAndTheChargesFollow() {
+        show(SaleDetailUiState.Ready(saleDetailView(withCharges = true)))
+
+        // La comisión y el neto van bajo el pago con tarjeta, no bajo el de efectivo.
+        compose.onAllNodesWithText(text(R.string.term_fee))[0].assertIsDisplayed()
+        compose.onAllNodesWithText(text(R.string.term_net_received))[0].assertIsDisplayed()
+        for (label in listOf(
+            "Tasa general",
+            text(R.string.term_tax),
+            text(R.string.checkout_sale_adjustment),
+            text(R.string.term_tip),
+            text(R.string.region_cash_rounding),
+        )) {
+            scrollTo(label)
+            compose.onNodeWithText(label).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun discreetModeHidesThePaymentFeeButNotThePayment() {
+        show(SaleDetailUiState.Ready(saleDetailView(withCharges = true)), discreet = true)
+
+        val hidden = compose.onAllNodesWithContentDescription(text(R.string.a11y_discreet_hidden))
+            .fetchSemanticsNodes()
+        // La comisión y el neto del pago con tarjeta se ocultan; el ajuste de la venta, que
+        // conoce quien compra, se ve con su cifra.
+        assertTrue("Comisión y neto del pago ocultos", hidden.size >= 2)
+        compose.onNodeWithText(text(R.string.checkout_sale_adjustment)).assertExists()
+    }
+
+    @Test
     fun theVoidSheetSendsTheChosenReason() {
         show(SaleDetailUiState.Ready(saleDetailView(), sheet = VoidSheet()))
 

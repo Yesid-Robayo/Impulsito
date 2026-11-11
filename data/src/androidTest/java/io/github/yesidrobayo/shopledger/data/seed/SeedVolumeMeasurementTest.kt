@@ -83,6 +83,7 @@ internal class SeedVolumeMeasurementTest {
             measureSearch(database)
             measureMonth(database)
             measureHistory(database)
+            measureMethodFilter(database)
             measureSale(database, config)
         } finally {
             database.close()
@@ -185,6 +186,77 @@ internal class SeedVolumeMeasurementTest {
                     mark.elapsedNow().inWholeMicroseconds
                 }.drop(1)
             log("historial, $name: ${summary(times)}")
+        }
+    }
+
+    /**
+     * El filtro de método con el método más usado, el menos usado y uno sin ventas, de dos formas:
+     * recorriendo las ventas, como antes, y por el camino que elige el historial. Mide el primer
+     * tramo y el siguiente, con sus totales por día, y comprueba que los dos caminos den lo mismo.
+     */
+    private suspend fun measureMethodFilter(database: AppDatabase) {
+        val history = RoomSaleHistorySource(database)
+        val dao = database.saleDao()
+        val counts = database.useReaderConnection { connection ->
+            connection.usePrepared(
+                "SELECT payment_method_id, COUNT(*) FROM sale_payments " +
+                    "GROUP BY payment_method_id ORDER BY 2 DESC, 1",
+            ) { statement ->
+                buildList {
+                    while (statement.step()) {
+                        add(statement.getLong(0) to statement.getLong(1))
+                    }
+                }
+            }
+        }
+        val unused = database.useReaderConnection { connection ->
+            connection.usePrepared("SELECT COALESCE(MAX(id), 0) + 1 FROM payment_methods") {
+                it.step()
+                it.getLong(0)
+            }
+        }
+        val cases = listOf(
+            "más usado" to counts.first(),
+            "menos usado" to counts.last(),
+            "sin ventas" to (unused to 0L),
+        )
+        for ((name, case) in cases) {
+            val (methodId, payments) = case
+            val filter = SaleHistoryFilter(paymentMethodId = methodId)
+            val first = history.page(filter, null, HISTORY_PAGE)
+            val walked = dao.historyPage(null, null, methodId, false, null, null, HISTORY_PAGE)
+            assertTrue(first.map { it.id } == walked.map { it.id })
+            val after = first.lastOrNull()?.cursor
+            val ways = listOf<Pair<String, suspend (SaleHistoryCursor?) -> Int>>(
+                "recorriendo" to { cursor ->
+                    dao.historyPage(
+                        null,
+                        null,
+                        methodId,
+                        false,
+                        cursor?.occurredAt?.toEpochMilliseconds(),
+                        cursor?.id,
+                        HISTORY_PAGE,
+                    ).size
+                },
+                "elegido" to { cursor ->
+                    val page = history.page(filter, cursor, HISTORY_PAGE)
+                    history.dayTotals(filter, page.map { it.businessDate }.toSet())
+                    page.size
+                },
+            )
+            for ((way, read) in ways) {
+                for ((part, cursor) in listOf("primer tramo" to null, "segundo tramo" to after)) {
+                    if (part == "segundo tramo" && cursor == null) continue
+                    val times =
+                        List(ROUNDS + 1) {
+                            val mark = TimeSource.Monotonic.markNow()
+                            read(cursor)
+                            mark.elapsedNow().inWholeMicroseconds
+                        }.drop(1)
+                    log("método $name, $payments pagos, $way, $part: ${summary(times)}")
+                }
+            }
         }
     }
 

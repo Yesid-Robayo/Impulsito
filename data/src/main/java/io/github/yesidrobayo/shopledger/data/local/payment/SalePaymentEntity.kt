@@ -23,9 +23,12 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
  *   es `amount`.
  * - Las cuatro columnas `tender_*` y `fx_rate_micro` van juntas: el pago se recibió en otra
  *   moneda, que nunca se mezcla con la del negocio.
- * - Venta, método y cuenta usan `RESTRICT`: con pagos, ninguno de los tres se borra. El método y
- *   la cuenta no llevan índice, porque solo se busca por ellos al intentar borrarlos. Sin cuenta,
- *   el pago no mueve dinero: quien no usa cuentas no paga ningún costo.
+ * - Venta, método y cuenta usan `RESTRICT`: con pagos, ninguno de los tres se borra. La cuenta
+ *   no lleva índice, porque solo se busca por ella al intentar borrarla. Sin cuenta, el pago no
+ *   mueve dinero: quien no usa cuentas no paga ningún costo.
+ * - El método sí lleva índice, junto con la venta: el historial filtra por método, y un método
+ *   poco usado obligaría a recorrer años de ventas para juntar un tramo. Con el índice, sus
+ *   ventas se leen directo, y saber si un método archivado tiene ventas es una sola búsqueda.
  *
  * Solo `Long` y `String`, y sin valores por defecto en las columnas: los pone el código.
  */
@@ -52,7 +55,7 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleEntity
             onDelete = ForeignKey.RESTRICT,
         ),
     ],
-    indices = [Index(value = ["sale_id"])],
+    indices = [Index(value = ["sale_id"]), Index(value = ["payment_method_id", "sale_id"])],
 )
 internal data class SalePaymentEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

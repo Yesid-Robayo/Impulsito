@@ -81,6 +81,44 @@ internal interface SaleDao {
         limit: Int,
     ): List<SaleHistoryRowEntity>
 
+    /**
+     * Un tramo del historial de las ventas con algún pago de [methodId], en el mismo orden y con los
+     * mismos filtros que [historyPage]. Parte de los pagos de ese método, por su índice, y ordena
+     * solo sus ventas: sirve para un método con pocas ventas, que [historyPage] encontraría
+     * recorriendo años de ventas de otros métodos.
+     */
+    @Query(SALE_HISTORY_METHOD_PAGE_SQL)
+    suspend fun historyPageOfMethod(
+        methodId: Long,
+        fromDate: String?,
+        toDate: String?,
+        onlyVoided: Boolean,
+        afterAt: Long?,
+        afterId: Long?,
+        limit: Int,
+    ): List<SaleHistoryRowEntity>
+
+    /**
+     * Cuántos pagos tiene [methodId], contados por su índice hasta [cap]: dice si el método tiene
+     * pocas ventas sin recorrer las de un método muy usado.
+     */
+    @Query(
+        "SELECT COUNT(*) FROM (SELECT 1 FROM sale_payments WHERE payment_method_id = :methodId " +
+            "LIMIT :cap)",
+    )
+    suspend fun paymentCountUpTo(methodId: Long, cap: Int): Int
+
+    /**
+     * Los métodos de [methodIds] con al menos un pago, de menor a mayor id. Una búsqueda por
+     * método en el índice de los pagos.
+     */
+    @Query(
+        "SELECT m.id FROM payment_methods m WHERE m.id IN (:methodIds) " +
+            "AND EXISTS (SELECT 1 FROM sale_payments p WHERE p.payment_method_id = m.id) " +
+            "ORDER BY m.id",
+    )
+    suspend fun methodsWithPayments(methodIds: List<Long>): List<Long>
+
     /** Lo vendido en cada una de [dates], solo de ventas activas, con el mismo filtro de método. */
     @Query(
         "SELECT business_date, SUM(total) AS total FROM sales s WHERE status = 'ACTIVE' " +
@@ -138,11 +176,8 @@ internal data class SaleDayTotal(
     @ColumnInfo(name = "total") val total: Long,
 )
 
-/**
- * La consulta de [SaleDao.historyPage]. Vive aparte para que la prueba del plan de consulta mire la
- * misma sentencia que corre la app. Las líneas que cuenta son las principales, sin extras.
- */
-internal const val SALE_HISTORY_PAGE_SQL =
+/** Las columnas de una fila del historial, iguales en las dos formas de leer un tramo. */
+private const val SALE_HISTORY_COLUMNS =
     "SELECT s.id, s.occurred_at, s.business_date, s.total, s.status, " +
         "(SELECT l.product_name_snapshot FROM sale_lines l WHERE l.sale_id = s.id " +
         "AND l.parent_line_id IS NULL ORDER BY l.id LIMIT 1) AS first_product, " +
@@ -150,16 +185,42 @@ internal const val SALE_HISTORY_PAGE_SQL =
         "AND l.parent_line_id IS NULL) AS line_count, " +
         "(SELECT p.method_name_snapshot FROM sale_payments p WHERE p.sale_id = s.id " +
         "ORDER BY p.id LIMIT 1) AS method_name, " +
-        "(SELECT COUNT(*) FROM sale_payments p WHERE p.sale_id = s.id) AS payment_count " +
+        "(SELECT COUNT(*) FROM sale_payments p WHERE p.sale_id = s.id) AS payment_count "
+
+/** Después del cursor, de la más nueva a la más antigua, hasta llenar el tramo. */
+private const val SALE_HISTORY_AFTER_CURSOR =
+    "AND (:afterAt IS NULL OR s.occurred_at < :afterAt " +
+        "OR (s.occurred_at = :afterAt AND s.id < :afterId)) " +
+        "ORDER BY s.occurred_at DESC, s.id DESC LIMIT :limit"
+
+/**
+ * La consulta de [SaleDao.historyPage]. Vive aparte para que la prueba del plan de consulta mire la
+ * misma sentencia que corre la app. Las líneas que cuenta son las principales, sin extras.
+ */
+internal const val SALE_HISTORY_PAGE_SQL =
+    SALE_HISTORY_COLUMNS +
         "FROM sales s INDEXED BY index_sales_occurred_at_id " +
         "WHERE (:onlyVoided = 0 OR s.status = 'VOIDED') " +
         "AND (:fromDate IS NULL OR s.business_date >= :fromDate) " +
         "AND (:toDate IS NULL OR s.business_date <= :toDate) " +
         "AND (:methodId IS NULL OR EXISTS (SELECT 1 FROM sale_payments p " +
         "WHERE p.sale_id = s.id AND p.payment_method_id = :methodId)) " +
-        "AND (:afterAt IS NULL OR s.occurred_at < :afterAt " +
-        "OR (s.occurred_at = :afterAt AND s.id < :afterId)) " +
-        "ORDER BY s.occurred_at DESC, s.id DESC LIMIT :limit"
+        SALE_HISTORY_AFTER_CURSOR
+
+/**
+ * La consulta de [SaleDao.historyPageOfMethod]. Las ventas del método salen de su índice en
+ * `sale_payments`, sin repetir la venta que lo usó dos veces, y `CROSS JOIN` obliga a SQLite a
+ * empezar por ellas en vez de recorrer todas las ventas.
+ */
+internal const val SALE_HISTORY_METHOD_PAGE_SQL =
+    SALE_HISTORY_COLUMNS +
+        "FROM (SELECT DISTINCT sale_id FROM sale_payments WHERE payment_method_id = :methodId) m " +
+        "CROSS JOIN sales s " +
+        "WHERE s.id = m.sale_id " +
+        "AND (:onlyVoided = 0 OR s.status = 'VOIDED') " +
+        "AND (:fromDate IS NULL OR s.business_date >= :fromDate) " +
+        "AND (:toDate IS NULL OR s.business_date <= :toDate) " +
+        SALE_HISTORY_AFTER_CURSOR
 
 /**
  * La consulta de [SaleDao.observeIn]. Vive aparte para que la prueba del plan de consulta mire la

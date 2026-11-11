@@ -184,6 +184,74 @@ class SaleDetailViewModelTest {
     }
 
     @Test
+    fun `each payment shows its fee and net, and the charges explain the total`() =
+        runTest(dispatcher) {
+            val base = detailOf(voiding = null)
+            val line = base.lines.single()
+            fun taxed(id: Long, name: String?, tax: Long) = line.copy(
+                id = id,
+                content = line.content.copy(taxNameSnapshot = name, taxAmount = Money(tax)),
+            )
+            val card = base.payments.single()
+            // El pago del ejemplo de comisión: 10.000 con 314 de comisión dejan 9.686.
+            val cardPayment = card.copy(
+                content = card.content.copy(amount = Money(10_000L), feeAmount = Money(314L)),
+            )
+            val cashPayment = card.copy(
+                id = 701L,
+                content = card.content.copy(
+                    methodNameSnapshot = "Efectivo",
+                    methodKind = PaymentMethodKind.CASH,
+                    amount = Money(2_280L),
+                    feeAmount = Money.ZERO,
+                    settlementDate = date,
+                ),
+            )
+            detail.value = base.copy(
+                sale = base.sale.copy(
+                    content = base.sale.content.copy(
+                        orderAdjustment = Money(-500L),
+                        tipAmount = Money(1_000L),
+                        cashRoundingAmount = Money(-100L),
+                    ),
+                ),
+                lines = listOf(
+                    taxed(70L, "Tasa general", 1_900L),
+                    taxed(71L, null, 300L),
+                    taxed(72L, "Tasa general", 950L),
+                    taxed(73L, "Tasa reducida", 0L),
+                ),
+                payments = listOf(cardPayment, cashPayment),
+            )
+
+            val sale = viewModel().ready.sale
+
+            val (first, second) = sale.payments
+            assertEquals(Money(314L), first.fee)
+            assertEquals(Money(9_686L), first.netReceived)
+            assertTrue(first.hasFee)
+            assertFalse(second.hasFee)
+            assertEquals(Money(2_280L), second.netReceived)
+            assertNull(second.settlesOn)
+            assertEquals(
+                listOf(
+                    SaleDetailTax("Tasa general", Money(2_850L)),
+                    SaleDetailTax(null, Money(300L)),
+                ),
+                sale.charges.taxes,
+            )
+            assertEquals(Money(-500L), sale.charges.orderAdjustment)
+            assertEquals(Money(1_000L), sale.charges.tip)
+            assertEquals(Money(-100L), sale.charges.cashRounding)
+            assertFalse(sale.charges.isEmpty)
+        }
+
+    @Test
+    fun `a sale without tax, adjustment, tip or rounding has no charges`() = runTest(dispatcher) {
+        assertTrue(viewModel().ready.sale.charges.isEmpty)
+    }
+
+    @Test
     fun `voiding with a reason and a note shows the sale voided without reopening`() =
         runTest(dispatcher) {
             val model = viewModel()

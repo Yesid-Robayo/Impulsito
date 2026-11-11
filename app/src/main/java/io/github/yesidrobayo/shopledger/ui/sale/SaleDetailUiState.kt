@@ -38,7 +38,7 @@ sealed interface SaleDetailUiState {
  * Lo que muestra el detalle de una venta. [zone] falta si el teléfono no conoce la zona del
  * negocio: entonces no se muestra la hora. [voiding] es la anulación, o `null` si está activa.
  * [results] son el costo, la ganancia, el margen, las comisiones y el neto: se ocultan en modo
- * discreto.
+ * discreto. [charges] es lo que explica el total además de las líneas.
  */
 @Immutable
 data class SaleDetailView(
@@ -51,6 +51,7 @@ data class SaleDetailView(
     val lines: List<SaleDetailLine>,
     val payments: List<SaleDetailPayment>,
     val results: SaleResults,
+    val charges: SaleDetailCharges = SaleDetailCharges(),
     val note: String?,
 ) {
     /** Solo una venta activa se anula, una sola vez. */
@@ -78,8 +79,9 @@ data class SaleDetailLine(
 )
 
 /**
- * Un pago, con el nombre del método que tenía al cobrar. [settlesOn] es la fecha en que se acredita,
- * solo si es posterior al día de la venta.
+ * Un pago, con el nombre del método que tenía al cobrar. [fee] es su comisión y [netReceived] lo que
+ * llega de verdad por él: los dos se ocultan en modo discreto, y sin comisión no se muestran.
+ * [settlesOn] es la fecha en que se acredita, solo si es posterior al día de la venta.
  */
 @Immutable
 data class SaleDetailPayment(
@@ -87,7 +89,32 @@ data class SaleDetailPayment(
     val methodName: String,
     val amount: Money,
     val settlesOn: BusinessDate?,
-)
+    val fee: Money = Money.ZERO,
+    val netReceived: Money = amount,
+) {
+    val hasFee: Boolean get() = fee > Money.ZERO
+}
+
+/**
+ * Lo que, además de las líneas, explica lo cobrado: el impuesto de cada tasa con su nombre, el
+ * descuento o recargo de toda la venta, la propina y el redondeo del efectivo. Cada uno solo se
+ * muestra si no es cero. Los ve también quien compra, así que no se ocultan en modo discreto.
+ */
+@Immutable
+data class SaleDetailCharges(
+    val taxes: List<SaleDetailTax> = emptyList(),
+    val orderAdjustment: Money = Money.ZERO,
+    val tip: Money = Money.ZERO,
+    val cashRounding: Money = Money.ZERO,
+) {
+    val isEmpty: Boolean
+        get() = taxes.isEmpty() && orderAdjustment == Money.ZERO && tip == Money.ZERO &&
+            cashRounding == Money.ZERO
+}
+
+/** El impuesto de una tasa en la venta. [name] es el que tenía al vender, o `null` sin nombre. */
+@Immutable
+data class SaleDetailTax(val name: String?, val amount: Money)
 
 /** La hoja de anular: el motivo, la nota opcional y lo que pasará. */
 @Immutable

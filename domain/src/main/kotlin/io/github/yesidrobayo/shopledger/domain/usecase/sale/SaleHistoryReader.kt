@@ -35,5 +35,9 @@ class SaleHistoryReader(private val source: SaleHistorySource, private val clock
     /** Cambia con cada venta nueva o anulada. */
     fun changes(): Flow<String> = source.observeChanges()
 
+    /** Los métodos de [methodIds] que cobraron al menos una venta. */
+    suspend fun methodsWithSales(methodIds: Set<Long>): Set<Long> =
+        source.methodsWithSales(methodIds)
+
     fun now(): Instant = clock.now()
 }

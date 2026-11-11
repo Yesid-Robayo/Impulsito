@@ -136,7 +136,10 @@ internal class SalePaymentDaoTest : LedgerDatabaseTest() {
     @Test
     fun indexesAndKeysAreTheOnesOfTheDataModel() = runBlocking {
         assertEquals(
-            listOf("index_sale_payments_sale_id (sale_id)"),
+            listOf(
+                "index_sale_payments_payment_method_id_sale_id (payment_method_id, sale_id)",
+                "index_sale_payments_sale_id (sale_id)",
+            ),
             database.indexesOf("sale_payments"),
         )
         assertEquals(

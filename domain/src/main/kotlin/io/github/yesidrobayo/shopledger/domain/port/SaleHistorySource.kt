@@ -36,4 +36,10 @@ interface SaleHistorySource {
      * leer entonces.
      */
     fun observeChanges(): Flow<String>
+
+    /**
+     * Los métodos de [methodIds] que cobraron al menos una venta: un método archivado solo se
+     * ofrece en el filtro si tiene ventas que encontrar.
+     */
+    suspend fun methodsWithSales(methodIds: Set<Long>): Set<Long>
 }

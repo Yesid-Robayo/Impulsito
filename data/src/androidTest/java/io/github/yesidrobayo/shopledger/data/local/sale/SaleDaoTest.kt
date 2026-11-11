@@ -335,6 +335,9 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
                 "observeTaxTotals",
                 // Solo leen: el historial por tramos y lo vendido por día.
                 "historyPage",
+                "historyPageOfMethod",
+                "paymentCountUpTo",
+                "methodsWithPayments",
                 "dayTotals",
                 "observeHistoryMark",
             ),

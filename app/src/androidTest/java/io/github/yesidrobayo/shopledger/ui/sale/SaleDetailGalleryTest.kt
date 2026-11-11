@@ -41,6 +41,8 @@ class SaleDetailGalleryTest {
             "active" to SaleDetailUiState.Ready(saleDetailView()),
             "voided" to SaleDetailUiState.Ready(saleDetailView(voided = true)),
             DISCREET to SaleDetailUiState.Ready(saleDetailView()),
+            "charges" to SaleDetailUiState.Ready(saleDetailView(withCharges = true)),
+            "$DISCREET-charges" to SaleDetailUiState.Ready(saleDetailView(withCharges = true)),
             "void" to SaleDetailUiState.Ready(saleDetailView(), sheet = VoidSheet()),
             "voidfailed" to SaleDetailUiState.Ready(
                 saleDetailView(),
@@ -59,7 +61,7 @@ class SaleDetailGalleryTest {
                                 AppTheme(palette = palette, darkTheme = dark) {
                                     CompositionLocalProvider(
                                         LocalAppFormats provides previewFormats(),
-                                        LocalDiscreetMode provides (name == DISCREET),
+                                        LocalDiscreetMode provides name.startsWith(DISCREET),
                                     ) { SaleDetailScreen(state, {}) }
                                 }
                             }

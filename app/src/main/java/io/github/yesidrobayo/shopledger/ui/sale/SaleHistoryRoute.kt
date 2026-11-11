@@ -24,19 +24,21 @@ fun SaleHistoryRoute(navigator: AppNavigator) {
     val model =
         rememberAppViewModel { dependencies ->
             val ports = dependencies.ports
-            // Los métodos que se ofrecen al filtrar: los vigentes y los archivados, que pueden
-            // tener ventas viejas.
+            val reader = SaleHistoryReader(ports.saleHistory, dependencies.container.clock)
+            // Los métodos que se ofrecen al filtrar: los vigentes, y los archivados que cobraron
+            // alguna venta. Uno archivado sin ventas solo daría una lista vacía.
             val methods =
                 combine(
                     ports.paymentMethods.observe(ArchiveFilter.ACTIVE),
                     ports.paymentMethods.observe(ArchiveFilter.ARCHIVED),
                 ) { active, archived ->
-                    (active + archived).map {
+                    val used = reader.methodsWithSales(archived.map { it.id }.toSet())
+                    (active + archived.filter { it.id in used }).map {
                         SaleMethod(it.id, it.systemKey, it.details.name, hasQr = false)
                     }
                 }
             SaleHistoryViewModel(
-                reader = SaleHistoryReader(ports.saleHistory, dependencies.container.clock),
+                reader = reader,
                 methods = methods,
                 calendar = BusinessCalendarSource(ports.settings).observe(),
                 computation = dependencies.container.dispatchers.io,

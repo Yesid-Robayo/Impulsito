@@ -159,6 +159,7 @@ private fun DetailBody(sale: SaleDetailView, onAction: (SaleDetailAction) -> Uni
         }
         item(key = PAYMENTS) { SectionHeader(stringResource(R.string.sale_detail_payments)) }
         items(sale.payments, key = { "payment-${it.paymentId}" }) { PaymentRow(it) }
+        if (!sale.charges.isEmpty) item(key = CHARGES) { ChargeRows(sale.charges) }
         item(key = LINES) {
             val count = sale.lines.size
             SectionHeader(pluralStringResource(R.plurals.sale_summary_products, count, count))
@@ -248,30 +249,115 @@ private fun TotalBlock(sale: SaleDetailView, modifier: Modifier = Modifier) {
     }
 }
 
-/** Un pago: el método a la izquierda y el monto a la derecha, y cuándo se acredita si tarda. */
+/**
+ * Un pago: el método a la izquierda y el monto a la derecha, y cuándo se acredita si tarda. Con
+ * comisión, debajo van la comisión y lo que llega de verdad, como el descuento de una línea, y se
+ * ocultan en modo discreto: el monto cobrado lo conoce quien compra, la comisión no.
+ */
 @Composable
 private fun PaymentRow(payment: SaleDetailPayment) {
     val spacing = AppTheme.spacing
     val formats = LocalAppFormats.current
+    Column {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = AppTheme.sizes.listRowSingle)
+                .padding(horizontal = spacing.s16, vertical = spacing.s8),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
+                Text(payment.methodName, style = MaterialTheme.typography.titleSmall)
+                payment.settlesOn?.let {
+                    Text(
+                        stringResource(R.string.checkout_settles_on, formats.date.longDate(it)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            MoneyText(payment.amount, MoneySize.ROW)
+        }
+        if (payment.hasFee) {
+            DetailSubRow(stringResource(R.string.term_fee)) {
+                MoneyText(-payment.fee, MoneySize.CAPTION, tone = MoneyTone.MUTED, sensitive = true)
+            }
+            DetailSubRow(stringResource(R.string.term_net_received), last = true) {
+                MoneyText(
+                    payment.netReceived,
+                    MoneySize.CAPTION,
+                    tone = MoneyTone.MUTED,
+                    sensitive = true,
+                )
+            }
+        } else {
+            // Sin comisión, la línea igual separa este pago del siguiente o de los cargos.
+            HorizontalDivider(
+                modifier = Modifier.padding(start = spacing.s16),
+                thickness = AppTheme.sizes.hairline,
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+        }
+    }
+}
+
+/**
+ * Lo que explica el total además de las líneas, bajo los pagos: el impuesto de cada tasa con su
+ * nombre, el ajuste de toda la venta, la propina y el redondeo del efectivo, solo si no son cero.
+ * El ajuste y el redondeo llevan su signo.
+ */
+@Composable
+private fun ChargeRows(charges: SaleDetailCharges) {
+    Column(Modifier.padding(top = AppTheme.spacing.s4)) {
+        val rows = buildList<Pair<String, Money>> {
+            for (tax in charges.taxes) {
+                add((tax.name ?: stringResource(R.string.term_tax)) to tax.amount)
+            }
+            if (charges.orderAdjustment != Money.ZERO) {
+                add(stringResource(R.string.checkout_sale_adjustment) to charges.orderAdjustment)
+            }
+            if (charges.tip != Money.ZERO) add(stringResource(R.string.term_tip) to charges.tip)
+            if (charges.cashRounding != Money.ZERO) {
+                add(stringResource(R.string.region_cash_rounding) to charges.cashRounding)
+            }
+        }
+        rows.forEachIndexed { index, (label, amount) ->
+            DetailSubRow(label, last = index == rows.lastIndex) {
+                MoneyText(amount, MoneySize.CAPTION, tone = MoneyTone.MUTED)
+            }
+        }
+    }
+}
+
+/**
+ * Una fila de apoyo bajo otra: la etiqueta pequeña a la izquierda y la cifra a la derecha. La
+ * última del grupo lleva la línea que lo separa del siguiente.
+ */
+@Composable
+private fun DetailSubRow(label: String, last: Boolean = false, value: @Composable () -> Unit) {
+    val spacing = AppTheme.spacing
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = AppTheme.sizes.listRowSingle)
-            .padding(horizontal = spacing.s16, vertical = spacing.s8),
+            .padding(start = spacing.s16, end = spacing.s16, bottom = spacing.s8),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.s12),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
-            Text(payment.methodName, style = MaterialTheme.typography.titleSmall)
-            payment.settlesOn?.let {
-                Text(
-                    stringResource(R.string.checkout_settles_on, formats.date.longDate(it)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        MoneyText(payment.amount, MoneySize.ROW)
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        value()
+    }
+    if (last) {
+        HorizontalDivider(
+            modifier = Modifier.padding(start = spacing.s16),
+            thickness = AppTheme.sizes.hairline,
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
     }
 }
 
@@ -483,6 +569,7 @@ private fun DetailSkeleton() {
 private const val SKELETON_ROWS = 3
 private const val TOTAL = "total"
 private const val PAYMENTS = "payments"
+private const val CHARGES = "charges"
 private const val LINES = "lines"
 private const val RESULTS = "results"
 private const val NOTE = "note"

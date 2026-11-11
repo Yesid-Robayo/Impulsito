@@ -9,7 +9,7 @@ package io.github.yesidrobayo.shopledger.data.local.guard
  */
 internal fun schemaCatalogVersion1(): SchemaVersionCatalog = SchemaVersionCatalog(
     version = 1,
-    identityHash = "0f811f344dbaf50999b8ff9ca3d2b59a",
+    identityHash = "dd612ac04dfc6998fb6fe52bf0e12d54",
     tables =
         listOf(
             appSettingsTable(),
@@ -2245,6 +2245,11 @@ private fun salePaymentsTable(): CatalogTable = CatalogTable(
         ),
     indices =
         listOf(
+            index(
+                "index_sale_payments_payment_method_id_sale_id",
+                key("payment_method_id"),
+                key("sale_id"),
+            ),
             index("index_sale_payments_sale_id", key("sale_id")),
         ),
     foreignKeys =

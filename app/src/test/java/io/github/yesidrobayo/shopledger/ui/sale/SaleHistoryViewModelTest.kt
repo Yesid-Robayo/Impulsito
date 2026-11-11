@@ -91,6 +91,9 @@ class SaleHistoryViewModelTest {
 
         override fun observeChanges(): Flow<String> = mark
 
+        // El filtro de métodos se arma en la navegación: esta prueba no lo pide.
+        override suspend fun methodsWithSales(methodIds: Set<Long>): Set<Long> = methodIds
+
         private fun matching(filter: SaleHistoryFilter) = rows.filter { row ->
             (!filter.onlyVoided || row.voided) &&
                 (filter.from?.let { row.businessDate >= it } ?: true) &&

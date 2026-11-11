@@ -118,6 +118,9 @@ class HomeViewModelTest {
         ): Map<BusinessDate, Money> = emptyMap()
 
         override fun observeChanges(): Flow<String> = mark
+
+        // Inicio no filtra por método: esta prueba no lo pide.
+        override suspend fun methodsWithSales(methodIds: Set<Long>): Set<Long> = methodIds
     }
 
     private fun row(id: Long, minutesAgo: Long) = SaleHistoryRow(

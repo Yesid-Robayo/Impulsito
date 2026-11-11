@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "0f811f344dbaf50999b8ff9ca3d2b59a",
+    "identityHash": "dd612ac04dfc6998fb6fe52bf0e12d54",
     "entities": [
       {
         "tableName": "categories",
@@ -4140,6 +4140,16 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_sale_payments_sale_id` ON `${TABLE_NAME}` (`sale_id`)"
+          },
+          {
+            "name": "index_sale_payments_payment_method_id_sale_id",
+            "unique": false,
+            "columnNames": [
+              "payment_method_id",
+              "sale_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sale_payments_payment_method_id_sale_id` ON `${TABLE_NAME}` (`payment_method_id`, `sale_id`)"
           }
         ],
         "foreignKeys": [
@@ -8100,7 +8110,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0f811f344dbaf50999b8ff9ca3d2b59a')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dd612ac04dfc6998fb6fe52bf0e12d54')"
     ]
   }
 }
