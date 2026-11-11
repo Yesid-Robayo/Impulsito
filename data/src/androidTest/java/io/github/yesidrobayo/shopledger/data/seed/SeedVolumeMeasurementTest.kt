@@ -10,12 +10,16 @@ import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.inspectWithoutRoom
 import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
+import io.github.yesidrobayo.shopledger.data.repository.RoomSaleHistorySource
 import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryCursor
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import io.github.yesidrobayo.shopledger.domain.rule.ReportPeriods
 import java.io.OutputStream
 import java.util.zip.GZIPOutputStream
+import kotlin.time.Instant
 import kotlin.time.TimeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -78,6 +82,7 @@ internal class SeedVolumeMeasurementTest {
             assertTrue(again.values.all { it == 0L })
             measureSearch(database)
             measureMonth(database)
+            measureHistory(database)
             measureSale(database, config)
         } finally {
             database.close()
@@ -148,6 +153,54 @@ internal class SeedVolumeMeasurementTest {
     }
 
     /**
+     * El historial de ventas por tramos de 50: el primero, uno a mitad de la historia y el último,
+     * y el primero con filtro de método. Con un cursor, cada tramo cuesta lo mismo esté donde esté.
+     */
+    private suspend fun measureHistory(database: AppDatabase) {
+        val history = RoomSaleHistorySource(database)
+        val all = SaleHistoryFilter()
+        // Un cursor a mitad de la historia y otro cerca del final, tomados de la propia base.
+        val middle = cursorAt(database, HISTORY_MIDDLE)
+        val deep = cursorAt(database, HISTORY_DEEP)
+        val method = database.useReaderConnection { connection ->
+            connection.usePrepared("SELECT payment_method_id FROM sale_payments LIMIT 1") {
+                it.step()
+                it.getLong(0)
+            }
+        }
+        val cases = listOf(
+            "primer tramo" to (all to null),
+            "tramo a mitad" to (all to middle),
+            "tramo hondo" to (all to deep),
+            "primer tramo con método" to (SaleHistoryFilter(paymentMethodId = method) to null),
+        )
+        for ((name, case) in cases) {
+            val (filter, after) = case
+            val times =
+                List(ROUNDS + 1) {
+                    val mark = TimeSource.Monotonic.markNow()
+                    val page = history.page(filter, after, HISTORY_PAGE)
+                    history.dayTotals(filter, page.map { it.businessDate }.toSet())
+                    assertTrue(page.isNotEmpty())
+                    mark.elapsedNow().inWholeMicroseconds
+                }.drop(1)
+            log("historial, $name: ${summary(times)}")
+        }
+    }
+
+    /** La venta número [offset] del historial, contada desde la más nueva, como cursor. */
+    private suspend fun cursorAt(database: AppDatabase, offset: Int): SaleHistoryCursor =
+        database.useReaderConnection { connection ->
+            connection.usePrepared(
+                "SELECT occurred_at, id FROM sales ORDER BY occurred_at DESC, id DESC " +
+                    "LIMIT 1 OFFSET $offset",
+            ) {
+                assertTrue(it.step())
+                SaleHistoryCursor(Instant.fromEpochMilliseconds(it.getLong(0)), it.getLong(1))
+            }
+        }
+
+    /**
      * Una venta de diez líneas con todo lo que escribe en una transacción: cabecera, líneas, filas
      * del libro con su costo, pago y dinero, con `synchronous = FULL`. Lee los productos dentro de
      * la transacción, como el caso de uso.
@@ -195,6 +248,13 @@ internal class SeedVolumeMeasurementTest {
         const val TAG = "SeedVolume"
         const val ARGUMENT = "seedVolume"
         const val ROUNDS = 20
+
+        /** Un tramo del historial, el mismo que pide la pantalla. */
+        const val HISTORY_PAGE = 50
+
+        /** Las ventas que se saltan para tomar un cursor a mitad de la historia y cerca del final. */
+        const val HISTORY_MIDDLE = 50_000
+        const val HISTORY_DEEP = 99_900
         const val P95 = 95
 
         /** La búsqueda por texto contenido del modelo de datos, con el término ya normalizado. */

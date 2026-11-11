@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Historial de ventas: filtros, días y filas. Textos de la guía de redacción. -->
+    <string name="empty_sales_filtered_title">Nenhuma venda com estes filtros</string>
+    <string name="action_clear_filters">Limpar filtros</string>
+    <string name="filter_voided">Anuladas</string>
+    <string name="period_day">Dia</string>
+    <string name="period_week">Semana</string>
+    <string name="period_month">Mês</string>
+    <string name="sale_more_items">+%1$d mais</string>
+    <string name="sale_multiple_payments">Vários pagamentos</string>
+</resources>

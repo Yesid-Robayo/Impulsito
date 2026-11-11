@@ -333,6 +333,10 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
                 "markVoided",
                 // Solo lee: las sumas del impuesto estimado de un período.
                 "observeTaxTotals",
+                // Solo leen: el historial por tramos y lo vendido por día.
+                "historyPage",
+                "dayTotals",
+                "observeHistoryMark",
             ),
             functionsOf(SaleDao::class.java),
         )

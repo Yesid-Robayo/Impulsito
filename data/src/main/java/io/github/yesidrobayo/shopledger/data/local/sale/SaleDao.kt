@@ -64,6 +64,39 @@ internal interface SaleDao {
      */
     @Query(TAX_TOTALS_SQL)
     fun observeTaxTotals(startDate: String, endDate: String): Flow<TaxTotalsRow>
+
+    /**
+     * Un tramo del historial, de la más nueva a la más antigua por `(occurred_at, id)`, después de
+     * `(afterAt, afterId)` o desde el principio con los dos nulos. Cada filtro nulo no filtra.
+     * Recorre las ventas por el índice `(occurred_at, id)` y se detiene al juntar [limit].
+     */
+    @Query(SALE_HISTORY_PAGE_SQL)
+    suspend fun historyPage(
+        fromDate: String?,
+        toDate: String?,
+        methodId: Long?,
+        onlyVoided: Boolean,
+        afterAt: Long?,
+        afterId: Long?,
+        limit: Int,
+    ): List<SaleHistoryRowEntity>
+
+    /** Lo vendido en cada una de [dates], solo de ventas activas, con el mismo filtro de método. */
+    @Query(
+        "SELECT business_date, SUM(total) AS total FROM sales s WHERE status = 'ACTIVE' " +
+            "AND business_date IN (:dates) " +
+            "AND (:methodId IS NULL OR EXISTS (SELECT 1 FROM sale_payments p " +
+            "WHERE p.sale_id = s.id AND p.payment_method_id = :methodId)) " +
+            "GROUP BY business_date",
+    )
+    suspend fun dayTotals(dates: List<String>, methodId: Long?): List<SaleDayTotal>
+
+    /** Cambia con cada venta nueva y con cada anulación: el historial se vuelve a leer. */
+    @Query(
+        "SELECT COALESCE(MAX(id), 0) || ':' || " +
+            "(SELECT COUNT(*) FROM sales WHERE status = 'VOIDED') FROM sales",
+    )
+    fun observeHistoryMark(): Flow<String>
 }
 
 /** Las tres sumas de [SaleDao.observeTaxTotals], en unidad menor. */
@@ -85,6 +118,48 @@ internal const val TAX_TOTALS_SQL =
         "AND business_date BETWEEN :startDate AND :endDate) AS returns_tax_refund, " +
         "(SELECT COALESCE(SUM(tax_total), 0) FROM purchases WHERE status = 'ACTIVE' " +
         "AND business_date BETWEEN :startDate AND :endDate) AS purchases_tax"
+
+/** Una fila del historial, con lo justo de sus líneas y sus pagos. */
+internal data class SaleHistoryRowEntity(
+    @ColumnInfo(name = "id") val id: Long,
+    @ColumnInfo(name = "occurred_at") val occurredAt: Long,
+    @ColumnInfo(name = "business_date") val businessDate: String,
+    @ColumnInfo(name = "total") val total: Long,
+    @ColumnInfo(name = "status") val status: String,
+    @ColumnInfo(name = "first_product") val firstProduct: String?,
+    @ColumnInfo(name = "line_count") val lineCount: Int,
+    @ColumnInfo(name = "method_name") val methodName: String?,
+    @ColumnInfo(name = "payment_count") val paymentCount: Int,
+)
+
+/** Lo vendido en un día. */
+internal data class SaleDayTotal(
+    @ColumnInfo(name = "business_date") val businessDate: String,
+    @ColumnInfo(name = "total") val total: Long,
+)
+
+/**
+ * La consulta de [SaleDao.historyPage]. Vive aparte para que la prueba del plan de consulta mire la
+ * misma sentencia que corre la app. Las líneas que cuenta son las principales, sin extras.
+ */
+internal const val SALE_HISTORY_PAGE_SQL =
+    "SELECT s.id, s.occurred_at, s.business_date, s.total, s.status, " +
+        "(SELECT l.product_name_snapshot FROM sale_lines l WHERE l.sale_id = s.id " +
+        "AND l.parent_line_id IS NULL ORDER BY l.id LIMIT 1) AS first_product, " +
+        "(SELECT COUNT(*) FROM sale_lines l WHERE l.sale_id = s.id " +
+        "AND l.parent_line_id IS NULL) AS line_count, " +
+        "(SELECT p.method_name_snapshot FROM sale_payments p WHERE p.sale_id = s.id " +
+        "ORDER BY p.id LIMIT 1) AS method_name, " +
+        "(SELECT COUNT(*) FROM sale_payments p WHERE p.sale_id = s.id) AS payment_count " +
+        "FROM sales s INDEXED BY index_sales_occurred_at_id " +
+        "WHERE (:onlyVoided = 0 OR s.status = 'VOIDED') " +
+        "AND (:fromDate IS NULL OR s.business_date >= :fromDate) " +
+        "AND (:toDate IS NULL OR s.business_date <= :toDate) " +
+        "AND (:methodId IS NULL OR EXISTS (SELECT 1 FROM sale_payments p " +
+        "WHERE p.sale_id = s.id AND p.payment_method_id = :methodId)) " +
+        "AND (:afterAt IS NULL OR s.occurred_at < :afterAt " +
+        "OR (s.occurred_at = :afterAt AND s.id < :afterId)) " +
+        "ORDER BY s.occurred_at DESC, s.id DESC LIMIT :limit"
 
 /**
  * La consulta de [SaleDao.observeIn]. Vive aparte para que la prueba del plan de consulta mire la
