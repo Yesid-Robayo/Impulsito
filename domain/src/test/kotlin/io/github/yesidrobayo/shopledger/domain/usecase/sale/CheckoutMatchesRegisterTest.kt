@@ -3,6 +3,9 @@ package io.github.yesidrobayo.shopledger.domain.usecase.sale
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
+import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
@@ -210,6 +213,102 @@ class CheckoutMatchesRegisterTest {
                 val sale = world.tables.sales.getValue(
                     (result as RegisterSaleResult.Registered).saleId,
                 )
+                assertEquals("cobrado con $mode", sale.content.amountDue, preview.amountDue)
+                assertEquals(
+                    "redondeo con $mode",
+                    sale.content.cashRoundingAmount,
+                    preview.cashRounding,
+                )
+                val stored = world.tables.payments.values.filter { it.saleId == sale.id }
+                    .sortedBy { it.id }.map { it.content }
+                assertEquals(stored.map { it.amount }, preview.payments.map { it.amount })
+                assertEquals(stored.map { it.changeAmount }, preview.payments.map { it.change })
+            }
+        }
+
+    @Test
+    fun `with cash rounding and lines by the box and by the gram, it is the registered sale`() =
+        runTest {
+            for (mode in TaxMode.entries) {
+                val world = world(mode).apply {
+                    // Caja de 12 del producto 1 y gramo del producto 2, que se lleva en kilogramos.
+                    units = units + mapOf(
+                        3L to measureUnit(3L, "BOX", UnitKind.COUNT, allowsFraction = false),
+                        4L to measureUnit(4L, "GRAM", UnitKind.MASS, allowsFraction = false),
+                    )
+                    conversions = listOf(
+                        ProductConversion(
+                            1,
+                            1L,
+                            ConversionDetails(3L, 12_000L, null, null, true, false),
+                        ),
+                        ProductConversion(
+                            2,
+                            2L,
+                            ConversionDetails(4L, 1L, null, null, true, false),
+                        ),
+                    )
+                    settings.settings.value = settings.settings.value.let {
+                        it.copy(regional = it.regional.copy(cashRounding = Money(50L)))
+                    }
+                }
+                val mixed = listOf(
+                    SaleLineRequest(1L, QuantityMilli(2_000L), unitId = 3L),
+                    SaleLineRequest(2L, QuantityMilli(1_337_000L), unitId = 4L),
+                    lines.last(),
+                )
+                val conversions = world.conversions.groupBy { it.productId }
+                    .mapValues { (_, list) -> list.associate { it.details.unitId to it.details } }
+                val pricing = CartPricing(
+                    taxMode = mode,
+                    rates = world.taxRates.mapValues { it.value.details.rate },
+                    defaultRateId = general,
+                )
+                val step = Money(50L)
+                val opened = SaleCheckout.preview(
+                    mixed,
+                    world.tables.products,
+                    pricing,
+                    Money(-321L),
+                    emptyList(),
+                    step,
+                    conversions,
+                )
+                val due = requireNotNull(opened.due) { "La venta se puede cobrar" }.minor
+                val inputs = listOf(
+                    input(cardMethod, 10_001L),
+                    input(method(), due - 10_001L, tendered = 1_000_000L),
+                )
+                val preview = SaleCheckout.preview(
+                    mixed,
+                    world.tables.products,
+                    pricing,
+                    Money(-321L),
+                    inputs,
+                    step,
+                    conversions,
+                )
+
+                val result = world.registerSale()(
+                    SaleRequest(
+                        lines = mixed,
+                        paymentMethodId = SaleWorld.CASH,
+                        payments = inputs.map {
+                            SalePaymentRequest(
+                                it.methodId,
+                                it.amount,
+                                it.feeAmount,
+                                it.tenderedAmount,
+                            )
+                        },
+                        orderAdjustment = Money(-321L),
+                    ),
+                )
+
+                val sale = world.tables.sales.getValue(
+                    (result as RegisterSaleResult.Registered).saleId,
+                )
+                assertEquals("total con $mode", sale.content.total, preview.total)
                 assertEquals("cobrado con $mode", sale.content.amountDue, preview.amountDue)
                 assertEquals(
                     "redondeo con $mode",

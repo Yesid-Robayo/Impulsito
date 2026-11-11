@@ -11,6 +11,8 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductSearch
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPreview
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCart
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockEvaluator
 
 /**
@@ -59,7 +61,7 @@ internal object SaleContentBuilder {
                 productId = request.productId,
                 // Un producto eliminado mientras estaba en la venta no tiene nombre que mostrar.
                 name = product?.details?.name.orEmpty(),
-                unit = product?.let { catalog.units[it.details.baseUnitId] },
+                unit = product?.let { catalog.units[request.unitId ?: it.details.baseUnitId] },
                 quantity = request.quantity,
                 unitPrice = line.unitPrice,
                 discount = line.discount,
@@ -95,14 +97,21 @@ internal object SaleContentBuilder {
         lines: List<SaleLineRequest>,
     ): SaleTile {
         val quantity = SaleCart.quantityOf(lines, product.id)
-        val line = if (quantity == QuantityMilli.ZERO) {
+        val request = lines.firstOrNull { it.productId == product.id }
+        val line = if (request == null || quantity == QuantityMilli.ZERO) {
             null
         } else {
+            // El aviso de stock va en la unidad base, la del libro: 2 cajas de 24 son 48.
+            val unit = SaleUnits.of(request, product, catalog.conversions[product.id].orEmpty())
+            val sold = (unit as? SaleUnitResult.Resolved)?.let {
+                SaleUnits.baseQuantity(quantity, it.unit)
+            } ?: quantity
             TileLine(
                 quantity = quantity,
+                unit = request.unitId?.let { catalog.units[it] },
                 removesLine = SaleCart.decrementRemoves(quantity),
                 canIncrement = SaleCart.canIncrement(quantity),
-                oversell = SaleCart.oversell(product, quantity),
+                oversell = SaleCart.oversell(product, sold),
             )
         }
         return SaleTile(

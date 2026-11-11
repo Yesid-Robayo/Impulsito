@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxSettingsRepository
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 /**
  * El catálogo de la venta: los productos que se venden, los más vendidos primero, los archivados
@@ -32,6 +34,7 @@ import kotlinx.coroutines.flow.flowOf
  *   teléfono no conoce la zona del negocio no hay fecha de hoy: el orden es alfabético, y la venta
  *   muestra el problema al confirmar.
  * - El modo de impuesto y las tasas van con el catálogo: la venta muestra el total que cobrará.
+ * - Las conversiones de venta de cada producto van con el catálogo: la línea elige su unidad.
  * - Un método a crédito no se ofrece: vender a crédito exige un cliente, y la venta todavía no lo
  *   lleva. Los archivados no se leen.
  * - El paso del redondeo del efectivo va con el catálogo, de [cashRounding]: la venta muestra lo
@@ -48,6 +51,7 @@ class ObserveSaleCatalogUseCase(
     private val taxRates: TaxRateRepository,
     private val clock: Clock,
     private val cashRounding: () -> Flow<Money> = { flowOf(Money.ZERO) },
+    private val productUnits: ProductUnitRepository? = null,
 ) {
     operator fun invoke(): Flow<SaleCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = result as? BusinessCalendarResult.Ready
@@ -81,8 +85,20 @@ class ObserveSaleCatalogUseCase(
             taxRates.observe(ArchiveFilter.ACTIVE),
             taxRates.observe(ArchiveFilter.ARCHIVED),
         ) { active, archived -> (active + archived).associate { it.id to it.details.rate } }
-        combine(catalog, taxSettings.observe(), rates, cashRounding()) { sale, taxes, byId, step ->
-            sale.copy(taxes = taxes, taxRates = byId, cashRounding = step)
+        // Solo las conversiones que se ofrecen al vender: las de compra no se eligen aquí.
+        val conversions = productUnits?.observeAll()?.map { all ->
+            all.filter { it.details.forSale }
+                .groupBy { it.productId }
+                .mapValues { (_, list) -> list.associate { it.details.unitId to it.details } }
+        } ?: flowOf(emptyMap())
+        combine(catalog, taxSettings.observe(), rates, cashRounding(), conversions) {
+                sale,
+                taxes,
+                byId,
+                step,
+                byProduct,
+            ->
+            sale.copy(taxes = taxes, taxRates = byId, cashRounding = step, conversions = byProduct)
         }
     }
 }

@@ -80,6 +80,8 @@ class ResumeHeldSaleUseCase(
                 } else {
                     LineDiscount.Amount(line.discount)
                 },
+                // La unidad base va sin unidad, como la escribe la venta.
+                unitId = line.unitId.takeIf { it != product.details.baseUnitId },
             )
         }
         return ResumedSale(held.id, held.label, lines, removed, changed)

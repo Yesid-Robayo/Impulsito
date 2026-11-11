@@ -82,6 +82,7 @@ data class SaleTile(
 @Immutable
 data class TileLine(
     val quantity: QuantityMilli,
+    val unit: MeasureUnit? = null,
     val removesLine: Boolean,
     val canIncrement: Boolean,
     val oversell: QuantityMilli?,
@@ -214,6 +215,8 @@ enum class DiscountMode {
  * momento; uno que no, se marca y la línea conserva su último valor bueno.
  *
  * @param focusPrice si la hoja se abre con el precio enfocado, como con un producto sin precio.
+ * @param unitId la unidad en que se vende la línea, y [saleUnits] las que ofrece el producto: la
+ *   base y sus conversiones de venta. Con una sola, la hoja no ofrece elegir.
  */
 @Immutable
 data class LineEditor(
@@ -225,6 +228,8 @@ data class LineEditor(
     val discountMode: DiscountMode,
     val discountText: String,
     val focusPrice: Boolean = false,
+    val unitId: Long? = null,
+    val saleUnits: List<MeasureUnit> = emptyList(),
     val quantityError: SaleFieldError? = null,
     val priceError: SaleFieldError? = null,
     val discountError: SaleFieldError? = null,

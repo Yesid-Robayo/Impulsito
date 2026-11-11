@@ -36,6 +36,9 @@ sealed interface NewSaleAction {
 
     data class LineDiscountChange(val text: String) : NewSaleAction
 
+    /** Vender la línea en otra unidad del producto, como una caja. */
+    data class LineUnitChange(val unitId: Long) : NewSaleAction
+
     data class RemoveLine(val productId: Long) : NewSaleAction
 
     data class QuantityTextChange(val text: String) : NewSaleAction

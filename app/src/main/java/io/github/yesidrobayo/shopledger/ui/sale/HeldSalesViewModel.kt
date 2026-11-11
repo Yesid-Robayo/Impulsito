@@ -185,9 +185,10 @@ class HeldSalesViewModel(
                     } else {
                         LineDiscount.Amount(it.discount)
                     },
+                    unitId = it.unitId,
                 )
             }
-            val preview = SaleCart.preview(lines, products, fractions, pricing)
+            val preview = SaleCart.preview(lines, products, fractions, pricing, catalog.conversions)
             HeldSaleRow(
                 id = sale.id,
                 label = sale.label,

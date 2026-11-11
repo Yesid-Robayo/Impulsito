@@ -604,6 +604,7 @@ private fun ProductTile(tile: SaleTile, onAction: (NewSaleAction) -> Unit) {
             line?.let {
                 SaleTileLine(
                     quantity = it.quantity,
+                    unit = it.unit?.let { lineUnit -> unitLabelOf(lineUnit) },
                     onIncrement = { onAction(NewSaleAction.Increment(tile.productId)) },
                     onDecrement = { onAction(NewSaleAction.Decrement(tile.productId)) },
                     removesLine = it.removesLine,

@@ -629,6 +629,7 @@ class CheckoutViewModel(
             written.adjustment,
             inputs,
             cashStep = catalog.cashRounding,
+            conversions = catalog.conversions,
         )
     }
 

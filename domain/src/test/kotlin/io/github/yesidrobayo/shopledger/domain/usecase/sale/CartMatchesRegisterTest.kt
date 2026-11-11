@@ -3,6 +3,9 @@ package io.github.yesidrobayo.shopledger.domain.usecase.sale
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
+import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
@@ -120,4 +123,66 @@ class CartMatchesRegisterTest {
             assertEquals("total con $mode", sale.total, preview.total)
         }
     }
+
+    @Test
+    fun `in cash with a rounding step and lines by the box and by the gram, it is the same`() =
+        runTest {
+            for (mode in TaxMode.entries) {
+                val world = world(mode).apply {
+                    // Caja de 12 del producto 1 y gramo del producto 2, que se lleva en kilogramos.
+                    units = units + mapOf(
+                        3L to measureUnit(3L, "BOX", UnitKind.COUNT, allowsFraction = false),
+                        4L to measureUnit(4L, "GRAM", UnitKind.MASS, allowsFraction = false),
+                    )
+                    conversions = listOf(
+                        ProductConversion(
+                            1,
+                            1L,
+                            ConversionDetails(3L, 12_000L, null, null, true, false),
+                        ),
+                        ProductConversion(
+                            2,
+                            2L,
+                            ConversionDetails(4L, 1L, null, null, true, false),
+                        ),
+                    )
+                    settings.settings.value = settings.settings.value.let {
+                        it.copy(regional = it.regional.copy(cashRounding = Money(50L)))
+                    }
+                }
+                val mixed = listOf(
+                    SaleLineRequest(1L, QuantityMilli(2_000L), unitId = 3L),
+                    SaleLineRequest(2L, QuantityMilli(1_337_000L), unitId = 4L),
+                    lines.last(),
+                )
+                val conversions = world.conversions.groupBy { it.productId }
+                    .mapValues { (_, list) -> list.associate { it.details.unitId to it.details } }
+                val pricing = CartPricing(
+                    taxMode = mode,
+                    rates = world.taxRates.mapValues { it.value.details.rate },
+                    defaultRateId = general,
+                    cashMethod = true,
+                    cashStep = Money(50L),
+                )
+                val preview = SaleCart.preview(
+                    mixed,
+                    world.tables.products,
+                    setOf(SaleWorld.KILOGRAM),
+                    pricing,
+                    conversions,
+                )
+
+                val result = world.registerSale()(SaleRequest(mixed, SaleWorld.CASH))
+
+                val id = (result as RegisterSaleResult.Registered).saleId
+                val sale = world.tables.sales.getValue(id).content
+                assertEquals("cobrado con $mode", sale.amountDue, preview.amountDue)
+                assertEquals("redondeo con $mode", sale.cashRoundingAmount, preview.cashRounding)
+                assertEquals("total con $mode", sale.total, preview.total)
+                val stored = world.tables.lines.values.filter { it.saleId == id }
+                    .sortedBy { it.id }.map { it.content }
+                assertEquals(stored.map { it.lineTotal }, preview.lines.map { it.total })
+                assertEquals(stored.map { it.quantity }, preview.lines.map { it.baseQuantity })
+            }
+        }
 }

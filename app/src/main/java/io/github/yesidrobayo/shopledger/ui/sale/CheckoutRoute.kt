@@ -60,6 +60,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     ports.taxRates,
                     container.clock,
                     cashRounding = { ObserveCashRoundingUseCase(ports.settings)() },
+                    productUnits = ports.productUnits,
                 )
             val register =
                 RegisterSaleUseCase(
@@ -75,6 +76,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     taxRates = ports.taxRates,
                     clock = container.clock,
                     heldSales = ports.heldSales,
+                    productUnits = ports.productUnits,
                 )
             val images = FindPaymentImagesUseCase(ports.transactions, ports.mediaAssets)
             CheckoutViewModel(

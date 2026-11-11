@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
@@ -173,6 +174,8 @@ class NewSaleViewModel(
 
             is NewSaleAction.LineDiscountChange -> lineDiscount(null, action.text)
 
+            is NewSaleAction.LineUnitChange -> lineUnit(action.unitId)
+
             is NewSaleAction.RemoveLine -> removeLine(action.productId)
 
             is NewSaleAction.QuantityTextChange -> quantityText(action.text)
@@ -321,7 +324,11 @@ class NewSaleViewModel(
     private fun openLine(productId: Long, focusPrice: Boolean) {
         val line = draft.value.lines.firstOrNull { it.productId == productId } ?: return
         val product = readyCatalog()?.products?.firstOrNull { it.id == productId }
-        val price = line.unitPrice ?: product?.salePrice ?: Money.ZERO
+        // El precio de la unidad de la línea, como lo calculan las cuentas de la venta.
+        val price = line.unitPrice
+            ?: currentPreview()?.lines?.firstOrNull { it.request.productId == productId }?.unitPrice
+            ?: product?.salePrice
+            ?: Money.ZERO
         val (mode, discountText) = when (val discount = line.discount) {
             LineDiscount.None -> DiscountMode.AMOUNT to ""
             is LineDiscount.Amount -> DiscountMode.AMOUNT to moneyText(discount.amount)
@@ -330,15 +337,38 @@ class NewSaleViewModel(
         val editor = LineEditor(
             productId = productId,
             name = product?.details?.name.orEmpty(),
-            unit = product?.let { readyCatalog()?.units?.get(it.details.baseUnitId) },
+            unit = product?.let { lineUnitOf(requireNotNull(readyCatalog()), it) },
             quantityText = quantityText(line.quantity),
             // Sin precio, el campo empieza vacío para escribir el de esta venta.
             priceText = if (price == Money.ZERO) "" else moneyText(price),
             discountMode = mode,
             discountText = discountText,
             focusPrice = focusPrice,
+            unitId = line.unitId ?: product?.details?.baseUnitId,
+            saleUnits = product?.let { saleUnitsOf(requireNotNull(readyCatalog()), it) }.orEmpty(),
         )
         showSheet(SaleSheet.Line(editor))
+    }
+
+    /**
+     * Cambia la unidad en que se vende la línea. El precio escrito era por la unidad anterior, así
+     * que la línea vuelve al precio de la nueva; una cantidad con decimales en una unidad que se
+     * cuenta entera pasa a una.
+     */
+    private fun lineUnit(unitId: Long) {
+        val catalog = readyCatalog() ?: return
+        val sheet = overlay.value.sheet as? SaleSheet.Line ?: return
+        val product = catalog.products.firstOrNull { it.id == sheet.editor.productId } ?: return
+        val whole = catalog.units[unitId]?.allowsFraction == false
+        setLine(product.id) { line ->
+            val fractional = line.quantity.milli % SaleCart.STEP.milli != 0L
+            line.copy(
+                unitId = unitId.takeIf { it != product.details.baseUnitId },
+                unitPrice = null,
+                quantity = if (whole && fractional) SaleCart.STEP else line.quantity,
+            )
+        }
+        openLine(product.id, focusPrice = false)
     }
 
     private fun lineQuantity(text: String) = editLine { editor ->
@@ -453,7 +483,7 @@ class NewSaleViewModel(
             SaleSheet.Quantity(
                 productId = productId,
                 name = product.details.name,
-                unit = catalog.units[product.details.baseUnitId],
+                unit = lineUnitOf(catalog, product),
                 text = if (adds) "" else quantityText(current),
                 adding = adds,
             ),
@@ -828,6 +858,7 @@ class NewSaleViewModel(
             catalog.products.associateBy { it.id },
             SaleContentBuilder.fractionUnits(catalog),
             pricing,
+            catalog.conversions,
         )
     }
 
@@ -836,7 +867,19 @@ class NewSaleViewModel(
     private fun readyCatalog(): SaleCatalog? = (catalog.value as? CatalogLoad.Ready)?.catalog
 
     private fun allowsFraction(catalog: SaleCatalog, product: Product): Boolean =
-        catalog.units[product.details.baseUnitId]?.allowsFraction ?: false
+        lineUnitOf(catalog, product)?.allowsFraction ?: false
+
+    /** La unidad en que va [product] en la venta: la de su línea, o su unidad base. */
+    private fun lineUnitOf(catalog: SaleCatalog, product: Product): MeasureUnit? {
+        val line = draft.value.lines.firstOrNull { it.productId == product.id }
+        return catalog.units[line?.unitId ?: product.details.baseUnitId]
+    }
+
+    /** Las unidades en que se vende [product]: la base primero, y luego sus conversiones de venta. */
+    private fun saleUnitsOf(catalog: SaleCatalog, product: Product): List<MeasureUnit> {
+        val others = catalog.conversions[product.id].orEmpty().keys
+        return (listOf(product.details.baseUnitId) + others).mapNotNull { catalog.units[it] }
+    }
 
     private fun showSheet(sheet: SaleSheet?) = overlay.update {
         it.copy(sheet = sheet, status = if (sheet == null) it.status else RegisterStatus.IDLE)

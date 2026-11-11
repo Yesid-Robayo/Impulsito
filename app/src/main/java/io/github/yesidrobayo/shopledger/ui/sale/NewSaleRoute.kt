@@ -70,6 +70,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     ports.taxRates,
                     container.clock,
                     cashRounding = { ObserveCashRoundingUseCase(ports.settings)() },
+                    productUnits = ports.productUnits,
                 )
             val register =
                 RegisterSaleUseCase(
@@ -85,6 +86,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     taxRates = ports.taxRates,
                     clock = container.clock,
                     heldSales = ports.heldSales,
+                    productUnits = ports.productUnits,
                 )
             val hold =
                 HoldSaleUseCase(
@@ -92,6 +94,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     ports.heldSales,
                     ports.products,
                     container.clock,
+                    ports.productUnits,
                 )
             val resume =
                 ResumeHeldSaleUseCase(

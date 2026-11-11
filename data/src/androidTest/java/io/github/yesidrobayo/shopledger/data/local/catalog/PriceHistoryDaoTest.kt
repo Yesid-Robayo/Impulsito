@@ -175,7 +175,12 @@ internal class PriceHistoryDaoTest : CatalogDatabaseTest() {
             .map { it.name }
             .toSet()
 
-        assertEquals(setOf("observeByProduct", "findByBatch", "insert"), functions)
+        // findByProduct solo lee, como observeByProduct, pero una vez: dentro de una transacción de
+        // lectura no se observa.
+        assertEquals(
+            setOf("observeByProduct", "findByProduct", "findByBatch", "insert"),
+            functions,
+        )
     }
 
     private suspend fun rowsOf(product: Long): List<PriceHistoryEntity> =

@@ -11,7 +11,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -41,6 +44,8 @@ import io.github.yesidrobayo.shopledger.ui.components.PercentField
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.QuantityField
 import io.github.yesidrobayo.shopledger.ui.components.QuantityStepper
+import io.github.yesidrobayo.shopledger.ui.components.UnitPicker
+import io.github.yesidrobayo.shopledger.ui.components.UnitPickerSheet
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
@@ -288,6 +293,7 @@ private fun lineProblem(issue: CartLineIssue?): String? = when (issue) {
     CartLineIssue.INVALID_DISCOUNT -> stringResource(R.string.error_discount_over_line)
     CartLineIssue.AMOUNT_TOO_LARGE -> stringResource(R.string.error_value_high)
     CartLineIssue.PRODUCT_UNAVAILABLE -> stringResource(R.string.status_archived)
+    CartLineIssue.UNIT_UNAVAILABLE -> stringResource(R.string.sale_unit_unavailable)
 }
 
 /**
@@ -320,6 +326,25 @@ private fun LineSheet(editor: LineEditor, cart: SaleCartState, onAction: (NewSal
             unit = unit,
             error = fieldError(editor.quantityError),
         )
+        // Solo si el producto se vende en más de una unidad, como por unidad y por caja.
+        if (editor.saleUnits.size > 1) {
+            var picking by remember { mutableStateOf(false) }
+            UnitPicker(
+                label = stringResource(R.string.term_unit),
+                unit = editor.unit,
+                onClick = { picking = true },
+            )
+            if (picking) {
+                UnitPickerSheet(
+                    units = editor.saleUnits,
+                    onPick = {
+                        picking = false
+                        onAction(NewSaleAction.LineUnitChange(it.id))
+                    },
+                    onDismiss = { picking = false },
+                )
+            }
+        }
         MoneyField(
             value = editor.priceText,
             onValueChange = { onAction(NewSaleAction.LinePriceChange(it)) },

@@ -39,7 +39,7 @@ class HeldSaleUseCasesTest {
     private val priceHistory = FakePriceHistoryRepository(database)
     private val heldSales = FakeHeldSaleRepository(database)
 
-    private fun hold() = HoldSaleUseCase(transactions, heldSales, products) { clock.now() }
+    private fun hold() = HoldSaleUseCase(transactions, heldSales, products, { clock.now() })
 
     private fun resume() = ResumeHeldSaleUseCase(transactions, heldSales, products, priceHistory)
 

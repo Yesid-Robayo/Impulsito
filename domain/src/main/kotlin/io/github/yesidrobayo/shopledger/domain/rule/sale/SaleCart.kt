@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
@@ -35,12 +36,16 @@ enum class CartLineIssue {
 
     /** El bruto de la línea pasa del tope de una línea. */
     AMOUNT_TOO_LARGE,
+
+    /** El producto ya no se vende en la unidad de la línea: se quitó su conversión de venta. */
+    UNIT_UNAVAILABLE,
 }
 
 /**
  * Una línea de la venta en edición, con sus cuentas hechas igual que al confirmar.
  *
- * [unitPrice] es el precio de la línea, o el del producto si nadie lo cambió. [gross] y
+ * [unitPrice] es el precio de la línea, o el de su unidad si nadie lo cambió. [baseQuantity] es lo
+ * que la línea saca del stock, en la unidad base; falta si la línea tiene un [issue]. [gross] y
  * [discount] faltan si la línea tiene un [issue]; [tax] y [total] faltan también si la venta entera
  * no se puede cobrar. [total] es lo que cobra la línea con su impuesto y su parte del recargo del
  * método.
@@ -48,6 +53,7 @@ enum class CartLineIssue {
 data class CartLinePreview(
     val request: SaleLineRequest,
     val unitPrice: Money,
+    val baseQuantity: QuantityMilli?,
     val gross: Money?,
     val discount: Money?,
     val tax: Money?,
@@ -102,8 +108,8 @@ data class CartPricing(
  * Las reglas de la venta en edición, antes de confirmar: agregar, sumar y quitar, y las mismas
  * cuentas que hará la venta al registrarse, para mostrar el total sin escribir nada.
  *
- * Mientras la venta solo use la unidad base de cada producto, hay una línea por producto: agregar
- * otra vez el mismo producto suma a su línea. Las cuentas de dinero son las de [SaleLineRules], así
+ * Hay una línea por producto, en la unidad que elija la persona: agregar otra vez el mismo producto
+ * suma a su línea, en su unidad. Las cuentas de dinero son las de [SaleLineRules], así
  * que el total que se ve es el que se guarda. Nada aquí bloquea por stock: vender de más solo se
  * avisa.
  */
@@ -188,23 +194,30 @@ object SaleCart {
      *
      * Cuenta los productos como los ve la persona: cada unidad entera de una línea que se cuenta, y
      * una sola vez la línea de un producto por peso o medida, que es un producto aunque lleve 1,250
-     * kg. [fractionUnits] son las unidades que admiten decimales.
+     * kg, también si se vende en gramos. [fractionUnits] son las unidades que admiten decimales. Una
+     * línea en otra unidad que se cuenta cuenta en esa unidad: 2 cajas son 2 productos. [conversions] son, por producto, sus unidades de venta
+     * por id de unidad, como las da el catálogo.
      */
     fun preview(
         lines: List<SaleLineRequest>,
         products: Map<Long, Product>,
         fractionUnits: Set<Long>,
         pricing: CartPricing = CartPricing(),
+        conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
     ): CartPreview {
         var itemCount = 0L
         val bases = lines.map { line ->
             val product = products[line.productId]
-            itemCount += if (product == null || product.details.baseUnitId in fractionUnits) {
+            // Un producto por peso o medida es uno, también vendido en gramos.
+            val byMeasure = product == null ||
+                product.details.baseUnitId in fractionUnits ||
+                line.unitId in fractionUnits
+            itemCount += if (byMeasure) {
                 1L
             } else {
                 line.quantity.milli / STEP.milli
             }
-            baseOf(line, product, pricing)
+            baseOf(line, product, pricing, conversions[line.productId].orEmpty())
         }
         val charged = when {
             bases.isEmpty() -> Charged(emptyList(), Money.ZERO, Money.ZERO)
@@ -216,6 +229,7 @@ object SaleCart {
             CartLinePreview(
                 request = base.request,
                 unitPrice = base.unitPrice,
+                baseQuantity = base.baseQuantity,
                 gross = base.gross,
                 discount = base.discount,
                 tax = split?.taxAmount,
@@ -242,23 +256,44 @@ object SaleCart {
         val request: SaleLineRequest,
         val unitPrice: Money,
         val rate: BasisPoints,
+        val baseQuantity: QuantityMilli? = null,
         val gross: Money? = null,
         val discount: Money? = null,
         val issue: CartLineIssue? = null,
         val base: Money = Money.ZERO,
     )
 
-    private fun baseOf(line: SaleLineRequest, product: Product?, pricing: CartPricing): LineBase {
-        val unitPrice = line.unitPrice ?: product?.salePrice ?: Money.ZERO
+    private fun baseOf(
+        line: SaleLineRequest,
+        product: Product?,
+        pricing: CartPricing,
+        conversions: Map<Long, ConversionDetails>,
+    ): LineBase {
         if (product == null) {
             return LineBase(
                 line,
-                unitPrice,
+                line.unitPrice ?: Money.ZERO,
                 BasisPoints.ZERO,
                 issue = CartLineIssue.PRODUCT_UNAVAILABLE,
             )
         }
         val rate = pricing.rateOf(product)
+        val unit = when (val result = SaleUnits.of(line, product, conversions)) {
+            is SaleUnitResult.Resolved -> result.unit
+
+            SaleUnitResult.Unavailable -> return LineBase(
+                line,
+                line.unitPrice ?: Money.ZERO,
+                rate,
+                issue = CartLineIssue.UNIT_UNAVAILABLE,
+            )
+        }
+        // Sin precio escrito ni precio de lista que quepa, la línea pasa del tope.
+        val unitPrice = line.unitPrice ?: unit.listPrice
+            ?: return LineBase(line, Money.ZERO, rate, issue = CartLineIssue.AMOUNT_TOO_LARGE)
+        // Como al confirmar: una cantidad que no se puede llevar a la base no se cobra.
+        val baseQuantity = SaleUnits.baseQuantity(line.quantity, unit)
+            ?: return LineBase(line, unitPrice, rate, issue = CartLineIssue.AMOUNT_TOO_LARGE)
         val gross = when (val result = SaleLineRules.gross(line.quantity, unitPrice)) {
             is Checked.Value -> result.value
 
@@ -272,7 +307,7 @@ object SaleCart {
         if (TaxCalculator.line(base, pricing.taxMode, rate) !is Checked.Value) {
             return LineBase(line, unitPrice, rate, issue = CartLineIssue.AMOUNT_TOO_LARGE)
         }
-        return LineBase(line, unitPrice, rate, gross, discount, base = base)
+        return LineBase(line, unitPrice, rate, baseQuantity, gross, discount, base = base)
     }
 
     /** Las cuentas de cada línea y de la venta, con el ajuste ya repartido. */

@@ -8,9 +8,11 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewProduct
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
@@ -35,6 +37,7 @@ import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -294,6 +297,33 @@ internal class SaleWorld(
         KILOGRAM to measureUnit(KILOGRAM, "KILOGRAM", UnitKind.MASS, allowsFraction = true),
     )
 
+    /** Las conversiones de los productos: la venta las lee por producto y unidad. */
+    var conversions: List<ProductConversion> = emptyList()
+
+    val productUnitRepository: ProductUnitRepository = object : ProductUnitRepository {
+        override fun observeAll(): Flow<List<ProductConversion>> = unused()
+
+        override fun observeByProduct(productId: Long): Flow<List<ProductConversion>> = unused()
+
+        override suspend fun findById(id: Long): ProductConversion? = unused()
+
+        override suspend fun findByProductAndUnit(productId: Long, unitId: Long) =
+            conversions.firstOrNull { it.productId == productId && it.details.unitId == unitId }
+
+        override suspend fun findByBarcode(barcode: String): ProductConversion? = unused()
+
+        override suspend fun insert(
+            productId: Long,
+            details: ConversionDetails,
+            createdAt: Instant,
+        ) = unused()
+
+        override suspend fun update(id: Long, details: ConversionDetails, updatedAt: Instant) =
+            unused()
+
+        override suspend fun delete(id: Long) = unused()
+    }
+
     /** Las filas iniciales que la venta busca por su clave. */
     var systemRows: Map<SystemRow, Long> = mapOf(
         SystemRow.DEFAULT_UNIT to UNIT,
@@ -429,6 +459,7 @@ internal class SaleWorld(
         taxRates = taxRateRepository,
         clock = clock,
         heldSales = heldSaleRepository,
+        productUnits = productUnitRepository,
     )
 
     fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(

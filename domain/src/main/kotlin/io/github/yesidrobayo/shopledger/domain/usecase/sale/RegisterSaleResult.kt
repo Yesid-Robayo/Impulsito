@@ -110,4 +110,10 @@ enum class LineRejection {
 
     /** El bruto, el costo o la reposición de la línea pasan del tope de una línea. */
     AMOUNT_TOO_LARGE,
+
+    /**
+     * El producto no se vende en la unidad de la línea: no tiene esa conversión, o se quitó de la
+     * venta después de elegirla.
+     */
+    UNIT_UNAVAILABLE,
 }

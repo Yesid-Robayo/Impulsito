@@ -51,6 +51,8 @@ data class SaleTileLine(
     val canIncrement: Boolean = true,
     val onQuantityClick: (() -> Unit)? = null,
     val oversellBy: QuantityMilli? = null,
+    /** La unidad de la línea si no es la del producto, como una caja; `null` es la misma. */
+    val unit: UnitLabel? = null,
 )
 
 /**
@@ -95,7 +97,7 @@ fun SaleProductTile(
     val added = line != null
     val addLabel = stringResource(R.string.action_add)
     val inSale = line?.let {
-        stringResource(R.string.a11y_quantity_in_sale, quantityText(it.quantity, unit))
+        stringResource(R.string.a11y_quantity_in_sale, quantityText(it.quantity, it.unit ?: unit))
     }
     Surface(
         onClick = { tap() },
@@ -155,7 +157,7 @@ fun SaleProductTile(
             } else {
                 QuantityStepper(
                     quantity = line.quantity,
-                    unit = unit,
+                    unit = line.unit ?: unit,
                     productName = name,
                     onDecrement = line.onDecrement,
                     onIncrement = line.onIncrement,

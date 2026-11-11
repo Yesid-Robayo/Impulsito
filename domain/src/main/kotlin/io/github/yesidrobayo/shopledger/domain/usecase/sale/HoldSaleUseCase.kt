@@ -11,11 +11,14 @@ import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.HeldSaleRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleLineRules
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 
 /**
  * Lo que se pone en espera: las líneas de la venta en edición, el nombre que escribió la persona y,
@@ -44,6 +47,7 @@ class HoldSaleUseCase(
     private val heldSales: HeldSaleRepository,
     private val products: ProductRepository,
     private val clock: Clock,
+    private val productUnits: ProductUnitRepository? = null,
 ) {
     suspend operator fun invoke(request: HoldSaleRequest): HoldSaleResult = try {
         transactions.write { hold(request) }
@@ -64,7 +68,7 @@ class HoldSaleUseCase(
         for ((index, line) in request.lines.withIndex()) {
             val product = byId[line.productId]
                 ?: return TxResult.Rollback(HoldSaleResult.LineRejected(index))
-            lines += heldLineOf(line, product)
+            lines += heldLineOf(line, product, listPriceOf(line, product))
                 ?: return TxResult.Rollback(HoldSaleResult.LineRejected(index))
         }
         val sale = NewHeldSale(label, lines, clock.now())
@@ -77,8 +81,31 @@ class HoldSaleUseCase(
         return TxResult.CommitUncounted(HoldSaleResult.Held(id))
     }
 
+    /**
+     * El precio de una unidad entera de la unidad de [line] sin precio escrito, para convertir un
+     * descuento en porcentaje; cero si el producto ya no se vende en esa unidad.
+     */
+    private suspend fun listPriceOf(line: SaleLineRequest, product: Product): Money {
+        val unitId = line.unitId ?: product.details.baseUnitId
+        val conversions = if (unitId == product.details.baseUnitId) {
+            emptyMap()
+        } else {
+            productUnits?.findByProductAndUnit(product.id, unitId)
+                ?.let { mapOf(unitId to it.details) }
+                .orEmpty()
+        }
+        return when (val unit = SaleUnits.of(line, product, conversions)) {
+            is SaleUnitResult.Resolved -> unit.unit.listPrice ?: Money.ZERO
+            SaleUnitResult.Unavailable -> Money.ZERO
+        }
+    }
+
     /** La línea como se guarda en espera, o `null` si sus cifras no caben en la base. */
-    private fun heldLineOf(line: SaleLineRequest, product: Product): HeldSaleLine? {
+    private fun heldLineOf(
+        line: SaleLineRequest,
+        product: Product,
+        listPrice: Money,
+    ): HeldSaleLine? {
         if (!Limit.LINE_QUANTITY_MILLI.allows(line.quantity.milli) || line.quantity.milli <= 0) {
             return null
         }
@@ -95,13 +122,13 @@ class HoldSaleUseCase(
 
             is LineDiscount.Percent -> SaleLineRules.gross(
                 line.quantity,
-                written ?: product.salePrice,
+                written ?: listPrice,
             ).valueOrNull()?.let { SaleLineRules.discountOf(it, asked) } ?: Money.ZERO
         }
         if (discount < Money.ZERO || !Limit.DOCUMENT_TOTAL.allows(discount.minor)) return null
         return HeldSaleLine(
             productId = product.id,
-            unitId = product.details.baseUnitId,
+            unitId = line.unitId ?: product.details.baseUnitId,
             quantity = line.quantity,
             unitPrice = written,
             discount = discount,

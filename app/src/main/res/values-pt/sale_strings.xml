@@ -30,6 +30,7 @@
     <string name="action_remove">Remover</string>
     <string name="action_view">Ver</string>
     <string name="action_undo">Desfazer</string>
+    <string name="sale_unit_unavailable">Esta unidade não é mais vendida</string>
     <string name="action_back">Voltar</string>
     <string name="action_save">Salvar</string>
     <string name="filter_payment_method">Forma de pagamento</string>

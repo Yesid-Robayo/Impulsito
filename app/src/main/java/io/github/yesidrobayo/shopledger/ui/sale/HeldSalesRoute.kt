@@ -38,6 +38,7 @@ fun HeldSalesRoute(navigator: AppNavigator) {
                     ports.taxSettings,
                     ports.taxRates,
                     container.clock,
+                    productUnits = ports.productUnits,
                 )
             val observe = ObserveHeldSalesUseCase(ports.heldSales)
             val rename = RenameHeldSaleUseCase(ports.transactions, ports.heldSales, container.clock)

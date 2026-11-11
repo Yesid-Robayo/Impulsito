@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.model.sale
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
@@ -20,6 +21,8 @@ import kotlinx.datetime.DayOfWeek
  *   primero es el que se elige solo.
  * - [taxes] y [taxRates]: el modo de impuesto del negocio y cada tasa por id, también las
  *   archivadas, que un producto conserva. Con ellos la venta muestra el total que cobrará.
+ * - [conversions]: por producto, las unidades en que se vende además de la base, con su factor y
+ *   su precio, por id de unidad. Solo las que se ofrecen al vender.
  * - [today] y [weekStartDay]: la fecha de negocio de hoy y el primer día de la semana, para elegir
  *   una fecha anterior. Faltan si el teléfono no conoce la zona del negocio.
  * - [cashRounding]: el paso al que se redondea un pago en efectivo, en unidad menor. Cero es sin
@@ -36,4 +39,5 @@ data class SaleCatalog(
     val today: BusinessDate?,
     val weekStartDay: DayOfWeek?,
     val cashRounding: Money = Money.ZERO,
+    val conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
 )

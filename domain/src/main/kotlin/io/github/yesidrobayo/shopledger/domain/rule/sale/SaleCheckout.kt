@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
@@ -147,7 +148,8 @@ object SaleCheckout {
      * El cobro de [lines] con [adjustment] escrito para toda la venta y [payments] en el orden en
      * que se escribieron. [pricing] da el impuesto; su recargo del método no se usa, porque cada
      * pago trae el suyo. Cada pago en efectivo se redondea a [cashStep], ya con su recargo, y cero
-     * es sin redondeo.
+     * es sin redondeo. [conversions] son, por producto, sus unidades de venta: una línea por caja
+     * cobra el precio de la caja.
      */
     fun preview(
         lines: List<SaleLineRequest>,
@@ -156,6 +158,7 @@ object SaleCheckout {
         adjustment: Money,
         payments: List<CheckoutPaymentInput>,
         cashStep: Money = Money.ZERO,
+        conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
     ): CheckoutPreview {
         val paid = payments.fold(Money.ZERO) { sum, it -> sum + it.amount }
         val empty = CheckoutPreview(
@@ -170,7 +173,7 @@ object SaleCheckout {
             problem = null,
         )
         val bases = lines.map { line ->
-            baseOf(line, products, pricing)
+            baseOf(line, products, pricing, conversions[line.productId].orEmpty())
                 ?: return empty.copy(problem = CheckoutProblem.LineIssue)
         }
         // Cada base cabe en el tope de un documento, y hay pocas líneas: la suma cabe en Long.
@@ -269,16 +272,23 @@ object SaleCheckout {
 
     /**
      * Lo que cobra [line] antes de cualquier ajuste, su bruto menos su descuento, como al confirmar,
-     * o `null` si la línea no se puede cobrar: su producto ya no se vende, su bruto pasa del tope o
-     * su descuento no cabe.
+     * o `null` si la línea no se puede cobrar: su producto o su unidad ya no se venden, su bruto pasa
+     * del tope o su descuento no cabe.
      */
     private fun baseOf(
         line: SaleLineRequest,
         products: Map<Long, Product>,
         pricing: CartPricing,
+        conversions: Map<Long, ConversionDetails>,
     ): Base? {
         val product = products[line.productId] ?: return null
-        val unitPrice = line.unitPrice ?: product.salePrice
+        val unit = when (val result = SaleUnits.of(line, product, conversions)) {
+            is SaleUnitResult.Resolved -> result.unit
+            SaleUnitResult.Unavailable -> return null
+        }
+        // Como al confirmar: una cantidad que no se puede llevar a la base no se cobra.
+        SaleUnits.baseQuantity(line.quantity, unit) ?: return null
+        val unitPrice = line.unitPrice ?: unit.listPrice ?: return null
         val gross = SaleLineRules.gross(line.quantity, unitPrice) as? Checked.Value ?: return null
         val discount = SaleLineRules.discountOf(gross.value, line.discount) ?: return null
         return Base(gross.value - discount, pricing.rateOf(product))

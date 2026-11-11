@@ -31,6 +31,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -58,6 +59,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSplit
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSplitCheck
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSurcharges
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleLineRules
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnit
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SurchargeSettlement
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
@@ -95,6 +99,9 @@ import kotlin.time.Instant
  *   impuesto. Sumar los impuestos de las líneas, y nunca calcularlo sobre el total, hace que el
  *   total sea siempre lo neto más el impuesto, y los pagos cobran ese total.
  *
+ * - **Se vende en otra unidad** con la conversión de venta del producto: la línea congela su
+ *   factor, cobra por unidad entera de esa unidad y descuenta del libro la cantidad llevada a la
+ *   unidad base. Una unidad que el producto no vende se rechaza con su motivo.
  * - **Una venta retomada de la espera** sale de la espera en la misma transacción en que se
  *   confirma: si la venta se deshace, la espera sigue ahí, y nunca quedan las dos.
  * - **El efectivo se redondea** al paso que escribió la persona, pago por pago y ya con el recargo
@@ -121,6 +128,7 @@ class RegisterSaleUseCase(
     private val taxRates: TaxRateRepository,
     private val clock: Clock,
     private val heldSales: HeldSaleRepository? = null,
+    private val productUnits: ProductUnitRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
 
@@ -278,9 +286,26 @@ class RegisterSaleUseCase(
                 val unit = units.findById(product.details.baseUnitId) ?: damaged()
                 unit.allowsFraction
             }
-            quantityRejection(request.quantity, allowsFraction)?.let { return rejected(index, it) }
+            val unit = when (val result = saleUnitOf(request, product)) {
+                is SaleUnitResult.Resolved -> result.unit
+                SaleUnitResult.Unavailable -> return rejected(index, LineRejection.UNIT_UNAVAILABLE)
+            }
+            val unitAllowsFraction = if (unit.isBase) {
+                allowsFraction
+            } else {
+                fractionByUnit.getOrPut(unit.unitId) {
+                    // La conversión apunta a su unidad con una llave que no deja borrarla.
+                    (units.findById(unit.unitId) ?: damaged()).allowsFraction
+                }
+            }
+            quantityRejection(request.quantity, unitAllowsFraction)?.let {
+                return rejected(index, it)
+            }
+            val baseQuantity = SaleUnits.baseQuantity(request.quantity, unit)
+                ?: return rejected(index, LineRejection.INVALID_QUANTITY)
             val tax = appliedTax(product, taxes, taxByRate)
-            val result = priceLine(request, product, tax, taxes.mode, costStates)
+            val result =
+                priceLine(request, product, tax, taxes.mode, costStates, unit, baseQuantity)
             val line = when (result) {
                 is LineResult.Ready -> result.line
                 is LineResult.Rejected -> return rejected(index, result.reason)
@@ -316,6 +341,22 @@ class RegisterSaleUseCase(
         }
     }
 
+    /**
+     * La unidad en que se vende [request]: la base, o la conversión de venta del producto, leída
+     * dentro de la transacción para congelar el factor que hay al confirmar.
+     */
+    private suspend fun saleUnitOf(request: SaleLineRequest, product: Product): SaleUnitResult {
+        val unitId = request.unitId ?: product.details.baseUnitId
+        val conversions = if (unitId == product.details.baseUnitId) {
+            emptyMap()
+        } else {
+            productUnits?.findByProductAndUnit(product.id, unitId)
+                ?.let { mapOf(unitId to it.details) }
+                .orEmpty()
+        }
+        return SaleUnits.of(request, product, conversions)
+    }
+
     private fun productRejection(product: Product): LineRejection? = when {
         product.isArchived -> LineRejection.PRODUCT_ARCHIVED
 
@@ -345,8 +386,13 @@ class RegisterSaleUseCase(
         tax: AppliedTax,
         taxMode: TaxMode,
         costStates: Map<Long, CostState>,
+        unit: SaleUnit,
+        baseQuantity: QuantityMilli,
     ): LineResult {
-        val unitPrice = request.unitPrice ?: product.salePrice
+        // El precio es por unidad entera de la unidad de la línea; el stock y el costo, en la base.
+        // Sin precio escrito, el de la unidad; uno calculado que no cabe es un precio inválido.
+        val unitPrice = request.unitPrice ?: unit.listPrice
+            ?: return LineResult.Rejected(LineRejection.INVALID_PRICE)
         if (unitPrice < Money.ZERO || !Limit.UNIT_MONEY.allows(unitPrice.minor)) {
             return LineResult.Rejected(LineRejection.INVALID_PRICE)
         }
@@ -355,7 +401,7 @@ class RegisterSaleUseCase(
         }
         val discount = SaleLineRules.discountOf(gross, request.discount)
             ?: return LineResult.Rejected(LineRejection.INVALID_DISCOUNT)
-        val plan = StockModeRules.planLine(stockSubject(product, request.quantity, costStates))
+        val plan = StockModeRules.planLine(stockSubject(product, baseQuantity, costStates))
             .valueOr { return LineResult.Rejected(LineRejection.AMOUNT_TOO_LARGE) }
         val unitCost = when (plan) {
             is LineStockPlan.Direct -> plan.exit.unitCost
@@ -366,7 +412,7 @@ class RegisterSaleUseCase(
             is LineStockPlan.Components -> error("Un combo no llega a calcular su línea")
         }
         val unitReplacement = SaleLineRules.unitReplacementCost(product.replacementCost, unitCost)
-        val lineReplacement = SaleLineRules.lineReplacementCost(request.quantity, unitReplacement)
+        val lineReplacement = SaleLineRules.lineReplacementCost(baseQuantity, unitReplacement)
             .valueOr { return LineResult.Rejected(LineRejection.AMOUNT_TOO_LARGE) }
         // Sin ajuste de la venta todavía: la línea cobra el bruto menos su descuento, y sobre eso
         // se separa el impuesto. Con el impuesto sumado, una línea al tope deja de caber.
@@ -376,7 +422,9 @@ class RegisterSaleUseCase(
         return LineResult.Ready(
             PricedLine(
                 product = product,
-                quantity = request.quantity,
+                quantity = baseQuantity,
+                unit = unit,
+                enteredQuantity = request.quantity,
                 unitPrice = unitPrice,
                 unitCost = unitCost,
                 discount = discount,
@@ -633,9 +681,9 @@ class RegisterSaleUseCase(
 
     private fun PricedLine.toNewLine(priceListId: Long) = NewSaleLine(
         productId = product.id,
-        unitId = product.details.baseUnitId,
-        unitFactor = QuantityMilli.ofUnits(1L),
-        enteredQuantity = quantity,
+        unitId = unit.unitId,
+        unitFactor = QuantityMilli(unit.factorMilli),
+        enteredQuantity = enteredQuantity,
         quantity = quantity,
         unitPrice = unitPrice,
         unitCost = unitCost,
@@ -673,6 +721,8 @@ class RegisterSaleUseCase(
     private class PricedLine(
         val product: Product,
         val quantity: QuantityMilli,
+        val unit: SaleUnit,
+        val enteredQuantity: QuantityMilli,
         val unitPrice: Money,
         val unitCost: Money,
         val discount: Money,
@@ -696,6 +746,8 @@ class RegisterSaleUseCase(
             return PricedLine(
                 product = product,
                 quantity = quantity,
+                unit = unit,
+                enteredQuantity = enteredQuantity,
                 unitPrice = unitPrice,
                 unitCost = unitCost,
                 discount = discount,
