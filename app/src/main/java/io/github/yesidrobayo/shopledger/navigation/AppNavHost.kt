@@ -36,6 +36,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
+import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodFormRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodsRoute
@@ -142,6 +143,8 @@ private fun entryOf(key: NavKey, navigator: AppNavigator): NavEntry<NavKey> {
 @Composable
 private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
     when (key) {
+        AppNavKey.Home -> HomeRoute(navigator)
+
         AppNavKey.ProductList -> ProductListRoute(navigator)
 
         is AppNavKey.NewSale -> NewSaleRoute(key, navigator)

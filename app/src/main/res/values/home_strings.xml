@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inicio: el resumen del día. Textos de la guía de redacción. -->
+    <string name="home_sales_today">Today\'s sales</string>
+    <string name="home_recent_sales">Recent sales</string>
+    <string name="empty_home_day_body">Today\'s first sale will appear here.</string>
+    <string name="action_view_all_feminine">View all</string>
+    <plurals name="stats_sales_count">
+        <item quantity="one">%1$d sale</item>
+        <item quantity="other">%1$d sales</item>
+    </plurals>
+</resources>

@@ -109,7 +109,7 @@ fun MoneyText(
     when {
         loading -> MoneySkeleton(style, modifier)
 
-        sensitive -> DiscreetValue(modifier, style) {
+        sensitive -> DiscreetValue(modifier, style, mutedColor(tone)) {
             MoneyValue(amount, size, style, tone, voided, Modifier)
         }
 
@@ -131,7 +131,7 @@ private fun MoneyValue(
         Text(
             text = NO_VALUE_TEXT,
             style = style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = mutedColor(tone),
             maxLines = 1,
             modifier = modifier.clearAndSetSemantics { contentDescription = noValue },
         )
@@ -167,7 +167,7 @@ private fun MoneyValue(
         MoneyAmountText(
             display = voidedDisplay,
             style = style.copy(textDecoration = TextDecoration.LineThrough),
-            color = voidedColor(tone),
+            color = mutedColor(tone),
             autoSize = autoSize,
         )
     }
@@ -216,11 +216,11 @@ fun moneyColor(tone: MoneyTone): Color = when (tone) {
 }
 
 /**
- * El color apagado de un monto anulado. Sobre el héroe es el apagado del héroe: el de la superficie
- * casi no se ve sobre el bloque de color.
+ * El color apagado de un monto anulado, oculto o sin valor. Sobre el héroe es el apagado del héroe:
+ * el de la superficie casi no se ve sobre el bloque de color.
  */
 @Composable
-private fun voidedColor(tone: MoneyTone): Color = when (tone) {
+internal fun mutedColor(tone: MoneyTone): Color = when (tone) {
     MoneyTone.ON_HERO, MoneyTone.HERO_ACCENT -> AppTheme.colors.onHeroVariant
     else -> MaterialTheme.colorScheme.onSurfaceVariant
 }

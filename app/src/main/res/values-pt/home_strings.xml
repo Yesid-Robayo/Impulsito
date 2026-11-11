@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inicio: el resumen del día. Textos de la guía de redacción. -->
+    <string name="home_sales_today">Vendas de hoje</string>
+    <string name="home_recent_sales">Últimas vendas</string>
+    <string name="empty_home_day_body">A primeira venda de hoje aparecerá aqui.</string>
+    <string name="action_view_all_feminine">Ver todas</string>
+    <plurals name="stats_sales_count">
+        <item quantity="one">%1$d venda</item>
+        <item quantity="many">%1$d de vendas</item>
+        <item quantity="other">%1$d vendas</item>
+    </plurals>
+</resources>

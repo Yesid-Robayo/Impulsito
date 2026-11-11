@@ -92,6 +92,10 @@ internal interface ProductDao {
     @Query("SELECT EXISTS (SELECT 1 FROM products WHERE parent_product_id = :id)")
     suspend fun hasVariants(id: Long): Boolean
 
+    /** Si existe algún producto, archivado o no, de nuevo con cada cambio en el catálogo. */
+    @Query("SELECT EXISTS (SELECT 1 FROM products)")
+    fun observeAny(): Flow<Boolean>
+
     /** Devuelve el id nuevo. El repositorio lo crea sin stock: saldo y valor en cero. */
     @Insert
     suspend fun insert(product: ProductEntity): Long

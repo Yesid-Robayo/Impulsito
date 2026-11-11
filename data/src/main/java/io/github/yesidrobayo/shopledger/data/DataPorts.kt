@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
@@ -23,6 +24,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFrequencySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleHistorySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSalePaymentRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomSalesReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomStockLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSystemRowRepository
@@ -37,6 +39,7 @@ import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.data.transaction.RoomTransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
+import io.github.yesidrobayo.shopledger.domain.port.CatalogPresenceSource
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
@@ -53,6 +56,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
+import io.github.yesidrobayo.shopledger.domain.port.SalesReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
@@ -167,6 +171,12 @@ class DataPorts internal constructor(
 
     /** Las sumas del impuesto estimado de un período. Solo lee. */
     val taxReports: TaxReportRepository = RoomTaxReportRepository(database)
+
+    /** Las sumas de ventas y devoluciones de un período, para Inicio. Solo lee. */
+    val salesReports: SalesReportRepository = RoomSalesReportRepository(database)
+
+    /** Si el negocio ya tiene algún producto, para orientar el primer uso. Solo lee. */
+    val catalogPresence: CatalogPresenceSource = RoomCatalogPresenceSource(database)
 
     val mediaAssets: MediaAssetRepository = RoomMediaAssetRepository(database)
 

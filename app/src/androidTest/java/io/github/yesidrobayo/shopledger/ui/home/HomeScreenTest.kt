@@ -1,0 +1,129 @@
+package io.github.yesidrobayo.shopledger.ui.home
+
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
+import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * Inicio en el teléfono: cada acceso avisa su acción, el primer uso lleva a crear un producto, el
+ * día sin ventas lo dice, el modo discreto oculta el dinero y deja el número de ventas, y el error
+ * deja reintentar. Datos inventados.
+ */
+@RunWith(AndroidJUnit4::class)
+class HomeScreenTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    private val resources = InstrumentationRegistry.getInstrumentation().targetContext.resources
+    private val actions = mutableListOf<HomeAction>()
+
+    private fun text(id: Int) = resources.getString(id)
+
+    private fun show(state: HomeUiState, discreet: Boolean = false) {
+        compose.setContent {
+            PreviewTheme(discreet = discreet) { HomeScreen(state, { actions += it }) }
+        }
+    }
+
+    @Test
+    fun everyEntryReportsItsAction() {
+        show(previewHomeContent())
+
+        compose.onNodeWithContentDescription(text(R.string.a11y_settings)).performClick()
+        compose.onNodeWithText(text(R.string.hub_entry_action)).performClick()
+        compose.onNodeWithText(text(R.string.action_view_all_feminine)).performClick()
+        compose.onNodeWithText(PreviewSamples.SECOND_NAME).performClick()
+
+        assertEquals(
+            listOf(
+                HomeAction.OpenSettings,
+                HomeAction.OpenBusiness,
+                HomeAction.OpenAllSales,
+                HomeAction.OpenSale(5L),
+            ),
+            actions,
+        )
+    }
+
+    @Test
+    fun theDayShowsItsSalesProfitAndMargin() {
+        show(previewHomeContent())
+
+        compose.onNodeWithText(text(R.string.home_sales_today)).assertIsDisplayed()
+        compose.onNodeWithText(
+            resources.getQuantityString(R.plurals.stats_sales_count, 12, 12),
+        ).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.term_sales_profit)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.term_margin)).assertIsDisplayed()
+    }
+
+    @Test
+    fun theFirstUseLeadsToCreateTheFirstProduct() {
+        show(
+            previewHomeContent().copy(
+                hero = TodayHero.NoSalesYet,
+                firstUse = true,
+                recentSales = emptyList(),
+            ),
+        )
+
+        compose.onNodeWithText(text(R.string.empty_home_title)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.empty_home_action)).performClick()
+
+        assertEquals(listOf<HomeAction>(HomeAction.CreateFirstProduct), actions)
+        // Sin ventas nunca, la sección de las últimas no aparece.
+        assertTrue(
+            compose.onAllNodesWithText(text(R.string.home_recent_sales))
+                .fetchSemanticsNodes().isEmpty(),
+        )
+    }
+
+    @Test
+    fun aDayWithoutSalesWaitsForTheFirstOne() {
+        show(previewHomeContent().copy(hero = TodayHero.NoSalesYet))
+
+        compose.onNodeWithText(text(R.string.empty_home_day_body)).assertIsDisplayed()
+        assertTrue(
+            compose.onAllNodesWithText(text(R.string.term_sales_profit))
+                .fetchSemanticsNodes().isEmpty(),
+        )
+    }
+
+    @Test
+    fun theDiscreetModeHidesTheMoneyButNotTheNumberOfSales() {
+        show(previewHomeContent(), discreet = true)
+
+        // Ventas de hoy, ganancia y margen: tres cifras ocultas.
+        assertEquals(
+            3,
+            compose.onAllNodesWithContentDescription(text(R.string.a11y_discreet_hidden))
+                .fetchSemanticsNodes().size,
+        )
+        compose.onNodeWithText(
+            resources.getQuantityString(R.plurals.stats_sales_count, 12, 12),
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun aReadErrorCanBeRetried() {
+        show(HomeUiState.ReadError)
+
+        compose.onNodeWithText(text(R.string.action_retry)).performClick()
+
+        assertEquals(listOf<HomeAction>(HomeAction.Retry), actions)
+    }
+}

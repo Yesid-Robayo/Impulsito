@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -30,11 +31,14 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  *
  * @param style el estilo de `AppTheme.amounts` que tendría la cifra, para que los puntos midan lo
  *   mismo en alto y la fila no salte al cambiar de modo.
+ * @param color el tono apagado del fondo donde va la cifra: sobre el héroe, el apagado del héroe,
+ *   porque el de la superficie casi no se ve sobre el bloque de color.
  */
 @Composable
 fun DiscreetValue(
     modifier: Modifier = Modifier,
     style: TextStyle = AppTheme.amounts.row,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     content: @Composable () -> Unit,
 ) {
     if (LocalDiscreetMode.current) {
@@ -42,7 +46,7 @@ fun DiscreetValue(
         Text(
             text = DISCREET_TEXT,
             style = style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = color,
             maxLines = 1,
             softWrap = false,
             modifier =
