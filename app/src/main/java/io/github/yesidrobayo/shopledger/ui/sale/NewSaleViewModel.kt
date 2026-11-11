@@ -452,7 +452,24 @@ class NewSaleViewModel(
                     it.copy(status = RegisterStatus.IDLE, sheet = SaleSheet.CurrencyRequired)
                 }
 
-                else -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
+                // Cada rechazo se nombra, sin rama por defecto, para que un resultado nuevo del
+                // caso de uso obligue a decidir aquí cómo se muestra. Hoy todos dejan la venta
+                // armada y avisan que no se pudo registrar.
+                RegisterSaleResult.EmptySale,
+                RegisterSaleResult.TooManyLines,
+                RegisterSaleResult.NoteTooLong,
+                is RegisterSaleResult.UnknownTimeZone,
+                RegisterSaleResult.FutureDate,
+                RegisterSaleResult.PaymentMethodNotFound,
+                RegisterSaleResult.PaymentMethodArchived,
+                RegisterSaleResult.PaymentNeedsCustomer,
+                is RegisterSaleResult.LineRejected,
+                RegisterSaleResult.SaleTotalTooLarge,
+                is RegisterSaleResult.StorageFailed,
+                is RegisterSaleResult.PaymentRejected,
+                is RegisterSaleResult.PaymentsDoNotMatch,
+                RegisterSaleResult.OrderDiscountTooLarge,
+                -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }
     }
