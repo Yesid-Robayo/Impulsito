@@ -48,6 +48,7 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
 import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductListRoute
 import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.sale.CheckoutRoute
 import io.github.yesidrobayo.shopledger.ui.sale.NewSaleRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleHistoryRoute
@@ -150,6 +151,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.NewSale -> NewSaleRoute(key, navigator)
 
         is AppNavKey.SaleDetail -> SaleDetailRoute(key, navigator)
+
+        AppNavKey.Checkout -> CheckoutRoute(navigator)
 
         AppNavKey.SaleHistory -> SaleHistoryRoute(navigator)
 

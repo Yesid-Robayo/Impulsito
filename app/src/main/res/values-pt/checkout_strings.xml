@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checkout_more_options_action">Mais opções de cobrança</string>
+    <string name="checkout_show_qr_action">Mostrar QR</string>
+    <string name="checkout_total_due">Total a cobrar</string>
+    <string name="checkout_subtotal">Subtotal</string>
+    <string name="checkout_adjustment">Ajuste</string>
+    <string name="checkout_sale_adjustment">Ajuste da venda</string>
+    <string name="checkout_adjustment_discount">Desconto</string>
+    <string name="checkout_adjustment_surcharge">Acréscimo</string>
+    <string name="checkout_adjustment_by_amount">Em valor</string>
+    <string name="checkout_adjustment_by_percent">Em porcentagem</string>
+    <string name="checkout_adjustment_discount_summary">Desconto %1$s</string>
+    <string name="checkout_adjustment_surcharge_summary">Acréscimo %1$s</string>
+    <string name="checkout_method_surcharge">Acréscimo de %1$s</string>
+    <string name="checkout_method_discount">Desconto de %1$s</string>
+    <string name="checkout_adjustment_apply_action">Aplicar ajuste</string>
+    <string name="checkout_adjustment_remove_action">Remover ajuste</string>
+    <string name="checkout_section_payments">Pagamentos</string>
+    <string name="checkout_remove_payment_action">Remover pagamento</string>
+    <string name="checkout_fee">Taxa</string>
+    <string name="checkout_net_received">Valor líquido</string>
+    <string name="checkout_add_payment_action">Adicionar pagamento</string>
+    <string name="checkout_missing">Falta cobrar %1$s</string>
+    <string name="checkout_excess">Sobra %1$s</string>
+    <string name="checkout_complete">Pagamentos completos</string>
+    <string name="checkout_qr_total">Total a pagar</string>
+    <string name="checkout_qr_check">Verificar se o pagamento chegou antes de registrar.</string>
+    <string name="checkout_use_amount_action">Usar %1$s</string>
+    <string name="checkout_error_sum">Os pagamentos devem somar %1$s</string>
+    <string name="checkout_warning_fee">A taxa supera este pagamento. Verificar o valor.</string>
+    <string name="checkout_error_discount">O desconto não pode superar o total</string>
+    <string name="checkout_error_method_gone">Essa forma de pagamento não está mais disponível. Escolher outra.</string>
+    <string name="a11y_checkout_total">Total a cobrar: %1$s</string>
+    <string name="a11y_checkout_payment_row">Pagamento %1$d de %2$d: %3$s, %4$s</string>
+    <string name="a11y_checkout_remove_payment">Remover pagamento de %1$s</string>
+    <string name="a11y_checkout_qr_image">Código QR de %1$s</string>
+    <string name="a11y_checkout_discreet_fee">Taxa oculta</string>
+    <string name="checkout_payment_amount">Valor</string>
+    <string name="checkout_covers">Cobrado: %1$s</string>
+</resources>

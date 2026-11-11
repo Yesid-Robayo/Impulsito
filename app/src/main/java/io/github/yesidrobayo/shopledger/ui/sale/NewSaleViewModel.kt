@@ -114,39 +114,88 @@ class NewSaleViewModel(
     fun onAction(action: NewSaleAction) {
         when (action) {
             is NewSaleAction.QueryChange -> query.value = action.query
+
             is NewSaleAction.AddProduct -> addProduct(action.productId)
+
             is NewSaleAction.Increment -> add(action.productId, SaleCart.STEP)
+
             is NewSaleAction.Decrement -> editLines { SaleCart.decrement(it, action.productId) }
+
             is NewSaleAction.EditQuantity -> openQuantity(action.productId, adding = false)
+
             is NewSaleAction.SelectMethod -> selectMethod(action.methodId)
+
             NewSaleAction.OpenPaymentMethods -> showSheet(SaleSheet.PaymentMethods)
+
             NewSaleAction.OpenCart -> showSheet(SaleSheet.Cart)
+
             is NewSaleAction.OpenLine -> openLine(action.productId, focusPrice = false)
+
             NewSaleAction.CloseSheet -> showSheet(null)
+
             is NewSaleAction.LineQuantityChange -> lineQuantity(action.text)
+
             is NewSaleAction.LinePriceChange -> linePrice(action.text)
+
             is NewSaleAction.LineDiscountModeChange -> lineDiscount(action.mode, null)
+
             is NewSaleAction.LineDiscountChange -> lineDiscount(null, action.text)
+
             is NewSaleAction.RemoveLine -> removeLine(action.productId)
+
             is NewSaleAction.QuantityTextChange -> quantityText(action.text)
+
             NewSaleAction.QuantityConfirm -> confirmQuantity(null)
+
             is NewSaleAction.QuantityShortcut -> confirmQuantity(action.quantity)
+
             is NewSaleAction.DateChange -> changeDraft { draftDate(it, action) }
+
             is NewSaleAction.NoteChange -> changeDraft { it.copy(note = action.note) }
+
             NewSaleAction.ClearSale -> askClear()
+
             NewSaleAction.ConfirmClear -> clear()
+
             NewSaleAction.Close -> close()
+
             NewSaleAction.ConfirmLeave -> leave()
+
             NewSaleAction.DismissDialog -> overlay.update { it.copy(dialog = null) }
+
             NewSaleAction.Register -> register(zeroConfirmed = false)
+
             NewSaleAction.ConfirmZeroTotal -> register(zeroConfirmed = true)
+
             is NewSaleAction.CreateProduct -> awaitCreatedProduct()
+
             is NewSaleAction.Reactivate -> reactivateProduct(action.productId)
+
             NewSaleAction.ConfirmCurrency -> showSheet(null)
+
             NewSaleAction.RetryRead -> attempts.update { it + 1 }
+
             NewSaleAction.RegisteredShown -> overlay.update { it.copy(registered = null) }
+
             NewSaleAction.NoticeShown -> overlay.update { it.copy(notice = null) }
+
+            // El cobro es otra pantalla: la ruta deja la venta con checkoutDraft y lo abre.
+            NewSaleAction.OpenCheckout, NewSaleAction.ShowQr -> Unit
         }
+    }
+
+    /**
+     * La venta como está, con el método que se cobraría, para abrir el cobro; o `null` si todavía no
+     * se puede cobrar: sin líneas, o con algo que corregir. El cobro trabaja sobre esta copia, así
+     * que la venta queda intacta si la persona vuelve atrás.
+     */
+    fun checkoutDraft(): SaleDraft? {
+        val catalog = readyCatalog() ?: return null
+        val current = draft.value
+        if (!previewOf(catalog, current).canRegister || current.note.length > MAX_NOTE_LENGTH) {
+            return null
+        }
+        return current.copy(methodId = selectedMethodId(catalog, current))
     }
 
     // ------------------------------------------------------------------ armar la venta

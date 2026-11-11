@@ -45,6 +45,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
             quantitySymbols = formats.quantity.inputSymbols,
             percentSymbols = formats.percent.inputSymbols,
         )
+    val handoff = rememberCheckoutHandoff()
     val model =
         rememberAppViewModelWithState { dependencies, savedState ->
             val ports = dependencies.ports
@@ -144,6 +145,12 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
 
                         NewSaleAction.ConfirmCurrency ->
                             navigator.open(AppNavKey.RegionalSettings())
+
+                        NewSaleAction.OpenCheckout, NewSaleAction.ShowQr ->
+                            viewModel.checkoutDraft()?.let { draft ->
+                                handoff.offer(draft, qrOnly = action == NewSaleAction.ShowQr)
+                                navigator.open(AppNavKey.Checkout)
+                            }
 
                         else -> Unit
                     }

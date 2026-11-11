@@ -78,6 +78,12 @@ sealed interface NewSaleAction {
     data object RegisteredShown : NewSaleAction
 
     data object NoticeShown : NewSaleAction
+
+    /** `Más opciones de cobro`: abre el cobro con la venta como está. */
+    data object OpenCheckout : NewSaleAction
+
+    /** `Mostrar QR`: abre a pantalla completa la imagen de cobro del método elegido. */
+    data object ShowQr : NewSaleAction
 }
 
 /**

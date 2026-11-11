@@ -1,0 +1,49 @@
+package io.github.yesidrobayo.shopledger.ui.sale
+
+/** Lo que la persona hace en el cobro. La navegación la resuelve la ruta. */
+sealed interface CheckoutAction {
+    /** Lo escrito en el monto del pago número [index]. */
+    data class AmountChange(val index: Int, val text: String) : CheckoutAction
+
+    /** Lo escrito en la comisión del pago número [index]. En blanco vuelve a la del método. */
+    data class FeeChange(val index: Int, val text: String) : CheckoutAction
+
+    data class RemovePayment(val index: Int) : CheckoutAction
+
+    data object OpenAddPayment : CheckoutAction
+
+    /** Agrega un pago con [methodId], con lo que falta ya escrito. */
+    data class AddPayment(val methodId: Long) : CheckoutAction
+
+    /** Completa el último pago tocado con lo que falta, o le quita lo que sobra. */
+    data object UseDue : CheckoutAction
+
+    data object OpenAdjustment : CheckoutAction
+
+    data class AdjustmentKindChange(val kind: AdjustmentKind) : CheckoutAction
+
+    data class AdjustmentInputChange(val input: AdjustmentInput) : CheckoutAction
+
+    data class AdjustmentTextChange(val text: String) : CheckoutAction
+
+    data object ApplyAdjustment : CheckoutAction
+
+    data object RemoveAdjustment : CheckoutAction
+
+    data object CloseSheet : CheckoutAction
+
+    /** Muestra a pantalla completa la imagen de cobro del pago número [index]. */
+    data class ShowQr(val index: Int) : CheckoutAction
+
+    /** Cierra la imagen de cobro. Si se abrió desde la venta, vuelve a ella. */
+    data object CloseQr : CheckoutAction
+
+    data object Register : CheckoutAction
+
+    /** Confirmar un cobro en cero, el único caso que lo pide. */
+    data object ConfirmZeroTotal : CheckoutAction
+
+    data object DismissDialog : CheckoutAction
+
+    data object RegisteredShown : CheckoutAction
+}

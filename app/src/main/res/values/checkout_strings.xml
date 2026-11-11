@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checkout_more_options_action">More checkout options</string>
+    <string name="checkout_show_qr_action">Show QR</string>
+    <string name="checkout_total_due">Total due</string>
+    <string name="checkout_subtotal">Subtotal</string>
+    <string name="checkout_adjustment">Adjustment</string>
+    <string name="checkout_sale_adjustment">Sale adjustment</string>
+    <string name="checkout_adjustment_discount">Discount</string>
+    <string name="checkout_adjustment_surcharge">Surcharge</string>
+    <string name="checkout_adjustment_by_amount">By amount</string>
+    <string name="checkout_adjustment_by_percent">By percentage</string>
+    <string name="checkout_adjustment_discount_summary">Discount %1$s</string>
+    <string name="checkout_adjustment_surcharge_summary">Surcharge %1$s</string>
+    <string name="checkout_method_surcharge">%1$s surcharge</string>
+    <string name="checkout_method_discount">%1$s discount</string>
+    <string name="checkout_adjustment_apply_action">Apply adjustment</string>
+    <string name="checkout_adjustment_remove_action">Remove adjustment</string>
+    <string name="checkout_section_payments">Payments</string>
+    <string name="checkout_remove_payment_action">Remove payment</string>
+    <string name="checkout_fee">Fee</string>
+    <string name="checkout_net_received">Net received</string>
+    <string name="checkout_add_payment_action">Add payment</string>
+    <string name="checkout_missing">%1$s still due</string>
+    <string name="checkout_excess">%1$s over</string>
+    <string name="checkout_complete">Payments complete</string>
+    <string name="checkout_qr_total">Total to pay</string>
+    <string name="checkout_qr_check">Check that the payment arrived before recording.</string>
+    <string name="checkout_use_amount_action">Use %1$s</string>
+    <string name="checkout_error_sum">Payments must add up to %1$s</string>
+    <string name="checkout_warning_fee">The fee exceeds this payment. Check the value.</string>
+    <string name="checkout_error_discount">The discount cannot exceed the total</string>
+    <string name="checkout_error_method_gone">That method is no longer available. Choose another.</string>
+    <string name="a11y_checkout_total">Total due: %1$s</string>
+    <string name="a11y_checkout_payment_row">Payment %1$d of %2$d: %3$s, %4$s</string>
+    <string name="a11y_checkout_remove_payment">Remove %1$s payment</string>
+    <string name="a11y_checkout_qr_image">%1$s QR code</string>
+    <string name="a11y_checkout_discreet_fee">Fee hidden</string>
+    <string name="checkout_payment_amount">Amount</string>
+    <string name="checkout_covers">Charged: %1$s</string>
+</resources>

@@ -301,6 +301,7 @@ private fun SalePanel(
                 if (!cart.isEmpty) {
                     PaymentChoice(uiState.payment, onAction, compact)
                     SaleSummary(cart, onAction, opensCart)
+                    CheckoutActions(uiState, onAction)
                     if (uiState.status == RegisterStatus.FAILED) {
                         NoticeCard(
                             text = stringResource(R.string.error_sale_register),
@@ -423,6 +424,32 @@ private fun SaleSummary(
                 text = problem,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/**
+ * `Más opciones de cobro`, que abre el cobro, y `Mostrar QR` si el método elegido tiene imagen o
+ * instrucciones de cobro. Nunca se interponen: `Registrar venta` sigue confirmando directo. Solo
+ * aparecen cuando la venta se puede cobrar.
+ */
+@Composable
+private fun CheckoutActions(uiState: NewSaleUiState, onAction: (NewSaleAction) -> Unit) {
+    if (!uiState.cart.canRegister) return
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        InlineTextButton(
+            text = stringResource(R.string.checkout_more_options_action),
+            onClick = { onAction(NewSaleAction.OpenCheckout) },
+        )
+        if (uiState.payment.selected?.hasQr == true) {
+            InlineTextButton(
+                text = stringResource(R.string.checkout_show_qr_action),
+                onClick = { onAction(NewSaleAction.ShowQr) },
             )
         }
     }
