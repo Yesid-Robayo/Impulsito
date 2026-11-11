@@ -70,6 +70,7 @@ internal class RoomSalePaymentRepository(database: AppDatabase) : SalePaymentRep
         settlementDays = row.settlementDays.toStoredInt(),
         moneyAccountId = row.moneyAccountId,
         isArchived = row.archivedAt != null,
+        priceAdjustment = BasisPoints(row.priceAdjustmentBp),
     )
 
     private fun toPayment(row: SalePaymentEntity): SalePayment = SalePayment(

@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSalePayment
+import io.github.yesidrobayo.shopledger.domain.model.sale.PaymentRejection
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
@@ -41,10 +42,14 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockSubject
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
+import io.github.yesidrobayo.shopledger.domain.rule.sale.AdjustmentSplit
+import io.github.yesidrobayo.shopledger.domain.rule.sale.OrderAdjustmentShares
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentFees
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSplit
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSplitCheck
+import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSurcharges
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleLineRules
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SurchargeSettlement
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
 import kotlin.time.Instant
@@ -68,9 +73,12 @@ import kotlin.time.Instant
  *   exactamente lo que se cobra, o no se confirma. Cada pago lleva la comisión y la acreditación
  *   que la persona escribió en su método, y copia el nombre y el tipo del método, y su cuenta, sin
  *   mover dinero todavía.
+ * - **El recargo o descuento de cada método** se calcula sobre lo que cubre su pago antes del
+ *   recargo, se suma al ajuste de la venta y se reparte entre las líneas. Cada pago cubre además lo
+ *   que su recargo sube el total.
  *
- * Por ahora no calcula impuesto, ni ajuste global, propina o redondeo del efectivo: la venta queda
- * con impuesto cero y esos montos en cero. Tampoco vende combos ni productos con lotes, ni a
+ * Por ahora no calcula impuesto, ni ajuste global escrito, propina o redondeo del efectivo: la
+ * venta queda con impuesto cero y esos montos en cero. Tampoco vende combos ni productos con lotes, ni a
  * crédito: los rechaza con su motivo.
  */
 class RegisterSaleUseCase(
@@ -116,10 +124,8 @@ class RegisterSaleUseCase(
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
         }
-        val salePayments = when (
-            val result = settle(chosen, priced.totals.total, time.businessDate, now)
-        ) {
-            is Settled.Payments -> result.payments
+        val settled = when (val result = settle(chosen, priced, time.businessDate, now)) {
+            is Settled.Payments -> result
             is Settled.Rejected -> return TxResult.Rollback(result.rejection)
         }
 
@@ -131,7 +137,7 @@ class RegisterSaleUseCase(
             CurrencyLockResult.Unconfirmed ->
                 return TxResult.Rollback(RegisterSaleResult.CurrencyNotConfirmed)
         }
-        val saleId = write(priced, salePayments, note, time, now)
+        val saleId = write(settled.priced, settled.payments, note, time, now)
         return TxResult.Commit(RegisterSaleResult.Registered(saleId))
     }
 
@@ -311,17 +317,19 @@ class RegisterSaleUseCase(
     }
 
     /**
-     * Los pagos que se guardan, en el orden en que se escribieron, si suman exactamente
-     * [amountDue] y ninguna comisión pasa del tope.
+     * Los pagos que se guardan, en el orden en que se escribieron, y las líneas con el ajuste que
+     * suman los recargos de sus métodos. Los pagos escritos deben sumar exactamente lo que se cobra
+     * antes de los recargos, y ninguna comisión puede pasar del tope.
      */
     private fun settle(
         chosen: List<ChosenPayment>,
-        amountDue: Money,
+        priced: Priced.Lines,
         businessDate: BusinessDate,
         now: Instant,
     ): Settled {
-        val amounts = chosen.map { it.amount ?: amountDue }
-        when (val check = PaymentSplit.check(amountDue, amounts)) {
+        val amountDue = priced.totals.total
+        val written = chosen.map { it.amount ?: amountDue }
+        when (val check = PaymentSplit.check(amountDue, written)) {
             PaymentSplitCheck.Matches -> Unit
 
             is PaymentSplitCheck.Mismatch ->
@@ -332,11 +340,49 @@ class RegisterSaleUseCase(
             PaymentSplitCheck.AboveLimit ->
                 return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
         }
+        val surcharges = PaymentSurcharges.settle(
+            amounts = written,
+            rates = chosen.map { it.method.priceAdjustment },
+            totalWith = { adjustment -> adjusted(priced, adjustment)?.totals?.total },
+        )
+        val (adjustment, amounts) = when (surcharges) {
+            is SurchargeSettlement.Settled -> surcharges.adjustment to surcharges.amounts
+
+            SurchargeSettlement.NotAllowed ->
+                return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
+
+            is SurchargeSettlement.BelowZero -> return Settled.Rejected(
+                RegisterSaleResult.PaymentRejected(
+                    surcharges.index,
+                    PaymentRejection.BELOW_ZERO_AFTER_ADJUSTMENT,
+                ),
+            )
+        }
+        // Los recargos ya se probaron con este mismo ajuste: la venta lo admite.
+        val adjustedLines = checkNotNull(adjusted(priced, adjustment)) { "El ajuste ya se probó" }
         val settled = chosen.zip(amounts) { payment, amount ->
             paymentOf(payment.method, amount, businessDate, now)
                 ?: return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
         }
-        return Settled.Payments(settled)
+        return Settled.Payments(adjustedLines, settled)
+    }
+
+    /**
+     * Las líneas con [adjustment] repartido entre ellas, con sus totales, o `null` si la venta no lo
+     * admite: un descuento mayor que lo vendido, o un total sobre el tope de un documento. Parte
+     * siempre de las líneas sin ajuste, así que se puede probar con varios ajustes.
+     */
+    private fun adjusted(priced: Priced.Lines, adjustment: Money): Priced.Lines? {
+        val split = OrderAdjustmentShares.split(adjustment, priced.lines.map { it.net })
+        val shares = when (split) {
+            is AdjustmentSplit.Shares -> split.shares
+            AdjustmentSplit.DiscountAboveBases -> return null
+        }
+        val totals = Totals()
+        val lines = priced.lines.zip(shares) { line, share ->
+            line.withShare(share).also { if (!totals.add(it)) return null }
+        }
+        return Priced.Lines(lines, totals, adjustment)
     }
 
     /**
@@ -385,7 +431,7 @@ class RegisterSaleUseCase(
                 total = totals.total,
                 totalCost = totals.cost,
                 totalReplacementCost = totals.replacement,
-                orderAdjustment = Money.ZERO,
+                orderAdjustment = priced.adjustment,
                 tipAmount = Money.ZERO,
                 cashRoundingAmount = Money.ZERO,
                 amountDue = totals.total,
@@ -441,7 +487,7 @@ class RegisterSaleUseCase(
         unitPrice = unitPrice,
         unitCost = unitCost,
         lineDiscount = discount,
-        orderAdjustmentShare = Money.ZERO,
+        orderAdjustmentShare = share,
         netAmount = net,
         taxRate = BasisPoints.ZERO,
         taxNameSnapshot = null,
@@ -477,7 +523,26 @@ class RegisterSaleUseCase(
         val plan: LineStockPlan,
         val unitReplacement: Money,
         val lineReplacement: Money,
-    )
+        val share: Money = Money.ZERO,
+    ) {
+        /**
+         * La misma línea con su parte [share] del ajuste de la venta. Sin impuesto todavía, lo
+         * neto es lo que la línea cobra después del ajuste: su base más su parte. Se llama sobre
+         * la línea sin ajuste.
+         */
+        fun withShare(share: Money): PricedLine = PricedLine(
+            product = product,
+            quantity = quantity,
+            unitPrice = unitPrice,
+            unitCost = unitCost,
+            discount = discount,
+            net = net + share,
+            plan = plan,
+            unitReplacement = unitReplacement,
+            lineReplacement = lineReplacement,
+            share = share,
+        )
+    }
 
     private sealed interface LineResult {
         class Ready(val line: PricedLine) : LineResult
@@ -495,13 +560,17 @@ class RegisterSaleUseCase(
     }
 
     private sealed interface Settled {
-        class Payments(val payments: List<NewSalePayment>) : Settled
+        class Payments(val priced: Priced.Lines, val payments: List<NewSalePayment>) : Settled
 
         class Rejected(val rejection: RegisterSaleResult) : Settled
     }
 
     private sealed interface Priced {
-        class Lines(val lines: List<PricedLine>, val totals: Totals) : Priced
+        class Lines(
+            val lines: List<PricedLine>,
+            val totals: Totals,
+            val adjustment: Money = Money.ZERO,
+        ) : Priced
 
         class Rejected(val rejection: RegisterSaleResult) : Priced
     }

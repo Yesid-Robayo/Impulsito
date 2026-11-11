@@ -490,6 +490,7 @@ internal fun method(
     settlementDays: Int = 0,
     moneyAccountId: Long? = null,
     archived: Boolean = false,
+    priceAdjustmentBp: Long = 0L,
 ): SalePaymentMethod = SalePaymentMethod(
     id = id,
     systemKey = systemKey,
@@ -500,4 +501,5 @@ internal fun method(
     settlementDays = settlementDays,
     moneyAccountId = moneyAccountId,
     isArchived = archived,
+    priceAdjustment = BasisPoints(priceAdjustmentBp),
 )

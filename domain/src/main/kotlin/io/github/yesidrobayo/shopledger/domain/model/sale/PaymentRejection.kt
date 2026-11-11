@@ -10,4 +10,10 @@ enum class PaymentRejection {
 
     /** El monto es negativo o pasa del tope de un documento. */
     INVALID_AMOUNT,
+
+    /**
+     * El descuento del método, con el impuesto que deja de cobrarse, baja el total más que lo que
+     * el pago cubría: el pago quedaría negativo.
+     */
+    BELOW_ZERO_AFTER_ADJUSTMENT,
 }

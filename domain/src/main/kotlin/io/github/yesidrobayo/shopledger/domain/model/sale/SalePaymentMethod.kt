@@ -15,6 +15,9 @@ import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
  * [feeRate] y [feeFixed] son la comisión que escribió la persona, nunca una tarifa de la app, y
  * [settlementDays] cuántos días tarda en llegar el dinero. [moneyAccountId] es la cuenta a la que
  * entra lo cobrado; sin cuenta no se mueve dinero. Archivado, el método no se ofrece al cobrar.
+ *
+ * [priceAdjustment] es el recargo o descuento por pagar con este método, con signo, de −100 % a
+ * +100 %: se calcula sobre lo que cubre el pago y se suma al ajuste de toda la venta.
  */
 data class SalePaymentMethod(
     val id: Long,
@@ -26,4 +29,5 @@ data class SalePaymentMethod(
     val settlementDays: Int,
     val moneyAccountId: Long?,
     val isArchived: Boolean,
+    val priceAdjustment: BasisPoints = BasisPoints.ZERO,
 )

@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data.repository
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.backup.InvariantQueries
+import io.github.yesidrobayo.shopledger.data.local.payment.paymentMethod
 import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -21,7 +22,8 @@ import org.junit.runner.RunWith
 /**
  * Una venta cobrada con varios métodos sobre la base real, con sus guardas: un pago por método, que
  * suman lo que la venta cobra, y cero filas en cada consulta de invariantes. Un cobro que no suma
- * no deja nada, ni siquiera el cambio de la cuenta de cambios.
+ * no deja nada, ni siquiera el cambio de la cuenta de cambios. El recargo o descuento de un método
+ * entra en el ajuste de la venta y en sus líneas, y las guardas lo aceptan.
  *
  * Los productos y montos son inventados.
  */
@@ -49,8 +51,8 @@ internal class RegisterSplitSaleOnDatabaseTest : RepositoryTest() {
     private suspend fun methodId(systemKey: String): Long =
         count("SELECT id FROM payment_methods WHERE system_key = '$systemKey'")
 
-    private suspend fun soldProduct(): Long = commit {
-        val id = products.insert(newProduct("Jabón inventado").copy(salePrice = Money(5_281)))
+    private suspend fun soldProduct(name: String = "Jabón inventado"): Long = commit {
+        val id = products.insert(newProduct(name).copy(salePrice = Money(5_281)))
         ledger.append(openingRow(id, 10))
         id
     }
@@ -99,6 +101,50 @@ internal class RegisterSplitSaleOnDatabaseTest : RepositoryTest() {
         assertEquals(0L, count("SELECT COUNT(*) FROM sales"))
         assertEquals(0L, count("SELECT COUNT(*) FROM sale_payments"))
         assertEquals(onHand, requireNotNull(products.findById(product)).onHand)
+        assertInvariantsHold()
+    }
+
+    @Test
+    fun surchargesAndDiscountsOfTheMethodsPassEveryGuardAndInvariant() = runBlocking {
+        val first = soldProduct()
+        val second = soldProduct("Café inventado")
+        val surcharged = commit {
+            database.paymentMethodDao().insert(
+                paymentMethod("Tarjeta inventada", kind = "CARD").copy(priceAdjustmentBp = 500),
+            )
+        }
+        val discounted = commit {
+            database.paymentMethodDao().insert(
+                paymentMethod("Billetera inventada").copy(priceAdjustmentBp = -333),
+            )
+        }
+
+        // 10562 por cobrar: 6000 con +5 % suman 300, y 4562 con −3,33 % restan 152.
+        val result = registerSale(
+            SaleRequest(
+                lines = listOf(
+                    SaleLineRequest(first, QuantityMilli.ofUnits(1L)),
+                    SaleLineRequest(second, QuantityMilli.ofUnits(1L), unitPrice = Money(5_281)),
+                ),
+                paymentMethodId = methodId("CASH"),
+                payments = listOf(
+                    SalePaymentRequest(surcharged, Money(6_000)),
+                    SalePaymentRequest(discounted, Money(4_562)),
+                ),
+            ),
+        )
+
+        val saleId = (result as RegisterSaleResult.Registered).saleId
+        assertEquals(148L, count("SELECT order_adjustment FROM sales WHERE id = $saleId"))
+        assertEquals(10_710L, count("SELECT amount_due FROM sales WHERE id = $saleId"))
+        assertEquals(
+            listOf(6_300L, 4_410L),
+            salePayments.findBySale(saleId).map { it.content.amount.minor },
+        )
+        assertEquals(
+            148L,
+            count("SELECT SUM(order_adjustment_share) FROM sale_lines WHERE sale_id = $saleId"),
+        )
         assertInvariantsHold()
     }
 
