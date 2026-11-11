@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Restaurar una copia o un archivo. Textos de la guía de redacción. -->
+    <string name="backup_action_find_file">Find a file</string>
+    <string name="backup_action_restore">Restore</string>
+    <!-- dialog_restore_title: %1$s = date -->
+    <string name="dialog_restore_title">Restore the backup from %1$s?</string>
+    <string name="dialog_restore_body">What is on this phone is replaced by that backup. Anything recorded after that date will be missing. A safety copy is saved here first.</string>
+    <string name="dialog_restore_action">Restore backup</string>
+    <string name="dialog_restore_file_title">Restore this file?</string>
+    <!-- dialog_restore_file_body: %1$s = app -->
+    <string name="dialog_restore_file_body">This file does not come from %1$s\'s list of backups, so there is no way to know who made it. Only open it if its source is known. What is on this phone is replaced. A safety copy is saved here first.</string>
+    <string name="dialog_restore_file_action">Restore file</string>
+    <string name="dialog_restore_differences_title">Restore this backup?</string>
+    <string name="dialog_restore_differences_action">Restore and correct</string>
+    <string name="dialog_no_safety_copy_title">Continue without a safety copy?</string>
+    <string name="dialog_no_safety_copy_body">The current data is damaged and could not be copied. That damaged file is kept on this phone for 30 days.</string>
+    <string name="dialog_no_safety_copy_action">Continue without a copy</string>
+    <string name="restore_error_damaged">This backup is damaged and cannot be used. The current data is intact.</string>
+    <string name="restore_error_slot_try_next">That file could not be opened. Another of the three can be tried, from newest to oldest. The current data is intact.</string>
+    <!-- restore_error_newer: %1$s = app -->
+    <string name="restore_error_newer">This backup is from a newer version of %1$s. Update the app to use it. The current data is intact.</string>
+    <string name="restore_error_no_internet">Getting the backup needs internet. The current data is intact.</string>
+    <!-- restore_error_no_space: %1$s = n -->
+    <string name="restore_error_no_space">The phone has no space for this backup. Free up %1$s MB. The current data is intact.</string>
+    <!-- restore_error_too_large: %1$s = app -->
+    <string name="restore_error_too_large">This backup exceeds the size %1$s can open. The current data is intact.</string>
+    <!-- restore_error_not_backup: %1$s = app -->
+    <string name="restore_error_not_backup">This file is not a %1$s backup. The current data is intact.</string>
+    <string name="restore_error_other">The restore failed. The current data is intact.</string>
+    <string name="restore_error_cancelled">Restore cancelled. The current data is intact.</string>
+    <string name="restore_stage_downloading">Downloading</string>
+    <string name="restore_stage_checking">Checking the backup</string>
+    <string name="restore_no_exit">Almost done. Do not close the app.</string>
+    <string name="restore_after_restart">Restoring the data</string>
+    <string name="action_close">Close</string>
+    <!-- Propuestos en la restauración: la copia vacía y qué copia de seguridad descartar. -->
+    <plurals name="dialog_restore_differences_body">
+        <item quantity="one">%1$d product has stock that does not match its history. Restoring recalculates it from the history.</item>
+        <item quantity="other">%1$d products have stock that does not match their history. Restoring recalculates it from the history.</item>
+    </plurals>
+    <string name="dialog_restore_empty_title">Restore an empty backup?</string>
+    <string name="dialog_restore_empty_body">This backup has no business data, and this phone does. Restoring it leaves this phone empty. A safety copy is saved here first.</string>
+    <string name="dialog_restore_empty_action">Restore empty backup</string>
+    <string name="dialog_discard_safety_title">Which safety copy to discard?</string>
+    <string name="dialog_discard_safety_body">Both safety copies on this phone have changes that did not reach the cloud. To continue, one of them must be discarded.</string>
+    <string name="dialog_discard_safety_option">Discard the one from %1$s</string>
+</resources>

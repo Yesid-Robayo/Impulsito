@@ -90,7 +90,7 @@ private fun RejectedPasswordPreview() {
         WebDavConnectScreen(
             PREVIEW_FILLED.copy(
                 suggestion = null,
-                url = "http://dav.example.com",
+                url = "https://dav.example.com",
                 urlError = null,
                 passwordRejected = true,
                 steps = previewSteps(WebDavTestStep.LIST, failed = true),

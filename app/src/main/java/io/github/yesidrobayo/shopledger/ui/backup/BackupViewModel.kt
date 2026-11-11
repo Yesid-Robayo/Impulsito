@@ -3,11 +3,15 @@ package io.github.yesidrobayo.shopledger.ui.backup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
+import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
+import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -36,6 +40,7 @@ import kotlinx.coroutines.withContext
  * @param requestBackup pide la copia con `Respaldar ahora`.
  * @param recordCheck anota `Ya la vi en {provider}` con la generación en pantalla; devuelve si quedó.
  * @param computation el hilo donde se leen el destino y la lista, fuera del principal.
+ * @param restore restaurar una copia de la lista o un archivo elegido; nulo donde no se ofrece.
  */
 class BackupViewModel(
     overview: (Flow<Unit>) -> Flow<BackupOverview>,
@@ -44,6 +49,7 @@ class BackupViewModel(
     private val requestBackup: suspend () -> Unit,
     private val recordCheck: suspend (Long) -> Boolean,
     private val computation: CoroutineDispatcher,
+    private val restore: RestoreBackupUseCase? = null,
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = state.asStateFlow()
@@ -51,6 +57,7 @@ class BackupViewModel(
     // Cada vuelta a primer plano recalcula el estado con la hora nueva.
     private val refreshes = MutableStateFlow(0L)
     private var listing: Job? = null
+    private var restoring: Job? = null
 
     init {
         val zones = calendar.map { (it as? BusinessCalendarResult.Ready)?.calendar?.zone }
@@ -87,11 +94,31 @@ class BackupViewModel(
 
             BackupAction.CloseMissingHelp -> state.update { it.copy(missingHelp = false) }
 
+            is BackupAction.OpenCopy -> copyOf(action.key)?.let { copy ->
+                state.update { it.copy(restore = RestoreUi.CopySheet(copy)) }
+            }
+
+            is BackupAction.ConfirmCopy -> copyOf(action.key)?.let { copy ->
+                state.update { it.copy(restore = RestoreUi.ConfirmCopy(copy)) }
+            }
+
+            is BackupAction.FilePicked ->
+                state.update { it.copy(restore = RestoreUi.ConfirmFile(action.uri)) }
+
+            BackupAction.StartRestore -> startRestore()
+
+            is BackupAction.Answer -> answer(action.answer)
+
+            BackupAction.CancelRestore -> cancelRestore()
+
+            BackupAction.CloseRestore -> state.update { it.copy(restore = RestoreUi.Idle) }
+
             // Lo resuelve la navegación.
             BackupAction.Back,
             BackupAction.ChooseDestination,
             BackupAction.ReviewPolicy,
             BackupAction.OpenProvider,
+            BackupAction.FindFile,
             -> Unit
         }
     }
@@ -150,6 +177,100 @@ class BackupViewModel(
             if (!saved) return@launch
             val handoff = read { destination.latestHandoff() }
             state.update { it.copy(handoff = handoff, message = BackupMessage.CHECK_SAVED) }
+        }
+    }
+
+    private fun copyOf(key: String): BackupCopySummary? =
+        (state.value.copies as? BackupCopyList.Listed)?.copies?.firstOrNull {
+            it.key == key && it.restorable
+        }
+
+    /**
+     * Empieza lo confirmado. Con WebDAV, traer la copia pide internet: sin red no empieza, y los
+     * datos no cambian.
+     */
+    private fun startRestore() {
+        val use = restore ?: return
+        val current = state.value.restore
+        val (origin, run) =
+            when (current) {
+                is RestoreUi.ConfirmCopy -> {
+                    val webDav = state.value.destination is BackupDestinationInfo.WebDav
+                    if (webDav && !destination.hasNetwork()) {
+                        state.update {
+                            it.copy(
+                                restore = RestoreUi.Stopped(
+                                    RestoreNotice.NO_INTERNET,
+                                    RestoreOrigin.LIST,
+                                ),
+                            )
+                        }
+                        return
+                    }
+                    RestoreOrigin.LIST to suspend { use.copy(current.copy.key) }
+                }
+
+                is RestoreUi.ConfirmFile -> RestoreOrigin.FILE to suspend { use.file(current.uri) }
+
+                RestoreUi.Idle,
+                is RestoreUi.CopySheet,
+                is RestoreUi.Working,
+                is RestoreUi.Asking,
+                is RestoreUi.Stopped,
+                RestoreUi.Ready,
+                -> return
+            }
+        follow(origin, run)
+    }
+
+    private fun answer(answer: RestoreAnswer) {
+        val use = restore ?: return
+        val asking = state.value.restore as? RestoreUi.Asking ?: return
+        follow(asking.origin) { use.answer(answer) }
+    }
+
+    /** Corre un tramo de la restauración y deja en pantalla en qué quedó. */
+    private fun follow(origin: RestoreOrigin, step: suspend () -> RestoreProgress) {
+        state.update { it.copy(restore = RestoreUi.Working(origin)) }
+        restoring = viewModelScope.launch {
+            val progress = read { step() } ?: RestoreProgress.Failed
+            state.update { it.copy(restore = uiOf(progress, origin)) }
+        }
+    }
+
+    private fun uiOf(progress: RestoreProgress, origin: RestoreOrigin): RestoreUi {
+        if (RestoreBackupUseCase.asks(progress)) return RestoreUi.Asking(progress, origin)
+        if (progress is RestoreProgress.ReadyToRestart) return RestoreUi.Ready
+        val notice = noticeOf(progress, origin) ?: RestoreNotice.OTHER
+        val missing = (progress as? RestoreProgress.NotEnoughSpace)?.missingBytes ?: 0L
+        return RestoreUi.Stopped(notice, origin, missing)
+    }
+
+    /**
+     * Cancela: corta lo que corre, lo que abandona la preparación sin tocar los datos, o suelta la
+     * pregunta en espera. Lista para reiniciar ya no se cancela.
+     */
+    private fun cancelRestore() {
+        val current = state.value.restore
+        val origin =
+            when (current) {
+                is RestoreUi.Working -> current.origin
+
+                is RestoreUi.Asking -> current.origin
+
+                RestoreUi.Idle,
+                is RestoreUi.CopySheet,
+                is RestoreUi.ConfirmCopy,
+                is RestoreUi.ConfirmFile,
+                is RestoreUi.Stopped,
+                RestoreUi.Ready,
+                -> return
+            }
+        restoring?.cancel()
+        restoring = null
+        state.update { it.copy(restore = RestoreUi.Stopped(RestoreNotice.CANCELLED, origin)) }
+        if (current is RestoreUi.Asking) {
+            viewModelScope.launch { read { restore?.cancel() } }
         }
     }
 

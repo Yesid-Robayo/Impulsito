@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Restaurar una copia o un archivo. Textos de la guía de redacción. -->
+    <string name="backup_action_find_file">Buscar un archivo</string>
+    <string name="backup_action_restore">Restaurar</string>
+    <!-- dialog_restore_title: %1$s = date -->
+    <string name="dialog_restore_title">¿Restaurar la copia del %1$s?</string>
+    <string name="dialog_restore_body">Lo que hay en este teléfono se reemplaza por esa copia. Lo registrado después de esa fecha no estará. Antes se guarda una copia de seguridad aquí.</string>
+    <string name="dialog_restore_action">Restaurar copia</string>
+    <string name="dialog_restore_file_title">¿Restaurar este archivo?</string>
+    <!-- dialog_restore_file_body: %1$s = app -->
+    <string name="dialog_restore_file_body">Este archivo no viene de la lista de copias de %1$s, así que no se puede saber quién lo hizo. Solo conviene abrirlo si se sabe de dónde salió. Lo que hay en este teléfono se reemplaza. Antes se guarda una copia de seguridad aquí.</string>
+    <string name="dialog_restore_file_action">Restaurar archivo</string>
+    <string name="dialog_restore_differences_title">¿Restaurar esta copia?</string>
+    <string name="dialog_restore_differences_action">Restaurar y corregir</string>
+    <string name="dialog_no_safety_copy_title">¿Seguir sin copia de seguridad?</string>
+    <string name="dialog_no_safety_copy_body">Los datos actuales están dañados y no se pudieron copiar. Ese archivo dañado se guarda 30 días en este teléfono.</string>
+    <string name="dialog_no_safety_copy_action">Seguir sin copia</string>
+    <string name="restore_error_damaged">Esta copia está dañada y no se puede usar. Los datos actuales siguen intactos.</string>
+    <string name="restore_error_slot_try_next">Ese archivo no se pudo abrir. Se puede probar con otro de los tres, del más nuevo al más viejo. Los datos actuales siguen intactos.</string>
+    <!-- restore_error_newer: %1$s = app -->
+    <string name="restore_error_newer">Esta copia es de una versión más nueva de %1$s. Se debe actualizar la app para usarla. Los datos actuales siguen intactos.</string>
+    <string name="restore_error_no_internet">Traer la copia requiere internet. Los datos actuales siguen intactos.</string>
+    <!-- restore_error_no_space: %1$s = n -->
+    <string name="restore_error_no_space">El teléfono no tiene espacio para esta copia. Se necesita liberar %1$s MB. Los datos actuales siguen intactos.</string>
+    <!-- restore_error_too_large: %1$s = app -->
+    <string name="restore_error_too_large">Esta copia supera el tamaño que %1$s puede abrir. Los datos actuales siguen intactos.</string>
+    <!-- restore_error_not_backup: %1$s = app -->
+    <string name="restore_error_not_backup">Este archivo no es una copia de %1$s. Los datos actuales siguen intactos.</string>
+    <string name="restore_error_other">No se pudo restaurar. Los datos actuales siguen intactos.</string>
+    <string name="restore_error_cancelled">Restauración cancelada. Los datos actuales siguen intactos.</string>
+    <string name="restore_stage_downloading">Descargando</string>
+    <string name="restore_stage_checking">Revisando la copia</string>
+    <string name="restore_no_exit">Ya casi termina. La app no se debe cerrar.</string>
+    <string name="restore_after_restart">Restaurando los datos</string>
+    <string name="action_close">Cerrar</string>
+    <!-- Propuestos en la restauración: la copia vacía y qué copia de seguridad descartar. -->
+    <plurals name="dialog_restore_differences_body">
+        <item quantity="one">%1$d producto tiene un stock que no coincide con su historial. Al restaurar, se recalcula desde el historial.</item>
+        <item quantity="many">%1$d de productos tienen un stock que no coincide con su historial. Al restaurar, se recalcula desde el historial.</item>
+        <item quantity="other">%1$d productos tienen un stock que no coincide con su historial. Al restaurar, se recalcula desde el historial.</item>
+    </plurals>
+    <string name="dialog_restore_empty_title">¿Restaurar una copia vacía?</string>
+    <string name="dialog_restore_empty_body">Esta copia no tiene datos del negocio, y este teléfono sí. Al restaurarla, este teléfono queda vacío. Antes se guarda una copia de seguridad aquí.</string>
+    <string name="dialog_restore_empty_action">Restaurar copia vacía</string>
+    <string name="dialog_discard_safety_title">¿Qué copia de seguridad descartar?</string>
+    <string name="dialog_discard_safety_body">Las dos copias de seguridad de este teléfono tienen cambios que no llegaron a la nube. Para seguir, hay que descartar una de ellas.</string>
+    <string name="dialog_discard_safety_option">Descartar la del %1$s</string>
+</resources>

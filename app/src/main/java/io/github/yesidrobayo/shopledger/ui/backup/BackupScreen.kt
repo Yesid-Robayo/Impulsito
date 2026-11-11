@@ -63,6 +63,7 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.backupToneContainer
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
+import kotlin.time.Instant
 
 /**
  * La pantalla del respaldo: tranquilidad con hechos. Cuándo se guardó lo último, qué falta, dónde
@@ -135,6 +136,12 @@ fun BackupScreen(
                     }
                 }
             }
+            RestoreLayer(
+                restore = uiState.restore,
+                rowOf = { copyRowData(it, uiState.wording) },
+                dateOf = { instantText(it, uiState.wording) },
+                onAction = onAction,
+            )
         }
     }
 }
@@ -450,9 +457,37 @@ private fun Destination(info: BackupDestinationInfo?, onAction: (BackupAction) -
 
 /** `Copias en la nube` y su lista, con todos sus estados. Sin destino no aparece. */
 private fun LazyListScope.copies(uiState: BackupUiState, onAction: (BackupAction) -> Unit) {
+    val stopped = uiState.restore as? RestoreUi.Stopped
+    if (stopped != null) {
+        item(key = RESTORE_NOTICE) {
+            Column(Modifier.padding(horizontal = AppTheme.spacing.s16)) {
+                RestoreStoppedNotice(stopped, onAction)
+            }
+        }
+    }
     val list = uiState.copies
-    if (list is BackupCopyList.NotConnected) return
-    if (uiState.wording?.overview?.report?.status == BackupStatus.NOT_CONNECTED) return
+    val connected = list !is BackupCopyList.NotConnected &&
+        uiState.wording?.overview?.report?.status != BackupStatus.NOT_CONNECTED
+    if (connected) copyList(uiState, list, onAction)
+    // Sin destino también: en un teléfono nuevo, un archivo es la forma de traer los datos.
+    if (uiState.wording != null) {
+        item(key = FIND_FILE) {
+            Column(Modifier.padding(horizontal = AppTheme.spacing.s8)) {
+                InlineTextButton(
+                    stringResource(R.string.backup_action_find_file),
+                    { onAction(BackupAction.FindFile) },
+                )
+            }
+        }
+    }
+}
+
+/** `Copias en la nube`, con sus estados. */
+private fun LazyListScope.copyList(
+    uiState: BackupUiState,
+    list: BackupCopyList?,
+    onAction: (BackupAction) -> Unit,
+) {
     item(key = COPIES_HEADER) { SectionHeader(stringResource(R.string.backup_copies_title)) }
     when (list) {
         null ->
@@ -491,7 +526,15 @@ private fun LazyListScope.copies(uiState: BackupUiState, onAction: (BackupAction
                 }
             } else {
                 items(list.copies, key = { it.key }) { copy ->
-                    BackupCopyRow(copyRowData(copy, uiState.wording))
+                    BackupCopyRow(
+                        copyRowData(copy, uiState.wording),
+                        onClick =
+                            if (copy.restorable) {
+                                { onAction(BackupAction.OpenCopy(copy.key)) }
+                            } else {
+                                null
+                            },
+                    )
                 }
             }
 
@@ -508,25 +551,32 @@ private fun InlineState(text: String, action: String? = null, onAction: () -> Un
     )
 }
 
-/** Los textos de una copia: `Hoy, 10:43`, el tamaño, el origen, los registros y sus etiquetas. */
+/** Cuándo: `Hoy, 10:43`, `Ayer, 21:14` o la fecha, en la zona del negocio; nulo si no se sabe. */
 @Composable
-private fun copyRowData(copy: BackupCopySummary, wording: BackupWording?): BackupCopyRowData {
+private fun instantOrNull(instant: Instant?, wording: BackupWording?): String? {
     val formats = LocalAppFormats.current
     val zone = wording?.zone
-    val created = copy.createdAt
-    val whenText =
-        if (created == null || zone == null) {
-            null
-        } else {
-            val today = wording.overview.computedAt.let { BusinessDate.of(it, zone) }
-            val day = BusinessDate.of(created, zone)
-            val time = formats.date.time(created, zone)
-            when (day) {
-                today -> stringResource(R.string.format_today_at, time)
-                today.plusDays(-1) -> stringResource(R.string.format_yesterday_at, time)
-                else -> formats.date.dayMonthTime(created, zone)
-            }
-        }
+    if (instant == null || zone == null) return null
+    val today = wording.overview.computedAt.let { BusinessDate.of(it, zone) }
+    val day = BusinessDate.of(instant, zone)
+    val time = formats.date.time(instant, zone)
+    return when (day) {
+        today -> stringResource(R.string.format_today_at, time)
+        today.plusDays(-1) -> stringResource(R.string.format_yesterday_at, time)
+        else -> formats.date.dayMonthTime(instant, zone)
+    }
+}
+
+/** Como [instantOrNull], con un guion cuando no se sabe. */
+@Composable
+internal fun instantText(instant: Instant?, wording: BackupWording?): String =
+    instantOrNull(instant, wording) ?: NO_VALUE_TEXT
+
+/** Los textos de una copia: `Hoy, 10:43`, el tamaño, el origen, los registros y sus etiquetas. */
+@Composable
+internal fun copyRowData(copy: BackupCopySummary, wording: BackupWording?): BackupCopyRowData {
+    val formats = LocalAppFormats.current
+    val whenText = instantOrNull(copy.createdAt, wording)
     val slot = copy.slot
     val origin =
         when {
@@ -565,3 +615,5 @@ private const val DESTINATION = "destination"
 private const val COPIES_HEADER = "copiesHeader"
 private const val COPIES_LOADING = "copiesLoading"
 private const val COPIES_STATE = "copiesState"
+private const val RESTORE_NOTICE = "restoreNotice"
+private const val FIND_FILE = "findFile"

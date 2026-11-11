@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
@@ -45,15 +47,28 @@ data class BackupCopyRowData(
  * Una fila de copia: la fecha y el tamaño en la primera línea, el teléfono de origen con
  * `Más reciente` y sus etiquetas en la segunda, y los registros en la tercera. Las cifras van a la
  * derecha, y un filete fino la separa de la siguiente. Es un solo foco para TalkBack.
+ *
+ * @param onClick abre la hoja de la copia para restaurarla; nulo si la copia no se puede restaurar.
  */
 @Composable
-fun BackupCopyRow(data: BackupCopyRowData, modifier: Modifier = Modifier) {
+fun BackupCopyRow(
+    data: BackupCopyRowData,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
     val spacing = AppTheme.spacing
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Column(modifier) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .then(
+                    if (onClick == null) {
+                        Modifier
+                    } else {
+                        Modifier.clickable(role = Role.Button, onClick = onClick)
+                    },
+                )
                 .heightIn(min = AppTheme.sizes.listRow)
                 .semantics(mergeDescendants = true) {}
                 .padding(horizontal = spacing.s16, vertical = spacing.s12),

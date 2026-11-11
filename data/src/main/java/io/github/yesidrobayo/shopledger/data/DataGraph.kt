@@ -5,6 +5,7 @@ import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.backup.BackupCopiesReader
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupEvent
+import io.github.yesidrobayo.shopledger.data.backup.BackupRestoreService
 import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
 import io.github.yesidrobayo.shopledger.data.backup.BackupStaging
 import io.github.yesidrobayo.shopledger.data.backup.BackupWorkQueue
@@ -21,6 +22,7 @@ import io.github.yesidrobayo.shopledger.data.backup.LastProbeStore
 import io.github.yesidrobayo.shopledger.data.backup.MaintenanceAccess
 import io.github.yesidrobayo.shopledger.data.backup.ProbeAccess
 import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
+import io.github.yesidrobayo.shopledger.data.backup.ResolverPickedFiles
 import io.github.yesidrobayo.shopledger.data.backup.RestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.RestoreFiles
 import io.github.yesidrobayo.shopledger.data.backup.RestoreLockFile
@@ -71,6 +73,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInf
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
+import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
@@ -294,6 +297,19 @@ class DataGraph internal constructor(
             onConnected = { backupScheduler.onDataChanged() },
             network = { backupNetworkOf(context).validated },
             nowMillis = { clock.now().toEpochMilliseconds() },
+        )
+    }
+
+    /**
+     * Restaurar desde la pantalla: una copia de la lista del destino conectado o un archivo elegido
+     * con el selector, sobre la preparación de restauraciones del proceso. Crearlo no toca el disco.
+     */
+    val backupRestore: BackupRestorePort by lazy {
+        BackupRestoreService(
+            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            destinations = destinations,
+            coordinator = ::restoreCoordinator,
+            files = ResolverPickedFiles(context.contentResolver),
         )
     }
 

@@ -4,6 +4,8 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,6 +17,7 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RecordCloudCheckUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -47,6 +50,7 @@ fun BackupRoute(navigator: AppNavigator) {
                     RecordCloudCheckUseCase(ports.humanCheck, container.clock)(generation)
                 },
                 computation = container.dispatchers.io,
+                restore = RestoreBackupUseCase(container.data.backupRestore),
             )
         }
     when (model) {
@@ -85,6 +89,16 @@ fun BackupRoute(navigator: AppNavigator) {
                     null -> Unit
                 }
             }
+            // El selector del sistema, para `Buscar un archivo`: cualquier tipo, porque una copia
+            // puede llegar sin un tipo conocido. Solo se lee, sin permiso persistente.
+            val picker =
+                rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                    uri?.let { viewModel.onAction(BackupAction.FilePicked(it.toString())) }
+                }
+            // Lista para reemplazar: el arranque hace el reemplazo, así que la app se reinicia.
+            LaunchedEffect(uiState.restore) {
+                if (uiState.restore == RestoreUi.Ready) restartForRestore(context)
+            }
             LifecycleResumeEffect(viewModel) {
                 viewModel.onReturnToForeground()
                 onPauseOrDispose {}
@@ -99,6 +113,11 @@ fun BackupRoute(navigator: AppNavigator) {
                             navigator.open(AppNavKey.BackupDestinationChoice())
 
                         BackupAction.ReviewPolicy -> policy.review()
+
+                        BackupAction.FindFile -> {
+                            viewModel.onAction(BackupAction.CloseRestore)
+                            picker.launch(arrayOf(ANY_FILE))
+                        }
 
                         BackupAction.OpenProvider -> {
                             val opened =
@@ -115,6 +134,13 @@ fun BackupRoute(navigator: AppNavigator) {
                         BackupAction.MarkSeen,
                         BackupAction.ShowMissingHelp,
                         BackupAction.CloseMissingHelp,
+                        is BackupAction.OpenCopy,
+                        is BackupAction.ConfirmCopy,
+                        is BackupAction.FilePicked,
+                        BackupAction.StartRestore,
+                        is BackupAction.Answer,
+                        BackupAction.CancelRestore,
+                        BackupAction.CloseRestore,
                         -> viewModel.onAction(action)
                     }
                 },
@@ -136,3 +162,17 @@ private fun openInProvider(context: Context, documentUri: String): Boolean = try
 } catch (_: SecurityException) {
     false
 }
+
+/**
+ * Reinicia la app con el diario de la restauración ya escrito: el arranque hace el reemplazo antes
+ * de abrir la base. El proceso termina para que nada siga con la base anterior abierta.
+ */
+private fun restartForRestore(context: Context) {
+    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+    val component = launch.component ?: return
+    context.startActivity(Intent.makeRestartActivityTask(component))
+    Runtime.getRuntime().exit(0)
+}
+
+/** Cualquier tipo de archivo en el selector. */
+private const val ANY_FILE = "*/*"

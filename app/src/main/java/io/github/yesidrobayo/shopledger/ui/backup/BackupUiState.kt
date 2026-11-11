@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.backup
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
+import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 
 /**
  * Lo que muestra la pantalla del respaldo. El bloque de estado es local y llega enseguida; la lista
@@ -15,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
  * @param message un aviso breve pendiente de mostrar.
  * @param handoff con la nube del teléfono, la última copia entregada, para revisarla allí.
  * @param missingHelp si se muestra la hoja `Si no aparece con esa hora`.
+ * @param restore en qué va una restauración pedida desde esta pantalla.
  */
 data class BackupUiState(
     val wording: BackupWording? = null,
@@ -24,6 +26,7 @@ data class BackupUiState(
     val message: BackupMessage? = null,
     val handoff: HandoffCopy? = null,
     val missingHelp: Boolean = false,
+    val restore: RestoreUi = RestoreUi.Idle,
 )
 
 /** Los avisos breves de la pantalla. */
@@ -61,4 +64,28 @@ sealed interface BackupAction {
     data object ShowMissingHelp : BackupAction
 
     data object CloseMissingHelp : BackupAction
+
+    /** Toca una copia de la lista: abre su hoja. */
+    data class OpenCopy(val key: String) : BackupAction
+
+    /** `Restaurar` en la hoja de una copia: pide confirmar. */
+    data class ConfirmCopy(val key: String) : BackupAction
+
+    /** `Buscar un archivo`: lo resuelve la navegación, con el selector del sistema. */
+    data object FindFile : BackupAction
+
+    /** El selector devolvió [uri]: pide confirmar, porque no viene de la lista. */
+    data class FilePicked(val uri: String) : BackupAction
+
+    /** Confirmó restaurar lo que estaba en pantalla. */
+    data object StartRestore : BackupAction
+
+    /** Contestó la pregunta de la restauración. */
+    data class Answer(val answer: RestoreAnswer) : BackupAction
+
+    /** Cancela la restauración: los datos no cambian. */
+    data object CancelRestore : BackupAction
+
+    /** Cierra la hoja, el diálogo o el aviso de la restauración. */
+    data object CloseRestore : BackupAction
 }

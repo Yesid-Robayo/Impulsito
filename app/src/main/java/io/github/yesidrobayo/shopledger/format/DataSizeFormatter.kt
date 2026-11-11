@@ -36,6 +36,20 @@ class DataSizeFormatter(formatLocale: FormatLocale, uiLocale: Locale) {
         return IcuTextNormalizer.normalizeText(text).replace(' ', IcuTextNormalizer.NO_BREAK_SPACE)
     }
 
+    /**
+     * [bytes] en megabytes enteros, redondeados hacia arriba y sin la unidad: para un texto que ya
+     * la dice, como cuánto espacio falta liberar. Nunca dice menos de lo que falta.
+     */
+    fun wholeMegabytes(bytes: Long): String {
+        val value =
+            BigDecimal.valueOf(
+                bytes,
+            ).divide(BigDecimal.valueOf(BYTES_PER_MEGABYTE), 0, RoundingMode.CEILING)
+        return synchronized(whole) { whole.format(value) }
+    }
+
+    private val whole: NumberFormat = NumberFormat.getIntegerInstance(formatLocale.numberLocale)
+
     private companion object {
         const val BYTES_PER_MEGABYTE = 1_000_000L
     }
