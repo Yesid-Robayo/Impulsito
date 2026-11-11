@@ -160,7 +160,10 @@
     <string name="field_more_details">Mais detalhes</string>
     <string name="field_error_number">Escrever um número</string>
     <string name="error_name_empty">Falta o nome do produto</string>
-    <string name="error_name_duplicate">Já existe um produto com esse nome</string>
+    <string name="error_name_duplicate">Já existe um produto chamado %1$s</string>
+    <string name="error_barcode_duplicate">Código já usado por %1$s</string>
+    <string name="category_search_hint">Buscar categoria</string>
+    <string name="unit_search_hint">Buscar unidade</string>
     <string name="error_name_long">Máximo de 80 caracteres</string>
     <string name="error_value_high">Esse valor parece alto demais. Convém revisá-lo.</string>
     <string name="error_unit_decimals">As unidades não têm decimais</string>

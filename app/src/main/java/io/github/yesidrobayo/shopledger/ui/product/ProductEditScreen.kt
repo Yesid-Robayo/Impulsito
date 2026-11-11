@@ -23,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
@@ -152,9 +151,7 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
         value = form.name,
         onValueChange = { onAction(ProductEditAction.NameChange(it)) },
         label = stringResource(R.string.form_name),
-        error = uiState.errors[ProductEditField.NAME]?.let {
-            problemText(it, ProductEditField.NAME)
-        },
+        error = fieldError(uiState, ProductEditField.NAME),
         onLeave = { onAction(ProductEditAction.NameLeft) },
     )
     PickerField(
@@ -176,7 +173,7 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
             onValueChange = { onAction(ProductEditAction.InitialStockChange(it)) },
             label = stringResource(R.string.product_initial_stock),
             unit = unit,
-            error = uiState.errors[ProductEditField.INITIAL_STOCK]?.let { problemText(it, null) },
+            error = fieldError(uiState, ProductEditField.INITIAL_STOCK),
         )
     }
     Column {
@@ -185,7 +182,7 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
             onValueChange = { onAction(ProductEditAction.MinStockChange(it)) },
             label = stringResource(R.string.product_min_stock),
             unit = unit,
-            error = uiState.errors[ProductEditField.MIN_STOCK]?.let { problemText(it, null) },
+            error = fieldError(uiState, ProductEditField.MIN_STOCK),
         )
         if (uiState.errors[ProductEditField.MIN_STOCK] == null) {
             Text(
@@ -208,7 +205,7 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
             value = form.barcode,
             onValueChange = { onAction(ProductEditAction.BarcodeChange(it)) },
             label = stringResource(R.string.product_barcode),
-            error = uiState.errors[ProductEditField.BARCODE]?.let { problemText(it, null) },
+            error = fieldError(uiState, ProductEditField.BARCODE),
             imeAction = ImeAction.Done,
         )
     }
@@ -231,7 +228,7 @@ private fun PriceAndCost(uiState: ProductEditUiState, onAction: (ProductEditActi
             onValueChange = { onAction(ProductEditAction.SalePriceChange(it)) },
             label = stringResource(R.string.product_sale_price),
             modifier = modifier,
-            error = uiState.errors[ProductEditField.SALE_PRICE]?.let { problemText(it, null) },
+            error = fieldError(uiState, ProductEditField.SALE_PRICE),
         )
     }
     val cost: @Composable (Modifier) -> Unit = { modifier ->
@@ -243,7 +240,7 @@ private fun PriceAndCost(uiState: ProductEditUiState, onAction: (ProductEditActi
                 onValueChange = { onAction(ProductEditAction.CostChange(it)) },
                 label = stringResource(R.string.term_cost),
                 modifier = modifier,
-                error = uiState.errors[ProductEditField.COST]?.let { problemText(it, null) },
+                error = fieldError(uiState, ProductEditField.COST),
             )
         }
     }
@@ -384,7 +381,7 @@ private fun CategorySheet(
         query = query,
         onQueryChange = { query = it },
         onDismissRequest = onDismiss,
-        searchHint = stringResource(R.string.form_category),
+        searchHint = stringResource(R.string.category_search_hint),
         itemContent = { category ->
             SettingsRow(
                 title = category?.details?.name ?: none,
@@ -424,7 +421,7 @@ private fun UnitSheet(
         query = query,
         onQueryChange = { query = it },
         onDismissRequest = onDismiss,
-        searchHint = stringResource(R.string.term_unit),
+        searchHint = stringResource(R.string.unit_search_hint),
         itemContent = { unit ->
             SettingsRow(
                 title = unitNameOf(unit),
@@ -456,28 +453,10 @@ private fun unitLabelOf(unit: MeasureUnit?): UnitLabel {
     return UnitLabel(symbol, unit.allowsFraction, custom = unit.systemKey == null)
 }
 
-/** El texto de un problema de un campo. El nombre tiene sus propios textos. */
+/** El error de [field], si tiene uno, con su texto. */
 @Composable
-private fun problemText(problem: FieldProblem, field: ProductEditField?): String = when (problem) {
-    FieldProblem.Empty -> stringResource(R.string.error_name_empty)
-
-    is FieldProblem.TooLong ->
-        if (field == ProductEditField.NAME) {
-            stringResource(R.string.error_name_long)
-        } else {
-            pluralStringResource(R.plurals.error_text_long, problem.max, problem.max)
-        }
-
-    is FieldProblem.Duplicate -> stringResource(R.string.error_name_duplicate)
-
-    FieldProblem.NotANumber, is FieldProblem.TooManyDecimals -> stringResource(
-        R.string.field_error_number,
-    )
-
-    FieldProblem.TooHigh -> stringResource(R.string.error_value_high)
-
-    FieldProblem.FractionNotAllowed -> stringResource(R.string.error_unit_decimals)
-}
+private fun fieldError(uiState: ProductEditUiState, field: ProductEditField): String? =
+    uiState.errors[field]?.let { problemText(it, field) }
 
 @Composable
 private fun FormSkeleton() {

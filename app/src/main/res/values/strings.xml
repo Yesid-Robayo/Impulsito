@@ -164,7 +164,10 @@
     <string name="field_more_details">More details</string>
     <string name="field_error_number">Enter a number</string>
     <string name="error_name_empty">Enter the product name</string>
-    <string name="error_name_duplicate">A product with that name already exists</string>
+    <string name="error_name_duplicate">A product named %1$s already exists</string>
+    <string name="error_barcode_duplicate">Code already used by %1$s</string>
+    <string name="category_search_hint">Search categories</string>
+    <string name="unit_search_hint">Search units</string>
     <string name="error_name_long">Maximum 80 characters</string>
     <string name="error_value_high">That value looks too high. Check it.</string>
     <string name="error_unit_decimals">Units have no decimals</string>
