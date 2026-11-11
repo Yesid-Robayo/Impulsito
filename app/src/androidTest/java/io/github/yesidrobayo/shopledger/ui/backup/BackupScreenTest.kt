@@ -71,6 +71,34 @@ class BackupScreenTest {
     }
 
     @Test
+    fun withTheCloudOfThePhoneTheCheckIsOfferedAndNotedOnlyBySeeing() {
+        show(
+            previewBackupState(
+                previewOverview(BackupStatus.CHECK_DUE, BackupDestinationKind.DOCUMENT_SLOTS),
+            ),
+        )
+
+        compose.onNodeWithText(
+            text(R.string.backup_check_title),
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(
+            text(R.string.backup_check_never),
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(resources.getString(R.string.backup_check_open_action, "Drive"))
+            .performScrollTo().performClick()
+        compose.onNodeWithText(resources.getString(R.string.backup_check_seen_action, "Drive"))
+            .performScrollTo().performClick()
+        compose.onNodeWithText(
+            text(R.string.backup_check_missing_action),
+        ).performScrollTo().performClick()
+
+        assertEquals(
+            listOf(BackupAction.OpenProvider, BackupAction.MarkSeen, BackupAction.ShowMissingHelp),
+            actions,
+        )
+    }
+
+    @Test
     fun withoutADestinationTheActionIsToChooseOne() {
         show(previewBackupState(previewOverview(BackupStatus.NOT_CONNECTED, kind = null)))
 

@@ -4,6 +4,7 @@ import androidx.room3.executeSQL
 import androidx.room3.useWriterConnection
 import io.github.yesidrobayo.shopledger.data.backup.BackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.data.backup.BackupStatusReader
+import io.github.yesidrobayo.shopledger.data.backup.RoomHumanCheckRecorder
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
@@ -46,6 +47,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
+import io.github.yesidrobayo.shopledger.domain.port.HumanCheckRecorder
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
@@ -196,6 +198,12 @@ class DataPorts internal constructor(
             environment = backupStatusEnvironment,
             ioContext = ioContext,
         )
+
+    /**
+     * Anota que la persona dijo haber visto la copia en la nube del teléfono. Solo eso: no prueba la
+     * copia ni cambia lo que cuenta como respaldado.
+     */
+    val humanCheck: HumanCheckRecorder = RoomHumanCheckRecorder(database.backupStateDao())
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()

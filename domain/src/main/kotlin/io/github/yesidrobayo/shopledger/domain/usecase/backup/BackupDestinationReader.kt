@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 
 /**
@@ -14,6 +15,9 @@ class BackupDestinationReader(private val source: BackupDestinationSource) {
 
     /** Las copias del destino: con WebDAV, la lista del servicio; con ranuras, `slots.json`. */
     suspend fun listCopies(): BackupCopyList = source.listCopies()
+
+    /** Con la nube del teléfono, la última copia entregada, para revisarla allí. */
+    suspend fun latestHandoff(): HandoffCopy? = source.latestHandoff()
 
     /** Si hay ahora una red comprobada, para decir que la copia sale cuando vuelva. */
     fun hasNetwork(): Boolean = source.hasNetwork()

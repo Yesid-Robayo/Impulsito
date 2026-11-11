@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
@@ -41,9 +42,12 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInf
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
+import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.format.DataSizeFormatter
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
+import io.github.yesidrobayo.shopledger.ui.components.AdaptiveFieldRow
+import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.BackupCopyRow
 import io.github.yesidrobayo.shopledger.ui.components.BackupCopyRowData
@@ -80,6 +84,11 @@ fun BackupScreen(
     onAction: (BackupAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (uiState.missingHelp) {
+        MissingHelpSheet(uiState.wording?.providerLabel ?: NO_VALUE_TEXT) {
+            onAction(BackupAction.CloseMissingHelp)
+        }
+    }
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
@@ -151,6 +160,7 @@ private fun LazyListScope.overview(uiState: BackupUiState, onAction: (BackupActi
                 StatusBlock(wording)
                 Notices(wording)
                 MainAction(wording, uiState.requesting, onAction)
+                uiState.handoff?.takeIf { wording.slots }?.let { CloudCheck(it, wording, onAction) }
             }
         }
     }
@@ -294,6 +304,109 @@ private fun MainAction(
                 variant = ActionVariant.TONAL,
                 enabled = !requesting,
             )
+    }
+}
+
+/**
+ * `Revisar en la nube`, con cualquier estado de las ranuras: el archivo, su tamaño y la hora en que se
+ * escribió, lo que hay que ver allí, la última revisión, y abrir la nube o anotar que se vio. Anotar
+ * es lo que dijo la persona: ningún texto lo presenta como una comprobación.
+ */
+@Composable
+private fun CloudCheck(
+    handoff: HandoffCopy,
+    wording: BackupWording,
+    onAction: (BackupAction) -> Unit,
+) {
+    val formats = LocalAppFormats.current
+    val spacing = AppTheme.spacing
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val provider = wording.providerLabel ?: NO_VALUE_TEXT
+    val zone = wording.zone
+    val time = zone?.let { formats.date.dayMonthTime(handoff.writtenAt, it) } ?: NO_VALUE_TEXT
+    val size = DataSizeFormatter(
+        formats.date.formatLocale,
+        formats.uiLocale,
+    ).megabytes(handoff.sizeBytes)
+    val lastCheck = handoff.lastCheckAt
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+        Text(
+            stringResource(R.string.backup_check_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(
+            stringResource(
+                R.string.backup_handed_off_detail,
+                handoff.fileName ?: NO_VALUE_TEXT,
+                size,
+                time,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            stringResource(R.string.backup_check_how),
+            style = MaterialTheme.typography.bodyMedium,
+            color = muted,
+        )
+        Text(
+            if (lastCheck != null && zone != null) {
+                stringResource(
+                    R.string.backup_check_last,
+                    formats.date.dayMonthTime(lastCheck, zone),
+                )
+            } else {
+                stringResource(R.string.backup_check_never)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = muted,
+        )
+        val openLabel = stringResource(R.string.backup_check_open_action, provider)
+        val seenLabel = stringResource(R.string.backup_check_seen_action, provider)
+        // Lado a lado si caben; con letra grande o nombres largos, uno debajo del otro.
+        AdaptiveFieldRow(
+            firstLabel = openLabel,
+            secondLabel = seenLabel,
+            first = { modifier ->
+                PrimaryActionButton(
+                    text = openLabel,
+                    onClick = { onAction(BackupAction.OpenProvider) },
+                    variant = ActionVariant.TONAL,
+                    modifier = modifier,
+                )
+            },
+            second = { modifier ->
+                PrimaryActionButton(
+                    text = seenLabel,
+                    onClick = { onAction(BackupAction.MarkSeen) },
+                    variant = ActionVariant.TONAL,
+                    modifier = modifier,
+                )
+            },
+        )
+        InlineTextButton(
+            stringResource(R.string.backup_check_missing_action),
+            { onAction(BackupAction.ShowMissingHelp) },
+        )
+    }
+}
+
+/** `Si no aparece con esa hora`: tres pasos. No anota nada, y la revisión sigue pendiente. */
+@Composable
+fun MissingHelpSheet(provider: String, onClose: () -> Unit) {
+    AppBottomSheet(
+        onDismissRequest = onClose,
+        title = stringResource(R.string.backup_check_missing_title),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
+            for (step in listOf(
+                stringResource(R.string.backup_check_missing_step_1, provider),
+                stringResource(R.string.backup_check_missing_step_2),
+                stringResource(R.string.backup_check_missing_step_3),
+            )) {
+                Text(step, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 }
 

@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
+import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
@@ -84,6 +85,7 @@ class BackupViewModelTest {
         var failList = false
         var network = true
         var lists = 0
+        var handoff: HandoffCopy? = null
 
         override suspend fun describe(): BackupDestinationInfo? = info
 
@@ -93,11 +95,14 @@ class BackupViewModelTest {
             return copies
         }
 
+        override suspend fun latestHandoff(): HandoffCopy? = handoff
+
         override fun hasNetwork(): Boolean = network
     }
 
     private val destination = FakeDestination()
     private var requests = 0
+    private val checks = mutableListOf<Long>()
 
     @Before
     fun useTestMain() = Dispatchers.setMain(dispatcher)
@@ -116,6 +121,11 @@ class BackupViewModelTest {
             destination = BackupDestinationReader(destination),
             calendar = MutableStateFlow(BusinessCalendar.of("Etc/GMT+5", DayOfWeek.MONDAY)),
             requestBackup = { requests += 1 },
+            recordCheck = { generation ->
+                checks += generation
+                destination.handoff = destination.handoff?.copy(lastCheckAt = now)
+                true
+            },
             computation = dispatcher,
         )
         advanceUntilIdle()
@@ -219,5 +229,43 @@ class BackupViewModelTest {
         model.onAction(BackupAction.Back)
         model.onAction(BackupAction.ChooseDestination)
         assertEquals(state, model.uiState.value)
+    }
+
+    @Test
+    fun `seen in the cloud notes the shown generation and reads the handoff again`() =
+        runTest(dispatcher) {
+            overviews.value = overview(BackupStatus.CHECK_DUE, BackupDestinationKind.DOCUMENT_SLOTS)
+            destination.handoff =
+                HandoffCopy("copia-b.slcopy", 2_400_000, now - 1.hours, 9, "content://x/B", null)
+            val model = viewModel()
+            assertEquals(9L, model.uiState.value.handoff?.generation)
+
+            model.onAction(BackupAction.MarkSeen)
+            advanceUntilIdle()
+
+            assertEquals(listOf(9L), checks)
+            assertEquals(now, model.uiState.value.handoff?.lastCheckAt)
+            assertEquals(BackupMessage.CHECK_SAVED, model.uiState.value.message)
+            // Anotar no es una comprobación: el estado no lo decide la pantalla.
+            assertEquals(
+                BackupStatus.CHECK_DUE,
+                model.uiState.value.wording?.overview?.report?.status,
+            )
+        }
+
+    @Test
+    fun `it does not appear notes nothing`() = runTest(dispatcher) {
+        val model = viewModel()
+
+        model.onAction(BackupAction.ShowMissingHelp)
+        assertEquals(true, model.uiState.value.missingHelp)
+        model.onAction(BackupAction.CloseMissingHelp)
+        model.onAction(BackupAction.OpenProvider)
+        // Sin una entrega en pantalla, anotar no hace nada.
+        model.onAction(BackupAction.MarkSeen)
+        advanceUntilIdle()
+
+        assertEquals(false, model.uiState.value.missingHelp)
+        assertEquals(emptyList<Long>(), checks)
     }
 }

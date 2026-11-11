@@ -34,6 +34,7 @@ import kotlinx.coroutines.withContext
  * @param destination el destino conectado y sus copias.
  * @param calendar la zona del negocio, para decir `ayer, 21:14`.
  * @param requestBackup pide la copia con `Respaldar ahora`.
+ * @param recordCheck anota `Ya la vi en {provider}` con la generación en pantalla; devuelve si quedó.
  * @param computation el hilo donde se leen el destino y la lista, fuera del principal.
  */
 class BackupViewModel(
@@ -41,6 +42,7 @@ class BackupViewModel(
     private val destination: BackupDestinationReader,
     calendar: Flow<BusinessCalendarResult>,
     private val requestBackup: suspend () -> Unit,
+    private val recordCheck: suspend (Long) -> Boolean,
     private val computation: CoroutineDispatcher,
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
@@ -79,8 +81,18 @@ class BackupViewModel(
 
             BackupAction.MessageShown -> state.update { it.copy(message = null) }
 
+            BackupAction.MarkSeen -> markSeen()
+
+            BackupAction.ShowMissingHelp -> state.update { it.copy(missingHelp = true) }
+
+            BackupAction.CloseMissingHelp -> state.update { it.copy(missingHelp = false) }
+
             // Lo resuelve la navegación.
-            BackupAction.Back, BackupAction.ChooseDestination, BackupAction.ReviewPolicy -> Unit
+            BackupAction.Back,
+            BackupAction.ChooseDestination,
+            BackupAction.ReviewPolicy,
+            BackupAction.OpenProvider,
+            -> Unit
         }
     }
 
@@ -96,11 +108,13 @@ class BackupViewModel(
             // Sin destino, o si no se pudo leer, no hay nombre que mostrar.
             val info = read { destination.describe() }
             val copies = read { destination.listCopies() } ?: BackupCopyList.Failed
+            val handoff = read { destination.latestHandoff() }
             state.update { current ->
                 val provider = (info as? BackupDestinationInfo.Slots)?.providerLabel
                 current.copy(
                     destination = info,
                     copies = copies,
+                    handoff = handoff,
                     wording = current.wording?.copy(providerLabel = provider),
                 )
             }
@@ -122,6 +136,20 @@ class BackupViewModel(
             } finally {
                 state.update { it.copy(requesting = false) }
             }
+        }
+    }
+
+    /**
+     * Anota la revisión de la copia en pantalla y la vuelve a leer, para mostrar la fecha nueva.
+     * Nunca toca lo que cuenta como respaldado: el estado sigue diciendo entregada.
+     */
+    private fun markSeen() {
+        val generation = state.value.handoff?.generation ?: return
+        viewModelScope.launch {
+            val saved = read { recordCheck(generation) } == true
+            if (!saved) return@launch
+            val handoff = read { destination.latestHandoff() }
+            state.update { it.copy(handoff = handoff, message = BackupMessage.CHECK_SAVED) }
         }
     }
 

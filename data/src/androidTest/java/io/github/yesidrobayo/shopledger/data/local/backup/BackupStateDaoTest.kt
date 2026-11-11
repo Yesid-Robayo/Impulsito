@@ -127,6 +127,8 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "markFullVerify",
                 "recordActiveInvariantFailures",
                 "markStaleNotice",
+                // Solo sus dos columnas: lo comprueba la prueba de la revisión en la nube.
+                "recordHumanCheck",
                 "markDrill",
                 "connectDestination",
             ),

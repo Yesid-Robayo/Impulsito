@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 
 /**
  * Lo que muestra la pantalla del respaldo. El bloque de estado es local y llega enseguida; la lista
@@ -12,6 +13,8 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInf
  * @param copies la lista de copias, o nula mientras se pide.
  * @param requesting si `Respaldar ahora` está pidiendo la copia.
  * @param message un aviso breve pendiente de mostrar.
+ * @param handoff con la nube del teléfono, la última copia entregada, para revisarla allí.
+ * @param missingHelp si se muestra la hoja `Si no aparece con esa hora`.
  */
 data class BackupUiState(
     val wording: BackupWording? = null,
@@ -19,12 +22,17 @@ data class BackupUiState(
     val copies: BackupCopyList? = null,
     val requesting: Boolean = false,
     val message: BackupMessage? = null,
+    val handoff: HandoffCopy? = null,
+    val missingHelp: Boolean = false,
 )
 
 /** Los avisos breves de la pantalla. */
 enum class BackupMessage {
     /** Se pidió la copia sin internet: queda encolada y sale cuando vuelva la conexión. */
     NO_INTERNET,
+
+    /** Quedó anotada la revisión: lo que vio la persona, no una comprobación. */
+    CHECK_SAVED,
 }
 
 /** Lo que la persona puede hacer en la pantalla del respaldo. */
@@ -42,4 +50,15 @@ sealed interface BackupAction {
     data object ReviewPolicy : BackupAction
 
     data object MessageShown : BackupAction
+
+    /** `Abrir {provider}`: lo resuelve la navegación, con la app de esa nube. */
+    data object OpenProvider : BackupAction
+
+    /** `Ya la vi en {provider}`: anota lo que dijo la persona, con la generación en pantalla. */
+    data object MarkSeen : BackupAction
+
+    /** `No aparece`: muestra qué hacer, sin anotar nada. */
+    data object ShowMissingHelp : BackupAction
+
+    data object CloseMissingHelp : BackupAction
 }

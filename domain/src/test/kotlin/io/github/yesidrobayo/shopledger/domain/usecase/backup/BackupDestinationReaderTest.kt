@@ -2,10 +2,12 @@ package io.github.yesidrobayo.shopledger.domain.usecase.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /** El lector del destino solo pasa lo que dice el destino: no escribe ni inventa nada. */
@@ -17,6 +19,8 @@ class BackupDestinationReaderTest {
 
             override suspend fun listCopies(): BackupCopyList = BackupCopyList.NoInternet
 
+            override suspend fun latestHandoff(): HandoffCopy? = null
+
             override fun hasNetwork(): Boolean = false
         }
 
@@ -27,5 +31,6 @@ class BackupDestinationReaderTest {
         assertEquals(BackupDestinationInfo.Slots("Nube"), reader.describe())
         assertEquals(BackupCopyList.NoInternet, reader.listCopies())
         assertFalse(reader.hasNetwork())
+        assertNull(reader.latestHandoff())
     }
 }

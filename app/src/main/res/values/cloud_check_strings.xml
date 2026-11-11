@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Revisar en la nube, con la nube del teléfono. Textos de la guía de redacción. -->
+    <string name="backup_check_title">Check in the cloud</string>
+    <string name="backup_check_open_action">Open %1$s</string>
+    <string name="backup_check_seen_action">Backup seen in %1$s</string>
+    <string name="backup_check_missing_action">It does not appear</string>
+    <string name="backup_check_last">Last check: %1$s</string>
+    <string name="backup_check_never">Not checked yet</string>
+    <string name="backup_check_how">That time or a newer one must be seen, ideally from another device or the web. Seeing the file is not enough: it has existed since it was created, and on this phone that app may show one that has not uploaded yet.</string>
+    <string name="backup_check_saved">Check noted. It records what was seen: %1$s does not verify the backup.</string>
+    <string name="backup_check_open_failed">%1$s could not be opened from here. Open that app by hand, look for %2$s and check its time.</string>
+    <string name="backup_check_missing_title">If it does not appear with that time</string>
+    <string name="backup_check_missing_step_1">Open %1$s with internet and check that it is signed in and has free space.</string>
+    <string name="backup_check_missing_step_2">Tap Back up now, wait a while and check the time again.</string>
+    <string name="backup_check_missing_step_3">If the time still does not change, export a backup today and choose a service with WebDAV. Until then, anything new is only on this phone.</string>
+    <string name="backup_handed_off_detail">File %1$s, %2$s, written at %3$s.</string>
+</resources>

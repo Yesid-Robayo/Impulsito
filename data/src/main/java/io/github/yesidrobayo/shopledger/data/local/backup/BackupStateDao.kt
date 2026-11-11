@@ -277,6 +277,17 @@ internal interface BackupStateDao {
     suspend fun recordActiveInvariantFailures(count: Long): Int
 
     /**
+     * Anota que la persona dijo haber visto en la nube del teléfono la copia de [generation], a las
+     * [at]. Solo con ese destino conectado: con WebDAV, o sin destino, no toca nada y devuelve 0. No
+     * cambia `verified_seq`, la cabeza ni los cambios pendientes: no es una comprobación.
+     */
+    @Query(
+        "UPDATE backup_state SET last_human_check_at = :at, human_check_generation = :generation " +
+            "WHERE id = 1 AND destination_kind = 'DOCUMENT_SLOTS' AND link_state <> 'NOT_CONNECTED'",
+    )
+    suspend fun recordHumanCheck(at: Long, generation: Long): Int
+
+    /**
      * Anota que salió la notificación de un día sin copia, con el reloj de pared en milisegundos
      * UTC: la siguiente espera un día desde aquí.
      */

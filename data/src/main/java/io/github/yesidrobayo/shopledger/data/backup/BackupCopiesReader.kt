@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInf
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
+import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import java.net.URI
 import java.net.URISyntaxException
@@ -75,6 +76,25 @@ internal class BackupCopiesReader(
     }
 
     override fun hasNetwork(): Boolean = hasNetwork.invoke()
+
+    override suspend fun latestHandoff(): HandoffCopy? {
+        val row = connectedRow() ?: return null
+        if (kindOf(row) != BackupDestinationKind.DOCUMENT_SLOTS) return null
+        val loaded = loadedSlots() ?: return null
+        val latest =
+            loaded.slots.values
+                .mapNotNull { entry -> entry.copy?.let { entry to it } }
+                .maxByOrNull { (_, record) -> record.generation } ?: return null
+        val (entry, record) = latest
+        return HandoffCopy(
+            fileName = entry.displayName,
+            sizeBytes = record.sizeBytes,
+            writtenAt = Instant.fromEpochMilliseconds(record.writtenAt),
+            generation = record.generation,
+            documentUri = entry.uri,
+            lastCheckAt = row.lastHumanCheckAt?.let(Instant::fromEpochMilliseconds),
+        )
+    }
 
     private suspend fun webDavCopies(row: BackupStateEntity): BackupCopyList {
         if (!hasNetwork()) return BackupCopyList.NoInternet

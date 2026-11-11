@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
+import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -27,6 +28,16 @@ import kotlin.time.Instant
 private val PREVIEW_NOW = Instant.parse("2026-11-02T15:00:00Z")
 
 internal val PREVIEW_BACKUP_ZONE = BusinessTimeZone.of("Etc/GMT+5")
+
+/** La última entrega de muestra, con su archivo y sin revisión todavía. */
+internal val PREVIEW_HANDOFF = HandoffCopy(
+    fileName = "copia-a.slcopy",
+    sizeBytes = 2_412_000,
+    writtenAt = PREVIEW_NOW - 12.minutes,
+    generation = 48,
+    documentUri = "content://example.documents/document/A",
+    lastCheckAt = null,
+)
 
 internal fun previewOverview(
     status: BackupStatus,
@@ -88,6 +99,7 @@ internal fun previewBackupState(
         wording = BackupWording(overview, if (slots) "Drive" else null, PREVIEW_BACKUP_ZONE),
         destination = destination,
         copies = if (overview.destinationKind == null) BackupCopyList.NotConnected else copies,
+        handoff = if (slots) PREVIEW_HANDOFF else null,
     )
 }
 

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Revisar en la nube, con la nube del teléfono. Textos de la guía de redacción. -->
+    <string name="backup_check_title">Revisar en la nube</string>
+    <string name="backup_check_open_action">Abrir %1$s</string>
+    <string name="backup_check_seen_action">Ya la vi en %1$s</string>
+    <string name="backup_check_missing_action">No aparece</string>
+    <string name="backup_check_last">Última revisión: %1$s</string>
+    <string name="backup_check_never">Todavía sin revisar</string>
+    <string name="backup_check_how">Hay que ver esa hora o una más nueva, mejor desde otro dispositivo o la web. Ver el archivo no basta: existe desde que se creó, y en este teléfono esa app puede mostrar uno que aún no subió.</string>
+    <string name="backup_check_saved">Revisión anotada. Queda lo que se vio: %1$s no comprueba la copia.</string>
+    <string name="backup_check_open_failed">No se pudo abrir %1$s desde aquí. Se puede abrir esa app a mano, buscar %2$s y mirar su hora.</string>
+    <string name="backup_check_missing_title">Si no aparece con esa hora</string>
+    <string name="backup_check_missing_step_1">Abrir %1$s con internet y mirar si tiene la sesión abierta y espacio libre.</string>
+    <string name="backup_check_missing_step_2">Tocar Respaldar ahora, esperar un rato y mirar la hora otra vez.</string>
+    <string name="backup_check_missing_step_3">Si la hora sigue sin cambiar, conviene exportar una copia hoy y elegir un servicio con WebDAV. Hasta entonces, lo nuevo solo está en este teléfono.</string>
+    <string name="backup_handed_off_detail">Archivo %1$s, %2$s, escrito a las %3$s.</string>
+</resources>
