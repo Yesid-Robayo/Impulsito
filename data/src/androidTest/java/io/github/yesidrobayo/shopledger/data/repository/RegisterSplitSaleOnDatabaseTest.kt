@@ -45,6 +45,7 @@ internal class RegisterSplitSaleOnDatabaseTest : RepositoryTest() {
             systemRows = RoomSystemRowRepository(database),
             ledger = ledger,
             methodNames = PaymentMethodNames { key -> "Initial ${key.lowercase()}" },
+            taxRates = RoomTaxRateRepository(database),
             clock = Clock { AT },
         )
     }

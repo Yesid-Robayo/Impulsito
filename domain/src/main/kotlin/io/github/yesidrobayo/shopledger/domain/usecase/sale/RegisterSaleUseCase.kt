@@ -19,10 +19,13 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
+import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
@@ -33,9 +36,12 @@ import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
+import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
+import io.github.yesidrobayo.shopledger.domain.rule.LineTax
+import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockPlan
@@ -77,10 +83,15 @@ import kotlin.time.Instant
  * - **El recargo o descuento de cada método** se calcula sobre lo que cubre su pago antes del
  *   recargo, se suma al ajuste de la venta y se reparte entre las líneas. Cada pago cubre además lo
  *   que su recargo sube el total.
+ * - **El impuesto se calcula línea por línea**, con el modo del negocio y la tasa del producto, o
+ *   la tasa por defecto si el producto no tiene. Cada línea copia la tasa y su nombre, así que
+ *   cambiar o archivar la tasa después no toca esta venta. El impuesto sale de lo que la línea
+ *   cobra después de su descuento y de su parte del ajuste, así que un recargo también paga
+ *   impuesto. Sumar los impuestos de las líneas, y nunca calcularlo sobre el total, hace que el
+ *   total sea siempre lo neto más el impuesto, y los pagos cobran ese total.
  *
- * Por ahora no calcula impuesto, ni ajuste global escrito, propina o redondeo del efectivo: la
- * venta queda con impuesto cero y esos montos en cero. Tampoco vende combos ni productos con lotes, ni a
- * crédito: los rechaza con su motivo.
+ * Por ahora no calcula ajuste global escrito, propina ni redondeo del efectivo: esos montos quedan
+ * en cero. Tampoco vende combos ni productos con lotes, ni a crédito: los rechaza con su motivo.
  */
 class RegisterSaleUseCase(
     private val transactions: TransactionRunner,
@@ -92,6 +103,7 @@ class RegisterSaleUseCase(
     private val systemRows: SystemRowRepository,
     private val ledger: StockLedgerRepository,
     private val methodNames: PaymentMethodNames,
+    private val taxRates: TaxRateRepository,
     private val clock: Clock,
 ) {
     private val currencyLock = CurrencyLock(settings)
@@ -105,8 +117,9 @@ class RegisterSaleUseCase(
     private suspend fun register(request: SaleRequest): TxResult<RegisterSaleResult> {
         shapeRejection(request)?.let { return TxResult.Rollback(it) }
         val note = request.note?.takeIf { it.isNotBlank() }
+        val current = settings.get()
 
-        val calendar = when (val result = BusinessCalendar.of(settings.get().regional)) {
+        val calendar = when (val result = BusinessCalendar.of(current.regional)) {
             is BusinessCalendarResult.Ready -> result.calendar
 
             is BusinessCalendarResult.UnknownZone ->
@@ -121,7 +134,7 @@ class RegisterSaleUseCase(
             is Chosen.Rejected -> return TxResult.Rollback(result.rejection)
         }
 
-        val priced = when (val result = priceLines(request.lines)) {
+        val priced = when (val result = priceLines(request.lines, current.taxes)) {
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
         }
@@ -201,12 +214,14 @@ class RegisterSaleUseCase(
 
     /**
      * Calcula cada línea en orden, con los productos leídos de una vez. Un producto que se repite
-     * calcula su segunda línea con el estado de costo que dejó la primera.
+     * calcula su segunda línea con el estado de costo que dejó la primera. Cada línea separa su
+     * impuesto con la tasa que le toca.
      */
-    private suspend fun priceLines(requests: List<SaleLineRequest>): Priced {
+    private suspend fun priceLines(requests: List<SaleLineRequest>, taxes: TaxSettings): Priced {
         val byId = products.findByIds(requests.map { it.productId }.toSet()).associateBy { it.id }
         val costStates = HashMap<Long, CostState>()
         val fractionByUnit = HashMap<Long, Boolean>()
+        val taxByRate = HashMap<Long, AppliedTax>()
         val lines = ArrayList<PricedLine>(requests.size)
         val totals = Totals()
         for ((index, request) in requests.withIndex()) {
@@ -219,7 +234,9 @@ class RegisterSaleUseCase(
                 unit.allowsFraction
             }
             quantityRejection(request.quantity, allowsFraction)?.let { return rejected(index, it) }
-            val line = when (val result = priceLine(request, product, costStates)) {
+            val tax = appliedTax(product, taxes, taxByRate)
+            val result = priceLine(request, product, tax, taxes.mode, costStates)
+            val line = when (result) {
                 is LineResult.Ready -> result.line
                 is LineResult.Rejected -> return rejected(index, result.reason)
             }
@@ -229,7 +246,29 @@ class RegisterSaleUseCase(
             }
             lines += line
         }
-        return Priced.Lines(lines, totals)
+        return Priced.Lines(lines, totals, taxes.mode)
+    }
+
+    /**
+     * La tasa que paga [product]: la suya, o la tasa por defecto del negocio si no tiene, leída
+     * una sola vez por venta. Sin impuesto en el negocio, o sin ninguna tasa, la línea no lleva
+     * impuesto ni nombre.
+     *
+     * Un producto conserva su tasa aunque esté archivada: archivarla solo deja de ofrecerla en
+     * productos nuevos.
+     */
+    private suspend fun appliedTax(
+        product: Product,
+        taxes: TaxSettings,
+        cache: MutableMap<Long, AppliedTax>,
+    ): AppliedTax {
+        if (taxes.mode == TaxMode.NONE) return AppliedTax.NONE
+        val rateId = product.details.taxRateId ?: taxes.defaultTaxRateId ?: return AppliedTax.NONE
+        return cache.getOrPut(rateId) {
+            // Su llave deja sin tasa al producto y al negocio si se elimina: nunca falta.
+            val rate = taxRates.findById(rateId) ?: damaged()
+            AppliedTax(rate.details.rate, rate.details.name.take(MAX_TAX_NAME_LENGTH))
+        }
     }
 
     private fun productRejection(product: Product): LineRejection? = when {
@@ -258,6 +297,8 @@ class RegisterSaleUseCase(
     private fun priceLine(
         request: SaleLineRequest,
         product: Product,
+        tax: AppliedTax,
+        taxMode: TaxMode,
         costStates: Map<Long, CostState>,
     ): LineResult {
         val unitPrice = request.unitPrice ?: product.salePrice
@@ -282,8 +323,11 @@ class RegisterSaleUseCase(
         val unitReplacement = SaleLineRules.unitReplacementCost(product.replacementCost, unitCost)
         val lineReplacement = SaleLineRules.lineReplacementCost(request.quantity, unitReplacement)
             .valueOr { return LineResult.Rejected(LineRejection.AMOUNT_TOO_LARGE) }
-        // Sin impuesto ni ajuste global todavía: lo neto es el bruto menos el descuento.
-        val net = gross - discount
+        // Sin ajuste de la venta todavía: la línea cobra el bruto menos su descuento, y sobre eso
+        // se separa el impuesto. Con el impuesto sumado, una línea al tope deja de caber.
+        val base = gross - discount
+        val split = TaxCalculator.line(base, taxMode, tax.rate)
+            .valueOr { return LineResult.Rejected(LineRejection.AMOUNT_TOO_LARGE) }
         return LineResult.Ready(
             PricedLine(
                 product = product,
@@ -291,7 +335,9 @@ class RegisterSaleUseCase(
                 unitPrice = unitPrice,
                 unitCost = unitCost,
                 discount = discount,
-                net = net,
+                base = base,
+                tax = tax,
+                split = split,
                 plan = plan,
                 unitReplacement = unitReplacement,
                 lineReplacement = lineReplacement,
@@ -368,21 +414,24 @@ class RegisterSaleUseCase(
     }
 
     /**
-     * Las líneas con [adjustment] repartido entre ellas, con sus totales, o `null` si la venta no lo
-     * admite: un descuento mayor que lo vendido, o un total sobre el tope de un documento. Parte
-     * siempre de las líneas sin ajuste, así que se puede probar con varios ajustes.
+     * Las líneas con [adjustment] repartido entre ellas, con su impuesto y sus totales, o `null` si
+     * la venta no lo admite: un descuento mayor que lo vendido, o una línea o un total sobre el
+     * tope de un documento. Parte siempre de las líneas sin ajuste, así que se puede probar con
+     * varios ajustes. El reparto es en proporción a lo que cada línea cobra antes de impuesto, y
+     * el impuesto se vuelve a separar con la parte de cada una.
      */
     private fun adjusted(priced: Priced.Lines, adjustment: Money): Priced.Lines? {
-        val split = OrderAdjustmentShares.split(adjustment, priced.lines.map { it.net })
+        val split = OrderAdjustmentShares.split(adjustment, priced.lines.map { it.base })
         val shares = when (split) {
             is AdjustmentSplit.Shares -> split.shares
             AdjustmentSplit.DiscountAboveBases -> return null
         }
         val totals = Totals()
         val lines = priced.lines.zip(shares) { line, share ->
-            line.withShare(share).also { if (!totals.add(it)) return null }
+            val withShare = line.withShare(share, priced.taxMode) ?: return null
+            withShare.also { if (!totals.add(it)) return null }
         }
-        return Priced.Lines(lines, totals, adjustment)
+        return Priced.Lines(lines, totals, priced.taxMode, adjustment)
     }
 
     /**
@@ -436,7 +485,7 @@ class RegisterSaleUseCase(
         val saleId = sales.insert(
             NewSale(
                 netTotal = totals.net,
-                taxTotal = Money.ZERO,
+                taxTotal = totals.tax,
                 total = totals.total,
                 totalCost = totals.cost,
                 totalReplacementCost = totals.replacement,
@@ -497,11 +546,11 @@ class RegisterSaleUseCase(
         unitCost = unitCost,
         lineDiscount = discount,
         orderAdjustmentShare = share,
-        netAmount = net,
-        taxRate = BasisPoints.ZERO,
-        taxNameSnapshot = null,
-        taxAmount = Money.ZERO,
-        lineTotal = net,
+        netAmount = split.netAmount,
+        taxRate = tax.rate,
+        taxNameSnapshot = tax.name,
+        taxAmount = split.taxAmount,
+        lineTotal = split.lineTotal,
         lineCost = plan.lineCost,
         unitReplacementCost = unitReplacement,
         lineReplacementCost = lineReplacement,
@@ -521,36 +570,59 @@ class RegisterSaleUseCase(
     private fun rejected(index: Int, reason: LineRejection): Priced =
         Priced.Rejected(RegisterSaleResult.LineRejected(index, reason))
 
-    /** Una línea ya calculada, lista para guardar. */
+    /**
+     * Una línea ya calculada, lista para guardar. [base] es el bruto menos el descuento, antes del
+     * ajuste de la venta. [split] reparte lo que cobra la línea, su base más su parte [share] del
+     * ajuste, entre neto e impuesto, con la tasa [tax].
+     */
     private class PricedLine(
         val product: Product,
         val quantity: QuantityMilli,
         val unitPrice: Money,
         val unitCost: Money,
         val discount: Money,
-        val net: Money,
+        val base: Money,
+        val tax: AppliedTax,
+        val split: LineTax,
         val plan: LineStockPlan,
         val unitReplacement: Money,
         val lineReplacement: Money,
         val share: Money = Money.ZERO,
     ) {
         /**
-         * La misma línea con su parte [share] del ajuste de la venta. Sin impuesto todavía, lo
-         * neto es lo que la línea cobra después del ajuste: su base más su parte. Se llama sobre
-         * la línea sin ajuste.
+         * La misma línea con su parte [share] del ajuste de la venta, y su impuesto separado de
+         * nuevo sobre lo que cobra después del ajuste: así un recargo también paga impuesto. Se
+         * llama sobre la línea sin ajuste. Devuelve `null` si su total pasa del tope de un
+         * documento.
          */
-        fun withShare(share: Money): PricedLine = PricedLine(
-            product = product,
-            quantity = quantity,
-            unitPrice = unitPrice,
-            unitCost = unitCost,
-            discount = discount,
-            net = net + share,
-            plan = plan,
-            unitReplacement = unitReplacement,
-            lineReplacement = lineReplacement,
-            share = share,
-        )
+        fun withShare(share: Money, taxMode: TaxMode): PricedLine? {
+            val after = TaxCalculator.line(base + share, taxMode, tax.rate).valueOrNull()
+                ?: return null
+            return PricedLine(
+                product = product,
+                quantity = quantity,
+                unitPrice = unitPrice,
+                unitCost = unitCost,
+                discount = discount,
+                base = base,
+                tax = tax,
+                split = after,
+                plan = plan,
+                unitReplacement = unitReplacement,
+                lineReplacement = lineReplacement,
+                share = share,
+            )
+        }
+    }
+
+    /**
+     * La tasa que copia una línea al venderse y su nombre en ese momento. Sin impuesto, la tasa es
+     * cero y no hay nombre.
+     */
+    private class AppliedTax(val rate: BasisPoints, val name: String?) {
+        companion object {
+            val NONE = AppliedTax(BasisPoints.ZERO, name = null)
+        }
     }
 
     private sealed interface LineResult {
@@ -581,6 +653,7 @@ class RegisterSaleUseCase(
         class Lines(
             val lines: List<PricedLine>,
             val totals: Totals,
+            val taxMode: TaxMode,
             val adjustment: Money = Money.ZERO,
         ) : Priced
 
@@ -595,6 +668,8 @@ class RegisterSaleUseCase(
     private class Totals {
         var net: Money = Money.ZERO
             private set
+        var tax: Money = Money.ZERO
+            private set
         var total: Money = Money.ZERO
             private set
         var cost: Money = Money.ZERO
@@ -602,18 +677,23 @@ class RegisterSaleUseCase(
         var replacement: Money = Money.ZERO
             private set
 
-        /** Suma [line], o devuelve `false` si algún total pasaría del tope. */
+        /**
+         * Suma [line], o devuelve `false` si algún total pasaría del tope. Como cada línea cumple
+         * `total = neto + impuesto`, sus sumas también lo cumplen.
+         */
         fun add(line: PricedLine): Boolean {
-            val nextNet = net + line.net
+            val nextNet = net + line.split.netAmount
+            val nextTax = tax + line.split.taxAmount
+            val nextTotal = total + line.split.lineTotal
             val nextCost = cost + line.plan.lineCost
             val nextReplacement = replacement + line.lineReplacement
-            val fits = listOf(nextNet, nextCost, nextReplacement).all {
+            val fits = listOf(nextNet, nextTax, nextTotal, nextCost, nextReplacement).all {
                 Limit.DOCUMENT_TOTAL.allows(it.minor)
             }
             if (!fits) return false
             net = nextNet
-            // Sin impuesto todavía, el total es lo neto.
-            total = nextNet
+            tax = nextTax
+            total = nextTotal
             cost = nextCost
             replacement = nextReplacement
             return true
@@ -626,6 +706,9 @@ class RegisterSaleUseCase(
 
         /** Largo máximo del nombre congelado de un método de pago. */
         const val MAX_METHOD_NAME_LENGTH = 40
+
+        /** Largo máximo del nombre congelado de una tasa de impuesto. */
+        const val MAX_TAX_NAME_LENGTH = 40
     }
 }
 

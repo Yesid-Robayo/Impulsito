@@ -25,8 +25,11 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalePayment
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
+import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRate
+import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
@@ -35,6 +38,7 @@ import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
+import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
@@ -305,6 +309,46 @@ internal class SaleWorld(
         override suspend fun findId(row: SystemRow): Long? = systemRows[row]
     }
 
+    /** Las tasas de impuesto que escribió la persona. La base nace sin ninguna. */
+    var taxRates: Map<Long, TaxRate> = emptyMap()
+
+    /** Cuántas veces se leyó una tasa por su id. */
+    var taxRateReads: Int = 0
+        private set
+
+    val taxRateRepository: TaxRateRepository = object : TaxRateRepository {
+        override fun observe(filter: ArchiveFilter): Flow<List<TaxRate>> = unused()
+
+        override fun observeProductCounts(): Flow<Map<Long, Int>> = unused()
+
+        override suspend fun findById(id: Long): TaxRate? {
+            taxRateReads++
+            return taxRates[id]
+        }
+
+        override suspend fun findActiveByNormalizedName(normalizedName: String): TaxRate? = unused()
+
+        override suspend fun countProducts(id: Long): Int = unused()
+
+        override suspend fun insert(details: TaxRateDetails, createdAt: Instant): Long = unused()
+
+        override suspend fun update(id: Long, details: TaxRateDetails, updatedAt: Instant) =
+            unused()
+
+        override suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant) =
+            unused()
+
+        override suspend fun delete(id: Long) = unused()
+    }
+
+    /** Cambia cómo trata el negocio sus impuestos, como si la persona lo hubiera elegido. */
+    fun setTaxes(mode: TaxMode, defaultTaxRateId: Long? = null) {
+        val current = settings.settings.value
+        settings.settings.value = current.copy(
+            taxes = current.taxes.copy(mode = mode, defaultTaxRateId = defaultTaxRateId),
+        )
+    }
+
     val ledger: StockLedgerRepository = object : StockLedgerRepository {
         override fun observeByProduct(productId: Long): Flow<List<StockMovementRecord>> =
             committed.map { tables ->
@@ -358,6 +402,7 @@ internal class SaleWorld(
         systemRows = systemRowRepository,
         ledger = ledger,
         methodNames = methodNames,
+        taxRates = taxRateRepository,
         clock = clock,
     )
 
@@ -429,6 +474,7 @@ internal fun product(
     replacementCost: Long = 0L,
     tracksLots: Boolean = false,
     archived: Boolean = false,
+    taxRateId: Long? = null,
 ): Product = Product(
     id = id,
     details = ProductDetails(
@@ -448,7 +494,7 @@ internal fun product(
         variantValue1 = null,
         variantValue2 = null,
         photoMediaId = null,
-        taxRateId = null,
+        taxRateId = taxRateId,
         targetMargin = null,
         referenceCost = null,
         referencePrice = null,
@@ -503,3 +549,13 @@ internal fun method(
     isArchived = archived,
     priceAdjustment = BasisPoints(priceAdjustmentBp),
 )
+
+/** Una tasa de impuesto escrita por la persona, con nombre inventado. */
+internal fun taxRate(id: Long, name: String, bp: Long, archived: Boolean = false): TaxRate =
+    TaxRate(
+        id = id,
+        details = TaxRateDetails(name, name.lowercase(), BasisPoints(bp)),
+        archivedAt = if (archived) SaleWorld.EPOCH else null,
+        createdAt = SaleWorld.EPOCH,
+        updatedAt = SaleWorld.EPOCH,
+    )
