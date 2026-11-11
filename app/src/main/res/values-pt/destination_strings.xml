@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dónde guardar las copias. Textos de la guía de redacción. -->
+    <!-- destination_intro: %1$s = app -->
+    <string name="destination_intro">As cópias protegem o negócio se o telefone for perdido. %1$s não guarda nada por conta própria: cada pessoa escolhe a sua nuvem.</string>
+    <string name="destination_slots_title">Drive do telefone</string>
+    <string name="destination_slots_tag">Mais fácil</string>
+    <!-- destination_slots_body: %1$s = app -->
+    <string name="destination_slots_body">%1$s entrega cada cópia à nuvem que já está no telefone, e essa nuvem a envia quando puder. %1$s não consegue saber se chegou: exige revisar a nuvem toda semana.</string>
+    <string name="destination_slots_note">São 3 cópias, sem fotos.</string>
+    <!-- destination_slots_manual_body: %1$s = app -->
+    <string name="destination_slots_manual_body">%1$s não consegue entregar as cópias sozinho a essa nuvem. Cada uma é entregue manualmente, com o app aberto, e exige revisar a nuvem toda semana.</string>
+    <string name="destination_webdav_title">Serviço com WebDAV</string>
+    <string name="destination_webdav_tag">Mais segura</string>
+    <!-- destination_webdav_body: %1$s = app -->
+    <string name="destination_webdav_body">%1$s envia cada cópia e verifica se chegou. Exige abrir uma conta em outro serviço e digitar aqui o endereço, o usuário e a senha.</string>
+    <string name="destination_webdav_note">Uma cópia por dia da última semana, com fotos.</string>
+    <string name="destination_other_cloud_note">Outras nuvens não foram testadas para esta opção. Se oferecerem WebDAV, conectam-se com Serviço com WebDAV. Se não, restam as Cópias locais, em um cartão ou em um pen drive.</string>
+    <!-- destination_privacy_note: %1$s = app -->
+    <string name="destination_privacy_note">Cada cópia leva todos os dados do negócio, também os de clientes. O serviço é escolhido por cada pessoa, e %1$s não o opera. Sem criptografia, esse serviço pode ler as cópias, e a criptografia pode ser ativada. Sem cópias, os dados estão apenas neste telefone.</string>
+    <string name="destination_current_tag">Atual</string>
+    <string name="destination_slots_gate_title">Antes de escolher</string>
+    <!-- destination_slots_gate_body: %1$s = app -->
+    <string name="destination_slots_gate_body">%1$s não consegue saber se essa nuvem enviou cada cópia. Se ela falhar sem avisar e o telefone for perdido, será perdido tudo o que foi registrado depois da última cópia realmente enviada: cerca de 7 dias ou mais. Isso só se descobre ao revisar.</string>
+    <!-- destination_slots_gate_check: %1$s = app -->
+    <string name="destination_slots_gate_check">Por isso é preciso olhar toda semana o horário do arquivo na nuvem, de preferência em outro dispositivo, e confirmar no %1$s.</string>
+    <string name="destination_slots_gate_action">Entendido</string>
+    <string name="action_not_now">Agora não</string>
+</resources>

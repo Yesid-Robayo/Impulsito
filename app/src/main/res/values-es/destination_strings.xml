@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dónde guardar las copias. Textos de la guía de redacción. -->
+    <!-- destination_intro: %1$s = app -->
+    <string name="destination_intro">Las copias protegen el negocio si se pierde el teléfono. %1$s no guarda nada por fuera: cada persona elige su nube.</string>
+    <string name="destination_slots_title">Drive del teléfono</string>
+    <string name="destination_slots_tag">Más fácil</string>
+    <!-- destination_slots_body: %1$s = app -->
+    <string name="destination_slots_body">%1$s entrega cada copia a la nube que ya está en el teléfono, y esa nube la sube cuando puede. %1$s no puede saber si llegó: exige revisar la nube cada semana.</string>
+    <string name="destination_slots_note">Son 3 copias, sin fotos.</string>
+    <!-- destination_slots_manual_body: %1$s = app -->
+    <string name="destination_slots_manual_body">%1$s no puede entregar las copias sola a esa nube. Cada una se entrega a mano, con la app abierta, y exige revisar la nube cada semana.</string>
+    <string name="destination_webdav_title">Servicio con WebDAV</string>
+    <string name="destination_webdav_tag">Más segura</string>
+    <!-- destination_webdav_body: %1$s = app -->
+    <string name="destination_webdav_body">%1$s sube cada copia y comprueba que llegó. Exige abrir una cuenta en otro servicio y escribir aquí su dirección, usuario y contraseña.</string>
+    <string name="destination_webdav_note">Una copia por día de la última semana, con fotos.</string>
+    <string name="destination_other_cloud_note">Otras nubes no están probadas para esta opción. Si ofrecen WebDAV, se conectan con Servicio con WebDAV. Si no, quedan las Copias locales, en una tarjeta o una memoria USB.</string>
+    <!-- destination_privacy_note: %1$s = app -->
+    <string name="destination_privacy_note">Cada copia lleva todos los datos del negocio, también los de clientes. El servicio lo elige cada persona, y %1$s no lo opera. Sin cifrado, ese servicio puede leer las copias, y el cifrado se puede activar. Sin copias, los datos solo están en este teléfono.</string>
+    <string name="destination_current_tag">Actual</string>
+    <string name="destination_slots_gate_title">Antes de elegir</string>
+    <!-- destination_slots_gate_body: %1$s = app -->
+    <string name="destination_slots_gate_body">%1$s no puede saber si esa nube subió cada copia. Si falla sin avisar y se pierde el teléfono, se pierde todo lo registrado después de la última copia que subió de verdad: unos 7 días o más. Solo se descubre al revisar.</string>
+    <!-- destination_slots_gate_check: %1$s = app -->
+    <string name="destination_slots_gate_check">Por eso hay que mirar cada semana la hora del archivo en la nube, mejor desde otro dispositivo, y confirmarlo en %1$s.</string>
+    <string name="destination_slots_gate_action">Entendido</string>
+    <string name="action_not_now">Ahora no</string>
+</resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dónde guardar las copias. Textos de la guía de redacción. -->
+    <!-- destination_intro: %1$s = app -->
+    <string name="destination_intro">Backups protect the business if the phone is lost. %1$s keeps nothing of its own: each person picks their cloud.</string>
+    <string name="destination_slots_title">Drive on the phone</string>
+    <string name="destination_slots_tag">Easier</string>
+    <!-- destination_slots_body: %1$s = app -->
+    <string name="destination_slots_body">%1$s hands each backup to the cloud already on the phone, and that cloud uploads it when it can. %1$s cannot tell if it arrived: it requires checking the cloud every week.</string>
+    <string name="destination_slots_note">That is 3 backups, without photos.</string>
+    <!-- destination_slots_manual_body: %1$s = app -->
+    <string name="destination_slots_manual_body">%1$s cannot hand backups to that cloud on its own. Each one is handed over by hand, with the app open, and it requires checking the cloud every week.</string>
+    <string name="destination_webdav_title">Service with WebDAV</string>
+    <string name="destination_webdav_tag">Safer</string>
+    <!-- destination_webdav_body: %1$s = app -->
+    <string name="destination_webdav_body">%1$s uploads each backup and checks that it arrived. It requires opening an account with another service and entering its address, user name and password here.</string>
+    <string name="destination_webdav_note">One backup per day for the last week, with photos.</string>
+    <string name="destination_other_cloud_note">Other clouds have not been tested for this option. If they offer WebDAV, they connect with Service with WebDAV. If not, Local backups remain, on a card or a USB drive.</string>
+    <!-- destination_privacy_note: %1$s = app -->
+    <string name="destination_privacy_note">Each backup holds all the business data, including customers. Each person chooses the service, and %1$s does not run it. Without encryption, that service can read the backups, and encryption can be turned on. Without backups, the data is only on this phone.</string>
+    <string name="destination_current_tag">Current</string>
+    <string name="destination_slots_gate_title">Before choosing</string>
+    <!-- destination_slots_gate_body: %1$s = app -->
+    <string name="destination_slots_gate_body">%1$s cannot tell whether that cloud uploaded each backup. If it fails silently and the phone is lost, everything recorded after the last backup that truly uploaded is lost: about 7 days or more. It only comes to light when checking.</string>
+    <!-- destination_slots_gate_check: %1$s = app -->
+    <string name="destination_slots_gate_check">That is why the file\'s time must be checked in the cloud every week, ideally from another device, and confirmed in %1$s.</string>
+    <string name="destination_slots_gate_action">Understood</string>
+    <string name="action_not_now">Not now</string>
+</resources>
