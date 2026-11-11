@@ -128,7 +128,20 @@ fun backupChipLook(wording: BackupWording): BackupStatusLook {
             BackupStatus.PENDING, BackupStatus.WAITING_FOR_NETWORK, BackupStatus.WAITING_FOR_WIFI ->
                 pendingChanges(report.pendingChanges)
 
-            else -> backupTitle(wording)
+            // Cada estado se nombra: uno nuevo no debe caer en silencio en el título genérico.
+            BackupStatus.RESTORING,
+            BackupStatus.NOT_CONNECTED,
+            BackupStatus.POLICY_PENDING,
+            BackupStatus.PERMISSION_LOST,
+            BackupStatus.CONFLICT,
+            BackupStatus.NOTHING_TO_BACK_UP,
+            BackupStatus.UPLOADING,
+            BackupStatus.STALE,
+            BackupStatus.FAILED,
+            BackupStatus.CHECK_DUE,
+            BackupStatus.HANDED_OFF,
+            BackupStatus.BLOCKED_BY_DATA_SAVER,
+            -> backupTitle(wording)
         }
     return BackupStatusLook(
         text = text,

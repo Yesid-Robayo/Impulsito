@@ -259,8 +259,15 @@ private fun MainAction(
                 variant = ActionVariant.PRIMARY,
             )
 
-        // La política se acepta en su propia hoja; aquí no hay copia que pedir.
-        BackupStatus.POLICY_PENDING, BackupStatus.CONFLICT -> Unit
+        BackupStatus.POLICY_PENDING ->
+            PrimaryActionButton(
+                text = stringResource(R.string.backup_action_review_policy),
+                onClick = { onAction(BackupAction.ReviewPolicy) },
+                variant = ActionVariant.PRIMARY,
+            )
+
+        // El conflicto se decide en su propia hoja; aquí no hay copia que pedir.
+        BackupStatus.CONFLICT -> Unit
 
         BackupStatus.UPLOADING, BackupStatus.RESTORING ->
             PrimaryActionButton(

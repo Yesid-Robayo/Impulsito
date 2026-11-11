@@ -38,5 +38,8 @@ sealed interface BackupAction {
 
     data object RetryCopies : BackupAction
 
+    /** Copias en pausa por la política: la muestra para aceptarla. */
+    data object ReviewPolicy : BackupAction
+
     data object MessageShown : BackupAction
 }

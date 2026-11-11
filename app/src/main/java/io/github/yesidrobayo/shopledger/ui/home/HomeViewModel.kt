@@ -110,6 +110,7 @@ class HomeViewModel(
             is HomeAction.OpenSale,
             HomeAction.OpenBackup,
             HomeAction.ChooseDestination,
+            HomeAction.ReviewPolicy,
             -> Unit
         }
     }

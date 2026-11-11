@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
+import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 
 /**
  * La pantalla del respaldo en la navegación. Al volver a primer plano recalcula el estado: un día
@@ -47,6 +48,7 @@ fun BackupRoute(navigator: AppNavigator) {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val messages = LocalAppMessages.current
+            val policy = LocalPolicyPrompt.current
             val noInternet = stringResource(R.string.backup_now_no_internet)
             LaunchedEffect(uiState.message) {
                 when (uiState.message) {
@@ -70,6 +72,8 @@ fun BackupRoute(navigator: AppNavigator) {
 
                         BackupAction.ChooseDestination ->
                             navigator.open(AppNavKey.BackupDestinationChoice())
+
+                        BackupAction.ReviewPolicy -> policy.review()
 
                         BackupAction.BackUpNow,
                         BackupAction.RetryCopies,

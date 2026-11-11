@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Política y términos antes de conectar un destino, y el aviso de cambios. Textos de la guía de redacción. -->
+    <string name="legal_accept_title">Policy and terms</string>
+    <string name="legal_accept_body">Saving backups to the cloud requires accepting the privacy policy and the terms of use.</string>
+    <string name="legal_accept_action">Accept and continue</string>
+    <string name="legal_accept_not_blocking">Not accepting never blocks the data or exporting it: it only pauses cloud backups.</string>
+    <string name="consent_change_title">Data use has changed</string>
+    <string name="consent_change_body">The privacy policy or the terms of use have changed. %1$s. Without accepting, backups to the cloud are paused. The app, the data on the phone and exports keep working.</string>
+    <string name="consent_accept_action">Accept the change</string>
+    <string name="consent_read_action">Read the full text</string>
+    <string name="consent_later_action">Not now</string>
+    <string name="legal_terms_title">Terms of use</string>
+    <string name="legal_terms_what">What %1$s is. A tool to record the internal management of a business, which runs on the phone.</string>
+    <string name="legal_terms_as_is">Provided as is. %1$s is offered without warranties, to the extent that applicable rules allow.</string>
+    <string name="legal_terms_responsibility">Responsibility of the user. Each person answers for their data, for what they record and for their local obligations.</string>
+    <string name="legal_terms_no_substitute">What it does not replace. %1$s does not replace accounting or invoicing anywhere.</string>
+    <string name="legal_terms_third_party">Data about other people. Whoever records customer or supplier data decides what to keep and answers for it.</string>
+    <string name="legal_terms_recovery">Recovery code. With encryption on, if the phone and every copy of the code are lost, the data in encrypted backups cannot be recovered.</string>
+    <string name="legal_terms_changes">Changes. If these terms change, %1$s asks to accept them. Not accepting them never blocks the data or exporting it.</string>
+    <!-- Propuesto: el resumen de un cambio lo escribe quien publica cada versión; este vale mientras no haya otro. -->
+    <string name="consent_change_summary">The details are in the full text</string>
+</resources>

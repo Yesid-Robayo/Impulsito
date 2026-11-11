@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Política y términos antes de conectar un destino, y el aviso de cambios. Textos de la guía de redacción. -->
+    <string name="legal_accept_title">Política e termos</string>
+    <string name="legal_accept_body">Para salvar cópias na nuvem é preciso aceitar a política de privacidade e os termos de uso.</string>
+    <string name="legal_accept_action">Aceitar e continuar</string>
+    <string name="legal_accept_not_blocking">Não aceitar nunca bloqueia os dados nem a exportação: apenas pausa as cópias na nuvem.</string>
+    <string name="consent_change_title">O uso dos dados mudou</string>
+    <string name="consent_change_body">A política de privacidade ou os termos de uso mudaram. %1$s. Sem aceitar, as cópias na nuvem ficam em pausa. O app, os dados do telefone e as exportações continuam funcionando.</string>
+    <string name="consent_accept_action">Aceitar a alteração</string>
+    <string name="consent_read_action">Ler o texto completo</string>
+    <string name="consent_later_action">Agora não</string>
+    <string name="legal_terms_title">Termos de uso</string>
+    <string name="legal_terms_what">O que é o %1$s. Uma ferramenta para registrar a gestão interna de um negócio, que funciona no telefone.</string>
+    <string name="legal_terms_as_is">Fornecido como está. O %1$s é oferecido sem garantias, na medida em que as normas aplicáveis permitirem.</string>
+    <string name="legal_terms_responsibility">Responsabilidade de quem usa. Cada pessoa responde por seus dados, pelo que registra e por suas obrigações locais.</string>
+    <string name="legal_terms_no_substitute">O que não substitui. O %1$s não substitui a contabilidade nem o faturamento em nenhum lugar.</string>
+    <string name="legal_terms_third_party">Dados de outras pessoas. Quem registra dados de clientes ou fornecedores decide o que guarda e responde por isso.</string>
+    <string name="legal_terms_recovery">Código de recuperação. Com a criptografia ativa, se o telefone e todas as cópias do código forem perdidos, os dados das cópias criptografadas são irrecuperáveis.</string>
+    <string name="legal_terms_changes">Alterações. Se estes termos mudarem, o %1$s pede que sejam aceitos. Não aceitá-los nunca bloqueia os dados nem a exportação.</string>
+    <!-- Propuesto: el resumen de un cambio lo escribe quien publica cada versión; este vale mientras no haya otro. -->
+    <string name="consent_change_summary">Os detalhes estão no texto completo</string>
+</resources>

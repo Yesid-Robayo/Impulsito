@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.TopLevelDestination
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 import kotlinx.coroutines.flow.map
 
 /**
@@ -61,6 +62,7 @@ fun HomeRoute(navigator: AppNavigator) {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val backup by viewModel.backup.collectAsStateWithLifecycle()
+            val policy = LocalPolicyPrompt.current
             LifecycleResumeEffect(viewModel) {
                 viewModel.onReturnToForeground()
                 onPauseOrDispose {}
@@ -86,6 +88,8 @@ fun HomeRoute(navigator: AppNavigator) {
 
                         HomeAction.ChooseDestination ->
                             navigator.open(AppNavKey.BackupDestinationChoice())
+
+                        HomeAction.ReviewPolicy -> policy.review()
 
                         HomeAction.Retry -> viewModel.onAction(action)
                     }

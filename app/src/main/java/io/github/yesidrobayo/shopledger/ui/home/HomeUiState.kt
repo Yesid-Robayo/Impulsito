@@ -70,4 +70,7 @@ sealed interface HomeAction {
 
     /** Sin destino: lleva a elegir dónde guardar. */
     data object ChooseDestination : HomeAction
+
+    /** Copias en pausa por la política: la muestra para aceptarla. */
+    data object ReviewPolicy : HomeAction
 }

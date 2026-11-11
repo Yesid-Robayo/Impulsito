@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Política y términos antes de conectar un destino, y el aviso de cambios. Textos de la guía de redacción. -->
+    <string name="legal_accept_title">Política y términos</string>
+    <string name="legal_accept_body">Para guardar copias en la nube se necesita aceptar la política de privacidad y los términos de uso.</string>
+    <string name="legal_accept_action">Aceptar y continuar</string>
+    <string name="legal_accept_not_blocking">No aceptar nunca bloquea los datos ni exportarlos: solo pausa las copias en la nube.</string>
+    <string name="consent_change_title">Cambió el uso de los datos</string>
+    <string name="consent_change_body">Cambiaron la política de privacidad o los términos de uso. %1$s. Sin aceptar, las copias en la nube quedan en pausa. La app, los datos del teléfono y las exportaciones siguen funcionando.</string>
+    <string name="consent_accept_action">Aceptar el cambio</string>
+    <string name="consent_read_action">Leer el texto completo</string>
+    <string name="consent_later_action">Ahora no</string>
+    <string name="legal_terms_title">Términos de uso</string>
+    <string name="legal_terms_what">Qué es %1$s. Una herramienta para registrar la gestión interna de un negocio, que funciona en el teléfono.</string>
+    <string name="legal_terms_as_is">Se entrega tal cual. %1$s se ofrece sin garantías, en la medida en que las normas aplicables lo permitan.</string>
+    <string name="legal_terms_responsibility">Responsabilidad de quien la usa. Cada persona responde por sus datos, por lo que registra y por sus obligaciones locales.</string>
+    <string name="legal_terms_no_substitute">Lo que no sustituye. %1$s no sustituye la contabilidad ni la facturación en ningún lugar.</string>
+    <string name="legal_terms_third_party">Datos de otras personas. Quien registra datos de clientes o proveedores decide qué guarda y responde por ello.</string>
+    <string name="legal_terms_recovery">Código de recuperación. Con el cifrado activo, si se pierden el teléfono y todas las copias del código, los datos de las copias cifradas son irrecuperables.</string>
+    <string name="legal_terms_changes">Cambios. Si estos términos cambian, %1$s pide aceptarlos. No aceptarlos nunca bloquea los datos ni exportarlos.</string>
+    <!-- Propuesto: el resumen de un cambio lo escribe quien publica cada versión; este vale mientras no haya otro. -->
+    <string name="consent_change_summary">Los detalles están en el texto completo</string>
+</resources>

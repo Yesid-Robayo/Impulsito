@@ -80,7 +80,7 @@ class BackupViewModel(
             BackupAction.MessageShown -> state.update { it.copy(message = null) }
 
             // Lo resuelve la navegación.
-            BackupAction.Back, BackupAction.ChooseDestination -> Unit
+            BackupAction.Back, BackupAction.ChooseDestination, BackupAction.ReviewPolicy -> Unit
         }
     }
 

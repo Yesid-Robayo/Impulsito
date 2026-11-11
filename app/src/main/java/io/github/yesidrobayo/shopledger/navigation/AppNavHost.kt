@@ -19,10 +19,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -31,6 +33,8 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.ShopLedgerApp
+import io.github.yesidrobayo.shopledger.domain.usecase.safety.PolicyConsentUseCase
 import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
@@ -49,6 +53,10 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
 import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductListRoute
 import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
+import io.github.yesidrobayo.shopledger.ui.safety.PolicyGated
+import io.github.yesidrobayo.shopledger.ui.safety.PolicyPrompt
+import io.github.yesidrobayo.shopledger.ui.safety.PolicyPromptHost
 import io.github.yesidrobayo.shopledger.ui.sale.CheckoutRoute
 import io.github.yesidrobayo.shopledger.ui.sale.NewSaleRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
@@ -73,8 +81,21 @@ fun AppNavHost(modifier: Modifier = Modifier) {
     val density = LocalDensity.current
     val messageScope = rememberCoroutineScope()
     val messages = remember(messageScope) { AppMessages(messageScope) }
+    val container = (LocalContext.current.applicationContext as ShopLedgerApp).container
+    val policy =
+        remember(messageScope) {
+            PolicyPrompt(PolicyConsentUseCase(container.data.policyConsent), messageScope)
+        }
+    // Cada apertura vuelve a mirar si cambió lo aceptado, hasta que la persona acepte.
+    LifecycleStartEffect(policy) {
+        policy.checkOnOpen()
+        onStopOrDispose {}
+    }
     Box(modifier.fillMaxSize()) {
-        CompositionLocalProvider(LocalAppMessages provides messages) {
+        CompositionLocalProvider(
+            LocalAppMessages provides messages,
+            LocalPolicyPrompt provides policy,
+        ) {
             NavDisplay(
                 backStack = backStack,
                 onBack = { navigator.back() },
@@ -88,6 +109,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 predictivePopTransitionSpec = { backward(density) },
                 entryProvider = { key -> entryOf(key, navigator) },
             )
+            PolicyPromptHost(policy)
         }
         AnimatedVisibility(
             visible = navigator.showsBottomBar,
@@ -148,6 +170,12 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.Home -> HomeRoute(navigator)
 
         AppNavKey.Backup -> BackupRoute(navigator)
+
+        // Toda entrada que conecta un destino pasa antes por la política y los términos.
+        is AppNavKey.BackupDestinationChoice,
+        is AppNavKey.WebDavConnect,
+        AppNavKey.DocumentSlotsSetup,
+        -> PolicyGated(onDeclined = { navigator.back() }) { PlaceholderRoute(key, navigator) }
 
         AppNavKey.ProductList -> ProductListRoute(navigator)
 

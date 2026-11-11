@@ -275,19 +275,36 @@ private fun BackupSummary(backup: BackupWording, onAction: (HomeAction) -> Unit)
     val status = report.status
     BackupStatusChip(backupChipLook(backup), onClick = { onAction(HomeAction.OpenBackup) })
     if (status.needsBanner()) {
-        val notConnected = status == BackupStatus.NOT_CONNECTED
+        val (label, action) =
+            when (status) {
+                BackupStatus.NOT_CONNECTED ->
+                    R.string.backup_action_choose_destination to HomeAction.ChooseDestination
+
+                BackupStatus.POLICY_PENDING ->
+                    R.string.backup_action_review_policy to HomeAction.ReviewPolicy
+
+                // Los demás que piden atención se revisan en la pantalla del respaldo, y los que no
+                // llevan banner nunca llegan aquí: se nombran igual, para que uno nuevo se decida.
+                BackupStatus.CHECK_DUE,
+                BackupStatus.BLOCKED_BY_DATA_SAVER,
+                BackupStatus.STALE,
+                BackupStatus.FAILED,
+                BackupStatus.PERMISSION_LOST,
+                BackupStatus.CONFLICT,
+                BackupStatus.RESTORING,
+                BackupStatus.NOTHING_TO_BACK_UP,
+                BackupStatus.UPLOADING,
+                BackupStatus.HANDED_OFF,
+                BackupStatus.UP_TO_DATE,
+                BackupStatus.WAITING_FOR_WIFI,
+                BackupStatus.WAITING_FOR_NETWORK,
+                BackupStatus.PENDING,
+                -> R.string.backup_action_review to HomeAction.OpenBackup
+            }
         BackupStatusBanner(
             backupBannerLook(backup),
-            actionLabel = stringResource(
-                if (notConnected) {
-                    R.string.backup_action_choose_destination
-                } else {
-                    R.string.backup_action_review
-                },
-            ),
-            onAction = {
-                onAction(if (notConnected) HomeAction.ChooseDestination else HomeAction.OpenBackup)
-            },
+            actionLabel = stringResource(label),
+            onAction = { onAction(action) },
         )
     }
     val provider = backup.providerLabel ?: NO_VALUE_TEXT
