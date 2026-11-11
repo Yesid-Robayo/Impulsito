@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveTipsEnabledUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveHeldSalesUseCase
@@ -71,6 +72,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     container.clock,
                     cashRounding = { ObserveCashRoundingUseCase(ports.settings)() },
                     productUnits = ports.productUnits,
+                    tipsEnabled = { ObserveTipsEnabledUseCase(ports.settings)() },
                 )
             val register =
                 RegisterSaleUseCase(

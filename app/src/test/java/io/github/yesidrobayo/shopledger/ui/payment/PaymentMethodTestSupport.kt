@@ -227,6 +227,9 @@ internal object NoSettings : AppSettingsRepository {
 
     override suspend fun lockCurrency(lockedAt: Instant): Boolean = error("Solo lectura")
 
+    override suspend fun updateTipsEnabled(enabled: Boolean, updatedAt: Instant) =
+        error("Solo lectura")
+
     override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant) =
         error("Solo lectura")
 

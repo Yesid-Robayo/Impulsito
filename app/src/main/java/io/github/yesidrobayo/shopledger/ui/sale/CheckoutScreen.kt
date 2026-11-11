@@ -30,6 +30,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -155,6 +156,7 @@ private fun NarrowCheckout(uiState: CheckoutUiState, onAction: (CheckoutAction) 
             TotalBlock(uiState.summary)
             AdjustmentRow(uiState, onAction)
             Payments(uiState, onAction)
+            TipSection(uiState, onAction)
         }
     }
 }
@@ -176,6 +178,7 @@ private fun WideCheckout(uiState: CheckoutUiState, onAction: (CheckoutAction) ->
         ) {
             TotalBlock(uiState.summary)
             AdjustmentRow(uiState, onAction)
+            TipSection(uiState, onAction)
         }
         Column(
             Modifier
@@ -235,6 +238,9 @@ private fun TotalBlock(summary: CheckoutSummary) {
                 HeroRow(label, adjustment.amount)
             }
             summary.tax?.let { HeroRow(stringResource(R.string.term_tax), it) }
+            if (summary.tip != Money.ZERO) {
+                HeroRow(stringResource(R.string.checkout_tip), summary.tip)
+            }
             if (summary.cashRounding != Money.ZERO) {
                 HeroRow(stringResource(R.string.checkout_cash_rounding), summary.cashRounding)
             }
@@ -291,6 +297,29 @@ private fun AdjustmentRow(uiState: CheckoutUiState, onAction: (CheckoutAction) -
         action = SettingsRowAction.Navigation { onAction(CheckoutAction.OpenAdjustment) },
         summary = summary,
     )
+}
+
+/**
+ * `Propina`, solo con las propinas encendidas: un campo y `Sin propina`. La propina se suma a lo que
+ * se cobra, y nunca a ninguna ganancia.
+ */
+@Composable
+private fun TipSection(uiState: CheckoutUiState, onAction: (CheckoutAction) -> Unit) {
+    if (!uiState.tipsEnabled) return
+    SectionHeader(stringResource(R.string.checkout_tip))
+    MoneyField(
+        value = uiState.tipText,
+        onValueChange = { onAction(CheckoutAction.TipChange(it)) },
+        label = stringResource(R.string.checkout_tip),
+        error = fieldErrorText(uiState.tipError),
+        imeAction = ImeAction.Done,
+    )
+    if (uiState.tipText.isNotEmpty()) {
+        InlineTextButton(
+            text = stringResource(R.string.checkout_no_tip),
+            onClick = { onAction(CheckoutAction.NoTip) },
+        )
+    }
 }
 
 /** Los pagos, `Agregar pago` y la línea de balance, que recibe el foco si los pagos no suman. */

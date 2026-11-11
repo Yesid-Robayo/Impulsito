@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.map
  *   lleva. Los archivados no se leen.
  * - El paso del redondeo del efectivo va con el catálogo, de [cashRounding]: la venta muestra lo
  *   que cobra en efectivo ya redondeado. Sin él, no se redondea.
+ * - Si el cobro ofrece propina, de [tipsEnabled]. Sin él, no la ofrece.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObserveSaleCatalogUseCase(
@@ -52,6 +53,7 @@ class ObserveSaleCatalogUseCase(
     private val clock: Clock,
     private val cashRounding: () -> Flow<Money> = { flowOf(Money.ZERO) },
     private val productUnits: ProductUnitRepository? = null,
+    private val tipsEnabled: () -> Flow<Boolean> = { flowOf(false) },
 ) {
     operator fun invoke(): Flow<SaleCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = result as? BusinessCalendarResult.Ready
@@ -99,7 +101,7 @@ class ObserveSaleCatalogUseCase(
                 byProduct,
             ->
             sale.copy(taxes = taxes, taxRates = byId, cashRounding = step, conversions = byProduct)
-        }
+        }.combine(tipsEnabled()) { sale, tips -> sale.copy(tipsEnabled = tips) }
     }
 }
 

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checkout_tip">Tip</string>
+    <string name="checkout_no_tip">No tip</string>
+    <string name="settings_group_sales">Sales and payment</string>
+    <string name="settings_tips">Tips</string>
+</resources>

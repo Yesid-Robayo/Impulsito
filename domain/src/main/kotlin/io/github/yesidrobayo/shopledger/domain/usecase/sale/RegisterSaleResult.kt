@@ -77,6 +77,12 @@ sealed interface RegisterSaleResult {
      * descuentos: dejaría la venta con un total negativo.
      */
     data object OrderDiscountTooLarge : RegisterSaleResult
+
+    /**
+     * La propina es negativa, pasa del tope de un documento, o se escribió con las propinas
+     * apagadas: el cobro no la ofrecía.
+     */
+    data object TipNotAccepted : RegisterSaleResult
 }
 
 /** Por qué una línea de la venta no se puede vender. */

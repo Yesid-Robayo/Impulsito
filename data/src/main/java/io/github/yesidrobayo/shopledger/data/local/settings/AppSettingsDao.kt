@@ -116,6 +116,13 @@ internal interface AppSettingsDao {
     suspend fun updateWeekStartDay(weekStartDay: Long, updatedAt: Long): Int
 
     /**
+     * Enciende o apaga las propinas del cobro. Es un dato del negocio: va dentro de la transacción
+     * del caso de uso y cuenta como cambio.
+     */
+    @Query("UPDATE app_settings SET tips_enabled = :enabled, updated_at = :updatedAt WHERE id = 1")
+    suspend fun updateTipsEnabled(enabled: Long, updatedAt: Long): Int
+
+    /**
      * Cambia cómo se cobra el impuesto, la tasa por defecto y si el impuesto de compra es
      * recuperable. Es un dato del negocio: va dentro de la transacción del caso de uso y cuenta
      * como cambio. La llave de la tasa por defecto rechaza una que no exista.

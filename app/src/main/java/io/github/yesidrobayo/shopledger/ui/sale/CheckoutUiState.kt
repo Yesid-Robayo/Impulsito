@@ -11,7 +11,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutProblem
  * El estado del cobro: el bloque del total, los pagos, lo que falta o sobra y lo que está abierto
  * encima.
  *
- * [registered] llega una sola vez, al confirmar: la pantalla vuelve a Inicio con el mensaje.
+ * [registered] llega una sola vez, al confirmar: la pantalla vuelve a Inicio con el mensaje. Con
+ * [tipsEnabled], el cobro ofrece la propina, escrita en [tipText].
  */
 @Immutable
 data class CheckoutUiState(
@@ -29,6 +30,9 @@ data class CheckoutUiState(
     val zeroDialog: Boolean = false,
     val status: RegisterStatus = RegisterStatus.IDLE,
     val registered: RegisteredSale? = null,
+    val tipsEnabled: Boolean = false,
+    val tipText: String = "",
+    val tipError: SaleFieldError? = null,
 ) {
     /** Si algún pago usa un método que ya no se ofrece: hay que quitarlo o cambiarlo. */
     val hasGoneMethod: Boolean get() = payments.any { it.gone }
@@ -48,8 +52,8 @@ sealed interface CheckoutContent {
 /**
  * El bloque del total. [amountDue] es lo que se cobra y nunca se oculta. Debajo, solo las filas que
  * aplican: [subtotal], el ajuste escrito, el recargo o descuento de cada método en [methodAdjustments]
- * [tax], que solo existe cuando el impuesto se suma al precio, y [cashRounding], el redondeo del
- * efectivo: así las filas suman el total.
+ * [tax], que solo existe cuando el impuesto se suma al precio, [cashRounding], el redondeo del
+ * efectivo, y [tip], la propina: así las filas suman el total.
  */
 @Immutable
 data class CheckoutSummary(
@@ -59,6 +63,7 @@ data class CheckoutSummary(
     val methodAdjustments: List<MethodAdjustment> = emptyList(),
     val tax: Money? = null,
     val cashRounding: Money = Money.ZERO,
+    val tip: Money = Money.ZERO,
 )
 
 /** El recargo, positivo, o el descuento, negativo, que suma pagar con [method]. */

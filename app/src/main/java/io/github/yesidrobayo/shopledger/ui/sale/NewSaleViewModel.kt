@@ -597,6 +597,7 @@ class NewSaleViewModel(
                 is RegisterSaleResult.PaymentRejected,
                 is RegisterSaleResult.PaymentsDoNotMatch,
                 RegisterSaleResult.OrderDiscountTooLarge,
+                RegisterSaleResult.TipNotAccepted,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }

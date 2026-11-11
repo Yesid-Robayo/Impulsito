@@ -58,6 +58,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentFees
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSplit
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSplitCheck
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSurcharges
+import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentTips
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleLineRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnit
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
@@ -112,8 +113,12 @@ import kotlin.time.Instant
  * - **Lo recibido y el cambio** van solo en efectivo: el cambio es lo recibido menos el pago ya
  *   redondeado, y lo recibido que no alcanza se rechaza.
  *
- * Por ahora no calcula propina: queda en cero. Tampoco vende combos ni productos con lotes, ni a
- * crédito: los rechaza con su motivo.
+ * - **La propina** va aparte de la venta: los pagos la cubren, paga la comisión de su método, pero
+ *   no su recargo, y nunca entra en lo que cobran las líneas ni en ninguna ganancia. Se reparte
+ *   entre los pagos en proporción a lo que cubre cada uno. Solo se acepta con las propinas
+ *   encendidas.
+ *
+ * Por ahora no vende combos ni productos con lotes, ni a crédito: los rechaza con su motivo.
  */
 class RegisterSaleUseCase(
     private val transactions: TransactionRunner,
@@ -142,6 +147,10 @@ class RegisterSaleUseCase(
         shapeRejection(request)?.let { return TxResult.Rollback(it) }
         val note = request.note?.takeIf { it.isNotBlank() }
         val current = settings.get()
+        // Una propina escrita con las propinas apagadas no se guarda: la pantalla no la ofrecía.
+        if (request.tipAmount > Money.ZERO && !current.sales.tipsEnabled) {
+            return TxResult.Rollback(RegisterSaleResult.TipNotAccepted)
+        }
 
         val calendar = when (val result = BusinessCalendar.of(current.regional)) {
             is BusinessCalendarResult.Ready -> result.calendar
@@ -172,6 +181,7 @@ class RegisterSaleUseCase(
                 chosen,
                 priced,
                 due,
+                request.tipAmount,
                 step,
                 time.businessDate,
                 now,
@@ -201,8 +211,14 @@ class RegisterSaleUseCase(
     /** Lo que se rechaza sin leer la base: la forma de la venta. */
     private fun shapeRejection(request: SaleRequest): RegisterSaleResult? = when {
         request.lines.isEmpty() -> RegisterSaleResult.EmptySale
+
         request.lines.size > Limit.DOCUMENT_LINES.max -> RegisterSaleResult.TooManyLines
+
         (request.note?.length ?: 0) > MAX_NOTE_LENGTH -> RegisterSaleResult.NoteTooLong
+
+        request.tipAmount < Money.ZERO || !Limit.DOCUMENT_TOTAL.allows(request.tipAmount.minor) ->
+            RegisterSaleResult.TipNotAccepted
+
         else -> paymentRejection(request)
     }
 
@@ -480,16 +496,24 @@ class RegisterSaleUseCase(
      * redondeo, y ninguna comisión puede pasar del tope. Los dos ajustes se reparten juntos sobre
      * [priced], las líneas sin ajuste, para que el redondeo sea el de un solo reparto. Cada pago en
      * efectivo se redondea después a [cashStep], ya con su recargo.
+     *
+     * [tip] se suma a lo que deben cubrir los pagos escritos, y cada pago lleva su parte: su recargo
+     * se calcula sin ella, así que la propina nunca termina en las líneas.
      */
     private fun settle(
         chosen: List<ChosenPayment>,
         priced: Priced.Lines,
         due: Priced.Lines,
+        tip: Money,
         cashStep: Money,
         businessDate: BusinessDate,
         now: Instant,
     ): Settled {
-        val amountDue = due.totals.total
+        // Las dos sumas caben en Long: cada una está dentro del tope de un documento.
+        val amountDue = due.totals.total + tip
+        if (!Limit.DOCUMENT_TOTAL.allows(amountDue.minor)) {
+            return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
+        }
         val written = chosen.map { it.amount ?: amountDue }
         when (val check = PaymentSplit.check(amountDue, written)) {
             PaymentSplitCheck.Matches -> Unit
@@ -502,8 +526,9 @@ class RegisterSaleUseCase(
             PaymentSplitCheck.AboveLimit ->
                 return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
         }
+        val tips = PaymentTips.shares(tip, written)
         val surcharges = PaymentSurcharges.settle(
-            amounts = written,
+            amounts = written.zip(tips) { amount, share -> amount - share },
             rates = chosen.map { it.method.priceAdjustment },
             totalWith = { surcharge ->
                 adjusted(priced, due.adjustment + surcharge)?.totals?.total
@@ -530,9 +555,10 @@ class RegisterSaleUseCase(
         val settled = ArrayList<NewSalePayment>(chosen.size)
         for ((index, payment) in chosen.withIndex()) {
             val cash = payment.method.kind == PaymentMethodKind.CASH
-            val rounded = if (cash) CashRounding.amount(amounts[index], cashStep) else Money.ZERO
+            val covered = amounts[index] + tips[index]
+            val rounded = if (cash) CashRounding.amount(covered, cashStep) else Money.ZERO
             rounding += rounded
-            val amount = amounts[index] + rounded
+            val amount = covered + rounded
             val tendered = payment.tendered
             if (tendered != null && tendered < amount) {
                 return Settled.Rejected(
@@ -546,12 +572,12 @@ class RegisterSaleUseCase(
                 ?.copy(tenderedAmount = tendered, changeAmount = tendered?.let { it - amount })
                 ?: return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
         }
-        // Lo que se cobra: el total con los recargos, más el redondeo del efectivo.
-        val charged = adjustedLines.totals.total + rounding
+        // Lo que se cobra: el total con los recargos, la propina y el redondeo del efectivo.
+        val charged = adjustedLines.totals.total + tip + rounding
         if (!Limit.DOCUMENT_TOTAL.allows(charged.minor)) {
             return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
         }
-        return Settled.Payments(adjustedLines, settled, rounding, charged)
+        return Settled.Payments(adjustedLines, settled, tip, rounding, charged)
     }
 
     /**
@@ -633,7 +659,7 @@ class RegisterSaleUseCase(
                 totalCost = totals.cost,
                 totalReplacementCost = totals.replacement,
                 orderAdjustment = priced.adjustment,
-                tipAmount = Money.ZERO,
+                tipAmount = settled.tip,
                 cashRoundingAmount = settled.cashRounding,
                 amountDue = settled.amountDue,
                 customerId = null,
@@ -796,10 +822,14 @@ class RegisterSaleUseCase(
     }
 
     private sealed interface Settled {
-        /** [cashRounding] es la suma de los redondeos del efectivo, y [amountDue] lo que se cobra. */
+        /**
+         * [tip] es la propina, [cashRounding] la suma de los redondeos del efectivo y [amountDue] lo
+         * que se cobra.
+         */
         class Payments(
             val priced: Priced.Lines,
             val payments: List<NewSalePayment>,
+            val tip: Money,
             val cashRounding: Money,
             val amountDue: Money,
         ) : Settled

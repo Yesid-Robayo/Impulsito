@@ -16,6 +16,12 @@ sealed interface CheckoutAction {
 
     data class RemovePayment(val index: Int) : CheckoutAction
 
+    /** Lo escrito en la propina. En blanco es sin propina. */
+    data class TipChange(val text: String) : CheckoutAction
+
+    /** `Sin propina`: la quita. */
+    data object NoTip : CheckoutAction
+
     data object OpenAddPayment : CheckoutAction
 
     /** Agrega un pago con [methodId], con lo que falta ya escrito. */

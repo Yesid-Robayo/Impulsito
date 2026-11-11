@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checkout_tip">Propina</string>
+    <string name="checkout_no_tip">Sin propina</string>
+    <string name="settings_group_sales">Ventas y cobro</string>
+    <string name="settings_tips">Propinas</string>
+</resources>

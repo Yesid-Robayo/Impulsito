@@ -460,4 +460,72 @@ class CheckoutViewModelTest {
         assertEquals("30000", second.state.payments.single().tenderedText)
         assertEquals(Money(5_000L), second.state.payments.single().change)
     }
+
+    @Test
+    fun `with tips on, the tip is charged and the single payment keeps covering everything`() =
+        runTest {
+            catalog.value = catalog.value.copy(tipsEnabled = true)
+            val model = viewModel()
+
+            assertTrue(model.state.tipsEnabled)
+
+            model.act(this, CheckoutAction.TipChange("2000"))
+
+            assertEquals(Money(2_000L), model.state.summary.tip)
+            assertEquals(Money(27_000L), model.state.summary.amountDue)
+            assertEquals("27000", model.state.payments.single().amountText)
+            assertEquals(CheckoutBalance.Complete, model.state.balance)
+
+            model.act(this, CheckoutAction.Register)
+
+            assertEquals(Money(2_000L), requests.single().tipAmount)
+            assertEquals(Money(27_000L), requests.single().payments.single().amount)
+        }
+
+    @Test
+    fun `no tip takes it off, and a tip that cannot be read is marked`() = runTest {
+        catalog.value = catalog.value.copy(tipsEnabled = true)
+        val model = viewModel()
+        model.act(this, CheckoutAction.TipChange("2000"))
+        model.act(this, CheckoutAction.NoTip)
+
+        assertEquals(Money.ZERO, model.state.summary.tip)
+        assertEquals("", model.state.tipText)
+        assertEquals("25000", model.state.payments.single().amountText)
+
+        model.act(this, CheckoutAction.TipChange("1,5"))
+        model.act(this, CheckoutAction.Register)
+
+        assertEquals(SaleFieldError.NOT_A_NUMBER, model.state.tipError)
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun `with tips off there is no tip, even one written before`() = runTest {
+        catalog.value = catalog.value.copy(tipsEnabled = true)
+        val model = viewModel()
+        model.act(this, CheckoutAction.TipChange("2000"))
+        model.act(this, CheckoutAction.AmountChange(0, "25000"))
+        catalog.value = catalog.value.copy(tipsEnabled = false)
+        advanceUntilIdle()
+
+        assertFalse(model.state.tipsEnabled)
+        assertEquals(Money.ZERO, model.state.summary.tip)
+
+        model.act(this, CheckoutAction.Register)
+
+        assertEquals(Money.ZERO, requests.single().tipAmount)
+    }
+
+    @Test
+    fun `the tip survives the process being closed`() = runTest {
+        catalog.value = catalog.value.copy(tipsEnabled = true)
+        val first = viewModel()
+        first.act(this, CheckoutAction.TipChange("2000"))
+
+        val second = viewModel(draft = null)
+
+        assertEquals("2000", second.state.tipText)
+        assertEquals(Money(27_000L), second.state.summary.amountDue)
+    }
 }

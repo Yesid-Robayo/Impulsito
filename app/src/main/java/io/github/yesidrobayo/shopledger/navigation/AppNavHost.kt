@@ -62,7 +62,7 @@ import io.github.yesidrobayo.shopledger.ui.sale.HeldSalesRoute
 import io.github.yesidrobayo.shopledger.ui.sale.NewSaleRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleHistoryRoute
-import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryScreen
+import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryRoute
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -212,7 +212,7 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         // Una entrada mínima a la región y al idioma, hasta que exista la pantalla completa.
         AppNavKey.Settings ->
-            SettingsEntryScreen(onOpen = { navigator.open(it) }, onBack = { navigator.back() })
+            SettingsEntryRoute(onOpen = { navigator.open(it) }, onBack = { navigator.back() })
 
         is AppNavKey.RegionalSettings ->
             RegionalSettingsRoute(

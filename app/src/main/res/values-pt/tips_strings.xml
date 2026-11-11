@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checkout_tip">Gorjeta</string>
+    <string name="checkout_no_tip">Sem gorjeta</string>
+    <string name="settings_group_sales">Vendas e pagamentos</string>
+    <string name="settings_tips">Gorjetas</string>
+</resources>

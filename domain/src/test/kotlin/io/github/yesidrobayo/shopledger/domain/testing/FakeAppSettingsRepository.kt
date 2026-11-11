@@ -155,6 +155,18 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
     override suspend fun updateProfile(profile: BusinessProfile, updatedAt: Instant): Unit =
         error("No se usa en estas pruebas")
 
+    /** Cada cambio de las propinas, con su instante, en orden. */
+    val tipsWrites = mutableListOf<Pair<Boolean, Instant>>()
+
+    override suspend fun updateTipsEnabled(enabled: Boolean, updatedAt: Instant) {
+        tipsWrites += enabled to updatedAt
+        val current = settings.value
+        settings.value = current.copy(
+            updatedAt = updatedAt,
+            sales = current.sales.copy(tipsEnabled = enabled),
+        )
+    }
+
     override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant): Unit =
         error("No se usa en estas pruebas")
 

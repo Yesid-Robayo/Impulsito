@@ -321,4 +321,60 @@ class CheckoutMatchesRegisterTest {
                 assertEquals(stored.map { it.changeAmount }, preview.payments.map { it.change })
             }
         }
+
+    fun `with a tip and two surcharged payments, the checkout is the registered sale`() = runTest {
+        for (mode in TaxMode.entries) {
+            val world = world(mode)
+            world.settings.settings.value = world.settings.settings.value.let {
+                it.copy(sales = it.sales.copy(tipsEnabled = true))
+            }
+            val pricing = CartPricing(
+                taxMode = mode,
+                rates = world.taxRates.mapValues { it.value.details.rate },
+                defaultRateId = general,
+            )
+            val tip = Money(1_234L)
+            val opened = SaleCheckout.preview(
+                lines,
+                world.tables.products,
+                pricing,
+                Money.ZERO,
+                emptyList(),
+                tip = tip,
+            )
+            val due = requireNotNull(opened.due) { "La venta se puede cobrar" }.minor
+            val inputs = listOf(
+                input(cardMethod, 12_345L),
+                input(promoMethod, due - 12_345L),
+            )
+            val preview = SaleCheckout.preview(
+                lines,
+                world.tables.products,
+                pricing,
+                Money.ZERO,
+                inputs,
+                tip = tip,
+            )
+
+            val result = world.registerSale()(
+                SaleRequest(
+                    lines = lines,
+                    paymentMethodId = SaleWorld.CASH,
+                    payments = inputs.map { SalePaymentRequest(it.methodId, it.amount) },
+                    tipAmount = tip,
+                ),
+            )
+
+            val sale = world.tables.sales.getValue(
+                (result as RegisterSaleResult.Registered).saleId,
+            )
+            assertEquals("cobrado con $mode", sale.content.amountDue, preview.amountDue)
+            assertEquals("total con $mode", sale.content.total, preview.total)
+            assertEquals(tip, sale.content.tipAmount)
+            val stored = world.tables.payments.values.filter { it.saleId == sale.id }
+                .sortedBy { it.id }.map { it.content }
+            assertEquals(stored.map { it.amount }, preview.payments.map { it.amount })
+            assertEquals(stored.map { it.feeAmount }, preview.payments.map { it.fee })
+        }
+    }
 }

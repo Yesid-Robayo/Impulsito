@@ -363,6 +363,42 @@ class SaleCheckoutTest {
         assertEquals(CheckoutProblem.TooLarge, preview.problem)
     }
 
+    @Test
+    fun `the tip is covered by the payments but pays no surcharge`() {
+        // 10000 + propina de 1000 con tarjeta a +5 %: recargo 500 sobre 10000, se cobran 11500.
+        val preview = SaleCheckout.preview(
+            listOf(SaleLineRequest(3L, units(1L))),
+            products,
+            pricing(TaxMode.NONE),
+            Money.ZERO,
+            listOf(pay(11_000L, PaymentMethodKind.CARD, adjustmentBp = 500L, feeBp = 300L)),
+            tip = Money(1_000L),
+        )
+
+        assertEquals(Money(11_000L), preview.due)
+        assertEquals(Money(10_500L), preview.total)
+        assertEquals(Money(1_000L), preview.tip)
+        assertEquals(Money(11_500L), preview.amountDue)
+        assertEquals(Money(500L), preview.payments.single().surcharge)
+        // La comisión sí se cobra sobre todo el pago, propina incluida: 3 % de 11500.
+        assertEquals(Money(345L), preview.payments.single().fee)
+        assertTrue(preview.canRegister)
+    }
+
+    @Test
+    fun `a tip past the document limit with the sale is too large`() {
+        val preview = SaleCheckout.preview(
+            listOf(SaleLineRequest(3L, units(1L))),
+            products,
+            pricing(TaxMode.NONE),
+            Money.ZERO,
+            emptyList(),
+            tip = Money(999_999_999_999_999L),
+        )
+
+        assertEquals(CheckoutProblem.TooLarge, preview.problem)
+    }
+
     private companion object {
         /** El precio por unidad más alto que admite un producto. */
         const val HUGE_PRICE = 1_000_000_000_000L

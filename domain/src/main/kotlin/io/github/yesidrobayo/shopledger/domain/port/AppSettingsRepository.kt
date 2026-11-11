@@ -52,6 +52,12 @@ interface AppSettingsRepository {
      */
     suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant)
 
+    /**
+     * Enciende o apaga las propinas del cobro. Solo dentro de [TransactionRunner.write]: es un dato
+     * del negocio y cuenta como cambio.
+     */
+    suspend fun updateTipsEnabled(enabled: Boolean, updatedAt: Instant)
+
     /** Marca el fin del primer uso. Fuera de [TransactionRunner.write]: no cuenta como cambio. */
     suspend fun markOnboardingCompleted(completedAt: Instant)
 }

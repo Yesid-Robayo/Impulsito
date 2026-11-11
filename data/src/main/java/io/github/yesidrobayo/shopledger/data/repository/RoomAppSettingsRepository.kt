@@ -74,6 +74,14 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
         settings.lockCurrency(lockedAt.toStoredMillis()) == 1
     }
 
+    override suspend fun updateTipsEnabled(enabled: Boolean, updatedAt: Instant) {
+        writes.inTransaction {
+            requireOneRow(
+                settings.updateTipsEnabled(if (enabled) 1L else 0L, updatedAt.toStoredMillis()),
+            )
+        }
+    }
+
     override suspend fun updateRegional(input: RegionalSettingsInput, updatedAt: Instant) {
         writes.inTransaction {
             val at = updatedAt.toStoredMillis()

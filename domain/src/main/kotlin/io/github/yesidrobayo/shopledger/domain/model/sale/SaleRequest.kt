@@ -23,6 +23,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  *
  * [heldSaleId] es la venta en espera de la que se retomó esta, si se retomó: al confirmar, sale de
  * la espera en la misma transacción.
+ *
+ * [tipAmount] es la propina, que solo existe con las propinas encendidas. Los pagos la cubren junto
+ * con la venta, pero no entra en ninguna ganancia ni paga el recargo de un método.
  */
 data class SaleRequest(
     val lines: List<SaleLineRequest>,
@@ -32,4 +35,5 @@ data class SaleRequest(
     val payments: List<SalePaymentRequest> = emptyList(),
     val orderAdjustment: Money = Money.ZERO,
     val heldSaleId: Long? = null,
+    val tipAmount: Money = Money.ZERO,
 )

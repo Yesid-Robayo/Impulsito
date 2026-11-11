@@ -27,6 +27,7 @@ import kotlinx.datetime.DayOfWeek
  *   una fecha anterior. Faltan si el teléfono no conoce la zona del negocio.
  * - [cashRounding]: el paso al que se redondea un pago en efectivo, en unidad menor. Cero es sin
  *   redondeo.
+ * - [tipsEnabled]: si el cobro ofrece propina. Apagadas, no aparece.
  */
 data class SaleCatalog(
     val products: List<Product>,
@@ -40,4 +41,5 @@ data class SaleCatalog(
     val weekStartDay: DayOfWeek?,
     val cashRounding: Money = Money.ZERO,
     val conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
+    val tipsEnabled: Boolean = false,
 )

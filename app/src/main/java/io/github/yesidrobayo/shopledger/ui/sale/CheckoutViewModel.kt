@@ -128,6 +128,10 @@ class CheckoutViewModel(
 
             is CheckoutAction.RemovePayment -> removePayment(action.index)
 
+            is CheckoutAction.TipChange -> tip(action.text)
+
+            CheckoutAction.NoTip -> tip("")
+
             CheckoutAction.OpenAddPayment -> overlay.update {
                 it.copy(sheet = CheckoutSheet.AddPayment)
             }
@@ -237,6 +241,34 @@ class CheckoutViewModel(
             ?: return
         changePayment(index) {
             it.copy(tendered = amount, tenderedText = moneyText(amount), tenderedError = null)
+        }
+    }
+
+    /**
+     * Lee la propina. Con un solo pago que cubría todo, el pago sigue cubriendo todo, como con el
+     * ajuste de la venta: la propina se escribe y el cobro ya cuadra.
+     */
+    private fun tip(text: String) {
+        val read = readMoney(text)
+        val tip = when (read) {
+            NumberInput.Blank -> Money.ZERO
+
+            is NumberInput.Value -> read.value
+
+            NumberInput.Malformed,
+            is NumberInput.TooManyDecimals,
+            is NumberInput.TooLarge,
+            -> {
+                change { it.copy(tipText = text, tipError = errorOf(read)) }
+                return
+            }
+        }
+        keepingSinglePaymentFull {
+            it.copy(
+                tip = tip,
+                tipText = if (read is NumberInput.Blank) "" else text,
+                tipError = null,
+            )
         }
     }
 
@@ -393,11 +425,20 @@ class CheckoutViewModel(
      * todo: así la venta con un pago cuadra sin escribir nada más.
      */
     private fun setAdjustment(adjustment: Money) {
+        keepingSinglePaymentFull { it.copy(adjustment = adjustment) }
+        overlay.update { it.copy(sheet = null, balanceError = false) }
+    }
+
+    /**
+     * Aplica [update] a lo escrito. Si había un solo pago que cubría todo, lo sigue cubriendo con lo
+     * que se cobra después del cambio: así la venta con un pago cuadra sin escribir nada más.
+     */
+    private fun keepingSinglePaymentFull(update: (Editing) -> Editing) {
         val catalog = readyCatalog()
         val current = sale
         val written = editing.value
         val single = written.payments.singleOrNull()
-        change { it.copy(adjustment = adjustment) }
+        change(update)
         if (catalog != null && current != null && single != null &&
             single.amount == previewOf(catalog, current, written).due
         ) {
@@ -410,7 +451,7 @@ class CheckoutViewModel(
                 )
             }
         }
-        overlay.update { it.copy(sheet = null, balanceError = false) }
+        clearBalanceError()
     }
 
     private fun adjustmentError(read: NumberInput<*>) = setAdjustmentError(
@@ -451,7 +492,7 @@ class CheckoutViewModel(
         val current = sale ?: return
         val written = editing.value
         if (written.payments.any { row -> catalog.methods.none { it.id == row.methodId } }) return
-        if (written.payments.any { it.hasError }) return
+        if (written.payments.any { it.hasError } || written.tipError != null) return
         val preview = previewOf(catalog, current, written)
         if (preview.problem != null) return
         if (preview.balance != CheckoutBalance.Complete) {
@@ -476,6 +517,7 @@ class CheckoutViewModel(
                 orderAdjustment = written.adjustment,
                 // Una venta retomada de la espera sale de ella al confirmarse, también desde aquí.
                 heldSaleId = current.heldSaleId,
+                tipAmount = tipOf(catalog, written),
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> overlay.update {
@@ -503,6 +545,7 @@ class CheckoutViewModel(
                 is RegisterSaleResult.StorageFailed,
                 is RegisterSaleResult.PaymentRejected,
                 RegisterSaleResult.OrderDiscountTooLarge,
+                RegisterSaleResult.TipNotAccepted,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }
@@ -567,6 +610,7 @@ class CheckoutViewModel(
             },
             tax = preview.taxTotal?.takeIf { catalog.taxes.mode == TaxMode.ADDED },
             cashRounding = preview.cashRounding,
+            tip = preview.tip,
         )
         val qr = shown.qrIndex?.let { index ->
             val row = written.payments.getOrNull(index) ?: return@let null
@@ -594,6 +638,9 @@ class CheckoutViewModel(
             zeroDialog = shown.zeroDialog,
             status = shown.status,
             registered = shown.registered,
+            tipsEnabled = catalog.tipsEnabled,
+            tipText = written.tipText,
+            tipError = written.tipError,
         )
     }
 
@@ -630,8 +677,13 @@ class CheckoutViewModel(
             inputs,
             cashStep = catalog.cashRounding,
             conversions = catalog.conversions,
+            tip = tipOf(catalog, written),
         )
     }
+
+    /** La propina que cuenta: ninguna si las propinas se apagaron mientras tanto. */
+    private fun tipOf(catalog: SaleCatalog, written: Editing): Money =
+        if (catalog.tipsEnabled) written.tip else Money.ZERO
 
     private fun readyCatalog(): SaleCatalog? = (catalog.value as? CatalogLoad.Ready)?.catalog
 
@@ -662,11 +714,13 @@ class CheckoutViewModel(
         }
         savedState[PAYMENTS] = values
         savedState[ADJUSTMENT] = written.adjustment.minor
+        savedState[TIP] = written.tip.minor
     }
 
     private fun restore(): Editing {
         val values = savedState.get<LongArray>(PAYMENTS)?.takeIf { it.size % FIELDS == 0 }
             ?: return Editing()
+        val tip = Money(savedState.get<Long>(TIP) ?: 0L)
         val payments = (0 until values.size / FIELDS).map { index ->
             val base = index * FIELDS
             val amount = Money(values[base + 1])
@@ -686,6 +740,8 @@ class CheckoutViewModel(
             payments = payments,
             adjustment = Money(savedState.get<Long>(ADJUSTMENT) ?: 0L),
             started = payments.isNotEmpty(),
+            tip = tip,
+            tipText = if (tip == Money.ZERO) "" else moneyText(tip),
         )
     }
 
@@ -750,6 +806,9 @@ class CheckoutViewModel(
         val adjustment: Money = Money.ZERO,
         val active: Int = 0,
         val started: Boolean = false,
+        val tip: Money = Money.ZERO,
+        val tipText: String = "",
+        val tipError: SaleFieldError? = null,
     )
 
     /** Lo que está abierto encima del cobro, y lo que pasa una sola vez. */
@@ -768,6 +827,7 @@ class CheckoutViewModel(
         const val QR_ONLY = "checkout.qrOnly"
         const val PAYMENTS = "checkout.payments"
         const val ADJUSTMENT = "checkout.adjustment"
+        const val TIP = "checkout.tip"
         const val FIELDS = 6
 
         /** Lo que sigue viva la lectura al rotar la pantalla, para no releer el catálogo. */

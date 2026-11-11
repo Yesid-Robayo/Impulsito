@@ -100,9 +100,9 @@ sealed interface CheckoutProblem {
  * - [writtenAdjustment] es el descuento o recargo escrito para toda la venta, con signo.
  * - [taxTotal] y [total] son el impuesto y el total de la venta con todos los ajustes: el escrito y
  *   los recargos de los métodos.
- * - [due] es lo que deben sumar los pagos escritos: el total con el ajuste escrito, antes de los
- *   recargos. [paid] es lo que suman.
- * - [cashRounding] es la suma de los redondeos del efectivo, con signo.
+ * - [due] es lo que deben sumar los pagos escritos: el total con el ajuste escrito, más la propina,
+ *   antes de los recargos y del redondeo. [paid] es lo que suman.
+ * - [cashRounding] es la suma de los redondeos del efectivo, con signo, y [tip] la propina.
  * - [amountDue] es lo que de verdad se cobra: el total con los recargos más el redondeo. Con los
  *   pagos completos, es la suma de lo que cubre cada pago.
  *
@@ -119,6 +119,7 @@ data class CheckoutPreview(
     val payments: List<CheckoutPaymentPreview>,
     val problem: CheckoutProblem?,
     val cashRounding: Money = Money.ZERO,
+    val tip: Money = Money.ZERO,
 ) {
     /** Si lo escrito cubre lo que se cobra, o `null` si no hay cómo saber cuánto se cobra. */
     val balance: CheckoutBalance?
@@ -149,7 +150,8 @@ object SaleCheckout {
      * que se escribieron. [pricing] da el impuesto; su recargo del método no se usa, porque cada
      * pago trae el suyo. Cada pago en efectivo se redondea a [cashStep], ya con su recargo, y cero
      * es sin redondeo. [conversions] son, por producto, sus unidades de venta: una línea por caja
-     * cobra el precio de la caja.
+     * cobra el precio de la caja. [tip] es la propina: los pagos la cubren, cada uno con su parte,
+     * y su recargo se calcula sin ella.
      */
     fun preview(
         lines: List<SaleLineRequest>,
@@ -159,6 +161,7 @@ object SaleCheckout {
         payments: List<CheckoutPaymentInput>,
         cashStep: Money = Money.ZERO,
         conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
+        tip: Money = Money.ZERO,
     ): CheckoutPreview {
         val paid = payments.fold(Money.ZERO) { sum, it -> sum + it.amount }
         val empty = CheckoutPreview(
@@ -171,6 +174,7 @@ object SaleCheckout {
             paid = paid,
             payments = emptyList(),
             problem = null,
+            tip = tip,
         )
         val bases = lines.map { line ->
             baseOf(line, products, pricing, conversions[line.productId].orEmpty())
@@ -185,7 +189,12 @@ object SaleCheckout {
         }
         val due = totalWith(bases, pricing.taxMode, adjustment)
             ?: return withSubtotal.copy(problem = CheckoutProblem.TooLarge)
-        val withDue = withSubtotal.copy(due = due.total, total = due.total, taxTotal = due.tax)
+        // Las dos sumas caben en Long: cada una está dentro del tope de un documento.
+        val dueWithTip = due.total + tip
+        if (!Limit.DOCUMENT_TOTAL.allows(dueWithTip.minor)) {
+            return withSubtotal.copy(problem = CheckoutProblem.TooLarge)
+        }
+        val withDue = withSubtotal.copy(due = dueWithTip, total = due.total, taxTotal = due.tax)
         if (payments.any {
                 it.amount < Money.ZERO || !Limit.DOCUMENT_TOTAL.allows(it.amount.minor)
             }
@@ -194,8 +203,9 @@ object SaleCheckout {
         }
         // El último total que se prueba es el de todos los recargos juntos: es el que se cobra.
         var charged = due
+        val tips = PaymentTips.shares(tip, payments.map { it.amount })
         val settlement = PaymentSurcharges.settle(
-            amounts = payments.map { it.amount },
+            amounts = payments.zip(tips) { payment, share -> payment.amount - share },
             rates = payments.map { it.priceAdjustment },
             totalWith = { surcharge ->
                 totalWith(bases, pricing.taxMode, adjustment + surcharge)
@@ -215,19 +225,23 @@ object SaleCheckout {
         }
         val previews = ArrayList<CheckoutPaymentPreview>(payments.size)
         for ((index, payment) in payments.withIndex()) {
+            val withTip = covered[index] + tips[index]
             val rounding = if (payment.kind == PaymentMethodKind.CASH) {
-                CashRounding.amount(covered[index], cashStep)
+                CashRounding.amount(withTip, cashStep)
             } else {
                 Money.ZERO
             }
-            val amount = covered[index] + rounding
+            val amount = withTip + rounding
             val fee = feeOf(payment, amount)
                 ?: return withDue.copy(problem = CheckoutProblem.TooLarge)
             previews += CheckoutPaymentPreview(
                 methodId = payment.methodId,
                 kind = payment.kind,
                 written = payment.amount,
-                surcharge = PaymentSurcharges.surchargeOf(payment.amount, payment.priceAdjustment),
+                surcharge = PaymentSurcharges.surchargeOf(
+                    payment.amount - tips[index],
+                    payment.priceAdjustment,
+                ),
                 amount = amount,
                 fee = fee,
                 rounding = rounding,
@@ -237,7 +251,7 @@ object SaleCheckout {
         // Lo que se cobra es el total con todos los recargos y el redondeo, aunque lo escrito
         // todavía no sume: con los pagos completos, es también la suma de lo que cubre cada uno.
         val rounding = previews.fold(Money.ZERO) { sum, it -> sum + it.rounding }
-        val amountDue = charged.total + rounding
+        val amountDue = charged.total + tip + rounding
         if (!Limit.DOCUMENT_TOTAL.allows(amountDue.minor)) {
             return withDue.copy(problem = CheckoutProblem.TooLarge)
         }
