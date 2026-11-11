@@ -40,6 +40,8 @@ import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
 import io.github.yesidrobayo.shopledger.data.destination.ProductionDestinationOpener
+import io.github.yesidrobayo.shopledger.data.destination.WebDavConnectionService
+import io.github.yesidrobayo.shopledger.data.destination.WebDavConnector
 import io.github.yesidrobayo.shopledger.data.destination.WebDavCredentialStore
 import io.github.yesidrobayo.shopledger.data.destination.WebDavDestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.slots.ContentResolverDocumentAccess
@@ -65,6 +67,7 @@ import io.github.yesidrobayo.shopledger.data.work.DataWorkerFactory
 import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
 import io.github.yesidrobayo.shopledger.data.work.backupNetworkOf
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
@@ -74,6 +77,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.SlotFilesSetupPort
+import io.github.yesidrobayo.shopledger.domain.port.WebDavConnectionPort
 import io.github.yesidrobayo.shopledger.domain.port.error
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.domain.port.info
@@ -257,6 +261,39 @@ class DataGraph internal constructor(
             },
             clock = clock,
             ioContext = ioContext,
+        )
+    }
+
+    /**
+     * Conectar un servicio WebDAV desde la pantalla: la prueba de conexión, que no guarda nada, y
+     * el guardado, bajo el cerrojo del respaldo. Crearlo no toca el disco ni la red.
+     */
+    val webDavConnection: WebDavConnectionPort by lazy {
+        WebDavConnectionService(
+            connector =
+                WebDavConnector(
+                    http,
+                    webDavCredentials,
+                    DestinationLinkStore({ context.noBackupFilesDir }, ioContext),
+                ),
+            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            slotsLabel = {
+                (backupDestination.describe() as? BackupDestinationInfo.Slots)?.providerLabel
+            },
+            record = { link ->
+                val ports = (open() as? DataAccess.Ready)?.ports
+                ports?.backupState?.connectDestination(
+                    kind = link.kind.name,
+                    account = link.account,
+                    destinationId = link.destinationId,
+                    folder = link.folderUrl,
+                    now = link.connectedAtMillis,
+                ) == 1
+            },
+            backupLock = backupMutex,
+            onConnected = { backupScheduler.onDataChanged() },
+            network = { backupNetworkOf(context).validated },
+            nowMillis = { clock.now().toEpochMilliseconds() },
         )
     }
 

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Conectar el servicio WebDAV. Textos de la guía de redacción. -->
+    <string name="webdav_intro">Estos datos salen de la cuenta abierta en ese servicio. Se guardan sellados en este teléfono.</string>
+    <string name="webdav_suggestions_title">Sugerencias</string>
+    <string name="webdav_suggestions_note">Sirve cualquier servicio con WebDAV. Son solo sugerencias, y sus condiciones pueden cambiar.</string>
+    <string name="webdav_field_url">Dirección WebDAV</string>
+    <string name="webdav_field_url_help">Con https:// al inicio</string>
+    <string name="webdav_field_user">Usuario</string>
+    <string name="webdav_field_password">Contraseña</string>
+    <string name="webdav_password_show_action">Mostrar contraseña</string>
+    <string name="webdav_password_hide_action">Ocultar contraseña</string>
+    <string name="webdav_password_warning">Algunos servicios usan aquí la contraseña normal de la cuenta. Si el servicio ofrece una contraseña para apps, conviene usar esa. Si no, conviene una cuenta solo para las copias.</string>
+    <string name="webdav_password_account_warning">Este servicio usa aquí la contraseña normal de la cuenta, y con ella se entra a toda la cuenta. Conviene una cuenta solo para las copias.</string>
+    <string name="webdav_suggestion_limits_warning">Este servicio no recomienda copias muy seguidas. Con verificación en dos pasos, puede pedir aprobar por correo cada ubicación nueva, y las copias quedarían detenidas hasta aprobarla.</string>
+    <string name="webdav_encrypt_offer">Las copias quedan en ese servicio sin cifrar, salvo que se active el cifrado.</string>
+    <string name="webdav_connect_action">Probar y conectar</string>
+    <string name="webdav_testing">Probando la conexión</string>
+    <string name="webdav_confirm_host_title">¿Es este el servicio?</string>
+    <!-- webdav_confirm_host_body: %1$s = host -->
+    <string name="webdav_confirm_host_body">Los datos se enviarán a %1$s. Conviene comprobar que esté bien escrito.</string>
+    <string name="webdav_confirm_host_action">Es ese servicio</string>
+    <string name="webdav_step_list">Leer la carpeta</string>
+    <string name="webdav_step_create_folder">Crear la carpeta</string>
+    <string name="webdav_step_upload">Subir un archivo</string>
+    <string name="webdav_step_move">Mover el archivo</string>
+    <string name="webdav_step_no_overwrite">Comprobar que no pisa</string>
+    <string name="webdav_step_download">Leer el archivo</string>
+    <string name="webdav_step_delete">Borrar el archivo</string>
+    <string name="webdav_connected">Servicio conectado</string>
+    <string name="webdav_error_http">Solo se admiten direcciones https://</string>
+    <string name="webdav_error_url">Esa dirección no es válida. Debe ir sin usuario, sin contraseña y sin ? ni #</string>
+    <string name="webdav_error_base_url">Esa dirección no lleva a una carpeta de ese servicio. Conviene revisarla. Nada se guardó.</string>
+    <string name="webdav_error_auth">El usuario o la contraseña no sirven</string>
+    <string name="webdav_error_rate_limited">Ese servicio detuvo los intentos por un rato. Puede pasar tras una contraseña que no sirvió. Conviene esperar y probar más tarde. Nada se guardó.</string>
+    <string name="webdav_error_forbidden">Ese servicio no deja entrar a esa carpeta. Nada se guardó.</string>
+    <!-- webdav_error_unsupported: %1$s = step -->
+    <string name="webdav_error_unsupported">Falló este paso: %1$s. Ese servicio no sirve para las copias. Nada se guardó.</string>
+    <!-- webdav_error_redirect: %1$s = app -->
+    <string name="webdav_error_redirect">Ese servicio envía a otra dirección. Por seguridad, %1$s no la siguió: la contraseña no llegó a esa dirección. Nada se guardó.</string>
+    <string name="webdav_error_space">Ese servicio no tiene espacio. Nada se guardó.</string>
+    <string name="webdav_error_unreachable">No se pudo llegar a ese servicio. Conviene revisar la dirección y la conexión. Nada se guardó.</string>
+    <!-- webdav_error_secure: %1$s = app -->
+    <string name="webdav_error_secure">No se pudo comprobar la conexión segura con ese servicio, y %1$s no sigue sin eso. Nada se guardó. Otra opción es la nube del teléfono.</string>
+    <string name="webdav_error_no_internet">Conectar el servicio requiere internet. Lo escrito no se pierde.</string>
+    <string name="destination_change_title">¿Cambiar dónde guardar?</string>
+    <!-- destination_change_body: %1$s = provider, %2$s = app -->
+    <string name="destination_change_body">Las copias anteriores siguen en %1$s, pero %2$s ya no las administra. Para usarlas está Buscar un archivo.</string>
+    <string name="destination_change_action">Cambiar</string>
+    <!-- Estado de cada paso de la prueba, para TalkBack. -->
+    <string name="webdav_step_state_done">Hecho</string>
+    <string name="webdav_step_state_running">En curso</string>
+    <string name="webdav_step_state_failed">Falló</string>
+    <string name="webdav_step_state_pending">Pendiente</string>
+</resources>

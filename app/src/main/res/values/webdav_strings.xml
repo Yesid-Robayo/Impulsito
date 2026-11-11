@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Conectar el servicio WebDAV. Textos de la guía de redacción. -->
+    <string name="webdav_intro">These details come from the account opened with that service. They stay sealed on this phone.</string>
+    <string name="webdav_suggestions_title">Suggestions</string>
+    <string name="webdav_suggestions_note">Any service with WebDAV works. These are only suggestions, and their terms may change.</string>
+    <string name="webdav_field_url">WebDAV address</string>
+    <string name="webdav_field_url_help">Starts with https://</string>
+    <string name="webdav_field_user">User name</string>
+    <string name="webdav_field_password">Password</string>
+    <string name="webdav_password_show_action">Show password</string>
+    <string name="webdav_password_hide_action">Hide password</string>
+    <string name="webdav_password_warning">Some services use the account\'s regular password here. If the service offers an app password, use that one. If not, use an account just for backups.</string>
+    <string name="webdav_password_account_warning">This service uses the account\'s regular password here, and it opens the whole account. Use an account just for backups.</string>
+    <string name="webdav_suggestion_limits_warning">This service does not recommend very frequent backups. With two-step verification, it may ask to approve each new location by email, and backups would stay stopped until then.</string>
+    <string name="webdav_encrypt_offer">Backups stay on that service unencrypted unless encryption is turned on.</string>
+    <string name="webdav_connect_action">Test and connect</string>
+    <string name="webdav_testing">Testing the connection</string>
+    <string name="webdav_confirm_host_title">Is this the service?</string>
+    <!-- webdav_confirm_host_body: %1$s = host -->
+    <string name="webdav_confirm_host_body">The details will be sent to %1$s. Check that it is spelled correctly.</string>
+    <string name="webdav_confirm_host_action">That is the service</string>
+    <string name="webdav_step_list">Read the folder</string>
+    <string name="webdav_step_create_folder">Create the folder</string>
+    <string name="webdav_step_upload">Upload a file</string>
+    <string name="webdav_step_move">Move the file</string>
+    <string name="webdav_step_no_overwrite">Check it does not overwrite</string>
+    <string name="webdav_step_download">Read the file</string>
+    <string name="webdav_step_delete">Delete the file</string>
+    <string name="webdav_connected">Service connected</string>
+    <string name="webdav_error_http">Only https:// addresses are accepted</string>
+    <string name="webdav_error_url">That address is not valid. It must not include a user name, a password, ? or #</string>
+    <string name="webdav_error_base_url">That address does not lead to a folder on that service. Check it. Nothing was saved.</string>
+    <string name="webdav_error_auth">The user name or password does not work</string>
+    <string name="webdav_error_rate_limited">That service paused attempts for a while. It can happen after a password that did not work. Wait and try again later. Nothing was saved.</string>
+    <string name="webdav_error_forbidden">That service does not allow access to that folder. Nothing was saved.</string>
+    <!-- webdav_error_unsupported: %1$s = step -->
+    <string name="webdav_error_unsupported">This step failed: %1$s. That service does not work for backups. Nothing was saved.</string>
+    <!-- webdav_error_redirect: %1$s = app -->
+    <string name="webdav_error_redirect">That service points to another address. For safety, %1$s did not follow it: the password did not reach that address. Nothing was saved.</string>
+    <string name="webdav_error_space">That service has no space. Nothing was saved.</string>
+    <string name="webdav_error_unreachable">That service could not be reached. Check the address and the connection. Nothing was saved.</string>
+    <!-- webdav_error_secure: %1$s = app -->
+    <string name="webdav_error_secure">The secure connection to that service could not be verified, and %1$s does not continue without it. Nothing was saved. Another option is the cloud on the phone.</string>
+    <string name="webdav_error_no_internet">Connecting the service needs internet. What was entered is kept.</string>
+    <string name="destination_change_title">Change where to save?</string>
+    <!-- destination_change_body: %1$s = provider, %2$s = app -->
+    <string name="destination_change_body">Earlier backups stay in %1$s, but %2$s no longer manages them. To use them, go to Find a file.</string>
+    <string name="destination_change_action">Change</string>
+    <!-- Estado de cada paso de la prueba, para TalkBack. -->
+    <string name="webdav_step_state_done">Done</string>
+    <string name="webdav_step_state_running">In progress</string>
+    <string name="webdav_step_state_failed">Failed</string>
+    <string name="webdav_step_state_pending">Pending</string>
+</resources>

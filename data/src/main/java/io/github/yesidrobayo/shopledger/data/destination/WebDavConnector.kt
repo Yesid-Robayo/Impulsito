@@ -29,58 +29,87 @@ internal class WebDavConnector(
     private val links: DestinationLinkStore,
 ) {
     /**
+     * Revisa la dirección y corre la prueba de conexión completa, sin guardar nada.
+     *
      * @param appName el nombre de la app, del recurso que nunca se traduce.
      * @param previousAppNames los nombres comerciales anteriores, en el orden del recurso.
-     * @param nowMillis el reloj de pared, en milisegundos UTC, para `connected_at`.
-     * @param record deja el destino en el estado del respaldo, en una transacción. Devuelve
-     *   `false` si no quedó escrito.
+     * @param onStep se llama al empezar cada paso de la prueba.
      */
-    suspend fun connect(
+    suspend fun check(
         url: String,
         username: String,
         password: String,
         appName: String,
         previousAppNames: List<String>,
-        nowMillis: Long,
-        record: suspend (DestinationLink) -> Boolean,
-    ): ConnectResult {
+        onStep: (ConnectionStep) -> Unit = {},
+    ): CheckOutcome {
         val endpoint =
             when (val parsed = WebDavEndpoint.parse(url)) {
                 is EndpointParse.Accepted -> parsed.endpoint
-                is EndpointParse.Rejected -> return ConnectResult.AddressRejected(parsed.reason)
-            }
-        if (username.isEmpty() || password.isEmpty()) return ConnectResult.MissingField
-        val folderNames =
-            (
-                listOf(
-                    appName,
-                ) + previousAppNames
-                ).mapNotNull(DestinationIdentity::folderName).distinct()
-        if (folderNames.firstOrNull() != DestinationIdentity.folderName(appName)) {
-            return ConnectResult.InvalidAppName
-        }
-        val client = WebDavClient(endpoint, WebDavCredential(username, password), http)
-        val passed =
-            when (val check = WebDavConnectionCheck(client).run(folderNames)) {
-                is ConnectionCheck.Passed -> check
 
-                is ConnectionCheck.Failed -> return ConnectResult.CheckFailed(
-                    check.step,
-                    check.failure,
+                is EndpointParse.Rejected -> return CheckOutcome.Stopped(
+                    ConnectResult.AddressRejected(parsed.reason),
                 )
             }
-        val destinationId = DestinationIdentity.destinationId(endpoint, username)
+        if (username.isEmpty() || password.isEmpty()) {
+            return CheckOutcome.Stopped(ConnectResult.MissingField)
+        }
+        val folderNames =
+            (listOf(appName) + previousAppNames).mapNotNull(DestinationIdentity::folderName)
+                .distinct()
+        if (folderNames.firstOrNull() != DestinationIdentity.folderName(appName)) {
+            return CheckOutcome.Stopped(ConnectResult.InvalidAppName)
+        }
+        val client = WebDavClient(endpoint, WebDavCredential(username, password), http)
+        return when (val check = WebDavConnectionCheck(client).run(folderNames, onStep)) {
+            is ConnectionCheck.Passed ->
+                CheckOutcome.Passed(
+                    CheckedWebDav(
+                        endpoint = endpoint,
+                        username = username,
+                        folder = check.folder,
+                        hasCopies = check.hasCopies,
+                    ),
+                )
+
+            is ConnectionCheck.Failed ->
+                CheckOutcome.Stopped(ConnectResult.CheckFailed(check.step, check.failure))
+        }
+    }
+
+    /**
+     * Guarda una conexión que ya pasó la prueba: sella la credencial, deja el destino en el estado
+     * del respaldo y escribe `link.json`, en ese orden. Si la base no queda escrita, la credencial
+     * se borra de nuevo.
+     *
+     * @param password la contraseña con que pasó la prueba. Solo viaja a la credencial sellada.
+     * @param nowMillis el reloj de pared, en milisegundos UTC, para `connected_at`.
+     * @param record deja el destino en el estado del respaldo, en una transacción. Devuelve
+     *   `false` si no quedó escrito.
+     */
+    suspend fun save(
+        checked: CheckedWebDav,
+        password: String,
+        nowMillis: Long,
+        record: suspend (DestinationLink) -> Boolean,
+    ): ConnectResult {
+        val endpoint = checked.endpoint
         val link =
             DestinationLink(
                 kind = BackupDestinationKind.WEBDAV,
-                account = username,
-                destinationId = destinationId,
-                folderUrl = endpoint.urlOf(passed.folder).toString(),
+                account = checked.username,
+                destinationId = checked.destinationId,
+                folderUrl = endpoint.urlOf(checked.folder).toString(),
                 connectedAtMillis = nowMillis,
             )
         val stored =
-            StoredWebDavCredential(endpoint.baseUrl.toString(), username, password, destinationId)
-        when (val saved = credentials.save(stored)) {
+            StoredWebDavCredential(
+                endpoint.baseUrl.toString(),
+                checked.username,
+                password,
+                checked.destinationId,
+            )
+        when (credentials.save(stored)) {
             CredentialSave.Saved -> Unit
             is CredentialSave.Rejected -> return ConnectResult.SaveFailed
             is CredentialSave.Failed -> return ConnectResult.SaveFailed
@@ -97,8 +126,54 @@ internal class WebDavConnector(
             } catch (_: IOException) {
                 false
             }
-        return ConnectResult.Connected(link, passed.hasCopies, linkSaved)
+        return ConnectResult.Connected(link, checked.hasCopies, linkSaved)
     }
+
+    /**
+     * Revisa, prueba y, solo si todo pasó, guarda: [check] y luego [save].
+     *
+     * @param nowMillis el reloj de pared, en milisegundos UTC, para `connected_at`.
+     * @param record deja el destino en el estado del respaldo, en una transacción. Devuelve
+     *   `false` si no quedó escrito.
+     */
+    suspend fun connect(
+        url: String,
+        username: String,
+        password: String,
+        appName: String,
+        previousAppNames: List<String>,
+        nowMillis: Long,
+        record: suspend (DestinationLink) -> Boolean,
+    ): ConnectResult =
+        when (val outcome = check(url, username, password, appName, previousAppNames)) {
+            is CheckOutcome.Stopped -> outcome.result
+            is CheckOutcome.Passed -> save(outcome.checked, password, nowMillis, record)
+        }
+}
+
+/**
+ * Un servicio que pasó la prueba de conexión, todavía sin guardar. No lleva la contraseña: quien
+ * guarda la vuelve a dar.
+ *
+ * @property folder la carpeta de copias que eligió la prueba.
+ * @property hasCopies si esa carpeta ya tenía copias de esta app.
+ */
+internal data class CheckedWebDav(
+    val endpoint: WebDavEndpoint,
+    val username: String,
+    val folder: WebDavPath,
+    val hasCopies: Boolean,
+) {
+    /** El identificador del destino, de la dirección y el usuario. */
+    val destinationId: String get() = DestinationIdentity.destinationId(endpoint, username)
+}
+
+/** Cómo terminó la prueba antes de guardar. */
+internal sealed interface CheckOutcome {
+    data class Passed(val checked: CheckedWebDav) : CheckOutcome
+
+    /** No pasó, o ni siquiera empezó. [result] nunca es [ConnectResult.Connected]. */
+    data class Stopped(val result: ConnectResult) : CheckOutcome
 }
 
 /** El resultado de conectar. Ninguno lleva la contraseña ni texto del servicio. */

@@ -69,6 +69,7 @@ import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
+import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
 
 /**
  * La navegación de la app: la pila de Navigation 3 y la barra inferior encima de las cuatro raíces.
@@ -181,7 +182,7 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
             }) { DestinationChoiceRoute(key, navigator) }
 
         is AppNavKey.WebDavConnect ->
-            PolicyGated(onDeclined = { navigator.back() }) { PlaceholderRoute(key, navigator) }
+            PolicyGated(onDeclined = { navigator.back() }) { WebDavConnectRoute(key, navigator) }
 
         AppNavKey.DocumentSlotsSetup ->
             PolicyGated(onDeclined = { navigator.back() }) { SlotSetupRoute(navigator) }

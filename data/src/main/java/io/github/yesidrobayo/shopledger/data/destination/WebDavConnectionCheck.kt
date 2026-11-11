@@ -25,9 +25,16 @@ internal class WebDavConnectionCheck(
     /**
      * Corre la prueba. [folderNames] son los nombres de carpeta posibles, el actual primero y
      * después los anteriores, ya limpios con [DestinationIdentity.folderName].
+     *
+     * @param onStep se llama al empezar cada paso, para que la pantalla muestre en cuál va. Crear
+     *   la carpeta se salta si ya existe.
      */
-    suspend fun run(folderNames: List<String>): ConnectionCheck {
+    suspend fun run(
+        folderNames: List<String>,
+        onStep: (ConnectionStep) -> Unit = {},
+    ): ConnectionCheck {
         require(folderNames.isNotEmpty()) { "Hace falta al menos el nombre actual" }
+        onStep(ConnectionStep.ADDRESS)
         when (val base = client.propfind(WebDavPath(emptyList()), WebDavClient.Depth.ZERO)) {
             is PropfindResult.Listed -> Unit
 
@@ -39,12 +46,14 @@ internal class WebDavConnectionCheck(
 
             is PropfindResult.Failed -> return failed(ConnectionStep.ADDRESS, base.failure)
         }
+        onStep(ConnectionStep.FIND_FOLDER)
         val folder =
             when (val found = chooseFolder(folderNames)) {
                 is Found.Folder -> found
                 is Found.Failed -> return found.check
             }
         if (!folder.exists) {
+            onStep(ConnectionStep.CREATE_FOLDER)
             when (val made = client.mkcol(folder.path)) {
                 MkcolResult.Created, MkcolResult.AlreadyExists -> Unit
 
@@ -57,9 +66,10 @@ internal class WebDavConnectionCheck(
                 is MkcolResult.Failed -> return failed(ConnectionStep.CREATE_FOLDER, made.failure)
             }
         }
-        val result = writeAndRead(folder.path)
+        val result = writeAndRead(folder.path, onStep)
         // Lo que haya quedado de la prueba se borra pase lo que pase. Un fallo al borrar solo
         // cuenta si la prueba iba bien: es lo que el paso de borrar comprueba.
+        if (result == null) onStep(ConnectionStep.DELETE)
         val cleanup = cleanUp(folder.path)
         return when {
             result != null -> result
@@ -105,13 +115,18 @@ internal class WebDavConnectionCheck(
     }
 
     /** Los pasos que escriben, mueven y leen. Devuelve `null` si todos pasaron. */
-    private suspend fun writeAndRead(folder: WebDavPath): ConnectionCheck.Failed? {
+    private suspend fun writeAndRead(
+        folder: WebDavPath,
+        onStep: (ConnectionStep) -> Unit,
+    ): ConnectionCheck.Failed? {
         val temporary = folder.file(TEST_FILE + BackupFileName.TEMPORARY_SUFFIX)
         val final = folder.file(TEST_FILE)
         // Lo que haya dejado una prueba anterior se borra antes: si no, el MOVE daría 412 de entrada.
+        onStep(ConnectionStep.WRITE)
         cleanUp(folder)?.let { return failed(ConnectionStep.WRITE, it) }
         val first = ByteArray(TEST_BYTES).also(random::nextBytes)
         put(temporary, first)?.let { return failed(ConnectionStep.WRITE, it) }
+        onStep(ConnectionStep.MOVE)
         when (val moved = client.move(temporary, final)) {
             is MoveResult.Moved -> Unit
 
@@ -123,6 +138,7 @@ internal class WebDavConnectionCheck(
 
             is MoveResult.Failed -> return failed(ConnectionStep.MOVE, moved.failure)
         }
+        onStep(ConnectionStep.NO_OVERWRITE)
         val second = ByteArray(TEST_BYTES).also(random::nextBytes)
         put(temporary, second)?.let { return failed(ConnectionStep.WRITE, it) }
         when (val again = client.move(temporary, final)) {
@@ -142,6 +158,7 @@ internal class WebDavConnectionCheck(
 
             is MoveResult.Failed -> return failed(ConnectionStep.NO_OVERWRITE, again.failure)
         }
+        onStep(ConnectionStep.READ_BACK)
         val sink = ByteArrayOutputStream()
         return when (val read = client.get(final, sink, MAX_TEST_READ_BYTES)) {
             is GetResult.Downloaded ->
@@ -245,8 +262,11 @@ internal enum class ConnectionStep {
 
 /** Por qué falló la prueba, ya en lo que la pantalla le dice a la persona. */
 internal sealed interface ConnectionFailure {
-    /** `401` o `403`: el usuario o la contraseña no sirven, o no dejan entrar a la carpeta. */
+    /** `401`: el usuario o la contraseña no sirven. */
     data object CredentialRejected : ConnectionFailure
+
+    /** `403` al listar: la credencial sirve, pero el servicio no deja entrar a esa carpeta. */
+    data object Forbidden : ConnectionFailure
 
     /**
      * `429`: el servicio detuvo los intentos por un rato, a veces tras una contraseña que no sirvió.
@@ -277,7 +297,8 @@ internal sealed interface ConnectionFailure {
 
     companion object {
         fun of(failure: WebDavFailure): ConnectionFailure = when (failure) {
-            is WebDavFailure.PermissionLost -> CredentialRejected
+            is WebDavFailure.PermissionLost ->
+                if (failure.status == FORBIDDEN_STATUS) Forbidden else CredentialRejected
 
             is WebDavFailure.Unsupported -> Unsupported(failure.reason)
 
@@ -299,5 +320,7 @@ internal sealed interface ConnectionFailure {
             // La prueba no tiene tope de tiempo ni detención: no llega aquí.
             is WebDavFailure.Interrupted -> Unreachable(TransientKind.NETWORK)
         }
+
+        private const val FORBIDDEN_STATUS = 403
     }
 }
