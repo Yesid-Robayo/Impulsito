@@ -23,7 +23,8 @@ import org.junit.runner.RunWith
  * Una venta cobrada con varios métodos sobre la base real, con sus guardas: un pago por método, que
  * suman lo que la venta cobra, y cero filas en cada consulta de invariantes. Un cobro que no suma
  * no deja nada, ni siquiera el cambio de la cuenta de cambios. El recargo o descuento de un método
- * entra en el ajuste de la venta y en sus líneas, y las guardas lo aceptan.
+ * entra en el ajuste de la venta y en sus líneas, y las guardas lo aceptan. Una comisión escrita en
+ * la venta se guarda tal cual, y el costo de cobrar del período sale de las comisiones guardadas.
  *
  * Los productos y montos son inventados.
  */
@@ -144,6 +145,40 @@ internal class RegisterSplitSaleOnDatabaseTest : RepositoryTest() {
         assertEquals(
             148L,
             count("SELECT SUM(order_adjustment_share) FROM sale_lines WHERE sale_id = $saleId"),
+        )
+        assertInvariantsHold()
+    }
+
+    @Test
+    fun aWrittenFeeIsSavedAndCountsInThePaymentCostsOfThePeriod() = runBlocking {
+        val product = soldProduct()
+        val card = methodId("CARD")
+
+        // 3001 con tarjeta, con una comisión de 83 escrita en la venta, y 2280 en efectivo.
+        val result = registerSale(
+            SaleRequest(
+                lines = listOf(SaleLineRequest(product, QuantityMilli.ofUnits(1L))),
+                paymentMethodId = methodId("CASH"),
+                payments = listOf(
+                    SalePaymentRequest(card, Money(3_001), feeAmount = Money(83)),
+                    SalePaymentRequest(methodId("CASH"), Money(2_280)),
+                ),
+            ),
+        )
+
+        val saleId = (result as RegisterSaleResult.Registered).saleId
+        val payments = salePayments.findBySale(saleId).map { it.content }
+        assertEquals(listOf(83L, 0L), payments.map { it.feeAmount.minor })
+        assertEquals(listOf(2_918L, 2_280L), payments.map { it.netReceived.minor })
+        // El costo de cobrar del mapa: comisiones de ventas activas menos su redondeo de efectivo.
+        assertEquals(
+            83L,
+            count(
+                "SELECT (SELECT COALESCE(SUM(p.fee_amount), 0) FROM sale_payments p " +
+                    "JOIN sales s ON s.id = p.sale_id WHERE s.status = 'ACTIVE') - " +
+                    "(SELECT COALESCE(SUM(cash_rounding_amount), 0) FROM sales " +
+                    "WHERE status = 'ACTIVE')",
+            ),
         )
         assertInvariantsHold()
     }

@@ -15,11 +15,15 @@ object PaymentFees {
     /**
      * `fee_amount = roundDiv(amount × fee_bp, 10000) + fee_fixed`. La comisión baja la ganancia
      * final, nunca el margen. Se rechaza si pasa del tope de un documento.
+     *
+     * Un pago de cero no paga comisión, tampoco la fija: por ese medio no se cobró nada, y una venta
+     * de total cero no debe costar.
      */
     fun feeOf(amount: Money, feeRate: BasisPoints, feeFixed: Money): Checked<Money> {
         require(amount >= Money.ZERO && feeFixed >= Money.ZERO) {
             "Ni el pago ni la comisión fija son negativos"
         }
+        if (amount == Money.ZERO) return Checked.Value(Money.ZERO)
         return when (val share = amount.timesRate(feeRate, Limit.DOCUMENT_TOTAL)) {
             is Checked.Value -> {
                 // Se compara con lo que falta para el tope antes de sumar, así la suma nunca

@@ -13,14 +13,15 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 object PaymentSplit {
     /**
      * El primer pago de [payments] que no se puede guardar, con su posición y su motivo, o `null`
-     * si todos se pueden. Se mira sin leer la base: un método que se repite y un monto fuera de
-     * rango.
+     * si todos se pueden. Se mira sin leer la base: un método que se repite, y un monto o una
+     * comisión escrita fuera de rango.
      */
     fun firstRejection(payments: List<SalePaymentRequest>): IndexedValue<PaymentRejection>? {
         val seen = HashSet<Long>()
         for ((index, payment) in payments.withIndex()) {
             val reason = when {
                 !isValidAmount(payment.amount) -> PaymentRejection.INVALID_AMOUNT
+                !isValidFee(payment) -> PaymentRejection.INVALID_FEE
                 !seen.add(payment.paymentMethodId) -> PaymentRejection.DUPLICATE_METHOD
                 else -> null
             }
@@ -43,6 +44,12 @@ object PaymentSplit {
         }
         val matches = paid == amountDue
         return if (matches) PaymentSplitCheck.Matches else PaymentSplitCheck.Mismatch(paid)
+    }
+
+    /** Sin comisión escrita vale; escrita, va en rango, y un pago de cero no paga comisión. */
+    private fun isValidFee(payment: SalePaymentRequest): Boolean {
+        val fee = payment.feeAmount ?: return true
+        return isValidAmount(fee) && (payment.amount > Money.ZERO || fee == Money.ZERO)
     }
 
     private fun isValidAmount(amount: Money): Boolean =

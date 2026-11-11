@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.NewSalePayment
 import io.github.yesidrobayo.shopledger.domain.model.sale.PaymentRejection
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
+import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
@@ -178,17 +179,16 @@ class RegisterSaleUseCase(
      * cobra.
      */
     private suspend fun choosePayments(request: SaleRequest): Chosen {
-        val requested = if (request.payments.isEmpty()) {
-            listOf(request.paymentMethodId to null)
-        } else {
-            request.payments.map { it.paymentMethodId to it.amount }
+        val written = request.payments.isNotEmpty()
+        val requested = request.payments.ifEmpty {
+            listOf(SalePaymentRequest(request.paymentMethodId, Money.ZERO))
         }
         val chosen = ArrayList<ChosenPayment>(requested.size)
-        for ((methodId, amount) in requested) {
-            val method = payments.findMethod(methodId)
+        for (payment in requested) {
+            val method = payments.findMethod(payment.paymentMethodId)
                 ?: return Chosen.Rejected(RegisterSaleResult.PaymentMethodNotFound)
             methodRejection(method)?.let { return Chosen.Rejected(it) }
-            chosen += ChosenPayment(method, amount)
+            chosen += ChosenPayment(method, payment.amount.takeIf { written }, payment.feeAmount)
         }
         return Chosen.Payments(chosen)
     }
@@ -361,7 +361,7 @@ class RegisterSaleUseCase(
         // Los recargos ya se probaron con este mismo ajuste: la venta lo admite.
         val adjustedLines = checkNotNull(adjusted(priced, adjustment)) { "El ajuste ya se probó" }
         val settled = chosen.zip(amounts) { payment, amount ->
-            paymentOf(payment.method, amount, businessDate, now)
+            paymentOf(payment.method, amount, payment.fee, businessDate, now)
                 ?: return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
         }
         return Settled.Payments(adjustedLines, settled)
@@ -386,18 +386,27 @@ class RegisterSaleUseCase(
     }
 
     /**
-     * Un pago de [amount], o `null` si su comisión pasa del tope. El nombre que se congela es el
-     * del método, o el de su clave en el idioma de la interfaz si nadie lo renombró, recortado al
-     * largo que admite el pago.
+     * Un pago de [amount], o `null` si la comisión de su método pasa del tope. La comisión es
+     * [writtenFee] si la persona la escribió en la venta, o la del método. El nombre que se congela
+     * es el del método, o el de su clave en el idioma de la interfaz si nadie lo renombró, recortado
+     * al largo que admite el pago.
      */
     private fun paymentOf(
         method: SalePaymentMethod,
         amount: Money,
+        writtenFee: Money?,
         businessDate: BusinessDate,
         now: Instant,
     ): NewSalePayment? {
-        val fee = PaymentFees.feeOf(amount, method.feeRate, method.feeFixed)
-            .valueOr { return null }
+        val fee = when {
+            // Un pago que queda en cero, también por el descuento de su método, no paga comisión.
+            amount == Money.ZERO -> Money.ZERO
+
+            writtenFee != null -> writtenFee
+
+            else -> PaymentFees.feeOf(amount, method.feeRate, method.feeFixed)
+                .valueOr { return null }
+        }
         val name = method.name ?: methodNames.systemName(
             checkNotNull(method.systemKey) { "Un método sin nombre tiene su clave inicial" },
         )
@@ -550,8 +559,11 @@ class RegisterSaleUseCase(
         class Rejected(val reason: LineRejection) : LineResult
     }
 
-    /** El método de un pago; sin [amount], el pago cubre todo lo que se cobra. */
-    private class ChosenPayment(val method: SalePaymentMethod, val amount: Money?)
+    /**
+     * El método de un pago; sin [amount], el pago cubre todo lo que se cobra, y sin [fee] la
+     * comisión es la del método.
+     */
+    private class ChosenPayment(val method: SalePaymentMethod, val amount: Money?, val fee: Money?)
 
     private sealed interface Chosen {
         class Payments(val payments: List<ChosenPayment>) : Chosen

@@ -91,6 +91,30 @@ class PaymentSplitTest {
     }
 
     @Test
+    fun aWrittenFeeOutOfRangeNamesItsPayment() {
+        val written = { fee: Long -> SalePaymentRequest(CARD, Money(100), Money(fee)) }
+
+        assertEquals(
+            IndexedValue(1, PaymentRejection.INVALID_FEE),
+            PaymentSplit.firstRejection(listOf(payment(CASH, 0), written(-1))),
+        )
+        assertEquals(
+            IndexedValue(0, PaymentRejection.INVALID_FEE),
+            PaymentSplit.firstRejection(listOf(written(limit + 1))),
+        )
+        // Una comisión escrita en el rango, también cero o mayor que el pago, se acepta.
+        assertNull(PaymentSplit.firstRejection(listOf(written(0), payment(CASH, 1))))
+        assertNull(PaymentSplit.firstRejection(listOf(written(limit))))
+        // Un pago de cero no paga comisión: escrita, solo puede ser cero.
+        val onZero = { fee: Long -> SalePaymentRequest(CARD, Money.ZERO, Money(fee)) }
+        assertEquals(
+            IndexedValue(0, PaymentRejection.INVALID_FEE),
+            PaymentSplit.firstRejection(listOf(onZero(1))),
+        )
+        assertNull(PaymentSplit.firstRejection(listOf(onZero(0))))
+    }
+
+    @Test
     fun checkingAnAmountOutOfRangeIsAProgrammingError() {
         assertThrows(IllegalArgumentException::class.java) {
             PaymentSplit.check(Money(100), listOf(Money(-1)))

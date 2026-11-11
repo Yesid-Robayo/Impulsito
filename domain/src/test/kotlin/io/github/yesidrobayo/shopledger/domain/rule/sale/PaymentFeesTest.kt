@@ -24,8 +24,8 @@ class PaymentFeesTest {
     fun aMethodWithoutFeeCostsNothing() {
         assertEquals(fee(0), PaymentFees.feeOf(Money(10_000), BasisPoints.ZERO, Money.ZERO))
         assertEquals(fee(0), PaymentFees.feeOf(Money.ZERO, BasisPoints(299), Money.ZERO))
-        // Una comisión fija se cobra aunque el pago sea cero.
-        assertEquals(fee(15), PaymentFees.feeOf(Money.ZERO, BasisPoints(299), Money(15)))
+        // Un pago de cero no paga comisión, tampoco la fija: por ese medio no se cobró nada.
+        assertEquals(fee(0), PaymentFees.feeOf(Money.ZERO, BasisPoints(299), Money(15)))
     }
 
     @Test
@@ -33,7 +33,7 @@ class PaymentFeesTest {
         val limit = Money(Limit.DOCUMENT_TOTAL.max)
         assertEquals(
             fee(Limit.DOCUMENT_TOTAL.max),
-            PaymentFees.feeOf(Money.ZERO, BasisPoints.ZERO, limit),
+            PaymentFees.feeOf(Money(1), BasisPoints.ZERO, limit),
         )
         assertEquals(
             Checked.AboveLimit(Limit.DOCUMENT_TOTAL),

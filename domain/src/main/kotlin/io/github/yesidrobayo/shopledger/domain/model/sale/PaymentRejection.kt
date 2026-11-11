@@ -12,6 +12,12 @@ enum class PaymentRejection {
     INVALID_AMOUNT,
 
     /**
+     * La comisión escrita es negativa o pasa del tope de un documento, o el pago es de cero y la
+     * comisión no: por ese medio no se cobró nada.
+     */
+    INVALID_FEE,
+
+    /**
      * El descuento del método, con el impuesto que deja de cobrarse, baja el total más que lo que
      * el pago cubría: el pago quedaría negativo.
      */

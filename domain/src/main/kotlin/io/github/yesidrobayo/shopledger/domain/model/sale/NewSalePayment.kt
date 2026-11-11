@@ -10,7 +10,8 @@ import kotlin.time.Instant
  * método, al menos uno, también con total cero, y sus pagos suman lo que la venta cobra.
  *
  * [methodNameSnapshot] y [methodKind] se copian del método al cobrar, para que renombrarlo después
- * no cambie esta venta. [amount] es lo que cubre este pago, [feeAmount] su comisión y
+ * no cambie esta venta. [amount] es lo que cubre este pago, [feeAmount] su comisión, calculada con
+ * los datos del método o escrita por la persona en la venta, y
  * [settlementDate] la fecha de negocio en que se acredita. [moneyAccountId] es la cuenta del
  * método, si tiene.
  *
@@ -26,4 +27,10 @@ data class NewSalePayment(
     val settlementDate: BusinessDate,
     val moneyAccountId: Long?,
     val createdAt: Instant,
-)
+) {
+    /**
+     * Lo que de verdad llega por este pago: `amount - fee_amount`. La comisión baja la ganancia
+     * final, nunca el margen. Puede ser negativo si la comisión fija pasa del pago.
+     */
+    val netReceived: Money get() = amount - feeAmount
+}
