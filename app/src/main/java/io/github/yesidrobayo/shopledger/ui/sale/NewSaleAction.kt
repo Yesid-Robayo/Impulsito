@@ -84,6 +84,24 @@ sealed interface NewSaleAction {
 
     /** `Mostrar QR`: abre a pantalla completa la imagen de cobro del método elegido. */
     data object ShowQr : NewSaleAction
+
+    /** Abrir la hoja para poner la venta en espera, con su nombre opcional. */
+    data object OpenHold : NewSaleAction
+
+    data class HoldLabelChange(val text: String) : NewSaleAction
+
+    data object ConfirmHold : NewSaleAction
+
+    /** Ir a las ventas en espera. */
+    data object OpenHeldSales : NewSaleAction
+
+    /**
+     * Retomar una venta en espera elegida en su lista. Si hay otra venta en edición, la persona ya
+     * confirmó que pase a espera.
+     */
+    data class ResumeHeld(val heldSaleId: Long) : NewSaleAction
+
+    data object HeldNoticeShown : NewSaleAction
 }
 
 /**

@@ -422,6 +422,8 @@ class CheckoutViewModel(
                     SalePaymentRequest(it.methodId, it.amount, it.fee)
                 },
                 orderAdjustment = written.adjustment,
+                // Una venta retomada de la espera sale de ella al confirmarse, también desde aquí.
+                heldSaleId = current.heldSaleId,
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> overlay.update {

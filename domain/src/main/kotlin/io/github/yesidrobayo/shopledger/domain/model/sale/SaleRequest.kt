@@ -20,6 +20,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  * [orderAdjustment] es el descuento o recargo que la persona escribe para toda la venta, con signo:
  * negativo es descuento y positivo recargo. Se reparte entre las líneas y paga impuesto con ellas.
  * Los pagos escritos cubren lo que se cobra con él, antes de los recargos de sus métodos.
+ *
+ * [heldSaleId] es la venta en espera de la que se retomó esta, si se retomó: al confirmar, sale de
+ * la espera en la misma transacción.
  */
 data class SaleRequest(
     val lines: List<SaleLineRequest>,
@@ -28,4 +31,5 @@ data class SaleRequest(
     val note: String? = null,
     val payments: List<SalePaymentRequest> = emptyList(),
     val orderAdjustment: Money = Money.ZERO,
+    val heldSaleId: Long? = null,
 )

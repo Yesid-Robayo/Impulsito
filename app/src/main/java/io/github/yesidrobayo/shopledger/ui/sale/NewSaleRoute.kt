@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.sale
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -12,8 +13,11 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveHeldSalesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.ResumeHeldSaleUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppMessages
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -75,7 +79,23 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     methodNames = container.paymentMethodNames,
                     taxRates = ports.taxRates,
                     clock = container.clock,
+                    heldSales = ports.heldSales,
                 )
+            val hold =
+                HoldSaleUseCase(
+                    ports.transactions,
+                    ports.heldSales,
+                    ports.products,
+                    container.clock,
+                )
+            val resume =
+                ResumeHeldSaleUseCase(
+                    ports.transactions,
+                    ports.heldSales,
+                    ports.products,
+                    ports.priceHistory,
+                )
+            val observeHeld = ObserveHeldSalesUseCase(ports.heldSales)
             val reactivate =
                 ReactivateProductUseCase(
                     ports.transactions,
@@ -92,6 +112,9 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                 numbers = numbers,
                 computation = container.dispatchers.default,
                 prefillProductId = key.prefillProductId,
+                heldSales = { observeHeld() },
+                holdSale = { hold(it) },
+                resumeHeldSale = { resume(it) },
             )
         }
     when (model) {
@@ -130,6 +153,19 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                 }
                 navigator.selectTab(TopLevelDestination.HOME)
             }
+            // La lista de ventas en espera pregunta antes de cambiar esta venta por otra.
+            SideEffect {
+                navigator.heldSales.saleHasLines = !uiState.cart.isEmpty
+                navigator.heldSales.editingHeldSaleId = uiState.heldSaleId
+            }
+            LaunchedEffect(viewModel) {
+                navigator.heldSales.toResume.collect { chosen ->
+                    if (chosen != null) {
+                        navigator.heldSales.take()
+                        viewModel.onAction(NewSaleAction.ResumeHeld(chosen))
+                    }
+                }
+            }
             LaunchedEffect(uiState.closed) {
                 if (uiState.closed) navigator.back()
             }
@@ -151,6 +187,8 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                                 handoff.offer(draft, qrOnly = action == NewSaleAction.ShowQr)
                                 navigator.open(AppNavKey.Checkout)
                             }
+
+                        NewSaleAction.OpenHeldSales -> navigator.open(AppNavKey.HeldSales)
 
                         else -> Unit
                     }

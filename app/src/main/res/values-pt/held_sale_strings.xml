@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ventas en espera: la hoja de poner en espera y su lista. Textos de la guía de redacción. -->
+    <string name="action_rename">Renomear</string>
+    <string name="draft_hold_action">Colocar em espera</string>
+    <string name="draft_hold_title">Colocar venda em espera</string>
+    <string name="draft_label">Nome ou referência</string>
+    <string name="draft_label_help">Opcional, até 40 caracteres.</string>
+    <string name="draft_hold_confirm_action">Salvar em espera</string>
+    <string name="draft_saved">Venda em espera</string>
+    <string name="draft_badge">Em espera: %1$d</string>
+    <string name="draft_no_name">Sem nome</string>
+    <string name="draft_estimated_total">Total estimado %1$s</string>
+    <string name="draft_waiting_since">Em espera desde %1$s</string>
+    <plurals name="draft_items">
+        <item quantity="one">%1$d produto</item>
+        <item quantity="many">%1$d de produtos</item>
+        <item quantity="other">%1$d produtos</item>
+    </plurals>
+    <string name="draft_resume_action">Retomar</string>
+    <string name="draft_discard_action">Descartar</string>
+    <string name="draft_empty_title">Sem vendas em espera</string>
+    <string name="draft_empty_body">Uma venda pode ficar aqui enquanto outra pessoa é atendida.</string>
+    <string name="draft_empty_action">Ir para vender</string>
+    <string name="draft_error_hold">Não foi possível colocar em espera. A venda continua aqui.</string>
+    <string name="draft_error_resume">Não foi possível abrir esta venda.</string>
+    <string name="draft_swap_confirm_title">Trocar de venda?</string>
+    <string name="draft_swap_confirm_body">A venda atual fica em espera e a escolhida é retomada.</string>
+    <string name="draft_swap_confirm_action">Retomar esta venda</string>
+    <plurals name="draft_prices_changed">
+        <item quantity="one">%1$d preço mudou desde que esta venda foi salva.</item>
+        <item quantity="many">%1$d de preços mudaram desde que esta venda foi salva.</item>
+        <item quantity="other">%1$d preços mudaram desde que esta venda foi salva.</item>
+    </plurals>
+    <plurals name="draft_products_removed">
+        <item quantity="one">%1$d produto não está mais disponível e ficou de fora.</item>
+        <item quantity="many">%1$d de produtos não estão mais disponíveis e ficaram de fora.</item>
+        <item quantity="other">%1$d produtos não estão mais disponíveis e ficaram de fora.</item>
+    </plurals>
+    <string name="draft_discard_confirm_title">Descartar esta venda em espera?</string>
+    <string name="draft_discard_confirm_body">O que foi salvo aqui é apagado. Estoque, dinheiro e relatórios não são afetados.</string>
+    <string name="draft_discard_confirm_action">Descartar venda</string>
+    <string name="hub_tool_drafts">Vendas em espera</string>
+    <string name="hub_tool_drafts_desc">Vendas salvas para terminar depois</string>
+</resources>

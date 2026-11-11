@@ -18,11 +18,15 @@ import kotlin.math.max
  * distinta en cada tamaño.
  *
  * @param trailing recibe la alineación que le toca: `End` al lado del texto, `Start` debajo.
+ * @param trailingWraps si la parte derecha es una frase que puede pasar a dos líneas, como
+ *   `Total estimado 18.500`: entonces se parte a la derecha en dos líneas, la palabra y la cifra, y
+ *   solo si así no cabe baja entera bajo el texto.
  */
 @Composable
 fun LedgerLineLayout(
     gap: Dp,
     modifier: Modifier = Modifier,
+    trailingWraps: Boolean = false,
     leading: @Composable () -> Unit,
     trailing: @Composable (Alignment.Horizontal) -> Unit,
 ) {
@@ -30,7 +34,30 @@ fun LedgerLineLayout(
         val width = constraints.maxWidth
         val gapPx = gap.roundToPx()
         val probe = subcompose(Slot.PROBE) { trailing(Alignment.End) }
-        val trailingWidth = probe.maxOfOrNull { it.maxIntrinsicWidth(Constraints.Infinity) } ?: 0
+        val fullWidth = probe.maxOfOrNull { it.maxIntrinsicWidth(Constraints.Infinity) } ?: 0
+        val share = if (width ==
+            Constraints.Infinity
+        ) {
+            fullWidth
+        } else {
+            width * TRAILING_SHARE / SIDE_BY_SIDE_PARTS
+        }
+        // Una frase que se parte cabe al lado si su palabra más larga cabe en la parte que le toca.
+        val trailingWidth =
+            if (trailingWraps) {
+                val longestWord =
+                    probe.maxOfOrNull { it.minIntrinsicWidth(Constraints.Infinity) } ?: 0
+                val oneLine = probe.maxOfOrNull { it.maxIntrinsicHeight(Constraints.Infinity) } ?: 0
+                val wrapped = probe.maxOfOrNull { it.maxIntrinsicHeight(share) } ?: 0
+                // Al lado solo en dos líneas a lo sumo: la palabra arriba y la cifra abajo. Más, y la
+                // frase se vería partida palabra por palabra. Se compara con dos líneas y media,
+                // porque el alto de una línea sola viene recortado arriba y abajo.
+                val fits = longestWord <= share &&
+                    wrapped * HALF_LINES < oneLine * (MAX_WRAPPED_LINES * HALF_LINES + 1)
+                if (fits) minOf(fullWidth, share) else fullWidth
+            } else {
+                fullWidth
+            }
         val sideBySide =
             width == Constraints.Infinity ||
                 trailingWidth * SIDE_BY_SIDE_PARTS <= width * TRAILING_SHARE
@@ -103,3 +130,7 @@ private enum class Slot { PROBE, LEADING, TRAILING }
 // partido en una columna angosta.
 private const val TRAILING_SHARE = 2
 private const val SIDE_BY_SIDE_PARTS = 5
+
+// Una frase de la derecha que se parte ocupa a lo sumo dos líneas al lado del texto.
+private const val MAX_WRAPPED_LINES = 2
+private const val HALF_LINES = 2

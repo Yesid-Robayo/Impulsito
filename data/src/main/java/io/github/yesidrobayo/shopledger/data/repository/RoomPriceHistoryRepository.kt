@@ -31,6 +31,9 @@ internal class RoomPriceHistoryRepository(database: AppDatabase) : PriceHistoryR
         .map { rows -> rows.map(::toPriceChange) }
         .distinctUntilChanged()
 
+    override suspend fun findByProduct(productId: Long): List<PriceChange> =
+        history.findByProduct(productId).map(::toPriceChange)
+
     // El UUID se guarda en su texto canónico de 36 caracteres, en minúsculas.
     override suspend fun findByBatch(batchId: Uuid): List<PriceChange> =
         history.findByBatch(batchId.toString()).map(::toPriceChange)

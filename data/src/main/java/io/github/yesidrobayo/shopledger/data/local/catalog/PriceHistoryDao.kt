@@ -18,6 +18,10 @@ internal interface PriceHistoryDao {
     @Query("SELECT * FROM product_price_history WHERE product_id = :productId ORDER BY id")
     fun observeByProduct(productId: Long): Flow<List<PriceHistoryEntity>>
 
+    /** Lo mismo, leído una vez: dentro de una transacción de lectura no se observa. */
+    @Query("SELECT * FROM product_price_history WHERE product_id = :productId ORDER BY id")
+    suspend fun findByProduct(productId: Long): List<PriceHistoryEntity>
+
     /** Las filas de una actualización masiva, o de su deshacer, por su UUID en texto. */
     @Query("SELECT * FROM product_price_history WHERE batch_id = :batchId ORDER BY id")
     suspend fun findByBatch(batchId: String): List<PriceHistoryEntity>

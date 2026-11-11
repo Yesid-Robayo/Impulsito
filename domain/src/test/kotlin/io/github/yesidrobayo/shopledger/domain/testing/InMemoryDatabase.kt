@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
@@ -63,6 +64,8 @@ internal data class Tables(
     val productUnits: Map<Long, ProductConversion> = emptyMap(),
     /** Las unidades que usa alguna línea de compra, de venta o de otro documento. */
     val unitsUsedByLines: Set<Long> = emptySet(),
+    /** Las ventas en espera, con sus líneas. */
+    val heldSales: Map<Long, HeldSale> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

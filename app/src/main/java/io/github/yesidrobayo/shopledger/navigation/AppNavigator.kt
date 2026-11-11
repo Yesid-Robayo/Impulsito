@@ -108,6 +108,26 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
     /** Abre una venta nueva encima de lo visible, desde cualquier raíz. */
     fun sell() = open(AppNavKey.NewSale())
 
+    /** Lo que pasa entre la venta nueva y sus ventas en espera. */
+    val heldSales: HeldSaleHandoff = HeldSaleHandoff()
+
+    /** Si hay una venta nueva abierta en la pila, visible o debajo de lo visible. */
+    val saleOpen: Boolean get() = backStack.any { it is AppNavKey.NewSale }
+
+    /**
+     * Retoma la espera [heldSaleId] en la venta nueva: vuelve a ella si ya está abierta, o abre una
+     * encima de lo visible. La venta nueva la toma al verse.
+     */
+    fun resumeHeldSale(heldSaleId: Long) {
+        heldSales.choose(heldSaleId)
+        val sale = backStack.indexOfLast { it is AppNavKey.NewSale }
+        if (sale < 0) {
+            backStack.add(AppNavKey.NewSale())
+            return
+        }
+        while (backStack.size > sale + 1) backStack.removeAt(backStack.lastIndex)
+    }
+
     /**
      * Vuelve a la pantalla anterior. En Inicio no hace nada y devuelve `false`: ahí atrás le toca al
      * sistema, que cierra la app.

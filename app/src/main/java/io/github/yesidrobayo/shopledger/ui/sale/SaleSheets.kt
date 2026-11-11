@@ -24,6 +24,8 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartLineIssue
+import io.github.yesidrobayo.shopledger.domain.rule.sale.HeldSaleRules
+import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
@@ -84,6 +86,8 @@ internal fun SaleSheets(
                 )
             }
         }
+
+        is SaleSheet.Hold -> HoldSheet(sheet, onAction)
 
         SaleSheet.CurrencyRequired -> AppBottomSheet(
             onDismissRequest = close,
@@ -159,9 +163,56 @@ internal fun CartContent(cart: SaleCartState, onAction: (NewSaleAction) -> Unit)
                 },
         )
         PrimaryActionButton(
+            text = stringResource(R.string.draft_hold_action),
+            onClick = { onAction(NewSaleAction.OpenHold) },
+            variant = ActionVariant.OUTLINED,
+        )
+        PrimaryActionButton(
             text = stringResource(R.string.sale_clear),
             onClick = { onAction(NewSaleAction.ClearSale) },
             variant = ActionVariant.OUTLINED,
+        )
+    }
+}
+
+/**
+ * Poner la venta en espera: un nombre opcional, como una mesa, y `Guardar en espera`. Si falla, la
+ * hoja sigue abierta con lo escrito, y la venta, intacta.
+ */
+@Composable
+private fun HoldSheet(sheet: SaleSheet.Hold, onAction: (NewSaleAction) -> Unit) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    AppBottomSheet(
+        onDismissRequest = { onAction(NewSaleAction.CloseSheet) },
+        title = stringResource(R.string.draft_hold_title),
+        action = {
+            PrimaryActionButton(
+                text = stringResource(R.string.draft_hold_confirm_action),
+                onClick = { onAction(NewSaleAction.ConfirmHold) },
+                variant = ActionVariant.TONAL,
+                enabled = !sheet.tooLong,
+                state = if (sheet.working) ActionState.WORKING else ActionState.IDLE,
+            )
+        },
+    ) {
+        AppTextField(
+            value = sheet.label,
+            onValueChange = { onAction(NewSaleAction.HoldLabelChange(it)) },
+            label = stringResource(R.string.draft_label),
+            modifier = Modifier.focusRequester(focus),
+            supportingText = stringResource(R.string.draft_label_help),
+            imeAction = ImeAction.Done,
+            error =
+                if (sheet.tooLong) {
+                    pluralStringResource(
+                        R.plurals.error_text_long,
+                        HeldSaleRules.MAX_LABEL_LENGTH,
+                        HeldSaleRules.MAX_LABEL_LENGTH,
+                    )
+                } else {
+                    null
+                },
         )
     }
 }

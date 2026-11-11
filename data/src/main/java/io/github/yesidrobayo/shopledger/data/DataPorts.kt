@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSourc
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomHeldSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLowStockAlertRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMediaAssetRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
@@ -44,6 +45,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
+import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
@@ -146,6 +148,9 @@ class DataPorts internal constructor(
     val purchases: PurchaseRepository = RoomPurchaseRepository(database)
 
     val sales: SaleRepository = RoomSaleRepository(database)
+
+    /** Las ventas en espera: se guardan y se borran sin contar como cambio sin respaldar. */
+    val heldSales: HeldSaleRepository = RoomHeldSaleRepository(database)
 
     /** Los pagos de las ventas, y lo que una venta copia del método con que cobra. */
     val salePayments: SalePaymentRepository = RoomSalePaymentRepository(database)

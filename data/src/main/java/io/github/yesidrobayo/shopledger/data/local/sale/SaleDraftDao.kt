@@ -49,6 +49,20 @@ internal interface SaleDraftDao {
     @Query("SELECT * FROM sale_draft_lines WHERE draft_id = :draftId ORDER BY id")
     suspend fun findLines(draftId: Long): List<SaleDraftLineEntity>
 
+    /** Las líneas de todas las esperas, por `id`: la lista de ventas en espera las agrupa. */
+    @Query("SELECT * FROM sale_draft_lines ORDER BY id")
+    fun observeAllLines(): Flow<List<SaleDraftLineEntity>>
+
+    @Query("SELECT * FROM sale_drafts ORDER BY id")
+    suspend fun findAll(): List<SaleDraftEntity>
+
+    @Query("SELECT * FROM sale_draft_lines ORDER BY id")
+    suspend fun findAllLines(): List<SaleDraftLineEntity>
+
+    /** Borra todas las líneas de una espera, para guardarla de nuevo con las de ahora. */
+    @Query("DELETE FROM sale_draft_lines WHERE draft_id = :draftId")
+    suspend fun deleteLines(draftId: Long): Int
+
     /** Devuelve el id nuevo. */
     @Insert
     suspend fun insertLine(line: SaleDraftLineEntity): Long

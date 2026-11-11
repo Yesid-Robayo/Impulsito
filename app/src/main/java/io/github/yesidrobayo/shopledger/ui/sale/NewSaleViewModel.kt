@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
@@ -20,8 +21,12 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.CartChange
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartLineIssue
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPreview
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPricing
+import io.github.yesidrobayo.shopledger.domain.rule.sale.HeldSaleRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCart
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleRequest
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.ResumeHeldSaleResult
 import io.github.yesidrobayo.shopledger.ui.payment.plainNumberText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,6 +39,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -66,6 +72,10 @@ internal sealed interface CatalogLoad {
  * @param registerSale confirma la venta, en una sola transacción.
  * @param reactivate reactiva un producto archivado; `true` si quedó vigente.
  * @param prefillProductId el producto con que se abrió la venta, como desde `Vender este`.
+ * @param heldSales las ventas en espera, para contar las que hay además de la que se edita.
+ * @param holdSale pone la venta en espera, sin contar como cambio sin respaldar.
+ * @param resumeHeldSale lee una venta en espera para seguirla aquí. La espera sigue guardada hasta
+ *   que esta venta se confirme, en la misma transacción, o hasta que se descarte.
  */
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class NewSaleViewModel(
@@ -76,6 +86,14 @@ class NewSaleViewModel(
     private val numbers: SaleNumberFormat,
     computation: CoroutineDispatcher,
     private val prefillProductId: Long? = null,
+    private val heldSales: () -> Flow<List<HeldSale>> = { flowOf(emptyList()) },
+    // Sin espera conectada, como en una vista previa, poner en espera no guarda nada.
+    private val holdSale: suspend (
+        HoldSaleRequest,
+    ) -> HoldSaleResult = { HoldSaleResult.EmptySale },
+    private val resumeHeldSale: suspend (Long) -> ResumeHeldSaleResult = {
+        ResumeHeldSaleResult.NotFound
+    },
 ) : ViewModel() {
     private val draft = MutableStateFlow(SaleDraftStore.read(savedState))
     private val query = MutableStateFlow("")
@@ -91,6 +109,9 @@ class NewSaleViewModel(
         }.flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.Eagerly, CatalogLoad.Loading)
 
+    // Una falla al leer la espera no frena la venta: solo deja de contar las que hay.
+    private val held: Flow<List<HeldSale>> = heldSales().catch { emit(emptyList()) }
+
     val uiState: StateFlow<NewSaleUiState> = combine(
         catalog,
         draft,
@@ -98,6 +119,10 @@ class NewSaleViewModel(
         query.debounce { if (it.isBlank()) 0L else SEARCH_PAUSE_MILLIS },
         overlay,
     ) { load, current, typed, searched, shown -> build(load, current, typed, searched, shown) }
+        .combine(held) { state, list ->
+            // La venta que se edita no cuenta: ya está a la vista.
+            state.copy(heldCount = list.count { it.id != state.heldSaleId })
+        }
         .flowOn(computation)
         .stateIn(
             viewModelScope,
@@ -181,6 +206,19 @@ class NewSaleViewModel(
 
             // El cobro es otra pantalla: la ruta deja la venta con checkoutDraft y lo abre.
             NewSaleAction.OpenCheckout, NewSaleAction.ShowQr -> Unit
+
+            NewSaleAction.OpenHold -> openHold()
+
+            is NewSaleAction.HoldLabelChange -> holdLabel(action.text)
+
+            NewSaleAction.ConfirmHold -> confirmHold()
+
+            is NewSaleAction.ResumeHeld -> resumeHeld(action.heldSaleId)
+
+            NewSaleAction.HeldNoticeShown -> overlay.update { it.copy(heldNotice = null) }
+
+            // Abrir la lista de ventas en espera es navegación: la resuelve la ruta.
+            NewSaleAction.OpenHeldSales -> Unit
         }
     }
 
@@ -247,6 +285,7 @@ class NewSaleViewModel(
     }
 
     private fun clear() {
+        // Vaciar una venta retomada la suelta de su espera, que queda como se guardó.
         changeDraft { SaleDraft(methodId = it.methodId, prefilled = it.prefilled) }
         overlay.update { it.copy(dialog = null, sheet = null, status = RegisterStatus.IDLE) }
     }
@@ -488,6 +527,7 @@ class NewSaleViewModel(
                 paymentMethodId = methodId,
                 date = current.date,
                 note = current.note.takeIf { it.isNotBlank() },
+                heldSaleId = current.heldSaleId,
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> {
@@ -522,6 +562,100 @@ class NewSaleViewModel(
             }
         }
     }
+
+    // ------------------------------------------------------------------ ventas en espera
+
+    private fun openHold() {
+        val current = draft.value
+        if (current.lines.isEmpty()) return
+        val label = current.heldLabel.orEmpty()
+        showSheet(SaleSheet.Hold(label = label, tooLong = !fits(label)))
+    }
+
+    private fun holdLabel(text: String) = overlay.update { shown ->
+        val sheet = shown.sheet as? SaleSheet.Hold ?: return@update shown
+        shown.copy(sheet = sheet.copy(label = text, tooLong = !fits(text)))
+    }
+
+    /** Pone la venta en espera y deja la pantalla lista para atender a otra persona. */
+    private fun confirmHold() {
+        val sheet = overlay.value.sheet as? SaleSheet.Hold ?: return
+        if (sheet.tooLong || sheet.working) return
+        overlay.update { it.copy(sheet = sheet.copy(working = true)) }
+        viewModelScope.launch {
+            if (holdCurrent(sheet.label)) {
+                changeDraft { SaleDraft(methodId = it.methodId, prefilled = true) }
+                overlay.update {
+                    it.copy(
+                        sheet = null,
+                        status = RegisterStatus.IDLE,
+                        heldNotice = HeldNotice.Held,
+                    )
+                }
+            } else {
+                // La venta sigue aquí, intacta, con la hoja abierta para intentarlo de nuevo.
+                overlay.update {
+                    it.copy(sheet = sheet.copy(working = false), heldNotice = HeldNotice.HoldFailed)
+                }
+            }
+        }
+    }
+
+    /** Guarda en espera la venta en edición, encima de la suya si venía de la espera. */
+    private suspend fun holdCurrent(label: String?): Boolean {
+        val current = draft.value
+        val request = HoldSaleRequest(current.lines, label, current.heldSaleId)
+        return when (holdSale(request)) {
+            is HoldSaleResult.Held -> true
+
+            HoldSaleResult.EmptySale,
+            HoldSaleResult.TooManyLines,
+            HoldSaleResult.LabelTooLong,
+            is HoldSaleResult.LineRejected,
+            is HoldSaleResult.StorageFailed,
+            -> false
+        }
+    }
+
+    /**
+     * Retoma [heldSaleId]. Si hay otra venta en edición, la persona ya confirmó cambiarla: primero
+     * pasa a espera, y solo si quedó guardada se retoma la elegida. Así nunca se pierde una.
+     */
+    private fun resumeHeld(heldSaleId: Long) {
+        if (draft.value.heldSaleId == heldSaleId) return
+        viewModelScope.launch {
+            val current = draft.value
+            if (current.lines.isNotEmpty()) {
+                if (!holdCurrent(current.heldLabel)) {
+                    overlay.update { it.copy(heldNotice = HeldNotice.HoldFailed) }
+                    return@launch
+                }
+                changeDraft { SaleDraft(methodId = it.methodId, prefilled = true) }
+            }
+            when (val result = resumeHeldSale(heldSaleId)) {
+                is ResumeHeldSaleResult.Resumed -> {
+                    val sale = result.sale
+                    changeDraft {
+                        SaleDraft(
+                            lines = sale.lines,
+                            methodId = it.methodId,
+                            prefilled = true,
+                            heldSaleId = sale.heldSaleId,
+                            heldLabel = sale.label,
+                        )
+                    }
+                    val notice = HeldNotice.Resumed(sale.changedPrices, sale.removedProducts)
+                    val worth = notice.changedPrices + notice.removed > 0
+                    overlay.update { Overlay(heldNotice = notice.takeIf { worth }) }
+                }
+
+                ResumeHeldSaleResult.NotFound ->
+                    overlay.update { it.copy(heldNotice = HeldNotice.ResumeFailed) }
+            }
+        }
+    }
+
+    private fun fits(label: String): Boolean = HeldSaleRules.fits(HeldSaleRules.labelOf(label))
 
     // ------------------------------------------------------------------ catálogo
 
@@ -611,6 +745,8 @@ class NewSaleViewModel(
             notice = shown.notice,
             registered = shown.registered,
             closed = shown.closed,
+            heldSaleId = current.heldSaleId,
+            heldNotice = shown.heldNotice,
         )
     }
 
@@ -704,6 +840,7 @@ class NewSaleViewModel(
         val notice: SaleNotice? = null,
         val registered: RegisteredSale? = null,
         val closed: Boolean = false,
+        val heldNotice: HeldNotice? = null,
     )
 
     companion object {

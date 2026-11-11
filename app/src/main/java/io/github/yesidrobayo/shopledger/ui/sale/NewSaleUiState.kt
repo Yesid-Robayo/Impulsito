@@ -14,6 +14,9 @@ import kotlinx.datetime.DayOfWeek
  *
  * [query] es lo escrito en la búsqueda, tal cual. [registered] llega una sola vez, al confirmar: la
  * pantalla vuelve a Inicio con el mensaje. Con [closed], la persona salió sin registrar.
+ *
+ * [heldCount] cuenta las ventas en espera, sin la que se edita. [heldSaleId] es la venta en espera
+ * de la que se retomó esta, si se retomó: al confirmar, sale de la espera.
  */
 @Immutable
 data class NewSaleUiState(
@@ -27,6 +30,9 @@ data class NewSaleUiState(
     val notice: SaleNotice? = null,
     val registered: RegisteredSale? = null,
     val closed: Boolean = false,
+    val heldCount: Int = 0,
+    val heldSaleId: Long? = null,
+    val heldNotice: HeldNotice? = null,
 )
 
 /** Lo que muestra la cuadrícula de productos. */
@@ -182,6 +188,16 @@ sealed interface SaleSheet {
 
     /** La moneda del negocio no está confirmada: nada con dinero se guarda antes. */
     data object CurrencyRequired : SaleSheet
+
+    /**
+     * Poner la venta en espera, con el nombre escrito tal cual. [tooLong] marca un nombre de más de
+     * 40 caracteres, y [working] apaga el botón mientras se guarda.
+     */
+    data class Hold(
+        val label: String,
+        val tooLong: Boolean = false,
+        val working: Boolean = false,
+    ) : SaleSheet
 }
 
 /** Cómo se escribe el descuento de una línea. */
@@ -259,6 +275,24 @@ enum class SaleNotice {
 
     /** No se pudo reactivar el producto archivado. */
     REACTIVATE_FAILED,
+}
+
+/** Lo que pasó con la espera, para decirlo una vez. */
+sealed interface HeldNotice {
+    /** La venta quedó en espera: la pantalla queda lista para otra. */
+    data object Held : HeldNotice
+
+    /** No se pudo poner en espera. La venta sigue aquí. */
+    data object HoldFailed : HeldNotice
+
+    /** No se pudo abrir la venta elegida: ya no existe. */
+    data object ResumeFailed : HeldNotice
+
+    /**
+     * La venta se retomó, pero [changedPrices] líneas toman un precio que cambió desde que se
+     * guardó, y [removed] quedaron fuera porque su producto ya no está disponible.
+     */
+    data class Resumed(val changedPrices: Int, val removed: Int) : HeldNotice
 }
 
 /** La venta recién guardada: su número y su total, para el mensaje de Inicio. */

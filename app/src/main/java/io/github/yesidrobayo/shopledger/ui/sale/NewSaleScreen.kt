@@ -69,6 +69,8 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
+import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
+import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
 import io.github.yesidrobayo.shopledger.ui.components.PaymentMethodChips
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SaleProductTile
@@ -118,6 +120,15 @@ fun NewSaleScreen(
         onAction(NewSaleAction.NoticeShown)
         notices.showSnackbar(AppSnackbarVisuals(text, SnackbarVariant.INFO))
     }
+    val heldTexts = heldNoticeTexts(uiState.heldNotice)
+    LaunchedEffect(uiState.heldNotice) {
+        if (uiState.heldNotice == null) return@LaunchedEffect
+        onAction(NewSaleAction.HeldNoticeShown)
+        // Uno a la vez: con precios cambiados y productos fuera, se dicen los dos, en orden.
+        heldTexts.forEach { (text, variant) ->
+            notices.showSnackbar(AppSnackbarVisuals(text, variant))
+        }
+    }
     // El papel da también el color del texto: sin él, el texto sin color propio saldría en negro
     // sobre el papel oscuro.
     Surface(
@@ -135,6 +146,7 @@ fun NewSaleScreen(
                     navigation = TopBarNavigation.CLOSE,
                     onNavigate = { onAction(NewSaleAction.Close) },
                     navigationLabel = stringResource(R.string.a11y_close),
+                    actions = { HeldSaleActions(uiState, onAction) },
                 )
                 if (twoPane) {
                     TwoPaneSale(uiState, onAction, wide)
@@ -738,3 +750,65 @@ private const val SKELETON_TILES = 6
 private const val HEADER = "header"
 private const val TILE = "tile"
 private const val ARCHIVED = "archived"
+
+/**
+ * Lo que la barra ofrece de la espera: `En espera: 2` si hay otras ventas guardadas, y el menú con
+ * `Poner en espera` si la venta tiene algo que guardar.
+ *
+ * `En espera: 2` es un botón de texto, el mismo de las acciones secundarias: se lee entero, con la
+ * palabra que fija la guía, y no compite con `Registrar venta`, que es la única acción fuerte aquí.
+ */
+@Composable
+private fun HeldSaleActions(uiState: NewSaleUiState, onAction: (NewSaleAction) -> Unit) {
+    if (uiState.heldCount > 0) {
+        InlineTextButton(
+            text = stringResource(R.string.draft_badge, uiState.heldCount),
+            onClick = { onAction(NewSaleAction.OpenHeldSales) },
+        )
+    }
+    if (!uiState.cart.isEmpty) {
+        OverflowMenu(
+            listOf(
+                OverflowAction(
+                    label = stringResource(R.string.draft_hold_action),
+                    onClick = { onAction(NewSaleAction.OpenHold) },
+                ),
+            ),
+        )
+    }
+}
+
+/** Los mensajes de [notice], en orden, con su tipo. */
+@Composable
+private fun heldNoticeTexts(notice: HeldNotice?): List<Pair<String, SnackbarVariant>> =
+    when (notice) {
+        null -> emptyList()
+
+        HeldNotice.Held ->
+            listOf(stringResource(R.string.draft_saved) to SnackbarVariant.SUCCESS)
+
+        HeldNotice.HoldFailed ->
+            listOf(stringResource(R.string.draft_error_hold) to SnackbarVariant.INFO)
+
+        HeldNotice.ResumeFailed ->
+            listOf(stringResource(R.string.draft_error_resume) to SnackbarVariant.INFO)
+
+        is HeldNotice.Resumed -> buildList {
+            if (notice.changedPrices > 0) {
+                val text = pluralStringResource(
+                    R.plurals.draft_prices_changed,
+                    notice.changedPrices,
+                    notice.changedPrices,
+                )
+                add(text to SnackbarVariant.INFO)
+            }
+            if (notice.removed > 0) {
+                val text = pluralStringResource(
+                    R.plurals.draft_products_removed,
+                    notice.removed,
+                    notice.removed,
+                )
+                add(text to SnackbarVariant.INFO)
+            }
+        }
+    }

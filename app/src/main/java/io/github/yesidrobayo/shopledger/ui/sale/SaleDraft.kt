@@ -20,6 +20,8 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
  *   salir a crearlo: el primero que aparezca con un id mayor se agrega a la venta al volver.
  * @param prefilled si ya se agregó el producto con que se abrió la venta, para no agregarlo dos veces
  *   al recrear la pantalla.
+ * @param heldSaleId la venta en espera de la que se retomó esta, o `null`.
+ * @param heldLabel el nombre que tenía en espera, para volver a ponerla en espera con él.
  */
 data class SaleDraft(
     val lines: List<SaleLineRequest> = emptyList(),
@@ -28,6 +30,8 @@ data class SaleDraft(
     val note: String = "",
     val awaitingProductAfter: Long? = null,
     val prefilled: Boolean = false,
+    val heldSaleId: Long? = null,
+    val heldLabel: String? = null,
 )
 
 /**
@@ -41,6 +45,8 @@ internal object SaleDraftStore {
     private const val NOTE = "sale.note"
     private const val AWAITING = "sale.awaiting"
     private const val PREFILLED = "sale.prefilled"
+    private const val HELD = "sale.held"
+    private const val HELD_LABEL = "sale.heldLabel"
 
     private const val FIELDS = 6
     private const val NO_DISCOUNT = 0L
@@ -54,6 +60,8 @@ internal object SaleDraftStore {
         note = state.get<String>(NOTE).orEmpty(),
         awaitingProductAfter = state.get<Long>(AWAITING),
         prefilled = state.get<Boolean>(PREFILLED) ?: false,
+        heldSaleId = state.get<Long>(HELD),
+        heldLabel = state.get<String>(HELD_LABEL),
     )
 
     fun write(state: SavedStateHandle, draft: SaleDraft) {
@@ -63,6 +71,8 @@ internal object SaleDraftStore {
         state[NOTE] = draft.note
         state[AWAITING] = draft.awaitingProductAfter
         state[PREFILLED] = draft.prefilled
+        state[HELD] = draft.heldSaleId
+        state[HELD_LABEL] = draft.heldLabel
     }
 
     private fun encode(lines: List<SaleLineRequest>): LongArray {

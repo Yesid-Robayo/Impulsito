@@ -58,6 +58,7 @@ import io.github.yesidrobayo.shopledger.ui.safety.PolicyGated
 import io.github.yesidrobayo.shopledger.ui.safety.PolicyPrompt
 import io.github.yesidrobayo.shopledger.ui.safety.PolicyPromptHost
 import io.github.yesidrobayo.shopledger.ui.sale.CheckoutRoute
+import io.github.yesidrobayo.shopledger.ui.sale.HeldSalesRoute
 import io.github.yesidrobayo.shopledger.ui.sale.NewSaleRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleHistoryRoute
@@ -204,6 +205,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.PaymentMethods -> PaymentMethodsRoute(navigator)
 
         AppNavKey.Units -> UnitsRoute(navigator)
+
+        AppNavKey.HeldSales -> HeldSalesRoute(navigator)
 
         is AppNavKey.PaymentMethodEdit -> PaymentMethodFormRoute(key, navigator)
 

@@ -16,6 +16,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
+import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
+import io.github.yesidrobayo.shopledger.domain.model.sale.NewHeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSalePayment
@@ -30,6 +32,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRate
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
+import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
@@ -64,6 +67,7 @@ internal data class SaleTables(
     val movements: Map<Long, StockMovementRecord> = emptyMap(),
     val methods: Map<Long, SalePaymentMethod> = emptyMap(),
     val salesWithActiveReturns: Set<Long> = emptySet(),
+    val heldSales: Map<Long, HeldSale> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )
@@ -392,6 +396,26 @@ internal class SaleWorld(
         }
     }
 
+    /** Las ventas en espera: solo se borran al confirmar la venta que se retomó de ellas. */
+    val heldSaleRepository: HeldSaleRepository = object : HeldSaleRepository {
+        override fun observeAll(): Flow<List<HeldSale>> = unused()
+
+        override suspend fun findById(id: Long): HeldSale? = read().heldSales[id]
+
+        override suspend fun insert(sale: NewHeldSale): Long = unused()
+
+        override suspend fun replace(id: Long, sale: NewHeldSale): Boolean = unused()
+
+        override suspend fun rename(id: Long, label: String?, updatedAt: Instant): Boolean =
+            unused()
+
+        override suspend fun delete(id: Long): Boolean {
+            if (id !in read().heldSales) return false
+            write { it.copy(heldSales = it.heldSales - id) }
+            return true
+        }
+    }
+
     fun registerSale(): RegisterSaleUseCase = RegisterSaleUseCase(
         transactions = transactions,
         settings = settings,
@@ -404,6 +428,7 @@ internal class SaleWorld(
         methodNames = methodNames,
         taxRates = taxRateRepository,
         clock = clock,
+        heldSales = heldSaleRepository,
     )
 
     fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(

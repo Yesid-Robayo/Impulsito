@@ -324,6 +324,15 @@ class CheckoutViewModelTest {
     }
 
     @Test
+    fun `a sale resumed from the wait leaves it when charged here`() = runTest {
+        val model = viewModel(draft = twoOils.copy(heldSaleId = 7L))
+
+        model.act(this, CheckoutAction.Register)
+
+        assertEquals(7L, requests.single().heldSaleId)
+    }
+
+    @Test
     fun `a sale in zero asks before registering`() = runTest {
         val model =
             viewModel(draft = SaleDraft(lines = listOf(SaleLineRequest(5L, QuantityMilli(1_000L)))))

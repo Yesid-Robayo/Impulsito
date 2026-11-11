@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ventas en espera: la hoja de poner en espera y su lista. Textos de la guía de redacción. -->
+    <string name="action_rename">Rename</string>
+    <string name="draft_hold_action">Put on hold</string>
+    <string name="draft_hold_title">Put sale on hold</string>
+    <string name="draft_label">Name or reference</string>
+    <string name="draft_label_help">Optional, up to 40 characters.</string>
+    <string name="draft_hold_confirm_action">Save on hold</string>
+    <string name="draft_saved">Sale on hold</string>
+    <string name="draft_badge">On hold: %1$d</string>
+    <string name="draft_no_name">No name</string>
+    <string name="draft_estimated_total">Estimated total %1$s</string>
+    <string name="draft_waiting_since">On hold since %1$s</string>
+    <plurals name="draft_items">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+    <string name="draft_resume_action">Resume</string>
+    <string name="draft_discard_action">Discard</string>
+    <string name="draft_empty_title">No sales on hold</string>
+    <string name="draft_empty_body">A sale can be kept here while serving someone else.</string>
+    <string name="draft_empty_action">Go to sell</string>
+    <string name="draft_error_hold">The sale could not be put on hold. It is still here.</string>
+    <string name="draft_error_resume">This sale could not be opened.</string>
+    <string name="draft_swap_confirm_title">Switch sales?</string>
+    <string name="draft_swap_confirm_body">The current sale goes on hold and the chosen one resumes.</string>
+    <string name="draft_swap_confirm_action">Resume this sale</string>
+    <plurals name="draft_prices_changed">
+        <item quantity="one">%1$d price changed since this sale was saved.</item>
+        <item quantity="other">%1$d prices changed since this sale was saved.</item>
+    </plurals>
+    <plurals name="draft_products_removed">
+        <item quantity="one">%1$d product is no longer available and was left out.</item>
+        <item quantity="other">%1$d products are no longer available and were left out.</item>
+    </plurals>
+    <string name="draft_discard_confirm_title">Discard this sale on hold?</string>
+    <string name="draft_discard_confirm_body">What was saved here is deleted. Stock, money and reports are not affected.</string>
+    <string name="draft_discard_confirm_action">Discard sale</string>
+    <string name="hub_tool_drafts">Sales on hold</string>
+    <string name="hub_tool_drafts_desc">Sales saved to finish later</string>
+</resources>

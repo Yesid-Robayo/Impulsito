@@ -28,6 +28,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
@@ -93,6 +94,9 @@ import kotlin.time.Instant
  *   impuesto. Sumar los impuestos de las líneas, y nunca calcularlo sobre el total, hace que el
  *   total sea siempre lo neto más el impuesto, y los pagos cobran ese total.
  *
+ * - **Una venta retomada de la espera** sale de la espera en la misma transacción en que se
+ *   confirma: si la venta se deshace, la espera sigue ahí, y nunca quedan las dos.
+ *
  * Por ahora no calcula propina ni redondeo del efectivo: esos montos quedan en cero. Tampoco
  * vende combos ni productos con lotes, ni a crédito: los rechaza con su motivo.
  */
@@ -108,6 +112,7 @@ class RegisterSaleUseCase(
     private val methodNames: PaymentMethodNames,
     private val taxRates: TaxRateRepository,
     private val clock: Clock,
+    private val heldSales: HeldSaleRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
 
@@ -159,6 +164,11 @@ class RegisterSaleUseCase(
                 return TxResult.Rollback(RegisterSaleResult.CurrencyNotConfirmed)
         }
         val saleId = write(settled.priced, settled.payments, note, time, now)
+        request.heldSaleId?.let { held ->
+            // Si ya no existe, alguien la descartó en el intermedio: la venta igual se confirma.
+            requireNotNull(heldSales) { "Una venta de la espera necesita sus ventas en espera" }
+                .delete(held)
+        }
         return TxResult.Commit(RegisterSaleResult.Registered(saleId))
     }
 
