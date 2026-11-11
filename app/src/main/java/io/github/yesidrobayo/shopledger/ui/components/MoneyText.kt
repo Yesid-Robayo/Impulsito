@@ -167,7 +167,7 @@ private fun MoneyValue(
         MoneyAmountText(
             display = voidedDisplay,
             style = style.copy(textDecoration = TextDecoration.LineThrough),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = voidedColor(tone),
             autoSize = autoSize,
         )
     }
@@ -213,6 +213,16 @@ fun moneyColor(tone: MoneyTone): Color = when (tone) {
     MoneyTone.LOSS -> AppTheme.colors.loss
     MoneyTone.ON_HERO -> AppTheme.colors.onHero
     MoneyTone.HERO_ACCENT -> AppTheme.colors.heroAccent
+}
+
+/**
+ * El color apagado de un monto anulado. Sobre el héroe es el apagado del héroe: el de la superficie
+ * casi no se ve sobre el bloque de color.
+ */
+@Composable
+private fun voidedColor(tone: MoneyTone): Color = when (tone) {
+    MoneyTone.ON_HERO, MoneyTone.HERO_ACCENT -> AppTheme.colors.onHeroVariant
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 /** El tamaño mínimo al que se achica una cifra grande: por debajo ya no es una cifra destacada. */

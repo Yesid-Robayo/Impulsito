@@ -33,6 +33,23 @@
     <string name="action_save">Salvar</string>
     <string name="filter_payment_method">Forma de pagamento</string>
     <string name="product_filter_archived">Arquivados</string>
+    <!-- Detalle de venta y anulación. -->
+    <string name="sale_detail_title">Venda %1$s</string>
+    <string name="sale_detail_payments">Pagamentos</string>
+    <string name="sale_detail_when">%1$s, %2$s</string>
+    <string name="sale_voided_on">%1$s · %2$s</string>
+    <string name="error_sale_void">Não foi possível anular. A venda continua ativa.</string>
+    <string name="confirm_sale_voided">Venda anulada</string>
+    <string name="dialog_void_sale_title">Anular esta venda?</string>
+    <string name="dialog_void_sale_body">As unidades voltam ao estoque e a venda deixa de contar nos números de %1$s. Continuará no histórico, marcada como anulada.</string>
+    <string name="dialog_void_sale_action">Anular venda</string>
+    <string name="void_reason_entry_error">Erro ao registrar</string>
+    <string name="void_reason_customer_return">Devolução do cliente</string>
+    <string name="void_reason_supplier_return">Devolução ao fornecedor</string>
+    <string name="void_reason_other">Outro motivo</string>
+    <string name="void_reason_undo">Desfeito</string>
+    <string name="checkout_settles_on">Credita em %1$s</string>
+    <string name="form_note">Nota</string>
     <plurals name="sale_summary_products">
         <item quantity="one">%1$d produto</item>
         <item quantity="many">%1$d de produtos</item>

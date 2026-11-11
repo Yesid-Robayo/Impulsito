@@ -33,6 +33,23 @@
     <string name="action_save">Save</string>
     <string name="filter_payment_method">Payment method</string>
     <string name="product_filter_archived">Archived</string>
+    <!-- Detalle de venta y anulación. -->
+    <string name="sale_detail_title">Sale %1$s</string>
+    <string name="sale_detail_payments">Payments</string>
+    <string name="sale_detail_when">%1$s, %2$s</string>
+    <string name="sale_voided_on">%1$s · %2$s</string>
+    <string name="error_sale_void">Could not void. The sale is still active.</string>
+    <string name="confirm_sale_voided">Sale voided</string>
+    <string name="dialog_void_sale_title">Void this sale?</string>
+    <string name="dialog_void_sale_body">The units return to inventory and the sale stops counting in the numbers for %1$s. It stays in the history, marked as voided.</string>
+    <string name="dialog_void_sale_action">Void sale</string>
+    <string name="void_reason_entry_error">Entry error</string>
+    <string name="void_reason_customer_return">Customer return</string>
+    <string name="void_reason_supplier_return">Return to supplier</string>
+    <string name="void_reason_other">Other reason</string>
+    <string name="void_reason_undo">Undone</string>
+    <string name="checkout_settles_on">Settles on %1$s</string>
+    <string name="form_note">Note</string>
     <plurals name="sale_summary_products">
         <item quantity="one">%1$d product</item>
         <item quantity="other">%1$d products</item>

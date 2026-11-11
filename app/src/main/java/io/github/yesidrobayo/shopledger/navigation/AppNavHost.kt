@@ -48,6 +48,7 @@ import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductListRoute
 import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.sale.NewSaleRoute
+import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
 import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryScreen
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
@@ -143,6 +144,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.ProductList -> ProductListRoute(navigator)
 
         is AppNavKey.NewSale -> NewSaleRoute(key, navigator)
+
+        is AppNavKey.SaleDetail -> SaleDetailRoute(key, navigator)
 
         is AppNavKey.ProductEdit -> ProductEditRoute(key, navigator)
 
