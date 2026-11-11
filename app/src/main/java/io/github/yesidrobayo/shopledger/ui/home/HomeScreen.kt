@@ -44,12 +44,20 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
+import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
+import io.github.yesidrobayo.shopledger.ui.backup.backupBannerLook
+import io.github.yesidrobayo.shopledger.ui.backup.backupChipLook
+import io.github.yesidrobayo.shopledger.ui.backup.needsBanner
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.BackupStatusBanner
+import io.github.yesidrobayo.shopledger.ui.components.BackupStatusChip
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
@@ -57,6 +65,8 @@ import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
+import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
+import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
@@ -77,14 +87,17 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * - Las últimas cinco ventas, con `Ver todas` hacia el historial.
  * - En una ventana ancha, el héroe y los atajos a la izquierda, y las ventas a la derecha.
  *
- * Es pura: recibe el estado y avisa cada acción. Aquí se suman después el estado del respaldo bajo la
- * barra, `Por agotarse` antes de las ventas, y la ganancia final de la semana y del mes bajo el héroe.
+ * - El estado del respaldo: el chip bajo la barra, y el banner y los avisos sobre el héroe.
+ *
+ * Es pura: recibe el estado y avisa cada acción. Aquí se suman después `Por agotarse` antes de las
+ * ventas, y la ganancia final de la semana y del mes bajo el héroe.
  */
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
+    backup: BackupWording? = null,
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -143,9 +156,9 @@ fun HomeScreen(
 
                     is HomeUiState.Content ->
                         if (expanded) {
-                            TwoPanes(uiState, onAction, bottom, Modifier.weight(1f))
+                            TwoPanes(uiState, backup, onAction, bottom, Modifier.weight(1f))
                         } else {
-                            OnePane(uiState, onAction, bottom, Modifier.weight(1f))
+                            OnePane(uiState, backup, onAction, bottom, Modifier.weight(1f))
                         }
                 }
             }
@@ -168,6 +181,7 @@ private fun bottomSpace(): Dp {
 @Composable
 private fun OnePane(
     content: HomeUiState.Content,
+    backup: BackupWording?,
     onAction: (HomeAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
@@ -182,7 +196,7 @@ private fun OnePane(
                     Modifier.padding(horizontal = AppTheme.spacing.s16),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
                 ) {
-                    Overview(content, onAction)
+                    Overview(content, backup, onAction)
                 }
             }
             recentSales(content, onAction)
@@ -194,6 +208,7 @@ private fun OnePane(
 @Composable
 private fun TwoPanes(
     content: HomeUiState.Content,
+    backup: BackupWording?,
     onAction: (HomeAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
@@ -210,7 +225,7 @@ private fun TwoPanes(
                 .padding(start = AppTheme.spacing.s8, bottom = bottom),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
         ) {
-            Overview(content, onAction)
+            Overview(content, backup, onAction)
         }
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -223,7 +238,12 @@ private fun TwoPanes(
 
 /** El héroe, la tarjeta del primer uso y los atajos, en ese orden. */
 @Composable
-private fun ColumnScope.Overview(content: HomeUiState.Content, onAction: (HomeAction) -> Unit) {
+private fun ColumnScope.Overview(
+    content: HomeUiState.Content,
+    backup: BackupWording?,
+    onAction: (HomeAction) -> Unit,
+) {
+    backup?.let { BackupSummary(it, onAction) }
     TodayHeroBlock(content.hero, Modifier.padding(top = AppTheme.spacing.s8))
     if (content.firstUse) {
         AppCard {
@@ -242,6 +262,60 @@ private fun ColumnScope.Overview(content: HomeUiState.Content, onAction: (HomeAc
         }
     }
     Shortcuts(onAction)
+}
+
+/**
+ * El respaldo en Inicio: el chip, siempre visible, en su propia línea bajo la barra; el banner sobre
+ * el héroe solo si el estado pide atención; y los avisos que ningún estado oculta. Todo abre la
+ * pantalla del respaldo, salvo sin destino, que lleva a elegir dónde guardar.
+ */
+@Composable
+private fun BackupSummary(backup: BackupWording, onAction: (HomeAction) -> Unit) {
+    val report = backup.overview.report
+    val status = report.status
+    BackupStatusChip(backupChipLook(backup), onClick = { onAction(HomeAction.OpenBackup) })
+    if (status.needsBanner()) {
+        val notConnected = status == BackupStatus.NOT_CONNECTED
+        BackupStatusBanner(
+            backupBannerLook(backup),
+            actionLabel = stringResource(
+                if (notConnected) {
+                    R.string.backup_action_choose_destination
+                } else {
+                    R.string.backup_action_review
+                },
+            ),
+            onAction = {
+                onAction(if (notConnected) HomeAction.ChooseDestination else HomeAction.OpenBackup)
+            },
+        )
+    }
+    val provider = backup.providerLabel ?: NO_VALUE_TEXT
+    val app = stringResource(R.string.app_name)
+    if (BackupNotice.HUMAN_CHECK_DUE in report.notices && status != BackupStatus.CHECK_DUE) {
+        BackupNoticeCard(stringResource(R.string.backup_state_check_due, provider), onAction)
+    }
+    val fullReadSince = backup.overview.lastFullReadAt
+    if (BackupNotice.FULL_READ_OVERDUE in report.notices && fullReadSince != null) {
+        val days = (backup.overview.computedAt - fullReadSince).inWholeDays
+        BackupNoticeCard(
+            stringResource(R.string.backup_full_verify_late_notice, days.toString(), app),
+            onAction,
+        )
+    }
+    if (BackupNotice.LOW_DEVICE_STORAGE in report.notices) {
+        BackupNoticeCard(stringResource(R.string.backup_device_low), onAction)
+    }
+}
+
+@Composable
+private fun BackupNoticeCard(text: String, onAction: (HomeAction) -> Unit) {
+    NoticeCard(
+        text,
+        NoticeVariant.WARNING,
+        actionLabel = stringResource(R.string.backup_action_review),
+        onAction = { onAction(HomeAction.OpenBackup) },
+    )
 }
 
 /**

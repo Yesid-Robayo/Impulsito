@@ -64,4 +64,10 @@ sealed interface HomeAction {
     data class OpenSale(val saleId: Long) : HomeAction
 
     data object Retry : HomeAction
+
+    /** El chip, el banner o un aviso del respaldo: abre su pantalla. */
+    data object OpenBackup : HomeAction
+
+    /** Sin destino: lleva a elegir dónde guardar. */
+    data object ChooseDestination : HomeAction
 }

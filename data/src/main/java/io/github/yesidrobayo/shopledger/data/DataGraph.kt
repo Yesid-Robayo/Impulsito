@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data
 
 import android.content.Context
 import androidx.work.WorkerFactory
+import io.github.yesidrobayo.shopledger.data.backup.BackupCopiesReader
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupEvent
 import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
@@ -58,9 +59,11 @@ import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
 import io.github.yesidrobayo.shopledger.data.work.DataWorkerFactory
 import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
+import io.github.yesidrobayo.shopledger.data.work.backupNetworkOf
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
+import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
@@ -213,6 +216,20 @@ class DataGraph internal constructor(
                 val last = lastProbeStore().load()
                 HeadProbeRule.isDue(last?.at, clock.now())
             },
+        )
+    }
+
+    /**
+     * Lo que la pantalla del respaldo lee del destino conectado: su nombre, sin red, y la lista de
+     * sus copias. Solo lee. Crearlo no toca el disco.
+     */
+    val backupDestination: BackupDestinationSource by lazy {
+        BackupCopiesReader(
+            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            destinations = destinations,
+            slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
+            deviceId = deviceIdentity::deviceId,
+            hasNetwork = { backupNetworkOf(context).validated },
         )
     }
 

@@ -5,10 +5,15 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryCursor
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
+import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
 import io.github.yesidrobayo.shopledger.domain.usecase.home.TodaySales
@@ -51,6 +56,22 @@ class HomeViewModelTest {
         MutableStateFlow<TodaySales>(TodaySales.Ready(today, zone, summary(0, 0, 0)))
     private val hasProducts = MutableStateFlow(true)
     private val history = FakeHistory()
+
+    private fun backupOverview(kind: BackupDestinationKind, status: BackupStatus) = BackupOverview(
+        report = BackupStatusReport(status, pendingChanges = 0, savingSoon = false),
+        destinationKind = kind,
+        lastSuccessAt = now,
+        failureCode = null,
+        staleReason = null,
+        meteredPolicy = MeteredBackupPolicy.EVERY_60_MIN,
+        nextMeteredUploadAt = null,
+        lastFullReadAt = null,
+        computedAt = now,
+    )
+
+    private val backupOverviews =
+        MutableStateFlow(backupOverview(BackupDestinationKind.WEBDAV, BackupStatus.UP_TO_DATE))
+    private var labelReads = 0
 
     /** Cuántas veces la pantalla volvió a mirar la fecha. */
     private var dayChecks = 0
@@ -120,9 +141,16 @@ class HomeViewModelTest {
             hasProducts = hasProducts,
             history = SaleHistoryReader(history, Clock { now }),
             computation = dispatcher,
+            backupOverview = { refreshes -> combine(refreshes, backupOverviews) { _, it -> it } },
+            providerLabel = {
+                labelReads += 1
+                "Nube"
+            },
+            zones = MutableStateFlow(zone),
         )
         // La pantalla recoge el estado mientras se ve.
         backgroundScope.launch { model.uiState.collect {} }
+        backgroundScope.launch { model.backup.collect {} }
         advanceUntilIdle()
         return model
     }
@@ -233,4 +261,30 @@ class HomeViewModelTest {
 
         assertEquals(before, model.uiState.value)
     }
+
+    @Test
+    fun `the backup state comes apart, with the cloud name read once per destination`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            assertEquals(BackupStatus.UP_TO_DATE, model.backup.value?.overview?.report?.status)
+            assertEquals(null, model.backup.value?.providerLabel)
+            assertEquals(zone, model.backup.value?.zone)
+            assertEquals(0, labelReads)
+
+            backupOverviews.value =
+                backupOverview(BackupDestinationKind.DOCUMENT_SLOTS, BackupStatus.HANDED_OFF)
+            advanceUntilIdle()
+            backupOverviews.value =
+                backupOverview(BackupDestinationKind.DOCUMENT_SLOTS, BackupStatus.CHECK_DUE)
+            advanceUntilIdle()
+
+            assertEquals("Nube", model.backup.value?.providerLabel)
+            assertEquals(BackupStatus.CHECK_DUE, model.backup.value?.overview?.report?.status)
+            assertEquals(1, labelReads)
+            // Las acciones del respaldo las resuelve la navegación.
+            val before = model.uiState.value
+            model.onAction(HomeAction.OpenBackup)
+            model.onAction(HomeAction.ChooseDestination)
+            assertEquals(before, model.uiState.value)
+        }
 }

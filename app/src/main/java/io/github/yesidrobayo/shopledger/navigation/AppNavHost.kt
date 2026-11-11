@@ -31,6 +31,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
@@ -145,6 +146,8 @@ private fun entryOf(key: NavKey, navigator: AppNavigator): NavEntry<NavKey> {
 private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
     when (key) {
         AppNavKey.Home -> HomeRoute(navigator)
+
+        AppNavKey.Backup -> BackupRoute(navigator)
 
         AppNavKey.ProductList -> ProductListRoute(navigator)
 

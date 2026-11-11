@@ -4,6 +4,7 @@ import android.icu.text.DateFormat
 import android.icu.text.DateFormatSymbols
 import android.icu.text.DateTimePatternGenerator
 import android.icu.text.DisplayContext
+import android.icu.text.RelativeDateTimeFormatter
 import android.icu.util.GregorianCalendar
 import android.icu.util.TimeZone
 import android.icu.util.ULocale
@@ -40,6 +41,10 @@ class DateFormatter(val formatLocale: FormatLocale, val uiLocale: Locale) {
     private val timeFormat: DateFormat =
         dateFormat(if (usesTwentyFourHours(formatLocale)) TIME_24_HOURS else TIME_12_HOURS)
     private val dayMonthFormat: DateFormat = dateFormat(DAY_MONTH)
+    private val dayMonthTimeFormat: DateFormat =
+        dateFormat(
+            DAY_MONTH + if (usesTwentyFourHours(formatLocale)) TIME_24_HOURS else TIME_12_HOURS,
+        )
     private val dayMonthYearFormat: DateFormat = dateFormat(DAY_MONTH_YEAR)
     private val weekdayDayMonthFormat: DateFormat = dateFormat(WEEKDAY_DAY_MONTH)
     private val longDateFormat: DateFormat = dateFormat(LONG_DATE)
@@ -58,6 +63,44 @@ class DateFormatter(val formatLocale: FormatLocale, val uiLocale: Locale) {
     fun time(instant: Instant, zone: BusinessTimeZone): String =
         timeFormat.render(instant.toLocalDateTime(zone.timeZone))
             .replace(' ', IcuTextNormalizer.NO_BREAK_SPACE)
+
+    /**
+     * Día, mes corto y hora del instante en la zona del negocio: `28 oct, 21:14`, con el reloj de la
+     * región y el orden que da ICU para el idioma.
+     */
+    fun dayMonthTime(instant: Instant, zone: BusinessTimeZone): String =
+        dayMonthTimeFormat.render(instant.toLocalDateTime(zone.timeZone))
+            .replace(' ', IcuTextNormalizer.NO_BREAK_SPACE)
+
+    /** Hace [minutes] minutos, en corto: `hace 12 min`. Es una duración, no una fecha. */
+    fun minutesAgo(minutes: Long): String =
+        relative(minutes, RelativeDateTimeFormatter.RelativeUnit.MINUTES)
+
+    /** Hace [hours] horas, en corto: `hace 3 h`. */
+    fun hoursAgo(hours: Long): String =
+        relative(hours, RelativeDateTimeFormatter.RelativeUnit.HOURS)
+
+    private val relativeFormat: RelativeDateTimeFormatter =
+        RelativeDateTimeFormatter.getInstance(
+            locale,
+            null,
+            RelativeDateTimeFormatter.Style.SHORT,
+            DisplayContext.CAPITALIZATION_NONE,
+        )
+
+    // ICU pide la cantidad como número de coma flotante; aquí siempre es un entero pequeño de
+    // minutos u horas, que se representa exacto.
+    private fun relative(count: Long, unit: RelativeDateTimeFormatter.RelativeUnit): String {
+        val text =
+            synchronized(relativeFormat) {
+                relativeFormat.format(
+                    count.toDouble(),
+                    RelativeDateTimeFormatter.Direction.LAST,
+                    unit,
+                )
+            }
+        return IcuTextNormalizer.normalizeText(text)
+    }
 
     /** Día y mes corto, para una fecha de este año: `28 oct`. */
     fun dayMonth(date: BusinessDate): String = dayMonthFormat.render(date)
