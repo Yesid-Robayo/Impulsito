@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryReposito
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductUnitRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFrequencySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSalePaymentRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomStockLedgerRepository
@@ -47,6 +48,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
+import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -141,6 +143,9 @@ class DataPorts internal constructor(
 
     /** Los pagos de las ventas, y lo que una venta copia del método con que cobra. */
     val salePayments: SalePaymentRepository = RoomSalePaymentRepository(database)
+
+    /** Cuántas veces se vendió cada producto, para los más vendidos de la venta. Solo lee. */
+    val saleFrequency: SaleFrequencySource = RoomSaleFrequencySource(database)
 
     val expenseCategories: ExpenseCategoryRepository = RoomExpenseCategoryRepository(database)
 

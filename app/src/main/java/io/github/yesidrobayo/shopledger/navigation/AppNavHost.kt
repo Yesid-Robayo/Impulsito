@@ -11,8 +11,12 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -28,6 +32,7 @@ import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
+import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
@@ -42,9 +47,11 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
 import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductListRoute
 import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.sale.NewSaleRoute
 import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryScreen
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
+import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
 
 /**
@@ -59,20 +66,24 @@ fun AppNavHost(modifier: Modifier = Modifier) {
     val backStack = rememberNavBackStack(AppNavKey.Home)
     val navigator = remember(backStack) { AppNavigator(backStack) }
     val density = LocalDensity.current
+    val messageScope = rememberCoroutineScope()
+    val messages = remember(messageScope) { AppMessages(messageScope) }
     Box(modifier.fillMaxSize()) {
-        NavDisplay(
-            backStack = backStack,
-            onBack = { navigator.back() },
-            entryDecorators =
-                listOf(
-                    rememberSaveableStateHolderNavEntryDecorator(),
-                    rememberViewModelStoreNavEntryDecorator(),
-                ),
-            transitionSpec = { forward(density) },
-            popTransitionSpec = { backward(density) },
-            predictivePopTransitionSpec = { backward(density) },
-            entryProvider = { key -> entryOf(key, navigator) },
-        )
+        CompositionLocalProvider(LocalAppMessages provides messages) {
+            NavDisplay(
+                backStack = backStack,
+                onBack = { navigator.back() },
+                entryDecorators =
+                    listOf(
+                        rememberSaveableStateHolderNavEntryDecorator(),
+                        rememberViewModelStoreNavEntryDecorator(),
+                    ),
+                transitionSpec = { forward(density) },
+                popTransitionSpec = { backward(density) },
+                predictivePopTransitionSpec = { backward(density) },
+                entryProvider = { key -> entryOf(key, navigator) },
+            )
+        }
         AnimatedVisibility(
             visible = navigator.showsBottomBar,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -90,6 +101,21 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 onSell = navigator::sell,
             )
         }
+        // Sobre la barra inferior en las raíces; en lo demás, sobre la barra del sistema.
+        AppSnackbarHost(
+            messages.host,
+            Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(
+                    bottom =
+                        if (navigator.showsBottomBar) {
+                            AppTheme.sizes.bottomBar + AppTheme.sizes.sellButtonOverhang
+                        } else {
+                            AppTheme.spacing.s16
+                        },
+                ),
+        )
     }
 }
 
@@ -115,6 +141,8 @@ private fun entryOf(key: NavKey, navigator: AppNavigator): NavEntry<NavKey> {
 private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
     when (key) {
         AppNavKey.ProductList -> ProductListRoute(navigator)
+
+        is AppNavKey.NewSale -> NewSaleRoute(key, navigator)
 
         is AppNavKey.ProductEdit -> ProductEditRoute(key, navigator)
 

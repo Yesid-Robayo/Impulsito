@@ -54,6 +54,8 @@ enum class ConfirmVariant {
  *
  * @param acknowledgement la frase de la confirmación reforzada, como «Entiendo que este teléfono tiene
  *   menos registros»: el botón se activa solo al marcarla. `null` en una confirmación común.
+ * @param dismissLabel el botón de salida, cuando `Cancelar` no diría qué se cancela, como `Seguir
+ *   vendiendo`. `null` es `Cancelar`.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,6 +67,7 @@ fun ConfirmDialog(
     onDismiss: () -> Unit,
     variant: ConfirmVariant = ConfirmVariant.STANDARD,
     acknowledgement: String? = null,
+    dismissLabel: String? = null,
 ) {
     BasicAlertDialog(onDismissRequest = onDismiss) {
         ConfirmDialogContent(
@@ -75,6 +78,7 @@ fun ConfirmDialog(
             onDismiss,
             variant = variant,
             acknowledgement = acknowledgement,
+            dismissLabel = dismissLabel,
         )
     }
 }
@@ -93,6 +97,7 @@ fun ConfirmDialogContent(
     modifier: Modifier = Modifier,
     variant: ConfirmVariant = ConfirmVariant.STANDARD,
     acknowledgement: String? = null,
+    dismissLabel: String? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = AppTheme.spacing
@@ -161,7 +166,8 @@ fun ConfirmDialogContent(
                     horizontalArrangement = Arrangement.spacedBy(spacing.s8, Alignment.End),
                     verticalArrangement = Arrangement.spacedBy(spacing.s8),
                 ) {
-                    InlineTextButton(stringResource(R.string.action_cancel), onDismiss)
+                    val dismiss = dismissLabel ?: stringResource(R.string.action_cancel)
+                    InlineTextButton(dismiss, onDismiss)
                     val enabled = acknowledgement == null || acknowledged
                     when (variant) {
                         ConfirmVariant.STANDARD -> InlineTextButton(confirmLabel, {

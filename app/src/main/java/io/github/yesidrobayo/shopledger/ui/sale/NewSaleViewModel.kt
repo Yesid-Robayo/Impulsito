@@ -1,0 +1,666 @@
+package io.github.yesidrobayo.shopledger.ui.sale
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.Limit
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
+import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
+import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.rule.sale.CartChange
+import io.github.yesidrobayo.shopledger.domain.rule.sale.CartLineIssue
+import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPreview
+import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPricing
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCart
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
+import io.github.yesidrobayo.shopledger.ui.payment.plainNumberText
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/** En qué va la lectura del catálogo de la venta. */
+internal sealed interface CatalogLoad {
+    data object Loading : CatalogLoad
+
+    data class Ready(val catalog: SaleCatalog) : CatalogLoad
+
+    data object Failed : CatalogLoad
+}
+
+/**
+ * La venta nueva: arma la venta en memoria y la confirma de una sola vez.
+ *
+ * - **Nada se escribe hasta confirmar.** La venta a medio armar vive en el estado guardado de la
+ *   pantalla: sobrevive a una llamada, a cambiar de app y a que Android cierre el proceso.
+ * - **Vender nunca se bloquea por stock**: la tarjeta solo avisa cuánto quedaría.
+ * - **Un toque agrega uno.** Un producto por peso o medida abre la hoja de cantidad, y uno sin precio
+ *   abre su línea con el precio enfocado: dejarlo en cero está permitido.
+ * - **`Registrar venta` confirma directo** con el método elegido, o con el primero que se ofrece si
+ *   no se tocó ninguno. Solo una venta en cero pide confirmación.
+ * - Lo escrito en la búsqueda se ve al instante, y la cuadrícula se rearma cuando la persona deja de
+ *   escribir un momento. Las cuentas corren en [computation], nunca en el hilo principal.
+ *
+ * @param catalogSource la lectura del catálogo; se vuelve a pedir al reintentar.
+ * @param registerSale confirma la venta, en una sola transacción.
+ * @param reactivate reactiva un producto archivado; `true` si quedó vigente.
+ * @param prefillProductId el producto con que se abrió la venta, como desde `Vender este`.
+ */
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+class NewSaleViewModel(
+    private val catalogSource: () -> Flow<SaleCatalog>,
+    private val registerSale: suspend (SaleRequest) -> RegisterSaleResult,
+    private val reactivate: suspend (Long) -> Boolean,
+    private val savedState: SavedStateHandle,
+    private val numbers: SaleNumberFormat,
+    computation: CoroutineDispatcher,
+    private val prefillProductId: Long? = null,
+) : ViewModel() {
+    private val draft = MutableStateFlow(SaleDraftStore.read(savedState))
+    private val query = MutableStateFlow("")
+    private val overlay = MutableStateFlow(Overlay())
+    private val attempts = MutableStateFlow(0)
+
+    private val catalog: StateFlow<CatalogLoad> = attempts
+        .flatMapLatest {
+            catalogSource()
+                .map<SaleCatalog, CatalogLoad> { CatalogLoad.Ready(it) }
+                // Una falla de lectura no cierra la venta: muestra el error y deja reintentar.
+                .catch { emit(CatalogLoad.Failed) }
+        }.flowOn(computation)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CatalogLoad.Loading)
+
+    val uiState: StateFlow<NewSaleUiState> = combine(
+        catalog,
+        draft,
+        query,
+        query.debounce { if (it.isBlank()) 0L else SEARCH_PAUSE_MILLIS },
+        overlay,
+    ) { load, current, typed, searched, shown -> build(load, current, typed, searched, shown) }
+        .flowOn(computation)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            NewSaleUiState(),
+        )
+
+    init {
+        viewModelScope.launch {
+            catalog.collect { load -> if (load is CatalogLoad.Ready) onCatalog(load.catalog) }
+        }
+    }
+
+    fun onAction(action: NewSaleAction) {
+        when (action) {
+            is NewSaleAction.QueryChange -> query.value = action.query
+            is NewSaleAction.AddProduct -> addProduct(action.productId)
+            is NewSaleAction.Increment -> add(action.productId, SaleCart.STEP)
+            is NewSaleAction.Decrement -> editLines { SaleCart.decrement(it, action.productId) }
+            is NewSaleAction.EditQuantity -> openQuantity(action.productId, adding = false)
+            is NewSaleAction.SelectMethod -> selectMethod(action.methodId)
+            NewSaleAction.OpenPaymentMethods -> showSheet(SaleSheet.PaymentMethods)
+            NewSaleAction.OpenCart -> showSheet(SaleSheet.Cart)
+            is NewSaleAction.OpenLine -> openLine(action.productId, focusPrice = false)
+            NewSaleAction.CloseSheet -> showSheet(null)
+            is NewSaleAction.LineQuantityChange -> lineQuantity(action.text)
+            is NewSaleAction.LinePriceChange -> linePrice(action.text)
+            is NewSaleAction.LineDiscountModeChange -> lineDiscount(action.mode, null)
+            is NewSaleAction.LineDiscountChange -> lineDiscount(null, action.text)
+            is NewSaleAction.RemoveLine -> removeLine(action.productId)
+            is NewSaleAction.QuantityTextChange -> quantityText(action.text)
+            NewSaleAction.QuantityConfirm -> confirmQuantity(null)
+            is NewSaleAction.QuantityShortcut -> confirmQuantity(action.quantity)
+            is NewSaleAction.DateChange -> changeDraft { draftDate(it, action) }
+            is NewSaleAction.NoteChange -> changeDraft { it.copy(note = action.note) }
+            NewSaleAction.ClearSale -> askClear()
+            NewSaleAction.ConfirmClear -> clear()
+            NewSaleAction.Close -> close()
+            NewSaleAction.ConfirmLeave -> leave()
+            NewSaleAction.DismissDialog -> overlay.update { it.copy(dialog = null) }
+            NewSaleAction.Register -> register(zeroConfirmed = false)
+            NewSaleAction.ConfirmZeroTotal -> register(zeroConfirmed = true)
+            is NewSaleAction.CreateProduct -> awaitCreatedProduct()
+            is NewSaleAction.Reactivate -> reactivateProduct(action.productId)
+            NewSaleAction.ConfirmCurrency -> showSheet(null)
+            NewSaleAction.RetryRead -> attempts.update { it + 1 }
+            NewSaleAction.RegisteredShown -> overlay.update { it.copy(registered = null) }
+            NewSaleAction.NoticeShown -> overlay.update { it.copy(notice = null) }
+        }
+    }
+
+    // ------------------------------------------------------------------ armar la venta
+
+    private fun addProduct(productId: Long) {
+        val catalog = readyCatalog() ?: return
+        val product = catalog.products.firstOrNull { it.id == productId } ?: return
+        if (allowsFraction(catalog, product)) {
+            openQuantity(productId, adding = true)
+            return
+        }
+        val first = SaleCart.quantityOf(draft.value.lines, productId) == QuantityMilli.ZERO
+        if (add(productId, SaleCart.STEP) && first && product.salePrice == Money.ZERO) {
+            // Sin precio, la línea se abre con el precio enfocado; dejarlo en cero también vale.
+            openLine(productId, focusPrice = true)
+        }
+    }
+
+    /** Agrega [quantity] de [productId]. Devuelve si la venta cambió. */
+    private fun add(productId: Long, quantity: QuantityMilli): Boolean =
+        when (val change = SaleCart.add(draft.value.lines, productId, quantity)) {
+            is CartChange.Changed -> {
+                editLines { change.lines }
+                true
+            }
+
+            CartChange.LinesFull -> {
+                overlay.update { it.copy(notice = SaleNotice.LINES_FULL) }
+                false
+            }
+
+            // En el tope de una línea, el más ya está apagado: no hay nada que avisar.
+            CartChange.InvalidQuantity -> false
+        }
+
+    private fun selectMethod(methodId: Long) {
+        changeDraft { it.copy(methodId = methodId) }
+        overlay.update { if (it.sheet == SaleSheet.PaymentMethods) it.copy(sheet = null) else it }
+    }
+
+    private fun removeLine(productId: Long) {
+        editLines { SaleCart.remove(it, productId) }
+        showSheet(null)
+    }
+
+    private fun askClear() {
+        val count = currentPreview()?.itemCount ?: return
+        overlay.update { it.copy(dialog = SaleDialog.Clear(count)) }
+    }
+
+    private fun clear() {
+        changeDraft { SaleDraft(methodId = it.methodId, prefilled = it.prefilled) }
+        overlay.update { it.copy(dialog = null, sheet = null, status = RegisterStatus.IDLE) }
+    }
+
+    private fun close() {
+        if (draft.value.lines.isEmpty()) {
+            leave()
+            return
+        }
+        val count = currentPreview()?.itemCount ?: draft.value.lines.size.toLong()
+        overlay.update { it.copy(dialog = SaleDialog.Leave(count)) }
+    }
+
+    private fun leave() {
+        changeDraft { SaleDraft() }
+        overlay.update { Overlay(closed = true) }
+    }
+
+    private fun draftDate(current: SaleDraft, action: NewSaleAction.DateChange): SaleDraft {
+        val today = readyCatalog()?.today
+        return current.copy(date = action.date.takeIf { it != today })
+    }
+
+    // ------------------------------------------------------------------ hoja de la línea
+
+    private fun openLine(productId: Long, focusPrice: Boolean) {
+        val line = draft.value.lines.firstOrNull { it.productId == productId } ?: return
+        val product = readyCatalog()?.products?.firstOrNull { it.id == productId }
+        val price = line.unitPrice ?: product?.salePrice ?: Money.ZERO
+        val (mode, discountText) = when (val discount = line.discount) {
+            LineDiscount.None -> DiscountMode.AMOUNT to ""
+            is LineDiscount.Amount -> DiscountMode.AMOUNT to moneyText(discount.amount)
+            is LineDiscount.Percent -> DiscountMode.PERCENT to percentText(discount.rate)
+        }
+        val editor = LineEditor(
+            productId = productId,
+            name = product?.details?.name.orEmpty(),
+            unit = product?.let { readyCatalog()?.units?.get(it.details.baseUnitId) },
+            quantityText = quantityText(line.quantity),
+            // Sin precio, el campo empieza vacío para escribir el de esta venta.
+            priceText = if (price == Money.ZERO) "" else moneyText(price),
+            discountMode = mode,
+            discountText = discountText,
+            focusPrice = focusPrice,
+        )
+        showSheet(SaleSheet.Line(editor))
+    }
+
+    private fun lineQuantity(text: String) = editLine { editor ->
+        val updated = editor.copy(quantityText = text, quantityError = null)
+        val product = readyCatalog()?.products?.firstOrNull { it.id == editor.productId }
+        val fraction = product?.let { allowsFraction(requireNotNull(readyCatalog()), it) } ?: false
+        when (val read = NumberInputParser.quantity(text, numbers.quantitySymbols, LINE_LIMIT)) {
+            // Mientras el campo está vacío, la línea conserva su cantidad.
+            NumberInput.Blank -> updated
+
+            is NumberInput.Value -> when (UnitQuantityRule.check(read.value, fraction)) {
+                UnitQuantityCheck.NotPositive ->
+                    updated.copy(quantityError = SaleFieldError.ZERO_QUANTITY)
+
+                UnitQuantityCheck.FractionNotAllowed ->
+                    updated.copy(quantityError = SaleFieldError.FRACTION_NOT_ALLOWED)
+
+                UnitQuantityCheck.Valid -> {
+                    editLines { lines ->
+                        val change = SaleCart.setQuantity(lines, editor.productId, read.value)
+                        (change as? CartChange.Changed)?.lines ?: lines
+                    }
+                    updated
+                }
+            }
+
+            else -> updated.copy(quantityError = numberError(read))
+        }
+    }
+
+    private fun linePrice(text: String) = editLine { editor ->
+        val updated = editor.copy(priceText = text, priceError = null)
+        val read = NumberInputParser.money(
+            text,
+            numbers.moneySymbols,
+            numbers.currencyDecimals,
+            Limit.UNIT_MONEY,
+        )
+        when (read) {
+            // Sin precio escrito, la línea vuelve al precio del producto.
+            NumberInput.Blank -> {
+                setLine(editor.productId) { it.copy(unitPrice = null) }
+                updated
+            }
+
+            is NumberInput.Value -> if (read.value < Money.ZERO) {
+                updated.copy(priceError = SaleFieldError.NOT_A_NUMBER)
+            } else {
+                setLine(editor.productId) { it.copy(unitPrice = read.value) }
+                updated
+            }
+
+            else -> updated.copy(priceError = numberError(read))
+        }
+    }
+
+    /** Cambia el modo del descuento, lo escrito, o los dos, y lo vuelve a leer. */
+    private fun lineDiscount(mode: DiscountMode?, text: String?) = editLine { editor ->
+        val updated = editor.copy(
+            discountMode = mode ?: editor.discountMode,
+            discountText = text ?: editor.discountText,
+            discountError = null,
+        )
+        val read: NumberInput<LineDiscount> = when (updated.discountMode) {
+            DiscountMode.AMOUNT -> NumberInputParser.money(
+                updated.discountText,
+                numbers.moneySymbols,
+                numbers.currencyDecimals,
+                Limit.DOCUMENT_TOTAL,
+            ).mapValue { LineDiscount.Amount(it) }
+
+            DiscountMode.PERCENT -> NumberInputParser.percent(
+                updated.discountText,
+                numbers.percentSymbols,
+                BasisPoints.ONE_HUNDRED_PERCENT,
+            ).mapValue { LineDiscount.Percent(it) }
+        }
+        when (read) {
+            NumberInput.Blank -> {
+                setLine(editor.productId) { it.copy(discount = LineDiscount.None) }
+                updated
+            }
+
+            is NumberInput.Value -> {
+                // Un descuento mayor que la línea se guarda igual y se marca: la venta no se
+                // confirma hasta corregirlo, y lo escrito no se pierde.
+                setLine(editor.productId) { it.copy(discount = read.value) }
+                updated
+            }
+
+            // Un porcentaje sobre 100 % es un descuento mayor que la línea.
+            is NumberInput.TooLarge -> updated.copy(
+                discountError = if (updated.discountMode == DiscountMode.PERCENT) {
+                    SaleFieldError.DISCOUNT_OVER_LINE
+                } else {
+                    SaleFieldError.TOO_HIGH
+                },
+            )
+
+            else -> updated.copy(discountError = numberError(read))
+        }
+    }
+
+    // ------------------------------------------------------------------ hoja de cantidad
+
+    private fun openQuantity(productId: Long, adding: Boolean) {
+        val catalog = readyCatalog() ?: return
+        val product = catalog.products.firstOrNull { it.id == productId } ?: return
+        val current = SaleCart.quantityOf(draft.value.lines, productId)
+        val adds = adding || current == QuantityMilli.ZERO
+        showSheet(
+            SaleSheet.Quantity(
+                productId = productId,
+                name = product.details.name,
+                unit = catalog.units[product.details.baseUnitId],
+                text = if (adds) "" else quantityText(current),
+                adding = adds,
+            ),
+        )
+    }
+
+    private fun quantityText(text: String) = overlay.update { shown ->
+        val sheet = shown.sheet as? SaleSheet.Quantity ?: return@update shown
+        shown.copy(sheet = sheet.copy(text = text, error = null))
+    }
+
+    /** Lee la hoja de cantidad, o usa [shortcut], y agrega o cambia la línea. */
+    private fun confirmQuantity(shortcut: QuantityMilli?) {
+        val sheet = overlay.value.sheet as? SaleSheet.Quantity ?: return
+        val quantity = shortcut ?: when (
+            val read = NumberInputParser.quantity(sheet.text, numbers.quantitySymbols, LINE_LIMIT)
+        ) {
+            is NumberInput.Value -> read.value
+            NumberInput.Blank -> QuantityMilli.ZERO
+            else -> return quantityError(sheet, numberError(read))
+        }
+        if (UnitQuantityRule.check(quantity, true) != UnitQuantityCheck.Valid) {
+            return quantityError(sheet, SaleFieldError.ZERO_QUANTITY)
+        }
+        val change = if (sheet.adding) {
+            SaleCart.add(draft.value.lines, sheet.productId, quantity)
+        } else {
+            SaleCart.setQuantity(draft.value.lines, sheet.productId, quantity)
+        }
+        when (change) {
+            is CartChange.Changed -> {
+                editLines { change.lines }
+                showSheet(null)
+            }
+
+            CartChange.LinesFull -> overlay.update {
+                it.copy(sheet = null, notice = SaleNotice.LINES_FULL)
+            }
+
+            CartChange.InvalidQuantity -> quantityError(sheet, SaleFieldError.TOO_HIGH)
+        }
+    }
+
+    private fun quantityError(sheet: SaleSheet.Quantity, error: SaleFieldError) =
+        overlay.update { it.copy(sheet = sheet.copy(error = error)) }
+
+    // ------------------------------------------------------------------ confirmar
+
+    private fun register(zeroConfirmed: Boolean) {
+        if (overlay.value.status == RegisterStatus.WORKING) return
+        val catalog = readyCatalog() ?: return
+        val current = draft.value
+        val preview = previewOf(catalog, current)
+        if (current.lines.isEmpty()) return
+        val total = preview.total
+        if (total == null || current.note.length > MAX_NOTE_LENGTH) {
+            // Lo que impide confirmar ya está marcado; una línea con problema se abre para verlo.
+            preview.lines.firstOrNull { it.issue != null }?.let { line ->
+                if (line.issue != CartLineIssue.PRODUCT_UNAVAILABLE) {
+                    openLine(line.request.productId, focusPrice = false)
+                }
+            }
+            return
+        }
+        if (total == Money.ZERO && !zeroConfirmed) {
+            overlay.update { it.copy(dialog = SaleDialog.ZeroTotal) }
+            return
+        }
+        val methodId = selectedMethodId(catalog, current)
+        if (methodId == null) {
+            overlay.update { it.copy(dialog = null, status = RegisterStatus.FAILED) }
+            return
+        }
+        overlay.update { it.copy(dialog = null, status = RegisterStatus.WORKING) }
+        viewModelScope.launch {
+            val request = SaleRequest(
+                lines = current.lines,
+                paymentMethodId = methodId,
+                date = current.date,
+                note = current.note.takeIf { it.isNotBlank() },
+            )
+            when (val result = registerSale(request)) {
+                is RegisterSaleResult.Registered -> {
+                    changeDraft { SaleDraft(prefilled = true) }
+                    overlay.update {
+                        Overlay(registered = RegisteredSale(result.saleId, total))
+                    }
+                }
+
+                RegisterSaleResult.CurrencyNotConfirmed -> overlay.update {
+                    it.copy(status = RegisterStatus.IDLE, sheet = SaleSheet.CurrencyRequired)
+                }
+
+                else -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ catálogo
+
+    private fun onCatalog(catalog: SaleCatalog) {
+        val current = draft.value
+        if (prefillProductId != null && !current.prefilled) {
+            changeDraft { it.copy(prefilled = true) }
+            addProduct(prefillProductId)
+        }
+        val awaiting = current.awaitingProductAfter ?: return
+        val created = catalog.products.filter { it.id > awaiting }.minByOrNull { it.id } ?: return
+        changeDraft { it.copy(awaitingProductAfter = null) }
+        query.value = ""
+        addProduct(created.id)
+    }
+
+    /**
+     * La persona sale a crear un producto que no encontró. El primero que aparezca después se
+     * agrega a la venta al volver: los ids nunca se reutilizan, así que es el que creó.
+     */
+    private fun awaitCreatedProduct() {
+        val catalog = readyCatalog() ?: return
+        val newest = (catalog.products + catalog.archived).maxOfOrNull { it.id } ?: 0L
+        changeDraft { it.copy(awaitingProductAfter = newest) }
+    }
+
+    private fun reactivateProduct(productId: Long) {
+        viewModelScope.launch {
+            if (!reactivate(productId)) {
+                overlay.update { it.copy(notice = SaleNotice.REACTIVATE_FAILED) }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ estado
+
+    private fun build(
+        load: CatalogLoad,
+        current: SaleDraft,
+        typed: String,
+        searched: String,
+        shown: Overlay,
+    ): NewSaleUiState {
+        val content: SaleContent
+        val cart: SaleCartState
+        val payment: SalePaymentState
+        when (load) {
+            CatalogLoad.Loading -> {
+                content = SaleContent.Loading
+                cart = SaleCartState(note = current.note)
+                payment = SalePaymentState()
+            }
+
+            CatalogLoad.Failed -> {
+                content = SaleContent.ReadError
+                cart = SaleCartState(note = current.note)
+                payment = SalePaymentState()
+            }
+
+            is CatalogLoad.Ready -> {
+                val catalog = load.catalog
+                content = SaleContentBuilder.content(catalog, current.lines, searched)
+                cart = SaleContentBuilder.cart(catalog, current, previewOf(catalog, current))
+                    .copy(noteTooLong = current.note.length > MAX_NOTE_LENGTH)
+                payment = SalePaymentState(
+                    methods = catalog.methods.map {
+                        SaleMethod(
+                            id = it.id,
+                            systemKey = it.systemKey,
+                            name = it.details.name,
+                            hasQr = it.details.instructionsText != null ||
+                                it.details.instructionsMediaId != null,
+                        )
+                    },
+                    selectedId = selectedMethodId(catalog, current),
+                )
+            }
+        }
+        return NewSaleUiState(
+            content = content,
+            query = typed,
+            cart = cart,
+            payment = payment,
+            sheet = shown.sheet?.let { withLineIssue(it, cart) },
+            dialog = shown.dialog,
+            status = shown.status,
+            notice = shown.notice,
+            registered = shown.registered,
+            closed = shown.closed,
+        )
+    }
+
+    /** Un descuento mayor que la línea se marca en su campo, aunque se haya leído bien. */
+    private fun withLineIssue(sheet: SaleSheet, cart: SaleCartState): SaleSheet {
+        if (sheet !is SaleSheet.Line) return sheet
+        val editor = sheet.editor
+        val issue = cart.lines.firstOrNull { it.productId == editor.productId }?.issue
+        if (issue != CartLineIssue.INVALID_DISCOUNT || editor.discountError != null) return sheet
+        return SaleSheet.Line(editor.copy(discountError = SaleFieldError.DISCOUNT_OVER_LINE))
+    }
+
+    private fun selectedMethodId(catalog: SaleCatalog, current: SaleDraft): Long? {
+        val chosen = current.methodId?.takeIf { id -> catalog.methods.any { it.id == id } }
+        // Sin elección, o si el elegido se archivó, se cobra con el primero que se ofrece.
+        return chosen ?: catalog.methods.firstOrNull()?.id
+    }
+
+    /**
+     * Las cuentas de la venta con el impuesto del negocio y el recargo del método elegido: el total
+     * que se ve es el que se guarda al confirmar.
+     */
+    private fun previewOf(catalog: SaleCatalog, current: SaleDraft): CartPreview {
+        val methodId = selectedMethodId(catalog, current)
+        val method = catalog.methods.firstOrNull { it.id == methodId }
+        val pricing = CartPricing(
+            taxMode = catalog.taxes.mode,
+            rates = catalog.taxRates,
+            defaultRateId = catalog.taxes.defaultTaxRateId,
+            methodAdjustment = method?.details?.priceAdjustment ?: BasisPoints.ZERO,
+        )
+        return SaleCart.preview(
+            current.lines,
+            catalog.products.associateBy { it.id },
+            SaleContentBuilder.fractionUnits(catalog),
+            pricing,
+        )
+    }
+
+    private fun currentPreview(): CartPreview? = readyCatalog()?.let { previewOf(it, draft.value) }
+
+    private fun readyCatalog(): SaleCatalog? = (catalog.value as? CatalogLoad.Ready)?.catalog
+
+    private fun allowsFraction(catalog: SaleCatalog, product: Product): Boolean =
+        catalog.units[product.details.baseUnitId]?.allowsFraction ?: false
+
+    private fun showSheet(sheet: SaleSheet?) = overlay.update {
+        it.copy(sheet = sheet, status = if (sheet == null) it.status else RegisterStatus.IDLE)
+    }
+
+    private fun editLine(change: (LineEditor) -> LineEditor) = overlay.update { shown ->
+        val sheet = shown.sheet as? SaleSheet.Line ?: return@update shown
+        shown.copy(sheet = SaleSheet.Line(change(sheet.editor)))
+    }
+
+    private fun setLine(productId: Long, change: (SaleLineRequest) -> SaleLineRequest) =
+        editLines { SaleCart.update(it, productId, change) }
+
+    private fun editLines(change: (List<SaleLineRequest>) -> List<SaleLineRequest>) {
+        changeDraft { it.copy(lines = change(it.lines)) }
+        // Cambiar la venta después de una falla la deja lista para volver a intentar.
+        overlay.update {
+            if (it.status == RegisterStatus.FAILED) it.copy(status = RegisterStatus.IDLE) else it
+        }
+    }
+
+    private fun changeDraft(change: (SaleDraft) -> SaleDraft) {
+        draft.update(change)
+        SaleDraftStore.write(savedState, draft.value)
+    }
+
+    private fun quantityText(quantity: QuantityMilli): String =
+        plainNumberText(quantity.milli, QUANTITY_DECIMALS, numbers.quantitySymbols)
+
+    private fun moneyText(amount: Money): String =
+        plainNumberText(amount.minor, numbers.currencyDecimals, numbers.moneySymbols)
+
+    private fun percentText(rate: BasisPoints): String =
+        plainNumberText(rate.bp, PERCENT_DECIMALS, numbers.percentSymbols)
+
+    private fun numberError(read: NumberInput<*>): SaleFieldError = when (read) {
+        is NumberInput.TooLarge -> SaleFieldError.TOO_HIGH
+        else -> SaleFieldError.NOT_A_NUMBER
+    }
+
+    /** Lo que está abierto encima de la venta, y lo que pasa una sola vez. */
+    private data class Overlay(
+        val sheet: SaleSheet? = null,
+        val dialog: SaleDialog? = null,
+        val status: RegisterStatus = RegisterStatus.IDLE,
+        val notice: SaleNotice? = null,
+        val registered: RegisteredSale? = null,
+        val closed: Boolean = false,
+    )
+
+    companion object {
+        /** La pausa al escribir tras la que se busca. */
+        const val SEARCH_PAUSE_MILLIS = 100L
+
+        /** Lo que sigue viva la lectura al rotar la pantalla, para no releer el catálogo. */
+        private const val STOP_TIMEOUT_MILLIS = 5_000L
+
+        /** Largo máximo de la nota de una venta. */
+        const val MAX_NOTE_LENGTH = 200
+
+        private const val QUANTITY_DECIMALS = 3
+        private const val PERCENT_DECIMALS = 2
+        private val LINE_LIMIT = Limit.LINE_QUANTITY_MILLI
+    }
+}
+
+/** El valor leído, transformado; los demás resultados quedan igual. */
+private inline fun <T, R> NumberInput<T>.mapValue(wrap: (T) -> R): NumberInput<R> = when (this) {
+    is NumberInput.Value -> NumberInput.Value(wrap(value))
+    NumberInput.Blank -> NumberInput.Blank
+    NumberInput.Malformed -> NumberInput.Malformed
+    is NumberInput.TooManyDecimals -> this
+    is NumberInput.TooLarge -> NumberInput.TooLarge(wrap(maximum))
+}

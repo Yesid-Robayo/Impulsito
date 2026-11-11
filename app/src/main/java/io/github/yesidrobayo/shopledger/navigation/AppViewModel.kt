@@ -4,7 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -70,6 +72,40 @@ inline fun <reified VM : ViewModel> rememberAppViewModel(
                 viewModel(
                     key = key,
                     factory = viewModelFactory { initializer { create(dependencies) } },
+                ),
+            )
+        }
+    }
+}
+
+/**
+ * Como [rememberAppViewModel], pero [create] recibe además el estado guardado de la entrada: lo que
+ * el ViewModel escriba ahí sobrevive a que Android cierre el proceso, como una venta a medio armar.
+ * Solo admite lo que cabe en un `Bundle`, y nunca debe llevar más que lo que la persona escribió.
+ */
+@Composable
+inline fun <reified VM : ViewModel> rememberAppViewModelWithState(
+    key: String? = null,
+    noinline create: (ScreenDependencies, SavedStateHandle) -> VM,
+): ScreenModel<VM> {
+    val container = (LocalContext.current.applicationContext as ShopLedgerApp).container
+    val access by produceState<DataAccess?>(initialValue = null, container) {
+        value = container.data.open()
+    }
+    return when (val current = access) {
+        null -> ScreenModel.Opening
+
+        is DataAccess.Rescue -> ScreenModel.Unavailable
+
+        is DataAccess.Ready -> {
+            val dependencies = ScreenDependencies(current.ports, container)
+            ScreenModel.Ready(
+                viewModel(
+                    key = key,
+                    factory =
+                        viewModelFactory {
+                            initializer { create(dependencies, createSavedStateHandle()) }
+                        },
                 ),
             )
         }

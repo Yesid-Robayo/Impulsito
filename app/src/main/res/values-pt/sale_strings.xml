@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Venta nueva: la cuadrícula, el panel de cobro y sus hojas. Textos de la guía de redacción. -->
+    <string name="sale_frequent">Mais vendidos</string>
+    <string name="sale_payment_row">Pagamento: %1$s</string>
+    <string name="sale_clear">Esvaziar venda</string>
+    <string name="sale_line_quantity">Quantidade</string>
+    <string name="sale_line_price">Preço desta linha</string>
+    <string name="sale_line_discount">Desconto</string>
+    <string name="sale_line_discount_amount">Valor</string>
+    <string name="sale_line_discount_percent">Porcentagem</string>
+    <string name="sale_line_total">Total da linha</string>
+    <string name="sale_note_label">Nota</string>
+    <string name="empty_sale_title">Criar o primeiro produto para vender</string>
+    <string name="empty_sale_body">Com o custo, aparece o lucro de cada venda.</string>
+    <string name="empty_sale_action">Criar produto</string>
+    <string name="confirm_sale_registered">Venda registrada: %1$s</string>
+    <string name="error_sale_register">Não foi possível registrar a venda. Tudo continua aqui.</string>
+    <string name="error_quantity_zero">A quantidade deve ser maior que 0</string>
+    <string name="error_max_lines">Esta venda chegou ao limite de %1$d produtos. É possível registrá-la e seguir com outra.</string>
+    <string name="error_discount_over_line">O desconto não pode ser maior que o total da linha</string>
+    <string name="dialog_clear_sale_title">Esvaziar esta venda?</string>
+    <string name="dialog_clear_sale_action">Esvaziar venda</string>
+    <string name="dialog_leave_sale_title">Sair sem registrar a venda?</string>
+    <string name="dialog_leave_sale_action">Sair</string>
+    <string name="dialog_leave_sale_exit">Continuar vendendo</string>
+    <string name="dialog_zero_sale_title">Registrar uma venda de %1$s?</string>
+    <string name="dialog_zero_sale_body">Conta como venda sem receita. Se for um presente, é melhor registrar como ajuste.</string>
+    <string name="a11y_sale_total">Total %1$s</string>
+    <string name="action_remove">Remover</string>
+    <string name="action_view">Ver</string>
+    <string name="action_back">Voltar</string>
+    <string name="action_save">Salvar</string>
+    <string name="filter_payment_method">Forma de pagamento</string>
+    <string name="product_filter_archived">Arquivados</string>
+    <plurals name="sale_summary_products">
+        <item quantity="one">%1$d produto</item>
+        <item quantity="many">%1$d de produtos</item>
+        <item quantity="other">%1$d produtos</item>
+    </plurals>
+    <plurals name="dialog_clear_sale_body">
+        <item quantity="one">%1$d produto é removido.</item>
+        <item quantity="many">%1$d de produtos são removidos.</item>
+        <item quantity="other">%1$d produtos são removidos.</item>
+    </plurals>
+    <plurals name="dialog_leave_sale_body">
+        <item quantity="one">%1$d produto adicionado será perdido.</item>
+        <item quantity="many">%1$d de produtos adicionados serão perdidos.</item>
+        <item quantity="other">%1$d produtos adicionados serão perdidos.</item>
+    </plurals>
+</resources>

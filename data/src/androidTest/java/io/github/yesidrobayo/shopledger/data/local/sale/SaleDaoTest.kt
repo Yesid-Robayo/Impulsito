@@ -337,7 +337,7 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
             functionsOf(SaleDao::class.java),
         )
         assertEquals(
-            setOf("observeBySale", "findBySale", "insert"),
+            setOf("observeBySale", "findBySale", "insert", "observeLineCountsSince"),
             functionsOf(SaleLineDao::class.java),
         )
     }
