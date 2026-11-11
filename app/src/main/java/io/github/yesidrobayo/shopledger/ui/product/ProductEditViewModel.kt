@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
@@ -16,6 +17,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogText
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
+import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorModel
+import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorModel
+import io.github.yesidrobayo.shopledger.ui.unit.UnitNames
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,12 +36,15 @@ import kotlinx.coroutines.launch
  *
  * @param productId el producto que se edita, o `null` para crear uno.
  * @param prefillName el nombre con que empieza un producto nuevo, el de una búsqueda sin resultados.
+ * @param unitNames los nombres de las unidades en el idioma de la interfaz, para no crear una con el
+ *   nombre de otra.
  */
 class ProductEditViewModel(
     private val useCases: ProductEditOperations,
     private val numbers: ProductNumberFormat,
     private val productId: Long?,
     prefillName: String?,
+    unitNames: UnitNames,
 ) : ViewModel() {
     private val state =
         MutableStateFlow(
@@ -48,6 +55,27 @@ class ProductEditViewModel(
             ),
         )
     val uiState: StateFlow<ProductEditUiState> = state.asStateFlow()
+
+    /** La hoja para crear una unidad sin salir del formulario. Al guardarla, queda elegida. */
+    val unitEditor =
+        UnitEditorModel(
+            scope = viewModelScope,
+            names = unitNames,
+            activeUnits = { state.value.units },
+            save = { _, draft -> useCases.saveUnit(draft) },
+            onSaved = { id -> onAction(ProductEditAction.UnitChange(id)) },
+        )
+
+    /** La hoja de una conversión de este producto. */
+    val conversionEditor =
+        ConversionEditorModel(
+            scope = viewModelScope,
+            numbers = numbers,
+            save = useCases::saveConversion,
+            delete = useCases::deleteConversion,
+            // La lista del producto ya muestra el cambio.
+            onSaved = {},
+        )
 
     init {
         viewModelScope.launch {
@@ -81,6 +109,31 @@ class ProductEditViewModel(
             is ProductEditAction.CreateCategory -> createCategory(action.name)
 
             is ProductEditAction.UnitChange -> edit(null) { copy(unitId = action.unitId) }
+
+            is ProductEditAction.StockModeChange ->
+                state.update { current ->
+                    if (current.stockModeLocked) return@update current
+                    current.copy(
+                        form = current.form.copy(stockMode = action.mode),
+                        errors =
+                            current.errors - ProductEditField.INITIAL_STOCK -
+                                ProductEditField.MIN_STOCK - ProductEditField.COST,
+                        dirty = true,
+                        notice = null,
+                    ).withProfit()
+                }
+
+            ProductEditAction.NewUnit -> unitEditor.openNew()
+
+            is ProductEditAction.EditConversion ->
+                state.value.conversions
+                    .firstOrNull { it.id == action.conversionId }
+                    ?.let(conversionEditor::openEdit)
+
+            ProductEditAction.NewConversion -> productId?.let(conversionEditor::openNew)
+
+            // La pantalla abre la de unidades; aquí no cambia nada.
+            ProductEditAction.ManageUnits -> Unit
 
             is ProductEditAction.SalePriceChange ->
                 edit(ProductEditField.SALE_PRICE) { copy(salePrice = action.text) }
@@ -149,11 +202,14 @@ class ProductEditViewModel(
             current.copy(
                 loading = false,
                 form = form,
-                unitLocked = editing.lockedFields.isNotEmpty(),
+                unitLocked = HistoryLockedField.BASE_UNIT in editing.lockedFields,
+                stockModeLocked = HistoryLockedField.STOCK_MODE in editing.lockedFields,
+                product = product,
                 costLocked = editing.costLocked,
                 averageCost = catalogCost,
             ).withProfit()
         }
+        useCases.conversions(id).collect { list -> state.update { it.copy(conversions = list) } }
     }
 
     /** Cambia el formulario con [change] y borra el error de [field], si lo tenía. */
@@ -286,16 +342,26 @@ class ProductEditViewModel(
         nameProblem(text.name)?.let { errors[ProductEditField.NAME] = it }
         val price = money(text.salePrice) { errors[ProductEditField.SALE_PRICE] = it }
         val cost = money(text.cost) { errors[ProductEditField.COST] = it }
-        val initial = quantity(text.initialStock, Limit.LINE_QUANTITY_MILLI) {
-            errors[ProductEditField.INITIAL_STOCK] = it
-        }
+        // Sin stock propio no hay stock que contar ni que vigilar: esos campos ni se muestran.
+        val tracks = current.tracksStock
+        val initial =
+            if (!tracks) {
+                QuantityMilli.ZERO
+            } else {
+                quantity(text.initialStock, Limit.LINE_QUANTITY_MILLI) {
+                    errors[ProductEditField.INITIAL_STOCK] = it
+                }
+            }
         val minimum =
-            quantity(text.minStock, Limit.ON_HAND_MILLI) {
-                errors[ProductEditField.MIN_STOCK] =
-                    it
+            if (!tracks) {
+                QuantityMilli.ZERO
+            } else {
+                quantity(text.minStock, Limit.ON_HAND_MILLI) {
+                    errors[ProductEditField.MIN_STOCK] = it
+                }
             }
         val unit = current.unit
-        if (unit != null && !unit.allowsFraction) {
+        if (tracks && unit != null && !unit.allowsFraction) {
             if (!initial.isWholeUnits) {
                 errors[ProductEditField.INITIAL_STOCK] =
                     FieldProblem.FractionNotAllowed
@@ -320,8 +386,14 @@ class ProductEditViewModel(
             baseUnitId = text.unitId,
             stockMode = text.stockMode,
             salePrice = price,
-            // Con el costo en el libro, se guarda el inicial tal como estaba.
-            cost = if (current.costLocked) initialCostOf(current) else cost,
+            // Con el costo en el libro, se guarda el inicial tal como estaba. Un producto hecho de
+            // componentes no lleva costo propio: sale de sus componentes.
+            cost =
+                when {
+                    text.stockMode == ProductStockMode.COMPONENTS -> Money.ZERO
+                    current.costLocked -> initialCostOf(current)
+                    else -> cost
+                },
             minStock = minimum,
             barcode = barcode,
         )

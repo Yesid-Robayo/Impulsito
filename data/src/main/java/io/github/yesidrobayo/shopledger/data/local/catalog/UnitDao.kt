@@ -56,6 +56,21 @@ internal interface UnitDao {
     )
     suspend fun isInUse(id: Long): Boolean
 
+    /**
+     * Los ids de las unidades con uso, con la misma definición que [isInUse]. Room vuelve a emitir
+     * con cualquier cambio de esas tablas.
+     */
+    @Query(
+        "SELECT base_unit_id FROM products " +
+            "UNION SELECT unit_id FROM product_units " +
+            "UNION SELECT unit_id FROM purchase_lines " +
+            "UNION SELECT unit_id FROM sale_lines " +
+            "UNION SELECT unit_id FROM quote_lines " +
+            "UNION SELECT unit_id FROM order_lines " +
+            "UNION SELECT unit_id FROM sale_draft_lines",
+    )
+    fun observeInUseIds(): Flow<List<Long>>
+
     /** Devuelve el id nuevo. Falla si la clave ya existe, o si el nombre ya es de una vigente. */
     @Insert
     suspend fun insert(unit: UnitEntity): Long

@@ -15,7 +15,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -24,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
@@ -32,7 +36,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionEntry
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
@@ -42,6 +48,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
@@ -61,13 +68,23 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
+import io.github.yesidrobayo.shopledger.ui.components.UnitPicker
+import io.github.yesidrobayo.shopledger.ui.components.UnitPickerSheet
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
+import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
+import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditor
+import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorAction
+import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorSheet
+import io.github.yesidrobayo.shopledger.ui.unit.ConversionRow
+import io.github.yesidrobayo.shopledger.ui.unit.UnitEditor
+import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorAction
+import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorSheet
 import kotlin.time.Instant
 
 /**
@@ -84,6 +101,10 @@ fun ProductEditScreen(
     uiState: ProductEditUiState,
     onAction: (ProductEditAction) -> Unit,
     modifier: Modifier = Modifier,
+    unitEditor: UnitEditor? = null,
+    onUnitEditorAction: (UnitEditorAction) -> Unit = {},
+    conversionEditor: ConversionEditor? = null,
+    onConversionEditorAction: (ConversionEditorAction) -> Unit = {},
 ) {
     val spacing = AppTheme.spacing
     Column(
@@ -128,6 +149,15 @@ fun ProductEditScreen(
             }
         }
     }
+    unitEditor?.let { UnitEditorSheet(it, onUnitEditorAction) }
+    conversionEditor?.let { editor ->
+        ConversionEditorSheet(
+            editor = editor,
+            products = listOfNotNull(uiState.product),
+            units = uiState.units,
+            onAction = onConversionEditorAction,
+        )
+    }
     if (uiState.confirmingDiscard) {
         ConfirmDialog(
             title = stringResource(R.string.dialog_discard_title),
@@ -142,10 +172,18 @@ fun ProductEditScreen(
 @Composable
 private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
     val form = uiState.form
-    val unit = unitLabelOf(uiState.unit)
+    val unit =
+        uiState.unit?.let { unitLabel(it) }
+            ?: UnitLabel(stringResource(R.string.seed_units_unit), false)
     var choosingCategory by rememberSaveable { mutableStateOf(false) }
     var choosingUnit by rememberSaveable { mutableStateOf(false) }
-    var moreDetails by rememberSaveable { mutableStateOf(form.barcode.isNotEmpty()) }
+    // Se abre sola si el producto ya tiene alguno de los datos de adentro.
+    var moreDetails by rememberSaveable {
+        mutableStateOf(form.barcode.isNotEmpty() || !uiState.tracksStock)
+    }
+    LaunchedEffect(uiState.conversions.isNotEmpty()) {
+        if (uiState.conversions.isNotEmpty()) moreDetails = true
+    }
 
     AppTextField(
         value = form.name,
@@ -159,15 +197,15 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
         value = uiState.category?.details?.name ?: stringResource(R.string.term_no_category),
         onClick = { choosingCategory = true },
     )
-    PickerField(
+    UnitPicker(
         label = stringResource(R.string.term_unit),
-        value = unitNameOf(uiState.unit),
+        unit = uiState.unit,
         onClick = { choosingUnit = true },
         lockedReason = if (uiState.unitLocked) stringResource(R.string.unit_base_locked) else null,
     )
     PriceAndCost(uiState, onAction)
     ProfitCard(uiState.profit)
-    if (uiState.isNew) {
+    if (uiState.isNew && uiState.tracksStock) {
         QuantityField(
             value = form.initialStock,
             onValueChange = { onAction(ProductEditAction.InitialStockChange(it)) },
@@ -176,6 +214,35 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
             error = fieldError(uiState, ProductEditField.INITIAL_STOCK),
         )
     }
+    if (uiState.tracksStock) MinStockField(uiState, onAction, unit)
+    InlineTextButton(
+        text = stringResource(R.string.field_more_details),
+        onClick = { moreDetails = !moreDetails },
+    )
+    if (moreDetails) MoreDetails(uiState, onAction)
+
+    if (choosingCategory) {
+        CategorySheet(uiState.categories, onAction) { choosingCategory = false }
+    }
+    if (choosingUnit) {
+        UnitPickerSheet(
+            units = uiState.units,
+            onPick = { onAction(ProductEditAction.UnitChange(it.id)) },
+            onDismiss = { choosingUnit = false },
+            onNewUnit = { onAction(ProductEditAction.NewUnit) },
+            onManage = { onAction(ProductEditAction.ManageUnits) },
+        )
+    }
+}
+
+/** El mínimo de la alerta, con su ayuda debajo mientras no tenga un error. */
+@Composable
+private fun MinStockField(
+    uiState: ProductEditUiState,
+    onAction: (ProductEditAction) -> Unit,
+    unit: UnitLabel,
+) {
+    val form = uiState.form
     Column {
         QuantityField(
             value = form.minStock,
@@ -196,26 +263,86 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
             )
         }
     }
-    InlineTextButton(
-        text = stringResource(R.string.field_more_details),
-        onClick = { moreDetails = !moreDetails },
+}
+
+/**
+ * Lo opcional: el código, el modo de stock y, en un producto guardado, sus unidades de compra y
+ * venta. `Por componentes` solo aparece en un producto que ya lo usa, hasta que exista la pantalla de
+ * combos y recetas; con historia, el modo ya no cambia y se muestra para leer.
+ */
+@Composable
+private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
+    val form = uiState.form
+    AppTextField(
+        value = form.barcode,
+        onValueChange = { onAction(ProductEditAction.BarcodeChange(it)) },
+        label = stringResource(R.string.product_barcode),
+        error = fieldError(uiState, ProductEditField.BARCODE),
+        imeAction = ImeAction.Done,
     )
-    if (moreDetails) {
-        AppTextField(
-            value = form.barcode,
-            onValueChange = { onAction(ProductEditAction.BarcodeChange(it)) },
-            label = stringResource(R.string.product_barcode),
-            error = fieldError(uiState, ProductEditField.BARCODE),
-            imeAction = ImeAction.Done,
+    Text(
+        stringResource(R.string.combo_stock_mode_label),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = AppTheme.spacing.s8),
+    )
+    if (uiState.stockModeLocked) {
+        Text(
+            stringResource(stockModeLabel(form.stockMode)),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    } else {
+        val modes =
+            listOf(ProductStockMode.TRACKED, ProductStockMode.UNTRACKED) +
+                listOfNotNull(form.stockMode.takeIf { it == ProductStockMode.COMPONENTS })
+        CompactChipRow(
+            options = modes,
+            label = { stringResource(stockModeLabel(it)) },
+            selected = setOf(form.stockMode),
+            onToggle = { onAction(ProductEditAction.StockModeChange(it)) },
+            multiple = false,
         )
     }
+    if (!uiState.isNew) ProductConversions(uiState, onAction)
+}
 
-    if (choosingCategory) {
-        CategorySheet(uiState.categories, onAction) { choosingCategory = false }
+/**
+ * Las unidades de compra y venta del producto: una fila por conversión, que abre su hoja, y
+ * `Agregar conversión`. Se edita aquí, con la misma hoja de la pantalla de unidades.
+ */
+@Composable
+private fun ProductConversions(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
+    val product = uiState.product ?: return
+    Text(
+        stringResource(R.string.product_units_buy_sell),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = AppTheme.spacing.s16).semantics { heading() },
+    )
+    Column {
+        for (conversion in uiState.conversions) {
+            key(conversion.id) {
+                ConversionRow(
+                    entry = ConversionEntry(conversion, product),
+                    units = uiState.units,
+                    withProduct = false,
+                    inset = false,
+                    onClick = { onAction(ProductEditAction.EditConversion(conversion.id)) },
+                )
+            }
+        }
     }
-    if (choosingUnit) {
-        UnitSheet(uiState.units, onAction) { choosingUnit = false }
-    }
+    InlineTextButton(
+        text = stringResource(R.string.unit_add_conversion_action),
+        onClick = { onAction(ProductEditAction.NewConversion) },
+    )
+}
+
+private fun stockModeLabel(mode: ProductStockMode): Int = when (mode) {
+    ProductStockMode.TRACKED -> R.string.combo_stock_mode_tracked
+    ProductStockMode.UNTRACKED -> R.string.combo_stock_mode_untracked
+    ProductStockMode.COMPONENTS -> R.string.combo_stock_mode_components
 }
 
 /** Precio y costo lado a lado; con letra grande, uno bajo el otro para que las cifras quepan. */
@@ -230,6 +357,10 @@ private fun PriceAndCost(uiState: ProductEditUiState, onAction: (ProductEditActi
             modifier = modifier,
             error = fieldError(uiState, ProductEditField.SALE_PRICE),
         )
+    }
+    if (uiState.form.stockMode == ProductStockMode.COMPONENTS) {
+        price(Modifier.fillMaxWidth())
+        return
     }
     val cost: @Composable (Modifier) -> Unit = { modifier ->
         if (uiState.costLocked) {
@@ -397,60 +528,6 @@ private fun CategorySheet(
             onDismiss()
         },
     )
-}
-
-@Composable
-private fun UnitSheet(
-    units: List<MeasureUnit>,
-    onAction: (ProductEditAction) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var query by rememberSaveable { mutableStateOf("") }
-    val resources = LocalResources.current
-    val normalized = TextNormalizer.normalize(query)
-    val shown =
-        units.filter {
-            TextNormalizer.normalize(
-                SeedText.displayName(resources, SeedTable.UNITS, it.systemKey, it.name),
-            ).contains(normalized)
-        }
-    SelectionSheet(
-        title = stringResource(R.string.term_unit),
-        items = shown,
-        key = { it.id },
-        query = query,
-        onQueryChange = { query = it },
-        onDismissRequest = onDismiss,
-        searchHint = stringResource(R.string.unit_search_hint),
-        itemContent = { unit ->
-            SettingsRow(
-                title = unitNameOf(unit),
-                summary = SeedText.unitSymbol(resources, unit.systemKey, unit.symbol),
-                action =
-                    SettingsRowAction.Navigation {
-                        onAction(ProductEditAction.UnitChange(unit.id))
-                        onDismiss()
-                    },
-            )
-        },
-    )
-}
-
-/** El nombre de una unidad, traducido si es una de las iniciales. */
-@Composable
-private fun unitNameOf(unit: MeasureUnit?): String {
-    if (unit == null) return ""
-    return SeedText.displayName(LocalResources.current, SeedTable.UNITS, unit.systemKey, unit.name)
-}
-
-@Composable
-private fun unitLabelOf(unit: MeasureUnit?): UnitLabel {
-    val resources = LocalResources.current
-    if (unit == null) return UnitLabel(stringResource(R.string.seed_units_unit), false)
-    val symbol =
-        SeedText.unitSymbol(resources, unit.systemKey, unit.symbol)
-            ?: SeedText.displayName(resources, SeedTable.UNITS, unit.systemKey, unit.name)
-    return UnitLabel(symbol, unit.allowsFraction, custom = unit.systemKey == null)
 }
 
 /** El error de [field], si tiene uno, con su texto. */

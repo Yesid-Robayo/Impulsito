@@ -15,9 +15,15 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -133,6 +139,35 @@ class ProductEditGalleryTest {
                 averageCost = Money(3_800L),
             ),
             "discard" to filled.copy(confirmingDiscard = true),
+            // Un servicio: sin stock que contar, con el modo de stock a la vista.
+            "service" to filled.copy(
+                form = filled.form.copy(
+                    name = "Corte de cabello",
+                    stockMode = ProductStockMode.UNTRACKED,
+                    initialStock = "",
+                    minStock = "",
+                ),
+            ),
+            // Un producto con historia y sus unidades de compra y venta.
+            "product-conversions" to filled.copy(
+                isNew = false,
+                units = listOf(COUNT, BOX, PACK),
+                unitLocked = true,
+                stockModeLocked = true,
+                product = RICE,
+                conversions = listOf(
+                    ProductConversion(
+                        1L,
+                        RICE.id,
+                        ConversionDetails(BOX.id, 24_000L, null, null, false, true),
+                    ),
+                    ProductConversion(
+                        2L,
+                        RICE.id,
+                        ConversionDetails(PACK.id, 6_000L, null, null, true, true),
+                    ),
+                ),
+            ),
         )
     }
 
@@ -150,6 +185,33 @@ class ProductEditGalleryTest {
         const val LONG_NAME =
             "Café molido de altura en bolsa resellable con válvula, tostión media, 500 gramos"
         val COUNT = MeasureUnit(1L, "UNIT", null, null, UnitKind.COUNT, false, null)
+        val BOX = MeasureUnit(10L, "BOX", null, null, UnitKind.COUNT, false, null)
+        val PACK = MeasureUnit(11L, "PACK", null, null, UnitKind.COUNT, false, null)
+        val RICE =
+            Product(
+                id = 7L,
+                details =
+                    ProductDetails(
+                        "Arroz 1 kg", "arroz 1 kg", 1L, null, COUNT.id, ProductStockMode.TRACKED,
+                        false, Money.ZERO,
+                        QuantityMilli(
+                            5_000L,
+                        ),
+                        null, null, null, null, null, null,
+                        null, null, null, null, null, null,
+                    ),
+                salePrice = Money(5_000L),
+                initialCost = Money(3_800L),
+                averageCost = Money(3_800L),
+                stockValue = Money(91_200L),
+                onHand = QuantityMilli(24_000L),
+                replacementCost = Money.ZERO,
+                replacementCostAt = null,
+                priceReviewSince = null,
+                archivedAt = null,
+                createdAt = Instant.fromEpochMilliseconds(0L),
+                updatedAt = Instant.fromEpochMilliseconds(0L),
+            )
         val GRAINS = Category(
             id = 1L,
             details = CategoryDetails("Granos", "granos", null),

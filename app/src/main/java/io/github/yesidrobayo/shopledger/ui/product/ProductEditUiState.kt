@@ -5,6 +5,8 @@ import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 
 /** Los campos del formulario de un producto que pueden llevar un error. */
@@ -66,8 +68,8 @@ sealed interface ProductEditNotice {
 }
 
 /**
- * Lo que la persona escribe, tal cual, y lo que eligió. [stockMode] no se edita aquí: un producto
- * nuevo lleva stock propio, y uno guardado conserva el suyo.
+ * Lo que la persona escribe, tal cual, y lo que eligió. [stockMode] empieza con stock propio; sin
+ * stock, el costo es el costo fijo de cada unidad vendida y no hay stock que contar ni vigilar.
  */
 @Immutable
 data class ProductEditForm(
@@ -86,9 +88,11 @@ data class ProductEditForm(
  * El estado del formulario de un producto.
  *
  * [loading] mientras se lee el producto que se edita. [notFound] si ya no existe. Con [costLocked],
- * el costo lo lleva el libro y se muestra [averageCost] solo para leer. Con [unitLocked], la unidad
- * ya no cambia. [savedProductId] avisa a la pantalla que puede cerrar porque se guardó, y [closed],
- * que la persona cerró sin guardar.
+ * el costo lo lleva el libro y se muestra [averageCost] solo para leer. Con [unitLocked] y
+ * [stockModeLocked], la unidad base y el modo de stock ya no cambian, porque el producto tiene
+ * historia. [product] es el producto guardado, y [conversions] sus conversiones de compra y venta:
+ * un producto nuevo no tiene, porque una conversión necesita el producto. [savedProductId] avisa a
+ * la pantalla que puede cerrar porque se guardó, y [closed], que la persona cerró sin guardar.
  */
 @Immutable
 data class ProductEditUiState(
@@ -99,6 +103,9 @@ data class ProductEditUiState(
     val categories: List<Category> = emptyList(),
     val units: List<MeasureUnit> = emptyList(),
     val unitLocked: Boolean = false,
+    val stockModeLocked: Boolean = false,
+    val product: Product? = null,
+    val conversions: List<ProductConversion> = emptyList(),
     val costLocked: Boolean = false,
     val averageCost: Money = Money.ZERO,
     val errors: Map<ProductEditField, FieldProblem> = emptyMap(),
@@ -115,4 +122,7 @@ data class ProductEditUiState(
 
     /** La unidad elegida, o `null` mientras no se leen las unidades. */
     val unit: MeasureUnit? get() = units.firstOrNull { it.id == form.unitId }
+
+    /** Si el producto lleva stock propio: solo entonces se cuentan y se vigilan sus existencias. */
+    val tracksStock: Boolean get() = form.stockMode == ProductStockMode.TRACKED
 }

@@ -15,6 +15,10 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 internal interface ProductUnitDao {
+    /** Todas las conversiones, de todos los productos, en el orden en que se crearon. */
+    @Query("SELECT * FROM product_units ORDER BY id")
+    fun observeAll(): Flow<List<ProductUnitEntity>>
+
     @Query("SELECT * FROM product_units WHERE product_id = :productId ORDER BY id")
     fun observeByProduct(productId: Long): Flow<List<ProductUnitEntity>>
 

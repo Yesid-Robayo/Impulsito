@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: unidades y conversiones, y lo que el formulario de producto muestra de ellas. -->
+    <string name="unit_tab_units">Units</string>
+    <string name="unit_tab_conversions">Conversions</string>
+    <string name="unit_kind_count">Count</string>
+    <string name="unit_kind_mass">Weight</string>
+    <string name="unit_kind_volume">Volume</string>
+    <string name="unit_kind_length">Length</string>
+    <string name="unit_kind_other">Other</string>
+    <string name="unit_allows_fraction">Allows decimals</string>
+    <string name="unit_whole_only">Whole units only</string>
+    <string name="unit_conversion_row">1 %1$s = %2$s</string>
+    <string name="unit_for_sale">For sale</string>
+    <string name="unit_for_purchase">For purchase</string>
+    <string name="unit_new_action">New unit</string>
+    <string name="unit_add_conversion_action">Add conversion</string>
+    <string name="unit_manage_action">Manage units</string>
+    <string name="unit_name_label">Name</string>
+    <string name="unit_symbol_label">Symbol</string>
+    <string name="unit_kind_label">Type</string>
+    <string name="unit_save_action">Save unit</string>
+    <string name="unit_product_label">Product</string>
+    <string name="unit_alternate_label">Alternate unit</string>
+    <string name="unit_equals_label">Equals</string>
+    <string name="unit_price_label">Price of this unit</string>
+    <string name="unit_conversion_result">1 %1$s = %2$s · Cost per %3$s %4$s</string>
+    <string name="unit_save_conversion_action">Save conversion</string>
+    <string name="unit_empty_title">No conversions yet</string>
+    <string name="unit_empty_body">To buy by the box and sell by the unit</string>
+    <string name="unit_error_name_empty">Enter the unit name</string>
+    <string name="unit_error_name_repeated">A unit with that name already exists</string>
+    <string name="unit_error_factor_zero">Enter a value greater than 0</string>
+    <string name="unit_error_same_as_base">Choose a unit other than the base unit</string>
+    <string name="unit_change_factor_confirm_title">Change this conversion?</string>
+    <string name="unit_change_factor_confirm_body">It only affects new documents. Earlier ones keep their factor.</string>
+    <string name="unit_change_factor_confirm_action">Change conversion</string>
+    <string name="unit_archive_confirm_title">Archive %1$s?</string>
+    <string name="unit_archive_confirm_body">It is no longer offered for new products. Past lines keep their unit and factor.</string>
+    <string name="unit_archive_confirm_action">Archive unit</string>
+    <string name="unit_saved">Unit saved</string>
+    <string name="unit_conversion_saved">Conversion saved</string>
+    <string name="combo_stock_mode_label">Stock mode</string>
+    <string name="combo_stock_mode_tracked">Tracked</string>
+    <string name="combo_stock_mode_untracked">Not tracked</string>
+    <string name="combo_stock_mode_components">By components</string>
+    <string name="product_units_buy_sell">Purchase and sale units</string>
+    <string name="a11y_unit_conversion">%1$s: %2$s per %3$s</string>
+    <string name="unit_edit_title">Edit unit</string>
+    <string name="unit_group_archived">Archived</string>
+    <string name="unit_delete_confirm_title">Delete %1$s?</string>
+    <string name="unit_delete_confirm_body">No product or document uses it, so it is deleted completely.</string>
+    <string name="unit_delete_confirm_action">Delete unit</string>
+    <string name="unit_conversion_edit_title">Edit conversion</string>
+    <string name="unit_conversion_delete_confirm_title">Remove this conversion?</string>
+    <string name="unit_conversion_delete_confirm_body">Earlier documents keep their factor.</string>
+    <string name="unit_conversion_delete_confirm_action">Remove conversion</string>
+    <string name="unit_error_conversion_taken">This product already has that unit</string>
+    <string name="unit_error_product_missing">Choose a product</string>
+    <string name="unit_error_unit_missing">Choose a unit</string>
+    <string name="unit_name_with_symbol">%1$s (%2$s)</string>
+</resources>

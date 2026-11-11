@@ -45,6 +45,7 @@ import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryScreen
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
+import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
 
 /**
  * La navegación de la app: la pila de Navigation 3 y la barra inferior encima de las cuatro raíces.
@@ -130,6 +131,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
             TaxSettingsRoute(onBack = { navigator.back() }) { PlaceholderRoute(key, navigator) }
 
         AppNavKey.PaymentMethods -> PaymentMethodsRoute(navigator)
+
+        AppNavKey.Units -> UnitsRoute(navigator)
 
         is AppNavKey.PaymentMethodEdit -> PaymentMethodFormRoute(key, navigator)
 

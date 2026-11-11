@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
@@ -59,6 +60,9 @@ internal data class Tables(
     /** La tasa de cada producto que tiene una: id del producto a id de la tasa. */
     val productTaxRateIds: Map<Long, Long> = emptyMap(),
     val mediaAssets: Map<Long, MediaAssetRow> = emptyMap(),
+    val productUnits: Map<Long, ProductConversion> = emptyMap(),
+    /** Las unidades que usa alguna línea de compra, de venta o de otro documento. */
+    val unitsUsedByLines: Set<Long> = emptySet(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

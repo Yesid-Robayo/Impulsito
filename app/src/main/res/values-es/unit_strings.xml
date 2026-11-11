@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: unidades y conversiones, y lo que el formulario de producto muestra de ellas. -->
+    <string name="unit_tab_units">Unidades</string>
+    <string name="unit_tab_conversions">Conversiones</string>
+    <string name="unit_kind_count">Conteo</string>
+    <string name="unit_kind_mass">Peso</string>
+    <string name="unit_kind_volume">Volumen</string>
+    <string name="unit_kind_length">Longitud</string>
+    <string name="unit_kind_other">Otras</string>
+    <string name="unit_allows_fraction">Admite decimales</string>
+    <string name="unit_whole_only">Solo enteras</string>
+    <string name="unit_conversion_row">1 %1$s = %2$s</string>
+    <string name="unit_for_sale">Para vender</string>
+    <string name="unit_for_purchase">Para comprar</string>
+    <string name="unit_new_action">Nueva unidad</string>
+    <string name="unit_add_conversion_action">Agregar conversión</string>
+    <string name="unit_manage_action">Administrar unidades</string>
+    <string name="unit_name_label">Nombre</string>
+    <string name="unit_symbol_label">Símbolo</string>
+    <string name="unit_kind_label">Tipo</string>
+    <string name="unit_save_action">Guardar unidad</string>
+    <string name="unit_product_label">Producto</string>
+    <string name="unit_alternate_label">Unidad alterna</string>
+    <string name="unit_equals_label">Equivale a</string>
+    <string name="unit_price_label">Precio de esta unidad</string>
+    <string name="unit_conversion_result">1 %1$s = %2$s · Costo por %3$s %4$s</string>
+    <string name="unit_save_conversion_action">Guardar conversión</string>
+    <string name="unit_empty_title">Sin conversiones todavía</string>
+    <string name="unit_empty_body">Para comprar por caja y vender por unidad</string>
+    <string name="unit_error_name_empty">Escribir el nombre de la unidad</string>
+    <string name="unit_error_name_repeated">Ya hay una unidad con ese nombre</string>
+    <string name="unit_error_factor_zero">Escribir un valor mayor que 0</string>
+    <string name="unit_error_same_as_base">Elegir una unidad distinta de la base</string>
+    <string name="unit_change_factor_confirm_title">¿Cambiar esta conversión?</string>
+    <string name="unit_change_factor_confirm_body">Solo afecta a documentos nuevos. Los anteriores conservan su factor.</string>
+    <string name="unit_change_factor_confirm_action">Cambiar conversión</string>
+    <string name="unit_archive_confirm_title">¿Archivar %1$s?</string>
+    <string name="unit_archive_confirm_body">Deja de ofrecerse en productos nuevos. Las líneas pasadas conservan su unidad y su factor.</string>
+    <string name="unit_archive_confirm_action">Archivar unidad</string>
+    <string name="unit_saved">Unidad guardada</string>
+    <string name="unit_conversion_saved">Conversión guardada</string>
+    <string name="combo_stock_mode_label">Modo de stock</string>
+    <string name="combo_stock_mode_tracked">Con stock</string>
+    <string name="combo_stock_mode_untracked">Sin stock</string>
+    <string name="combo_stock_mode_components">Por componentes</string>
+    <string name="product_units_buy_sell">Unidades de compra y venta</string>
+    <string name="a11y_unit_conversion">%1$s: %2$s por %3$s</string>
+    <string name="unit_edit_title">Editar unidad</string>
+    <string name="unit_group_archived">Archivadas</string>
+    <string name="unit_delete_confirm_title">¿Eliminar %1$s?</string>
+    <string name="unit_delete_confirm_body">Ningún producto ni documento la usa, así que se borra por completo.</string>
+    <string name="unit_delete_confirm_action">Eliminar unidad</string>
+    <string name="unit_conversion_edit_title">Editar conversión</string>
+    <string name="unit_conversion_delete_confirm_title">¿Quitar esta conversión?</string>
+    <string name="unit_conversion_delete_confirm_body">Los documentos anteriores conservan su factor.</string>
+    <string name="unit_conversion_delete_confirm_action">Quitar conversión</string>
+    <string name="unit_error_conversion_taken">Este producto ya tiene esa unidad</string>
+    <string name="unit_error_product_missing">Elegir un producto</string>
+    <string name="unit_error_unit_missing">Elegir una unidad</string>
+    <string name="unit_name_with_symbol">%1$s (%2$s)</string>
+</resources>

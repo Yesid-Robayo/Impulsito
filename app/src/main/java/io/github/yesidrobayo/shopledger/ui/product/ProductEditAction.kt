@@ -1,5 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+
 /** Lo que la persona hace en el formulario de un producto. */
 sealed interface ProductEditAction {
     data class NameChange(val name: String) : ProductEditAction
@@ -14,6 +16,21 @@ sealed interface ProductEditAction {
     data class CreateCategory(val name: String) : ProductEditAction
 
     data class UnitChange(val unitId: Long) : ProductEditAction
+
+    /** Eligió el modo de stock: con stock propio o sin stock, para un servicio. */
+    data class StockModeChange(val mode: ProductStockMode) : ProductEditAction
+
+    /** Quiere crear una unidad sin salir del formulario. */
+    data object NewUnit : ProductEditAction
+
+    /** Quiere administrar las unidades: lo resuelve la navegación. */
+    data object ManageUnits : ProductEditAction
+
+    /** Quiere agregar una conversión de compra o venta a este producto. */
+    data object NewConversion : ProductEditAction
+
+    /** Abrió una conversión del producto para editarla. */
+    data class EditConversion(val conversionId: Long) : ProductEditAction
 
     data class SalePriceChange(val text: String) : ProductEditAction
 

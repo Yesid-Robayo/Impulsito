@@ -7,16 +7,27 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogChoices
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForEdit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitResult
+import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorAction
+import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorAction
+import io.github.yesidrobayo.shopledger.ui.unit.UnitNames
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,7 +63,7 @@ class ProductEditViewModelTest {
     fun resetTestMain() = Dispatchers.resetMain()
 
     private fun newProduct(prefill: String? = null) =
-        ProductEditViewModel(operations, numbers, null, prefill)
+        ProductEditViewModel(operations, numbers, null, prefill, NAMES)
 
     @Test
     fun `a new product starts with the prefilled name and the counting unit`() =
@@ -203,7 +214,13 @@ class ProductEditViewModelTest {
                 costLocked = true,
             )
             val model =
-                ProductEditViewModel(operations, numbers, productId = 5L, prefillName = null)
+                ProductEditViewModel(
+                    operations,
+                    numbers,
+                    productId = 5L,
+                    prefillName = null,
+                    unitNames = NAMES,
+                )
             assertTrue(model.uiState.value.loading)
             advanceUntilIdle()
 
@@ -226,8 +243,147 @@ class ProductEditViewModelTest {
         }
 
     @Test
+    fun `a service has no stock to count and its cost is the fixed cost of each sale`() =
+        runTest(dispatcher) {
+            val model = newProduct()
+            advanceUntilIdle()
+            model.onAction(ProductEditAction.NameChange("Corte de cabello"))
+            model.onAction(ProductEditAction.InitialStockChange("1,5"))
+            model.onAction(ProductEditAction.MinStockChange("abc"))
+            model.onAction(ProductEditAction.CostChange("2500"))
+
+            model.onAction(ProductEditAction.StockModeChange(ProductStockMode.UNTRACKED))
+            assertFalse(model.uiState.value.tracksStock)
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            // Lo escrito en el stock no cuenta ni da error: un servicio no tiene stock.
+            val (form, initial) = operations.created.single()
+            assertEquals(ProductStockMode.UNTRACKED, form.stockMode)
+            assertEquals(QuantityMilli.ZERO, form.minStock)
+            assertEquals(QuantityMilli.ZERO, initial)
+            assertEquals(Money(250_000L), form.cost)
+        }
+
+    @Test
+    fun `with history the base unit and the stock mode stay as they are`() = runTest(dispatcher) {
+        operations.editing = ProductForEdit(
+            product = product(5L, "Arroz", onHand = 6_000L),
+            lockedFields = setOf(HistoryLockedField.BASE_UNIT, HistoryLockedField.STOCK_MODE),
+            costLocked = false,
+        )
+        val model =
+            ProductEditViewModel(
+                operations,
+                numbers,
+                productId = 5L,
+                prefillName = null,
+                unitNames = NAMES,
+            )
+        advanceUntilIdle()
+
+        assertTrue(model.uiState.value.unitLocked)
+        assertTrue(model.uiState.value.stockModeLocked)
+        model.onAction(ProductEditAction.StockModeChange(ProductStockMode.UNTRACKED))
+        assertEquals(ProductStockMode.TRACKED, model.uiState.value.form.stockMode)
+    }
+
+    @Test
+    fun `only the stock mode locked by lots leaves the unit free`() = runTest(dispatcher) {
+        operations.editing = ProductForEdit(
+            product = product(5L, "Arroz"),
+            lockedFields = setOf(HistoryLockedField.TRACKS_LOTS),
+            costLocked = false,
+        )
+        val model =
+            ProductEditViewModel(
+                operations,
+                numbers,
+                productId = 5L,
+                prefillName = null,
+                unitNames = NAMES,
+            )
+        advanceUntilIdle()
+
+        assertFalse(model.uiState.value.unitLocked)
+        assertFalse(model.uiState.value.stockModeLocked)
+    }
+
+    @Test
+    fun `a saved product shows its conversions and adds one with itself already chosen`() =
+        runTest(dispatcher) {
+            operations.editing =
+                ProductForEdit(product(5L, "Arroz"), lockedFields = emptySet(), costLocked = false)
+            val model =
+                ProductEditViewModel(
+                    operations,
+                    numbers,
+                    productId = 5L,
+                    prefillName = null,
+                    unitNames = NAMES,
+                )
+            advanceUntilIdle()
+            val box = ProductConversion(
+                30L,
+                5L,
+                ConversionDetails(KILO.id, 24_000L, null, null, forSale = true, forPurchase = true),
+            )
+            operations.conversions.value = listOf(box)
+            advanceUntilIdle()
+            assertEquals(listOf(box), model.uiState.value.conversions)
+
+            model.onAction(ProductEditAction.EditConversion(30L))
+            assertEquals(30L, model.conversionEditor.editor.value?.editingId)
+            model.conversionEditor.onAction(ConversionEditorAction.Dismiss)
+
+            model.onAction(ProductEditAction.NewConversion)
+            val editor = requireNotNull(model.conversionEditor.editor.value)
+            assertEquals(5L, editor.productId)
+            assertTrue(editor.productLocked)
+            model.conversionEditor.onAction(ConversionEditorAction.AlternateUnit(KILO.id))
+            model.conversionEditor.onAction(ConversionEditorAction.Factor("12"))
+            model.conversionEditor.onAction(ConversionEditorAction.Save)
+            advanceUntilIdle()
+            assertEquals(12_000L, operations.conversionsSaved.single().second.factorMilli)
+            assertNull(model.conversionEditor.editor.value)
+        }
+
+    @Test
+    fun `a new product has no conversions to add yet`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+
+        model.onAction(ProductEditAction.NewConversion)
+        model.onAction(ProductEditAction.ManageUnits)
+
+        assertNull(model.conversionEditor.editor.value)
+    }
+
+    @Test
+    fun `a unit created from the picker is chosen for the product`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+
+        model.onAction(ProductEditAction.NewUnit)
+        model.unitEditor.onAction(UnitEditorAction.Name("Bulto"))
+        model.unitEditor.onAction(UnitEditorAction.Save)
+        advanceUntilIdle()
+
+        assertEquals("Bulto", operations.unitsSaved.single().name)
+        assertEquals(77L, model.uiState.value.form.unitId)
+        assertNull(model.unitEditor.editor.value)
+    }
+
+    @Test
     fun `a missing product says so`() = runTest(dispatcher) {
-        val model = ProductEditViewModel(operations, numbers, productId = 9L, prefillName = null)
+        val model =
+            ProductEditViewModel(
+                operations,
+                numbers,
+                productId = 9L,
+                prefillName = null,
+                unitNames = NAMES,
+            )
         advanceUntilIdle()
 
         assertTrue(model.uiState.value.notFound)
@@ -300,9 +456,38 @@ class ProductEditViewModelTest {
             categoriesCreated += name
             return SaveCategoryResult.Saved(42L)
         }
+
+        val conversions = MutableStateFlow<List<ProductConversion>>(emptyList())
+        val unitsSaved = mutableListOf<UnitDraft>()
+        val conversionsSaved = mutableListOf<Pair<Long?, ConversionDraft>>()
+
+        override fun conversions(productId: Long): Flow<List<ProductConversion>> = conversions
+
+        override suspend fun saveConversion(
+            editingId: Long?,
+            draft: ConversionDraft,
+        ): SaveConversionResult {
+            conversionsSaved += editingId to draft
+            return SaveConversionResult.Saved(editingId ?: 30L)
+        }
+
+        override suspend fun deleteConversion(id: Long): DeleteConversionResult =
+            DeleteConversionResult.Deleted
+
+        override suspend fun saveUnit(draft: UnitDraft): SaveUnitResult {
+            unitsSaved += draft
+            return SaveUnitResult.Saved(77L)
+        }
     }
 
     private companion object {
+        /** Los nombres de las unidades, sin recursos: la clave hace de nombre traducido. */
+        val NAMES =
+            object : UnitNames {
+                override fun name(unit: MeasureUnit): String = unit.name ?: unit.systemKey.orEmpty()
+
+                override fun symbol(unit: MeasureUnit): String? = unit.symbol
+            }
         val SYMBOLS = NumberSymbols(decimalSeparator = ',', minusSign = '-', grouping = null)
         val COUNT = MeasureUnit(1L, "UNIT", null, null, UnitKind.COUNT, false, null)
         val KILO = MeasureUnit(2L, "KILOGRAM", null, null, UnitKind.MASS, true, null)

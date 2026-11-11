@@ -170,7 +170,7 @@ object MarginCalculator {
      * sobre la cantidad; si no, el costo promedio. Sin stock no hay unidades que valorar, y un valor
      * de cero significa costo desconocido.
      */
-    private fun exactCatalogCost(
+    fun exactCatalogCost(
         onHand: QuantityMilli,
         stockValue: Money,
         averageCost: Money,

@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomProductUnitRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSalePaymentRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
@@ -43,6 +44,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
@@ -52,6 +54,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
+import io.github.yesidrobayo.shopledger.domain.port.UnitCatalogRepository
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import java.io.File
 import kotlin.coroutines.CoroutineContext
@@ -113,7 +116,15 @@ class DataPorts internal constructor(
 
     val priceHistory: PriceHistoryRepository = RoomPriceHistoryRepository(database)
 
-    val units: UnitRepository = RoomUnitRepository(database)
+    private val unitRepository = RoomUnitRepository(database)
+
+    val units: UnitRepository = unitRepository
+
+    /** Las mismas unidades, con lo que escribe su pantalla: crear, editar, archivar y eliminar. */
+    val unitCatalog: UnitCatalogRepository = unitRepository
+
+    /** Las conversiones de compra y venta de cada producto. */
+    val productUnits: ProductUnitRepository = RoomProductUnitRepository(database)
 
     val systemRows: SystemRowRepository = RoomSystemRowRepository(database)
 
