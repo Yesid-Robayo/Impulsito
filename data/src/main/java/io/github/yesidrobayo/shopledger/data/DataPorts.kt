@@ -25,6 +25,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomStockLedgerRepositor
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSystemRowRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomTaxRateRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomTaxReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomTaxSettingsRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomUnitRepository
 import io.github.yesidrobayo.shopledger.data.transaction.BackupStateChangeCounter
@@ -52,6 +53,7 @@ import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
+import io.github.yesidrobayo.shopledger.domain.port.TaxReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.UnitCatalogRepository
@@ -152,6 +154,9 @@ class DataPorts internal constructor(
     val taxRates: TaxRateRepository = RoomTaxRateRepository(database)
 
     val taxSettings: TaxSettingsRepository = RoomTaxSettingsRepository(database, settings)
+
+    /** Las sumas del impuesto estimado de un período. Solo lee. */
+    val taxReports: TaxReportRepository = RoomTaxReportRepository(database)
 
     val mediaAssets: MediaAssetRepository = RoomMediaAssetRepository(database)
 

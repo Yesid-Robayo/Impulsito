@@ -325,7 +325,15 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
         // Una función nueva que edite una venta, o que edite o borre una línea, rompe esta prueba
         // a propósito: una venta confirmada solo se anula, y su línea congela precio y costo.
         assertEquals(
-            setOf("observeIn", "observeById", "findById", "insert", "markVoided"),
+            setOf(
+                "observeIn",
+                "observeById",
+                "findById",
+                "insert",
+                "markVoided",
+                // Solo lee: las sumas del impuesto estimado de un período.
+                "observeTaxTotals",
+            ),
             functionsOf(SaleDao::class.java),
         )
         assertEquals(
