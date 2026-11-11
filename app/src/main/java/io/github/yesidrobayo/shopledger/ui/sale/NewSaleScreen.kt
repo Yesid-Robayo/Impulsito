@@ -111,11 +111,17 @@ fun NewSaleScreen(
     val notices = remember { SnackbarHostState() }
     val maxLines = stringResource(R.string.error_max_lines, Limit.DOCUMENT_LINES.max.toInt())
     val saveFailed = stringResource(R.string.state_error_save)
+    val leftOut = pluralStringResource(
+        R.plurals.notice_fix_archived_products,
+        uiState.leftOut,
+        uiState.leftOut,
+    )
     LaunchedEffect(uiState.notice) {
         val notice = uiState.notice ?: return@LaunchedEffect
         val text = when (notice) {
             SaleNotice.LINES_FULL -> maxLines
             SaleNotice.REACTIVATE_FAILED -> saveFailed
+            SaleNotice.LINES_LEFT_OUT -> leftOut
         }
         onAction(NewSaleAction.NoticeShown)
         notices.showSnackbar(AppSnackbarVisuals(text, SnackbarVariant.INFO))

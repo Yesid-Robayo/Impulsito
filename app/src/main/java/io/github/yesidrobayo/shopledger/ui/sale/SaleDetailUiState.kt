@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleReceipt
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleResults
 import kotlin.time.Instant
 
@@ -23,7 +24,9 @@ sealed interface SaleDetailUiState {
 
     /**
      * La venta, con lo que está abierto encima. [voided] llega una sola vez, al anularla, para el
-     * mensaje.
+     * mensaje. [correcting] pregunta antes de anular y corregir; [corrected] llega una sola vez,
+     * con la venta ya anulada, para abrir la nueva con sus datos, y [correctFailed] si no se pudo
+     * anular.
      */
     @Immutable
     data class Ready(
@@ -31,6 +34,9 @@ sealed interface SaleDetailUiState {
         val sheet: VoidSheet? = null,
         val status: VoidStatus = VoidStatus.IDLE,
         val voided: Boolean = false,
+        val correcting: Boolean = false,
+        val corrected: Long? = null,
+        val correctFailed: Boolean = false,
     ) : SaleDetailUiState
 }
 
@@ -38,7 +44,9 @@ sealed interface SaleDetailUiState {
  * Lo que muestra el detalle de una venta. [zone] falta si el teléfono no conoce la zona del
  * negocio: entonces no se muestra la hora. [voiding] es la anulación, o `null` si está activa.
  * [results] son el costo, la ganancia, el margen, las comisiones y el neto: se ocultan en modo
- * discreto. [charges] es lo que explica el total además de las líneas.
+ * discreto. [charges] es lo que explica el total además de las líneas. [receipt] es el comprobante
+ * que se comparte, solo de una venta activa, y [units] las unidades con que se escriben sus
+ * cantidades.
  */
 @Immutable
 data class SaleDetailView(
@@ -53,6 +61,8 @@ data class SaleDetailView(
     val results: SaleResults,
     val charges: SaleDetailCharges = SaleDetailCharges(),
     val note: String?,
+    val receipt: SaleReceipt? = null,
+    val units: Map<Long, MeasureUnit> = emptyMap(),
 ) {
     /** Solo una venta activa se anula, una sola vez. */
     val canVoid: Boolean get() = voiding == null
@@ -157,6 +167,19 @@ sealed interface SaleDetailAction {
     data object Retry : SaleDetailAction
 
     data object VoidedShown : SaleDetailAction
+
+    /** Pregunta antes de anular la venta y abrir otra con sus datos. */
+    data object OpenCorrect : SaleDetailAction
+
+    data object ConfirmCorrect : SaleDetailAction
+
+    data object DismissCorrect : SaleDetailAction
+
+    /** La venta nueva ya se abrió, o el aviso de la falla ya se mostró. */
+    data object CorrectShown : SaleDetailAction
+
+    /** Comparte el comprobante como texto, con el selector del sistema. */
+    data object Share : SaleDetailAction
 
     data object Back : SaleDetailAction
 }

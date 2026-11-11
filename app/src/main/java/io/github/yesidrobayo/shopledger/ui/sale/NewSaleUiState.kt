@@ -28,6 +28,7 @@ data class NewSaleUiState(
     val dialog: SaleDialog? = null,
     val status: RegisterStatus = RegisterStatus.IDLE,
     val notice: SaleNotice? = null,
+    val leftOut: Int = 0,
     val registered: RegisteredSale? = null,
     val closed: Boolean = false,
     val heldCount: Int = 0,
@@ -277,6 +278,12 @@ enum class SaleNotice {
 
     /** No se pudo reactivar el producto archivado. */
     REACTIVATE_FAILED,
+
+    /**
+     * La venta que corrige a otra abrió sin las líneas de productos hoy archivados: cuántas dice
+     * `leftOut` del estado.
+     */
+    LINES_LEFT_OUT,
 }
 
 /** Lo que pasó con la espera, para decirlo una vez. */

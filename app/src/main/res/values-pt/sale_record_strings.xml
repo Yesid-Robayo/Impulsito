@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_share">Compartilhar</string>
+    <string name="legal_receipt_not_invoice">Este comprovante não é uma nota fiscal</string>
+    <string name="share_receipt_sale_line">%1$s %2$s: %3$s</string>
+    <string name="share_receipt_total">Total: %1$s</string>
+    <string name="dialog_correct_title">Anular e corrigir?</string>
+    <string name="dialog_correct_action">Anular e corrigir</string>
+    <string name="dialog_correct_sale_body">Esta venda é anulada e uma nova é aberta com os mesmos dados. Se a nova não for salva, esta continua anulada.</string>
+    <plurals name="notice_fix_archived_products">
+        <item quantity="one">%1$d linha ficou de fora porque o produto está arquivado.</item>
+        <item quantity="many">%1$d de linhas ficaram de fora porque o produto está arquivado.</item>
+        <item quantity="other">%1$d linhas ficaram de fora porque o produto está arquivado.</item>
+    </plurals>
+</resources>

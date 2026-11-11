@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
@@ -17,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSo
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveHeldSalesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleCatalogUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleDetailUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ResumeHeldSaleUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppMessages
@@ -30,6 +32,7 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
 import io.github.yesidrobayo.shopledger.navigation.rememberSaleUndo
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import kotlinx.coroutines.flow.first
 
 /**
  * La venta nueva en la navegación: arma su ViewModel con los casos de uso y resuelve adónde se va.
@@ -117,6 +120,16 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                 heldSales = { observeHeld() },
                 holdSale = { hold(it) },
                 resumeHeldSale = { resume(it) },
+                prefillFromSaleId = key.prefillFromSaleId,
+                loadCorrection = { saleId ->
+                    ObserveSaleDetailUseCase(
+                        ports.sales,
+                        ports.salePayments,
+                        ports.products,
+                    )(saleId)
+                        .first()
+                        ?.let(SaleCorrections::of)
+                },
             )
         }
     when (model) {

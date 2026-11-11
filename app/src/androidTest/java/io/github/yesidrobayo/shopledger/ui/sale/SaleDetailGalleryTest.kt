@@ -44,6 +44,7 @@ class SaleDetailGalleryTest {
             "charges" to SaleDetailUiState.Ready(saleDetailView(withCharges = true)),
             "$DISCREET-charges" to SaleDetailUiState.Ready(saleDetailView(withCharges = true)),
             "void" to SaleDetailUiState.Ready(saleDetailView(), sheet = VoidSheet()),
+            "correct" to SaleDetailUiState.Ready(saleDetailView(), correcting = true),
             "voidfailed" to SaleDetailUiState.Ready(
                 saleDetailView(),
                 sheet = VoidSheet(note = "Devolvió todo"),

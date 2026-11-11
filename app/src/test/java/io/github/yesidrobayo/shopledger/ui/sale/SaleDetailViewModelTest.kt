@@ -139,7 +139,10 @@ class SaleDetailViewModelTest {
         return SaleDetail(sale, listOf(line), listOf(payment), archivedProductIds = setOf(3L))
     }
 
-    private fun TestScope.viewModel(failRead: Boolean = false): SaleDetailViewModel {
+    private fun TestScope.viewModel(
+        failRead: Boolean = false,
+        businessName: String? = null,
+    ): SaleDetailViewModel {
         val model = SaleDetailViewModel(
             saleId = 7L,
             observeDetail = { if (failRead) flow { error("Falla inventada") } else detail },
@@ -153,6 +156,7 @@ class SaleDetailViewModelTest {
                 voidResult
             },
             computation = dispatcher,
+            observeBusinessName = { MutableStateFlow(businessName) },
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -311,6 +315,64 @@ class SaleDetailViewModelTest {
         assertEquals(SaleDetailUiState.ReadError, failing.uiState.value)
         failing.act(this, SaleDetailAction.Retry)
         assertEquals(SaleDetailUiState.ReadError, failing.uiState.value)
+    }
+
+    @Test
+    fun `void and correct asks first, voids as an entry error and opens the new sale`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            model.act(this, SaleDetailAction.OpenCorrect)
+            assertTrue(model.ready.correcting)
+
+            model.act(this, SaleDetailAction.ConfirmCorrect)
+
+            assertEquals(listOf(Triple(7L, VoidReason.ENTRY_ERROR, null as String?)), voids)
+            assertEquals(7L, model.ready.corrected)
+            assertFalse(model.ready.correcting)
+            model.act(this, SaleDetailAction.CorrectShown)
+            assertNull(model.ready.corrected)
+        }
+
+    @Test
+    fun `a failed correction keeps the sale active and says so`() = runTest(dispatcher) {
+        voidResult = VoidSaleResult.StorageFailed(StorageFailure.DISK_FULL)
+        val model = viewModel()
+        model.act(this, SaleDetailAction.OpenCorrect)
+
+        model.act(this, SaleDetailAction.ConfirmCorrect)
+
+        assertTrue(model.ready.correctFailed)
+        assertNull(model.ready.corrected)
+        assertTrue(model.ready.sale.canVoid)
+        model.act(this, SaleDetailAction.CorrectShown)
+        assertFalse(model.ready.correctFailed)
+    }
+
+    @Test
+    fun `going back from the question keeps the sale, and confirming without it does nothing`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            model.act(this, SaleDetailAction.ConfirmCorrect)
+            model.act(this, SaleDetailAction.OpenCorrect)
+            model.act(this, SaleDetailAction.DismissCorrect)
+
+            assertFalse(model.ready.correcting)
+            assertTrue(voids.isEmpty())
+        }
+
+    @Test
+    fun `the receipt has no cost and goes away once the sale is voided`() = runTest(dispatcher) {
+        val model = viewModel(businessName = "Tienda del barrio")
+        val receipt = requireNotNull(model.ready.sale.receipt)
+
+        assertEquals("Tienda del barrio", receipt.businessName)
+        assertEquals(Money(31_000L), receipt.total)
+        assertFalse(receipt.toString().contains("11111"))
+        model.act(this, SaleDetailAction.Share)
+
+        model.act(this, SaleDetailAction.OpenVoid)
+        model.act(this, SaleDetailAction.ConfirmVoid)
+        assertNull(model.ready.sale.receipt)
     }
 
     @Test

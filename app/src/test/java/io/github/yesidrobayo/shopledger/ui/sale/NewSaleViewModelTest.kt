@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrection
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.ui.product.COUNT_UNIT
 import io.github.yesidrobayo.shopledger.ui.product.CREATED
@@ -64,6 +65,7 @@ class NewSaleViewModelTest {
     private val today = BusinessDate(LocalDate(2026, 11, 2))
     private val catalog = MutableStateFlow(catalogOf(listOf(rice, oil, cheese, sample)))
     private val requests = mutableListOf<SaleRequest>()
+    private val corrections = mutableListOf<Long>()
     private var result: RegisterSaleResult = RegisterSaleResult.Registered(99L)
     private val savedState = SavedStateHandle()
     private val symbols = NumberSymbols(decimalSeparator = ',', minusSign = '-', grouping = null)
@@ -117,6 +119,8 @@ class NewSaleViewModelTest {
         source: () -> Flow<SaleCatalog> = { catalog },
         prefill: Long? = null,
         state: SavedStateHandle = savedState,
+        correctsSale: Long? = null,
+        correction: SaleCorrection? = null,
     ): NewSaleViewModel {
         val model = NewSaleViewModel(
             catalogSource = source,
@@ -129,6 +133,11 @@ class NewSaleViewModelTest {
             numbers = numbers,
             computation = dispatcher,
             prefillProductId = prefill,
+            prefillFromSaleId = correctsSale,
+            loadCorrection = {
+                corrections += it
+                correction
+            },
         )
         // El estado se arma mientras alguien lo mira, como en la pantalla.
         backgroundScope.launch { model.uiState.collect {} }
@@ -142,6 +151,95 @@ class NewSaleViewModelTest {
     }
 
     private val NewSaleViewModel.state: NewSaleUiState get() = uiState.value
+
+    @Test
+    fun `a correction opens with the lines, prices, method, date and note of the voided sale`() =
+        runTest(dispatcher) {
+            val past = today.plusDays(-3)
+            val correction = SaleCorrection(
+                lines = listOf(
+                    SaleLineRequest(1L, QuantityMilli(2_000L), Money(4_000L), LineDiscount.None),
+                    SaleLineRequest(
+                        2L,
+                        QuantityMilli(1_000L),
+                        Money(12_500L),
+                        LineDiscount.Amount(Money(500L)),
+                    ),
+                ),
+                paymentMethodId = 11L,
+                date = past,
+                note = "Mesa 4",
+                leftOut = 2,
+            )
+            val model = viewModel(correctsSale = 7L, correction = correction)
+
+            assertEquals(listOf(7L), corrections)
+            assertEquals(Money(20_000L), model.state.cart.total)
+            assertEquals(11L, model.state.payment.selectedId)
+            assertEquals(SaleNotice.LINES_LEFT_OUT, model.state.notice)
+            assertEquals(2, model.state.leftOut)
+            model.act(this, NewSaleAction.NoticeShown)
+            model.act(this, NewSaleAction.Register)
+
+            val request = requests.single()
+            assertEquals(correction.lines, request.lines)
+            assertEquals(11L, request.paymentMethodId)
+            assertEquals(past, request.date)
+            assertEquals("Mesa 4", request.note)
+        }
+
+    @Test
+    fun `a correction is brought once, also after the process is closed`() = runTest(dispatcher) {
+        val correction = SaleCorrection(
+            lines = listOf(SaleLineRequest(1L, QuantityMilli(1_000L), Money(4_000L))),
+            paymentMethodId = 10L,
+            date = today,
+            note = null,
+            leftOut = 0,
+        )
+        val first = viewModel(correctsSale = 7L, correction = correction)
+        first.act(this, NewSaleAction.Increment(1L))
+        assertNull(first.state.notice)
+
+        // Android cierra el proceso: la venta vuelve como estaba, sin traer la corrección otra vez.
+        val again = viewModel(
+            state = SavedStateHandle(savedState.keys().associateWith { savedState.get<Any>(it) }),
+            correctsSale = 7L,
+            correction = correction,
+        )
+
+        assertEquals(listOf(7L), corrections)
+        assertEquals(QuantityMilli(2_000L), again.state.cart.lines.single().quantity)
+    }
+
+    @Test
+    fun `a correction in cash rounds again, like any sale in cash`() = runTest(dispatcher) {
+        // El redondeo de la venta anulada no viaja: la venta nueva lo calcula con su total.
+        val bread = product(9L, "Pan", salePrice = 1_234L, onHand = 10_000L)
+        catalog.value = catalogOf(listOf(bread)).copy(cashRounding = Money(50L))
+        val correction = SaleCorrection(
+            lines = listOf(SaleLineRequest(bread.id, QuantityMilli(1_000L), Money(1_234L))),
+            paymentMethodId = 10L,
+            date = today,
+            note = null,
+            leftOut = 0,
+        )
+        val model = viewModel(correctsSale = 7L, correction = correction)
+
+        assertEquals(Money(1_250L), model.state.cart.total)
+        assertEquals(Money(16L), model.state.cart.cashRounding)
+        model.act(this, NewSaleAction.Register)
+
+        assertEquals(RegisteredSale(99L, Money(1_250L)), model.state.registered)
+    }
+
+    @Test
+    fun `a sale to correct that no longer exists opens an empty sale`() = runTest(dispatcher) {
+        val model = viewModel(correctsSale = 404L, correction = null)
+
+        assertTrue(model.state.cart.isEmpty)
+        assertNull(model.state.notice)
+    }
 
     @Test
     fun `it opens with the best sellers and nothing in the sale`() = runTest(dispatcher) {

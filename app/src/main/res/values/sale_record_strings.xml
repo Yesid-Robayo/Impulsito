@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Anular y corregir una venta, y su comprobante compartido como texto. -->
+    <string name="action_share">Share</string>
+    <string name="legal_receipt_not_invoice">This receipt is not an invoice</string>
+    <string name="share_receipt_sale_line">%1$s %2$s: %3$s</string>
+    <string name="share_receipt_total">Total: %1$s</string>
+    <string name="dialog_correct_title">Void and correct?</string>
+    <string name="dialog_correct_action">Void and correct</string>
+    <string name="dialog_correct_sale_body">This sale is voided and a new one opens with the same data. If the new one is not saved, this one stays voided anyway.</string>
+    <plurals name="notice_fix_archived_products">
+        <item quantity="one">%1$d line was left out because its product is archived.</item>
+        <item quantity="other">%1$d lines were left out because their product is archived.</item>
+    </plurals>
+</resources>

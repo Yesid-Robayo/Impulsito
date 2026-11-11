@@ -42,6 +42,8 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
@@ -50,6 +52,8 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
+import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
+import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.ProductRow
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowData
@@ -74,7 +78,10 @@ import kotlinx.datetime.YearMonth
  *   producto al venderse. Un producto hoy archivado se marca.
  * - Costo, ganancia, margen, comisiones y neto solo aquí, y se ocultan en modo discreto. El total
  *   y los pagos se ven siempre: son lo que el cliente ya conoce.
- * - `Anular venta` no compite: es una acción más al final.
+ * - `Anular y corregir` y `Anular venta` no compiten: son acciones al final. Corregir pregunta antes,
+ *   porque la venta queda anulada aunque la nueva no se guarde.
+ * - `Compartir`, en el menú, entrega el comprobante como texto al selector del sistema, solo de una
+ *   venta activa.
  *
  * Es pura: recibe el estado y avisa cada acción.
  */
@@ -86,11 +93,17 @@ fun SaleDetailScreen(
 ) {
     val notices = remember { SnackbarHostState() }
     val voidedText = stringResource(R.string.confirm_sale_voided)
+    val voidFailedText = stringResource(R.string.error_sale_void)
     val ready = uiState as? SaleDetailUiState.Ready
     LaunchedEffect(ready?.voided) {
         if (ready?.voided != true) return@LaunchedEffect
         onAction(SaleDetailAction.VoidedShown)
         notices.showSnackbar(AppSnackbarVisuals(voidedText, SnackbarVariant.SUCCESS))
+    }
+    LaunchedEffect(ready?.correctFailed) {
+        if (ready?.correctFailed != true) return@LaunchedEffect
+        onAction(SaleDetailAction.CorrectShown)
+        notices.showSnackbar(AppSnackbarVisuals(voidFailedText, SnackbarVariant.ERROR))
     }
     Surface(
         modifier.fillMaxSize(),
@@ -104,6 +117,17 @@ fun SaleDetailScreen(
                     navigation = TopBarNavigation.BACK,
                     onNavigate = { onAction(SaleDetailAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
+                    actions = {
+                        if (ready?.sale?.receipt != null) {
+                            OverflowMenu(
+                                listOf(
+                                    OverflowAction(stringResource(R.string.action_share), {
+                                        onAction(SaleDetailAction.Share)
+                                    }),
+                                ),
+                            )
+                        }
+                    },
                 )
                 Box(
                     Modifier
@@ -132,6 +156,17 @@ fun SaleDetailScreen(
         }
     }
     if (ready?.sheet != null) VoidSheetContent(ready, onAction)
+    if (ready?.correcting == true) {
+        ConfirmDialog(
+            title = stringResource(R.string.dialog_correct_title),
+            body = stringResource(R.string.dialog_correct_sale_body),
+            confirmLabel = stringResource(R.string.dialog_correct_action),
+            onConfirm = { onAction(SaleDetailAction.ConfirmCorrect) },
+            onDismiss = { onAction(SaleDetailAction.DismissCorrect) },
+            variant = ConfirmVariant.DESTRUCTIVE,
+            dismissLabel = stringResource(R.string.action_back),
+        )
+    }
 }
 
 @Composable
@@ -185,12 +220,21 @@ private fun DetailBody(sale: SaleDetailView, onAction: (SaleDetailAction) -> Uni
         }
         if (sale.canVoid) {
             item(key = ACTIONS) {
-                PrimaryActionButton(
-                    text = stringResource(R.string.dialog_void_sale_action),
-                    onClick = { onAction(SaleDetailAction.OpenVoid) },
-                    variant = ActionVariant.OUTLINED,
-                    modifier = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s16),
-                )
+                Column(
+                    Modifier.padding(horizontal = spacing.s16, vertical = spacing.s16),
+                    verticalArrangement = Arrangement.spacedBy(spacing.s12),
+                ) {
+                    PrimaryActionButton(
+                        text = stringResource(R.string.dialog_correct_action),
+                        onClick = { onAction(SaleDetailAction.OpenCorrect) },
+                        variant = ActionVariant.OUTLINED,
+                    )
+                    PrimaryActionButton(
+                        text = stringResource(R.string.dialog_void_sale_action),
+                        onClick = { onAction(SaleDetailAction.OpenVoid) },
+                        variant = ActionVariant.OUTLINED,
+                    )
+                }
             }
         }
     }

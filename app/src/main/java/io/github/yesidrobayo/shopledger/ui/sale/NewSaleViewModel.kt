@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPreview
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPricing
 import io.github.yesidrobayo.shopledger.domain.rule.sale.HeldSaleRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCart
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrection
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
@@ -77,6 +78,8 @@ internal sealed interface CatalogLoad {
  * @param holdSale pone la venta en espera, sin contar como cambio sin respaldar.
  * @param resumeHeldSale lee una venta en espera para seguirla aquí. La espera sigue guardada hasta
  *   que esta venta se confirme, en la misma transacción, o hasta que se descarte.
+ * @param prefillFromSaleId la venta anulada que esta corrige: la venta nueva abre con sus datos.
+ * @param loadCorrection lee lo que trae la corrección de una venta, o `null` si ya no existe.
  */
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class NewSaleViewModel(
@@ -95,11 +98,14 @@ class NewSaleViewModel(
     private val resumeHeldSale: suspend (Long) -> ResumeHeldSaleResult = {
         ResumeHeldSaleResult.NotFound
     },
+    private val prefillFromSaleId: Long? = null,
+    private val loadCorrection: suspend (Long) -> SaleCorrection? = { null },
 ) : ViewModel() {
     private val draft = MutableStateFlow(SaleDraftStore.read(savedState))
     private val query = MutableStateFlow("")
     private val overlay = MutableStateFlow(Overlay())
     private val attempts = MutableStateFlow(0)
+    private var correctionLoading = false
 
     private val catalog: StateFlow<CatalogLoad> = attempts
         .flatMapLatest {
@@ -664,6 +670,7 @@ class NewSaleViewModel(
 
     private fun onCatalog(catalog: SaleCatalog) {
         val current = draft.value
+        if (prefillFromSaleId != null && !current.prefilled) prefillCorrection(prefillFromSaleId)
         if (prefillProductId != null && !current.prefilled) {
             changeDraft { it.copy(prefilled = true) }
             addProduct(prefillProductId)
@@ -673,6 +680,38 @@ class NewSaleViewModel(
         changeDraft { it.copy(awaitingProductAfter = null) }
         query.value = ""
         addProduct(created.id)
+    }
+
+    /**
+     * Abre la venta con los datos de la que corrige: sus líneas con precio y descuento, el método,
+     * la fecha y la nota. Se hace una sola vez, también si Android recrea la pantalla, porque la
+     * marca queda en el estado guardado junto con lo traído. Si alguna línea quedó por fuera
+     * porque su producto está archivado, lo dice.
+     */
+    private fun prefillCorrection(saleId: Long) {
+        if (correctionLoading) return
+        correctionLoading = true
+        viewModelScope.launch {
+            val correction = loadCorrection(saleId)
+            val today = readyCatalog()?.today
+            changeDraft { current ->
+                if (correction == null) {
+                    current.copy(prefilled = true)
+                } else {
+                    current.copy(
+                        lines = correction.lines,
+                        methodId = correction.paymentMethodId,
+                        date = correction.date.takeIf { it != today },
+                        note = correction.note.orEmpty(),
+                        prefilled = true,
+                    )
+                }
+            }
+            val leftOut = correction?.leftOut ?: 0
+            if (leftOut > 0) {
+                overlay.update { it.copy(notice = SaleNotice.LINES_LEFT_OUT, leftOut = leftOut) }
+            }
+        }
     }
 
     /**
@@ -746,6 +785,7 @@ class NewSaleViewModel(
             dialog = shown.dialog,
             status = shown.status,
             notice = shown.notice,
+            leftOut = shown.leftOut,
             registered = shown.registered,
             closed = shown.closed,
             heldSaleId = current.heldSaleId,
@@ -849,6 +889,7 @@ class NewSaleViewModel(
         val dialog: SaleDialog? = null,
         val status: RegisterStatus = RegisterStatus.IDLE,
         val notice: SaleNotice? = null,
+        val leftOut: Int = 0,
         val registered: RegisteredSale? = null,
         val closed: Boolean = false,
         val heldNotice: HeldNotice? = null,

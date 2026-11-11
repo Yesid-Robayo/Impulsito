@@ -6,13 +6,16 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleReceipt
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -97,6 +100,45 @@ class SaleDetailScreenTest {
         // conoce quien compra, se ve con su cifra.
         assertTrue("Comisión y neto del pago ocultos", hidden.size >= 2)
         compose.onNodeWithText(text(R.string.checkout_sale_adjustment)).assertExists()
+    }
+
+    @Test
+    fun voidAndCorrectAsksFirstAndTheMenuShares() {
+        val receipt =
+            SaleReceipt(null, DETAIL_DATE, saleDetailView().occurredAt, emptyList(), Money(1L))
+        show(SaleDetailUiState.Ready(saleDetailView().copy(receipt = receipt), correcting = true))
+
+        compose.onNodeWithText(text(R.string.dialog_correct_sale_body)).assertIsDisplayed()
+        val buttons = compose.onAllNodesWithText(text(R.string.dialog_correct_action))
+        buttons[buttons.fetchSemanticsNodes().size - 1].performClick()
+        compose.onNodeWithText(text(R.string.action_back)).performClick()
+
+        assertTrue(SaleDetailAction.ConfirmCorrect in actions)
+        assertTrue(SaleDetailAction.DismissCorrect in actions)
+    }
+
+    @Test
+    fun theMenuSharesAnActiveSale() {
+        val receipt =
+            SaleReceipt(null, DETAIL_DATE, saleDetailView().occurredAt, emptyList(), Money(1L))
+        show(SaleDetailUiState.Ready(saleDetailView().copy(receipt = receipt)))
+
+        compose.onNodeWithContentDescription(text(R.string.a11y_more_options)).performClick()
+        compose.onNodeWithText(text(R.string.action_share)).performClick()
+        scrollTo(text(R.string.dialog_correct_action))
+        compose.onNodeWithText(text(R.string.dialog_correct_action)).performClick()
+
+        assertEquals(listOf(SaleDetailAction.Share, SaleDetailAction.OpenCorrect), actions)
+    }
+
+    @Test
+    fun aSaleWithoutReceiptHasNoMenu() {
+        show(SaleDetailUiState.Ready(saleDetailView(voided = true)))
+
+        val menus = compose.onAllNodesWithContentDescription(text(R.string.a11y_more_options))
+        assertEquals(0, menus.fetchSemanticsNodes().size)
+        val corrects = compose.onAllNodesWithText(text(R.string.dialog_correct_action))
+        assertEquals(0, corrects.fetchSemanticsNodes().size)
     }
 
     @Test
