@@ -1,10 +1,12 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.sale
 
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.sale.PaymentRejection
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 
 /**
  * Resultado de [RegisterSaleUseCase]. Cualquier rechazo deshace la transacción entera: una venta
- * rechazada no deja cabecera, líneas, filas del libro ni pago.
+ * rechazada no deja cabecera, líneas, filas del libro ni pagos.
  *
  * No existe un rechazo por falta de stock: vender nunca se bloquea por eso, y el saldo puede quedar
  * negativo.
@@ -49,11 +51,26 @@ sealed interface RegisterSaleResult {
     /** La línea número [index], contada desde cero, no se puede vender, por [reason]. */
     data class LineRejected(val index: Int, val reason: LineRejection) : RegisterSaleResult
 
-    /** El total, el costo o la reposición de la venta, o la comisión del pago, pasan del tope. */
+    /**
+     * El total, el costo o la reposición de la venta, la comisión de un pago o la suma de los
+     * pagos pasan del tope.
+     */
     data object SaleTotalTooLarge : RegisterSaleResult
 
     /** La base no pudo escribir, por [failure]. No quedó nada guardado. */
     data class StorageFailed(val failure: StorageFailure) : RegisterSaleResult
+
+    /**
+     * El pago número [index] de los que escribió la persona, contado desde cero, no se puede
+     * guardar, por [reason].
+     */
+    data class PaymentRejected(val index: Int, val reason: PaymentRejection) : RegisterSaleResult
+
+    /**
+     * Los pagos suman [paid] y la venta cobra [amountDue]: sin esa igualdad no se confirma. La
+     * pantalla muestra la diferencia para que la persona la corrija.
+     */
+    data class PaymentsDoNotMatch(val amountDue: Money, val paid: Money) : RegisterSaleResult
 }
 
 /** Por qué una línea de la venta no se puede vender. */

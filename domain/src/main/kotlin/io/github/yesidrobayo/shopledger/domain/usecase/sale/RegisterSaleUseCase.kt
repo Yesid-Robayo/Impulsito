@@ -42,6 +42,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentFees
+import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSplit
+import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSplitCheck
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleLineRules
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
@@ -61,9 +63,11 @@ import kotlin.time.Instant
  *   producto encadenan su costo.
  * - **La moneda se bloquea con la primera venta**, en su misma transacción: sin moneda confirmada
  *   no se vende, porque cada monto se guarda en su unidad menor.
- * - **Un solo pago**, que cubre todo lo que se cobra, con la comisión y la acreditación que la
- *   persona escribió en su método. Copia el nombre y el tipo del método, y su cuenta, sin mover
- *   dinero todavía.
+ * - **Un pago por método**, al menos uno, también con total cero. La venta común tiene un solo
+ *   pago que cubre todo lo que se cobra; cobrada con varios métodos, sus pagos deben sumar
+ *   exactamente lo que se cobra, o no se confirma. Cada pago lleva la comisión y la acreditación
+ *   que la persona escribió en su método, y copia el nombre y el tipo del método, y su cuenta, sin
+ *   mover dinero todavía.
  *
  * Por ahora no calcula impuesto, ni ajuste global, propina o redondeo del efectivo: la venta queda
  * con impuesto cero y esos montos en cero. Tampoco vende combos ni productos con lotes, ni a
@@ -103,16 +107,21 @@ class RegisterSaleUseCase(
         val time = recordTime(calendar, request.date, now)
             ?: return TxResult.Rollback(RegisterSaleResult.FutureDate)
 
-        val method = payments.findMethod(request.paymentMethodId)
-            ?: return TxResult.Rollback(RegisterSaleResult.PaymentMethodNotFound)
-        methodRejection(method)?.let { return TxResult.Rollback(it) }
+        val chosen = when (val result = choosePayments(request)) {
+            is Chosen.Payments -> result.payments
+            is Chosen.Rejected -> return TxResult.Rollback(result.rejection)
+        }
 
         val priced = when (val result = priceLines(request.lines)) {
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
         }
-        val payment = paymentOf(method, priced.totals.total, time.businessDate, now)
-            ?: return TxResult.Rollback(RegisterSaleResult.SaleTotalTooLarge)
+        val salePayments = when (
+            val result = settle(chosen, priced.totals.total, time.businessDate, now)
+        ) {
+            is Settled.Payments -> result.payments
+            is Settled.Rejected -> return TxResult.Rollback(result.rejection)
+        }
 
         // Justo antes de escribir: la primera venta bloquea la moneda en esta misma transacción, y
         // si la venta se deshace, el bloqueo también.
@@ -122,7 +131,7 @@ class RegisterSaleUseCase(
             CurrencyLockResult.Unconfirmed ->
                 return TxResult.Rollback(RegisterSaleResult.CurrencyNotConfirmed)
         }
-        val saleId = write(priced, payment, note, time, now)
+        val saleId = write(priced, salePayments, note, time, now)
         return TxResult.Commit(RegisterSaleResult.Registered(saleId))
     }
 
@@ -131,8 +140,14 @@ class RegisterSaleUseCase(
         request.lines.isEmpty() -> RegisterSaleResult.EmptySale
         request.lines.size > Limit.DOCUMENT_LINES.max -> RegisterSaleResult.TooManyLines
         (request.note?.length ?: 0) > MAX_NOTE_LENGTH -> RegisterSaleResult.NoteTooLong
-        else -> null
+        else -> paymentRejection(request)
     }
+
+    /** El primer pago escrito que no se puede guardar, mirado sin leer la base. */
+    private fun paymentRejection(request: SaleRequest): RegisterSaleResult? =
+        PaymentSplit.firstRejection(request.payments)?.let {
+            RegisterSaleResult.PaymentRejected(it.index, it.value)
+        }
 
     /**
      * El instante y la fecha de la venta: ahora, si la fecha es hoy o no se eligió; las 12:00 de
@@ -149,6 +164,27 @@ class RegisterSaleUseCase(
             chosen > today.businessDate -> null
             else -> calendar.stampBackdated(chosen)
         }
+    }
+
+    /**
+     * El método de cada pago, leído dentro de la transacción para congelarlo tal como está al
+     * confirmar. Sin pagos escritos, el único pago es el método de la venta, y cubre todo lo que se
+     * cobra.
+     */
+    private suspend fun choosePayments(request: SaleRequest): Chosen {
+        val requested = if (request.payments.isEmpty()) {
+            listOf(request.paymentMethodId to null)
+        } else {
+            request.payments.map { it.paymentMethodId to it.amount }
+        }
+        val chosen = ArrayList<ChosenPayment>(requested.size)
+        for ((methodId, amount) in requested) {
+            val method = payments.findMethod(methodId)
+                ?: return Chosen.Rejected(RegisterSaleResult.PaymentMethodNotFound)
+            methodRejection(method)?.let { return Chosen.Rejected(it) }
+            chosen += ChosenPayment(method, amount)
+        }
+        return Chosen.Payments(chosen)
     }
 
     private fun methodRejection(method: SalePaymentMethod): RegisterSaleResult? = when {
@@ -275,17 +311,46 @@ class RegisterSaleUseCase(
     }
 
     /**
-     * El único pago, por todo lo que se cobra, o `null` si su comisión pasa del tope. El nombre que
-     * se congela es el del método, o el de su clave en el idioma de la interfaz si nadie lo
-     * renombró, recortado al largo que admite el pago.
+     * Los pagos que se guardan, en el orden en que se escribieron, si suman exactamente
+     * [amountDue] y ninguna comisión pasa del tope.
      */
-    private fun paymentOf(
-        method: SalePaymentMethod,
+    private fun settle(
+        chosen: List<ChosenPayment>,
         amountDue: Money,
         businessDate: BusinessDate,
         now: Instant,
+    ): Settled {
+        val amounts = chosen.map { it.amount ?: amountDue }
+        when (val check = PaymentSplit.check(amountDue, amounts)) {
+            PaymentSplitCheck.Matches -> Unit
+
+            is PaymentSplitCheck.Mismatch ->
+                return Settled.Rejected(
+                    RegisterSaleResult.PaymentsDoNotMatch(amountDue, check.paid),
+                )
+
+            PaymentSplitCheck.AboveLimit ->
+                return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
+        }
+        val settled = chosen.zip(amounts) { payment, amount ->
+            paymentOf(payment.method, amount, businessDate, now)
+                ?: return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
+        }
+        return Settled.Payments(settled)
+    }
+
+    /**
+     * Un pago de [amount], o `null` si su comisión pasa del tope. El nombre que se congela es el
+     * del método, o el de su clave en el idioma de la interfaz si nadie lo renombró, recortado al
+     * largo que admite el pago.
+     */
+    private fun paymentOf(
+        method: SalePaymentMethod,
+        amount: Money,
+        businessDate: BusinessDate,
+        now: Instant,
     ): NewSalePayment? {
-        val fee = PaymentFees.feeOf(amountDue, method.feeRate, method.feeFixed)
+        val fee = PaymentFees.feeOf(amount, method.feeRate, method.feeFixed)
             .valueOr { return null }
         val name = method.name ?: methodNames.systemName(
             checkNotNull(method.systemKey) { "Un método sin nombre tiene su clave inicial" },
@@ -294,7 +359,7 @@ class RegisterSaleUseCase(
             paymentMethodId = method.id,
             methodNameSnapshot = name.take(MAX_METHOD_NAME_LENGTH),
             methodKind = method.kind,
-            amount = amountDue,
+            amount = amount,
             feeAmount = fee,
             settlementDate = PaymentFees.settlementDateOf(businessDate, method.settlementDays),
             moneyAccountId = method.moneyAccountId,
@@ -305,7 +370,7 @@ class RegisterSaleUseCase(
     /** Escribe la venta ya calculada y devuelve su id. Lo único que hace aquí es guardar. */
     private suspend fun write(
         priced: Priced.Lines,
-        payment: NewSalePayment,
+        salePayments: List<NewSalePayment>,
         note: String?,
         time: RecordTime,
         now: Instant,
@@ -363,7 +428,7 @@ class RegisterSaleUseCase(
                 )
             }
         }
-        payments.insert(saleId, payment)
+        for (payment in salePayments) payments.insert(saleId, payment)
         return saleId
     }
 
@@ -418,6 +483,21 @@ class RegisterSaleUseCase(
         class Ready(val line: PricedLine) : LineResult
 
         class Rejected(val reason: LineRejection) : LineResult
+    }
+
+    /** El método de un pago; sin [amount], el pago cubre todo lo que se cobra. */
+    private class ChosenPayment(val method: SalePaymentMethod, val amount: Money?)
+
+    private sealed interface Chosen {
+        class Payments(val payments: List<ChosenPayment>) : Chosen
+
+        class Rejected(val rejection: RegisterSaleResult) : Chosen
+    }
+
+    private sealed interface Settled {
+        class Payments(val payments: List<NewSalePayment>) : Settled
+
+        class Rejected(val rejection: RegisterSaleResult) : Settled
     }
 
     private sealed interface Priced {
