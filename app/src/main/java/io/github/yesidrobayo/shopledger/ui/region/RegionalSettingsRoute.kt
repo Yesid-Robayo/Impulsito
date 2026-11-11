@@ -16,11 +16,18 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
  * @param firstRun si es el paso del primer uso.
  * @param onBack vuelve desde la barra superior.
  * @param onConfirmed sigue al paso siguiente del primer uso, cuando la región quedó guardada.
+ * @param visit distingue cada visita al paso del primer uso: al volver a él, la región empieza sin
+ *   el guardado anterior, que si no lo daría por confirmado otra vez.
  */
 @Composable
-fun RegionalSettingsRoute(firstRun: Boolean, onBack: () -> Unit, onConfirmed: () -> Unit) {
+fun RegionalSettingsRoute(
+    firstRun: Boolean,
+    onBack: () -> Unit,
+    onConfirmed: () -> Unit,
+    visit: Int = 0,
+) {
     val model =
-        rememberAppViewModel { dependencies ->
+        rememberAppViewModel(key = "region-$visit") { dependencies ->
             val ports = dependencies.ports
             val container = dependencies.container
             val observe = ObserveRegionalSettingsUseCase(ports.settings)

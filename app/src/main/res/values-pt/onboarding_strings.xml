@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primer uso: idioma, región, bienvenida y protección. Textos de la guía de redacción. -->
+    <string name="onboarding_step_language_title">Escolher o idioma</string>
+    <!-- onboarding_welcome_title: %1$s = app -->
+    <string name="onboarding_welcome_title">Boas-vindas ao %1$s</string>
+    <string name="onboarding_protection_title">Proteger o negócio</string>
+    <string name="onboarding_encrypt_row">Criptografar as cópias</string>
+    <string name="onboarding_encrypt_optional">Opcional</string>
+    <string name="onboarding_encrypt_help">Exige guardar um código de recuperação.</string>
+    <string name="onboarding_encrypt_needs_destination">Requer escolher onde salvar.</string>
+    <string name="onboarding_restore_action">Trazer dados de outro telefone</string>
+    <string name="onboarding_restore_title">Onde estão as cópias?</string>
+    <string name="onboarding_restore_slots_help">Com a nuvem do telefone, as cópias são abertas com Buscar um arquivo.</string>
+    <string name="welcome_promise">Saber a todo momento o que há, quanto cada produto rende e quanto se ganhou no mês, com cópias na nuvem escolhida.</string>
+    <string name="welcome_point_local">Os dados ficam neste telefone</string>
+    <string name="welcome_point_backup">As cópias vão para a nuvem escolhida</string>
+    <string name="welcome_point_offline">Funciona sem internet</string>
+    <!-- permission_destination_rationale: %1$s = app -->
+    <string name="permission_destination_rationale">%1$s envia à nuvem escolhida uma cópia de todos os dados do negócio. Só mexe na sua pasta ou nos seus três arquivos: o resto fica de fora. As cópias não têm criptografia própria, salvo se for ativada: quem as protege é a conta dessa nuvem. Sem cópias, os dados estão apenas neste telefone. %1$s não tem servidores nem acesso a estas informações.</string>
+    <string name="permission_destination_no_internet">Sem internet agora. É possível começar e escolher onde salvar depois.</string>
+    <!-- permission_destination_copy_found: %1$s = date, %2$s = device, %3$s = records -->
+    <string name="permission_destination_copy_found">Há uma cópia de %1$s, de %2$s, com %3$s. Trazer esses dados?</string>
+    <string name="permission_destination_no_copies">Se existe uma cópia e ela não aparece, é possível buscar manualmente.</string>
+    <string name="permission_destination_search_error">Não foi possível verificar se há cópias. Isso não significa que não existam.</string>
+    <!-- legal_not_accounting: %1$s = app -->
+    <string name="legal_not_accounting">O %1$s registra a gestão interna do negócio. Não substitui a contabilidade oficial e não emite documentos fiscais.</string>
+    <string name="backup_limits_every_60_min">Com Wi-Fi, o normal é arriscar só os últimos minutos. Com dados móveis, até cerca de uma hora, salvo ao tocar em Fazer cópia agora. Sem internet, se o telefone for perdido, o que foi registrado desde a última cópia será perdido.</string>
+    <!-- backup_limits_slots: %1$s = provider -->
+    <string name="backup_limits_slots">Se %1$s enviar bem, o normal é arriscar até cerca de uma hora. Se falhar sem avisar e o telefone for perdido, será perdido tudo o que veio depois da última cópia realmente enviada: cerca de 7 dias ou mais. Isso só se descobre ao revisar.</string>
+    <string name="dialog_start_over_title">Começar do zero?</string>
+    <!-- dialog_start_over_body: %1$s = date -->
+    <string name="dialog_start_over_body">A cópia de %1$s continua na nuvem e não é tocada. As cópias ficam paradas até a decisão.</string>
+    <string name="dialog_start_over_action">Começar do zero</string>
+    <string name="backup_searching">Buscando cópias</string>
+</resources>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primer uso: idioma, región, bienvenida y protección. Textos de la guía de redacción. -->
+    <string name="onboarding_step_language_title">Choose a language</string>
+    <!-- onboarding_welcome_title: %1$s = app -->
+    <string name="onboarding_welcome_title">Welcome to %1$s</string>
+    <string name="onboarding_protection_title">Protect the business</string>
+    <string name="onboarding_encrypt_row">Encrypt backups</string>
+    <string name="onboarding_encrypt_optional">Optional</string>
+    <string name="onboarding_encrypt_help">Requires keeping a recovery code.</string>
+    <string name="onboarding_encrypt_needs_destination">Requires choosing where to save.</string>
+    <string name="onboarding_restore_action">Bring data from another phone</string>
+    <string name="onboarding_restore_title">Where are the backups?</string>
+    <string name="onboarding_restore_slots_help">With the cloud on the phone, backups are opened with Find a file.</string>
+    <string name="welcome_promise">Know at all times what is in stock, what each product earns and what the month earned, with backups in the cloud of your choice.</string>
+    <string name="welcome_point_local">The data lives on this phone</string>
+    <string name="welcome_point_backup">Backups go to the chosen cloud</string>
+    <string name="welcome_point_offline">Works without internet</string>
+    <!-- permission_destination_rationale: %1$s = app -->
+    <string name="permission_destination_rationale">%1$s sends a backup of all the business data to the chosen cloud. It only touches its folder or its three files: everything else stays out of reach. Backups have no encryption of their own unless it is turned on: that cloud\'s account protects them. Without backups, the data is only on this phone. %1$s has no servers and no access to this information.</string>
+    <string name="permission_destination_no_internet">No internet right now. Start and choose where to save later.</string>
+    <!-- permission_destination_copy_found: %1$s = date, %2$s = device, %3$s = records -->
+    <string name="permission_destination_copy_found">There is a backup from %1$s, from %2$s, with %3$s. Bring that data over?</string>
+    <string name="permission_destination_no_copies">If a backup exists and does not appear, it can be searched for by hand.</string>
+    <string name="permission_destination_search_error">Backups could not be checked. That does not mean they do not exist.</string>
+    <!-- legal_not_accounting: %1$s = app -->
+    <string name="legal_not_accounting">%1$s records the internal management of the business. It does not replace official accounting and does not issue tax documents.</string>
+    <string name="backup_limits_every_60_min">On Wi-Fi, usually only the last few minutes are at risk. On mobile data, up to about an hour, unless Back up now is tapped. With no internet, if the phone is lost, everything recorded since the last backup is lost.</string>
+    <!-- backup_limits_slots: %1$s = provider -->
+    <string name="backup_limits_slots">If %1$s uploads normally, up to about an hour is usually at risk. If it fails silently and the phone is lost, everything after the last backup that truly uploaded is lost: about 7 days or more. It only comes to light when checking.</string>
+    <string name="dialog_start_over_title">Start from scratch?</string>
+    <!-- dialog_start_over_body: %1$s = date -->
+    <string name="dialog_start_over_body">The backup from %1$s stays in the cloud and is not touched. Backups stay stopped until a decision is made.</string>
+    <string name="dialog_start_over_action">Start from scratch</string>
+    <string name="backup_searching">Looking for backups</string>
+</resources>

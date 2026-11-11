@@ -51,6 +51,7 @@ class MainActivity : AppCompatActivity() {
     private val shownAppearance = mutableStateOf<Appearance?>(null)
     private val shownDisplay = mutableStateOf<BusinessDisplay?>(null)
     private val dataUnavailable = mutableStateOf(false)
+    private val onboardingPending = mutableStateOf(false)
 
     /** La paleta y el modo que leyó de los ajustes, o `null` mientras la base no responde. */
     internal val appearance: State<Appearance?> get() = shownAppearance
@@ -68,11 +69,19 @@ class MainActivity : AppCompatActivity() {
                         access.ports.settings
                             .observe()
                             .map {
-                                Appearance(it.preferences.colorPalette, it.preferences.themeMode) to
-                                    BusinessDisplay.of(it)
+                                Triple(
+                                    Appearance(
+                                        it.preferences.colorPalette,
+                                        it.preferences.themeMode,
+                                    ),
+                                    BusinessDisplay.of(it),
+                                    it.onboardingCompletedAt == null,
+                                )
                             }
                             .distinctUntilChanged()
-                            .collect { (appearance, display) ->
+                            .collect { (appearance, display, pending) ->
+                                // El primer uso se decide antes de mostrar la navegación.
+                                onboardingPending.value = pending
                                 shownAppearance.value = appearance
                                 shownDisplay.value = display
                             }
@@ -97,7 +106,9 @@ class MainActivity : AppCompatActivity() {
                 if (appearance == null && !dataUnavailable.value) {
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
                 } else {
-                    ProvideBusinessFormats(shownDisplay.value) { AppNavHost() }
+                    ProvideBusinessFormats(shownDisplay.value) {
+                        AppNavHost(onboardingPending = onboardingPending.value)
+                    }
                 }
             }
         }

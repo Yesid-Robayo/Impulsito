@@ -170,6 +170,8 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
     override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant): Unit =
         error("No se usa en estas pruebas")
 
-    override suspend fun markOnboardingCompleted(completedAt: Instant): Unit =
-        error("No se usa en estas pruebas")
+    override suspend fun markOnboardingCompleted(completedAt: Instant) {
+        settings.value =
+            settings.value.copy(onboardingCompletedAt = completedAt, updatedAt = completedAt)
+    }
 }

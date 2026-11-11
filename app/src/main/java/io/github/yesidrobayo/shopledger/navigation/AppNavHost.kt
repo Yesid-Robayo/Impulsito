@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -45,6 +46,7 @@ import io.github.yesidrobayo.shopledger.ui.destination.SlotSetupRoute
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
 import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.onboarding.OnboardingRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodFormRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodsRoute
 import io.github.yesidrobayo.shopledger.ui.placeholder.EmptyContent
@@ -79,9 +81,15 @@ import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
  * sistema. Atrás en Inicio no se intercepta: lo resuelve el sistema, que cierra la app.
  */
 @Composable
-fun AppNavHost(modifier: Modifier = Modifier) {
+fun AppNavHost(modifier: Modifier = Modifier, onboardingPending: Boolean = false) {
     val backStack = rememberNavBackStack(AppNavKey.Home)
     val navigator = remember(backStack) { AppNavigator(backStack) }
+    // El primer uso se abre encima de Inicio una sola vez, y se cierra solo al terminar.
+    LaunchedEffect(onboardingPending) {
+        if (onboardingPending && backStack.none { it == AppNavKey.Onboarding }) {
+            navigator.open(AppNavKey.Onboarding)
+        }
+    }
     val density = LocalDensity.current
     val messageScope = rememberCoroutineScope()
     val messages = remember(messageScope) { AppMessages(messageScope) }
@@ -172,6 +180,8 @@ private fun entryOf(key: NavKey, navigator: AppNavigator): NavEntry<NavKey> {
 private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
     when (key) {
         AppNavKey.Home -> HomeRoute(navigator)
+
+        AppNavKey.Onboarding -> OnboardingRoute(navigator)
 
         AppNavKey.Backup -> BackupRoute(navigator)
 

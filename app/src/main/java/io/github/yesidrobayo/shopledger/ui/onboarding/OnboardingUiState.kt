@@ -1,0 +1,106 @@
+package io.github.yesidrobayo.shopledger.ui.onboarding
+
+import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
+import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
+import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
+
+/** Los cuatro pasos del primer uso, en orden. */
+enum class OnboardingStepId {
+    LANGUAGE,
+    REGION,
+    WELCOME,
+    PROTECTION,
+}
+
+/** Lo que se encontró en el servicio recién conectado, en el primer uso. */
+sealed interface FoundCopies {
+    /** Pidiendo la lista al servicio. */
+    data object Searching : FoundCopies
+
+    /** Hay copias, de la más nueva a la más vieja: se ofrece traerlas. */
+    data class Found(val copies: List<BackupCopySummary>) : FoundCopies
+
+    /** La lista falló. Nunca se trata como si no hubiera copias. */
+    data object Failed : FoundCopies
+}
+
+/**
+ * El estado del primer uso.
+ *
+ * @param step el paso visible, o nulo mientras se lee dónde retomar.
+ * @param offline sin red comprobada: se puede empezar y elegir dónde guardar después.
+ * @param slotsLabel el nombre de la nube del teléfono, para decir qué se puede perder con ella.
+ * @param bringSheet si está abierta la hoja `Traer datos de otro teléfono`.
+ * @param found lo que se encontró al conectar un servicio, o nulo.
+ * @param startOver si se pide confirmar `Empezar de cero`.
+ * @param connected si ya hay un destino conectado: el cifrado del paso 4 lo necesita.
+ * @param restore la restauración pedida desde aquí.
+ * @param zone la zona del negocio, para la fecha de las copias encontradas.
+ * @param saveFailed si no se pudo guardar el fin del primer uso.
+ * @param done terminó: la navegación lo cierra.
+ * @param regionVisit cuántas veces se entró al paso de la región: cada visita empieza de nuevo.
+ */
+data class OnboardingUiState(
+    val step: OnboardingStepId? = null,
+    val offline: Boolean = false,
+    val slotsLabel: String? = null,
+    val bringSheet: Boolean = false,
+    val found: FoundCopies? = null,
+    val startOver: Boolean = false,
+    val connected: Boolean = false,
+    val restore: RestoreUi = RestoreUi.Idle,
+    val zone: BusinessTimeZone? = null,
+    val saveFailed: Boolean = false,
+    val done: Boolean = false,
+    val regionVisit: Int = 0,
+)
+
+/** Lo que la persona hace en el primer uso. */
+sealed interface OnboardingAction {
+    /** `Continuar` en el paso del idioma. */
+    data object LanguageDone : OnboardingAction
+
+    /** La región quedó confirmada. */
+    data object RegionDone : OnboardingAction
+
+    /** Atrás: al paso anterior, sin perder lo elegido. */
+    data object Back : OnboardingAction
+
+    /** `Elegir dónde guardar`: lo resuelve la navegación, con la política antes. */
+    data object ChooseDestination : OnboardingAction
+
+    data object OpenBring : OnboardingAction
+
+    data object CloseBring : OnboardingAction
+
+    /** `Servicio con WebDAV` en la hoja: el mismo orden para conectar. */
+    data object BringWithWebDav : OnboardingAction
+
+    /** `Buscar un archivo`: lo resuelve la navegación, con el selector. */
+    data object FindFile : OnboardingAction
+
+    /** `Ahora no`: sigue sin destino. */
+    data object NotNow : OnboardingAction
+
+    data object OpenDataTransparency : OnboardingAction
+
+    /** Volvió a primer plano, quizá desde conectar un destino. */
+    data object Resumed : OnboardingAction
+
+    /** `Reintentar` la lista de copias. */
+    data object RetrySearch : OnboardingAction
+
+    /** `Empezar de cero`: pide confirmar. */
+    data object AskStartOver : OnboardingAction
+
+    data object ConfirmStartOver : OnboardingAction
+
+    data object DismissStartOver : OnboardingAction
+
+    /** `Continuar` en el paso de la protección: termina el primer uso. */
+    data object Finish : OnboardingAction
+
+    /** Una acción de la restauración, la misma que en la pantalla del respaldo. */
+    data class Restore(val action: BackupAction) : OnboardingAction
+}

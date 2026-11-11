@@ -54,6 +54,13 @@ class AppearanceDeviceTest {
     @Before
     fun rememberPreferences() {
         original = runBlocking { ports().settings.get().preferences }
+        // La prueba recorre Inicio y su barra: el primer uso, que se abre encima, ya terminó.
+        runBlocking {
+            val settings = ports().settings
+            if (settings.get().onboardingCompletedAt == null) {
+                settings.markOnboardingCompleted(app.container.clock.now())
+            }
+        }
     }
 
     @After

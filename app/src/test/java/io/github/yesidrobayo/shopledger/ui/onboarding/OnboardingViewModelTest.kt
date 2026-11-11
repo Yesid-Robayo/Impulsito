@@ -1,0 +1,287 @@
+package io.github.yesidrobayo.shopledger.ui.onboarding
+
+import androidx.lifecycle.SavedStateHandle
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
+import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
+import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
+import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
+import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
+import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
+import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.CompleteOnboardingResult
+import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.OnboardingResume
+import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
+import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
+import kotlin.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.DayOfWeek
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+/**
+ * El primer uso: los pasos en orden y hacia atrás, retomar donde quedó, `Ahora no` sin red, buscar
+ * las copias del servicio recién conectado, ofrecer restaurar o empezar de cero, y terminar.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class OnboardingViewModelTest {
+    private val dispatcher = StandardTestDispatcher()
+    private val now = Instant.parse("2026-11-07T15:00:00Z")
+
+    private val copy = BackupCopySummary(
+        key = "copia-1",
+        createdAt = now,
+        sizeBytes = 2_400_000,
+        origin = CopyOrigin.OTHER_PHONE,
+        slot = null,
+        records = 812,
+        newest = true,
+        pinned = false,
+        withDifferences = false,
+        restorable = true,
+    )
+
+    private class FakeDestination : BackupDestinationSource {
+        var info: BackupDestinationInfo? = null
+        var copies: BackupCopyList = BackupCopyList.Listed(emptyList())
+        var network = true
+        var lists = 0
+
+        override suspend fun describe() = info
+
+        override suspend fun listCopies(): BackupCopyList {
+            lists += 1
+            return copies
+        }
+
+        override suspend fun latestHandoff(): HandoffCopy? = null
+
+        override fun hasNetwork() = network
+    }
+
+    private class FakeRestore : BackupRestorePort {
+        val started = mutableListOf<String>()
+
+        override suspend fun restoreCopy(copyKey: String): RestoreProgress {
+            started += copyKey
+            return RestoreProgress.ReadyToRestart(0)
+        }
+
+        override suspend fun restoreFile(uri: String): RestoreProgress {
+            started += uri
+            return RestoreProgress.ReadyToRestart(0)
+        }
+
+        override suspend fun answer(answer: RestoreAnswer) = RestoreProgress.ReadyToRestart(0)
+
+        override suspend fun cancel() = true
+    }
+
+    private val destination = FakeDestination()
+    private val restore = FakeRestore()
+    private var resume = OnboardingResume.LANGUAGE
+    private var completeResult: CompleteOnboardingResult = CompleteOnboardingResult.Completed
+    private var completes = 0
+    private val saved = SavedStateHandle()
+
+    @Before
+    fun useTestMain() = Dispatchers.setMain(dispatcher)
+
+    @After
+    fun resetTestMain() = Dispatchers.resetMain()
+
+    private fun TestScope.model(): OnboardingViewModel {
+        val model = OnboardingViewModel(
+            resume = { resume },
+            complete = {
+                completes += 1
+                completeResult
+            },
+            destination = BackupDestinationReader(destination),
+            slotsLabel = { "Drive" },
+            calendar = MutableStateFlow(BusinessCalendar.of("Etc/GMT+5", DayOfWeek.MONDAY)),
+            restore = RestoreBackupUseCase(restore),
+            savedState = saved,
+            computation = dispatcher,
+        )
+        advanceUntilIdle()
+        return model
+    }
+
+    @Test
+    fun `the steps go forward and back without losing anything`() = runTest(dispatcher) {
+        val model = model()
+        assertEquals(OnboardingStepId.LANGUAGE, model.uiState.value.step)
+        assertEquals("Drive", model.uiState.value.slotsLabel)
+        assertEquals("Etc/GMT+5", model.uiState.value.zone?.id)
+
+        model.onAction(OnboardingAction.LanguageDone)
+        assertEquals(OnboardingStepId.REGION, model.uiState.value.step)
+        model.onAction(OnboardingAction.Back)
+        assertEquals(OnboardingStepId.LANGUAGE, model.uiState.value.step)
+        model.onAction(OnboardingAction.Back)
+        assertEquals(OnboardingStepId.LANGUAGE, model.uiState.value.step)
+
+        model.onAction(OnboardingAction.LanguageDone)
+        model.onAction(OnboardingAction.RegionDone)
+        assertEquals(OnboardingStepId.WELCOME, model.uiState.value.step)
+        model.onAction(OnboardingAction.NotNow)
+        assertEquals(OnboardingStepId.PROTECTION, model.uiState.value.step)
+        model.onAction(OnboardingAction.Back)
+        assertEquals(OnboardingStepId.WELCOME, model.uiState.value.step)
+    }
+
+    @Test
+    fun `a confirmed region resumes at the welcome and the step survives`() = runTest(dispatcher) {
+        resume = OnboardingResume.WELCOME
+        val first = model()
+        assertEquals(OnboardingStepId.WELCOME, first.uiState.value.step)
+        first.onAction(OnboardingAction.NotNow)
+
+        resume = OnboardingResume.LANGUAGE
+        val again = model()
+        assertEquals(OnboardingStepId.PROTECTION, again.uiState.value.step)
+    }
+
+    @Test
+    fun `an already completed onboarding closes at once`() = runTest(dispatcher) {
+        resume = OnboardingResume.DONE
+
+        assertTrue(model().uiState.value.done)
+    }
+
+    @Test
+    fun `not now works without internet and says it`() = runTest(dispatcher) {
+        resume = OnboardingResume.WELCOME
+        destination.network = false
+        val model = model()
+
+        assertTrue(model.uiState.value.offline)
+        model.onAction(OnboardingAction.NotNow)
+        assertEquals(OnboardingStepId.PROTECTION, model.uiState.value.step)
+    }
+
+    @Test
+    fun `a new service with copies offers to restore them`() = runTest(dispatcher) {
+        resume = OnboardingResume.WELCOME
+        val model = model()
+        destination.info = BackupDestinationInfo.WebDav("copias", "dav.example.com")
+        destination.copies = BackupCopyList.Listed(listOf(copy))
+
+        model.onAction(OnboardingAction.Resumed)
+        advanceUntilIdle()
+
+        assertEquals(FoundCopies.Found(listOf(copy)), model.uiState.value.found)
+        model.onAction(OnboardingAction.Restore(BackupAction.ConfirmCopy(copy.key)))
+        assertEquals(RestoreUi.ConfirmCopy(copy), model.uiState.value.restore)
+        model.onAction(OnboardingAction.Restore(BackupAction.StartRestore))
+        advanceUntilIdle()
+        assertEquals(listOf(copy.key), restore.started)
+        assertEquals(RestoreUi.Ready, model.uiState.value.restore)
+
+        // Volver otra vez no busca de nuevo.
+        model.onAction(OnboardingAction.Resumed)
+        advanceUntilIdle()
+        assertEquals(1, destination.lists)
+    }
+
+    @Test
+    fun `starting over is confirmed and goes on`() = runTest(dispatcher) {
+        resume = OnboardingResume.WELCOME
+        val model = model()
+        destination.info = BackupDestinationInfo.WebDav("copias", "dav.example.com")
+        destination.copies = BackupCopyList.Listed(listOf(copy))
+        model.onAction(OnboardingAction.Resumed)
+        advanceUntilIdle()
+
+        model.onAction(OnboardingAction.AskStartOver)
+        assertTrue(model.uiState.value.startOver)
+        model.onAction(OnboardingAction.ConfirmStartOver)
+
+        assertFalse(model.uiState.value.startOver)
+        assertNull(model.uiState.value.found)
+        assertEquals(OnboardingStepId.PROTECTION, model.uiState.value.step)
+    }
+
+    @Test
+    fun `a failed list is never taken as empty`() = runTest(dispatcher) {
+        resume = OnboardingResume.WELCOME
+        val model = model()
+        destination.info = BackupDestinationInfo.WebDav("copias", "dav.example.com")
+        destination.copies = BackupCopyList.Failed
+
+        model.onAction(OnboardingAction.Resumed)
+        advanceUntilIdle()
+        assertEquals(FoundCopies.Failed, model.uiState.value.found)
+        assertEquals(OnboardingStepId.WELCOME, model.uiState.value.step)
+
+        destination.copies = BackupCopyList.Listed(emptyList())
+        model.onAction(OnboardingAction.RetrySearch)
+        advanceUntilIdle()
+        assertNull(model.uiState.value.found)
+        assertEquals(OnboardingStepId.PROTECTION, model.uiState.value.step)
+    }
+
+    @Test
+    fun `the cloud on the phone has no list and goes on`() = runTest(dispatcher) {
+        resume = OnboardingResume.WELCOME
+        val model = model()
+        destination.info = BackupDestinationInfo.Slots("Drive")
+
+        model.onAction(OnboardingAction.Resumed)
+        advanceUntilIdle()
+
+        assertEquals(0, destination.lists)
+        assertEquals(OnboardingStepId.PROTECTION, model.uiState.value.step)
+        assertTrue(model.uiState.value.connected)
+    }
+
+    @Test
+    fun `finishing saves once and a failure says so`() = runTest(dispatcher) {
+        completeResult = CompleteOnboardingResult.Failed(StorageFailure.DISK_FULL)
+        val model = model()
+
+        model.onAction(OnboardingAction.Finish)
+        advanceUntilIdle()
+        assertTrue(model.uiState.value.saveFailed)
+        assertFalse(model.uiState.value.done)
+
+        completeResult = CompleteOnboardingResult.Completed
+        model.onAction(OnboardingAction.Finish)
+        advanceUntilIdle()
+        assertTrue(model.uiState.value.done)
+        assertEquals(2, completes)
+    }
+
+    @Test
+    fun `a picked file asks first`() = runTest(dispatcher) {
+        resume = OnboardingResume.WELCOME
+        val model = model()
+        model.onAction(OnboardingAction.OpenBring)
+        assertTrue(model.uiState.value.bringSheet)
+        model.onAction(OnboardingAction.FindFile)
+        assertFalse(model.uiState.value.bringSheet)
+
+        model.onAction(OnboardingAction.Restore(BackupAction.FilePicked("content://example/a")))
+
+        assertEquals(RestoreUi.ConfirmFile("content://example/a"), model.uiState.value.restore)
+    }
+}

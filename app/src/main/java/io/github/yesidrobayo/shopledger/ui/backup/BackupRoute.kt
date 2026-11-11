@@ -167,7 +167,7 @@ private fun openInProvider(context: Context, documentUri: String): Boolean = try
  * Reinicia la app con el diario de la restauración ya escrito: el arranque hace el reemplazo antes
  * de abrir la base. El proceso termina para que nada siga con la base anterior abierta.
  */
-private fun restartForRestore(context: Context) {
+internal fun restartForRestore(context: Context) {
     val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
     val component = launch.component ?: return
     context.startActivity(Intent.makeRestartActivityTask(component))
