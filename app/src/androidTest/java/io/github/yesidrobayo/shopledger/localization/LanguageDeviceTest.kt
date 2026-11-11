@@ -35,6 +35,13 @@ import org.junit.runner.RunWith
  * Las pruebas de este archivo usan su propio archivo de idioma, en una carpeta aparte, salvo las de
  * Android 13 o superior que miran el de la app, porque ahí el proceso lo actualiza solo al cambiar
  * el idioma en Android. Todas dejan el idioma de la app, el de Android y el archivo como estaban.
+ *
+ * Desde Android 13, cada cambio del idioma en Android le llega a la app como un cambio de
+ * configuración, y la app lo copia a memoria y al archivo un momento después, fuera de la prueba.
+ * Por eso cada prueba empieza y termina esperando a que todo quede quieto: Android, la memoria y el
+ * archivo dicen lo mismo, y ningún cambio de configuración llegó en el último medio segundo. Sin esa
+ * espera, la copia que deja pendiente la limpieza de una prueba cae en medio de la siguiente. Una
+ * línea de tiempo anota el orden de esos cambios y se suma al mensaje si algo falla.
  */
 @RunWith(AndroidJUnit4::class)
 class LanguageDeviceTest {
@@ -44,14 +51,18 @@ class LanguageDeviceTest {
     private val appFile = File(app.noBackupFilesDir, LanguagePreferenceFile.FILE_NAME)
     private var appFileBefore: ByteArray? = null
     private var systemBefore: LocaleList? = null
+    private var timeline: LanguageTimeline? = null
 
     @Before
     fun rememberLanguage() {
         testDirectory.deleteRecursively()
-        appFileBefore = if (appFile.isFile) appFile.readBytes() else null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            timeline = LanguageTimeline(app, appFile)
+            // Lo que dejó la prueba anterior ya llegó a la memoria y al archivo antes de empezar.
+            awaitSettled(androidLanguage())
             systemBefore = localeManager().applicationLocales
         }
+        appFileBefore = if (appFile.isFile) appFile.readBytes() else null
     }
 
     @After
@@ -61,10 +72,11 @@ class LanguageDeviceTest {
             val before = systemBefore ?: LocaleList.getEmptyLocaleList()
             if (localeManager().applicationLocales != before) {
                 localeManager().applicationLocales = before
-                // El proceso copia el idioma de Android a su archivo al cambiar la configuración:
-                // se espera a que termine antes de devolver el archivo a como estaba.
-                awaitAppFile(UiLanguage.of(if (before.isEmpty) "" else before[0].toLanguageTag()))
             }
+            // El proceso copia el idioma de Android a su memoria y a su archivo al cambiar la
+            // configuración: se espera a que termine antes de devolver el archivo a como estaba.
+            awaitSettled(languageOf(before))
+            timeline?.stop()
         } else {
             instrumentation.runOnMainSync {
                 AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
@@ -143,12 +155,21 @@ class LanguageDeviceTest {
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         val other = if (systemBefore?.toLanguageTags() == "pt") "es" else "pt"
 
+        timeline?.note("la prueba pide $other a Android")
         localeManager().applicationLocales = LocaleList.forLanguageTags(other)
 
         // Nadie más escribe el archivo: lo copia el proceso de la app al cambiar la configuración.
-        awaitAppFile(chosen(other))
-        assertEquals(LanguageRead.Found(chosen(other)), appLanguageFile().read())
-        assertEquals(chosen(other), app.container.language.language.value)
+        awaitSettled(chosen(other))
+        assertEquals(
+            "Archivo distinto. Línea de tiempo:\n$timeline",
+            LanguageRead.Found(chosen(other)),
+            appLanguageFile().read(),
+        )
+        assertEquals(
+            "Memoria distinta. Línea de tiempo:\n$timeline",
+            chosen(other),
+            app.container.language.language.value,
+        )
     }
 
     @Test
@@ -217,24 +238,45 @@ class LanguageDeviceTest {
     private fun clearAndroidLanguage() {
         if (localeManager().applicationLocales.isEmpty) return
         localeManager().applicationLocales = LocaleList.getEmptyLocaleList()
-        awaitAppFile(UiLanguage.System)
+        awaitSettled(UiLanguage.System)
+    }
+
+    private fun androidLanguage(): UiLanguage = languageOf(localeManager().applicationLocales)
+
+    private fun languageOf(locales: LocaleList): UiLanguage =
+        UiLanguage.of(if (locales.isEmpty) "" else locales[0].toLanguageTag()) ?: UiLanguage.System
+
+    /**
+     * Espera a que todo quede quieto en [expected]: Android, el idioma en memoria y el archivo de la
+     * app dicen lo mismo, y así siguen sin ningún cambio de configuración durante [QUIET_MILLIS].
+     * Un archivo ausente vale como el idioma del teléfono, como en un teléfono nuevo.
+     */
+    private fun awaitSettled(expected: UiLanguage) {
+        val deadline = SystemClock.elapsedRealtime() + WAIT_MILLIS
+        var quietSince: Long? = null
+        while (SystemClock.elapsedRealtime() < deadline) {
+            val read = appLanguageFile().read()
+            val now = SystemClock.elapsedRealtime()
+            val agreed =
+                androidLanguage() == expected &&
+                    app.container.language.language.value == expected &&
+                    (
+                        read == LanguageRead.Found(expected) ||
+                            (read == LanguageRead.Missing && expected == UiLanguage.System)
+                        )
+            val lastChange = timeline?.lastConfigurationAt ?: 0L
+            if (!agreed || now - lastChange < QUIET_MILLIS) {
+                quietSince = null
+            } else {
+                val since = quietSince ?: now.also { quietSince = it }
+                if (now - since >= QUIET_MILLIS) return
+            }
+            Thread.sleep(POLL_MILLIS)
+        }
+        throw AssertionError("El idioma no quedó quieto en ${expected.fileValue}:\n$timeline")
     }
 
     private fun localeManager(): LocaleManager = app.getSystemService(LocaleManager::class.java)
-
-    /** Espera a que el archivo de la app diga [expected], o a que un archivo ausente siga así. */
-    private fun awaitAppFile(expected: UiLanguage?) {
-        val deadline = SystemClock.elapsedRealtime() + WAIT_MILLIS
-        while (SystemClock.elapsedRealtime() < deadline) {
-            val read = appLanguageFile().read()
-            val settled =
-                (expected != null && read == LanguageRead.Found(expected)) ||
-                    (read == LanguageRead.Missing && expected == UiLanguage.System)
-            if (settled) return
-            Thread.sleep(POLL_MILLIS)
-        }
-        throw AssertionError("El archivo de idioma no llegó al idioma esperado")
-    }
 
     private fun chosen(tag: String): UiLanguage = requireNotNull(UiLanguage.of(tag))
 
@@ -262,5 +304,8 @@ class LanguageDeviceTest {
     private companion object {
         const val WAIT_MILLIS = 10_000L
         const val POLL_MILLIS = 50L
+
+        /** Cuánto debe seguir todo igual, sin cambios de configuración, para darlo por quieto. */
+        const val QUIET_MILLIS = 500L
     }
 }
