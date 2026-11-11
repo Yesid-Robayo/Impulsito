@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Textos con efecto legal y vocabulario de documentos. Textos de la guía de redacción; los revisa una persona en cada idioma antes de la primera versión. -->
+    <!-- legal_universal_notice: %1$s = app -->
+    <string name="legal_universal_notice">%1$s does not issue invoices or tax documents, is not certified by any authority and does not replace any system required by law. Each person should ask their adviser what obligations apply.</string>
+    <string name="legal_quote_not_invoice">This quote is not an invoice</string>
+    <string name="legal_order_not_invoice">This order is not an invoice</string>
+    <string name="legal_summary_not_books">Internal management summary. It is not an accounting book or a tax return.</string>
+</resources>

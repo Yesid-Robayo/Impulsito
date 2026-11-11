@@ -141,6 +141,7 @@ private fun WelcomeContent(
                     ),
                 )
                 Small(stringResource(R.string.legal_not_accounting, app))
+                Small(stringResource(R.string.legal_universal_notice, app))
                 InlineTextButton(
                     stringResource(R.string.transparency_title),
                     { onAction(OnboardingAction.OpenDataTransparency) },

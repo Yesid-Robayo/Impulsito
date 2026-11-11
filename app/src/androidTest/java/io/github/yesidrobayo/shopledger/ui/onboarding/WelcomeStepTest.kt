@@ -48,6 +48,19 @@ class WelcomeStepTest {
     }
 
     @Test
+    fun theFirstUseSaysWhatTheAppIsNotInAnyCountry() {
+        show(PREVIEW_WELCOME)
+        val app = text(R.string.app_name)
+
+        compose.onNodeWithText(resources.getString(R.string.legal_not_accounting, app))
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText(resources.getString(R.string.legal_universal_notice, app))
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun withoutInternetNotNowStillWorks() {
         show(PREVIEW_WELCOME.copy(offline = true))
 

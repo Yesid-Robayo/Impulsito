@@ -330,6 +330,13 @@ val verifyWording = tasks.register("verifyWording") {
                 "quote_doc_legend",
                 "report_doc_legend",
             )
+        // Ningún texto cita una autoridad, un documento fiscal de un país ni una ley con número: la app no afirma cumplir ninguna
+        // norma, y nombrarlas la ataría a un país. Son nombres que ningún texto neutro necesita.
+        val authority =
+            words(
+                "dian", "sat", "sunat", "afip", "arca", "sii", "sri", "seniat", "aeat", "irs", "hmrc", "receita\\s+federal", "cfdi",
+                "nfc-e", "nf-e", "dte", "decreto", "(?:ley|lei|law)\\s+(?:n[º°.]?\\s*)?\\d+",
+            )
         // Los encabezados y nombres de archivo del CSV no siguen la regla impersonal: nombran una columna, como «Vuelve al
         // stock». Los regionalismos y los documentos fiscales sí valen para ellos.
         val csvKey = Regex("""^csv_""")
@@ -381,6 +388,7 @@ val verifyWording = tasks.register("verifyWording") {
                 if (name !in fiscalDocumentKeys) {
                     reject(fiscalDocument, "la app no emite documentos fiscales, y la palabra solo va en las claves que lo niegan")
                 }
+                reject(authority, "cita una autoridad, un documento de un país o una ley, y el texto vale en cualquier país")
                 if (spanish && impersonal) {
                     reject(secondPerson, "trata de tú, vos o usted, y el español va en infinitivo o impersonal")
                     reject(imperative, "trata de tú, y una acción va en infinitivo", original)
