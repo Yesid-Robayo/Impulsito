@@ -29,6 +29,7 @@
     <string name="a11y_sale_total">Total %1$s</string>
     <string name="action_remove">Remover</string>
     <string name="action_view">Ver</string>
+    <string name="action_undo">Desfazer</string>
     <string name="action_back">Voltar</string>
     <string name="action_save">Salvar</string>
     <string name="filter_payment_method">Forma de pagamento</string>

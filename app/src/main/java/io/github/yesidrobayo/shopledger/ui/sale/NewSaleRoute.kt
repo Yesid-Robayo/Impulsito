@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProduct
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
+import io.github.yesidrobayo.shopledger.navigation.AppMessages
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -21,8 +22,7 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.TopLevelDestination
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
-import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
-import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
+import io.github.yesidrobayo.shopledger.navigation.rememberSaleUndo
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 
@@ -30,9 +30,10 @@ import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
  * La venta nueva en la navegación: arma su ViewModel con los casos de uso y resuelve adónde se va.
  *
  * Al registrar, vuelve a Inicio con `Venta registrada` y una vibración de confirmación; el mensaje
- * ofrece ver la venta. Atrás con productos pregunta antes de descartarlos. Crear un producto que la
- * búsqueda no encontró abre su formulario con lo escrito, y al volver el producto ya está en la
- * venta. Si la base va al rescate, la pantalla no lee nada.
+ * ofrece `Deshacer` durante 10 segundos, que anula la venta como siempre, sin borrar nada. Atrás
+ * con productos pregunta antes de descartarlos. Crear un producto que la búsqueda no encontró abre
+ * su formulario con lo escrito, y al volver el producto ya está en la venta. Si la base va al
+ * rescate, la pantalla no lee nada.
  */
 @Composable
 fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
@@ -110,15 +111,22 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                         rememberMoneyDisplay(it.total, formats.money).text.text,
                     )
                 }
-            val viewLabel = stringResource(R.string.action_view)
+            val undoLabel = stringResource(R.string.action_undo)
+            val undoTexts =
+                SaleUndoTexts(
+                    undone = stringResource(R.string.confirm_sale_voided),
+                    failed = stringResource(R.string.error_sale_void),
+                    retry = stringResource(R.string.action_retry),
+                )
+            val undo = rememberSaleUndo()
             LaunchedEffect(registered) {
                 if (registered == null || registeredText == null) return@LaunchedEffect
                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 viewModel.onAction(NewSaleAction.RegisteredShown)
                 // El mensaje vive en la navegación: sigue a la vista después de cerrar la venta.
-                messages.show(
-                    AppSnackbarVisuals(registeredText, SnackbarVariant.SUCCESS, viewLabel),
-                ) { navigator.open(AppNavKey.SaleDetail(registered.saleId)) }
+                messages.show(SaleUndo.registeredMessage(registeredText, undoLabel)) {
+                    undoSale(undo, messages, registered.saleId, undoTexts)
+                }
                 navigator.selectTab(TopLevelDestination.HOME)
             }
             LaunchedEffect(uiState.closed) {
@@ -141,6 +149,15 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     }
                 },
             )
+        }
+    }
+}
+
+/** Deshace [saleId] y dice cómo terminó. Si falló, `Reintentar` lo intenta otra vez. */
+private fun undoSale(undo: SaleUndo, messages: AppMessages, saleId: Long, texts: SaleUndoTexts) {
+    undo.undo(saleId) { outcome ->
+        messages.show(SaleUndo.outcomeMessage(outcome, texts)) {
+            undoSale(undo, messages, saleId, texts)
         }
     }
 }

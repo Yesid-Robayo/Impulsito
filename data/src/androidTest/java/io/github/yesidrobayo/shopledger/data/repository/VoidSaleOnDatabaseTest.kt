@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.UndoSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleUseCase
 import kotlin.time.TimeSource
@@ -102,6 +103,32 @@ internal class VoidSaleOnDatabaseTest : RepositoryTest() {
         assertEquals(QuantityMilli(10_000), after.onHand)
         assertEquals(Money(1_200), after.averageCost)
         assertEquals(Money(12_000), after.stockValue)
+        assertInvariantsHold()
+    }
+
+    @Test
+    fun anUndoPassesEveryGuardWithItsReason() = runBlocking {
+        val id = commit {
+            val id = products.insert(newProduct("Jabón inventado"))
+            ledger.append(openingRow(id, units = 10))
+            id
+        }
+        val saleId = sell(id, 4_000)
+        val before = changeSeq()
+
+        assertEquals(VoidSaleResult.Voided, UndoSaleUseCase(voidSale)(saleId))
+
+        // Deshacer es una anulación más, en una transacción: un solo cambio, guardado con su motivo.
+        assertEquals(before + 1, changeSeq())
+        val voided = requireNotNull(sales.findById(saleId))
+        assertEquals(DocumentStatus.VOIDED, voided.status)
+        assertEquals(VoidReason.UNDO, voided.voiding?.reason)
+        assertEquals(null, voided.voiding?.note)
+        assertEquals(
+            listOf(StockMovementType.SALE, StockMovementType.SALE_VOID),
+            ledger.findBySale(saleId).map { it.movement.type },
+        )
+        assertEquals(QuantityMilli(10_000), requireNotNull(products.findById(id)).onHand)
         assertInvariantsHold()
     }
 
