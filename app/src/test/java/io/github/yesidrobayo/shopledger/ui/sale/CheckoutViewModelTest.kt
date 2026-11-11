@@ -388,4 +388,76 @@ class CheckoutViewModelTest {
         assertEquals(listOf("5000", "20000"), second.state.payments.map { it.amountText })
         assertEquals(CheckoutBalance.Complete, second.state.balance)
     }
+
+    @Test
+    fun `cash is rounded to the step, and the change is what was received minus it`() = runTest {
+        catalog.value = catalog.value.copy(cashRounding = Money(50L))
+        val model = viewModel()
+        model.act(this, CheckoutAction.OpenAdjustment)
+        model.act(this, CheckoutAction.AdjustmentTextChange("30"))
+        model.act(this, CheckoutAction.ApplyAdjustment)
+
+        // 24970 en efectivo baja a 24950: el redondeo es −20, y se cobra 24950.
+        assertEquals("24970", model.state.payments.single().amountText)
+        assertEquals(Money(24_950L), model.state.payments.single().covers)
+        assertEquals(Money(-20L), model.state.summary.cashRounding)
+        assertEquals(Money(24_950L), model.state.summary.amountDue)
+        assertTrue(model.state.payments.single().isCash)
+
+        model.act(this, CheckoutAction.TenderedChange(0, "30000"))
+
+        assertEquals(Money(5_050L), model.state.payments.single().change)
+
+        model.act(this, CheckoutAction.ExactAmount(0))
+
+        assertEquals("24950", model.state.payments.single().tenderedText)
+        assertEquals(Money.ZERO, model.state.payments.single().change)
+
+        model.act(this, CheckoutAction.Register)
+
+        assertEquals(Money(24_950L), requests.single().payments.single().tenderedAmount)
+        assertEquals(RegisteredSale(99L, Money(24_950L)), model.state.registered)
+    }
+
+    @Test
+    fun `what was received below the cash payment is marked and not registered`() = runTest {
+        val model = viewModel()
+        model.act(this, CheckoutAction.TenderedChange(0, "20000"))
+
+        assertTrue(model.state.payments.single().tenderedBelow)
+
+        model.act(this, CheckoutAction.Register)
+
+        assertTrue(requests.isEmpty())
+
+        model.act(this, CheckoutAction.TenderedChange(0, ""))
+        model.act(this, CheckoutAction.Register)
+
+        assertNull(requests.single().payments.single().tenderedAmount)
+    }
+
+    @Test
+    fun `what was received that cannot be read is marked, and a card offers none`() = runTest {
+        val model = viewModel()
+        model.act(this, CheckoutAction.TenderedChange(0, "1,5"))
+        model.act(this, CheckoutAction.AddPayment(11L))
+
+        assertEquals(SaleFieldError.NOT_A_NUMBER, model.state.payments[0].tenderedError)
+        assertFalse(model.state.payments[1].isCash)
+
+        model.act(this, CheckoutAction.Register)
+
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun `what was received survives the process being closed`() = runTest {
+        val first = viewModel()
+        first.act(this, CheckoutAction.TenderedChange(0, "30000"))
+
+        val second = viewModel(draft = null)
+
+        assertEquals("30000", second.state.payments.single().tenderedText)
+        assertEquals(Money(5_000L), second.state.payments.single().change)
+    }
 }

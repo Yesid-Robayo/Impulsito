@@ -41,6 +41,7 @@ import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
+import io.github.yesidrobayo.shopledger.domain.rule.CashRounding
 import io.github.yesidrobayo.shopledger.domain.rule.LineTax
 import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
@@ -96,9 +97,16 @@ import kotlin.time.Instant
  *
  * - **Una venta retomada de la espera** sale de la espera en la misma transacción en que se
  *   confirma: si la venta se deshace, la espera sigue ahí, y nunca quedan las dos.
+ * - **El efectivo se redondea** al paso que escribió la persona, pago por pago y ya con el recargo
+ *   de su método: cada pago en efectivo se entrega aparte. Los demás métodos cobran el monto exacto.
+ *   Los pagos escritos cubren lo que se cobra antes del redondeo, y cada pago guarda su monto ya
+ *   redondeado; la suma de los redondeos es el de la venta, y lo que se cobra es el total más ese
+ *   redondeo.
+ * - **Lo recibido y el cambio** van solo en efectivo: el cambio es lo recibido menos el pago ya
+ *   redondeado, y lo recibido que no alcanza se rechaza.
  *
- * Por ahora no calcula propina ni redondeo del efectivo: esos montos quedan en cero. Tampoco
- * vende combos ni productos con lotes, ni a crédito: los rechaza con su motivo.
+ * Por ahora no calcula propina: queda en cero. Tampoco vende combos ni productos con lotes, ni a
+ * crédito: los rechaza con su motivo.
  */
 class RegisterSaleUseCase(
     private val transactions: TransactionRunner,
@@ -150,7 +158,17 @@ class RegisterSaleUseCase(
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
         }
-        val settled = when (val result = settle(chosen, priced, due, time.businessDate, now)) {
+        val step = current.regional.cashRounding
+        val settled = when (
+            val result = settle(
+                chosen,
+                priced,
+                due,
+                step,
+                time.businessDate,
+                now,
+            )
+        ) {
             is Settled.Payments -> result
             is Settled.Rejected -> return TxResult.Rollback(result.rejection)
         }
@@ -163,7 +181,7 @@ class RegisterSaleUseCase(
             CurrencyLockResult.Unconfirmed ->
                 return TxResult.Rollback(RegisterSaleResult.CurrencyNotConfirmed)
         }
-        val saleId = write(settled.priced, settled.payments, note, time, now)
+        val saleId = write(settled, note, time, now)
         request.heldSaleId?.let { held ->
             // Si ya no existe, alguien la descartó en el intermedio: la venta igual se confirma.
             requireNotNull(heldSales) { "Una venta de la espera necesita sus ventas en espera" }
@@ -214,11 +232,21 @@ class RegisterSaleUseCase(
             listOf(SalePaymentRequest(request.paymentMethodId, Money.ZERO))
         }
         val chosen = ArrayList<ChosenPayment>(requested.size)
-        for (payment in requested) {
+        for ((index, payment) in requested.withIndex()) {
             val method = payments.findMethod(payment.paymentMethodId)
                 ?: return Chosen.Rejected(RegisterSaleResult.PaymentMethodNotFound)
             methodRejection(method)?.let { return Chosen.Rejected(it) }
-            chosen += ChosenPayment(method, payment.amount.takeIf { written }, payment.feeAmount)
+            if (payment.tenderedAmount != null && method.kind != PaymentMethodKind.CASH) {
+                return Chosen.Rejected(
+                    RegisterSaleResult.PaymentRejected(index, PaymentRejection.TENDER_NOT_CASH),
+                )
+            }
+            chosen += ChosenPayment(
+                method,
+                payment.amount.takeIf { written },
+                payment.feeAmount,
+                payment.tenderedAmount,
+            )
         }
         return Chosen.Payments(chosen)
     }
@@ -400,14 +428,16 @@ class RegisterSaleUseCase(
     /**
      * Los pagos que se guardan, en el orden en que se escribieron, y las líneas con todo el ajuste:
      * el escrito, que ya trae [due], más el que suman los recargos de los métodos. Los pagos
-     * escritos deben sumar exactamente lo que se cobra en [due], antes de los recargos, y ninguna
-     * comisión puede pasar del tope. Los dos ajustes se reparten juntos sobre [priced], las líneas
-     * sin ajuste, para que el redondeo sea el de un solo reparto.
+     * escritos deben sumar exactamente lo que se cobra en [due], antes de los recargos y del
+     * redondeo, y ninguna comisión puede pasar del tope. Los dos ajustes se reparten juntos sobre
+     * [priced], las líneas sin ajuste, para que el redondeo sea el de un solo reparto. Cada pago en
+     * efectivo se redondea después a [cashStep], ya con su recargo.
      */
     private fun settle(
         chosen: List<ChosenPayment>,
         priced: Priced.Lines,
         due: Priced.Lines,
+        cashStep: Money,
         businessDate: BusinessDate,
         now: Instant,
     ): Settled {
@@ -448,11 +478,32 @@ class RegisterSaleUseCase(
         val adjustedLines = checkNotNull(adjusted(priced, due.adjustment + adjustment)) {
             "El ajuste ya se probó"
         }
-        val settled = chosen.zip(amounts) { payment, amount ->
-            paymentOf(payment.method, amount, payment.fee, businessDate, now)
+        var rounding = Money.ZERO
+        val settled = ArrayList<NewSalePayment>(chosen.size)
+        for ((index, payment) in chosen.withIndex()) {
+            val cash = payment.method.kind == PaymentMethodKind.CASH
+            val rounded = if (cash) CashRounding.amount(amounts[index], cashStep) else Money.ZERO
+            rounding += rounded
+            val amount = amounts[index] + rounded
+            val tendered = payment.tendered
+            if (tendered != null && tendered < amount) {
+                return Settled.Rejected(
+                    RegisterSaleResult.PaymentRejected(
+                        index,
+                        PaymentRejection.TENDERED_BELOW_AMOUNT,
+                    ),
+                )
+            }
+            settled += paymentOf(payment.method, amount, payment.fee, businessDate, now)
+                ?.copy(tenderedAmount = tendered, changeAmount = tendered?.let { it - amount })
                 ?: return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
         }
-        return Settled.Payments(adjustedLines, settled)
+        // Lo que se cobra: el total con los recargos, más el redondeo del efectivo.
+        val charged = adjustedLines.totals.total + rounding
+        if (!Limit.DOCUMENT_TOTAL.allows(charged.minor)) {
+            return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
+        }
+        return Settled.Payments(adjustedLines, settled, rounding, charged)
     }
 
     /**
@@ -516,12 +567,13 @@ class RegisterSaleUseCase(
 
     /** Escribe la venta ya calculada y devuelve su id. Lo único que hace aquí es guardar. */
     private suspend fun write(
-        priced: Priced.Lines,
-        salePayments: List<NewSalePayment>,
+        settled: Settled.Payments,
         note: String?,
         time: RecordTime,
         now: Instant,
     ): Long {
+        val priced = settled.priced
+        val salePayments = settled.payments
         val locationId = systemRows.findId(SystemRow.MAIN_LOCATION) ?: damaged()
         val priceListId = systemRows.findId(SystemRow.DEFAULT_PRICE_LIST) ?: damaged()
         val totals = priced.totals
@@ -534,8 +586,8 @@ class RegisterSaleUseCase(
                 totalReplacementCost = totals.replacement,
                 orderAdjustment = priced.adjustment,
                 tipAmount = Money.ZERO,
-                cashRoundingAmount = Money.ZERO,
-                amountDue = totals.total,
+                cashRoundingAmount = settled.cashRounding,
+                amountDue = settled.amountDue,
                 customerId = null,
                 priceListId = priceListId,
                 locationId = locationId,
@@ -676,9 +728,14 @@ class RegisterSaleUseCase(
 
     /**
      * El método de un pago; sin [amount], el pago cubre todo lo que se cobra, y sin [fee] la
-     * comisión es la del método.
+     * comisión es la del método. [tendered] es lo recibido en efectivo, si se escribió.
      */
-    private class ChosenPayment(val method: SalePaymentMethod, val amount: Money?, val fee: Money?)
+    private class ChosenPayment(
+        val method: SalePaymentMethod,
+        val amount: Money?,
+        val fee: Money?,
+        val tendered: Money?,
+    )
 
     private sealed interface Chosen {
         class Payments(val payments: List<ChosenPayment>) : Chosen
@@ -687,7 +744,13 @@ class RegisterSaleUseCase(
     }
 
     private sealed interface Settled {
-        class Payments(val priced: Priced.Lines, val payments: List<NewSalePayment>) : Settled
+        /** [cashRounding] es la suma de los redondeos del efectivo, y [amountDue] lo que se cobra. */
+        class Payments(
+            val priced: Priced.Lines,
+            val payments: List<NewSalePayment>,
+            val cashRounding: Money,
+            val amountDue: Money,
+        ) : Settled
 
         class Rejected(val rejection: RegisterSaleResult) : Settled
     }

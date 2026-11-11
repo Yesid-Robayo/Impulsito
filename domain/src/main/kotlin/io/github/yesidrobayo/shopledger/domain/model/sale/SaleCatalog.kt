@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.model.sale
 
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
@@ -21,6 +22,8 @@ import kotlinx.datetime.DayOfWeek
  *   archivadas, que un producto conserva. Con ellos la venta muestra el total que cobrará.
  * - [today] y [weekStartDay]: la fecha de negocio de hoy y el primer día de la semana, para elegir
  *   una fecha anterior. Faltan si el teléfono no conoce la zona del negocio.
+ * - [cashRounding]: el paso al que se redondea un pago en efectivo, en unidad menor. Cero es sin
+ *   redondeo.
  */
 data class SaleCatalog(
     val products: List<Product>,
@@ -32,4 +35,5 @@ data class SaleCatalog(
     val taxRates: Map<Long, BasisPoints>,
     val today: BusinessDate?,
     val weekStartDay: DayOfWeek?,
+    val cashRounding: Money = Money.ZERO,
 )

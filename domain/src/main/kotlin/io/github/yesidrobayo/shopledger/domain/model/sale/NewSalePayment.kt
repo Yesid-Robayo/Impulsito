@@ -15,8 +15,10 @@ import kotlin.time.Instant
  * [settlementDate] la fecha de negocio en que se acredita. [moneyAccountId] es la cuenta del
  * método, si tiene.
  *
- * Lo recibido y el cambio en efectivo, y el cobro en otra moneda, llegan con la pantalla de cobro:
- * aquí todavía no se guardan.
+ * [tenderedAmount] es lo que se recibió en efectivo y [changeAmount] el cambio que se devolvió, solo
+ * en un pago en efectivo que lo escribió, y siempre juntos: lo recibido menos el cambio es [amount].
+ * El cambio no mueve dinero aparte: el pago entra por [amount]. El cobro en otra moneda todavía no se
+ * guarda.
  */
 data class NewSalePayment(
     val paymentMethodId: Long,
@@ -27,6 +29,8 @@ data class NewSalePayment(
     val settlementDate: BusinessDate,
     val moneyAccountId: Long?,
     val createdAt: Instant,
+    val tenderedAmount: Money? = null,
+    val changeAmount: Money? = null,
 ) {
     /**
      * Lo que de verdad llega por este pago: `amount - fee_amount`. La comisión baja la ganancia

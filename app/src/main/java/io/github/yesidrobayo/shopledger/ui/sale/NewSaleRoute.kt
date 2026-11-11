@@ -12,6 +12,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveHeldSalesUseCase
@@ -65,6 +66,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     ports.taxSettings,
                     ports.taxRates,
                     container.clock,
+                    cashRounding = { ObserveCashRoundingUseCase(ports.settings)() },
                 )
             val register =
                 RegisterSaleUseCase(

@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.rule.CashRounding
 import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
 
 /**
@@ -15,7 +16,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
  *
  * [amount] es lo que la persona escribió para este pago, antes del recargo de su método: los pagos
  * escritos suman lo que se cobra antes de esos recargos. [feeAmount] es la comisión escrita en esta
- * venta, o `null` para usar la del método, con [feeRate] y [feeFixed].
+ * venta, o `null` para usar la del método, con [feeRate] y [feeFixed]. [tenderedAmount] es lo
+ * recibido en efectivo, si se escribió.
  */
 data class CheckoutPaymentInput(
     val methodId: Long,
@@ -25,11 +27,13 @@ data class CheckoutPaymentInput(
     val feeRate: BasisPoints = BasisPoints.ZERO,
     val feeFixed: Money = Money.ZERO,
     val feeAmount: Money? = null,
+    val tenderedAmount: Money? = null,
 )
 
 /**
  * Un pago con sus cuentas hechas, igual que al confirmar: [surcharge] es el recargo de su método,
- * con signo, [amount] lo que termina cubriendo con él, y [fee] su comisión.
+ * con signo, [rounding] el redondeo del efectivo, con signo, [amount] lo que termina cubriendo con
+ * los dos, y [fee] su comisión. [change] es lo recibido menos [amount], si se escribió lo recibido.
  */
 data class CheckoutPaymentPreview(
     val methodId: Long,
@@ -38,7 +42,15 @@ data class CheckoutPaymentPreview(
     val surcharge: Money,
     val amount: Money,
     val fee: Money,
+    val rounding: Money = Money.ZERO,
+    val tendered: Money? = null,
 ) {
+    /** El cambio que se devuelve, o `null` si no se escribió lo recibido. */
+    val change: Money? get() = tendered?.let { it - amount }
+
+    /** Si lo recibido no alcanza para lo que cubre el pago: no se confirma. */
+    val tenderedBelowAmount: Boolean get() = tendered != null && tendered < amount
+
     /** Lo que de verdad llega por este pago. Negativo si la comisión pasa del pago. */
     val netReceived: Money get() = amount - fee
 
@@ -74,6 +86,9 @@ sealed interface CheckoutProblem {
      * de cobrarse, baja el total más que lo que el pago cubría.
      */
     data class PaymentBelowZero(val index: Int) : CheckoutProblem
+
+    /** Lo recibido en el pago número [index] no alcanza para lo que cubre en efectivo. */
+    data class TenderedBelowAmount(val index: Int) : CheckoutProblem
 }
 
 /**
@@ -86,8 +101,9 @@ sealed interface CheckoutProblem {
  *   los recargos de los métodos.
  * - [due] es lo que deben sumar los pagos escritos: el total con el ajuste escrito, antes de los
  *   recargos. [paid] es lo que suman.
- * - [amountDue] es lo que de verdad se cobra: el total con los recargos. Con los pagos completos, es
- *   la suma de lo que cubre cada pago.
+ * - [cashRounding] es la suma de los redondeos del efectivo, con signo.
+ * - [amountDue] es lo que de verdad se cobra: el total con los recargos más el redondeo. Con los
+ *   pagos completos, es la suma de lo que cubre cada pago.
  *
  * Con un [problem], faltan las cifras que dependen de él: el cobro no se confirma hasta corregirlo.
  */
@@ -101,6 +117,7 @@ data class CheckoutPreview(
     val paid: Money,
     val payments: List<CheckoutPaymentPreview>,
     val problem: CheckoutProblem?,
+    val cashRounding: Money = Money.ZERO,
 ) {
     /** Si lo escrito cubre lo que se cobra, o `null` si no hay cómo saber cuánto se cobra. */
     val balance: CheckoutBalance?
@@ -129,7 +146,8 @@ object SaleCheckout {
     /**
      * El cobro de [lines] con [adjustment] escrito para toda la venta y [payments] en el orden en
      * que se escribieron. [pricing] da el impuesto; su recargo del método no se usa, porque cada
-     * pago trae el suyo.
+     * pago trae el suyo. Cada pago en efectivo se redondea a [cashStep], ya con su recargo, y cero
+     * es sin redondeo.
      */
     fun preview(
         lines: List<SaleLineRequest>,
@@ -137,6 +155,7 @@ object SaleCheckout {
         pricing: CartPricing,
         adjustment: Money,
         payments: List<CheckoutPaymentInput>,
+        cashStep: Money = Money.ZERO,
     ): CheckoutPreview {
         val paid = payments.fold(Money.ZERO) { sum, it -> sum + it.amount }
         val empty = CheckoutPreview(
@@ -193,7 +212,12 @@ object SaleCheckout {
         }
         val previews = ArrayList<CheckoutPaymentPreview>(payments.size)
         for ((index, payment) in payments.withIndex()) {
-            val amount = covered[index]
+            val rounding = if (payment.kind == PaymentMethodKind.CASH) {
+                CashRounding.amount(covered[index], cashStep)
+            } else {
+                Money.ZERO
+            }
+            val amount = covered[index] + rounding
             val fee = feeOf(payment, amount)
                 ?: return withDue.copy(problem = CheckoutProblem.TooLarge)
             previews += CheckoutPaymentPreview(
@@ -203,15 +227,25 @@ object SaleCheckout {
                 surcharge = PaymentSurcharges.surchargeOf(payment.amount, payment.priceAdjustment),
                 amount = amount,
                 fee = fee,
+                rounding = rounding,
+                tendered = payment.tenderedAmount,
             )
         }
-        // Lo que se cobra es el total con todos los recargos, aunque lo escrito todavía no sume:
-        // con los pagos completos, es también la suma de lo que cubre cada uno.
+        // Lo que se cobra es el total con todos los recargos y el redondeo, aunque lo escrito
+        // todavía no sume: con los pagos completos, es también la suma de lo que cubre cada uno.
+        val rounding = previews.fold(Money.ZERO) { sum, it -> sum + it.rounding }
+        val amountDue = charged.total + rounding
+        if (!Limit.DOCUMENT_TOTAL.allows(amountDue.minor)) {
+            return withDue.copy(problem = CheckoutProblem.TooLarge)
+        }
+        val short = previews.indexOfFirst { it.tenderedBelowAmount }
         return withDue.copy(
             taxTotal = charged.tax,
             total = charged.total,
-            amountDue = charged.total,
+            amountDue = amountDue,
             payments = previews,
+            cashRounding = rounding,
+            problem = if (short >= 0) CheckoutProblem.TenderedBelowAmount(short) else null,
         )
     }
 

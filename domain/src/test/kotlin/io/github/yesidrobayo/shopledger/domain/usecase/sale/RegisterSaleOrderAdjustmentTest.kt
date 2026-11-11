@@ -159,10 +159,14 @@ class RegisterSaleOrderAdjustmentTest {
     @Test
     fun theCompleteExampleWithIncludedTaxAndTwoPaymentsAddsUp() = runTest {
         // El ejemplo de la suma de pagos: 19 % incluido, 2 unidades a 1190 y 1,500 kg a 2000, un
-        // descuento de toda la venta de 100 y costo total 2500. El redondeo del efectivo todavía no
-        // se calcula, así que el efectivo paga 2279 y no 2280.
+        // descuento de toda la venta de 100, costo total 2500 y redondeo de efectivo de 5. Se
+        // escribe la parte en efectivo antes del redondeo, 2279, y se guarda 2280, con 5000
+        // recibidos y 2720 de cambio.
         world.taxRates = mapOf(1L to taxRate(1, "Rate A", 1_900))
         world.setTaxes(TaxMode.INCLUDED, defaultTaxRateId = 1)
+        world.settings.settings.value = world.settings.settings.value.let {
+            it.copy(regional = it.regional.copy(cashRounding = Money(5)))
+        }
         untracked(1, price = 1_190, unitCost = 500)
         world.addProduct(
             product(
@@ -183,7 +187,11 @@ class RegisterSaleOrderAdjustmentTest {
                 paymentMethodId = SaleWorld.CASH,
                 payments = listOf(
                     SalePaymentRequest(CARD, Money(3_001)),
-                    SalePaymentRequest(SaleWorld.CASH, Money(2_279)),
+                    SalePaymentRequest(
+                        SaleWorld.CASH,
+                        Money(2_279),
+                        tenderedAmount = Money(5_000),
+                    ),
                 ),
                 orderAdjustment = Money(-100),
             ),
@@ -200,7 +208,16 @@ class RegisterSaleOrderAdjustmentTest {
         assertEquals(Money(4_437), sale.netTotal)
         assertEquals(Money(843), sale.taxTotal)
         assertEquals(Money(2_500), sale.totalCost)
-        // La ganancia en ventas, 4437 − 2500, y la comisión de la tarjeta al 2,75 % de 3001.
+        assertEquals(Money(1), sale.cashRoundingAmount)
+        assertEquals(Money(5_281), sale.amountDue)
+        val cash = world.tables.payments.values.single {
+            it.content.methodKind == PaymentMethodKind.CASH
+        }
+        assertEquals(Money(2_280), cash.content.amount)
+        assertEquals(Money(5_000), cash.content.tenderedAmount)
+        assertEquals(Money(2_720), cash.content.changeAmount)
+        // La ganancia en ventas, 4437 − 2500, y la comisión de la tarjeta al 2,75 % de 3001. El
+        // redondeo a favor reduce el costo de cobrar: 83 − 1 = 82.
         assertEquals(Money(1_937), sale.netTotal - sale.totalCost)
         assertEquals(
             Money(83),

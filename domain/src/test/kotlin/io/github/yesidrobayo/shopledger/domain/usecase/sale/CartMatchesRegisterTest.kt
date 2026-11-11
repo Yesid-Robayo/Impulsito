@@ -94,4 +94,30 @@ class CartMatchesRegisterTest {
         compare(TaxMode.INCLUDED, card, 350L)
         compare(TaxMode.NONE, SaleWorld.CASH, 0L)
     }
+
+    @Test
+    fun `in cash with a rounding step, the cart charges what the sale registers`() = runTest {
+        for (mode in TaxMode.entries) {
+            val world = world(mode)
+            world.settings.settings.value = world.settings.settings.value.let {
+                it.copy(regional = it.regional.copy(cashRounding = Money(50L)))
+            }
+            val pricing = CartPricing(
+                taxMode = mode,
+                rates = world.taxRates.mapValues { it.value.details.rate },
+                defaultRateId = general,
+                cashMethod = true,
+                cashStep = Money(50L),
+            )
+            val preview = SaleCart.preview(lines, world.tables.products, emptySet(), pricing)
+
+            val result = world.registerSale()(SaleRequest(lines, SaleWorld.CASH))
+
+            val id = (result as RegisterSaleResult.Registered).saleId
+            val sale = world.tables.sales.getValue(id).content
+            assertEquals("cobrado con $mode", sale.amountDue, preview.amountDue)
+            assertEquals("redondeo con $mode", sale.cashRoundingAmount, preview.cashRounding)
+            assertEquals("total con $mode", sale.total, preview.total)
+        }
+    }
 }

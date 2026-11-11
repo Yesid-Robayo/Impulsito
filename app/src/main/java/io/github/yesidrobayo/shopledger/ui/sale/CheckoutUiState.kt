@@ -48,7 +48,8 @@ sealed interface CheckoutContent {
 /**
  * El bloque del total. [amountDue] es lo que se cobra y nunca se oculta. Debajo, solo las filas que
  * aplican: [subtotal], el ajuste escrito, el recargo o descuento de cada método en [methodAdjustments]
- * y [tax], que solo existe cuando el impuesto se suma al precio: así las filas suman el total.
+ * [tax], que solo existe cuando el impuesto se suma al precio, y [cashRounding], el redondeo del
+ * efectivo: así las filas suman el total.
  */
 @Immutable
 data class CheckoutSummary(
@@ -57,6 +58,7 @@ data class CheckoutSummary(
     val writtenAdjustment: Money = Money.ZERO,
     val methodAdjustments: List<MethodAdjustment> = emptyList(),
     val tax: Money? = null,
+    val cashRounding: Money = Money.ZERO,
 )
 
 /** El recargo, positivo, o el descuento, negativo, que suma pagar con [method]. */
@@ -73,6 +75,8 @@ data class MethodAdjustment(val method: SaleMethod, val amount: Money)
  *   comisión calculada si no escribió nada. [net] es lo que de verdad llega.
  * - [settlesOn] es la fecha en que se acredita, si tarda.
  * - [gone] si el método se archivó mientras tanto: el pago no se puede guardar así.
+ * - [isCash] si el método es de efectivo: entonces ofrece lo recibido, en [tenderedText], y el
+ *   [change]. Con [tenderedBelow], lo recibido no alcanza para lo que cubre el pago redondeado.
  */
 @Immutable
 data class CheckoutPaymentRow(
@@ -87,6 +91,11 @@ data class CheckoutPaymentRow(
     val net: Money? = null,
     val settlesOn: BusinessDate? = null,
     val gone: Boolean = false,
+    val isCash: Boolean = false,
+    val tenderedText: String = "",
+    val tenderedError: SaleFieldError? = null,
+    val change: Money? = null,
+    val tenderedBelow: Boolean = false,
 )
 
 /** La hoja abierta sobre el cobro. */

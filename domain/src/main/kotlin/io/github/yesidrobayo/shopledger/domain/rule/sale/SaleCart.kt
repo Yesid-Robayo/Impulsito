@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.rule.CashRounding
 import io.github.yesidrobayo.shopledger.domain.rule.LineTax
 import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
 
@@ -59,28 +60,35 @@ data class CartLinePreview(
  *
  * [tax] y [total] faltan si alguna línea tiene un problema o si la venta pasa del tope de un
  * documento: un total así es un error de digitación, y la venta no se confirma hasta corregirlo.
+ * [cashRounding] es el redondeo del efectivo, con signo, si se cobra en efectivo, y [amountDue] lo
+ * que se cobra: el total más ese redondeo.
  */
 data class CartPreview(
     val lines: List<CartLinePreview>,
     val itemCount: Long,
     val tax: Money?,
     val total: Money?,
+    val cashRounding: Money = Money.ZERO,
+    val amountDue: Money? = total,
 ) {
     /** Si la venta tiene algo que confirmar y ninguna línea lo impide. */
-    val canRegister: Boolean get() = lines.isNotEmpty() && total != null
+    val canRegister: Boolean get() = lines.isNotEmpty() && amountDue != null
 }
 
 /**
  * Con qué se cobra la venta en edición: el modo de impuesto del negocio, la tasa de cada producto,
  * o la por defecto si no tiene, y el recargo o descuento del método elegido.
  *
- * [rates] son las tasas por id. Sin impuesto en el negocio, ninguna línea lleva impuesto.
+ * [rates] son las tasas por id. Sin impuesto en el negocio, ninguna línea lleva impuesto. Con
+ * [cashMethod], el método elegido es de efectivo, y lo que se cobra se redondea a [cashStep].
  */
 data class CartPricing(
     val taxMode: TaxMode = TaxMode.NONE,
     val rates: Map<Long, BasisPoints> = emptyMap(),
     val defaultRateId: Long? = null,
     val methodAdjustment: BasisPoints = BasisPoints.ZERO,
+    val cashMethod: Boolean = false,
+    val cashStep: Money = Money.ZERO,
 ) {
     /** La tasa con que paga impuesto [product]: la suya, la por defecto o ninguna. */
     fun rateOf(product: Product): BasisPoints {
@@ -175,7 +183,8 @@ object SaleCart {
      * - cada línea cobra su bruto menos su descuento, y sobre eso se separa o se suma su impuesto,
      *   línea por línea, con [pricing];
      * - el recargo o descuento del método elegido se calcula sobre lo que se cobra antes de él, se
-     *   reparte entre las líneas en proporción y paga impuesto en cada una.
+     *   reparte entre las líneas en proporción y paga impuesto en cada una;
+     * - en efectivo, lo que se cobra se redondea al paso del negocio, ya con el recargo.
      *
      * Cuenta los productos como los ve la persona: cada unidad entera de una línea que se cuenta, y
      * una sola vez la línea de un producto por peso o medida, que es un producto aunque lleve 1,250
@@ -214,7 +223,14 @@ object SaleCart {
                 issue = base.issue,
             )
         }
-        return CartPreview(previews, itemCount, charged?.tax, charged?.total)
+        val total = charged?.total
+        val rounding = if (pricing.cashMethod && total != null) {
+            CashRounding.amount(total, pricing.cashStep)
+        } else {
+            Money.ZERO
+        }
+        val amountDue = total?.plus(rounding)?.takeIf { Limit.DOCUMENT_TOTAL.allows(it.minor) }
+        return CartPreview(previews, itemCount, charged?.tax, total, rounding, amountDue)
     }
 
     /**

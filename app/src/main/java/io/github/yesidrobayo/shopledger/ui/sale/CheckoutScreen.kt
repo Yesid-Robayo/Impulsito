@@ -39,6 +39,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.CashTenderRow
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
@@ -234,6 +235,9 @@ private fun TotalBlock(summary: CheckoutSummary) {
                 HeroRow(label, adjustment.amount)
             }
             summary.tax?.let { HeroRow(stringResource(R.string.term_tax), it) }
+            if (summary.cashRounding != Money.ZERO) {
+                HeroRow(stringResource(R.string.checkout_cash_rounding), summary.cashRounding)
+            }
         }
     }
 }
@@ -312,7 +316,7 @@ private fun Payments(uiState: CheckoutUiState, onAction: (CheckoutAction) -> Uni
     val missing = when (val current = uiState.balance) {
         is CheckoutBalance.Missing -> current.amount
         is CheckoutBalance.Excess -> current.amount
-        else -> null
+        CheckoutBalance.Complete, null -> null
     }
     PaymentSplitEditor(
         balance = balance,
@@ -395,6 +399,20 @@ private fun PaymentRow(
             stringResource(R.string.checkout_settles_on, formats.date.longDate(it))
         },
         rowError = if (row.gone) stringResource(R.string.checkout_error_method_gone) else null,
+        extra = {
+            if (row.isCash) {
+                CashTenderRow(
+                    tenderedText = row.tenderedText,
+                    onTenderedChange = { onAction(CheckoutAction.TenderedChange(index, it)) },
+                    change = row.change?.takeIf { !row.tenderedBelow },
+                    onExactAmount = { onAction(CheckoutAction.ExactAmount(index)) },
+                    error = when {
+                        row.tenderedBelow -> stringResource(R.string.checkout_error_tendered)
+                        else -> fieldErrorText(row.tenderedError)
+                    },
+                )
+            }
+        },
     )
 }
 
@@ -593,6 +611,9 @@ private fun fieldErrorText(error: SaleFieldError?): String? = when (error) {
 @Composable
 private fun problemText(problem: CheckoutProblem?): String? = when (problem) {
     null -> null
+
+    // Lo recibido que no alcanza se dice en su pago, no arriba.
+    is CheckoutProblem.TenderedBelowAmount -> null
 
     CheckoutProblem.DiscountAboveSale -> stringResource(R.string.checkout_error_discount)
 

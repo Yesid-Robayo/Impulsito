@@ -308,6 +308,54 @@ private fun FeeField(fee: PaymentFeeState) {
     }
 }
 
+/**
+ * Lo recibido en un pago en efectivo, junto al cambio que se devuelve, con el acceso `Monto exacto`.
+ * El cambio es solo una ayuda: sin lo recibido no se muestra, y no impide registrar. Lo recibido que
+ * no alcanza se dice en el campo, con [error].
+ *
+ * @param change el cambio, o `null` si no se escribió lo recibido o no alcanza.
+ */
+@Composable
+fun CashTenderRow(
+    tenderedText: String,
+    onTenderedChange: (String) -> Unit,
+    change: Money?,
+    onExactAmount: () -> Unit,
+    modifier: Modifier = Modifier,
+    error: String? = null,
+) {
+    val spacing = AppTheme.spacing
+    Column(modifier.fillMaxWidth().padding(top = spacing.s8)) {
+        AdaptiveFieldRow(
+            firstLabel = stringResource(R.string.checkout_tendered),
+            secondLabel = stringResource(R.string.checkout_change),
+            first = { fieldModifier ->
+                MoneyField(
+                    value = tenderedText,
+                    onValueChange = onTenderedChange,
+                    label = stringResource(R.string.checkout_tendered),
+                    error = error,
+                    modifier = fieldModifier,
+                )
+            },
+            second = { valueModifier ->
+                Column(valueModifier, horizontalAlignment = Alignment.End) {
+                    Text(
+                        stringResource(R.string.checkout_change),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    MoneyText(change, MoneySize.ROW)
+                }
+            },
+        )
+        InlineTextButton(
+            text = stringResource(R.string.checkout_exact_amount_action),
+            onClick = onExactAmount,
+        )
+    }
+}
+
 /** Una fila de libreta: etiqueta a la izquierda y monto a la derecha. */
 @Composable
 private fun LabeledAmount(label: String, amount: Money?, sensitive: Boolean) {

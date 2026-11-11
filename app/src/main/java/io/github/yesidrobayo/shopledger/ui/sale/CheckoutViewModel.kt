@@ -122,6 +122,10 @@ class CheckoutViewModel(
 
             is CheckoutAction.FeeChange -> fee(action.index, action.text)
 
+            is CheckoutAction.TenderedChange -> tendered(action.index, action.text)
+
+            is CheckoutAction.ExactAmount -> exactAmount(action.index)
+
             is CheckoutAction.RemovePayment -> removePayment(action.index)
 
             CheckoutAction.OpenAddPayment -> overlay.update {
@@ -188,8 +192,13 @@ class CheckoutViewModel(
         val updated = written.copy(amountText = text, amountError = null)
         when (val read = readMoney(text)) {
             NumberInput.Blank -> updated.copy(amount = Money.ZERO)
+
             is NumberInput.Value -> updated.copy(amount = read.value)
-            else -> updated.copy(amountError = errorOf(read))
+
+            NumberInput.Malformed,
+            is NumberInput.TooManyDecimals,
+            is NumberInput.TooLarge,
+            -> updated.copy(amountError = errorOf(read))
         }
     }
 
@@ -201,7 +210,33 @@ class CheckoutViewModel(
 
             is NumberInput.Value -> updated.copy(fee = read.value)
 
-            else -> updated.copy(feeError = errorOf(read))
+            NumberInput.Malformed,
+            is NumberInput.TooManyDecimals,
+            is NumberInput.TooLarge,
+            -> updated.copy(feeError = errorOf(read))
+        }
+    }
+
+    private fun tendered(index: Int, text: String) = changePayment(index) { written ->
+        val updated = written.copy(tenderedText = text, tenderedError = null)
+        when (val read = readMoney(text)) {
+            // Sin lo recibido no hay cambio: es solo una ayuda, y no impide registrar.
+            NumberInput.Blank -> updated.copy(tendered = null)
+
+            is NumberInput.Value -> updated.copy(tendered = read.value)
+
+            else -> updated.copy(tenderedError = errorOf(read))
+        }
+    }
+
+    /** `Monto exacto`: lo recibido es justo lo que cubre el pago, ya redondeado, y no hay cambio. */
+    private fun exactAmount(index: Int) {
+        val catalog = readyCatalog() ?: return
+        val current = sale ?: return
+        val amount = previewOf(catalog, current, editing.value).payments.getOrNull(index)?.amount
+            ?: return
+        changePayment(index) {
+            it.copy(tendered = amount, tenderedText = moneyText(amount), tenderedError = null)
         }
     }
 
@@ -265,7 +300,9 @@ class CheckoutViewModel(
                 active = index,
             )
         }
-        if (after.amount != before.amount || after.fee != before.fee) clearBalanceError()
+        val changed = after.amount != before.amount || after.fee != before.fee ||
+            after.tendered != before.tendered
+        if (changed) clearBalanceError()
     }
 
     // ------------------------------------------------------------------ ajuste de la venta
@@ -306,8 +343,13 @@ class CheckoutViewModel(
         val amount: Money = when (editor.input) {
             AdjustmentInput.AMOUNT -> when (val read = readMoney(editor.text)) {
                 NumberInput.Blank -> Money.ZERO
+
                 is NumberInput.Value -> read.value
-                else -> return adjustmentError(read)
+
+                NumberInput.Malformed,
+                is NumberInput.TooManyDecimals,
+                is NumberInput.TooLarge,
+                -> return adjustmentError(read)
             }
 
             AdjustmentInput.PERCENT -> when (
@@ -325,10 +367,15 @@ class CheckoutViewModel(
                     )
                 ) {
                     is Checked.Value -> share.value
-                    else -> return setAdjustmentError(AdjustmentError.TOO_HIGH)
+
+                    Checked.Overflow, is Checked.AboveLimit ->
+                        return setAdjustmentError(AdjustmentError.TOO_HIGH)
                 }
 
-                else -> return adjustmentError(read)
+                NumberInput.Malformed,
+                is NumberInput.TooManyDecimals,
+                is NumberInput.TooLarge,
+                -> return adjustmentError(read)
             }
         }
         val signed = when (editor.kind) {
@@ -367,9 +414,14 @@ class CheckoutViewModel(
     }
 
     private fun adjustmentError(read: NumberInput<*>) = setAdjustmentError(
-        when (read) {
-            is NumberInput.TooLarge -> AdjustmentError.TOO_HIGH
-            else -> AdjustmentError.NOT_A_NUMBER
+        when (errorOf(read)) {
+            SaleFieldError.TOO_HIGH -> AdjustmentError.TOO_HIGH
+
+            SaleFieldError.NOT_A_NUMBER,
+            SaleFieldError.FRACTION_NOT_ALLOWED,
+            SaleFieldError.ZERO_QUANTITY,
+            SaleFieldError.DISCOUNT_OVER_LINE,
+            -> AdjustmentError.NOT_A_NUMBER
         },
     )
 
@@ -399,7 +451,7 @@ class CheckoutViewModel(
         val current = sale ?: return
         val written = editing.value
         if (written.payments.any { row -> catalog.methods.none { it.id == row.methodId } }) return
-        if (written.payments.any { it.amountError != null || it.feeError != null }) return
+        if (written.payments.any { it.hasError }) return
         val preview = previewOf(catalog, current, written)
         if (preview.problem != null) return
         if (preview.balance != CheckoutBalance.Complete) {
@@ -419,7 +471,7 @@ class CheckoutViewModel(
                 date = current.date,
                 note = current.note.takeIf { it.isNotBlank() },
                 payments = written.payments.map {
-                    SalePaymentRequest(it.methodId, it.amount, it.fee)
+                    SalePaymentRequest(it.methodId, it.amount, it.fee, it.tendered)
                 },
                 orderAdjustment = written.adjustment,
                 // Una venta retomada de la espera sale de ella al confirmarse, también desde aquí.
@@ -496,6 +548,11 @@ class CheckoutViewModel(
                     null
                 },
                 gone = record == null,
+                isCash = details?.kind == PaymentMethodKind.CASH,
+                tenderedText = row.tenderedText,
+                tenderedError = row.tenderedError,
+                change = computed?.change,
+                tenderedBelow = computed?.tenderedBelowAmount ?: false,
             )
         }
         val used = written.payments.map { it.methodId }.toSet()
@@ -509,6 +566,7 @@ class CheckoutViewModel(
                 }?.let { MethodAdjustment(rows[index].method, it) }
             },
             tax = preview.taxTotal?.takeIf { catalog.taxes.mode == TaxMode.ADDED },
+            cashRounding = preview.cashRounding,
         )
         val qr = shown.qrIndex?.let { index ->
             val row = written.payments.getOrNull(index) ?: return@let null
@@ -561,6 +619,7 @@ class CheckoutViewModel(
                 feeRate = details?.feeRate ?: BasisPoints.ZERO,
                 feeFixed = details?.feeFixed ?: Money.ZERO,
                 feeAmount = row.fee,
+                tenderedAmount = row.tendered.takeIf { details?.kind == PaymentMethodKind.CASH },
             )
         }
         return SaleCheckout.preview(
@@ -569,6 +628,7 @@ class CheckoutViewModel(
             pricing,
             written.adjustment,
             inputs,
+            cashStep = catalog.cashRounding,
         )
     }
 
@@ -587,7 +647,7 @@ class CheckoutViewModel(
         save(editing.value)
     }
 
-    /** Guarda lo escrito: cuatro números por pago y el ajuste. Los textos se rearman al volver. */
+    /** Guarda lo escrito: seis números por pago y el ajuste. Los textos se rearman al volver. */
     private fun save(written: Editing) {
         val values = LongArray(written.payments.size * FIELDS)
         written.payments.forEachIndexed { index, row ->
@@ -596,6 +656,8 @@ class CheckoutViewModel(
             values[base + 1] = row.amount.minor
             values[base + 2] = if (row.fee == null) 0L else 1L
             values[base + 3] = row.fee?.minor ?: 0L
+            values[base + 4] = if (row.tendered == null) 0L else 1L
+            values[base + 5] = row.tendered?.minor ?: 0L
         }
         savedState[PAYMENTS] = values
         savedState[ADJUSTMENT] = written.adjustment.minor
@@ -608,12 +670,15 @@ class CheckoutViewModel(
             val base = index * FIELDS
             val amount = Money(values[base + 1])
             val fee = if (values[base + 2] == 1L) Money(values[base + 3]) else null
+            val tendered = if (values[base + 4] == 1L) Money(values[base + 5]) else null
             Written(
                 values[base],
                 amount,
                 moneyText(amount),
                 fee = fee,
                 feeText = fee?.let(::moneyText),
+                tendered = tendered,
+                tenderedText = tendered?.let(::moneyText).orEmpty(),
             )
         }
         return Editing(
@@ -640,9 +705,18 @@ class CheckoutViewModel(
         }
     }
 
+    /**
+     * El error de un campo que no se leyó. Un valor leído o un campo vacío no son errores: quien
+     * llama ya los resolvió, y aquí se dicen como texto ilegible solo para nombrar cada caso.
+     */
     private fun errorOf(read: NumberInput<*>): SaleFieldError = when (read) {
         is NumberInput.TooLarge -> SaleFieldError.TOO_HIGH
-        else -> SaleFieldError.NOT_A_NUMBER
+
+        NumberInput.Malformed,
+        is NumberInput.TooManyDecimals,
+        is NumberInput.Value,
+        NumberInput.Blank,
+        -> SaleFieldError.NOT_A_NUMBER
     }
 
     private fun moneyText(amount: Money): String =
@@ -657,7 +731,14 @@ class CheckoutViewModel(
         val fee: Money? = null,
         val feeText: String? = null,
         val feeError: SaleFieldError? = null,
-    )
+        val tendered: Money? = null,
+        val tenderedText: String = "",
+        val tenderedError: SaleFieldError? = null,
+    ) {
+        /** Si algún campo del pago no se pudo leer: el cobro no se registra así. */
+        val hasError: Boolean
+            get() = amountError != null || feeError != null || tenderedError != null
+    }
 
     /**
      * Lo escrito en el cobro: los pagos, el ajuste y el pago activo, el último tocado, que es el que
@@ -686,7 +767,7 @@ class CheckoutViewModel(
         const val QR_ONLY = "checkout.qrOnly"
         const val PAYMENTS = "checkout.payments"
         const val ADJUSTMENT = "checkout.adjustment"
-        const val FIELDS = 4
+        const val FIELDS = 6
 
         /** Lo que sigue viva la lectura al rotar la pantalla, para no releer el catálogo. */
         const val STOP_TIMEOUT_MILLIS = 5_000L

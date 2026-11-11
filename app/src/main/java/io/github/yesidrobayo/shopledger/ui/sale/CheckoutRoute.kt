@@ -10,6 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.FindPaymentImagesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
@@ -58,6 +59,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     ports.taxSettings,
                     ports.taxRates,
                     container.clock,
+                    cashRounding = { ObserveCashRoundingUseCase(ports.settings)() },
                 )
             val register =
                 RegisterSaleUseCase(

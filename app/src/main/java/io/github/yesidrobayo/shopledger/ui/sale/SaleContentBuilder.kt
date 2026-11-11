@@ -74,7 +74,9 @@ internal object SaleContentBuilder {
             itemCount = preview.itemCount,
             // Sin impuesto en el negocio no hay línea de impuesto que mostrar.
             tax = preview.tax.takeIf { catalog.taxes.mode != TaxMode.NONE },
-            total = preview.total,
+            // Lo que se cobra: con el método en efectivo, ya redondeado.
+            total = preview.amountDue,
+            cashRounding = preview.cashRounding,
             date = draft.date,
             today = catalog.today,
             weekStartDay = catalog.weekStartDay,

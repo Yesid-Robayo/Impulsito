@@ -13,9 +13,15 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  * [feeAmount] es la comisión que la persona escribió en la venta, por ejemplo la que de verdad le
  * cobraron, de cero al tope de un documento. Sin ella vale la comisión de su método, calculada con
  * lo que cubre el pago. Un pago de cero no paga comisión.
+ *
+ * [tenderedAmount] es lo que se recibió en efectivo, de cero al tope de un documento, solo en un
+ * método de efectivo. El cambio es lo recibido menos lo que cubre el pago ya redondeado, y no puede
+ * ser negativo: con menos de lo que se cobra, la venta no se confirma. Sin lo recibido no hay
+ * cambio: es solo una ayuda.
  */
 data class SalePaymentRequest(
     val paymentMethodId: Long,
     val amount: Money,
     val feeAmount: Money? = null,
+    val tenderedAmount: Money? = null,
 )

@@ -333,4 +333,56 @@ class SaleCartTest {
 
         assertEquals(listOf(line(1L), SaleLineRequest(2L, one, unitPrice = Money(5L))), updated)
     }
+
+    @Test
+    fun `in cash, what is charged is rounded to the step and the card is not`() {
+        val products = mapOf(1L to product(1L, salePrice = 1_234L))
+        val lines = listOf(line(1L))
+        val cash = SaleCart.preview(
+            lines,
+            products,
+            emptySet(),
+            CartPricing(cashMethod = true, cashStep = Money(50L)),
+        )
+        val card = SaleCart.preview(lines, products, emptySet(), CartPricing(cashStep = Money(50L)))
+
+        assertEquals(Money(1_234L), cash.total)
+        assertEquals(Money(16L), cash.cashRounding)
+        assertEquals(Money(1_250L), cash.amountDue)
+        assertEquals(Money(1_234L), card.amountDue)
+        assertEquals(Money.ZERO, card.cashRounding)
+    }
+
+    @Test
+    fun `a rounding past the document limit leaves nothing to charge`() {
+        val products = mapOf(
+            1L to product(1L, salePrice = 1_000_000_000_000L),
+            2L to product(2L, salePrice = 999_999_999_999L),
+        )
+        val preview = SaleCart.preview(
+            listOf(line(1L, QuantityMilli.ofUnits(999L)), line(2L)),
+            products,
+            emptySet(),
+            CartPricing(cashMethod = true, cashStep = Money(600_000_000_000L)),
+        )
+
+        assertEquals(Money(999_999_999_999_999L), preview.total)
+        assertNull(preview.amountDue)
+        assertFalse(preview.canRegister)
+    }
+
+    @Test
+    fun `in cash, a sale that cannot be charged has no rounding and nothing to charge`() {
+        // El producto ya no está: la línea tiene un problema y no hay total que redondear.
+        val preview = SaleCart.preview(
+            listOf(line(1L)),
+            emptyMap(),
+            emptySet(),
+            CartPricing(cashMethod = true, cashStep = Money(50L)),
+        )
+
+        assertNull(preview.total)
+        assertNull(preview.amountDue)
+        assertEquals(Money.ZERO, preview.cashRounding)
+    }
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checkout_cash_rounding">Cash rounding</string>
+    <string name="checkout_tendered">Received</string>
+    <string name="checkout_change">Change</string>
+    <string name="checkout_exact_amount_action">Exact amount</string>
+    <string name="checkout_error_tendered">The amount received does not cover this cash part</string>
+</resources>

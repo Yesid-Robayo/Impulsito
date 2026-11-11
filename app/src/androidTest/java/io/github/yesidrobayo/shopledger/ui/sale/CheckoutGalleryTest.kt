@@ -16,6 +16,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
@@ -154,6 +155,17 @@ class CheckoutGalleryTest {
                 ) + split,
             ),
             Scene("addpayment", actions = listOf(CheckoutAction.OpenAddPayment)),
+            // Efectivo con paso de 50: 38410 se cobra 38400, y 50000 recibidos dan 11600 de cambio.
+            Scene(
+                "cash",
+                catalog = checkoutCatalog().copy(cashRounding = Money(50L)),
+                actions = listOf(CheckoutAction.TenderedChange(0, "50000")),
+            ),
+            Scene(
+                "short",
+                catalog = checkoutCatalog().copy(cashRounding = Money(50L)),
+                actions = listOf(CheckoutAction.TenderedChange(0, "30000")),
+            ),
             Scene("qr", methodId = 3L, qrOnly = true),
             Scene(
                 "failed",

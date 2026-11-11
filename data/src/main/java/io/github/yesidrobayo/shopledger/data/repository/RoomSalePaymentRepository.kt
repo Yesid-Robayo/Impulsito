@@ -49,8 +49,8 @@ internal class RoomSalePaymentRepository(database: AppDatabase) : SalePaymentRep
                     feeAmount = payment.feeAmount.minor,
                     settlementDate = payment.settlementDate.toStored(),
                     moneyAccountId = payment.moneyAccountId,
-                    tenderedAmount = null,
-                    changeAmount = null,
+                    tenderedAmount = payment.tenderedAmount?.minor,
+                    changeAmount = payment.changeAmount?.minor,
                     tenderCurrencyCode = null,
                     tenderCurrencyDecimals = null,
                     tenderAmount = null,
@@ -85,6 +85,8 @@ internal class RoomSalePaymentRepository(database: AppDatabase) : SalePaymentRep
             settlementDate = storedDate(row.settlementDate),
             moneyAccountId = row.moneyAccountId,
             createdAt = row.createdAt.toInstant(),
+            tenderedAmount = row.tenderedAmount?.let(::Money),
+            changeAmount = row.changeAmount?.let(::Money),
         ),
     )
 

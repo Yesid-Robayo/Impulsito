@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checkout_cash_rounding">Arredondamento em dinheiro</string>
+    <string name="checkout_tendered">Recebido</string>
+    <string name="checkout_change">Troco</string>
+    <string name="checkout_exact_amount_action">Valor exato</string>
+    <string name="checkout_error_tendered">O valor recebido não cobre esta parte em dinheiro</string>
+</resources>

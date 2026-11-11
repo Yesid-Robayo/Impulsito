@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
@@ -515,6 +516,8 @@ class NewSaleViewModel(
             overlay.update { it.copy(dialog = SaleDialog.ZeroTotal) }
             return
         }
+        // Lo que se cobra, con el redondeo del efectivo: es lo que dice el mensaje al registrar.
+        val charged = preview.amountDue ?: total
         val methodId = selectedMethodId(catalog, current)
         if (methodId == null) {
             overlay.update { it.copy(dialog = null, status = RegisterStatus.FAILED) }
@@ -533,7 +536,7 @@ class NewSaleViewModel(
                 is RegisterSaleResult.Registered -> {
                     changeDraft { SaleDraft(prefilled = true) }
                     overlay.update {
-                        Overlay(registered = RegisteredSale(result.saleId, total))
+                        Overlay(registered = RegisteredSale(result.saleId, charged))
                     }
                 }
 
@@ -777,6 +780,8 @@ class NewSaleViewModel(
             rates = catalog.taxRates,
             defaultRateId = catalog.taxes.defaultTaxRateId,
             methodAdjustment = method?.details?.priceAdjustment ?: BasisPoints.ZERO,
+            cashMethod = method?.details?.kind == PaymentMethodKind.CASH,
+            cashStep = catalog.cashRounding,
         )
         return SaleCart.preview(
             current.lines,
@@ -829,7 +834,13 @@ class NewSaleViewModel(
 
     private fun numberError(read: NumberInput<*>): SaleFieldError = when (read) {
         is NumberInput.TooLarge -> SaleFieldError.TOO_HIGH
-        else -> SaleFieldError.NOT_A_NUMBER
+
+        // Un valor leído o un campo vacío no llegan aquí: quien llama ya los resolvió.
+        NumberInput.Malformed,
+        is NumberInput.TooManyDecimals,
+        is NumberInput.Value,
+        NumberInput.Blank,
+        -> SaleFieldError.NOT_A_NUMBER
     }
 
     /** Lo que está abierto encima de la venta, y lo que pasa una sola vez. */

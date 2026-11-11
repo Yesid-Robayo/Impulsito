@@ -134,6 +134,16 @@ internal fun CartContent(cart: SaleCartState, onAction: (NewSaleAction) -> Unit)
                 MoneyText(tax, MoneySize.ROW)
             }
         }
+        if (cart.cashRounding != Money.ZERO) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.checkout_cash_rounding),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                MoneyText(cart.cashRounding, MoneySize.ROW)
+            }
+        }
         val today = cart.today
         val weekStart = cart.weekStartDay
         if (today != null && weekStart != null) {

@@ -8,6 +8,12 @@ sealed interface CheckoutAction {
     /** Lo escrito en la comisión del pago número [index]. En blanco vuelve a la del método. */
     data class FeeChange(val index: Int, val text: String) : CheckoutAction
 
+    /** Lo recibido en efectivo en el pago número [index]. En blanco, no hay cambio que calcular. */
+    data class TenderedChange(val index: Int, val text: String) : CheckoutAction
+
+    /** `Monto exacto`: lo recibido es justo lo que cubre el pago número [index]. */
+    data class ExactAmount(val index: Int) : CheckoutAction
+
     data class RemovePayment(val index: Int) : CheckoutAction
 
     data object OpenAddPayment : CheckoutAction

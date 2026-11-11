@@ -89,7 +89,11 @@ class RegionalMatrixSaleTest(private val row: RegionalMatrixRow, defaults: Forei
         assertEquals(Money(expected.net), sale.netTotal)
         assertEquals(Money(expected.tax), sale.taxTotal)
         assertEquals(sale.netTotal + sale.taxTotal, sale.total)
-        assertEquals(sale.total, sale.amountDue)
+        // Se cobra en efectivo: lo que se cobra es el total redondeado al paso de la fila. Las filas
+        // con paso 5 y 50 cobran 15100, que ya es múltiplo; la de 1000 baja de 15100 a 15000.
+        val rounding = if (row.cashRounding == Money(1_000L)) -100L else 0L
+        assertEquals(Money(rounding), sale.cashRoundingAmount)
+        assertEquals(sale.total + sale.cashRoundingAmount, sale.amountDue)
     }
 
     /** Lo que deja cada modo, escrito a mano: neto, impuesto y total por línea, y la cabecera. */

@@ -22,4 +22,13 @@ enum class PaymentRejection {
      * el pago cubría: el pago quedaría negativo.
      */
     BELOW_ZERO_AFTER_ADJUSTMENT,
+
+    /** Lo recibido es negativo o pasa del tope de un documento. */
+    INVALID_TENDERED,
+
+    /** Lo recibido solo existe en un pago en efectivo: los demás métodos cobran el monto exacto. */
+    TENDER_NOT_CASH,
+
+    /** Lo recibido no alcanza para lo que cubre este pago en efectivo, ya redondeado. */
+    TENDERED_BELOW_AMOUNT,
 }

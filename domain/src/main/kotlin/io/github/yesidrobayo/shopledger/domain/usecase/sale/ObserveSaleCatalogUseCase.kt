@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.sale
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
@@ -33,6 +34,8 @@ import kotlinx.coroutines.flow.flowOf
  * - El modo de impuesto y las tasas van con el catálogo: la venta muestra el total que cobrará.
  * - Un método a crédito no se ofrece: vender a crédito exige un cliente, y la venta todavía no lo
  *   lleva. Los archivados no se leen.
+ * - El paso del redondeo del efectivo va con el catálogo, de [cashRounding]: la venta muestra lo
+ *   que cobra en efectivo ya redondeado. Sin él, no se redondea.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObserveSaleCatalogUseCase(
@@ -44,6 +47,7 @@ class ObserveSaleCatalogUseCase(
     private val taxSettings: TaxSettingsRepository,
     private val taxRates: TaxRateRepository,
     private val clock: Clock,
+    private val cashRounding: () -> Flow<Money> = { flowOf(Money.ZERO) },
 ) {
     operator fun invoke(): Flow<SaleCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = result as? BusinessCalendarResult.Ready
@@ -77,8 +81,8 @@ class ObserveSaleCatalogUseCase(
             taxRates.observe(ArchiveFilter.ACTIVE),
             taxRates.observe(ArchiveFilter.ARCHIVED),
         ) { active, archived -> (active + archived).associate { it.id to it.details.rate } }
-        combine(catalog, taxSettings.observe(), rates) { sale, taxes, byId ->
-            sale.copy(taxes = taxes, taxRates = byId)
+        combine(catalog, taxSettings.observe(), rates, cashRounding()) { sale, taxes, byId, step ->
+            sale.copy(taxes = taxes, taxRates = byId, cashRounding = step)
         }
     }
 }

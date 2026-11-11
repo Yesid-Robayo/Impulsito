@@ -300,6 +300,69 @@ class SaleCheckoutTest {
         assertEquals(CheckoutProblem.TooLarge, preview.problem)
     }
 
+    @Test
+    fun `the cash part is rounded after the card, as in the payment sum example`() {
+        // 5280 con 3001 en tarjeta: el efectivo cubre 2279, que con paso 5 sube a 2280. Se cobran
+        // 5281, y con 5000 recibidos el cambio es 2720.
+        val preview = SaleCheckout.preview(
+            listOf(SaleLineRequest(1L, units(2L)), SaleLineRequest(2L, QuantityMilli(1_500L))),
+            products,
+            pricing(TaxMode.INCLUDED),
+            Money(-100L),
+            listOf(
+                pay(3_001L, PaymentMethodKind.CARD, feeBp = 275L),
+                pay(2_279L).copy(tenderedAmount = Money(5_000L)),
+            ),
+            cashStep = Money(5L),
+        )
+
+        assertEquals(Money(5_280L), preview.total)
+        assertEquals(Money(1L), preview.cashRounding)
+        assertEquals(Money(5_281L), preview.amountDue)
+        assertEquals(listOf(0L, 1L), preview.payments.map { it.rounding.minor })
+        assertEquals(listOf(3_001L, 2_280L), preview.payments.map { it.amount.minor })
+        assertEquals(listOf(null, Money(2_720L)), preview.payments.map { it.change })
+        assertEquals(CheckoutBalance.Complete, preview.balance)
+        assertTrue(preview.canRegister)
+    }
+
+    @Test
+    fun `what was received below the rounded cash part stops the checkout`() {
+        // Con paso 50, 10000 ya es múltiplo; 9999 recibidos no alcanzan.
+        val preview = tenThousand(listOf(pay(10_000L).copy(tenderedAmount = Money(9_999L))))
+        val short = SaleCheckout.preview(
+            listOf(SaleLineRequest(3L, units(1L))),
+            products,
+            pricing(TaxMode.NONE),
+            Money.ZERO,
+            listOf(pay(10_000L).copy(tenderedAmount = Money(9_999L))),
+            cashStep = Money(50L),
+        )
+
+        assertEquals(CheckoutProblem.TenderedBelowAmount(0), preview.problem)
+        assertEquals(CheckoutProblem.TenderedBelowAmount(0), short.problem)
+        assertTrue(preview.payments.single().tenderedBelowAmount)
+        assertEquals(Money(-1L), preview.payments.single().change)
+        assertFalse(preview.canRegister)
+    }
+
+    @Test
+    fun `a rounding that passes the document limit is too large`() {
+        // 999 und a 10^12 y una de 999999999999: 999999999999999, que con un paso de 6 × 10^11
+        // sube a 1667 pasos, sobre el tope.
+        val almost = product(5L, salePrice = 999_999_999_999L)
+        val preview = SaleCheckout.preview(
+            listOf(SaleLineRequest(4L, units(999L)), SaleLineRequest(5L, units(1L))),
+            products + (5L to almost),
+            pricing(TaxMode.NONE),
+            Money.ZERO,
+            listOf(pay(999_999_999_999_999L)),
+            cashStep = Money(600_000_000_000L),
+        )
+
+        assertEquals(CheckoutProblem.TooLarge, preview.problem)
+    }
+
     private companion object {
         /** El precio por unidad más alto que admite un producto. */
         const val HUGE_PRICE = 1_000_000_000_000L

@@ -59,16 +59,21 @@ class CheckoutMatchesRegisterTest {
         SaleLineRequest(3L, QuantityMilli(1_000L), discount = LineDiscount.Amount(Money(99L))),
     )
 
-    private fun input(method: SalePaymentMethod, amount: Long, fee: Long? = null) =
-        CheckoutPaymentInput(
-            methodId = method.id,
-            kind = method.kind,
-            amount = Money(amount),
-            priceAdjustment = method.priceAdjustment,
-            feeRate = method.feeRate,
-            feeFixed = method.feeFixed,
-            feeAmount = fee?.let(::Money),
-        )
+    private fun input(
+        method: SalePaymentMethod,
+        amount: Long,
+        fee: Long? = null,
+        tendered: Long? = null,
+    ) = CheckoutPaymentInput(
+        methodId = method.id,
+        kind = method.kind,
+        amount = Money(amount),
+        priceAdjustment = method.priceAdjustment,
+        feeRate = method.feeRate,
+        feeFixed = method.feeFixed,
+        feeAmount = fee?.let(::Money),
+        tenderedAmount = tendered?.let(::Money),
+    )
 
     /**
      * Calcula el cobro, completa el último pago con lo que falta, como `Usar {amount}`, y registra
@@ -149,4 +154,72 @@ class CheckoutMatchesRegisterTest {
     fun `without tax and a single payment, the checkout is the registered sale`() = runTest {
         compare(TaxMode.NONE, 0L, listOf(cardMethod to null))
     }
+
+    @Test
+    fun `with cash rounding and what was received, the checkout is the registered sale`() =
+        runTest {
+            for (mode in TaxMode.entries) {
+                val world = world(mode)
+                world.settings.settings.value = world.settings.settings.value.let {
+                    it.copy(regional = it.regional.copy(cashRounding = Money(50L)))
+                }
+                val pricing = CartPricing(
+                    taxMode = mode,
+                    rates = world.taxRates.mapValues { it.value.details.rate },
+                    defaultRateId = general,
+                )
+                val step = Money(50L)
+                val opened = SaleCheckout.preview(
+                    lines,
+                    world.tables.products,
+                    pricing,
+                    Money(-321L),
+                    emptyList(),
+                    step,
+                )
+                val due = requireNotNull(opened.due) { "La venta se puede cobrar" }.minor
+                val inputs = listOf(
+                    input(cardMethod, 10_001L),
+                    input(method(), due - 10_001L, tendered = 1_000_000L),
+                )
+                val preview = SaleCheckout.preview(
+                    lines,
+                    world.tables.products,
+                    pricing,
+                    Money(-321L),
+                    inputs,
+                    step,
+                )
+
+                val result = world.registerSale()(
+                    SaleRequest(
+                        lines = lines,
+                        paymentMethodId = SaleWorld.CASH,
+                        payments = inputs.map {
+                            SalePaymentRequest(
+                                it.methodId,
+                                it.amount,
+                                it.feeAmount,
+                                it.tenderedAmount,
+                            )
+                        },
+                        orderAdjustment = Money(-321L),
+                    ),
+                )
+
+                val sale = world.tables.sales.getValue(
+                    (result as RegisterSaleResult.Registered).saleId,
+                )
+                assertEquals("cobrado con $mode", sale.content.amountDue, preview.amountDue)
+                assertEquals(
+                    "redondeo con $mode",
+                    sale.content.cashRoundingAmount,
+                    preview.cashRounding,
+                )
+                val stored = world.tables.payments.values.filter { it.saleId == sale.id }
+                    .sortedBy { it.id }.map { it.content }
+                assertEquals(stored.map { it.amount }, preview.payments.map { it.amount })
+                assertEquals(stored.map { it.changeAmount }, preview.payments.map { it.change })
+            }
+        }
 }

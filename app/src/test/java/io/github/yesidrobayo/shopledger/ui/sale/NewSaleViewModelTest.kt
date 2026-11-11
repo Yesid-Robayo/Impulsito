@@ -502,4 +502,26 @@ class NewSaleViewModelTest {
             advanceUntilIdle()
             assertEquals(10L, model.state.payment.selectedId)
         }
+
+    @Test
+    fun `in cash the panel shows what is charged, rounded, and a card shows the exact total`() =
+        runTest(dispatcher) {
+            val bread = product(9L, "Pan", salePrice = 1_234L, onHand = 10_000L)
+            catalog.value = catalogOf(listOf(bread)).copy(cashRounding = Money(50L))
+            val model = viewModel()
+            model.act(this, NewSaleAction.AddProduct(bread.id))
+
+            assertEquals(Money(1_250L), model.state.cart.total)
+            assertEquals(Money(16L), model.state.cart.cashRounding)
+
+            model.act(this, NewSaleAction.SelectMethod(11L))
+
+            assertEquals(Money(1_234L), model.state.cart.total)
+            assertEquals(Money.ZERO, model.state.cart.cashRounding)
+
+            model.act(this, NewSaleAction.SelectMethod(10L))
+            model.act(this, NewSaleAction.Register)
+
+            assertEquals(RegisteredSale(99L, Money(1_250L)), model.state.registered)
+        }
 }

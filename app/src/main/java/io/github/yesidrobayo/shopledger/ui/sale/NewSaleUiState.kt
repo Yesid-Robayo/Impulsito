@@ -108,8 +108,9 @@ sealed interface TileStock {
 data class ArchivedMatch(val productId: Long, val name: String)
 
 /**
- * La venta que se arma, con sus cuentas. [total] falta si una línea tiene un problema o si pasa
- * del tope de un documento. [tax] es el impuesto que lleva, solo si el negocio cobra impuesto. [date] es la fecha elegida, o `null` para hoy; [today] falta si el
+ * La venta que se arma, con sus cuentas. [total] es lo que se cobra, con el redondeo del efectivo
+ * [cashRounding] si se cobra en efectivo; falta si una línea tiene un problema o si pasa del tope
+ * de un documento. [tax] es el impuesto que lleva, solo si el negocio cobra impuesto. [date] es la fecha elegida, o `null` para hoy; [today] falta si el
  * teléfono no conoce la zona del negocio.
  */
 @Immutable
@@ -118,6 +119,7 @@ data class SaleCartState(
     val itemCount: Long = 0L,
     val tax: Money? = null,
     val total: Money? = Money.ZERO,
+    val cashRounding: Money = Money.ZERO,
     val date: BusinessDate? = null,
     val today: BusinessDate? = null,
     val weekStartDay: DayOfWeek? = null,
