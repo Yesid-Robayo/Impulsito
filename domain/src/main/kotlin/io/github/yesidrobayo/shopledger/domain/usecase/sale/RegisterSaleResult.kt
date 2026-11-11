@@ -71,6 +71,12 @@ sealed interface RegisterSaleResult {
      * pantalla muestra la diferencia para que la persona la corrija.
      */
     data class PaymentsDoNotMatch(val amountDue: Money, val paid: Money) : RegisterSaleResult
+
+    /**
+     * El descuento escrito para toda la venta supera lo que suman sus líneas tras sus propios
+     * descuentos: dejaría la venta con un total negativo.
+     */
+    data object OrderDiscountTooLarge : RegisterSaleResult
 }
 
 /** Por qué una línea de la venta no se puede vender. */

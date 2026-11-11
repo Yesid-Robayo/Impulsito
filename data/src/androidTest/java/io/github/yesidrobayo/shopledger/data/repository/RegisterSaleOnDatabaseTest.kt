@@ -199,6 +199,56 @@ internal class RegisterSaleOnDatabaseTest : RepositoryTest() {
     }
 
     @Test
+    fun aDiscountAndASurchargeOfTheWholeSalePassEveryGuardAndInvariant() = runBlocking {
+        val general = rate("Tasa general inventada", 2_100)
+        val reduced = rate("Tasa reducida inventada", 500)
+        useTaxes(TaxMode.ADDED, defaultTaxRateId = reduced)
+        val soap = trackedProduct("Jabón inventado", units = 10, taxRateId = general)
+        val tea = trackedProduct("Té inventado", units = 10)
+        // 2 jabones a 3.500 son 7.000 y un té con 500 de descuento son 3.000. Con −1.000 de toda la
+        // venta, el té lleva −300 y el jabón, la línea de mayor base, el resto: −700. Quedan 6.300
+        // con 21 % añadido, 1.323, y 2.700 con 5 %, 135. Con +1.000, al revés: 7.700 con 1.617 y
+        // 3.300 con 165.
+        val expected =
+            mapOf(
+                -1_000L to listOf(listOf(-700L, 6_300L, 1_323L), listOf(-300L, 2_700L, 135L)),
+                1_000L to listOf(listOf(700L, 7_700L, 1_617L), listOf(300L, 3_300L, 165L)),
+            )
+
+        for ((adjustment, lines) in expected) {
+            val result =
+                registerSale(
+                    SaleRequest(
+                        listOf(
+                            SaleLineRequest(soap, QuantityMilli(2_000)),
+                            SaleLineRequest(
+                                tea,
+                                QuantityMilli(1_000),
+                                discount = LineDiscount.Amount(Money(500)),
+                            ),
+                        ),
+                        cashMethodId(),
+                        orderAdjustment = Money(adjustment),
+                    ),
+                )
+
+            val saleId = (result as RegisterSaleResult.Registered).saleId
+            val stored = sales.findLines(saleId).map { it.content }
+            assertEquals(
+                "Ajuste $adjustment",
+                lines,
+                stored.map {
+                    listOf(it.orderAdjustmentShare.minor, it.netAmount.minor, it.taxAmount.minor)
+                },
+            )
+            val sale = requireNotNull(sales.findById(saleId)).content
+            assertEquals(Money(adjustment), sale.orderAdjustment)
+            assertEquals(sale.total, salePayments.findBySale(saleId).single().content.amount)
+        }
+        assertInvariantsHold()
+    }
+
+    @Test
     fun aTenLineSaleIsMeasured() = runBlocking {
         // Con impuesto sumado y dos tasas, el camino más largo de una línea.
         val general = rate("Tasa general inventada", 2_100)

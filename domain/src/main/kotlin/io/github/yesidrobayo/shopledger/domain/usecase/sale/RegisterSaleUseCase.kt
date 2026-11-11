@@ -80,9 +80,12 @@ import kotlin.time.Instant
  *   exactamente lo que se cobra, o no se confirma. Cada pago lleva la comisión y la acreditación
  *   que la persona escribió en su método, y copia el nombre y el tipo del método, y su cuenta, sin
  *   mover dinero todavía.
+ * - **El ajuste de toda la venta** es el descuento o recargo que escribe la persona, con signo.
+ *   Se reparte entre las líneas en proporción a lo que cada una cobra tras su descuento, y un
+ *   descuento mayor que eso se rechaza. Los pagos escritos cubren lo que se cobra con él.
  * - **El recargo o descuento de cada método** se calcula sobre lo que cubre su pago antes del
- *   recargo, se suma al ajuste de la venta y se reparte entre las líneas. Cada pago cubre además lo
- *   que su recargo sube el total.
+ *   recargo, se suma al ajuste de la venta y se reparte entre las líneas junto con el ajuste
+ *   escrito, en un solo reparto. Cada pago cubre además lo que su recargo sube el total.
  * - **El impuesto se calcula línea por línea**, con el modo del negocio y la tasa del producto, o
  *   la tasa por defecto si el producto no tiene. Cada línea copia la tasa y su nombre, así que
  *   cambiar o archivar la tasa después no toca esta venta. El impuesto sale de lo que la línea
@@ -90,8 +93,8 @@ import kotlin.time.Instant
  *   impuesto. Sumar los impuestos de las líneas, y nunca calcularlo sobre el total, hace que el
  *   total sea siempre lo neto más el impuesto, y los pagos cobran ese total.
  *
- * Por ahora no calcula ajuste global escrito, propina ni redondeo del efectivo: esos montos quedan
- * en cero. Tampoco vende combos ni productos con lotes, ni a crédito: los rechaza con su motivo.
+ * Por ahora no calcula propina ni redondeo del efectivo: esos montos quedan en cero. Tampoco
+ * vende combos ni productos con lotes, ni a crédito: los rechaza con su motivo.
  */
 class RegisterSaleUseCase(
     private val transactions: TransactionRunner,
@@ -138,7 +141,11 @@ class RegisterSaleUseCase(
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
         }
-        val settled = when (val result = settle(chosen, priced, time.businessDate, now)) {
+        val due = when (val result = withWrittenAdjustment(priced, request.orderAdjustment)) {
+            is Priced.Lines -> result
+            is Priced.Rejected -> return TxResult.Rollback(result.rejection)
+        }
+        val settled = when (val result = settle(chosen, priced, due, time.businessDate, now)) {
             is Settled.Payments -> result
             is Settled.Rejected -> return TxResult.Rollback(result.rejection)
         }
@@ -363,17 +370,38 @@ class RegisterSaleUseCase(
     }
 
     /**
-     * Los pagos que se guardan, en el orden en que se escribieron, y las líneas con el ajuste que
-     * suman los recargos de sus métodos. Los pagos escritos deben sumar exactamente lo que se cobra
-     * antes de los recargos, y ninguna comisión puede pasar del tope.
+     * Las líneas con el ajuste que escribió la persona para toda la venta, que es lo que se cobra
+     * antes de los recargos de los métodos. Sin ajuste, las mismas líneas. Un descuento mayor que
+     * lo que suman las líneas tras sus descuentos se rechaza con su motivo; un recargo que deja la
+     * venta, o una línea, sobre el tope de un documento, como cualquier total demasiado grande.
+     */
+    private fun withWrittenAdjustment(priced: Priced.Lines, adjustment: Money): Priced {
+        if (adjustment == Money.ZERO) return priced
+        // Las bases suman como mucho el tope de líneas por el tope de un documento: cabe en Long.
+        val baseSum = priced.lines.fold(Money.ZERO) { sum, line -> sum + line.base }
+        // Se compara sin negar el descuento: negar el menor Long no cabe.
+        if (adjustment.minor < -Limit.DOCUMENT_TOTAL.max || adjustment.minor < -baseSum.minor) {
+            return Priced.Rejected(RegisterSaleResult.OrderDiscountTooLarge)
+        }
+        return adjusted(priced, adjustment)
+            ?: Priced.Rejected(RegisterSaleResult.SaleTotalTooLarge)
+    }
+
+    /**
+     * Los pagos que se guardan, en el orden en que se escribieron, y las líneas con todo el ajuste:
+     * el escrito, que ya trae [due], más el que suman los recargos de los métodos. Los pagos
+     * escritos deben sumar exactamente lo que se cobra en [due], antes de los recargos, y ninguna
+     * comisión puede pasar del tope. Los dos ajustes se reparten juntos sobre [priced], las líneas
+     * sin ajuste, para que el redondeo sea el de un solo reparto.
      */
     private fun settle(
         chosen: List<ChosenPayment>,
         priced: Priced.Lines,
+        due: Priced.Lines,
         businessDate: BusinessDate,
         now: Instant,
     ): Settled {
-        val amountDue = priced.totals.total
+        val amountDue = due.totals.total
         val written = chosen.map { it.amount ?: amountDue }
         when (val check = PaymentSplit.check(amountDue, written)) {
             PaymentSplitCheck.Matches -> Unit
@@ -389,7 +417,9 @@ class RegisterSaleUseCase(
         val surcharges = PaymentSurcharges.settle(
             amounts = written,
             rates = chosen.map { it.method.priceAdjustment },
-            totalWith = { adjustment -> adjusted(priced, adjustment)?.totals?.total },
+            totalWith = { surcharge ->
+                adjusted(priced, due.adjustment + surcharge)?.totals?.total
+            },
         )
         val (adjustment, amounts) = when (surcharges) {
             is SurchargeSettlement.Settled -> surcharges.adjustment to surcharges.amounts
@@ -405,7 +435,9 @@ class RegisterSaleUseCase(
             )
         }
         // Los recargos ya se probaron con este mismo ajuste: la venta lo admite.
-        val adjustedLines = checkNotNull(adjusted(priced, adjustment)) { "El ajuste ya se probó" }
+        val adjustedLines = checkNotNull(adjusted(priced, due.adjustment + adjustment)) {
+            "El ajuste ya se probó"
+        }
         val settled = chosen.zip(amounts) { payment, amount ->
             paymentOf(payment.method, amount, payment.fee, businessDate, now)
                 ?: return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
@@ -415,12 +447,13 @@ class RegisterSaleUseCase(
 
     /**
      * Las líneas con [adjustment] repartido entre ellas, con su impuesto y sus totales, o `null` si
-     * la venta no lo admite: un descuento mayor que lo vendido, o una línea o un total sobre el
-     * tope de un documento. Parte siempre de las líneas sin ajuste, así que se puede probar con
-     * varios ajustes. El reparto es en proporción a lo que cada línea cobra antes de impuesto, y
-     * el impuesto se vuelve a separar con la parte de cada una.
+     * la venta no lo admite: un ajuste o un descuento mayor que lo vendido, o una línea o un total
+     * sobre el tope de un documento. Parte siempre de las líneas sin ajuste, así que se puede
+     * probar con varios ajustes. El reparto es en proporción a lo que cada línea cobra antes de
+     * impuesto, y el impuesto se vuelve a separar con la parte de cada una.
      */
     private fun adjusted(priced: Priced.Lines, adjustment: Money): Priced.Lines? {
+        if (adjustment.minor !in -Limit.DOCUMENT_TOTAL.max..Limit.DOCUMENT_TOTAL.max) return null
         val split = OrderAdjustmentShares.split(adjustment, priced.lines.map { it.base })
         val shares = when (split) {
             is AdjustmentSplit.Shares -> split.shares

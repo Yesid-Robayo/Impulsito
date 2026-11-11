@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.model.sale
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Money
 
 /**
  * Una venta tal como la confirma la persona: sus líneas, con qué método se cobró y, si es atrasada,
@@ -15,6 +16,10 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
  * guarda el hecho a las 12:00 de ese día en la zona del negocio, y el registro igual toma su lugar
  * en el libro por orden de llegada. [note] la escribe la persona, hasta 200 caracteres; en blanco
  * no se guarda.
+ *
+ * [orderAdjustment] es el descuento o recargo que la persona escribe para toda la venta, con signo:
+ * negativo es descuento y positivo recargo. Se reparte entre las líneas y paga impuesto con ellas.
+ * Los pagos escritos cubren lo que se cobra con él, antes de los recargos de sus métodos.
  */
 data class SaleRequest(
     val lines: List<SaleLineRequest>,
@@ -22,4 +27,5 @@ data class SaleRequest(
     val date: BusinessDate? = null,
     val note: String? = null,
     val payments: List<SalePaymentRequest> = emptyList(),
+    val orderAdjustment: Money = Money.ZERO,
 )
