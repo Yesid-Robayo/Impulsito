@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Preparar archivos en la nube. Textos de la guía de redacción. La app sale de app_name. -->
+    <string name="slots_intro">These are three files %1$s rewrites in turns. They are created only once, in the phone\'s file picker.</string>
+    <string name="slots_how">In the picker, open %1$s, choose the folder and tap Save.</string>
+    <string name="slots_no_cloud_help">If %1$s does not appear in the picker, install its app or sign in to it.</string>
+    <string name="slots_file_row">File %1$d of %2$d</string>
+    <string name="slots_file_created">Created</string>
+    <string name="slots_file_pending">Still to create</string>
+    <string name="slots_file_ready">Ready</string>
+    <string name="slots_create_action">Create the file</string>
+    <string name="slots_photos_note">Photos do not go into these files. They are saved with Export photos.</string>
+    <string name="slots_plain_warning">Without encryption, %1$s can read the whole business.</string>
+    <string name="slots_no_restore_note">Preparing files does not bring back earlier backups. Find a file does that.</string>
+    <string name="slots_error_provider">%1$s can only prepare these files in %2$s. Another cloud or a folder on the phone does not work here. If that cloud offers WebDAV, it connects as a service. If not, local backups remain.</string>
+    <string name="slots_error_service_action">Connect a service</string>
+    <string name="slots_error_local_action">Go to Local backups</string>
+    <string name="slots_error_no_size">%1$s does not report that file\'s size, and without it %2$s cannot protect the backup. Choose another service.</string>
+    <string name="slots_error_not_empty">That file already has data, perhaps a backup from another phone. %1$s does not write over it.</string>
+    <string name="slots_error_not_writable">%1$s does not allow writing to that file, and %2$s cannot save backups there. Choose another service.</string>
+    <string name="slots_error_same_file">That file is already file %1$d of 3. Each one must be different.</string>
+    <string name="slots_other_file_action">Create another file</string>
+    <string name="slots_error_cancelled">The file was not created. The earlier ones are still ready.</string>
+    <string name="slots_other_destination_note">Backups already go to another place. These files stay created, but %1$s does not switch places from here yet.</string>
+    <string name="slots_ready_title">Files ready</string>
+    <string name="slots_ready_body">From now on, %1$s hands backups to %2$s. Every week, the file\'s time must be checked in that cloud.</string>
+    <string name="backup_action_other_service">Choose another service</string>
+    <string name="offsite_export_photos_action">Export photos</string>
+    <string name="a11y_help_link">Help: %1$s</string>
+</resources>

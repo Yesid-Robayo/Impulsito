@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -39,6 +40,8 @@ enum class NoticeVariant {
  * de texto. El tipo se lee en el icono y en la frase, no solo en el fondo.
  *
  * @param icon otro icono que el del tipo, cuando el aviso habla de algo concreto.
+ * @param secondaryLabel una segunda salida, cuando el aviso ofrece dos caminos del mismo peso. Va
+ *   antes de la primera, las dos al final del aviso.
  */
 @Composable
 fun NoticeCard(
@@ -48,6 +51,8 @@ fun NoticeCard(
     @DrawableRes icon: Int? = null,
     actionLabel: String? = null,
     onAction: () -> Unit = {},
+    secondaryLabel: String? = null,
+    onSecondary: () -> Unit = {},
 ) {
     val (container, content) = noticeColors(variant)
     val shownIcon =
@@ -72,13 +77,18 @@ fun NoticeCard(
             )
             Text(text = text, style = MaterialTheme.typography.bodyMedium, color = content)
         }
-        if (actionLabel != null) {
-            InlineTextButton(
-                text = actionLabel,
-                onClick = onAction,
-                color = content,
+        if (actionLabel != null || secondaryLabel != null) {
+            FlowRow(
                 modifier = Modifier.align(Alignment.End),
-            )
+                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8, Alignment.End),
+            ) {
+                secondaryLabel?.let {
+                    InlineTextButton(text = it, onClick = onSecondary, color = content)
+                }
+                actionLabel?.let {
+                    InlineTextButton(text = it, onClick = onAction, color = content)
+                }
+            }
         }
     }
 }
@@ -113,6 +123,12 @@ private fun NoticeCardPreview() {
                 stringResource(R.string.state_error_read),
                 NoticeVariant.ERROR,
                 actionLabel = stringResource(R.string.action_retry),
+            )
+            NoticeCard(
+                PreviewSamples.NOTICE_TEXT,
+                NoticeVariant.WARNING,
+                actionLabel = stringResource(R.string.action_retry),
+                secondaryLabel = stringResource(R.string.slots_error_local_action),
             )
         }
     }

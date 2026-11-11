@@ -131,6 +131,8 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "recordHumanCheck",
                 "markDrill",
                 "connectDestination",
+                // Solo la ranura de la cabeza y la subida forzada: lo comprueba su propia prueba.
+                "forgetHeadFile",
             ),
             functionsOf(BackupStateDao::class.java),
         )
@@ -487,6 +489,28 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 lastDrillResult = null,
                 changeSeq = 5,
             ),
+            state.get(),
+        )
+    }
+
+    @Test
+    fun aSlotThatGetsANewFileStopsBeingTheHeadOnlyInItsDestination() = runBlocking {
+        execute(
+            "UPDATE backup_state SET link_state = 'PERMISSION_LOST', " +
+                "destination_kind = 'DOCUMENT_SLOTS', destination_id = 'document-slots', " +
+                "head_generation = 9, head_device_id = 'este', head_file_ref = 'B' WHERE id = 1",
+        )
+        val before = requireNotNull(state.get())
+
+        // Otra ranura, u otro destino: la cabeza no está ahí, y nada cambia.
+        assertEquals(0, state.forgetHeadFile("A", LATER, "document-slots"))
+        assertEquals(0, state.forgetHeadFile("B", LATER, "otro-destino"))
+        assertEquals(before, state.get())
+
+        // La generación y el teléfono de la cabeza se conservan, y se fuerza una subida.
+        assertEquals(1, state.forgetHeadFile("B", LATER, "document-slots"))
+        assertEquals(
+            before.copy(headFileRef = null, changeSeq = 1, firstUnsyncedAt = LATER),
             state.get(),
         )
     }

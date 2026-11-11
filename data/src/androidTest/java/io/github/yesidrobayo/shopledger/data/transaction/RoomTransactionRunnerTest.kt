@@ -305,6 +305,12 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
 
         override suspend fun reopenAfterConflict(now: Long, destinationId: String): Int = 0
 
+        override suspend fun forgetHeadFile(
+            fileRef: String,
+            now: Long,
+            destinationId: String,
+        ): Int = 0
+
         override suspend fun confirm(
             generation: Long,
             deviceId: String,

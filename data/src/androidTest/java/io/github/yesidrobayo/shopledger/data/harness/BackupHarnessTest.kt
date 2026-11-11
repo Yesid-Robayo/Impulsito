@@ -31,6 +31,7 @@ import io.github.yesidrobayo.shopledger.data.destination.TEST_USER
 import io.github.yesidrobayo.shopledger.data.destination.WebDavConnector
 import io.github.yesidrobayo.shopledger.data.destination.WebDavCredentialStore
 import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
+import io.github.yesidrobayo.shopledger.data.destination.slots.PickedDocument
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
 import io.github.yesidrobayo.shopledger.data.destination.testHttp
 import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles

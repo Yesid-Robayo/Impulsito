@@ -37,6 +37,7 @@ import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.productionRestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
 import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
+import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
 import io.github.yesidrobayo.shopledger.data.destination.ProductionDestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.WebDavCredentialStore
@@ -44,6 +45,9 @@ import io.github.yesidrobayo.shopledger.data.destination.WebDavDestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.slots.ContentResolverDocumentAccess
 import io.github.yesidrobayo.shopledger.data.destination.slots.DocumentSlotDestination
 import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
+import io.github.yesidrobayo.shopledger.data.destination.slots.ResolverSlotFileDocuments
+import io.github.yesidrobayo.shopledger.data.destination.slots.SlotFilesSetup
+import io.github.yesidrobayo.shopledger.data.destination.slots.SlotPendingStore
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.DatabaseGate
@@ -69,6 +73,7 @@ import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
+import io.github.yesidrobayo.shopledger.domain.port.SlotFilesSetupPort
 import io.github.yesidrobayo.shopledger.domain.port.error
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.domain.port.info
@@ -230,6 +235,28 @@ class DataGraph internal constructor(
             slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
             deviceId = deviceIdentity::deviceId,
             hasNetwork = { backupNetworkOf(context).validated },
+        )
+    }
+
+    /**
+     * La preparación de los tres archivos de la nube del teléfono, para su pantalla. Usa el mismo
+     * `slots.json` que el respaldo y su cerrojo. Crearla no toca el disco.
+     */
+    val slotFilesSetup: SlotFilesSetupPort by lazy {
+        SlotFilesSetup(
+            open = ::open,
+            mutex = backupMutex,
+            slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
+            pending = SlotPendingStore.inNoBackupDir(context, ioContext),
+            picked = ResolverSlotFileDocuments(context.contentResolver),
+            documents = ContentResolverDocumentAccess(context.contentResolver),
+            links = DestinationLinkStore({ context.noBackupFilesDir }, ioContext),
+            afterConfirm = { hasData ->
+                // Con datos sale la primera copia sin esperar; sin datos no hay nada que escribir.
+                if (hasData) backupScheduler.backupNow() else backupScheduler.onDataChanged()
+            },
+            clock = clock,
+            ioContext = ioContext,
         )
     }
 

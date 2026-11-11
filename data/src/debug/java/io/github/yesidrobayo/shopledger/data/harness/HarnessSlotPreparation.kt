@@ -1,20 +1,11 @@
 package io.github.yesidrobayo.shopledger.data.harness
 
+import io.github.yesidrobayo.shopledger.data.destination.slots.PickedDocument
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotEntry
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotState
 import io.github.yesidrobayo.shopledger.data.destination.slots.WriteMode
+import io.github.yesidrobayo.shopledger.data.destination.slots.slotProviderOf
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
-
-/**
- * Las nubes del teléfono en que el arnés acepta preparar ranuras: autoridad del proveedor y su
- * nombre para la persona. Es la lista fija de la documentación, que hoy solo trae Drive. Otra nube o
- * una carpeta del teléfono se rechazan: la app no puede distinguir una de otra.
- *
- * La pantalla de preparar los archivos la tendrá en el código de la app. Hasta entonces vive aquí,
- * solo en `debug`.
- */
-internal val HARNESS_SLOT_PROVIDERS: Map<String, String> =
-    mapOf("com.google.android.apps.docs.storage" to "Drive")
 
 /** Por qué no se preparan las tres ranuras. Es un código para la pantalla, sin datos. */
 enum class SlotRejection {
@@ -55,7 +46,8 @@ internal fun prepareSlotState(
     val checked = documents.map { it ?: return SlotPreparation.Rejected(SlotRejection.NO_ACCESS) }
     val labels =
         checked.map {
-            HARNESS_SLOT_PROVIDERS[it.authority]
+            // La lista fija de nubes aprobadas es la misma de la pantalla de la app.
+            slotProviderOf(it.authority)?.label
                 ?: return SlotPreparation.Rejected(SlotRejection.PROVIDER_NOT_ALLOWED)
         }
     if (checked.any { !it.writable }) return SlotPreparation.Rejected(SlotRejection.NOT_WRITABLE)

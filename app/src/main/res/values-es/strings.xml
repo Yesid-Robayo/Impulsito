@@ -11,6 +11,7 @@
 
     <!-- Acciones y estados comunes. -->
     <string name="action_retry">Reintentar</string>
+    <string name="action_continue">Continuar</string>
     <string name="state_error_read">No se pudo abrir esto.</string>
     <string name="state_error_save">No se pudo guardar. Lo escrito sigue aquí.</string>
     <string name="error_device_storage">El teléfono se quedó sin espacio. Al liberar un poco se puede reintentar.</string>

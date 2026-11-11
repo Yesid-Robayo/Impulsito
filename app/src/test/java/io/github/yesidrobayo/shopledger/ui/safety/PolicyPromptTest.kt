@@ -79,6 +79,26 @@ class PolicyPromptTest {
     }
 
     @Test
+    fun `going from one gated screen to another keeps the gate open until the last one leaves`() =
+        runTest {
+            status = PolicyConsentStatus.ACCEPTED
+            val prompt = prompt()
+            prompt.enterGate()
+
+            // La pantalla siguiente entra antes de que salga la anterior, como en la navegación.
+            prompt.enterGate()
+            prompt.leaveGate()
+
+            assertEquals(PolicyGate.ALLOWED, prompt.state.value.gate)
+            prompt.leaveGate()
+            assertNull(prompt.state.value.gate)
+            // Sin pantallas abiertas, la siguiente vuelve a leer la aceptación.
+            status = PolicyConsentStatus.NEVER_ACCEPTED
+            prompt.enterGate()
+            assertEquals(PolicyGate.WAITING, prompt.state.value.gate)
+        }
+
+    @Test
     fun `a failed save changes nothing and can be tried again`() = runTest {
         saves = PolicyAcceptance.NOT_SAVED
         val prompt = prompt()

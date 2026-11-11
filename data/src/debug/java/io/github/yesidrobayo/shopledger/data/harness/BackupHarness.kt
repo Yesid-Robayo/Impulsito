@@ -27,6 +27,7 @@ import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.data.destination.WebDavConnector
 import io.github.yesidrobayo.shopledger.data.destination.identity
+import io.github.yesidrobayo.shopledger.data.destination.slots.DOCUMENT_SLOTS_DESTINATION_ID
 import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateStore
@@ -244,7 +245,7 @@ class BackupHarness internal constructor(
             DestinationLink(
                 kind = BackupDestinationKind.DOCUMENT_SLOTS,
                 account = null,
-                destinationId = SLOTS_DESTINATION_ID,
+                destinationId = DOCUMENT_SLOTS_DESTINATION_ID,
                 folderUrl = null,
                 connectedAtMillis = now,
             )
@@ -425,8 +426,6 @@ class BackupHarness internal constructor(
     }
 
     private companion object {
-        /** El `destination_id` de las ranuras: no hay cuenta ni dirección que lo distinga. */
-        const val SLOTS_DESTINATION_ID = "document-slots"
         const val BUSY = "BUSY"
         const val UNAVAILABLE = "DATABASE_UNAVAILABLE"
         const val NOT_CONNECTED = "NOT_CONNECTED"

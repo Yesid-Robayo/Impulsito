@@ -186,6 +186,19 @@ internal interface BackupStateDao {
     suspend fun reopenAfterConflict(now: Long, destinationId: String): Int
 
     /**
+     * Olvida en qué ranura está la cabeza si es [fileRef] del destino [destinationId], porque esa
+     * ranura va a tener un archivo nuevo y vacío, y fuerza una subida. La generación y el teléfono
+     * de la cabeza se conservan: reiniciarlos daría una nube más nueva que no existe. Devuelve 0 si
+     * la cabeza estaba en otra ranura o en otro destino.
+     */
+    @Query(
+        "UPDATE backup_state SET head_file_ref = NULL, change_seq = change_seq + 1, " +
+            "first_unsynced_at = COALESCE(first_unsynced_at, :now) WHERE id = 1 " +
+            "AND destination_id = :destinationId AND head_file_ref = :fileRef",
+    )
+    suspend fun forgetHeadFile(fileRef: String, now: Long, destinationId: String): Int
+
+    /**
      * Confirma una copia comprobada en el destino, en una sola sentencia, y solo si el destino
      * sigue siendo [destinationId]: si la persona cambió de destino durante la subida, no cambia
      * ninguna fila, devuelve 0, y la copia queda en el destino anterior sin confirmar.

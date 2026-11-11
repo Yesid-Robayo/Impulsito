@@ -98,8 +98,18 @@ class PolicyPrompt(private val consent: PolicyConsentUseCase, private val scope:
         }
     }
 
+    /**
+     * Cuántas pantallas con compuerta hay compuestas. Al pasar de una a otra, como de elegir el
+     * destino a preparar los archivos, la nueva entra antes de que salga la anterior: la compuerta
+     * solo se cierra cuando sale la última.
+     */
+    private var openGates = 0
+
     /** Se abre una pantalla que conecta un destino: sin la versión vigente aceptada, pregunta. */
     fun enterGate() {
+        openGates += 1
+        // Ya aceptada en esta compuerta: la pantalla siguiente no vuelve a quedar en blanco.
+        if (mutable.value.gate == PolicyGate.ALLOWED) return
         mutable.update { it.copy(gate = PolicyGate.CHECKING) }
         scope.launch {
             // Si no se puede leer, se pregunta: nunca se conecta sin aceptar.
@@ -114,9 +124,10 @@ class PolicyPrompt(private val consent: PolicyConsentUseCase, private val scope:
         }
     }
 
-    /** La pantalla de la compuerta se cerró: la compuerta deja de contar. */
+    /** Una pantalla de la compuerta se cerró: con la última, la compuerta deja de contar. */
     fun leaveGate() {
-        mutable.update { it.copy(gate = null) }
+        openGates = (openGates - 1).coerceAtLeast(0)
+        if (openGates == 0) mutable.update { it.copy(gate = null) }
     }
 
     /** `Aceptar y continuar` o `Aceptar el cambio`. */

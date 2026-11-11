@@ -14,6 +14,7 @@
 
     <!-- Acciones y estados comunes. -->
     <string name="action_retry">Try again</string>
+    <string name="action_continue">Continue</string>
     <string name="state_error_read">This could not be opened.</string>
     <string name="state_error_save">Could not save. What was entered is still here.</string>
     <string name="error_device_storage">The phone is out of space. Free up some and try again.</string>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Preparar archivos en la nube. Textos de la guía de redacción. La app sale de app_name. -->
+    <string name="slots_intro">São três arquivos que %1$s regrava por turnos. São criados uma única vez, no seletor do telefone.</string>
+    <string name="slots_how">No seletor, entrar em %1$s, escolher a pasta e tocar em Salvar.</string>
+    <string name="slots_no_cloud_help">Se %1$s não aparecer no seletor, falta instalar o app ou entrar na conta.</string>
+    <string name="slots_file_row">Arquivo %1$d de %2$d</string>
+    <string name="slots_file_created">Criado</string>
+    <string name="slots_file_pending">Falta criar</string>
+    <string name="slots_file_ready">Pronto</string>
+    <string name="slots_create_action">Criar o arquivo</string>
+    <string name="slots_photos_note">As fotos não vão para estes arquivos. Podem ser salvas com Exportar fotos.</string>
+    <string name="slots_plain_warning">Sem criptografia, %1$s pode ler todo o negócio.</string>
+    <string name="slots_no_restore_note">Preparar arquivos não traz cópias anteriores. Para isso há a opção Buscar um arquivo.</string>
+    <string name="slots_error_provider">%1$s só pode preparar estes arquivos em %2$s. Outra nuvem ou uma pasta do telefone não servem aqui. Se essa nuvem oferecer WebDAV, ela se conecta como serviço. Se não, restam as cópias locais.</string>
+    <string name="slots_error_service_action">Conectar um serviço</string>
+    <string name="slots_error_local_action">Ir para Cópias locais</string>
+    <string name="slots_error_no_size">%1$s não informa o tamanho desse arquivo, e sem esse dado %2$s não consegue proteger a cópia. Convém escolher outro serviço.</string>
+    <string name="slots_error_not_empty">Esse arquivo já tem dados, talvez uma cópia de outro telefone. %1$s não grava por cima.</string>
+    <string name="slots_error_not_writable">%1$s não deixa gravar nesse arquivo, e %2$s não consegue salvar cópias ali. Convém escolher outro serviço.</string>
+    <string name="slots_error_same_file">Esse arquivo já é o arquivo %1$d de 3. Cada um tem que ser diferente.</string>
+    <string name="slots_other_file_action">Criar outro arquivo</string>
+    <string name="slots_error_cancelled">O arquivo não foi criado. Os anteriores continuam prontos.</string>
+    <string name="slots_other_destination_note">As cópias já vão para outro lugar. Estes arquivos ficam criados, mas %1$s ainda não muda de lugar daqui.</string>
+    <string name="slots_ready_title">Arquivos prontos</string>
+    <string name="slots_ready_body">A partir de agora, %1$s entrega as cópias a %2$s. Toda semana é preciso olhar o horário do arquivo nessa nuvem.</string>
+    <string name="backup_action_other_service">Escolher outro serviço</string>
+    <string name="offsite_export_photos_action">Exportar fotos</string>
+    <string name="a11y_help_link">Ajuda: %1$s</string>
+</resources>
