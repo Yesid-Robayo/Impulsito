@@ -115,6 +115,7 @@ class CheckoutViewModelTest {
         draft: SaleDraft? = twoOils,
         qrOnly: Boolean = false,
         state: SavedStateHandle = savedState,
+        format: SaleNumberFormat = numbers,
     ): CheckoutViewModel {
         val model = CheckoutViewModel(
             catalogSource = { catalog },
@@ -124,7 +125,7 @@ class CheckoutViewModelTest {
             },
             findImage = { null },
             savedState = state,
-            numbers = numbers,
+            numbers = format,
             offered = { draft?.let { CheckoutHandoff.Offered(it, qrOnly) } },
             computation = dispatcher,
         )
@@ -152,6 +153,19 @@ class CheckoutViewModelTest {
             assertEquals(Money(25_000L), model.state.summary.subtotal)
             assertEquals(CheckoutBalance.Complete, model.state.balance)
             assertEquals(listOf(11L, 12L), model.state.addable.map { it.id })
+        }
+
+    @Test
+    fun `a currency with cents opens the same way, without zeros the person did not write`() =
+        runTest {
+            val point = NumberSymbols(decimalSeparator = '.', minusSign = '-', grouping = null)
+            val model = viewModel(format = SaleNumberFormat(point, 2, point, point))
+
+            assertEquals(CheckoutContent.Ready, model.state.content)
+            // 25.000 en unidad menor con dos decimales: se escribe 250, como lo escribiría la persona.
+            assertEquals("250", model.state.payments.single().amountText)
+            assertEquals(Money(25_000L), model.state.summary.amountDue)
+            assertEquals(CheckoutBalance.Complete, model.state.balance)
         }
 
     @Test
