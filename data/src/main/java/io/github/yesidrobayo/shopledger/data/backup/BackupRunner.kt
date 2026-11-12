@@ -123,6 +123,9 @@ import kotlinx.coroutines.withContext
  * @param mutex el cerrojo del respaldo, uno por proceso.
  * @param rejected las generaciones propias rechazadas, que nunca se adoptan ni se repiten.
  * @param fullVerify la generación de la última copia leída entera, que la poda conserva.
+ * @param afterCopy el paso 9b: con `Mantener al día esta carpeta`, deja el archivo de cada copia
+ *   nueva que no es fatal también en el segundo destino, antes de subir y bajo el mismo cerrojo.
+ *   Nunca lanza ni detiene la subida: un fallo ahí se anota aparte.
  */
 internal class BackupRunner(
     private val state: BackupStateDao,
@@ -152,6 +155,7 @@ internal class BackupRunner(
     private val transportFailures: TransportFailures = TransportFailures(state),
     private val snapshotValidation: SnapshotValidation =
         SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
+    private val afterCopy: suspend (Delivery.Upload) -> Unit = {},
 ) {
     private val recovery =
         UploadRecovery(state, staging, rejected, clock, log, ioContext, schemaVersion)
@@ -248,7 +252,12 @@ internal class BackupRunner(
                 is Recovery.StartOver -> {
                     attempt.pendingGeneration = recovered.pendingGeneration
                     when (val made = newCopy(listing, current, device, recovered, link, control)) {
-                        is Made.Copy -> made.copy
+                        is Made.Copy -> {
+                            // Paso 9b: la carpeta local, si sigue a la copia principal.
+                            if (!made.copy.marks.fatal) afterCopy(made.copy)
+                            made.copy
+                        }
+
                         is Made.Stop -> return made.run
                     }
                 }

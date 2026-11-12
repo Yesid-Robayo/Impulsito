@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupTimings
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupUploadWork
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.rule.backup.SecondDestinationRule
 import io.github.yesidrobayo.shopledger.domain.rule.backup.UploadCadence
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -41,6 +42,10 @@ import kotlin.time.Instant
  * @param policyAccepted si la persona aceptó la versión vigente de la política y los términos. Lee
  *   el disco.
  * @param probeDue si la última sonda de la cabeza ya venció, según `last-probe`. Lee el disco.
+ * @param secondDestination el segundo destino y los cambios, o nulo sin carpeta elegida. Lee el
+ *   disco. Es local: no depende del destino conectado ni de la política.
+ * @param mainWaitingForNetwork si la copia principal espera red: sin red, sin Wi-Fi o con el ahorro
+ *   de datos. Con `Mantener al día esta carpeta`, la carpeta no la espera.
  */
 class BackupScheduler internal constructor(
     private val facts: suspend () -> ScheduleFacts?,
@@ -48,6 +53,8 @@ class BackupScheduler internal constructor(
     private val policyAccepted: suspend () -> Boolean,
     private val queue: BackupWorkQueue,
     private val clock: Clock,
+    private val secondDestination: suspend () -> SecondDestinationFacts? = { null },
+    private val mainWaitingForNetwork: suspend () -> Boolean = { false },
     private val probeDue: suspend () -> Boolean = { false },
 ) {
     /**
@@ -56,6 +63,7 @@ class BackupScheduler internal constructor(
      * la app no podría restaurar: esa no reinicia el cambio más viejo, y cada venta subiría otra.
      */
     internal suspend fun onDataChanged() {
+        if (!restorePending()) followStreak()
         if (paused()) return
         queue.restartDebounce(BackupTimings.BACKUP_DEBOUNCE)
         val current = uploadable() ?: return
@@ -70,6 +78,7 @@ class BackupScheduler internal constructor(
      * no se puede leer, para que la espera se reintente sin perder el cambio.
      */
     internal suspend fun onDebounceElapsed(): Boolean {
+        if (!restorePending()) followWithoutUpload()
         if (paused()) return true
         val current = facts() ?: return false
         if (current.isUploadable) enqueueUpload(current, pastInterval = false)
@@ -193,7 +202,8 @@ class BackupScheduler internal constructor(
      * detiene en su siguiente revisión, y el cerrojo del respaldo espera a que salga.
      */
     internal suspend fun cancelForDisconnect() {
-        (BackupWorkNames.ALL + BackupWorkNames.HEAD_PROBE_ONCE).forEach { queue.cancel(it) }
+        // La copia de la carpeta local sigue: no depende del destino conectado.
+        (BackupWorkNames.MAIN + BackupWorkNames.HEAD_PROBE_ONCE).forEach { queue.cancel(it) }
     }
 
     /**
@@ -238,10 +248,61 @@ class BackupScheduler internal constructor(
     internal suspend fun reconcile() {
         if (restorePending()) return
         queue.keepDailyMaintenance()
+        secondDestination()?.let { second ->
+            if (SecondDestinationRule.dailyDue(
+                    second.changeSeq,
+                    second.lastCopySeq,
+                    second.lastCopyAt,
+                    clock.now(),
+                )
+            ) {
+                queue.keepSecondDestination()
+            }
+        }
         facts()?.connectedKind?.let { queue.keepHeadChecks(needsNetwork(it)) }
         val current = uploadable() ?: return
         if (queue.uploadWork() != BackupUploadWork.NONE) return
         enqueueUpload(current, pastInterval = false)
+    }
+
+    /**
+     * Terminó el trabajo del segundo destino. Con `Mantener al día esta carpeta` y cambios que
+     * llegaron mientras escribía, la espera vuelve a empezar, como tras el paso 14.
+     */
+    internal suspend fun onSecondDestinationFinished() {
+        if (restorePending()) return
+        val second = secondDestination() ?: return
+        if (second.followMainBackup && second.changeSeq != second.lastCopySeq) {
+            queue.restartDebounce(BackupTimings.BACKUP_DEBOUNCE)
+        }
+    }
+
+    /**
+     * Con `Mantener al día esta carpeta`, una racha larga también escribe en la carpeta tras
+     * [BackupTimings.BACKUP_MAX_WAIT], como la subida.
+     */
+    private suspend fun followStreak() {
+        val second = secondDestination()?.takeIf { it.followMainBackup } ?: return
+        if (SecondDestinationRule.followMaxWaitReached(
+                second.changeSeq,
+                second.lastCopySeq,
+                second.lastCopyAt,
+                clock.now(),
+            )
+        ) {
+            queue.keepSecondDestination()
+        }
+    }
+
+    /**
+     * Venció la espera: con `Mantener al día esta carpeta`, sin destino conectado o con la copia
+     * principal esperando red, la carpeta no espera. Con red, la escribe el paso 9b.
+     */
+    private suspend fun followWithoutUpload() {
+        val second = secondDestination()?.takeIf { it.followMainBackup } ?: return
+        if (second.changeSeq == second.lastCopySeq) return
+        val connected = facts()?.connectedKind != null
+        if (!connected || mainWaitingForNetwork()) queue.keepSecondDestination()
     }
 
     /** La restauración se canceló: lo que quedó pendiente vuelve a encolarse. */
@@ -298,6 +359,21 @@ class BackupScheduler internal constructor(
     private fun needsNetwork(kind: BackupDestinationKind): Boolean =
         kind == BackupDestinationKind.WEBDAV
 }
+
+/**
+ * Lo que el programador mira del segundo destino.
+ *
+ * @property followMainBackup `Mantener al día esta carpeta`.
+ * @property lastCopyAt cuándo terminó la última copia de la carpeta, o nulo si no hubo.
+ * @property lastCopySeq el `change_seq` de esa copia, o nulo.
+ * @property changeSeq el `change_seq` de ahora.
+ */
+internal data class SecondDestinationFacts(
+    val followMainBackup: Boolean,
+    val lastCopyAt: Instant?,
+    val lastCopySeq: Long?,
+    val changeSeq: Long,
+)
 
 /** Lo que pasó con `Respaldar ahora`. */
 enum class BackupNowRequest {
@@ -423,6 +499,9 @@ internal interface BackupWorkQueue {
      * de destino, la del anterior podría esperar a una red que el nuevo no necesita.
      */
     suspend fun replaceHeadChecks(needsNetwork: Boolean) = keepHeadChecks(needsNetwork)
+
+    /** Encola la copia del segundo destino, sin red, si no espera ni corre otra. */
+    suspend fun keepSecondDestination() {}
 
     companion object {
         /**

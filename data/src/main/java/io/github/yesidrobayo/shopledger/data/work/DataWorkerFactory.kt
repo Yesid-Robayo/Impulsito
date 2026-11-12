@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
 import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
 import io.github.yesidrobayo.shopledger.data.backup.HeadDeepCheck
 import io.github.yesidrobayo.shopledger.data.backup.HeadProbe
+import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationJob
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 
 /**
@@ -28,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.port.EventLog
  * @param maintenance el mantenimiento diario. Sin él, como en esas pruebas, su trabajo queda a la
  *   fábrica por defecto.
  * @param headChecks la sonda y la comprobación completa de la cabeza. Sin ellas, lo mismo.
+ * @param secondDestination la copia del segundo destino. Sin ella, lo mismo.
  */
 internal class DataWorkerFactory(
     private val backup: BackupEngine,
@@ -35,6 +37,7 @@ internal class DataWorkerFactory(
     private val scheduler: BackupScheduler? = null,
     private val maintenance: DailyMaintenance? = null,
     private val headChecks: Pair<HeadProbe, HeadDeepCheck>? = null,
+    private val secondDestination: SecondDestinationJob? = null,
 ) : WorkerFactory() {
     override fun createWorker(
         appContext: Context,
@@ -64,6 +67,11 @@ internal class DataWorkerFactory(
                 HeadProbeWorker(appContext, workerParameters, probe, deep, log, {
                     isMetered(appContext)
                 })
+            }
+
+        SecondDestinationWorker::class.java.name ->
+            secondDestination?.let {
+                SecondDestinationWorker(appContext, workerParameters, it, log)
             }
 
         else -> null

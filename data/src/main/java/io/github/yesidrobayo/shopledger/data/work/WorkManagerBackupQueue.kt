@@ -161,6 +161,15 @@ internal class WorkManagerBackupQueue(private val context: Context) : BackupWork
         enqueue(BackupWorkNames.HEAD_PROBE_ONCE, ExistingWorkPolicy.KEEP, request)
     }
 
+    override suspend fun keepSecondDestination() {
+        // Sin restricciones: es local, y debe correr también sin red ni cargador.
+        val request =
+            OneTimeWorkRequestBuilder<SecondDestinationWorker>()
+                .addTag(BackupWorkNames.SECOND_DESTINATION)
+                .build()
+        enqueue(BackupWorkNames.SECOND_DESTINATION, ExistingWorkPolicy.KEEP, request)
+    }
+
     private suspend fun enqueue(
         name: String,
         policy: ExistingWorkPolicy,

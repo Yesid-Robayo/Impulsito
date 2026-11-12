@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.backup
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import io.github.yesidrobayo.shopledger.data.DataPorts
 import io.github.yesidrobayo.shopledger.data.WorkAccess
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
@@ -10,8 +11,11 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.MetaValueForm
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
+import io.github.yesidrobayo.shopledger.domain.port.LogField
+import io.github.yesidrobayo.shopledger.domain.port.warn
 import java.io.File
 import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 
 /**
@@ -27,6 +31,8 @@ import kotlinx.coroutines.sync.Mutex
  * @param mutex el cerrojo del respaldo, uno por proceso.
  * @param policyAccepted si la persona aceptó la versión vigente de la política y los términos. Lee
  *   el disco.
+ * @param secondDestination el escritor del segundo destino sobre la base abierta, para el paso 9b.
+ * @param log el registro, para un fallo del paso 9b, que nunca detiene la subida.
  */
 internal fun productionBackupEngine(
     context: Context,
@@ -40,6 +46,7 @@ internal fun productionBackupEngine(
     deviceIdentity: () -> DeviceIdentityStore,
     mutex: Mutex,
     policyAccepted: suspend () -> Boolean,
+    secondDestination: ((DataPorts) -> SecondDestinationWriter)? = null,
 ): BackupEngine = DatabaseBackupEngine(
     restoreMarkers = { RestoreMarkers(noBackupDirectory()) },
     openForWork = openForWork,
@@ -102,6 +109,29 @@ internal fun productionBackupEngine(
                     forceUpload = { ports.backupState.forceUpload(clock.nowEpochMillis()) },
                     forgetDamaged = damaged::removeAll,
                 ),
+            afterCopy = { upload ->
+                val writer = secondDestination?.invoke(ports) ?: return@BackupRunner
+                // Paso 9b: un fallo de la carpeta se anota aparte y nunca detiene la subida.
+                try {
+                    val run =
+                        writer.writeMainCopy(
+                            upload.copy.file,
+                            upload.copy.sizeBytes,
+                            upload.copy.sha256,
+                            upload.changeSeq,
+                        )
+                    if (run is SecondDestinationRun.Problem) {
+                        log.warn(
+                            SecondDestinationEvent.MAIN_COPY_FAILED,
+                            LogField.state("motivo", run.problem),
+                        )
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (failure: Exception) {
+                    log.warn(SecondDestinationEvent.MAIN_COPY_FAILED, failure)
+                }
+            },
         )
     },
     ioContext = ioContext,

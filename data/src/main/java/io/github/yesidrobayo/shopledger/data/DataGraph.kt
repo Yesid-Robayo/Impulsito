@@ -21,6 +21,7 @@ import io.github.yesidrobayo.shopledger.data.backup.DamagedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.DataHealthReader
 import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
 import io.github.yesidrobayo.shopledger.data.backup.DocumentExportSink
+import io.github.yesidrobayo.shopledger.data.backup.DocumentTreeFolder
 import io.github.yesidrobayo.shopledger.data.backup.DurableFileOps
 import io.github.yesidrobayo.shopledger.data.backup.FullCopyExporter
 import io.github.yesidrobayo.shopledger.data.backup.FullVerifyGenerationStore
@@ -28,6 +29,7 @@ import io.github.yesidrobayo.shopledger.data.backup.HeadDeepCheck
 import io.github.yesidrobayo.shopledger.data.backup.HeadProbe
 import io.github.yesidrobayo.shopledger.data.backup.LastProbeStore
 import io.github.yesidrobayo.shopledger.data.backup.LocalCopyBuilder
+import io.github.yesidrobayo.shopledger.data.backup.LocalEncryption
 import io.github.yesidrobayo.shopledger.data.backup.MaintenanceAccess
 import io.github.yesidrobayo.shopledger.data.backup.ProbeAccess
 import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
@@ -42,6 +44,11 @@ import io.github.yesidrobayo.shopledger.data.backup.RoomRestoredDatabaseVerifier
 import io.github.yesidrobayo.shopledger.data.backup.SavedDestination
 import io.github.yesidrobayo.shopledger.data.backup.ScheduleFacts
 import io.github.yesidrobayo.shopledger.data.backup.ScheduledBackupWork
+import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationFacts
+import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationJob
+import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationLoad
+import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationStore
+import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationWriter
 import io.github.yesidrobayo.shopledger.data.backup.SnapshotCreator
 import io.github.yesidrobayo.shopledger.data.backup.SnapshotSealer
 import io.github.yesidrobayo.shopledger.data.backup.SnapshotValidation
@@ -93,6 +100,7 @@ import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
 import io.github.yesidrobayo.shopledger.data.work.backupNetworkOf
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
@@ -115,12 +123,14 @@ import io.github.yesidrobayo.shopledger.domain.port.error
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.domain.port.info
 import io.github.yesidrobayo.shopledger.domain.port.warn
+import io.github.yesidrobayo.shopledger.domain.rule.backup.BackupStatusResolver
 import io.github.yesidrobayo.shopledger.domain.rule.backup.HeadProbeRule
 import io.github.yesidrobayo.shopledger.domain.rule.backup.UploadUsageRule
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import java.io.File
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Instant
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -276,6 +286,17 @@ class DataGraph internal constructor(
             probeDue = {
                 val last = lastProbeStore().load()
                 HeadProbeRule.isDue(last?.at, clock.now())
+            },
+            secondDestination = ::secondDestinationFacts,
+            mainWaitingForNetwork = {
+                val ports = (openForWork() as? DataAccess.Ready)?.ports
+                val status =
+                    ports?.backupStatus?.current()?.let {
+                        BackupStatusResolver.resolve(it, clock.now()).status
+                    }
+                status == BackupStatus.WAITING_FOR_NETWORK ||
+                    status == BackupStatus.WAITING_FOR_WIFI ||
+                    status == BackupStatus.BLOCKED_BY_DATA_SAVER
             },
         )
     }
@@ -651,6 +672,7 @@ class DataGraph internal constructor(
             deviceIdentity = { deviceIdentity },
             mutex = backupMutex,
             policyAccepted = consentGate::allowsUploads,
+            secondDestination = ::secondDestinationWriter,
         )
     }
 
@@ -665,6 +687,7 @@ class DataGraph internal constructor(
             backupScheduler,
             dailyMaintenance,
             headProbe to headDeepCheck,
+            secondDestinationJob,
         )
     }
 
@@ -723,6 +746,77 @@ class DataGraph internal constructor(
         workQueue = ::WorkManagerBackupQueue,
         notifier = notifier,
     )
+
+    /** `second-destination.json`, en `noBackupFilesDir`. Crearlo no toca el disco. */
+    private val secondDestinationStore by lazy {
+        SecondDestinationStore(
+            { File(files().noBackupDirectory, SecondDestinationStore.FILE_NAME) },
+            ioContext,
+        )
+    }
+
+    /** El escritor del segundo destino sobre la base de [ports]. */
+    private fun secondDestinationWriter(ports: DataPorts): SecondDestinationWriter =
+        SecondDestinationWriter(
+            store = secondDestinationStore,
+            folderFor = { saved ->
+                DocumentTreeFolder(
+                    context.contentResolver,
+                    Uri.parse(saved.treeUri),
+                    Uri.parse(saved.folderUri),
+                )
+            },
+            build = { directory -> localCopyBuilder(ports).build(directory) },
+            staging = {
+                File(
+                    File(files().noBackupDirectory, BackupStaging.DIRECTORY_NAME),
+                    SECOND_STAGING,
+                )
+            },
+            state = { ports.backupState.get() },
+            // Sin cifrado opcional todavía: es lo mismo que usa el motor al armar cada copia.
+            encryption = { LocalEncryption.NONE },
+            schemaVersion = schemaVersion,
+            deviceId = { deviceIdentity.deviceId() },
+            clock = clock,
+            ioContext = ioContext,
+        )
+
+    /** El trabajo del segundo destino, con la base abierta para un trabajo. */
+    private val secondDestinationJob by lazy {
+        SecondDestinationJob(
+            restorePending = {
+                withContext(ioContext) { RestoreMarkers(files().noBackupDirectory).present() }
+            },
+            writer = {
+                when (val access = openForWork()) {
+                    is DataAccess.Ready ->
+                        SecondDestinationJob.Opened.Ready(secondDestinationWriter(access.ports))
+
+                    WorkAccess.MigrationPending, WorkAccess.RestorePending ->
+                        SecondDestinationJob.Opened.Waiting
+
+                    is DataAccess.Rescue -> SecondDestinationJob.Opened.Unavailable
+                }
+            },
+            mutex = backupMutex,
+            log = log,
+            afterRun = { backupScheduler.onSecondDestinationFinished() },
+        )
+    }
+
+    /** Lo que el programador mira del segundo destino, o nulo sin carpeta o sin base. */
+    private suspend fun secondDestinationFacts(): SecondDestinationFacts? {
+        val saved =
+            (secondDestinationStore.load() as? SecondDestinationLoad.Loaded)?.state ?: return null
+        val row = (openForWork() as? DataAccess.Ready)?.ports?.backupState?.get() ?: return null
+        return SecondDestinationFacts(
+            followMainBackup = saved.followMainBackup,
+            lastCopyAt = saved.lastCopyAt?.let(Instant::fromEpochMilliseconds),
+            lastCopySeq = saved.lastCopySeq,
+            changeSeq = row.changeSeq,
+        )
+    }
 
     /**
      * Lo que el programador del respaldo mira del estado guardado, con la compuerta de los trabajos:
@@ -872,3 +966,6 @@ class DataGraph internal constructor(
         }
     }
 }
+
+/** La carpeta de preparación del segundo destino, dentro de `backup-staging/`. */
+private const val SECOND_STAGING = "second"

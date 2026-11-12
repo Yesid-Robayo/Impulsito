@@ -62,8 +62,23 @@ internal object BackupWorkNames {
     /** La comprobación completa de la cabeza, una vez al mes y con una red sin datos móviles. */
     const val HEAD_DEEP_CHECK = "head-deep-check"
 
-    /** Los tres que una restauración detiene antes de leer el destino. */
-    val ALL = listOf(DEBOUNCE, UPLOAD_UNMETERED, UPLOAD)
+    /**
+     * La copia en la carpeta local del segundo destino, sin red y con cualquier destino o ninguno.
+     * Siempre con `KEEP`: reemplazar una que escribe borraría su temporal.
+     */
+    const val SECOND_DESTINATION = "second-destination"
+
+    /**
+     * Los que una restauración detiene antes de leer el destino o la base: la espera, las dos
+     * subidas y la copia de la carpeta local.
+     */
+    val ALL = listOf(DEBOUNCE, UPLOAD_UNMETERED, UPLOAD, SECOND_DESTINATION)
+
+    /**
+     * Los del destino conectado: la espera y las dos subidas. Desconectarlo no toca la copia de la
+     * carpeta local, que no depende de él.
+     */
+    val MAIN = listOf(DEBOUNCE, UPLOAD_UNMETERED, UPLOAD)
 
     /** La otra subida de [name], la que se cancela cuando [name] deja una copia comprobada. */
     fun otherUpload(name: String): String? = when (name) {

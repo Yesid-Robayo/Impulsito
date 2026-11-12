@@ -70,6 +70,10 @@ internal class FakeWorkQueue(private val now: () -> Instant) : BackupWorkQueue {
         calls += "probe once ${network(needsNetwork)}"
     }
 
+    override suspend fun keepSecondDestination() {
+        calls += "keep second destination"
+    }
+
     /** Conservar: un trabajo nuevo solo entra si no hay otro con ese nombre encolado o corriendo. */
     private fun keep(name: String, work: Queued) {
         if (name !in queued && name !in running) queued[name] = work

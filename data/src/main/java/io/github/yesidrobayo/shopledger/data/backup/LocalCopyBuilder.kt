@@ -86,6 +86,7 @@ internal class LocalCopyBuilder(
                     sha256 = packed.fileSha256,
                     restorable = !marks.fatal,
                     records = sealed.records,
+                    catalogCount = sealed.catalogCount,
                     changeSeq = sealed.changeSeq,
                 )
 
@@ -116,6 +117,7 @@ internal sealed interface LocalCopy {
      * @property sha256 la suma de [file], en hexadecimal en minúscula.
      * @property restorable si la app la podría restaurar.
      * @property records los registros que trae, para sus metadatos.
+     * @property catalogCount los productos, proveedores y clientes que trae.
      * @property changeSeq el `change_seq` de la instantánea: lo que la copia trae de verdad.
      */
     data class Built(
@@ -124,6 +126,7 @@ internal sealed interface LocalCopy {
         val sha256: String,
         val restorable: Boolean,
         val records: Long,
+        val catalogCount: Long,
         val changeSeq: Long,
     ) : LocalCopy
 

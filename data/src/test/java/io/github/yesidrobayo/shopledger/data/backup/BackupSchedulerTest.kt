@@ -375,6 +375,8 @@ class BackupSchedulerTest {
                 "cancel backup-debounce",
                 "cancel backup-upload-unmetered",
                 "cancel backup-upload",
+                // La copia de la carpeta local también lee la base: espera a la restauración.
+                "cancel second-destination",
                 "await none running",
                 "keep unmetered",
                 "keep upload 40m con red",
