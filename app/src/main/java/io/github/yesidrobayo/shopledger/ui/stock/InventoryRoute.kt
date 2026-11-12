@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.navigation.InventoryFilter
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
 
@@ -84,6 +85,7 @@ fun InventoryRoute(
                 onNavigate = { navigator.back() },
                 tabs = tabs,
                 notificationsBlocked = notificationsBlocked,
+                backupBanner = { if (asTab) RootBackupBanner(navigator::open) },
             )
         }
     }

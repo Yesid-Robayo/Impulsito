@@ -71,6 +71,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * @param navigation cómo se sale: sin flecha como pestaña de Productos, con flecha si se abrió
  * desde   otra pantalla, como el aviso de Inicio.
  * @param tabs las pestañas de Productos, que da la pantalla que la contiene; vacías si va sola.
+ *
+ * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
+ *   atención.
  */
 @Composable
 fun InventoryScreen(
@@ -81,6 +84,7 @@ fun InventoryScreen(
     onNavigate: () -> Unit = {},
     tabs: @Composable () -> Unit = {},
     notificationsBlocked: Boolean = false,
+    backupBanner: @Composable () -> Unit = {},
 ) {
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         AppTopBar(
@@ -94,6 +98,7 @@ fun InventoryScreen(
                     stringResource(R.string.a11y_back)
                 },
         )
+        backupBanner()
         Column(
             Modifier
                 .weight(1f)

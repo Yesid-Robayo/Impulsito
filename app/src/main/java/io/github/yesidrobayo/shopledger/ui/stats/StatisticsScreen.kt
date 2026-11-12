@@ -96,12 +96,16 @@ private val KINDS = listOf(PeriodKind.DAY, PeriodKind.WEEK, PeriodKind.MONTH)
  *
  * Es pura: recibe el estado y avisa cada acción. La comparación, los rankings, los desgloses y los
  * avisos sobre las cifras se suman debajo.
+ *
+ * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
+ *   atención.
  */
 @Composable
 fun StatisticsScreen(
     uiState: StatisticsUiState,
     onAction: (StatisticsAction) -> Unit,
     modifier: Modifier = Modifier,
+    backupBanner: @Composable () -> Unit = {},
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -130,6 +134,7 @@ fun StatisticsScreen(
                         }
                     },
                 )
+                backupBanner()
                 val bottom = bottomSpace()
                 val rest = Modifier.weight(1f).fillMaxWidth()
                 when (uiState) {

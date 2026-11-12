@@ -84,6 +84,9 @@ private sealed interface HistoryChip {
  * - En una ventana ancha, la venta elegida se abre a la derecha con [detail], sin salir de la lista.
  *
  * Es pura: recibe el estado y avisa cada acción.
+ *
+ * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
+ *   atención.
  */
 @Composable
 fun SaleHistoryScreen(
@@ -91,6 +94,7 @@ fun SaleHistoryScreen(
     onAction: (SaleHistoryAction) -> Unit,
     modifier: Modifier = Modifier,
     detail: (@Composable (Long) -> Unit)? = null,
+    backupBanner: @Composable () -> Unit = {},
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -106,6 +110,7 @@ fun SaleHistoryScreen(
                     onNavigate = {},
                     navigationLabel = null,
                 )
+                backupBanner()
                 RecordsSegments(selected = SALES_SEGMENT) { index ->
                     when (index) {
                         PURCHASES_SEGMENT -> onAction(SaleHistoryAction.ShowPurchases)

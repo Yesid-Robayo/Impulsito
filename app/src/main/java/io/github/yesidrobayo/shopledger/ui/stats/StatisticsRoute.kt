@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
 
 /**
  * `Números` en la navegación. Cada vez que la pantalla vuelve a primer plano mira de nuevo qué día
@@ -84,6 +85,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
                         -> viewModel.onAction(action)
                     }
                 },
+                backupBanner = { RootBackupBanner(navigator::open) },
             )
         }
     }

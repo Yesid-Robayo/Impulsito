@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.home.TodaySales
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
+import io.github.yesidrobayo.shopledger.ui.backup.BackupWordings
 import io.github.yesidrobayo.shopledger.ui.stock.inventoryItemOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -91,11 +92,9 @@ class HomeViewModel(
      * día, sin chip. El nombre de la nube se lee de nuevo solo si cambia el destino.
      */
     val backup: StateFlow<BackupWording?> =
-        combine(backupOverview(dayChecks.map {}), zones) { overview, zone -> overview to zone }
-            .mapLatest<Pair<BackupOverview, BusinessTimeZone?>, BackupWording?> { pair ->
-                val (overview, zone) = pair
-                BackupWording(overview, providerOf(overview.destinationKind), zone)
-            }
+        BackupWordings(providerLabel, computation)
+            .of(backupOverview(dayChecks.map {}), zones)
+            .map<BackupWording, BackupWording?> { it }
             .catch { emit(null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
 
@@ -128,16 +127,6 @@ class HomeViewModel(
         homeProfit(dayChecks.map {})
             .catch { emit(null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
-
-    private var providerFor: Pair<BackupDestinationKind?, String?>? = null
-
-    private suspend fun providerOf(kind: BackupDestinationKind?): String? {
-        if (kind != BackupDestinationKind.DOCUMENT_SLOTS) return null
-        providerFor?.takeIf { it.first == kind }?.let { return it.second }
-        val label = withContext(computation) { providerLabel() }
-        providerFor = kind to label
-        return label
-    }
 
     fun onAction(action: HomeAction) {
         when (action) {

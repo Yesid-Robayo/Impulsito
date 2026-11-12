@@ -67,6 +67,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  *
  * @param floatingAction el botón flotante `Nuevo producto`, encima de la barra inferior.
  * @param tabs las pestañas de Productos, bajo la barra superior, cuando la lista es una de ellas.
+ *
+ * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
+ *   atención.
  */
 @Composable
 fun ProductListScreen(
@@ -75,6 +78,7 @@ fun ProductListScreen(
     modifier: Modifier = Modifier,
     floatingAction: @Composable () -> Unit = {},
     tabs: (@Composable () -> Unit)? = null,
+    backupBanner: @Composable () -> Unit = {},
 ) {
     val spacing = AppTheme.spacing
     val sizes = AppTheme.sizes
@@ -103,6 +107,7 @@ fun ProductListScreen(
                     )
                 }
             }
+            backupBanner()
             // Sin detalle a la derecha, la lista queda centrada a su ancho de lectura.
             Column(
                 Modifier

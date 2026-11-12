@@ -53,6 +53,8 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
+import io.github.yesidrobayo.shopledger.ui.backup.BackupAttentionBanner
+import io.github.yesidrobayo.shopledger.ui.backup.BackupBannerAction
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.backup.backupBannerLook
 import io.github.yesidrobayo.shopledger.ui.backup.backupChipLook
@@ -60,7 +62,6 @@ import io.github.yesidrobayo.shopledger.ui.backup.needsBanner
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
-import io.github.yesidrobayo.shopledger.ui.components.BackupStatusBanner
 import io.github.yesidrobayo.shopledger.ui.components.BackupStatusChip
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetModeButton
@@ -318,39 +319,15 @@ private fun BackupSummary(backup: BackupWording, onAction: (HomeAction) -> Unit)
     val report = backup.overview.report
     val status = report.status
     BackupStatusChip(backupChipLook(backup), onClick = { onAction(HomeAction.OpenBackup) })
-    if (status.needsBanner()) {
-        val (label, action) =
-            when (status) {
-                BackupStatus.NOT_CONNECTED ->
-                    R.string.backup_action_choose_destination to HomeAction.ChooseDestination
-
-                BackupStatus.POLICY_PENDING ->
-                    R.string.backup_action_review_policy to HomeAction.ReviewPolicy
-
-                // Los demás que piden atención se revisan en la pantalla del respaldo, y los que no
-                // llevan banner nunca llegan aquí: se nombran igual, para que uno nuevo se decida.
-                BackupStatus.CHECK_DUE,
-                BackupStatus.BLOCKED_BY_DATA_SAVER,
-                BackupStatus.STALE,
-                BackupStatus.FAILED,
-                BackupStatus.PERMISSION_LOST,
-                BackupStatus.CONFLICT,
-                BackupStatus.RESTORING,
-                BackupStatus.NOTHING_TO_BACK_UP,
-                BackupStatus.UPLOADING,
-                BackupStatus.HANDED_OFF,
-                BackupStatus.UP_TO_DATE,
-                BackupStatus.WAITING_FOR_WIFI,
-                BackupStatus.WAITING_FOR_NETWORK,
-                BackupStatus.PENDING,
-                -> R.string.backup_action_review to HomeAction.OpenBackup
-            }
-        BackupStatusBanner(
-            backupBannerLook(backup),
-            actionLabel = stringResource(label),
-            onAction = { onAction(action) },
+    BackupAttentionBanner(backup, onAction = { action ->
+        onAction(
+            when (action) {
+                BackupBannerAction.OPEN_BACKUP -> HomeAction.OpenBackup
+                BackupBannerAction.CHOOSE_DESTINATION -> HomeAction.ChooseDestination
+                BackupBannerAction.REVIEW_POLICY -> HomeAction.ReviewPolicy
+            },
         )
-    }
+    })
     val provider = backup.providerLabel ?: NO_VALUE_TEXT
     val app = stringResource(R.string.app_name)
     if (BackupNotice.HUMAN_CHECK_DUE in report.notices && status != BackupStatus.CHECK_DUE) {

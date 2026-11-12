@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import kotlinx.coroutines.flow.Flow
 
@@ -79,6 +80,7 @@ fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = 
                         onClick = { navigator.open(AppNavKey.ProductEdit()) },
                     )
                 },
+                backupBanner = { RootBackupBanner(navigator::open) },
             )
         }
     }

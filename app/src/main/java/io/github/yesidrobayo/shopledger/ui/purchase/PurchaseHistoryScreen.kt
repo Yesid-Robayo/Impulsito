@@ -87,6 +87,9 @@ private sealed interface PurchaseChip {
  * - Los totales son costos: con el modo discreto se ocultan.
  *
  * Es pura: recibe el estado y avisa cada acción.
+ *
+ * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
+ *   atención.
  */
 @Composable
 fun PurchaseHistoryScreen(
@@ -94,6 +97,7 @@ fun PurchaseHistoryScreen(
     onAction: (PurchaseHistoryAction) -> Unit,
     modifier: Modifier = Modifier,
     detail: (@Composable (Long) -> Unit)? = null,
+    backupBanner: @Composable () -> Unit = {},
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -109,6 +113,7 @@ fun PurchaseHistoryScreen(
                     onNavigate = { onAction(PurchaseHistoryAction.ShowSales) },
                     navigationLabel = stringResource(R.string.a11y_back),
                 )
+                backupBanner()
                 RecordsSegments(selected = PURCHASES_SEGMENT) { index ->
                     when (index) {
                         SALES_SEGMENT -> onAction(PurchaseHistoryAction.ShowSales)
