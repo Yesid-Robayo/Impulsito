@@ -47,4 +47,11 @@
     <string name="recovery_kit_howto_body">Al restaurar una copia cifrada, %1$s pide este código. Sin él, nadie puede abrir esas copias.</string>
     <string name="recovery_kit_keep_body">Este papel se debe guardar en un lugar seguro, lejos del teléfono. Con este código y una copia se pueden leer los datos del negocio.</string>
     <string name="recovery_kit_format">Formato público y herramienta de rescate: %1$s</string>
+    <string name="encryption_change_code_action">Cambiar el código</string>
+    <string name="encryption_change_confirm_title">¿Cambiar el código?</string>
+    <string name="encryption_change_confirm_body">Se crea un código nuevo para las próximas copias. Las copias anteriores siguen necesitando el código anterior.</string>
+    <string name="encryption_change_confirm_action">Cambiar código</string>
+    <string name="encryption_create_new_code_action">Crear otro código</string>
+    <string name="recovery_check_mismatch">El código no coincide. Nada se borró y se puede volver a intentar.</string>
+    <string name="backup_failure_encryption_key_unavailable_action">Escribir el código</string>
 </resources>

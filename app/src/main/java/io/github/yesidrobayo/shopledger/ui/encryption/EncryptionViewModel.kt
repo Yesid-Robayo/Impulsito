@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryKitFileName
+import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.EncryptionUseCase
 import kotlin.coroutines.cancellation.CancellationException
@@ -51,6 +52,9 @@ class EncryptionViewModel(
     /** El código de la activación en curso. Nunca sale de la memoria de este objeto. */
     private var draft: RecoveryCodeDraft? = null
     private var running: Job? = null
+
+    /** Si la activación en curso es un cambio de código. */
+    private var changing = false
 
     /** La fecha del kit, leída al pasar el paso 1: el nombre y el contenido dicen el mismo día. */
     private var kitDate: BusinessDate? = null
@@ -100,6 +104,37 @@ class EncryptionViewModel(
             }
 
             EncryptionAction.Finish, EncryptionAction.Exit -> leaveActivation()
+
+            EncryptionAction.AskChange ->
+                if (state.value.status == EncryptionStatusUi.On) {
+                    state.update { it.copy(confirmChange = true) }
+                }
+
+            EncryptionAction.CloseChange -> state.update { it.copy(confirmChange = false) }
+
+            EncryptionAction.ConfirmChange -> {
+                state.update { it.copy(confirmChange = false) }
+                if (state.value.status == EncryptionStatusUi.On) newCodeFor(change = true)
+            }
+
+            EncryptionAction.CreateNewCode ->
+                if (state.value.status ==
+                    EncryptionStatusUi.KeyUnavailable
+                ) {
+                    newCodeFor(change = true)
+                }
+
+            EncryptionAction.TypeExistingCode ->
+                if (state.value.status == EncryptionStatusUi.KeyUnavailable) {
+                    state.update { it.copy(step = ActivationStepUi.TypeExisting()) }
+                }
+
+            is EncryptionAction.TypedExisting ->
+                updateStep<ActivationStepUi.TypeExisting> {
+                    if (it.working) it else ActivationStepUi.TypeExisting(action.groups)
+                }
+
+            EncryptionAction.Reseal -> reseal()
         }
     }
 
@@ -128,10 +163,42 @@ class EncryptionViewModel(
     private fun continueRisk() {
         val step = state.value.step as? ActivationStepUi.Risk ?: return
         if (!step.accepted) return
+        newCodeFor(change = false)
+    }
+
+    /**
+     * Crea el código y va al paso 2. Cambiar el código repite los pasos 2 a 4: el riesgo ya se
+     * aceptó al activar, y no necesita el código anterior.
+     */
+    private fun newCodeFor(change: Boolean) {
         val code = port.newCode()
         draft = code
+        changing = change
         state.update { it.copy(step = ActivationStepUi.ShowCode(code.groups)) }
         viewModelScope.launch { kitDate = safely { today() } }
+    }
+
+    /** Guarda otra vez el código escrito. Un error no borra lo escrito ni tiene límite de intentos. */
+    private fun reseal() {
+        val step = state.value.step as? ActivationStepUi.TypeExisting ?: return
+        if (step.working) return
+        state.update { it.copy(step = ActivationStepUi.TypeExisting(step.typed, working = true)) }
+        viewModelScope.launch {
+            val outcome =
+                safely { port.reseal(step.typed.joinToString("")) } ?: ResealOutcome.SAVE_FAILED
+            val problem =
+                when (outcome) {
+                    ResealOutcome.SEALED -> null
+                    ResealOutcome.TYPO, ResealOutcome.OTHER_CODE -> ResealProblem.MISMATCH
+                    ResealOutcome.SAVE_FAILED -> ResealProblem.SAVE
+                }
+            if (problem == null) {
+                state.update { it.copy(step = null) }
+                refresh()
+            } else {
+                state.update { it.copy(step = ActivationStepUi.TypeExisting(step.typed, problem)) }
+            }
+        }
     }
 
     private fun saveKit(uri: String) {
@@ -193,7 +260,7 @@ class EncryptionViewModel(
                 when (safely { port.activate(code) } ?: ActivationOutcome.SAVE_FAILED) {
                     ActivationOutcome.ACTIVATED -> {
                         draft = null
-                        state.update { it.copy(step = ActivationStepUi.Done) }
+                        state.update { it.copy(step = ActivationStepUi.Done(changing)) }
                         refresh()
                     }
 
@@ -210,6 +277,7 @@ class EncryptionViewModel(
         if (state.value.step is ActivationStepUi.Testing && running?.isActive == true) return
         draft = null
         kitDate = null
+        changing = false
         state.update { it.copy(step = null) }
         refresh()
     }

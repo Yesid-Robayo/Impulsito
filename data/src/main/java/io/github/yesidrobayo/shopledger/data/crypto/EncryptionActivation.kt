@@ -92,6 +92,8 @@ internal class EncryptionActivation(
                     keyIdHex = keyIdHex,
                     enabledAtUtcMillis = nowUtcMillis(),
                     offConfirmedAtUtcMillis = null,
+                    // Un código nuevo empieza sin comprobar.
+                    lastCodeCheckAtUtcMillis = null,
                 )
             try {
                 custody.state.write(enabled)
@@ -103,6 +105,28 @@ internal class EncryptionActivation(
         faults(ActivationStep.FORCE_UPLOAD)
         forceUpload()
         return ActivationResult.Activated(keyIdHex, stateWritten = true)
+    }
+
+    /**
+     * Vuelve a sellar el código de las copias, escrito por la persona, cuando el sobre de este
+     * teléfono ya no abre. Solo vale el código del `key_id` vigente: uno de otras copias no se
+     * sella, porque las copias nuevas saldrían con otra clave sin que nadie lo decidiera. No cambia
+     * el estado ni la fecha de la prueba.
+     */
+    suspend fun reseal(code: RecoveryCode): ResealResult {
+        val state = custody.state.read()
+        val current = state.keyIdHex
+        if (!state.enabled || current == null) return ResealResult.NotNeeded
+        if (BackupKey.from(code).keyIdHex != current) return ResealResult.OtherCode
+        faults(ActivationStep.SEAL)
+        return when (custody.keys.seal(code)) {
+            is RecoveryKeySave.Sealed -> {
+                forceUpload()
+                ResealResult.Sealed
+            }
+
+            is RecoveryKeySave.Failed -> ResealResult.SealFailed
+        }
     }
 
     private companion object {
@@ -121,3 +145,17 @@ internal sealed interface ActivationResult {
 
 /** Los pasos de escritura de la activación, donde las pruebas inyectan la muerte. */
 internal enum class ActivationStep { SEAL, DISCARD_PENDING, WRITE_STATE, FORCE_UPLOAD }
+
+internal enum class ResealResult {
+    /** Quedó sellado otra vez: las copias vuelven a salir, cifradas. */
+    Sealed,
+
+    /** Es un código válido, pero de otras copias: no se selló nada. */
+    OtherCode,
+
+    /** El cifrado no está activo: no hay código vigente que sellar. */
+    NotNeeded,
+
+    /** No se pudo sellar. Nada cambió. */
+    SealFailed,
+}

@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.EncryptionUseCase
@@ -155,7 +156,7 @@ class EncryptionViewModelTest {
         port.roundTripPasses = true
         model.onAction(EncryptionAction.Retry)
         advanceUntilIdle()
-        assertEquals(ActivationStepUi.Done, model.uiState.value.step)
+        assertEquals(ActivationStepUi.Done(), model.uiState.value.step)
         assertEquals(1, port.activations)
         assertEquals(EncryptionStatusUi.On, model.uiState.value.status)
     }
@@ -211,6 +212,81 @@ class EncryptionViewModelTest {
         assertEquals(EncryptionStatusUi.Off(wasOn = true), viewModel().uiState.value.status)
     }
 
+    @Test
+    fun `changing the code confirms first and repeats the code steps`() = runTest(dispatcher) {
+        port.status = EncryptionStatus.On(1L)
+        val model = viewModel()
+        model.onAction(EncryptionAction.AskChange)
+        assertTrue(model.uiState.value.confirmChange)
+        model.onAction(EncryptionAction.CloseChange)
+        assertFalse(model.uiState.value.confirmChange)
+        assertEquals(0, port.codesCreated)
+
+        model.onAction(EncryptionAction.AskChange)
+        model.onAction(EncryptionAction.ConfirmChange)
+        advanceUntilIdle()
+        assertFalse(model.uiState.value.confirmChange)
+        assertTrue(model.uiState.value.step is ActivationStepUi.ShowCode)
+        model.onAction(EncryptionAction.OnPaper)
+        model.onAction(EncryptionAction.ContinueCode)
+        model.onAction(EncryptionAction.Typed(groups))
+        model.onAction(EncryptionAction.CheckCode)
+        advanceUntilIdle()
+        assertEquals(ActivationStepUi.Done(changed = true), model.uiState.value.step)
+        assertEquals(1, port.activations)
+    }
+
+    @Test
+    fun `with the code unavailable another one can be created without the old one`() =
+        runTest(dispatcher) {
+            port.status = EncryptionStatus.KeyUnavailable
+            val model = viewModel()
+            model.onAction(EncryptionAction.AskChange)
+            assertFalse(model.uiState.value.confirmChange)
+            model.onAction(EncryptionAction.CreateNewCode)
+            assertTrue(model.uiState.value.step is ActivationStepUi.ShowCode)
+        }
+
+    @Test
+    fun `typing the code again reseals it and a mismatch keeps what was typed`() =
+        runTest(dispatcher) {
+            port.status = EncryptionStatus.KeyUnavailable
+            val model = viewModel()
+            model.onAction(EncryptionAction.TypeExistingCode)
+            val typed = groups.toMutableList().also { it[0] = "G7K3" }
+            model.onAction(EncryptionAction.TypedExisting(typed))
+            port.reseal = ResealOutcome.TYPO
+            model.onAction(EncryptionAction.Reseal)
+            advanceUntilIdle()
+            var step = model.uiState.value.step as ActivationStepUi.TypeExisting
+            assertEquals(ResealProblem.MISMATCH, step.problem)
+            assertEquals(typed, step.typed)
+
+            port.reseal = ResealOutcome.SAVE_FAILED
+            model.onAction(EncryptionAction.Reseal)
+            advanceUntilIdle()
+            step = model.uiState.value.step as ActivationStepUi.TypeExisting
+            assertEquals(ResealProblem.SAVE, step.problem)
+
+            port.reseal = ResealOutcome.SEALED
+            port.status = EncryptionStatus.On(3L)
+            model.onAction(EncryptionAction.Reseal)
+            advanceUntilIdle()
+            assertNull(model.uiState.value.step)
+            assertEquals(EncryptionStatusUi.On, model.uiState.value.status)
+            assertEquals(3, port.reseals)
+        }
+
+    @Test
+    fun `nothing is resealed or changed with encryption off`() = runTest(dispatcher) {
+        val model = viewModel()
+        model.onAction(EncryptionAction.TypeExistingCode)
+        model.onAction(EncryptionAction.CreateNewCode)
+        model.onAction(EncryptionAction.ConfirmChange)
+        assertNull(model.uiState.value.step)
+        assertEquals(0, port.codesCreated)
+    }
+
     private inner class FakePort : EncryptionPort {
         var status: EncryptionStatus = EncryptionStatus.Off(wasOn = false)
         var failStatus = false
@@ -218,6 +294,8 @@ class EncryptionViewModelTest {
         var outcome = ActivationOutcome.ACTIVATED
         var codesCreated = 0
         var activations = 0
+        var reseal = ResealOutcome.SEALED
+        var reseals = 0
 
         override suspend fun status(): EncryptionStatus {
             if (failStatus) error("Falla inventada")
@@ -240,6 +318,11 @@ class EncryptionViewModelTest {
         }
 
         override suspend fun roundTrip(draft: RecoveryCodeDraft): Boolean = roundTripPasses
+
+        override suspend fun reseal(typed: String): ResealOutcome {
+            reseals++
+            return reseal
+        }
 
         override suspend fun activate(draft: RecoveryCodeDraft): ActivationOutcome {
             activations++

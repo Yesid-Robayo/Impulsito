@@ -35,6 +35,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CheckboxRow
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
@@ -43,6 +44,8 @@ import io.github.yesidrobayo.shopledger.ui.components.OnboardingStep
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.RecoveryCodeBlock
 import io.github.yesidrobayo.shopledger.ui.components.RecoveryCodeField
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.StatusTone
@@ -73,6 +76,17 @@ fun EncryptionScreen(
     val step = uiState.step
     if (step == null) {
         StatusScreen(uiState.status, onAction, modifier)
+        if (uiState.confirmChange) {
+            ConfirmDialog(
+                title = stringResource(R.string.encryption_change_confirm_title),
+                body = stringResource(R.string.encryption_change_confirm_body),
+                confirmLabel = stringResource(R.string.encryption_change_confirm_action),
+                onConfirm = { onAction(EncryptionAction.ConfirmChange) },
+                onDismiss = { onAction(EncryptionAction.CloseChange) },
+                dismissLabel = stringResource(R.string.action_cancel),
+                sensitive = true,
+            )
+        }
         return
     }
     // Los pasos dan su color de contenido: sin él, el texto sale con el de la ventana y en oscuro
@@ -87,7 +101,8 @@ fun EncryptionScreen(
             is ActivationStepUi.ShowCode -> CodeStep(step, onAction, Modifier)
             is ActivationStepUi.Retype -> RetypeStep(step, onAction, Modifier)
             is ActivationStepUi.Testing -> TestingStep(step, onAction, Modifier)
-            ActivationStepUi.Done -> DoneStep(onAction, Modifier)
+            is ActivationStepUi.Done -> DoneStep(step.changed, onAction, Modifier)
+            is ActivationStepUi.TypeExisting -> TypeExistingStep(step, onAction, Modifier)
         }
     }
 }
@@ -130,9 +145,23 @@ private fun StatusScreen(
 
                         is EncryptionStatusUi.Off -> offItems(status.wasOn)
 
-                        EncryptionStatusUi.On -> item(key = ON) { OnBlock() }
+                        EncryptionStatusUi.On -> {
+                            item(key = ON) { OnBlock() }
+                            item(key = CHANGE) {
+                                SettingsRow(
+                                    title = stringResource(R.string.encryption_change_code_action),
+                                    action =
+                                        SettingsRowAction.Navigation {
+                                            onAction(EncryptionAction.AskChange)
+                                        },
+                                )
+                            }
+                        }
 
-                        EncryptionStatusUi.KeyUnavailable -> item(key = STOPPED) { StoppedBlock() }
+                        EncryptionStatusUi.KeyUnavailable -> {
+                            item(key = STOPPED) { StoppedBlock() }
+                            item(key = STOPPED_ACTIONS) { StoppedActions(onAction) }
+                        }
 
                         EncryptionStatusUi.Unknown ->
                             item(key = UNKNOWN) {
@@ -304,6 +333,69 @@ private fun StoppedBlock() {
             style = MaterialTheme.typography.bodyLarge,
             color = colors.onBackupErrorContainer,
         )
+    }
+}
+
+/**
+ * Las salidas con el código que no abre: escribirlo para volver a guardarlo, o crear otro, que no
+ * necesita el anterior porque la base del teléfono está en claro.
+ */
+@Composable
+private fun StoppedActions(onAction: (EncryptionAction) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+        PrimaryActionButton(
+            text = stringResource(R.string.backup_failure_encryption_key_unavailable_action),
+            onClick = { onAction(EncryptionAction.TypeExistingCode) },
+            variant = ActionVariant.TONAL,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        PrimaryActionButton(
+            text = stringResource(R.string.encryption_create_new_code_action),
+            onClick = { onAction(EncryptionAction.CreateNewCode) },
+            variant = ActionVariant.OUTLINED,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** `Escribir el código` con el cifrado detenido: el vigente, para guardarlo otra vez aquí. */
+@Composable
+private fun TypeExistingStep(
+    step: ActivationStepUi.TypeExisting,
+    onAction: (EncryptionAction) -> Unit,
+    modifier: Modifier,
+) {
+    OnboardingStep(
+        step = 1,
+        totalSteps = 1,
+        title = stringResource(R.string.recovery_type_code_title),
+        action = {
+            PrimaryActionButton(
+                text = stringResource(R.string.recovery_check_action),
+                onClick = { onAction(EncryptionAction.Reseal) },
+                variant = ActionVariant.PRIMARY,
+                state = if (step.working) ActionState.WORKING else ActionState.IDLE,
+                modifier = Modifier.fillMaxWidth().keepsMessagesAbove(),
+            )
+        },
+        modifier = modifier,
+    ) {
+        Text(
+            stringResource(R.string.encryption_key_unavailable_body),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        RecoveryCodeField(
+            groups = step.typed,
+            onGroupsChange = { onAction(EncryptionAction.TypedExisting(it)) },
+            label = stringResource(R.string.recovery_field_label),
+            error =
+                when (step.problem) {
+                    null -> null
+                    ResealProblem.MISMATCH -> stringResource(R.string.recovery_check_mismatch)
+                    ResealProblem.SAVE -> stringResource(R.string.state_error_save)
+                },
+        )
+        ExitLink(onAction)
     }
 }
 
@@ -515,7 +607,7 @@ private fun TestingStep(
 }
 
 @Composable
-private fun DoneStep(onAction: (EncryptionAction) -> Unit, modifier: Modifier) {
+private fun DoneStep(changed: Boolean, onAction: (EncryptionAction) -> Unit, modifier: Modifier) {
     OnboardingStep(
         step = STEPS,
         totalSteps = STEPS,
@@ -531,15 +623,23 @@ private fun DoneStep(onAction: (EncryptionAction) -> Unit, modifier: Modifier) {
         modifier = modifier,
     ) {
         OnBlock()
-        Text(
-            stringResource(R.string.encryption_old_copies_title),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
-        )
-        Text(
-            stringResource(R.string.encryption_old_copies_body),
-            style = MaterialTheme.typography.bodyLarge,
-        )
+        if (changed) {
+            // Un código nuevo no vuelve a cifrar las copias anteriores: siguen con el suyo.
+            Text(
+                stringResource(R.string.encryption_change_confirm_body),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        } else {
+            Text(
+                stringResource(R.string.encryption_old_copies_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                stringResource(R.string.encryption_old_copies_body),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
     }
 }
 
@@ -559,6 +659,8 @@ private const val STEPS = 4
 private const val LOADING = "loading"
 private const val ON = "on"
 private const val STOPPED = "stopped"
+private const val STOPPED_ACTIONS = "stopped_actions"
+private const val CHANGE = "change"
 private const val UNKNOWN = "unknown"
 private const val OFF_TITLE = "off_title"
 private const val LEFTOVER = "leftover"

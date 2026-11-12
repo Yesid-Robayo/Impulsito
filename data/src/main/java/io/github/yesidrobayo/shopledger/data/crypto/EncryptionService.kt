@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.crypto
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
 
@@ -64,6 +65,24 @@ internal class EncryptionService(
             ActivationResult.SealFailed -> ActivationOutcome.SAVE_FAILED
         }
     }
+
+    override suspend fun reseal(typed: String): ResealOutcome =
+        when (val parsed = RecoveryCodec.parse(typed)) {
+            CodeParseResult.WrongLength,
+            CodeParseResult.InvalidCharacter,
+            CodeParseResult.CheckMismatch,
+            -> ResealOutcome.TYPO
+
+            is CodeParseResult.Valid ->
+                when (activation.reseal(parsed.code)) {
+                    ResealResult.Sealed -> ResealOutcome.SEALED
+
+                    ResealResult.OtherCode -> ResealOutcome.OTHER_CODE
+
+                    // Sin cifrado activo no hay nada que sellar: se dice como fallo, sin cambiar nada.
+                    ResealResult.NotNeeded, ResealResult.SealFailed -> ResealOutcome.SAVE_FAILED
+                }
+        }
 
     private fun draftOf(code: RecoveryCode): RecoveryCodeDraft =
         RecoveryCodeDraft(RecoveryCodec.printable(code).split('-'))

@@ -281,6 +281,51 @@ class RetentionPrunerTest {
     private suspend fun prune(confirmed: ConfirmedCopy): PruneReport =
         pruner.prune(destination, confirmed, TransferControl.Unbounded).value()
 
+    @Test
+    fun copiesOfAnotherKeyStayUntilAValidCopyWithTheCurrentKeyExists() = runBlocking {
+        // Diez días de copias cifradas con la clave anterior.
+        for (day in 0 until 10) putEncrypted(day + 1L, at(day, 9), OLD_KEY)
+        marks = RetentionMarks.NONE.copy(currentKeyId = NEW_KEY)
+
+        // La primera copia con la clave nueva no es válida: ninguna de la anterior se poda.
+        val invalid = putEncrypted(11, at(10, 9), NEW_KEY, valid = false)
+        assertPruned(prune(invalid))
+        assertEquals((1L..11L).toList(), generations())
+
+        // Con una válida con la clave nueva, las de la anterior siguen la regla de siempre.
+        val valid = putEncrypted(12, at(10, 10), NEW_KEY)
+        assertPruned(prune(valid))
+        assertTrue(generations().size < 12)
+        assertTrue(12L in generations())
+    }
+
+    @Test
+    fun withEncryptionOffEncryptedCopiesStayUntilAValidPlainCopyExists() = runBlocking {
+        for (day in 0 until 10) putEncrypted(day + 1L, at(day, 9), OLD_KEY)
+        marks = RetentionMarks.NONE
+
+        val invalid = put(11, at(10, 9), valid = false)
+        assertPruned(prune(invalid))
+        assertEquals((1L..11L).toList(), generations())
+
+        val valid = put(12, at(10, 10))
+        assertPruned(prune(valid))
+        assertTrue(generations().size < 12)
+    }
+
+    private fun putEncrypted(
+        generation: Long,
+        at: CopyInstant,
+        key: String,
+        valid: Boolean = true,
+    ): ConfirmedCopy {
+        val name = BackupFileName(generation, 1, at, OWN.take(8), BackupFileFormat.ENCRYPTED)
+        destination.putFile(name.fileName, ByteArray(64))
+        val encrypted = meta(generation, OWN, 64, 10, valid = valid).copy(format = 2, keyId = key)
+        destination.putFile(name.metaFileName, SlMetaCodec.encode(encrypted))
+        return ConfirmedCopy(generation, CopyRef(name.fileName))
+    }
+
     private fun assertPruned(report: PruneReport) {
         assertEquals(PruneResult.PRUNED, report.result)
     }
@@ -370,5 +415,9 @@ class RetentionPrunerTest {
 
         /** 2026-11-01T00:00Z. */
         const val START = 1_793_491_200L
+
+        /** Dos `key_id` inventados: el anterior y el vigente. */
+        const val OLD_KEY = "0011223344556677"
+        const val NEW_KEY = "8899aabbccddeeff"
     }
 }

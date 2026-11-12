@@ -72,3 +72,18 @@ object RecoveryKitFileName {
 
     fun of(date: BusinessDate): String = PREFIX + date.toString().replace("-", "") + SUFFIX
 }
+
+/** Lo que dio escribir el código de las copias para volver a guardarlo en este teléfono. */
+enum class ResealOutcome {
+    /** Quedó guardado: las copias vuelven a salir, cifradas. */
+    SEALED,
+
+    /** Un error de escritura, detectado por los caracteres de control. Nada se borró. */
+    TYPO,
+
+    /** Es un código válido, pero de otras copias. Nada cambió. */
+    OTHER_CODE,
+
+    /** No se pudo guardar en este teléfono. Nada cambió. */
+    SAVE_FAILED,
+}

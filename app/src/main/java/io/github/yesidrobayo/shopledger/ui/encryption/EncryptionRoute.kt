@@ -78,6 +78,8 @@ fun EncryptionRoute(navigator: AppNavigator) {
             val sensitive = rememberSensitiveCheck()
             val scope = rememberCoroutineScope()
             val activateTitle = stringResource(R.string.encryption_activate_action)
+            val changeTitle = stringResource(R.string.encryption_change_code_action)
+            val newCodeTitle = stringResource(R.string.encryption_create_new_code_action)
             val picker =
                 rememberLauncherForActivityResult(
                     ActivityResultContracts.CreateDocument(PDF_TYPE),
@@ -124,6 +126,24 @@ fun EncryptionRoute(navigator: AppNavigator) {
                     EncryptionAction.ObscuredTouch ->
                         messages.show(AppSnackbarVisuals(obscured, SnackbarVariant.INFO))
 
+                    // Cambiar el código o crear otro piden la verificación del sistema si el
+                    // bloqueo de la app la exige, como activar.
+                    EncryptionAction.ConfirmChange ->
+                        scope.launch {
+                            if (sensitive.confirm(changeTitle)) {
+                                viewModel.onAction(EncryptionAction.ConfirmChange)
+                            } else {
+                                viewModel.onAction(EncryptionAction.CloseChange)
+                            }
+                        }
+
+                    EncryptionAction.CreateNewCode ->
+                        scope.launch {
+                            if (sensitive.confirm(newCodeTitle)) {
+                                viewModel.onAction(EncryptionAction.CreateNewCode)
+                            }
+                        }
+
                     is EncryptionAction.Accept,
                     EncryptionAction.ContinueRisk,
                     is EncryptionAction.KitFileCreated,
@@ -134,6 +154,11 @@ fun EncryptionRoute(navigator: AppNavigator) {
                     EncryptionAction.Retry,
                     EncryptionAction.Finish,
                     EncryptionAction.Exit,
+                    EncryptionAction.AskChange,
+                    EncryptionAction.CloseChange,
+                    EncryptionAction.TypeExistingCode,
+                    is EncryptionAction.TypedExisting,
+                    EncryptionAction.Reseal,
                     -> viewModel.onAction(action)
                 }
             })

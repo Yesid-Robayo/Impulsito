@@ -70,7 +70,16 @@ class EncryptionCaptureTest {
                         EncryptionStatusUi.Off(false),
                         ActivationStepUi.Testing(ActivationFailure.ROUND_TRIP),
                     ),
-                "done" to EncryptionUiState(EncryptionStatusUi.On, ActivationStepUi.Done),
+                "done" to EncryptionUiState(EncryptionStatusUi.On, ActivationStepUi.Done()),
+                "change-confirm" to
+                    EncryptionUiState(EncryptionStatusUi.On, confirmChange = true),
+                "type-existing" to
+                    EncryptionUiState(
+                        EncryptionStatusUi.KeyUnavailable,
+                        ActivationStepUi.TypeExisting(groups, ResealProblem.MISMATCH),
+                    ),
+                "done-changed" to
+                    EncryptionUiState(EncryptionStatusUi.On, ActivationStepUi.Done(changed = true)),
             )
         for (dark in listOf(false, true)) {
             for ((name, state) in states) {

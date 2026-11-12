@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.backup
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
 import kotlinx.coroutines.test.runTest
@@ -34,6 +35,9 @@ class EncryptionUseCaseTest {
 
             override suspend fun activate(draft: RecoveryCodeDraft): ActivationOutcome =
                 ActivationOutcome.SAVE_FAILED.also { calls += "activate" }
+
+            override suspend fun reseal(typed: String): ResealOutcome =
+                ResealOutcome.OTHER_CODE.also { calls += "reseal:$typed" }
         }
     private val useCase = EncryptionUseCase(port)
 
@@ -44,6 +48,7 @@ class EncryptionUseCaseTest {
         assertEquals(TypedCodeCheck.GroupMismatch(2), useCase.checkTyped(draft, "X"))
         assertEquals(false, useCase.roundTrip(draft))
         assertEquals(ActivationOutcome.SAVE_FAILED, useCase.activate(draft))
-        assertEquals(listOf("status", "new", "check:X", "trip", "activate"), calls)
+        assertEquals(ResealOutcome.OTHER_CODE, useCase.reseal("Y"))
+        assertEquals(listOf("status", "new", "check:X", "trip", "activate", "reseal:Y"), calls)
     }
 }

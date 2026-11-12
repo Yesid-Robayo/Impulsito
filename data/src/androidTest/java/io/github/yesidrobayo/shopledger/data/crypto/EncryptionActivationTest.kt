@@ -169,6 +169,71 @@ internal class EncryptionActivationTest : CatalogDatabaseTest() {
         }
     }
 
+    @Test
+    fun changingTheCodeSealsTheNewOneAndForgetsTheCheckDate() = runBlocking {
+        val activation = activation()
+        val first = activation.newCode()
+        activation.activate(first)
+        val custody = custody()
+        custody.state.write(custody.state.read().copy(lastCodeCheckAtUtcMillis = now))
+        now += 1000
+        val second = activation.newCode()
+
+        activation.activate(second)
+
+        assertEquals(second, (custody.keys.open() as RecoveryKeyRead.Available).code)
+        val state = custody.state.read()
+        assertEquals(BackupKey.from(second).keyIdHex, state.keyIdHex)
+        assertEquals(now, state.enabledAtUtcMillis)
+        assertNull(state.lastCodeCheckAtUtcMillis)
+    }
+
+    @Test
+    fun aDeathAtEveryStepOfChangingTheCodeLeavesTheOldOrTheNewOneWorking() = runBlocking {
+        for (step in ActivationStep.entries) {
+            cleanFiles()
+            val first = activation().newCode()
+            activation().activate(first)
+            val second = activation().newCode()
+            try {
+                activation { if (it == step) throw ProcessDeath() }.activate(second)
+            } catch (_: ProcessDeath) {
+                Unit
+            }
+            val custody = custody()
+            val state = custody.alignAtStartup()
+            val sealed = (custody.keys.open() as RecoveryKeyRead.Available).code
+            assertTrue(step.name, sealed == first || sealed == second)
+            assertTrue(step.name, state.enabled)
+            assertEquals(step.name, BackupKey.from(sealed).keyIdHex, state.keyIdHex)
+        }
+    }
+
+    @Test
+    fun theCurrentCodeTypedAgainIsResealedAndAnotherOneIsNot() = runBlocking {
+        val activation = activation()
+        val code = activation.newCode()
+        activation.activate(code)
+        listOf(aliases.first, aliases.second).forEach { KeystoreSealer(it).deleteKey() }
+        val custody = custody()
+        assertTrue(custody.keys.open() is RecoveryKeyRead.Unavailable)
+        val before = custody.state.read()
+
+        assertEquals(ResealResult.OtherCode, activation.reseal(activation.newCode()))
+        assertTrue(custody.keys.open() is RecoveryKeyRead.Unavailable)
+
+        assertEquals(ResealResult.Sealed, activation.reseal(code))
+        assertEquals(code, (custody.keys.open() as RecoveryKeyRead.Available).code)
+        assertEquals(before, custody.state.read())
+    }
+
+    @Test
+    fun withEncryptionOffNothingIsResealed() = runBlocking {
+        val activation = activation()
+        assertEquals(ResealResult.NotNeeded, activation.reseal(activation.newCode()))
+        assertFalse(recovery.exists() && File(recovery, RecoveryKeyStore.SEALED_FILE).exists())
+    }
+
     /**
      * Tras arrancar de nuevo, el cifrado está apagado y sin sobre, o activo con el sobre de [code]
      * que abre: nunca activo sin un código que abra, ni un sobre que el arranque no reconozca.

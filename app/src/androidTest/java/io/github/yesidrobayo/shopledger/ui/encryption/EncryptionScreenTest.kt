@@ -154,7 +154,7 @@ class EncryptionScreenTest {
 
     @Test
     fun doneExplainsOlderUnencryptedCopies() {
-        show(EncryptionUiState(EncryptionStatusUi.On, ActivationStepUi.Done))
+        show(EncryptionUiState(EncryptionStatusUi.On, ActivationStepUi.Done()))
 
         compose.onNodeWithText(text(R.string.encryption_done_title)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.encryption_old_copies_body)).assertIsDisplayed()

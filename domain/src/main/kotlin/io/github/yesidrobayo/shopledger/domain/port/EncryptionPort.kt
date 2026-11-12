@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.port
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 
 /**
@@ -23,6 +24,15 @@ interface EncryptionPort {
     /** La prueba de ida y vuelta con la clave de [draft], sin tocar la base ni el disco. */
     suspend fun roundTrip(draft: RecoveryCodeDraft): Boolean
 
-    /** Sella [draft] y enciende el cifrado. Antes de sellar, un fallo no cambia nada. */
+    /**
+     * Sella [draft] y enciende el cifrado, o lo cambia por el código vigente. Antes de sellar, un
+     * fallo no cambia nada, y las copias anteriores siguen necesitando su código.
+     */
     suspend fun activate(draft: RecoveryCodeDraft): ActivationOutcome
+
+    /**
+     * Vuelve a guardar en este teléfono el código vigente, escrito por la persona, cuando el que
+     * estaba ya no abre. No cambia de código ni borra nada.
+     */
+    suspend fun reseal(typed: String): ResealOutcome
 }

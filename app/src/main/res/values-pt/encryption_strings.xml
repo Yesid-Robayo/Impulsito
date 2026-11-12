@@ -47,4 +47,11 @@
     <string name="recovery_kit_howto_body">Ao restaurar uma cópia criptografada, o %1$s pede este código. Sem ele, ninguém consegue abrir essas cópias.</string>
     <string name="recovery_kit_keep_body">Este papel deve ser guardado em um lugar seguro, longe do telefone. Com este código e uma cópia é possível ler os dados do negócio.</string>
     <string name="recovery_kit_format">Formato público e ferramenta de resgate: %1$s</string>
+    <string name="encryption_change_code_action">Alterar o código</string>
+    <string name="encryption_change_confirm_title">Alterar o código?</string>
+    <string name="encryption_change_confirm_body">Um novo código é criado para as próximas cópias. As cópias anteriores continuam precisando do código anterior.</string>
+    <string name="encryption_change_confirm_action">Alterar código</string>
+    <string name="encryption_create_new_code_action">Criar outro código</string>
+    <string name="recovery_check_mismatch">O código não confere. Nada foi apagado e é possível tentar novamente.</string>
+    <string name="backup_failure_encryption_key_unavailable_action">Digitar o código</string>
 </resources>

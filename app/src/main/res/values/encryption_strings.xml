@@ -52,4 +52,11 @@
     <string name="recovery_kit_keep_body">Keep this paper somewhere safe, away from the phone. This code and a backup are enough to read the business data.</string>
     <!-- recovery_kit_format: %1$s = url -->
     <string name="recovery_kit_format">Public format and rescue tool: %1$s</string>
+    <string name="encryption_change_code_action">Change the code</string>
+    <string name="encryption_change_confirm_title">Change the code?</string>
+    <string name="encryption_change_confirm_body">A new code is created for future backups. Older backups still need the previous code.</string>
+    <string name="encryption_change_confirm_action">Change code</string>
+    <string name="encryption_create_new_code_action">Create another code</string>
+    <string name="recovery_check_mismatch">The code does not match. Nothing was deleted and it can be tried again.</string>
+    <string name="backup_failure_encryption_key_unavailable_action">Enter the code</string>
 </resources>

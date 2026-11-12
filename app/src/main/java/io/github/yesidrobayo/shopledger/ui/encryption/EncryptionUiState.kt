@@ -12,6 +12,8 @@ import io.github.yesidrobayo.shopledger.ui.components.RECOVERY_CODE_GROUPS
 data class EncryptionUiState(
     val status: EncryptionStatusUi = EncryptionStatusUi.Loading,
     val step: ActivationStepUi? = null,
+    /** La pregunta `¿Cambiar el código?` a la vista. */
+    val confirmChange: Boolean = false,
 )
 
 /** Lo que muestra la pantalla fuera de la activación. */
@@ -66,8 +68,29 @@ sealed interface ActivationStepUi {
     /** 4. `Probando el cifrado`. Sin [failure], la prueba corre. */
     data class Testing(val failure: ActivationFailure? = null) : ActivationStepUi
 
-    /** `Cifrado activado`. */
-    data object Done : ActivationStepUi
+    /** `Cifrado activado`. [changed] si fue un cambio de código: las copias anteriores siguen con el suyo. */
+    data class Done(val changed: Boolean = false) : ActivationStepUi
+
+    /**
+     * `Escribir el código` con el cifrado detenido: el código vigente, para volver a guardarlo en
+     * este teléfono. [problem] dice por qué no se guardó, sin borrar lo escrito.
+     */
+    class TypeExisting(
+        val typed: List<String> = List(RECOVERY_CODE_GROUPS) { "" },
+        val problem: ResealProblem? = null,
+        val working: Boolean = false,
+    ) : ActivationStepUi {
+        override fun toString(): String = "TypeExisting(problem=$problem, working=$working)"
+    }
+}
+
+/** Por qué no se volvió a guardar el código escrito. Nada se borró en ningún caso. */
+enum class ResealProblem {
+    /** No coincide: un error de escritura, o el código de otras copias. */
+    MISMATCH,
+
+    /** No se pudo guardar en este teléfono. */
+    SAVE,
 }
 
 /** El kit de recuperación en el paso 2. */
@@ -115,4 +138,26 @@ sealed interface EncryptionAction {
 
     /** Un toque llegó tapado por otra app en un paso con el código. */
     data object ObscuredTouch : EncryptionAction
+
+    /** `Cambiar el código`: pide confirmar. */
+    data object AskChange : EncryptionAction
+
+    data object CloseChange : EncryptionAction
+
+    /** Confirmó cambiar el código, ya con la verificación sensible pasada si el bloqueo la pide. */
+    data object ConfirmChange : EncryptionAction
+
+    /**
+     * `Crear otro código` con el cifrado detenido, ya con la verificación sensible. No necesita el
+     * anterior: la base del teléfono está en claro.
+     */
+    data object CreateNewCode : EncryptionAction
+
+    /** `Escribir el código` con el cifrado detenido. */
+    data object TypeExistingCode : EncryptionAction
+
+    class TypedExisting(val groups: List<String>) : EncryptionAction
+
+    /** Guardar otra vez el código escrito. */
+    data object Reseal : EncryptionAction
 }
