@@ -91,6 +91,7 @@ import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineDao
 import io.github.yesidrobayo.shopledger.data.local.purchase.PurchaseLineEntity
 import io.github.yesidrobayo.shopledger.data.local.report.BusinessGoalDao
 import io.github.yesidrobayo.shopledger.data.local.report.BusinessGoalEntity
+import io.github.yesidrobayo.shopledger.data.local.report.PeriodReportDao
 import io.github.yesidrobayo.shopledger.data.local.report.PriceIndexEntryDao
 import io.github.yesidrobayo.shopledger.data.local.report.PriceIndexEntryEntity
 import io.github.yesidrobayo.shopledger.data.local.report.SalesReportDao
@@ -277,6 +278,8 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun saleReturnLineDao(): SaleReturnLineDao
 
     abstract fun salesReportDao(): SalesReportDao
+
+    abstract fun periodReportDao(): PeriodReportDao
 
     abstract fun stockMovementDao(): StockMovementDao
 
