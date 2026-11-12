@@ -32,6 +32,8 @@ internal class CsvRow(
 
     fun text(): CsvCell = next { CsvCell.Text(statement.getText(it)) }
 
+    fun code(): CsvCell = next { CsvCell.Code(statement.getText(it)) }
+
     fun amount(): CsvCell = next { CsvCell.Amount(Money(statement.getLong(it))) }
 
     fun quantity(): CsvCell = next { CsvCell.Quantity(QuantityMilli(statement.getLong(it))) }
@@ -105,7 +107,7 @@ internal object CsvTableQueries {
                 row.text(),
                 row.seed(SeedTable.UNITS),
                 row.text(),
-                row.text(),
+                row.code(),
                 row.amount(),
                 row.amount(),
                 row.amount(),

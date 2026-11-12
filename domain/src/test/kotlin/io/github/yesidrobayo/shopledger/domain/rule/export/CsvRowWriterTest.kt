@@ -89,6 +89,17 @@ class CsvRowWriterTest(defaults: ForeignSystemDefaults) {
     }
 
     @Test
+    fun `a code made of digits stays text in a spreadsheet`() {
+        assertEquals("\"'0123456789012\"", semicolons.cell(CsvCell.Code("0123456789012")))
+        assertEquals("\"'2100000000001\"", semicolons.cell(CsvCell.Code("2100000000001")))
+        // Con letras ya es texto para la hoja: sin marca, pero con la neutralización de fórmulas.
+        assertEquals("\"ABC-123\"", semicolons.cell(CsvCell.Code("ABC-123")))
+        assertEquals("\"(01)234\"", semicolons.cell(CsvCell.Code("(01)234")))
+        assertEquals("\"'=1+1\"", semicolons.cell(CsvCell.Code("=1+1")))
+        assertEquals("\"\"", semicolons.cell(CsvCell.Code("")))
+    }
+
+    @Test
     fun `an empty cell is empty`() {
         assertEquals("", semicolons.cell(CsvCell.Empty))
     }

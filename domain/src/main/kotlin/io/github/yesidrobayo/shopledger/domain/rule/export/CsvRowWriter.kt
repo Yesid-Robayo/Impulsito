@@ -33,6 +33,8 @@ class CsvRowWriter(private val format: CsvFormat, private val zone: BusinessTime
     fun cell(cell: CsvCell): String = when (cell) {
         is CsvCell.Text -> CsvText.quoted(cell.value)
 
+        is CsvCell.Code -> CsvText.quoted(CsvText.keptAsText(cell.value))
+
         is CsvCell.Amount -> format.moneyCell(cell.value)
 
         is CsvCell.Quantity -> format.quantityCell(cell.value)
@@ -102,6 +104,7 @@ object CsvText {
     private const val ESCAPED_QUOTE = "\"\""
     private const val NEUTRALIZER = "'"
     private const val SPACE = ' '
+    private val DIGITS = '0'..'9'
 
     private val FORMULA_STARTS =
         setOf('=', '+', '-', '@', '\t', '\r', '\n', '＝', '＋', '－', '＠')
@@ -111,6 +114,13 @@ object CsvText {
         val first = value.firstOrNull { it != SPACE } ?: return value
         return if (first in FORMULA_STARTS) NEUTRALIZER + value else value
     }
+
+    /**
+     * [value] con el apóstrofo delante si son solo cifras, para que la hoja de cálculo lo deje como
+     * texto: es la misma marca que neutraliza las fórmulas, y la importación la quita igual.
+     */
+    fun keptAsText(value: String): String =
+        if (value.isNotEmpty() && value.all { it in DIGITS }) NEUTRALIZER + value else value
 
     /** [value] neutralizado, entre comillas dobles y con sus comillas internas duplicadas. */
     fun quoted(value: String): String =

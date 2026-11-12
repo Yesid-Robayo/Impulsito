@@ -18,6 +18,13 @@ sealed interface CsvCell {
      */
     data class Text(val value: String) : CsvCell
 
+    /**
+     * Un código hecho de cifras que no es un número, como un código de barras. Una hoja de cálculo lo
+     * convertiría en número aunque vaya entre comillas, y perdería el cero inicial o lo mostraría en
+     * notación científica: por eso, si son solo cifras, lleva el apóstrofo delante, como un texto.
+     */
+    data class Code(val value: String) : CsvCell
+
     /** Un monto, en la unidad menor de la moneda del negocio. */
     data class Amount(val value: Money) : CsvCell
 
