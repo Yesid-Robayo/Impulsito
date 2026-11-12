@@ -1,0 +1,46 @@
+package io.github.yesidrobayo.shopledger.domain.model.purchase
+
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+
+/**
+ * Lo que la persona pide registrar como compra, tal como lo escribió.
+ *
+ * [supplierId] es opcional: una compra en plaza o sin proveedor fijo no lo lleva. [invoiceReference]
+ * es el número del documento del proveedor, no algo que genere la app. [date] es la fecha de negocio
+ * elegida, o `null` para hoy: puede ser pasada, nunca futura.
+ */
+data class PurchaseRequest(
+    val lines: List<PurchaseLineRequest>,
+    val supplierId: Long? = null,
+    val invoiceReference: String? = null,
+    val date: BusinessDate? = null,
+)
+
+/**
+ * Una línea de la compra: [quantity] milésimas de la unidad base de [productId], y lo que costó,
+ * escrito como costo unitario o como total de la línea, a elección de la persona.
+ */
+data class PurchaseLineRequest(
+    val productId: Long,
+    val quantity: QuantityMilli,
+    val amount: PurchaseLineAmount,
+)
+
+/**
+ * Cómo escribió la persona lo que costó una línea. El otro valor se deduce, y los dos se guardan.
+ *
+ * Los dos van en la forma en que se escriben los montos del negocio: con el impuesto incluido, lo
+ * pagado; con el impuesto sumado, el neto, al que después se suma el impuesto.
+ */
+sealed interface PurchaseLineAmount {
+    /** El costo de una unidad entera. El total de la línea sale de multiplicarlo por la cantidad. */
+    data class UnitCost(val cost: Money) : PurchaseLineAmount
+
+    /**
+     * El total de la línea, como lo trae el documento del proveedor. El costo unitario sale de
+     * dividirlo por la cantidad, y el costo promedio usa este total, no el unitario redondeado.
+     */
+    data class LineTotal(val total: Money) : PurchaseLineAmount
+}

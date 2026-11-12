@@ -15,9 +15,15 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
+import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
+import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
+import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewHeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
@@ -38,11 +44,13 @@ import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
+import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
+import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
@@ -52,6 +60,8 @@ import io.github.yesidrobayo.shopledger.domain.testing.FakeAppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FixedClock
 import io.github.yesidrobayo.shopledger.domain.testing.appSettings
 import io.github.yesidrobayo.shopledger.domain.testing.regionalSettings
+import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseCase
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,6 +81,9 @@ internal data class SaleTables(
     val methods: Map<Long, SalePaymentMethod> = emptyMap(),
     val salesWithActiveReturns: Set<Long> = emptySet(),
     val heldSales: Map<Long, HeldSale> = emptyMap(),
+    val purchases: Map<Long, Purchase> = emptyMap(),
+    val purchaseLines: Map<Long, PurchaseLine> = emptyMap(),
+    val suppliers: Map<Long, Supplier> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )
@@ -400,7 +413,11 @@ internal class SaleWorld(
             return movementsOf(tables) { it.source.saleLineId in lineIds }
         }
 
-        override suspend fun findByPurchase(purchaseId: Long): List<StockMovementRecord> = unused()
+        override suspend fun findByPurchase(purchaseId: Long): List<StockMovementRecord> {
+            val tables = read()
+            val lineIds = purchaseLinesOf(tables, purchaseId).map { it.id }.toSet()
+            return movementsOf(tables) { it.source.purchaseLineId in lineIds }
+        }
 
         override suspend fun isCompensated(movementId: Long): Boolean =
             read().movements.values.any { it.movement.reversesMovementId == movementId }
@@ -446,6 +463,105 @@ internal class SaleWorld(
         }
     }
 
+    /** Las compras y sus líneas: una compra solo cambia al anularse, una sola vez. */
+    val purchases: PurchaseRepository = object : PurchaseRepository {
+        override fun observeIn(period: ReportPeriod): Flow<List<Purchase>> = unused()
+
+        override fun observeById(id: Long): Flow<Purchase?> = committed.map { it.purchases[id] }
+
+        override fun observeLines(purchaseId: Long): Flow<List<PurchaseLine>> =
+            committed.map { tables -> purchaseLinesOf(tables, purchaseId) }
+
+        override suspend fun findById(id: Long): Purchase? = read().purchases[id]
+
+        override suspend fun findLines(purchaseId: Long): List<PurchaseLine> =
+            purchaseLinesOf(read(), purchaseId)
+
+        override suspend fun insert(purchase: NewPurchase): Long {
+            // Lo que exige la guarda de la base: la moneda bloqueada y el total cuadrado.
+            if (settings.settings.value.regional.currency.lockedAt == null) brokenRule()
+            if (purchase.total != purchase.netTotal + purchase.taxTotal) brokenRule()
+            val id = nextId("purchases")
+            write { it.copy(purchases = it.purchases + (id to Purchase(id, purchase, null))) }
+            return id
+        }
+
+        override suspend fun insertLine(purchaseId: Long, line: NewPurchaseLine): Long {
+            val id = nextId("purchase_lines")
+            write {
+                it.copy(
+                    purchaseLines =
+                        it.purchaseLines + (id to PurchaseLine(id, purchaseId, line)),
+                )
+            }
+            return id
+        }
+
+        override suspend fun markVoided(id: Long, voiding: Voiding) {
+            val purchase = read().purchases[id]
+            if (purchase == null || purchase.status != DocumentStatus.ACTIVE) brokenRule()
+            write { it.copy(purchases = it.purchases + (id to purchase.copy(voiding = voiding))) }
+        }
+    }
+
+    /** Los proveedores, que la compra solo lee. */
+    val supplierRepository: SupplierRepository = object : SupplierRepository {
+        override fun observe(filter: ArchiveFilter): Flow<List<Supplier>> = unused()
+
+        override suspend fun findById(id: Long): Supplier? = read().suppliers[id]
+
+        override suspend fun findActiveByNormalizedName(normalizedName: String): Supplier? =
+            unused()
+
+        override suspend fun hasHistory(id: Long): Boolean = unused()
+
+        override suspend fun insert(details: SupplierDetails, createdAt: Instant): Long = unused()
+
+        override suspend fun update(id: Long, details: SupplierDetails, updatedAt: Instant) =
+            unused()
+
+        override suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant) =
+            unused()
+
+        override suspend fun delete(id: Long) = unused()
+    }
+
+    fun registerPurchase(): RegisterPurchaseUseCase = RegisterPurchaseUseCase(
+        transactions = transactions,
+        settings = settings,
+        products = products,
+        purchases = purchases,
+        suppliers = supplierRepository,
+        units = unitRepository,
+        systemRows = systemRowRepository,
+        ledger = ledger,
+        taxRates = taxRateRepository,
+        clock = clock,
+    )
+
+    fun voidPurchase(): VoidPurchaseUseCase = VoidPurchaseUseCase(
+        transactions = transactions,
+        settings = settings,
+        products = products,
+        purchases = purchases,
+        ledger = ledger,
+        clock = clock,
+    )
+
+    /** Agrega un proveedor con nombre inventado, archivado o no. */
+    fun addSupplier(id: Long, archived: Boolean = false) = arrange {
+        val name = "Supplier $id"
+        val supplier = Supplier(
+            id = id,
+            details = SupplierDetails(name, name.lowercase(), null, null, null, null),
+            balance = Money.ZERO,
+            archivedAt = if (archived) EPOCH else null,
+            createdAt = EPOCH,
+            updatedAt = EPOCH,
+        )
+        it.copy(suppliers = it.suppliers + (id to supplier))
+    }
+
     fun registerSale(): RegisterSaleUseCase = RegisterSaleUseCase(
         transactions = transactions,
         settings = settings,
@@ -488,6 +604,9 @@ internal class SaleWorld(
 
     private fun linesOf(tables: SaleTables, saleId: Long): List<SaleLine> =
         tables.lines.values.filter { it.saleId == saleId }.sortedBy { it.id }
+
+    private fun purchaseLinesOf(tables: SaleTables, purchaseId: Long): List<PurchaseLine> =
+        tables.purchaseLines.values.filter { it.purchaseId == purchaseId }.sortedBy { it.id }
 
     private fun paymentsOf(tables: SaleTables, saleId: Long): List<SalePayment> =
         tables.payments.values.filter { it.saleId == saleId }.sortedBy { it.id }
