@@ -101,6 +101,9 @@ class AppSizes internal constructor() {
     /** Icono solo sobre el héroe a sangre, como el candado de la pantalla del bloqueo. */
     val heroIcon: Dp = 48.dp
 
+    /** Ancho de una casilla del código de recuperación: cuatro cifras tabulares y su relleno. */
+    val recoveryCodeGroup: Dp = 96.dp
+
     /** Indicador de trabajo dentro de un botón. */
     val buttonProgress: Dp = 20.dp
 

@@ -111,7 +111,8 @@ fun AppTextField(
 /**
  * Un campo de contraseña: oculta por defecto, con `Mostrar contraseña` a la derecha, sin
  * autocorrección ni sugerencias y marcado como dato sensible, para que el sistema no lo muestre ni
- * lo guarde. Se puede pegar, para admitir los gestores de contraseñas.
+ * lo guarde. Se puede pegar, para admitir los gestores de contraseñas, pero va dentro de
+ * [PrivateInput]: ni con la contraseña a la vista se copia, y el teclado no la aprende.
  *
  * El texto solo vive en memoria de quien lo usa: nunca debe ir a un estado guardado.
  *
@@ -129,7 +130,7 @@ fun PasswordField(
     modifier: Modifier = Modifier,
     error: String? = null,
     imeAction: ImeAction = ImeAction.Done,
-) {
+) = PrivateInput {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,

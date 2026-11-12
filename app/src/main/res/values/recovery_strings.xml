@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El código de recuperación escrito a mano. Textos de la guía de redacción. -->
+    <string name="recovery_field_label">28-character code</string>
+    <!-- recovery_error_typo: %1$d = n -->
+    <string name="recovery_error_typo">Check group %1$d: a character does not match</string>
+    <!-- a11y_recovery_code_group: %1$d = n, %2$d = total -->
+    <string name="a11y_recovery_code_group">Group %1$d of %2$d</string>
+</resources>
