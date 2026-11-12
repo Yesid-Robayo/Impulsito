@@ -54,6 +54,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.WholeNumberField
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -349,6 +350,7 @@ private fun SaveBar(
     Column(
         Modifier
             .fillMaxWidth()
+            .keepsMessagesAbove()
             .navigationBarsPadding()
             .imePadding()
             .padding(spacing.s16),

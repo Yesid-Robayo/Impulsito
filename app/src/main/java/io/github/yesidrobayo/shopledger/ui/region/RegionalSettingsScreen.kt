@@ -80,6 +80,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.currency.CurrencySymbolFonts
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
@@ -204,6 +205,7 @@ private fun Framed(
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .keepsMessagesAbove()
                     .imePadding()
                     .navigationBarsPadding()
                     .padding(AppTheme.spacing.s16),

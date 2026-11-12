@@ -50,6 +50,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -135,7 +136,7 @@ private fun ColumnScope.PurchaseForm(
                         .padding(AppTheme.spacing.s16),
                     verticalArrangement = Arrangement.Bottom,
                 ) {
-                    PurchaseFooter(uiState, onAction)
+                    Column(Modifier.keepsMessagesAbove()) { PurchaseFooter(uiState, onAction) }
                 }
             }
         } else {
@@ -146,7 +147,7 @@ private fun ColumnScope.PurchaseForm(
                     .widthIn(max = FORM_WIDTH),
             ) {
                 PurchaseLines(uiState, onAction, Modifier.weight(1f), withHeader = true)
-                Column(Modifier.imePadding().navigationBarsPadding()) {
+                Column(Modifier.keepsMessagesAbove().imePadding().navigationBarsPadding()) {
                     HorizontalDivider(
                         thickness = AppTheme.sizes.hairline,
                         color = MaterialTheme.colorScheme.outlineVariant,
@@ -444,7 +445,7 @@ private fun ColumnScope.PurchaseSummaryContent(
             )
         }
     }
-    Box(Modifier.padding(spacing.s16).navigationBarsPadding()) {
+    Box(Modifier.keepsMessagesAbove().padding(spacing.s16).navigationBarsPadding()) {
         PrimaryActionButton(
             text = stringResource(R.string.action_close),
             onClick = { onAction(NewPurchaseAction.Finish) },

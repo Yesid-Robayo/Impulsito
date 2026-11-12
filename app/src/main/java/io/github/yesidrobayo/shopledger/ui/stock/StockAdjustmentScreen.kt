@@ -48,6 +48,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
@@ -322,7 +323,12 @@ private fun Notices(
 private fun SaveBar(uiState: StockAdjustmentUiState, onAction: (StockAdjustmentAction) -> Unit) {
     val spacing = AppTheme.spacing
     Column(
-        Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(spacing.s16),
+        Modifier
+            .fillMaxWidth()
+            .keepsMessagesAbove()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(spacing.s16),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(spacing.s12),
     ) {

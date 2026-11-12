@@ -71,6 +71,7 @@ import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
 import io.github.yesidrobayo.shopledger.ui.components.UnitPicker
 import io.github.yesidrobayo.shopledger.ui.components.UnitPickerSheet
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
@@ -467,6 +468,7 @@ private fun SaveBar(
         modifier
             .widthIn(max = AppTheme.sizes.maxContentWidth)
             .fillMaxWidth()
+            .keepsMessagesAbove()
             .navigationBarsPadding()
             .padding(horizontal = spacing.s16, vertical = spacing.s12),
         verticalArrangement = Arrangement.spacedBy(spacing.s8),

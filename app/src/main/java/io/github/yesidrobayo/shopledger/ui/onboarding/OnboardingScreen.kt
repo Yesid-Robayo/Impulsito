@@ -53,6 +53,7 @@ import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlin.time.Instant
@@ -153,6 +154,7 @@ private fun WelcomeContent(
                 .align(Alignment.CenterHorizontally)
                 .widthIn(max = AppTheme.sizes.maxContentWidth)
                 .fillMaxWidth()
+                .keepsMessagesAbove()
                 .navigationBarsPadding()
                 .padding(horizontal = spacing.s16, vertical = spacing.s12),
             horizontalAlignment = Alignment.CenterHorizontally,

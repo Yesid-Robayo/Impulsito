@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.webdav
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,6 +57,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -212,7 +216,12 @@ private fun ColumnScope.Form(
         error =
             if (uiState.passwordRejected) stringResource(R.string.webdav_error_auth) else null,
     )
-    uiState.notice?.let { Notice(it, onAction) }
+    uiState.notice?.let { notice ->
+        // Con el teclado abierto, el aviso aparece debajo de lo que se ve: se trae a la vista.
+        val requester = remember { BringIntoViewRequester() }
+        LaunchedEffect(notice) { requester.bringIntoView() }
+        Box(Modifier.bringIntoViewRequester(requester)) { Notice(notice, onAction) }
+    }
     if (uiState.steps.isNotEmpty()) Steps(uiState.steps)
     val suggestion = uiState.suggestion
     NoticeCard(
@@ -378,7 +387,7 @@ private fun Steps(steps: List<StepProgress>) {
 @Composable
 private fun BottomBar(uiState: WebDavConnectUiState, onAction: (WebDavConnectAction) -> Unit) {
     val spacing = AppTheme.spacing
-    Surface(color = MaterialTheme.colorScheme.surface) {
+    Surface(Modifier.keepsMessagesAbove(), color = MaterialTheme.colorScheme.surface) {
         Column(
             Modifier
                 .fillMaxWidth()

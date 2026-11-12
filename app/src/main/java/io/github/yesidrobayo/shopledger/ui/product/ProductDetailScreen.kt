@@ -77,6 +77,7 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
@@ -160,7 +161,11 @@ fun ProductDetailScreen(
         }
         if (ready != null && !ready.product.isArchived) {
             Box(
-                Modifier.fillMaxWidth().navigationBarsPadding().padding(AppTheme.spacing.s16),
+                Modifier
+                    .fillMaxWidth()
+                    .keepsMessagesAbove()
+                    .navigationBarsPadding()
+                    .padding(AppTheme.spacing.s16),
                 contentAlignment = Alignment.Center,
             ) {
                 PrimaryActionButton(

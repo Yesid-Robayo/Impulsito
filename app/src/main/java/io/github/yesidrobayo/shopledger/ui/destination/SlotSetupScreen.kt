@@ -39,6 +39,7 @@ import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.SlotFileRow
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -132,6 +133,7 @@ fun SlotSetupScreen(
                     .widthIn(max = AppTheme.sizes.maxContentWidth)
                     .fillMaxWidth()
                     .align(Alignment.CenterHorizontally)
+                    .keepsMessagesAbove()
                     .navigationBarsPadding()
                     .padding(spacing.s16),
             ) { MainAction(uiState, onAction) }

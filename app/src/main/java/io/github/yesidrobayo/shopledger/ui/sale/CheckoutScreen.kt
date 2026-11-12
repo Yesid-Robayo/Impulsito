@@ -63,6 +63,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.payment.rememberStoredPhoto
@@ -450,7 +451,7 @@ private fun PaymentRow(
 private fun RegisterBar(uiState: CheckoutUiState, onAction: (CheckoutAction) -> Unit) {
     val spacing = AppTheme.spacing
     Surface(
-        Modifier.fillMaxWidth(),
+        Modifier.fillMaxWidth().keepsMessagesAbove(),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {

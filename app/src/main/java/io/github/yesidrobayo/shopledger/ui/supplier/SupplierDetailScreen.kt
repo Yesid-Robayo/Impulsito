@@ -56,6 +56,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -138,6 +139,7 @@ fun SupplierDetailScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .keepsMessagesAbove()
                     .navigationBarsPadding()
                     .padding(AppTheme.spacing.s16),
                 contentAlignment = Alignment.Center,

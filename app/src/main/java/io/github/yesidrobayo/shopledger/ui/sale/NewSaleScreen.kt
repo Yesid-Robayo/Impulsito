@@ -81,6 +81,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -204,7 +205,8 @@ private fun ColumnScope.SinglePaneSale(
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
-                        .onSizeChanged { panelHeight = it.height },
+                        .onSizeChanged { panelHeight = it.height }
+                        .keepsMessagesAbove(),
             )
         }
     }
@@ -256,6 +258,7 @@ private fun ColumnScope.TwoPaneSale(
                     compact = isLargeText(),
                     withSearch = false,
                     opensCart = false,
+                    modifier = Modifier.keepsMessagesAbove(),
                 )
             }
         }

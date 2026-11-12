@@ -60,6 +60,10 @@ import org.junit.runner.RunWith
  * así que no cuenta el tiempo que una persona tarda en mirar y mover el dedo. Cada venta se da por
  * registrada cuando está en la base, y además se anota cuándo Inicio muestra la confirmación.
  *
+ * Al final registra otra venta enseguida, con la confirmación de la anterior todavía a la vista: esa
+ * confirmación no puede tapar `Registrar venta`, y un toque en el centro del botón registra la nueva
+ * sin anular la anterior.
+ *
  * Escribe ventas de verdad en la base de la app y fija su moneda, así que solo corre si se pide con
  * el argumento `habitualSaleTiming=true` del runner de instrumentación. Registra solo tiempos,
  * conteos y el estado del modo avión: ningún dato del negocio.
@@ -81,6 +85,9 @@ class HabitualSaleTimingTest {
             Settings.Global.getInt(app.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
 
         val runs = mutableListOf<SaleTiming>()
+        var coveredPx = -1f
+        var previousShown = false
+        var previousVoided = true
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             lateinit var labels: Labels
             lateinit var screen: View
@@ -116,26 +123,35 @@ class HabitualSaleTimingTest {
                     "hasta Inicio mediana ${median(home)} ms y máximo ${home.max()} ms",
             )
 
-            // Otra venta enseguida, sin esperar a que se vaya la confirmación: se anota si esa
-            // confirmación tapa `Registrar venta`. Se mide la caja de su texto, que es menor que el
-            // mensaje entero. No se toca, para no pulsar `Deshacer`.
+            // Otra venta enseguida, sin esperar a que se vaya la confirmación de la anterior, que
+            // sigue a la vista con `Deshacer`: tiene que quedar encima de `Registrar venta`, y un
+            // toque en el centro del botón registra la nueva sin anular la anterior. Se mide la caja
+            // del texto del mensaje.
             awaitGone(screen) { confirmation(it, labels) }
             sellOnce(screen, labels, catalog.frequentName, ports, lastSaleId + 1)
+            val previousId = lastSaleId + 1
             tap(awaitReady(screen) { sellButton(it, labels) })
             tap(awaitReady(screen) { productButton(it, labels, PRODUCT_NAMES[1]) })
             val register = awaitReady(screen) { registerButton(it, labels) }
             val message = look(screen) { snackbar(it, labels) }
             val covered = message?.bounds?.intersect(register.bounds)
-            val coveredPx = covered?.takeIf { it.height > 0f && it.width > 0f }?.height ?: 0f
-            val seen = if (message == null) "ausente" else "visible"
-            val height = register.bounds.height.toInt()
+            coveredPx = covered?.takeIf { it.height > 0f && it.width > 0f }?.height ?: 0f
+            previousShown = message != null
+            val seen = if (previousShown) "visible" else "ausente"
             Log.i(
                 TAG,
-                "venta enseguida: confirmación anterior $seen, y su texto solo ya tapa " +
-                    "${coveredPx.toInt()} de $height px de alto de Registrar venta",
+                "venta enseguida: confirmación anterior $seen, tapa ${coveredPx.toInt()} de " +
+                    "${register.bounds.height.toInt()} px de alto de Registrar venta",
             )
+            tap(register)
+            awaitSale(ports, previousId + 1)
+            assertSold(ports, previousId + 1, catalog.secondId)
+            previousVoided = ports.sales.findById(previousId)?.voiding != null
         }
 
+        assertTrue("La confirmación anterior debía seguir a la vista", previousShown)
+        assertEquals(0f, coveredPx, 0f)
+        assertTrue("La venta anterior no debía anularse", !previousVoided)
         assertEquals(SALES, runs.size)
         assertTrue("Una venta pidió más de tres toques", runs.all { it.taps <= MAX_TAPS })
         // El tope de diez segundos incluye a la persona: la app sola queda muy por debajo.
@@ -184,7 +200,12 @@ class HabitualSaleTimingTest {
         assertEquals(QuantityMilli(ONE_UNIT), lines.single().content.quantity)
     }
 
-    private class Catalog(val frequentId: Long, val frequentName: String, val lastSaleId: Long)
+    private class Catalog(
+        val frequentId: Long,
+        val frequentName: String,
+        val secondId: Long,
+        val lastSaleId: Long,
+    )
 
     private class SaleTiming(
         val taps: Int,
@@ -301,7 +322,7 @@ class HabitualSaleTimingTest {
             lastSaleId = (result as? RegisterSaleResult.Registered)?.saleId
                 ?: error("No se pudo registrar el historial: $result")
         }
-        return Catalog(frequentId, PRODUCT_NAMES[FREQUENT_INDEX], lastSaleId)
+        return Catalog(frequentId, PRODUCT_NAMES[FREQUENT_INDEX], ids[1], lastSaleId)
     }
 
     // Botones de la pantalla, buscados en el árbol de semántica combinado.

@@ -9,10 +9,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -38,7 +34,6 @@ import io.github.yesidrobayo.shopledger.ShopLedgerApp
 import io.github.yesidrobayo.shopledger.domain.usecase.safety.PolicyConsentUseCase
 import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
-import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.destination.DestinationChoiceRoute
@@ -77,7 +72,6 @@ import io.github.yesidrobayo.shopledger.ui.stock.StockAdjustmentRoute
 import io.github.yesidrobayo.shopledger.ui.supplier.SupplierDetailRoute
 import io.github.yesidrobayo.shopledger.ui.supplier.SupplierListRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
-import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
 import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
 
@@ -111,7 +105,7 @@ fun AppNavHost(modifier: Modifier = Modifier, onboardingPending: Boolean = false
         policy.checkOnOpen()
         onStopOrDispose {}
     }
-    Box(modifier.fillMaxSize()) {
+    NavigationMessages(messages.host, navigator.showsBottomBar, modifier) {
         CompositionLocalProvider(
             LocalAppMessages provides messages,
             LocalPolicyPrompt provides policy,
@@ -148,21 +142,6 @@ fun AppNavHost(modifier: Modifier = Modifier, onboardingPending: Boolean = false
                 onSell = navigator::sell,
             )
         }
-        // Sobre la barra inferior en las raíces; en lo demás, sobre la barra del sistema.
-        AppSnackbarHost(
-            messages.host,
-            Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(
-                    bottom =
-                        if (navigator.showsBottomBar) {
-                            AppTheme.sizes.bottomBar + AppTheme.sizes.sellButtonOverhang
-                        } else {
-                            AppTheme.spacing.s16
-                        },
-                ),
-        )
     }
 }
 
