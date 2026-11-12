@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Probar restauración: el simulacro sobre un temporal. -->
+    <string name="backup_drill_action">Probar restauración</string>
+    <string name="backup_drill_running">Probando la restauración en una copia aparte…</string>
+    <string name="backup_drill_passed">La copia más reciente se puede restaurar. Los datos no cambiaron.</string>
+    <string name="backup_drill_failed">La copia más reciente no se pudo restaurar. Los datos no cambiaron, y sale una copia nueva.</string>
+    <string name="backup_drill_skipped">No hay espacio en el teléfono para probar. Los datos no cambiaron.</string>
+    <string name="backup_drill_no_copy">Todavía no hay una copia que probar.</string>
+</resources>

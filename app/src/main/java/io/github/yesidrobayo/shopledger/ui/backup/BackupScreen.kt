@@ -676,6 +676,7 @@ private fun LazyListScope.copies(uiState: BackupUiState, onAction: (BackupAction
             }
         }
     }
+    if (connected) item(key = DRILL) { Drill(uiState.drilling, onAction) }
     val wording = uiState.wording
     if (connected && wording != null) {
         item(key = PROTECTION) { Protection(wording, uiState.copiesEncrypted) }
@@ -865,3 +866,33 @@ private const val RESTORE_NOTICE = "restoreNotice"
 private const val FIND_FILE = "findFile"
 private const val PROTECTION = "protection"
 private const val EXPORT_COPY = "exportCopy"
+private const val DRILL = "drill"
+
+/**
+ * `Probar restauración`: el simulacro sobre una copia aparte. Mientras corre, una barra y qué está
+ * haciendo, sin otro toque posible; nunca cambia los datos.
+ */
+@Composable
+private fun Drill(drilling: Boolean, onAction: (BackupAction) -> Unit) {
+    val spacing = AppTheme.spacing
+    if (drilling) {
+        Column(
+            Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
+            verticalArrangement = Arrangement.spacedBy(spacing.s8),
+        ) {
+            Text(
+                stringResource(R.string.backup_drill_running),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
+    } else {
+        Column(Modifier.padding(horizontal = spacing.s8)) {
+            InlineTextButton(
+                stringResource(R.string.backup_drill_action),
+                { onAction(BackupAction.RunDrill) },
+            )
+        }
+    }
+}

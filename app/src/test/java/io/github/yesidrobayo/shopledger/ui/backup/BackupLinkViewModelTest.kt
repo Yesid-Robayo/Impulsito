@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictSides
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.DisconnectResult
+import io.github.yesidrobayo.shopledger.domain.model.backup.DrillOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.KeepPhoneResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
@@ -25,6 +26,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupLinkUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -159,6 +161,7 @@ class BackupLinkViewModelTest {
 
     private val destination = FakeDestination()
     private val link = FakeLink()
+    private val drillOutcomes = ArrayDeque<DrillOutcome>()
 
     @Before
     fun useTestMain() = Dispatchers.setMain(dispatcher)
@@ -176,6 +179,7 @@ class BackupLinkViewModelTest {
             computation = dispatcher,
             restore = RestoreBackupUseCase(NoRestore),
             link = BackupLinkUseCase(link),
+            drill = RunRestoreDrillUseCase { drillOutcomes.removeFirst() },
         )
         advanceUntilIdle()
         return model
@@ -407,5 +411,37 @@ class BackupLinkViewModelTest {
         model.onAction(BackupAction.CloseRestore)
         model.onAction(BackupAction.RestoreCloud(null))
         assertEquals(RestoreUi.CopySheet(copy), model.uiState.value.restore)
+    }
+    // Probar restauración
+
+    @Test
+    fun `each drill outcome is said once and the state is read again`() = runTest(dispatcher) {
+        val model = viewModel()
+        val expected =
+            listOf(
+                DrillOutcome.PASSED to BackupMessage.DRILL_PASSED,
+                DrillOutcome.FAILED to BackupMessage.DRILL_FAILED,
+                DrillOutcome.SKIPPED to BackupMessage.DRILL_SKIPPED,
+                DrillOutcome.NO_COPY to BackupMessage.DRILL_NO_COPY,
+                DrillOutcome.UNREACHABLE to BackupMessage.CONFLICT_UNREACHABLE,
+            )
+        for ((outcome, message) in expected) {
+            drillOutcomes += outcome
+            model.onAction(BackupAction.RunDrill)
+            assertTrue(model.uiState.value.drilling)
+            // Un segundo toque mientras corre no repite el simulacro.
+            model.onAction(BackupAction.RunDrill)
+            advanceUntilIdle()
+
+            assertEquals(message, model.uiState.value.message)
+            assertEquals(false, model.uiState.value.drilling)
+            model.onAction(BackupAction.MessageShown)
+        }
+        destination.network = false
+        drillOutcomes += DrillOutcome.UNREACHABLE
+        model.onAction(BackupAction.RunDrill)
+        advanceUntilIdle()
+        assertEquals(BackupMessage.CONFLICT_NO_INTERNET, model.uiState.value.message)
+        assertTrue(drillOutcomes.isEmpty())
     }
 }

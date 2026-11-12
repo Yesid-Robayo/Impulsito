@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKin
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
 import io.github.yesidrobayo.shopledger.domain.model.backup.DisconnectResult
+import io.github.yesidrobayo.shopledger.domain.model.backup.DrillOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.KeepPhoneResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.PinRelease
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
@@ -16,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResul
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupLinkUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -51,6 +53,7 @@ import kotlinx.coroutines.withContext
  * @param copiesEncrypted si las copias salen cifradas; nulo si no se pudo leer.
  * @param link desconectar, volver tras iniciar sesión y decidir un conflicto; nulo donde no se
  *   ofrece.
+ * @param drill `Probar restauración`; nulo donde no se ofrece.
  */
 class BackupViewModel(
     overview: (Flow<Unit>) -> Flow<BackupOverview>,
@@ -65,6 +68,7 @@ class BackupViewModel(
     private val uploadedThisMonth: suspend () -> Long? = { null },
     private val copiesEncrypted: suspend () -> Boolean? = { null },
     private val link: BackupLinkUseCase? = null,
+    private val drill: RunRestoreDrillUseCase? = null,
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = state.asStateFlow()
@@ -188,6 +192,8 @@ class BackupViewModel(
 
             BackupAction.CreateConflictFile -> state.update { it.copy(conflict = null) }
 
+            BackupAction.RunDrill -> runDrill()
+
             // Lo resuelve la navegación.
             BackupAction.Back,
             BackupAction.ChooseDestination,
@@ -214,6 +220,38 @@ class BackupViewModel(
             viewModelScope.launch {
                 if (read { link.resumeAfterSignIn() } == true) reload()
             }
+        }
+    }
+
+    /**
+     * `Probar restauración`: corre el simulacro y dice cómo terminó. Nunca cambia los datos; al
+     * terminar se vuelve a leer el estado, que trae el resultado anotado.
+     */
+    private fun runDrill() {
+        val use = drill ?: return
+        if (state.value.drilling) return
+        state.update { it.copy(drilling = true) }
+        viewModelScope.launch {
+            val outcome = read { use() } ?: DrillOutcome.UNREACHABLE
+            val message =
+                when (outcome) {
+                    DrillOutcome.PASSED -> BackupMessage.DRILL_PASSED
+
+                    DrillOutcome.FAILED -> BackupMessage.DRILL_FAILED
+
+                    DrillOutcome.SKIPPED -> BackupMessage.DRILL_SKIPPED
+
+                    DrillOutcome.NO_COPY -> BackupMessage.DRILL_NO_COPY
+
+                    DrillOutcome.UNREACHABLE ->
+                        if (destination.hasNetwork()) {
+                            BackupMessage.CONFLICT_UNREACHABLE
+                        } else {
+                            BackupMessage.CONFLICT_NO_INTERNET
+                        }
+                }
+            state.update { it.copy(drilling = false, message = message) }
+            refreshes.value += 1
         }
     }
 

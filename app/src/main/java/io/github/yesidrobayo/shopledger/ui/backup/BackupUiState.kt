@@ -27,6 +27,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolic
  * @param copiesEncrypted con un destino, si las copias salen cifradas; nulo mientras se lee.
  * @param disconnect en qué va `Desconectar`.
  * @param conflict la hoja del conflicto, o nula si está cerrada.
+ * @param drilling si `Probar restauración` está corriendo.
  */
 data class BackupUiState(
     val wording: BackupWording? = null,
@@ -43,6 +44,7 @@ data class BackupUiState(
     val copiesEncrypted: Boolean? = null,
     val disconnect: DisconnectUi = DisconnectUi.HIDDEN,
     val conflict: ConflictUi? = null,
+    val drilling: Boolean = false,
 )
 
 /** `Copias con datos móviles`: cerrada, la hoja con las tres opciones o la advertencia. */
@@ -135,6 +137,18 @@ enum class BackupMessage {
 
     /** Sin internet, el destino no se puede leer para decidir el conflicto. */
     CONFLICT_NO_INTERNET,
+
+    /** `Probar restauración`: la copia más reciente se puede restaurar. */
+    DRILL_PASSED,
+
+    /** `Probar restauración`: la copia no se pudo restaurar, y sale una nueva. */
+    DRILL_FAILED,
+
+    /** `Probar restauración`: sin espacio en el teléfono para probar. */
+    DRILL_SKIPPED,
+
+    /** `Probar restauración`: todavía no hay una copia que probar. */
+    DRILL_NO_COPY,
 }
 
 /** Lo que la persona puede hacer en la pantalla del respaldo. */
@@ -259,4 +273,7 @@ sealed interface BackupAction {
      * Lo resuelve la navegación, y la hoja se cierra.
      */
     data object CreateConflictFile : BackupAction
+
+    /** `Probar restauración`: el simulacro sobre un temporal. */
+    data object RunDrill : BackupAction
 }

@@ -148,6 +148,7 @@ class RescueViewModel(
             BackupAction.ConfirmKeep,
             BackupAction.DismissKeep,
             BackupAction.CreateConflictFile,
+            BackupAction.RunDrill,
             -> Unit
         }
     }

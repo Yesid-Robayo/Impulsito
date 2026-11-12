@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDrillResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
 import io.github.yesidrobayo.shopledger.domain.model.backup.CandidateVerdict
+import io.github.yesidrobayo.shopledger.domain.model.backup.DrillOutcome
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.info
@@ -25,6 +26,7 @@ import io.github.yesidrobayo.shopledger.domain.port.warn
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -55,10 +57,18 @@ import kotlinx.coroutines.withContext
  * Un fallo pasajero del destino se reintenta. No hace nada sin un destino conectado, sin la
  * política aceptada o con una restauración a medias.
  *
+ * **El mismo simulacro, a mano.** `Probar restauración` corre lo mismo con [runNow], con cualquier
+ * red, porque lo pidió la persona, y devuelve cómo terminó. Además de validar, abre la candidata
+ * con la base de la app, que corre las migraciones como las correría al restaurar: una copia que no
+ * migra no se puede restaurar. Todo pasa sobre el temporal: la base activa ni se abre. Un simulacro
+ * a la vez: el mensual y el pedido usan la misma carpeta.
+ *
  * @param prepare abre la base y mira las precondiciones.
  * @param stagingDirectory la carpeta de preparación del respaldo. Pedirla toca el disco.
  * @param freeSpace el espacio libre de una carpeta.
  * @param mutex el cerrojo del respaldo, solo para anotar el resultado.
+ * @param migrator abre la candidata con la base de la app y la migra, sobre el temporal. Nulo donde
+ *   no se migra.
  */
 internal class HeadDeepCheck(
     private val prepare: suspend () -> ProbeAccess,
@@ -73,39 +83,77 @@ internal class HeadDeepCheck(
     private val log: EventLog,
     private val ioContext: CoroutineContext,
     private val freeSpace: (File) -> Long = File::getUsableSpace,
+    private val migrator: CandidateMigrator? = null,
 ) {
-    /** Corre una comprobación. */
+    /** Un simulacro a la vez en el proceso: los dos usan la misma carpeta. */
+    private val running = Mutex()
+
+    /** Corre una comprobación, la del trabajo mensual. */
     suspend fun run(control: TransferControl): ProbeRun {
+        // Si la persona está probando ahora, el mensual no repite lo mismo.
+        if (!running.tryLock()) return ProbeRun.DONE
+        val drill =
+            try {
+                drill(control)
+            } finally {
+                running.unlock()
+            }
+        return when (drill) {
+            Drill.Retry -> ProbeRun.RETRY
+            Drill.Nothing, is Drill.Done -> ProbeRun.DONE
+        }
+    }
+
+    /**
+     * `Probar restauración`: el mismo simulacro, cuando lo pide la persona, con cualquier red.
+     * Espera a que termine uno que ya corre, y anota el resultado igual que el mensual.
+     */
+    suspend fun runNow(control: TransferControl): DrillOutcome {
+        val drill = running.withLock { drill(control) }
+        return when (drill) {
+            Drill.Retry -> DrillOutcome.UNREACHABLE
+
+            Drill.Nothing -> DrillOutcome.NO_COPY
+
+            is Drill.Done -> when (drill.result) {
+                BackupDrillResult.PASSED -> DrillOutcome.PASSED
+                BackupDrillResult.FAILED -> DrillOutcome.FAILED
+                BackupDrillResult.SKIPPED -> DrillOutcome.SKIPPED
+            }
+        }
+    }
+
+    private suspend fun drill(control: TransferControl): Drill {
         val ready = when (val access = prepare()) {
             is ProbeAccess.Ready -> access
-            ProbeAccess.Waiting -> return ProbeRun.RETRY
-            ProbeAccess.Nothing -> return ProbeRun.DONE
+            ProbeAccess.Waiting -> return Drill.Retry
+            ProbeAccess.Nothing -> return Drill.Nothing
         }
         val state = ready.state
         val link = ready.link
-        val current = state.get() ?: return ProbeRun.DONE
-        val headRef = headRefOf(current) ?: return ProbeRun.DONE
-        if (current.headGeneration <= 0) return ProbeRun.DONE
+        val current = state.get() ?: return Drill.Nothing
+        val headRef = headRefOf(current) ?: return Drill.Nothing
+        if (current.headGeneration <= 0) return Drill.Nothing
         val destination =
             when (val opened = destinations.open(link)) {
                 is DestinationOpen.Opened -> opened.destination
 
                 // El acceso perdido lo anota la sonda o el respaldo: esta solo comprueba la copia.
-                DestinationOpen.PermissionLost -> return ProbeRun.DONE
+                DestinationOpen.PermissionLost -> return Drill.Nothing
 
-                DestinationOpen.RetryLater -> return ProbeRun.RETRY
+                DestinationOpen.RetryLater -> return Drill.Retry
             }
         val head =
             when (val found = headMeta(destination, headRef, current.headGeneration, control)) {
                 is Found.Meta -> found.meta
 
-                Found.Retry -> return ProbeRun.RETRY
+                Found.Retry -> return Drill.Retry
 
                 // Una cabeza que falta o cuyo tamaño cambió la resuelve la sonda.
-                Found.None -> return ProbeRun.DONE
+                Found.None -> return Drill.Nothing
             }
         // Ya se sabe que la app no la restaura: no se baja, y su fallo sigue a la vista.
-        if (head.fatal) return ProbeRun.DONE
+        if (head.fatal) return Drill.Nothing
         val staging = stagingDirectory()
         val workDirectory = File(staging, DIRECTORY_NAME)
         val outcome =
@@ -115,13 +163,13 @@ internal class HeadDeepCheck(
                 withContext(NonCancellable + ioContext) { workDirectory.deleteRecursively() }
             }
         val result = when (outcome) {
-            Outcome.Retry -> return ProbeRun.RETRY
+            Outcome.Retry -> return Drill.Retry
             Outcome.Passed -> BackupDrillResult.PASSED
             Outcome.Failed -> BackupDrillResult.FAILED
             Outcome.NoSpace -> BackupDrillResult.SKIPPED
         }
         record(state, destination, link.destinationId, headRef, head, result, control)
-        return ProbeRun.DONE
+        return Drill.Done(result)
     }
 
     private suspend fun check(
@@ -175,17 +223,40 @@ internal class HeadDeepCheck(
         val unpacked = unpacker.unpack(download, candidate, head.sha256)
         if (unpacked !is UnpackResult.Unpacked) return Outcome.Failed
         val expected = ExpectedCopy(head.deviceId, head.generation, head.schemaVersion.toInt())
-        return when (val validation = validator.validate(candidate, CandidateContext(expected))) {
-            // Con saldos por recalcular se restaura igual, con aviso: solo lo fatal falla.
-            is CandidateValidation.Checked -> when (validation.verdict) {
-                is CandidateVerdict.Rejected -> Outcome.Failed
-                is CandidateVerdict.NeedsRepair, is CandidateVerdict.Restorable -> Outcome.Passed
+        val validated =
+            when (val validation = validator.validate(candidate, CandidateContext(expected))) {
+                // Con saldos por recalcular se restaura igual, con aviso: solo lo fatal falla.
+                is CandidateValidation.Checked -> when (validation.verdict) {
+                    is CandidateVerdict.Rejected -> Outcome.Failed
+
+                    is CandidateVerdict.NeedsRepair, is CandidateVerdict.Restorable ->
+                        Outcome.Passed
+                }
+
+                is CandidateValidation.Refused -> Outcome.Failed
+
+                // Una falla del teléfono no dice nada de la copia.
+                is CandidateValidation.Failed -> Outcome.Retry
             }
+        if (validated != Outcome.Passed) return validated
+        return migrated(candidate)
+    }
 
-            is CandidateValidation.Refused -> Outcome.Failed
-
-            // Una falla del teléfono no dice nada de la copia.
-            is CandidateValidation.Failed -> Outcome.Retry
+    /**
+     * Abre la candidata con la base de la app, que corre sus migraciones como al restaurar. Si no
+     * abre, la copia no se podría restaurar. Una falla de Keystore o del disco no dice nada de ella,
+     * pero tampoco se puede distinguir aquí: se toma como fallo, como en la restauración.
+     */
+    private suspend fun migrated(candidate: File): Outcome {
+        val migrate = migrator ?: return Outcome.Passed
+        return try {
+            migrate.migrate(candidate)
+            Outcome.Passed
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: Exception) {
+            log.warn(ProbeEvent.DEEP_CHECK_FAILED, failure)
+            Outcome.Failed
         }
     }
 
@@ -274,6 +345,17 @@ internal class HeadDeepCheck(
     }
 
     private enum class Outcome { Passed, Failed, NoSpace, Retry }
+
+    /** Cómo terminó un simulacro, antes de decirlo a quien lo pidió. */
+    private sealed interface Drill {
+        /** No hay cabeza que probar, o no hay destino. */
+        data object Nothing : Drill
+
+        /** El destino no respondió, o falta terminar algo antes: se repite después. */
+        data object Retry : Drill
+
+        data class Done(val result: BackupDrillResult) : Drill
+    }
 
     companion object {
         /** La carpeta de la comprobación dentro de `backup-staging/`. Se borra al terminar. */

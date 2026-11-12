@@ -34,6 +34,7 @@ import io.github.yesidrobayo.shopledger.data.backup.RestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.RestoreFiles
 import io.github.yesidrobayo.shopledger.data.backup.RestoreLockFile
 import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
+import io.github.yesidrobayo.shopledger.data.backup.RoomCandidateMigrator
 import io.github.yesidrobayo.shopledger.data.backup.RoomMaintenanceDatabase
 import io.github.yesidrobayo.shopledger.data.backup.RoomRestoredDatabaseVerifier
 import io.github.yesidrobayo.shopledger.data.backup.SavedDestination
@@ -59,6 +60,7 @@ import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.DestinationMemory
 import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
 import io.github.yesidrobayo.shopledger.data.destination.ProductionDestinationOpener
+import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.data.destination.WebDavConnectionService
 import io.github.yesidrobayo.shopledger.data.destination.WebDavConnector
 import io.github.yesidrobayo.shopledger.data.destination.WebDavCredentialStore
@@ -102,6 +104,7 @@ import io.github.yesidrobayo.shopledger.domain.port.FullCopyExportPort
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
+import io.github.yesidrobayo.shopledger.domain.port.RestoreDrillPort
 import io.github.yesidrobayo.shopledger.domain.port.SlotFilesSetupPort
 import io.github.yesidrobayo.shopledger.domain.port.WebDavConnectionPort
 import io.github.yesidrobayo.shopledger.domain.port.error
@@ -546,7 +549,16 @@ class DataGraph internal constructor(
             clock = clock,
             log = log,
             ioContext = ioContext,
+            migrator = RoomCandidateMigrator(context, ioContext, clock),
         )
+    }
+
+    /**
+     * `Probar restauración`: el simulacro completo sobre un temporal, cuando lo pide la persona.
+     * Nunca toca la base activa ni las copias. Crearlo no toca el disco.
+     */
+    val restoreDrill: RestoreDrillPort by lazy {
+        RestoreDrillPort { headDeepCheck.runNow(TransferControl.Unbounded) }
     }
 
     /** Un archivo de la instalación en `noBackupFilesDir`. Pedir la carpeta toca el disco. */

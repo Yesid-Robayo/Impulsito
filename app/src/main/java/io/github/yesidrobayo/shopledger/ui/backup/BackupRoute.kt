@@ -22,6 +22,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.ChangeMeteredBacku
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RecordCloudCheckUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
@@ -68,6 +69,7 @@ fun BackupRoute(navigator: AppNavigator) {
                 uploadedThisMonth = { container.data.backupSettings.uploadedThisMonth() },
                 copiesEncrypted = { container.data.backupSettings.copiesEncrypted() },
                 link = BackupLinkUseCase(container.data.backupLink),
+                drill = RunRestoreDrillUseCase(container.data.restoreDrill),
             )
         }
     when (model) {
@@ -104,6 +106,10 @@ fun BackupRoute(navigator: AppNavigator) {
             val pinnedMax = stringResource(R.string.backup_pinned_max, MAX_PINNED_COPIES)
             val unreachable = stringResource(R.string.backup_list_error)
             val conflictOffline = stringResource(R.string.backup_list_no_internet)
+            val drillPassed = stringResource(R.string.backup_drill_passed)
+            val drillFailed = stringResource(R.string.backup_drill_failed)
+            val drillSkipped = stringResource(R.string.backup_drill_skipped)
+            val drillNoCopy = stringResource(R.string.backup_drill_no_copy)
             LaunchedEffect(uiState.message) {
                 val message = uiState.message ?: return@LaunchedEffect
                 viewModel.onAction(BackupAction.MessageShown)
@@ -140,6 +146,18 @@ fun BackupRoute(navigator: AppNavigator) {
 
                     BackupMessage.CONFLICT_NO_INTERNET ->
                         messages.show(AppSnackbarVisuals(conflictOffline, SnackbarVariant.INFO))
+
+                    BackupMessage.DRILL_PASSED ->
+                        messages.show(AppSnackbarVisuals(drillPassed, SnackbarVariant.SUCCESS))
+
+                    BackupMessage.DRILL_FAILED ->
+                        messages.show(AppSnackbarVisuals(drillFailed, SnackbarVariant.ERROR))
+
+                    BackupMessage.DRILL_SKIPPED ->
+                        messages.show(AppSnackbarVisuals(drillSkipped, SnackbarVariant.INFO))
+
+                    BackupMessage.DRILL_NO_COPY ->
+                        messages.show(AppSnackbarVisuals(drillNoCopy, SnackbarVariant.INFO))
                 }
             }
             // El selector del sistema, para `Buscar un archivo`: cualquier tipo, porque una copia
@@ -245,6 +263,7 @@ fun BackupRoute(navigator: AppNavigator) {
                         BackupAction.KeepPhone,
                         BackupAction.ConfirmKeep,
                         BackupAction.DismissKeep,
+                        BackupAction.RunDrill,
                         -> viewModel.onAction(action)
                     }
                 },
