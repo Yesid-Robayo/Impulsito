@@ -66,6 +66,7 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                     taxRates = ports.taxRates,
                     clock = container.clock,
                     productUnits = ports.productUnits,
+                    alerts = ports.lowStockAlerts,
                 )
             val reactivate =
                 ReactivateProductUseCase(

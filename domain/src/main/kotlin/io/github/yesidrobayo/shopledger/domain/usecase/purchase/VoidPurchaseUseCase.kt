@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -22,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockCompensation
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
 import kotlin.time.Instant
 
 /**
@@ -45,15 +47,21 @@ import kotlin.time.Instant
  * Un producto archivado no impide anular: su stock sale igual. Por ahora toda compra va pagada al
  * registrarla y sin movimientos de dinero ni libro del proveedor, así que no hay nada más que
  * compensar.
+ *
+ * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
+ * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
  */
 class VoidPurchaseUseCase(
     private val transactions: TransactionRunner,
     private val settings: AppSettingsRepository,
     private val products: ProductRepository,
     private val purchases: PurchaseRepository,
-    private val ledger: StockLedgerRepository,
+    ledger: StockLedgerRepository,
     private val clock: Clock,
+    private val alerts: LowStockAlertRepository? = null,
 ) {
+    private val ledger = StockChangeRecorder(ledger)
+
     suspend operator fun invoke(
         purchaseId: Long,
         reason: VoidReason,
@@ -69,6 +77,7 @@ class VoidPurchaseUseCase(
         reason: VoidReason,
         note: String?,
     ): TxResult<VoidPurchaseResult> {
+        ledger.start()
         if (!VoidableDocument.PURCHASE.allows(reason)) {
             return TxResult.Rollback(VoidPurchaseResult.ReasonNotAllowed)
         }
@@ -95,6 +104,7 @@ class VoidPurchaseUseCase(
             val compensated = compensate(productId, rows, now, calendar)
             if (!compensated) return TxResult.Rollback(VoidPurchaseResult.LedgerDamaged)
         }
+        alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
         return TxResult.Commit(VoidPurchaseResult.Voided)
     }
 

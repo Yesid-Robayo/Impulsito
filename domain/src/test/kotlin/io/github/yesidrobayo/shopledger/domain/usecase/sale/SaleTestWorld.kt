@@ -36,11 +36,15 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
+import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationStatus
+import io.github.yesidrobayo.shopledger.domain.model.stock.NewLowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRate
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
+import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -87,6 +91,7 @@ internal data class SaleTables(
     val suppliers: Map<Long, Supplier> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
+    val alerts: Map<Long, LowStockAlert> = emptyMap(),
 )
 
 /** Una falla inyectada a propósito en una escritura. */
@@ -120,6 +125,9 @@ internal class SaleWorld(
         private set
     var rollbacks: Int = 0
         private set
+
+    /** Si los casos de uso que mueven stock evalúan las alertas de stock bajo. */
+    var withAlerts: Boolean = false
 
     val tables: SaleTables get() = committed.value
 
@@ -397,6 +405,47 @@ internal class SaleWorld(
         )
     }
 
+    /** Las alertas de stock bajo, con la regla de la base: a lo sumo una activa por producto. */
+    val alertRepository: LowStockAlertRepository = object : LowStockAlertRepository {
+        override fun observeActive(): Flow<List<LowStockAlert>> = committed.map { tables ->
+            tables.alerts.values.filter { it.isActive }.sortedBy { it.id }
+        }
+
+        override suspend fun findActiveByProducts(
+            productIds: Collection<Long>,
+        ): List<LowStockAlert> =
+            read().alerts.values.filter { it.isActive && it.productId in productIds }
+
+        override suspend fun findPendingNotifications(): List<LowStockAlert> = read().alerts.values
+            .filter { it.notificationStatus == LowStockNotificationStatus.PENDING }
+            .sortedBy { it.id }
+
+        override suspend fun insert(alert: NewLowStockAlert): Long {
+            if (findActiveByProducts(listOf(alert.productId)).isNotEmpty()) brokenRule()
+            val id = nextId("low_stock_alerts")
+            val stored = LowStockAlert(
+                id = id,
+                productId = alert.productId,
+                onHandAtTrigger = alert.onHandAtTrigger,
+                minStockAtTrigger = alert.minStockAtTrigger,
+                notificationStatus = alert.notificationStatus,
+                occurredAt = alert.occurredAt,
+                businessDate = alert.businessDate,
+                resolvedAt = null,
+            )
+            write { it.copy(alerts = it.alerts + (id to stored)) }
+            return id
+        }
+
+        override suspend fun resolve(id: Long, resolvedAt: Instant) = write { tables ->
+            val alert = checkNotNull(tables.alerts[id]) { "No existe la alerta" }
+            tables.copy(alerts = tables.alerts + (id to alert.copy(resolvedAt = resolvedAt)))
+        }
+
+        override suspend fun setNotificationStatus(id: Long, status: LowStockNotificationStatus) =
+            unused()
+    }
+
     val ledger: StockLedgerRepository = object : StockLedgerRepository {
         override fun observeByProduct(productId: Long): Flow<List<StockMovementRecord>> =
             committed.map { tables ->
@@ -541,6 +590,7 @@ internal class SaleWorld(
         taxRates = taxRateRepository,
         clock = clock,
         productUnits = productUnitRepository,
+        alerts = alertRepository.takeIf { withAlerts },
     )
 
     fun voidPurchase(): VoidPurchaseUseCase = VoidPurchaseUseCase(
@@ -550,6 +600,7 @@ internal class SaleWorld(
         purchases = purchases,
         ledger = ledger,
         clock = clock,
+        alerts = alertRepository.takeIf { withAlerts },
     )
 
     /** Agrega un proveedor con nombre inventado, archivado o no. */
@@ -580,6 +631,7 @@ internal class SaleWorld(
         clock = clock,
         heldSales = heldSaleRepository,
         productUnits = productUnitRepository,
+        alerts = alertRepository.takeIf { withAlerts },
     )
 
     fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(
@@ -589,6 +641,7 @@ internal class SaleWorld(
         sales = sales,
         ledger = ledger,
         clock = clock,
+        alerts = alertRepository.takeIf { withAlerts },
     )
 
     /** Agrega un producto ya guardado, con el estado de stock que se le dé. */
@@ -654,6 +707,7 @@ internal fun product(
     tracksLots: Boolean = false,
     archived: Boolean = false,
     taxRateId: Long? = null,
+    minStockMilli: Long = 0L,
 ): Product = Product(
     id = id,
     details = ProductDetails(
@@ -665,7 +719,7 @@ internal fun product(
         stockMode = stockMode,
         tracksLots = tracksLots,
         fixedUnitCost = Money(fixedUnitCost),
-        minStock = QuantityMilli.ZERO,
+        minStock = QuantityMilli(minStockMilli),
         barcode = null,
         parentProductId = null,
         variantAxis1 = null,

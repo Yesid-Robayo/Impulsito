@@ -283,8 +283,12 @@ internal class FakeLowStockAlertRepository(private val database: InMemoryDatabas
         }
     }
 
+    // Fuera de una transacción, como en la base: no es un dato del negocio.
     override suspend fun setNotificationStatus(id: Long, status: LowStockNotificationStatus) =
-        error("Estas pruebas no lanzan avisos")
+        database.seed { tables ->
+            val alert = checkNotNull(tables.alerts[id]) { "No existe la alerta" }
+            tables.copy(alerts = tables.alerts + (id to alert.copy(notificationStatus = status)))
+        }
 
     private companion object {
         const val TABLE = "low_stock_alerts"

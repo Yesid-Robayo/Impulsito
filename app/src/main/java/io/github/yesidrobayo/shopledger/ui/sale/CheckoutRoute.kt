@@ -79,6 +79,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     clock = container.clock,
                     heldSales = ports.heldSales,
                     productUnits = ports.productUnits,
+                    alerts = ports.lowStockAlerts,
                 )
             val images = FindPaymentImagesUseCase(ports.transactions, ports.mediaAssets)
             CheckoutViewModel(

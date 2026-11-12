@@ -29,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
+import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -66,6 +67,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SurchargeSettlement
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
 import kotlin.time.Instant
 
 /**
@@ -119,6 +121,9 @@ import kotlin.time.Instant
  *   encendidas.
  *
  * Por ahora no vende combos ni productos con lotes, ni a crédito: los rechaza con su motivo.
+ *
+ * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
+ * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
  */
 class RegisterSaleUseCase(
     private val transactions: TransactionRunner,
@@ -128,14 +133,16 @@ class RegisterSaleUseCase(
     private val payments: SalePaymentRepository,
     private val units: UnitRepository,
     private val systemRows: SystemRowRepository,
-    private val ledger: StockLedgerRepository,
+    ledger: StockLedgerRepository,
     private val methodNames: PaymentMethodNames,
     private val taxRates: TaxRateRepository,
     private val clock: Clock,
     private val heldSales: HeldSaleRepository? = null,
     private val productUnits: ProductUnitRepository? = null,
+    private val alerts: LowStockAlertRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
+    private val ledger = StockChangeRecorder(ledger)
 
     suspend operator fun invoke(request: SaleRequest): RegisterSaleResult = try {
         transactions.write { register(request) }
@@ -144,6 +151,7 @@ class RegisterSaleUseCase(
     }
 
     private suspend fun register(request: SaleRequest): TxResult<RegisterSaleResult> {
+        ledger.start()
         shapeRejection(request)?.let { return TxResult.Rollback(it) }
         val note = request.note?.takeIf { it.isNotBlank() }
         val current = settings.get()
@@ -205,6 +213,7 @@ class RegisterSaleUseCase(
             requireNotNull(heldSales) { "Una venta de la espera necesita sus ventas en espera" }
                 .delete(held)
         }
+        alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
         return TxResult.Commit(RegisterSaleResult.Registered(saleId))
     }
 

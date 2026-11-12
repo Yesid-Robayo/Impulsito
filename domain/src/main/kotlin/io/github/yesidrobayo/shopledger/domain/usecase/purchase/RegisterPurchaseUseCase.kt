@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
@@ -40,6 +41,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
 import kotlin.time.Instant
 
 /**
@@ -71,6 +73,9 @@ import kotlin.time.Instant
  * Por ahora la compra va pagada completa al registrarla y sin cuenta de dinero: la compra a plazo
  * y los movimientos de dinero llegan con su libro. Tampoco compra productos con lotes: los rechaza
  * con su motivo.
+ *
+ * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
+ * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
  */
 class RegisterPurchaseUseCase(
     private val transactions: TransactionRunner,
@@ -80,12 +85,14 @@ class RegisterPurchaseUseCase(
     private val suppliers: SupplierRepository,
     private val units: UnitRepository,
     private val systemRows: SystemRowRepository,
-    private val ledger: StockLedgerRepository,
+    ledger: StockLedgerRepository,
     private val taxRates: TaxRateRepository,
     private val clock: Clock,
     private val productUnits: ProductUnitRepository? = null,
+    private val alerts: LowStockAlertRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
+    private val ledger = StockChangeRecorder(ledger)
 
     suspend operator fun invoke(request: PurchaseRequest): RegisterPurchaseResult = try {
         transactions.write { register(request) }
@@ -94,6 +101,7 @@ class RegisterPurchaseUseCase(
     }
 
     private suspend fun register(request: PurchaseRequest): TxResult<RegisterPurchaseResult> {
+        ledger.start()
         val reference = request.invoiceReference?.trim()?.takeIf { it.isNotEmpty() }
         shapeRejection(request, reference)?.let { return TxResult.Rollback(it) }
         val current = settings.get()
@@ -134,6 +142,7 @@ class RegisterPurchaseUseCase(
         }
         val purchaseId =
             write(request.supplierId, reference, priced.lines, priced.totals, time, now)
+        alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
         return TxResult.Commit(RegisterPurchaseResult.Registered(purchaseId, priced.costChanges))
     }
 

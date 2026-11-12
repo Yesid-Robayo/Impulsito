@@ -89,6 +89,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     clock = container.clock,
                     heldSales = ports.heldSales,
                     productUnits = ports.productUnits,
+                    alerts = ports.lowStockAlerts,
                 )
             val hold =
                 HoldSaleUseCase(
