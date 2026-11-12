@@ -83,6 +83,7 @@ val RescueReason.code: String
         is RescueReason.NotEnoughSpace -> "PRE_MIGRATION_NO_SPACE"
         RescueReason.RestoreJournalUnreadable -> "RESTORE_JOURNAL_UNREADABLE"
         RescueReason.RestoreLeftNoDatabase -> "RESTORE_LEFT_NO_DATABASE"
+        RescueReason.SafeMode -> "SAFE_MODE"
     }
 
 /**

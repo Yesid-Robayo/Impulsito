@@ -34,6 +34,8 @@ data class RescueUiState(
     /** La acción principal, según la causa y lo que haya en el teléfono. */
     val primary: RescuePrimary
         get() = when {
+            cause == RescueReason.SafeMode -> RescuePrimary.RETRY_OPEN
+
             cause is RescueReason.NotEnoughSpace -> RescuePrimary.RETRY
 
             cause == RescueReason.MigrationFailed && beforeUpdate != null ->
@@ -61,6 +63,9 @@ enum class RescuePrimary {
 
     /** `Volver a antes de la actualización`: la migración falló y existe la copia previa. */
     BEFORE_UPDATE,
+
+    /** `Reintentar abrir`: el modo seguro, por si fue un falso positivo. */
+    RETRY_OPEN,
 }
 
 /** Lo que la persona hace en la pantalla de rescate. */
@@ -74,6 +79,9 @@ sealed interface RescueAction {
 
     /** `Reintentar`: reinicia la app, que vuelve a pasar por la compuerta. */
     data object Retry : RescueAction
+
+    /** `Reintentar abrir`: sale del modo seguro, vacía el conteo de fallos y reinicia la app. */
+    data object RetryOpen : RescueAction
 
     /** `Volver a antes de la actualización`: primero la confirmación, con el día de la copia. */
     data object BeforeUpdate : RescueAction

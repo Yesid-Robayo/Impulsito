@@ -154,6 +154,8 @@ private fun Heading(cause: RescueReason, hasBeforeUpdate: Boolean) {
         when (cause) {
             is RescueReason.NotEnoughSpace -> stringResource(R.string.rescue_no_space_title)
 
+            RescueReason.SafeMode -> stringResource(R.string.rescue_safe_mode_title)
+
             RescueReason.DatabaseMissing,
             RescueReason.NewerVersion,
             RescueReason.OpenFailed,
@@ -193,6 +195,8 @@ private fun Heading(cause: RescueReason, hasBeforeUpdate: Boolean) {
             RescueReason.RestoreJournalUnreadable ->
                 listOf(stringResource(R.string.rescue_detail_journal))
 
+            RescueReason.SafeMode -> listOf(stringResource(R.string.rescue_safe_mode_body))
+
             is RescueReason.NotEnoughSpace -> {
                 val formats = rememberRescueFormats()
                 listOf(
@@ -231,10 +235,15 @@ private fun Actions(uiState: RescueUiState, onAction: (RescueAction) -> Unit) {
             RescuePrimary.BEFORE_UPDATE ->
                 stringResource(R.string.backup_undo_migration_label) to
                     { onAction(RescueAction.BeforeUpdate) }
+
+            RescuePrimary.RETRY_OPEN ->
+                stringResource(R.string.rescue_safe_mode_retry) to
+                    { onAction(RescueAction.RetryOpen) }
         }
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
         PrimaryActionButton(primaryText, primaryClick, ActionVariant.PRIMARY)
-        if (primary == RescuePrimary.RETRY && uiState.canRestoreFromDestination) {
+        val retrying = primary == RescuePrimary.RETRY || primary == RescuePrimary.RETRY_OPEN
+        if (retrying && uiState.canRestoreFromDestination) {
             PrimaryActionButton(
                 stringResource(R.string.backup_action_restore),
                 { onAction(RescueAction.ShowCopies) },

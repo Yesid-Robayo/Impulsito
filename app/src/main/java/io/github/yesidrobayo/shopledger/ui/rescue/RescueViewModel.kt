@@ -100,7 +100,7 @@ class RescueViewModel(
                 state.update { it.copy(sharing = false) }
 
             // Lo resuelve la pantalla: reiniciar la app, o el portapapeles.
-            RescueAction.Retry, RescueAction.CopySupport -> Unit
+            RescueAction.Retry, RescueAction.RetryOpen, RescueAction.CopySupport -> Unit
         }
     }
 

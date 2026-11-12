@@ -3,10 +3,15 @@ package io.github.yesidrobayo.shopledger
 import android.app.Application
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Build
 import android.os.StrictMode
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration as WorkConfiguration
+import io.github.yesidrobayo.shopledger.data.safety.AppVersions
+import io.github.yesidrobayo.shopledger.data.safety.BootGuard
 import io.github.yesidrobayo.shopledger.di.AppContainer
 import kotlinx.coroutines.launch
 
@@ -17,11 +22,13 @@ import kotlinx.coroutines.launch
  * por eso aquí no se abre la base ni se hace nada lento. La base se abre después, fuera del hilo
  * principal.
  *
- * El orden del arranque importa. El idioma se aplica en [onCreate], antes de la primera actividad,
- * para que la primera pantalla ya salga en el idioma elegido. Las piezas que faltan van antes de
- * crear el contenedor: el modo seguro tras varios fallos seguidos y la restauración pendiente, que
- * debe terminar antes de que nada abra la base. El idioma no depende de ellas, porque no vive en la
- * base y restaurar no lo cambia.
+ * El orden del arranque importa. Lo primero, en [attachBaseContext], es el conteo de arranques
+ * fallidos: tras tres fallos seguidos al abrir, la app entra en modo seguro, muestra la pantalla de
+ * rescate y no abre la base. Va ahí, y no en [onCreate], para que también cuente una caída de una
+ * biblioteca que Android inicializa antes. La última línea de [onCreate] da por bueno el arranque
+ * del proceso, así que uno que el sistema abre para un trabajo nunca cuenta. El idioma se aplica en
+ * [onCreate], antes de la primera actividad, para que la primera pantalla ya salga en el idioma
+ * elegido. La restauración pendiente la termina la compuerta de la base, antes de abrirla.
  *
  * Los textos que viven fuera de la app, como los nombres de los canales de avisos, se revisan al
  * arrancar y con cada cambio de configuración: un idioma cambiado con la app cerrada, o desde los
@@ -38,8 +45,25 @@ class ShopLedgerApp :
     lateinit var container: AppContainer
         private set
 
+    /** El conteo de arranques fallidos y el registro de fallos. Existe desde [attachBaseContext]. */
+    lateinit var bootGuard: BootGuard
+        private set
+
+    /** Si este proceso abrió en modo seguro: la pantalla de rescate, sin la base. */
+    val safeMode: Boolean get() = bootGuard.safeMode
+
+    /**
+     * `Reintentar abrir`: vacía el conteo, para que el arranque siguiente abra normal, por si el
+     * modo seguro fue un falso positivo. Quien llama reinicia la app después.
+     */
+    fun retryOpening() = withDiskPermit { bootGuard.retry() }
+
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
+        // Paso 1 del conteo, antes que todo: lee, decide el modo seguro y, si no, anota un intento.
+        // Instala también el registro de fallos, para que una caída desde aquí deje su archivo.
+        // Todavía no hay contexto de la aplicación: solo se usan el contexto base y noBackupFilesDir.
+        bootGuard = BootGuard.start(base) { appVersions(base) }
         // Solo en compilaciones depurables, y lo antes posible, para que también vea a las
         // bibliotecas que arrancan antes de onCreate: StrictMode anota en el registro cada lectura
         // o escritura del disco en el hilo principal, que demoraría el arranque o una pantalla.
@@ -63,10 +87,14 @@ class ShopLedgerApp :
         container.language.applyAtProcessStart()
         followLanguage()
         // Solo avisa cuando una pantalla se abre o la app entera pasa a segundo plano: un proceso
-        // que el sistema arranca para un trabajo no lo dispara.
-        ProcessLifecycleOwner.get().lifecycle.addObserver(container.lifecycleObserver)
+        // que el sistema arranca para un trabajo no lo dispara. En modo seguro no: abriría la base.
+        if (!safeMode) {
+            ProcessLifecycleOwner.get().lifecycle.addObserver(container.lifecycleObserver)
+        }
         // El bloqueo cuenta el tiempo en segundo plano de la app entera: rotar no es salir.
         ProcessLifecycleOwner.get().lifecycle.addObserver(container.appLock)
+        // Paso 2, en la última línea: el arranque del proceso terminó bien.
+        withDiskPermit { bootGuard.afterApplicationCreated() }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -84,5 +112,39 @@ class ShopLedgerApp :
             container.language.syncWithSystem()
             container.localizedSurfaces.refreshLocalizedSurfaces()
         }
+    }
+}
+
+/**
+ * Las versiones que acompañan un registro de fallo. Se piden al escribirlo, no al arrancar: es una
+ * llamada al sistema.
+ */
+private fun appVersions(context: Context): AppVersions {
+    val manager = context.packageManager
+    val info =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            manager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            manager.getPackageInfo(context.packageName, 0)
+        }
+    return AppVersions(
+        versionName = info.versionName.orEmpty(),
+        versionCode = PackageInfoCompat.getLongVersionCode(info),
+        sdkInt = Build.VERSION.SDK_INT,
+    )
+}
+
+/**
+ * Corre [block] con permiso de leer y escribir el disco en el hilo principal. Es para los pasos del
+ * conteo de arranques: archivos de unas pocas líneas, que tienen que estar escritos antes de seguir.
+ */
+internal fun <T> withDiskPermit(block: () -> T): T {
+    // Permitir escribir incluye leer.
+    val previous = StrictMode.allowThreadDiskWrites()
+    try {
+        return block()
+    } finally {
+        StrictMode.setThreadPolicy(previous)
     }
 }

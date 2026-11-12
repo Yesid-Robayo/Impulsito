@@ -28,6 +28,12 @@ sealed interface RescueReason {
 
     /** Una restauración se deshizo y no había una base anterior que devolver. */
     data object RestoreLeftNoDatabase : RescueReason
+
+    /**
+     * La app se cerró tres veces seguidas al abrir: el modo seguro. La base no se abrió, y nada se
+     * restaura ni se borra solo.
+     */
+    data object SafeMode : RescueReason
 }
 
 /** Lo que hace la compuerta mientras la app espera la base, en los términos de la interfaz. */

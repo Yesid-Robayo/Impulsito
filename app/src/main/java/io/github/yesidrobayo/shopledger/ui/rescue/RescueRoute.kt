@@ -49,7 +49,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun RescueRoute(cause: RescueReason) {
     val context = LocalContext.current
-    val container = (context.applicationContext as ShopLedgerApp).container
+    val app = context.applicationContext as ShopLedgerApp
+    val container = app.container
     val rescue = container.data.rescue
     val io = container.dispatchers.io
     val viewModel: RescueViewModel =
@@ -100,6 +101,11 @@ fun RescueRoute(cause: RescueReason) {
         onAction = { action ->
             when (action) {
                 RescueAction.Retry -> restartForRestore(context)
+
+                RescueAction.RetryOpen -> {
+                    app.retryOpening()
+                    restartForRestore(context)
+                }
 
                 RescueAction.CopySupport -> copyToClipboard(
                     context,

@@ -16,12 +16,14 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.OpeningStep
 import io.github.yesidrobayo.shopledger.data.RescueCause
+import io.github.yesidrobayo.shopledger.data.safety.BootGuard
 import io.github.yesidrobayo.shopledger.di.AppContainer
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
@@ -50,6 +52,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.Appearance
 import io.github.yesidrobayo.shopledger.ui.theme.DefaultColorPalette
 import io.github.yesidrobayo.shopledger.ui.theme.isDark
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -64,6 +67,10 @@ import kotlinx.coroutines.launch
  * sobre ese papel, sin cifras. Si la compuerta manda al rescate, la pantalla de rescate reemplaza a
  * toda la navegación, con la paleta predeterminada y el tema del teléfono: los guardados viven en
  * la base, que no se lee.
+ *
+ * También sigue el conteo de arranques fallidos: anota un intento al crearse y lo vacía tras unos
+ * segundos estables o al dejar de verse. Si el proceso abrió en modo seguro, tras tres caídas
+ * seguidas al abrir, muestra la pantalla de rescate sin abrir la base.
  *
  * Con la paleta llegan el formato regional, la moneda y el modo discreto: toda pantalla con cifras
  * los recibe de aquí, y cambian a la vez cuando la persona los cambia.
@@ -95,13 +102,17 @@ class MainActivity : AppCompatActivity() {
     internal val appearance: State<Appearance?> get() = shownAppearance
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val app = application as ShopLedgerApp
+        // Paso 3 del conteo, en la primera línea: hasta quedar estable, una caída cuenta como fallo.
+        withDiskPermit { app.bootGuard.onActivityCreated() }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // Solo en debug: un extra de adb abre el arnés del respaldo encima. En release no hace nada.
         if (savedInstanceState == null) DebugEntry.openIfRequested(this, intent)
         // Un aviso de stock abre su producto. Al recrearse la actividad, el pedido ya se cumplió.
         if (savedInstanceState == null) openRequest.value = AppOpenRequest.readFrom(intent)
-        val container = (application as ShopLedgerApp).container
+        val container = app.container
+        followStability(app)
         val appLock = container.appLock
         val protection = WindowProtection.of(window).also { this.protection = it }
         // Recientes nunca muestra la pantalla de la app, con cualquier ajuste.
@@ -127,6 +138,12 @@ class MainActivity : AppCompatActivity() {
             container.data.opening.collect { openingStage.value = it.toStage() }
         }
         lifecycleScope.launch {
+            // En modo seguro la base no se abre: la pantalla de rescate no la necesita.
+            if (app.safeMode) {
+                appLock.withoutSettings()
+                rescueReason.value = RescueReason.SafeMode
+                return@launch
+            }
             when (val access = container.data.open()) {
                 is DataAccess.Ready -> {
                     // Desde aquí se avisa lo que quedó pendiente y cada alerta nueva.
@@ -242,6 +259,23 @@ class MainActivity : AppCompatActivity() {
     /** Guarda una preferencia de uso. Sin base abierta no hay dónde, y queda como estaba. */
     private suspend fun savePreference(change: PreferenceChange): ChangePreferenceResult =
         lockSettings?.invoke(change) ?: ChangePreferenceResult.Failed(StorageFailure.IO_ERROR)
+
+    /**
+     * Paso 4 del conteo: tras unos segundos con la pantalla abierta, o al dejar de verse, el arranque
+     * cuenta como bueno y el conteo vuelve a cero. Abrir y cerrar deprisa no es un fallo. En modo
+     * seguro no cambia nada: salir del rescate no prueba que la app abra.
+     */
+    private fun followStability(app: ShopLedgerApp) {
+        lifecycleScope.launch {
+            delay(BootGuard.STABLE_AFTER_MILLIS)
+            withDiskPermit { app.bootGuard.onStable() }
+        }
+        lifecycle.addObserver(
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP) withDiskPermit { app.bootGuard.onStable() }
+            },
+        )
+    }
 
     /** Con la app abierta, tocar un aviso de stock llega aquí. Lo desconocido no cambia nada. */
     override fun onNewIntent(intent: Intent) {

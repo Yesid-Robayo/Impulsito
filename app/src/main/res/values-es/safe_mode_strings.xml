@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El modo seguro de la pantalla de rescate. Textos de la guía de redacción. -->
+    <string name="rescue_safe_mode_title">La app no pudo abrir varias veces</string>
+    <string name="rescue_safe_mode_body">Los datos siguen en este teléfono. Nada se restaura ni se borra por sí solo.</string>
+    <string name="rescue_safe_mode_retry">Reintentar abrir</string>
+</resources>
