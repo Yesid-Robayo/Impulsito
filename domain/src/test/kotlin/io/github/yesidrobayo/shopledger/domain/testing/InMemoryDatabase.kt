@@ -10,6 +10,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
+import io.github.yesidrobayo.shopledger.domain.model.expense.Expense
+import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
@@ -66,6 +68,8 @@ internal data class Tables(
     val unitsUsedByLines: Set<Long> = emptySet(),
     /** Las ventas en espera, con sus líneas. */
     val heldSales: Map<Long, HeldSale> = emptyMap(),
+    val expenses: Map<Long, Expense> = emptyMap(),
+    val expenseCategories: Map<Long, ExpenseCategory> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )
