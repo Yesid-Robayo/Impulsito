@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo de la pantalla de inicio de cada paleta con el teléfono en modo oscuro: su heroContainer en oscuro. -->
+    <color name="splash_indigo_mustard">#FF1A2150</color>
+    <color name="splash_berry_honey">#FF5C0C3A</color>
+    <color name="splash_raspberry_gold">#FF6E0C37</color>
+    <color name="splash_wine_champagne">#FF43101F</color>
+    <color name="splash_plum_coral">#FF34172E</color>
+    <color name="splash_forest_honey">#FF153629</color>
+    <color name="splash_carmine_gold">#FF6B0F12</color>
+    <color name="splash_garnet_honey">#FF5A1420</color>
+    <color name="splash_vivid_red_cream">#FF7A0A1C</color>
+</resources>

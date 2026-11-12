@@ -51,6 +51,7 @@ import io.github.yesidrobayo.shopledger.ui.rescue.RescueRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.Appearance
 import io.github.yesidrobayo.shopledger.ui.theme.DefaultColorPalette
+import io.github.yesidrobayo.shopledger.ui.theme.SplashThemes
 import io.github.yesidrobayo.shopledger.ui.theme.isDark
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -105,6 +106,9 @@ class MainActivity : AppCompatActivity() {
         val app = application as ShopLedgerApp
         // Paso 3 del conteo, en la primera línea: hasta quedar estable, una caída cuenta como fallo.
         withDiskPermit { app.bootGuard.onActivityCreated() }
+        // El manifiesto arranca con la pantalla de inicio; la app, también el rescate y el modo
+        // seguro, se dibuja sobre el papel de siempre.
+        setTheme(R.style.Theme_ShopLedger)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // Solo en debug: un extra de adb abre el arnés del respaldo encima. En release no hace nada.
@@ -171,6 +175,8 @@ class MainActivity : AppCompatActivity() {
                             .collect { (appearance, display, pending) ->
                                 // El primer uso se decide antes de mostrar la navegación.
                                 onboardingPending.value = pending
+                                // El arranque siguiente sale con la paleta guardada, también tras restaurar.
+                                SplashThemes.remember(this@MainActivity, appearance.palette)
                                 shownAppearance.value = appearance
                                 shownDisplay.value = display
                             }

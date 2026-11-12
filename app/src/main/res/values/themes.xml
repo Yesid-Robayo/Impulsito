@@ -9,4 +9,36 @@
     <style name="Theme.ShopLedger" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/window_paper</item>
     </style>
+
+    <!-- Temas de arranque, uno por paleta: el fondo es el héroe de la paleta, en claro y en oscuro con values-night/.
+         Sus nombres no cambian nunca: desde API 31 Android guarda el nombre que la app le pasa a setSplashScreenTheme, y
+         values-v31/ les suma el cohete. Antes de API 31 solo pintan la ventana mientras la app arranca. El manifiesto
+         arranca con la predeterminada, y MainActivity vuelve a Theme.ShopLedger antes de dibujar. -->
+    <style name="Theme.App.Starting.IndigoMustard" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_indigo_mustard</item>
+    </style>
+    <style name="Theme.App.Starting.BerryHoney" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_berry_honey</item>
+    </style>
+    <style name="Theme.App.Starting.RaspberryGold" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_raspberry_gold</item>
+    </style>
+    <style name="Theme.App.Starting.WineChampagne" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_wine_champagne</item>
+    </style>
+    <style name="Theme.App.Starting.PlumCoral" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_plum_coral</item>
+    </style>
+    <style name="Theme.App.Starting.ForestHoney" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_forest_honey</item>
+    </style>
+    <style name="Theme.App.Starting.CarmineGold" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_carmine_gold</item>
+    </style>
+    <style name="Theme.App.Starting.GarnetHoney" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_garnet_honey</item>
+    </style>
+    <style name="Theme.App.Starting.VividRedCream" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_vivid_red_cream</item>
+    </style>
 </resources>

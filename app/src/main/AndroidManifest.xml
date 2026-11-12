@@ -34,9 +34,11 @@
         android:theme="@style/Theme.ShopLedger">
 
         <!-- Único componente exportado y único intent-filter de este esqueleto. -->
+        <!-- Arranca con la pantalla de inicio de la paleta predeterminada: antes de abrir la base no se sabe otra. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:theme="@style/Theme.App.Starting.IndigoMustard"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

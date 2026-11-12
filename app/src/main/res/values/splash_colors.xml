@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo de la pantalla de inicio de cada paleta: su heroContainer en claro. En oscuro lo cambia values-night/. Lo vigila SplashThemesTest. -->
+    <color name="splash_indigo_mustard">#FF26306E</color>
+    <color name="splash_berry_honey">#FF7A104A</color>
+    <color name="splash_raspberry_gold">#FFA3124F</color>
+    <color name="splash_wine_champagne">#FF5E1630</color>
+    <color name="splash_plum_coral">#FF4B2142</color>
+    <color name="splash_forest_honey">#FF1E4D3B</color>
+    <color name="splash_carmine_gold">#FFA4161A</color>
+    <color name="splash_garnet_honey">#FF7F1D2D</color>
+    <color name="splash_vivid_red_cream">#FFC8102E</color>
+</resources>

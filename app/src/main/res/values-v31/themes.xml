@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Desde API 31, la pantalla de inicio del sistema: el heroContainer de la paleta y el cohete del ícono, sin fondo propio
+         ni animación. Sus nombres no cambian nunca, como en values/. -->
+    <style name="Theme.App.Starting.IndigoMustard" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_indigo_mustard</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_indigo_mustard</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+    <style name="Theme.App.Starting.BerryHoney" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_berry_honey</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_berry_honey</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+    <style name="Theme.App.Starting.RaspberryGold" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_raspberry_gold</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_raspberry_gold</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+    <style name="Theme.App.Starting.WineChampagne" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_wine_champagne</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_wine_champagne</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+    <style name="Theme.App.Starting.PlumCoral" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_plum_coral</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_plum_coral</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+    <style name="Theme.App.Starting.ForestHoney" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_forest_honey</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_forest_honey</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+    <style name="Theme.App.Starting.CarmineGold" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_carmine_gold</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_carmine_gold</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+    <style name="Theme.App.Starting.GarnetHoney" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_garnet_honey</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_garnet_honey</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+    <style name="Theme.App.Starting.VividRedCream" parent="Theme.ShopLedger">
+        <item name="android:windowBackground">@color/splash_vivid_red_cream</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_vivid_red_cream</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+</resources>
