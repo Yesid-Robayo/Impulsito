@@ -124,6 +124,7 @@ internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
                     PreferenceChange.AppLock(true),
                     PreferenceChange.AppLockDelay(AppLockTimeout.FIVE_MINUTES),
                     PreferenceChange.MeteredBackup(MeteredBackupPolicy.WIFI_ONLY),
+                    PreferenceChange.DiscreetMode(true),
                 )
             for (change in changes) settings.updatePreference(change, LATER_AT)
             settings.markOnboardingCompleted(LATER_AT)
@@ -135,7 +136,7 @@ internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
                     true,
                     AppLockTimeout.FIVE_MINUTES,
                     MeteredBackupPolicy.WIFI_ONLY,
-                    discreetModeEnabled = false,
+                    discreetModeEnabled = true,
                     mediaOnMetered = false,
                     updateCheckEnabled = true,
                 )

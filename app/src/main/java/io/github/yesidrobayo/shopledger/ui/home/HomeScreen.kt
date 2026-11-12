@@ -63,6 +63,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.BackupStatusBanner
 import io.github.yesidrobayo.shopledger.ui.components.BackupStatusChip
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
+import io.github.yesidrobayo.shopledger.ui.components.DiscreetModeButton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
@@ -130,6 +131,7 @@ fun HomeScreen(
                     onNavigate = {},
                     navigationLabel = null,
                     actions = {
+                        DiscreetModeButton()
                         TopBarAction(
                             R.drawable.ic_settings,
                             stringResource(R.string.a11y_settings),

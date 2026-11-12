@@ -403,7 +403,7 @@ private fun LockedCost(cost: Money, modifier: Modifier) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        DiscreetValue { MoneyText(cost, MoneySize.ROW) }
+        MoneyText(cost, MoneySize.ROW, sensitive = true)
     }
 }
 

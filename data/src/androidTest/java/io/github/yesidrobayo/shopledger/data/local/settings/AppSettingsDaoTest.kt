@@ -58,6 +58,7 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
         assertEquals(1, settings.updateAppLockEnabled(1, MUCH_LATER))
         assertEquals(1, settings.updateAppLockTimeoutSeconds(300, MUCH_LATER))
         assertEquals(1, settings.updateMeteredBackupPolicy("WIFI_ONLY", MUCH_LATER))
+        assertEquals(1, settings.updateDiscreetModeEnabled(1, MUCH_LATER))
 
         // Cada cambio conserva los anteriores: ninguno reescribe la fila entera.
         val expected =
@@ -68,6 +69,7 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 appLockEnabled = 1,
                 appLockTimeoutSeconds = 300,
                 meteredBackupPolicy = "WIFI_ONLY",
+                discreetModeEnabled = 1,
                 updatedAt = MUCH_LATER,
             )
         assertEquals(expected, settings.get())
@@ -157,6 +159,7 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 "updateAppLockEnabled",
                 "updateAppLockTimeoutSeconds",
                 "updateMeteredBackupPolicy",
+                "updateDiscreetModeEnabled",
                 "updateCurrency",
                 "lockCurrency",
                 "updateBusinessTimeZone",

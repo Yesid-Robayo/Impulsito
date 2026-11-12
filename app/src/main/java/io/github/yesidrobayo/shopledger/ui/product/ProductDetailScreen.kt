@@ -93,6 +93,7 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.stock.reasonLabel
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -511,9 +512,11 @@ private fun MovementRow(
     val record = movement.record
     val type = record.movement.type
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val discreet = LocalDiscreetMode.current
     val details = buildList {
         add(AnnotatedString(formats.date.dayMonthYear(record.businessDate)))
-        if (type == StockMovementType.COST_CORRECTION) {
+        // Los costos de la historia se ocultan en modo discreto: queda el tipo de movimiento.
+        if (type == StockMovementType.COST_CORRECTION && !discreet) {
             add(
                 formatAnnotated(
                     stringResource(R.string.product_change_from_to),

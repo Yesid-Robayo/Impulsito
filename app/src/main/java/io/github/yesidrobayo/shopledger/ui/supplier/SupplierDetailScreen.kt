@@ -373,11 +373,13 @@ private fun PurchaseRow(purchase: SupplierPurchase, onClick: () -> Unit) {
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(spacing.s4),
             ) {
+                // Lo comprado a un proveedor dice cuánto cuesta lo que se vende: se oculta.
                 MoneyText(
                     purchase.total,
                     MoneySize.ROW,
                     tone = if (voided) MoneyTone.MUTED else MoneyTone.DEFAULT,
                     voided = voided,
+                    sensitive = true,
                 )
             }
         }

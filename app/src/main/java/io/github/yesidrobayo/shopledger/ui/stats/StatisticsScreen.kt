@@ -55,6 +55,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
+import io.github.yesidrobayo.shopledger.ui.components.DiscreetModeButton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.LedgerLineLayout
@@ -116,6 +117,7 @@ fun StatisticsScreen(
                     onNavigate = {},
                     navigationLabel = null,
                     actions = {
+                        DiscreetModeButton()
                         // Solo con cifras se elige un rango: sin datos no hay nada que mirar.
                         if (uiState is StatisticsUiState.Content) {
                             OverflowMenu(

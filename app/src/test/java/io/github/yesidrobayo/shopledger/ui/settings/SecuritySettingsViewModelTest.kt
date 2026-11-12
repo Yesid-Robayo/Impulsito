@@ -58,6 +58,7 @@ class SecuritySettingsViewModelTest {
                     is PreferenceChange.Palette,
                     is PreferenceChange.LowStockNotifications,
                     is PreferenceChange.MeteredBackup,
+                    is PreferenceChange.DiscreetMode,
                     -> error("El grupo solo cambia el bloqueo")
                 }
             }

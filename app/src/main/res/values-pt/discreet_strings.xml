@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Modo discreto: el interruptor y lo que dice. Textos de la guía de redacción. -->
+    <string name="discreet_setting">Modo discreto</string>
+    <string name="discreet_setting_help">Oculta a tela, não protege arquivos.</string>
+    <string name="a11y_discreet_hide">Ocultar valores</string>
+    <string name="a11y_discreet_show">Mostrar valores</string>
+    <string name="a11y_discreet_auth_reason">Mostrar valores ocultos</string>
+</resources>

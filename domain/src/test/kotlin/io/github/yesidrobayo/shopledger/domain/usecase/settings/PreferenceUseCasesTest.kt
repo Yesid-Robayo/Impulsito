@@ -46,6 +46,13 @@ class PreferenceUseCasesTest {
     }
 
     @Test
+    fun `the discreet mode is saved as chosen`() = runTest {
+        assertEquals(ChangePreferenceResult.Saved, change(PreferenceChange.DiscreetMode(true)))
+
+        assertEquals(true, settings.settings.value.preferences.discreetModeEnabled)
+    }
+
+    @Test
     fun `a storage failure is returned and nothing changes`() = runTest {
         settings.failNextPreference = StorageFailure.RESTORE_IN_PROGRESS
 

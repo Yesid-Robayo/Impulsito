@@ -24,6 +24,8 @@ import io.github.yesidrobayo.shopledger.data.OpeningStep
 import io.github.yesidrobayo.shopledger.data.RescueCause
 import io.github.yesidrobayo.shopledger.di.AppContainer
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
+import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ObserveAppLockUseCase
 import io.github.yesidrobayo.shopledger.lock.AppLockState
@@ -31,8 +33,11 @@ import io.github.yesidrobayo.shopledger.lock.BiometricAuthenticator
 import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
 import io.github.yesidrobayo.shopledger.lock.LocalWindowProtection
 import io.github.yesidrobayo.shopledger.lock.WindowProtection
+import io.github.yesidrobayo.shopledger.lock.rememberDiscreetModeSwitch
+import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavHost
 import io.github.yesidrobayo.shopledger.navigation.AppOpenRequest
+import io.github.yesidrobayo.shopledger.ui.components.LocalDiscreetModeSwitch
 import io.github.yesidrobayo.shopledger.ui.format.BusinessDisplay
 import io.github.yesidrobayo.shopledger.ui.format.ProvideBusinessFormats
 import io.github.yesidrobayo.shopledger.ui.lock.AppLockGate
@@ -83,7 +88,7 @@ class MainActivity : AppCompatActivity() {
     /** Lo que la ventana protege: capturas, superposiciones y toques tapados. */
     private var protection: WindowProtection? = null
 
-    /** Guarda el bloqueo apagado cuando el teléfono ya no tiene con qué autenticar. */
+    /** Guarda las preferencias de uso, como el bloqueo apagado o el modo discreto. */
     private var lockSettings: ChangePreferenceUseCase? = null
 
     /** La paleta y el modo que leyó de los ajustes, o `null` mientras la base no responde. */
@@ -189,20 +194,25 @@ class MainActivity : AppCompatActivity() {
                         LocalDeviceAuthenticator provides authenticator,
                         LocalWindowProtection provides protection,
                     ) {
-                        ProvideBusinessFormats(shownDisplay.value) {
-                            AppLockGate(
-                                state = lockState,
-                                locked = {
-                                    LockRoute(appLock, onNoDeviceCredential = {
-                                        turnLockOffWithoutCredential(container)
-                                    })
-                                },
-                            ) {
-                                AppNavHost(
-                                    onboardingPending = onboardingPending.value,
-                                    openRequest = openRequest.value,
-                                    onOpenHandled = { openRequest.value = null },
-                                )
+                        // Ocultar las cifras es inmediato; mostrarlas con el bloqueo pide verificar.
+                        val discreetSwitch =
+                            rememberDiscreetModeSwitch(rememberSensitiveCheck(), ::savePreference)
+                        CompositionLocalProvider(LocalDiscreetModeSwitch provides discreetSwitch) {
+                            ProvideBusinessFormats(shownDisplay.value) {
+                                AppLockGate(
+                                    state = lockState,
+                                    locked = {
+                                        LockRoute(appLock, onNoDeviceCredential = {
+                                            turnLockOffWithoutCredential(container)
+                                        })
+                                    },
+                                ) {
+                                    AppNavHost(
+                                        onboardingPending = onboardingPending.value,
+                                        openRequest = openRequest.value,
+                                        onOpenHandled = { openRequest.value = null },
+                                    )
+                                }
                             }
                         }
                     }
@@ -228,6 +238,10 @@ class MainActivity : AppCompatActivity() {
      */
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean =
         if (protection?.rejects(ev) == true) true else super.dispatchTouchEvent(ev)
+
+    /** Guarda una preferencia de uso. Sin base abierta no hay dónde, y queda como estaba. */
+    private suspend fun savePreference(change: PreferenceChange): ChangePreferenceResult =
+        lockSettings?.invoke(change) ?: ChangePreferenceResult.Failed(StorageFailure.IO_ERROR)
 
     /** Con la app abierta, tocar un aviso de stock llega aquí. Lo desconocido no cambia nada. */
     override fun onNewIntent(intent: Intent) {

@@ -18,4 +18,7 @@ sealed interface PreferenceChange {
     data class AppLockDelay(val timeout: AppLockTimeout) : PreferenceChange
 
     data class MeteredBackup(val policy: MeteredBackupPolicy) : PreferenceChange
+
+    /** Oculta o muestra en pantalla las cifras sensibles del negocio. */
+    data class DiscreetMode(val enabled: Boolean) : PreferenceChange
 }

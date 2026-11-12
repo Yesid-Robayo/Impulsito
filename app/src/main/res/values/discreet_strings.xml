@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Modo discreto: el interruptor y lo que dice. Textos de la guía de redacción. -->
+    <string name="discreet_setting">Discreet mode</string>
+    <string name="discreet_setting_help">Hides the screen. It does not protect files.</string>
+    <string name="a11y_discreet_hide">Hide figures</string>
+    <string name="a11y_discreet_show">Show figures</string>
+    <string name="a11y_discreet_auth_reason">Show hidden figures</string>
+</resources>

@@ -147,6 +147,9 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
 
                     is PreferenceChange.MeteredBackup ->
                         settings.updateMeteredBackupPolicy(change.policy.name, at)
+
+                    is PreferenceChange.DiscreetMode ->
+                        settings.updateDiscreetModeEnabled(change.enabled.toStoredFlag(), at)
                 }
             }
         requireOneRow(changed)

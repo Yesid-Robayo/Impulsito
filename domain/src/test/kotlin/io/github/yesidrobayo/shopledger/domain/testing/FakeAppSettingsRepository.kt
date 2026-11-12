@@ -204,6 +204,10 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
             is PreferenceChange.MeteredBackup -> preferences.copy(
                 meteredBackupPolicy = change.policy,
             )
+
+            is PreferenceChange.DiscreetMode -> preferences.copy(
+                discreetModeEnabled = change.enabled,
+            )
         }
         settings.value = current.copy(updatedAt = updatedAt, preferences = changed)
     }

@@ -68,6 +68,12 @@ internal interface AppSettingsDao {
     )
     suspend fun updateMeteredBackupPolicy(policy: String, updatedAt: Long): Int
 
+    @Query(
+        "UPDATE app_settings SET discreet_mode_enabled = :enabled, updated_at = :updatedAt " +
+            "WHERE id = 1",
+    )
+    suspend fun updateDiscreetModeEnabled(enabled: Long, updatedAt: Long): Int
+
     /**
      * Cambia la moneda del negocio y sus decimales. Solo antes del bloqueo: después, la guarda lo
      * rechaza, porque cambiaría el valor de cada monto guardado. Va en la misma transacción que

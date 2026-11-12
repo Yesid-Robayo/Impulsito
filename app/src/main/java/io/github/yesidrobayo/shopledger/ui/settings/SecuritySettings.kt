@@ -18,11 +18,13 @@ import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreference
 import io.github.yesidrobayo.shopledger.lock.AuthOutcome
 import io.github.yesidrobayo.shopledger.lock.AuthPurpose
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
+import io.github.yesidrobayo.shopledger.ui.components.LocalDiscreetModeSwitch
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
+import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -138,7 +140,8 @@ class SecuritySettingsViewModel(
 
 /**
  * El grupo `Seguridad`: el interruptor del bloqueo, con lo que hace y lo que no, y, encendido, cuánto
- * esperar antes de pedirlo de nuevo.
+ * esperar antes de pedirlo de nuevo. Después, `Modo discreto`, que dice que oculta la pantalla y no
+ * protege archivos.
  */
 @Composable
 fun SecurityGroup(
@@ -173,6 +176,14 @@ fun SecurityGroup(
             )
         }
     }
+    // El modo discreto: ocultar es inmediato; mostrar con el bloqueo encendido pide verificar.
+    val discreet = LocalDiscreetMode.current
+    val discreetSwitch = LocalDiscreetModeSwitch.current
+    SettingsRow(
+        title = stringResource(R.string.discreet_setting),
+        summary = stringResource(R.string.discreet_setting_help),
+        action = SettingsRowAction.Toggle(discreet) { discreetSwitch(it) },
+    )
     if (state.saveFailed) {
         NoticeCard(
             text = stringResource(R.string.state_error_save),
