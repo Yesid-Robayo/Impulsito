@@ -89,10 +89,12 @@ fun BackupRoute(navigator: AppNavigator) {
             val releaseFailed = stringResource(R.string.backup_release_failed)
             val retry = stringResource(R.string.action_retry)
             val context = LocalContext.current
-            // Con el bloqueo encendido, restaurar pide de nuevo la verificación del sistema.
+            // Con el bloqueo encendido, restaurar y desconectar piden de nuevo la verificación del
+            // sistema.
             val sensitive = rememberSensitiveCheck()
             val scope = rememberCoroutineScope()
             val restoreTitle = stringResource(R.string.backup_action_restore)
+            val disconnectTitle = stringResource(R.string.backup_action_disconnect)
             val provider = uiState.wording?.providerLabel ?: NO_VALUE_TEXT
             val openFailed =
                 stringResource(
@@ -198,6 +200,11 @@ fun BackupRoute(navigator: AppNavigator) {
                             if (sensitive.confirm(restoreTitle)) viewModel.onAction(action)
                         }
 
+                        // Cancelada, la conexión sigue igual y el diálogo queda abierto.
+                        BackupAction.ConfirmDisconnect -> scope.launch {
+                            if (sensitive.confirm(disconnectTitle)) viewModel.onAction(action)
+                        }
+
                         // WebDAV pide la contraseña otra vez; la nube del teléfono, sus archivos.
                         BackupAction.Reconnect ->
                             navigator.open(
@@ -254,7 +261,6 @@ fun BackupRoute(navigator: AppNavigator) {
                         BackupAction.ConfirmRelease,
                         BackupAction.CloseRelease,
                         BackupAction.Disconnect,
-                        BackupAction.ConfirmDisconnect,
                         BackupAction.DismissDisconnect,
                         BackupAction.ReviewConflict,
                         BackupAction.RetryConflict,

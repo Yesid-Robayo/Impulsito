@@ -79,6 +79,7 @@ private fun DisconnectDialog(
         onConfirm = { onAction(BackupAction.ConfirmDisconnect) },
         onDismiss = { onAction(BackupAction.DismissDisconnect) },
         variant = ConfirmVariant.DESTRUCTIVE,
+        sensitive = true,
     )
 }
 
