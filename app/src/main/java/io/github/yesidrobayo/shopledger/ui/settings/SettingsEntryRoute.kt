@@ -325,6 +325,8 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                         }
 
                         is SecurityAction.Timeout -> security?.onTimeoutChange(action.timeout)
+
+                        SecurityAction.Retry -> security?.onRetry()
                     }
                 },
                 overview = overview,
@@ -352,6 +354,11 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 onRetryPalette = { failedPalette?.let(choosePalette) },
                 support = support,
                 onCopySupport = copySupport,
+                readFailed = uiState.readFailed || overview?.readFailed == true,
+                onRetryRead = {
+                    viewModel.onRetry()
+                    overviewViewModel?.onRetry()
+                },
             )
         }
     }

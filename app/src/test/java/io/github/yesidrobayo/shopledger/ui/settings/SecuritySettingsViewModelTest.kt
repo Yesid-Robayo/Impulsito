@@ -179,15 +179,26 @@ class SecuritySettingsViewModelTest {
     }
 
     @Test
-    fun `without the setting the group is not drawn`() = runTest(dispatcher) {
+    fun `an unreadable lock says so with retry, and retry reads it`() = runTest(dispatcher) {
+        var failing = true
         val model =
             SecuritySettingsViewModel(
-                lockSource = { flow { throw IllegalStateException("Sin base") } },
+                lockSource = {
+                    if (failing) flow { throw IllegalStateException("Sin base") } else lock
+                },
                 changePreference = { ChangePreferenceResult.Saved },
             )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
 
         assertNull(model.uiState.value.lock)
+        assertTrue(model.uiState.value.readFailed)
+
+        failing = false
+        model.onRetry()
+        advanceUntilIdle()
+
+        assertFalse(model.uiState.value.readFailed)
+        assertEquals(false, model.uiState.value.lock?.enabled)
     }
 }

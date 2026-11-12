@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInf
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.localization.UiLanguage
+import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 
@@ -30,6 +32,7 @@ import kotlinx.coroutines.withContext
  * @param destination el destino conectado, leído sin red, o `null` sin destino.
  * @param currency la moneda del negocio, o `null` mientras se lee.
  * @param language el idioma elegido para la interfaz.
+ * @param readFailed el respaldo o la moneda no se pudieron leer: se dice, con `Reintentar`.
  */
 @Immutable
 data class SettingsOverviewUiState(
@@ -37,6 +40,7 @@ data class SettingsOverviewUiState(
     val destination: BackupDestinationInfo? = null,
     val currency: CurrencyCode? = null,
     val language: UiLanguage = UiLanguage.System,
+    val readFailed: Boolean = false,
 )
 
 /**
@@ -64,7 +68,11 @@ class SettingsOverviewViewModel(
 ) : ViewModel() {
     private val returns = MutableStateFlow(0L)
 
-    private val backup: Flow<Pair<BackupWording, BackupDestinationInfo?>?> =
+    /** El respaldo y la moneda: una falla se dice con `Reintentar`, y no esconde sus filas. */
+    private val reads = ScreenReads()
+
+    /** El estado con el destino, leído de nuevo con cada cambio y al volver a primer plano. */
+    private val wordings: Flow<Pair<BackupWording, BackupDestinationInfo?>?> =
         combine(backupOverview(returns.map {}), zones) { overview, zone -> overview to zone }
             .mapLatest<
                 Pair<BackupOverview, BusinessTimeZone?>,
@@ -74,19 +82,24 @@ class SettingsOverviewViewModel(
                 val provider = (destination as? BackupDestinationInfo.Slots)?.providerLabel
                 BackupWording(overview, provider, zone) to destination
             }
-            .catch { emit(null) }
+
+    private val backup: Flow<Pair<BackupWording, BackupDestinationInfo?>?> =
+        reads.guard { wordings }.onStart { emit(null) }
 
     val uiState: StateFlow<SettingsOverviewUiState> = combine(
         backup,
-        currencies.map<CurrencyCode, CurrencyCode?> { it }.catch { emit(null) },
+        reads.guard { currencies.map<CurrencyCode, CurrencyCode?> { it } }.onStart { emit(null) },
         language.catch { emit(UiLanguage.System) },
-    ) { wording, currency, chosen ->
-        SettingsOverviewUiState(wording?.first, wording?.second, currency, chosen)
+        reads.failed,
+    ) { wording, currency, chosen, unreadable ->
+        SettingsOverviewUiState(wording?.first, wording?.second, currency, chosen, unreadable)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
         SettingsOverviewUiState(),
     )
+
+    fun onRetry() = reads.retry()
 
     /** La pantalla volvió a primer plano: el estado y el destino se leen de nuevo. */
     fun onReturnToForeground() {

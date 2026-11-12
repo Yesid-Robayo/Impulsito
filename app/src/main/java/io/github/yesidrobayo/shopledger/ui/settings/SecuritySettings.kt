@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.settings.AppLockSettings
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceResult
 import io.github.yesidrobayo.shopledger.lock.AuthOutcome
 import io.github.yesidrobayo.shopledger.lock.AuthPurpose
+import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.LocalDiscreetModeSwitch
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
@@ -32,9 +33,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -45,12 +46,14 @@ import kotlinx.coroutines.launch
  * @param needsDeviceLock se intentó encender el bloqueo en un teléfono sin bloqueo de pantalla: se
  *   explica que primero hay que configurarlo en el sistema.
  * @param saveFailed el último cambio no se pudo guardar.
+ * @param readFailed el bloqueo no se pudo leer: el grupo lo dice, con `Reintentar`.
  */
 @Immutable
 data class SecuritySettingsUiState(
     val lock: AppLockSettings? = null,
     val needsDeviceLock: Boolean = false,
     val saveFailed: Boolean = false,
+    val readFailed: Boolean = false,
 )
 
 /** Lo que la persona hace en el grupo `Seguridad`. */
@@ -63,6 +66,9 @@ sealed interface SecurityAction {
 
     /** Elige cuánto puede estar la app en segundo plano antes de pedir de nuevo el desbloqueo. */
     data class Timeout(val timeout: AppLockTimeout) : SecurityAction
+
+    /** Vuelve a leer el bloqueo tras una falla de lectura. */
+    data object Retry : SecurityAction
 }
 
 /**
@@ -81,16 +87,25 @@ class SecuritySettingsViewModel(
     private val needsDeviceLock = MutableStateFlow(false)
     private val saveFailed = MutableStateFlow(false)
 
+    /** La lectura del bloqueo: una falla se dice en el grupo, con `Reintentar`, y no lo esconde. */
+    private val reads = ScreenReads()
+
     val uiState: StateFlow<SecuritySettingsUiState> = combine(
-        lockSource().map<AppLockSettings, AppLockSettings?> { it }.catch { emit(null) },
+        reads.guard { lockSource().map<AppLockSettings, AppLockSettings?> { it } }
+            .onStart { emit(null) },
         needsDeviceLock,
         saveFailed,
-    ) { lock, noDeviceLock, failed -> SecuritySettingsUiState(lock, noDeviceLock, failed) }
+        reads.failed,
+    ) { lock, noDeviceLock, failed, unreadable ->
+        SecuritySettingsUiState(lock.takeUnless { unreadable }, noDeviceLock, failed, unreadable)
+    }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             SecuritySettingsUiState(),
         )
+
+    fun onRetry() = reads.retry()
 
     /** Lo que resultó de la verificación pedida para dejar el bloqueo en [enabled]. */
     fun onLockAuthenticated(enabled: Boolean, outcome: AuthOutcome) {
@@ -149,8 +164,20 @@ fun SecurityGroup(
     appName: String,
     onAction: (SecurityAction) -> Unit,
 ) {
-    val lock = state.lock ?: return
     val spacing = AppTheme.spacing
+    if (state.readFailed) {
+        // Sin el bloqueo leído no se ofrece cambiarlo: se dice, con `Reintentar`.
+        SectionHeader(stringResource(R.string.settings_group_security))
+        NoticeCard(
+            text = stringResource(R.string.state_error_read),
+            variant = NoticeVariant.ERROR,
+            actionLabel = stringResource(R.string.action_retry),
+            onAction = { onAction(SecurityAction.Retry) },
+            modifier = Modifier.padding(horizontal = spacing.s16),
+        )
+        return
+    }
+    val lock = state.lock ?: return
     SectionHeader(stringResource(R.string.settings_group_security))
     SettingsRow(
         title = stringResource(R.string.lock_setting),

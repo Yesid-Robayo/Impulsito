@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -116,7 +117,7 @@ class SettingsOverviewViewModelTest {
     }
 
     @Test
-    fun `an unreadable backup hides only its group`() = runTest(dispatcher) {
+    fun `an unreadable backup says so and leaves the rest`() = runTest(dispatcher) {
         currencies.value = requireNotNull(CurrencyCode.of("EUR"))
         val model = model(backup = { flow { error("sin estado") } })
         backgroundScope.launch { model.uiState.collect {} }
@@ -125,6 +126,7 @@ class SettingsOverviewViewModelTest {
         val state = model.uiState.value
         assertNull(state.backup)
         assertEquals("EUR", state.currency?.code)
+        assertTrue(state.readFailed)
     }
 
     @Test

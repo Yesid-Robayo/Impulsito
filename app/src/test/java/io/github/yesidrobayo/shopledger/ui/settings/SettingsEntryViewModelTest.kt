@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -101,9 +102,10 @@ class SettingsEntryViewModelTest {
     }
 
     @Test
-    fun `a read failure hides the row`() = runTest(dispatcher) {
+    fun `a read failure says so with retry, and retry reads again`() = runTest(dispatcher) {
+        var failing = true
         val model = SettingsEntryViewModel(
-            tipsSource = { flow { error("Falla inventada") } },
+            tipsSource = { if (failing) flow { error("Falla inventada") } else flowOf(true) },
             setTips = { SetTipsEnabledResult.Saved },
             profileSource = { flow { error("Falla inventada") } },
             saveProfile = { SaveBusinessProfileResult.Saved },
@@ -114,6 +116,15 @@ class SettingsEntryViewModelTest {
 
         assertNull(model.uiState.value.tipsEnabled)
         assertNull(model.uiState.value.profile)
+        assertTrue(model.uiState.value.readFailed)
+
+        failing = false
+        model.onRetry()
+        advanceUntilIdle()
+
+        // Las propinas ya se leen; el perfil sigue fallando, y lo sigue diciendo.
+        assertEquals(true, model.uiState.value.tipsEnabled)
+        assertTrue(model.uiState.value.readFailed)
     }
 
     @Test

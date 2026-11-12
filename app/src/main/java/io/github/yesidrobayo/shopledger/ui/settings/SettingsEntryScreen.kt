@@ -128,6 +128,8 @@ fun SettingsEntryScreen(
     onRetryPalette: () -> Unit = {},
     support: List<SupportLine> = emptyList(),
     onCopySupport: () -> Unit = {},
+    readFailed: Boolean = false,
+    onRetryRead: () -> Unit = {},
 ) {
     var aboutSheet by rememberSaveable { mutableStateOf<AboutSheet?>(null) }
     var rangeOpen by rememberSaveable { mutableStateOf(false) }
@@ -150,6 +152,20 @@ fun SettingsEntryScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxWidth()) {
+                // Un ajuste que no se pudo leer no desaparece en silencio: se dice arriba, con
+                // `Reintentar`, y lo demás sigue a mano.
+                if (readFailed) {
+                    NoticeCard(
+                        text = stringResource(R.string.state_error_read),
+                        variant = NoticeVariant.ERROR,
+                        actionLabel = stringResource(R.string.action_retry),
+                        onAction = onRetryRead,
+                        modifier = Modifier.padding(
+                            horizontal = spacing.s16,
+                            vertical = spacing.s8,
+                        ),
+                    )
+                }
                 if (deviceLockMissing) {
                     NoticeCard(
                         text = stringResource(R.string.lock_device_risk),

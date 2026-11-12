@@ -11,15 +11,16 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.SetTipsEnabledResult
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.BusinessProfileChange
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.SaveBusinessProfileResult
+import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import io.github.yesidrobayo.shopledger.ui.payment.plainNumberText
 import io.github.yesidrobayo.shopledger.ui.unit.SaveFailure
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
  * El estado de la entrada a Ajustes. [tipsEnabled] falta mientras se lee: la fila no se dibuja hasta
  * saber cómo está. [saveFailed] si el último cambio no se pudo guardar. [profile] es el perfil del
  * negocio, o `null` mientras se lee, y [profileSheet] la hoja de uno de sus datos, si está abierta.
+ * [readFailed] si el perfil o las propinas no se pudieron leer: se dice, con `Reintentar`.
  */
 @Immutable
 data class SettingsEntryUiState(
@@ -35,6 +37,7 @@ data class SettingsEntryUiState(
     val saveFailed: Boolean = false,
     val profile: BusinessProfile? = null,
     val profileSheet: ProfileSheet? = null,
+    val readFailed: Boolean = false,
 )
 
 /**
@@ -58,17 +61,26 @@ class SettingsEntryViewModel(
     private val saveFailed = MutableStateFlow(false)
     private val sheet = MutableStateFlow<ProfileSheet?>(null)
 
+    /** El perfil y las propinas: una falla se dice con `Reintentar`, y no esconde sus grupos. */
+    private val reads = ScreenReads()
+
     val uiState: StateFlow<SettingsEntryUiState> = combine(
-        tipsSource().map<Boolean, Boolean?> { it }.catch { emit(null) },
+        reads.guard { tipsSource().map<Boolean, Boolean?> { it } }.onStart { emit(null) },
         saveFailed,
-        profileSource().map<BusinessProfile, BusinessProfile?> { it }.catch { emit(null) },
+        reads.guard { profileSource().map<BusinessProfile, BusinessProfile?> { it } }
+            .onStart { emit(null) },
         sheet,
-    ) { tips, failed, current, open -> SettingsEntryUiState(tips, failed, current, open) }
+        reads.failed,
+    ) { tips, failed, current, open, unreadable ->
+        SettingsEntryUiState(tips, failed, current, open, unreadable)
+    }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             SettingsEntryUiState(),
         )
+
+    fun onRetry() = reads.retry()
 
     fun onTipsChange(enabled: Boolean) {
         saveFailed.value = false
