@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverv
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ReadDataHealthUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RecordCloudCheckUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunFullVerifyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
@@ -72,6 +73,7 @@ fun BackupRoute(navigator: AppNavigator) {
                 link = BackupLinkUseCase(container.data.backupLink),
                 drill = RunRestoreDrillUseCase(container.data.restoreDrill),
                 health = ReadDataHealthUseCase(container.data.dataHealth),
+                fullVerify = RunFullVerifyUseCase(container.data.fullVerify),
             )
         }
     when (model) {
@@ -114,6 +116,9 @@ fun BackupRoute(navigator: AppNavigator) {
             val drillFailed = stringResource(R.string.backup_drill_failed)
             val drillSkipped = stringResource(R.string.backup_drill_skipped)
             val drillNoCopy = stringResource(R.string.backup_drill_no_copy)
+            val verifyMatched = stringResource(R.string.health_full_verify_matched)
+            val verifyMismatch = stringResource(R.string.health_full_verify_mismatch)
+            val verifyNoSpace = stringResource(R.string.health_full_verify_no_space)
             LaunchedEffect(uiState.message) {
                 val message = uiState.message ?: return@LaunchedEffect
                 viewModel.onAction(BackupAction.MessageShown)
@@ -162,6 +167,15 @@ fun BackupRoute(navigator: AppNavigator) {
 
                     BackupMessage.DRILL_NO_COPY ->
                         messages.show(AppSnackbarVisuals(drillNoCopy, SnackbarVariant.INFO))
+
+                    BackupMessage.VERIFY_MATCHED ->
+                        messages.show(AppSnackbarVisuals(verifyMatched, SnackbarVariant.SUCCESS))
+
+                    BackupMessage.VERIFY_MISMATCH ->
+                        messages.show(AppSnackbarVisuals(verifyMismatch, SnackbarVariant.ERROR))
+
+                    BackupMessage.VERIFY_NO_SPACE ->
+                        messages.show(AppSnackbarVisuals(verifyNoSpace, SnackbarVariant.INFO))
                 }
             }
             // El selector del sistema, para `Buscar un archivo`: cualquier tipo, porque una copia
@@ -273,6 +287,7 @@ fun BackupRoute(navigator: AppNavigator) {
                         BackupAction.DismissKeep,
                         BackupAction.RunDrill,
                         BackupAction.ToggleHealth,
+                        BackupAction.CheckFullCopy,
                         -> viewModel.onAction(action)
                     }
                 },

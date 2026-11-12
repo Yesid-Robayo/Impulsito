@@ -185,7 +185,14 @@ private fun LazyListScope.overview(uiState: BackupUiState, onAction: (BackupActi
     }
     uiState.health?.let { rows ->
         item(key = HEALTH) {
-            HealthPanel(rows, uiState.healthOpen ?: !healthFolded(rows), uiState.wording, onAction)
+            HealthPanel(
+                rows = rows,
+                open = uiState.healthOpen ?: !healthFolded(rows),
+                wording = uiState.wording,
+                offer = fullVerifyOffer(uiState),
+                verifying = uiState.verifying,
+                onAction = onAction,
+            )
         }
     }
     if (wording != null && wording.overview.report.status != BackupStatus.NOT_CONNECTED) {

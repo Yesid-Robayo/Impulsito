@@ -32,6 +32,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolic
  * @param health las filas de `Salud de mis datos`, o nulas mientras se leen o sin base.
  * @param healthOpen si el panel está abierto por la persona; nulo mientras no lo toque: entonces va
  *   plegado solo si todo está bien.
+ * @param verifying si `Comprobar ahora` está corriendo.
  */
 data class BackupUiState(
     val wording: BackupWording? = null,
@@ -51,6 +52,7 @@ data class BackupUiState(
     val drilling: Boolean = false,
     val health: List<HealthRow>? = null,
     val healthOpen: Boolean? = null,
+    val verifying: Boolean = false,
 )
 
 /** `Copias con datos móviles`: cerrada, la hoja con las tres opciones o la advertencia. */
@@ -155,6 +157,15 @@ enum class BackupMessage {
 
     /** `Probar restauración`: todavía no hay una copia que probar. */
     DRILL_NO_COPY,
+
+    /** `Comprobar ahora`: la copia entera coincide. */
+    VERIFY_MATCHED,
+
+    /** `Comprobar ahora`: la copia no coincide, y sale una nueva. */
+    VERIFY_MISMATCH,
+
+    /** `Comprobar ahora`: sin espacio en el teléfono para bajarla. */
+    VERIFY_NO_SPACE,
 }
 
 /** Lo que la persona puede hacer en la pantalla del respaldo. */
@@ -285,4 +296,7 @@ sealed interface BackupAction {
 
     /** Abre o pliega `Salud de mis datos`. Solo cambia lo que se ve. */
     data object ToggleHealth : BackupAction
+
+    /** `Comprobar ahora`: la comprobación completa, que gasta datos. Solo la pide la persona. */
+    data object CheckFullCopy : BackupAction
 }

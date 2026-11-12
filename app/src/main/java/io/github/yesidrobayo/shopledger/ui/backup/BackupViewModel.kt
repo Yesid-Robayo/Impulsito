@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
 import io.github.yesidrobayo.shopledger.domain.model.backup.DisconnectResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.DrillOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.FullVerifyOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.HealthRow
 import io.github.yesidrobayo.shopledger.domain.model.backup.KeepPhoneResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.PinRelease
@@ -20,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationR
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupLinkUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ReadDataHealthUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunFullVerifyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -58,6 +60,7 @@ import kotlinx.coroutines.withContext
  *   ofrece.
  * @param drill `Probar restauración`; nulo donde no se ofrece.
  * @param health las filas de `Salud de mis datos`, solo de lectura; nulo donde no se ofrece.
+ * @param fullVerify `Comprobar ahora`, la única escritura del panel; nulo donde no se ofrece.
  */
 class BackupViewModel(
     overview: (Flow<Unit>) -> Flow<BackupOverview>,
@@ -74,6 +77,7 @@ class BackupViewModel(
     private val link: BackupLinkUseCase? = null,
     private val drill: RunRestoreDrillUseCase? = null,
     private val health: ReadDataHealthUseCase? = null,
+    private val fullVerify: RunFullVerifyUseCase? = null,
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = state.asStateFlow()
@@ -200,6 +204,8 @@ class BackupViewModel(
 
             BackupAction.RunDrill -> runDrill()
 
+            BackupAction.CheckFullCopy -> checkFullCopy()
+
             BackupAction.ToggleHealth ->
                 state.update { current ->
                     val open = current.healthOpen ?: !healthFolded(current.health)
@@ -253,6 +259,38 @@ class BackupViewModel(
     }
 
     private var healthJob: Job? = null
+
+    /**
+     * `Comprobar ahora`: solo corre si la persona lo toca, porque baja la copia entera. Al terminar
+     * se vuelve a leer el estado y el panel, que traen lo anotado.
+     */
+    private fun checkFullCopy() {
+        val use = fullVerify ?: return
+        if (state.value.verifying) return
+        state.update { it.copy(verifying = true) }
+        viewModelScope.launch {
+            val outcome = read { use() } ?: FullVerifyOutcome.UNREACHABLE
+            val message =
+                when (outcome) {
+                    FullVerifyOutcome.MATCHED -> BackupMessage.VERIFY_MATCHED
+
+                    FullVerifyOutcome.MISMATCH -> BackupMessage.VERIFY_MISMATCH
+
+                    FullVerifyOutcome.NO_SPACE -> BackupMessage.VERIFY_NO_SPACE
+
+                    FullVerifyOutcome.NO_COPY -> BackupMessage.DRILL_NO_COPY
+
+                    FullVerifyOutcome.UNREACHABLE ->
+                        if (destination.hasNetwork()) {
+                            BackupMessage.CONFLICT_UNREACHABLE
+                        } else {
+                            BackupMessage.CONFLICT_NO_INTERNET
+                        }
+                }
+            state.update { it.copy(verifying = false, message = message) }
+            refreshes.value += 1
+        }
+    }
 
     /**
      * `Probar restauración`: corre el simulacro y dice cómo terminó. Nunca cambia los datos; al

@@ -104,6 +104,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.DataHealthSource
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.FullCopyExportPort
+import io.github.yesidrobayo.shopledger.domain.port.FullVerifyPort
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
@@ -576,6 +577,14 @@ class DataGraph internal constructor(
      */
     val restoreDrill: RestoreDrillPort by lazy {
         RestoreDrillPort { headDeepCheck.runNow(TransferControl.Unbounded) }
+    }
+
+    /**
+     * `Comprobar ahora` en `Salud de mis datos`: baja la cabeza entera y compara su suma. La única
+     * escritura del panel. Crearlo no toca el disco.
+     */
+    val fullVerify: FullVerifyPort by lazy {
+        FullVerifyPort { headDeepCheck.verifyNow(TransferControl.Unbounded) }
     }
 
     /** Un archivo de la instalación en `noBackupFilesDir`. Pedir la carpeta toca el disco. */

@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDrillResult
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
@@ -15,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictSides
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.DisconnectResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.DrillOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.FullVerifyOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.HealthFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.HealthSignal
@@ -31,7 +33,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationR
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupLinkUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ReadDataHealthUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunFullVerifyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -168,6 +172,7 @@ class BackupLinkViewModelTest {
     private val link = FakeLink()
     private val drillOutcomes = ArrayDeque<DrillOutcome>()
     private var healthReads = 0
+    private val verifyOutcomes = ArrayDeque<FullVerifyOutcome>()
     private var healthFacts: HealthFacts? =
         HealthFacts(
             lastHumanCheckAt = null,
@@ -199,6 +204,7 @@ class BackupLinkViewModelTest {
                 healthReads++
                 healthFacts
             },
+            fullVerify = RunFullVerifyUseCase { verifyOutcomes.removeFirst() },
         )
         advanceUntilIdle()
         return model
@@ -493,4 +499,58 @@ class BackupLinkViewModelTest {
 
         assertNull(model.uiState.value.health)
     }
+    // Comprobar ahora
+
+    @Test
+    fun `checking the full copy only runs when tapped and says how it ended`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            assertTrue("Nada corre solo", verifyOutcomes.isEmpty())
+            val expected =
+                listOf(
+                    FullVerifyOutcome.MATCHED to BackupMessage.VERIFY_MATCHED,
+                    FullVerifyOutcome.MISMATCH to BackupMessage.VERIFY_MISMATCH,
+                    FullVerifyOutcome.NO_SPACE to BackupMessage.VERIFY_NO_SPACE,
+                    FullVerifyOutcome.NO_COPY to BackupMessage.DRILL_NO_COPY,
+                    FullVerifyOutcome.UNREACHABLE to BackupMessage.CONFLICT_UNREACHABLE,
+                )
+            for ((outcome, message) in expected) {
+                verifyOutcomes += outcome
+                model.onAction(BackupAction.CheckFullCopy)
+                assertTrue(model.uiState.value.verifying)
+                model.onAction(BackupAction.CheckFullCopy)
+                advanceUntilIdle()
+                assertEquals(message, model.uiState.value.message)
+                assertEquals(false, model.uiState.value.verifying)
+                model.onAction(BackupAction.MessageShown)
+            }
+            destination.network = false
+            verifyOutcomes += FullVerifyOutcome.UNREACHABLE
+            model.onAction(BackupAction.CheckFullCopy)
+            advanceUntilIdle()
+            assertEquals(BackupMessage.CONFLICT_NO_INTERNET, model.uiState.value.message)
+        }
+
+    @Test
+    fun `the offer appears only with the full read overdue, with its days and size`() =
+        runTest(dispatcher) {
+            val overdue =
+                overview(BackupStatus.UP_TO_DATE).let {
+                    it.copy(
+                        report = it.report.copy(notices = setOf(BackupNotice.FULL_READ_OVERDUE)),
+                        lastFullReadAt = now - 9.days,
+                    )
+                }
+            overviews.value = overdue
+            destination.copies = BackupCopyList.Listed(listOf(copy))
+            val model = viewModel()
+
+            val offer = fullVerifyOffer(model.uiState.value)
+            assertEquals(FullVerifyOffer(9, copy.sizeBytes), offer)
+
+            overviews.value = overview(BackupStatus.UP_TO_DATE)
+            model.onReturnToForeground()
+            advanceUntilIdle()
+            assertNull(fullVerifyOffer(model.uiState.value))
+        }
 }

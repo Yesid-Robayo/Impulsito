@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,13 +23,18 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.HealthRow
 import io.github.yesidrobayo.shopledger.domain.model.backup.HealthSignal
 import io.github.yesidrobayo.shopledger.domain.model.backup.HealthState
+import io.github.yesidrobayo.shopledger.format.DataSizeFormatter
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
+import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.HealthRow
+import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.healthStateText
 import io.github.yesidrobayo.shopledger.ui.components.healthTint
+import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -41,6 +47,8 @@ internal fun HealthPanel(
     rows: List<HealthRow>,
     open: Boolean,
     wording: BackupWording?,
+    offer: FullVerifyOffer?,
+    verifying: Boolean,
     onAction: (BackupAction) -> Unit,
 ) {
     val spacing = AppTheme.spacing
@@ -79,6 +87,9 @@ internal fun HealthPanel(
         if (open) {
             for (row in rows) {
                 HealthRow(labelOf(row, wording), valueOf(row, wording), row.state)
+                if (row.signal == HealthSignal.FULL_VERIFY && offer != null) {
+                    FullVerifyOfferBlock(offer, verifying, onAction)
+                }
             }
         }
     }
@@ -146,3 +157,64 @@ private fun valueOf(row: HealthRow, wording: BackupWording?): String? = when (ro
 
 /** Media vuelta del icono, para el panel abierto. */
 private const val HALF_TURN = 180f
+
+/**
+ * Lo que `Comprobar ahora` muestra antes de correr: los días sin comprobar y el tamaño que se baja.
+ *
+ * @property sizeBytes el tamaño de la copia más reciente de la lista, o nulo si no se pudo ver.
+ */
+internal data class FullVerifyOffer(val days: Long, val sizeBytes: Long?)
+
+/**
+ * Con WebDAV y la comprobación completa atrasada, la oferta de hacerla ahora, también con datos
+ * móviles: solo si la lectura completa está pendiente. Nunca corre sola.
+ */
+internal fun fullVerifyOffer(uiState: BackupUiState): FullVerifyOffer? {
+    val overview = uiState.wording?.overview ?: return null
+    val pending =
+        uiState.health?.any {
+            it.signal == HealthSignal.FULL_VERIFY && it.state == HealthState.PENDING
+        } == true
+    if (!pending) return null
+    val since = overview.lastFullReadAt ?: return null
+    val newest =
+        (uiState.copies as? BackupCopyList.Listed)?.copies?.firstOrNull { it.newest }
+    return FullVerifyOffer((overview.computedAt - since).inWholeDays, newest?.sizeBytes)
+}
+
+@Composable
+private fun FullVerifyOfferBlock(
+    offer: FullVerifyOffer,
+    verifying: Boolean,
+    onAction: (BackupAction) -> Unit,
+) {
+    val spacing = AppTheme.spacing
+    val formats = LocalAppFormats.current
+    val size =
+        offer.sizeBytes?.let {
+            DataSizeFormatter(formats.date.formatLocale, formats.uiLocale).megabytes(it)
+        } ?: NO_VALUE_TEXT
+    Column(
+        Modifier.padding(start = spacing.s24 + spacing.s12, bottom = spacing.s8),
+        verticalArrangement = Arrangement.spacedBy(spacing.s8),
+    ) {
+        Text(
+            stringResource(R.string.health_full_verify_offer, offer.days.toString(), size),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (verifying) {
+            Text(
+                stringResource(R.string.health_full_verify_running),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        } else {
+            PrimaryActionButton(
+                text = stringResource(R.string.health_full_verify_action),
+                onClick = { onAction(BackupAction.CheckFullCopy) },
+                variant = ActionVariant.TONAL,
+            )
+        }
+    }
+}

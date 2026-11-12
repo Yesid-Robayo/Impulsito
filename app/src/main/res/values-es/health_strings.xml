@@ -20,4 +20,10 @@
     <string name="health_row_pinned">Copias fijadas</string>
     <string name="a11y_health_expand">Mostrar el detalle</string>
     <string name="a11y_health_collapse">Ocultar el detalle</string>
+    <string name="health_full_verify_offer">Hace %1$s días sin comprobar la copia completa. Se puede hacer ahora, también con datos móviles: %2$s.</string>
+    <string name="health_full_verify_action">Comprobar ahora</string>
+    <string name="health_full_verify_running">Comprobando la copia completa…</string>
+    <string name="health_full_verify_matched">La copia completa coincide con la que se subió.</string>
+    <string name="health_full_verify_mismatch">La copia no coincide con la que se subió. Queda marcada, y sale una copia nueva.</string>
+    <string name="health_full_verify_no_space">No hay espacio en el teléfono para comprobar la copia.</string>
 </resources>

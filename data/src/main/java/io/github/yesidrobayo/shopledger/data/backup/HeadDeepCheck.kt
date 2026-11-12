@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
 import io.github.yesidrobayo.shopledger.domain.model.backup.CandidateVerdict
 import io.github.yesidrobayo.shopledger.domain.model.backup.DrillOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.FullVerifyOutcome
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.info
@@ -121,6 +122,165 @@ internal class HeadDeepCheck(
                 BackupDrillResult.SKIPPED -> DrillOutcome.SKIPPED
             }
         }
+    }
+
+    /**
+     * `Comprobar ahora`, con WebDAV: baja la cabeza entera y compara su SHA-256 con el de sus
+     * metadatos, sin descomprimir ni validar. La pide la persona, con cualquier red, porque gasta
+     * datos. Como el simulacro, solo toma el cerrojo para anotar, y solo si el destino sigue siendo
+     * el de la lectura y esa cabeza sigue ahí.
+     *
+     * - **Si coincide**, anota la lectura completa y quita la copia de las dañadas.
+     * - **Si no**, deja `VERIFY_MISMATCH`, marca la copia como dañada y fuerza una subida. Nunca la
+     *   borra.
+     *
+     * Es la única escritura de `Salud de mis datos`.
+     */
+    suspend fun verifyNow(control: TransferControl): FullVerifyOutcome = running.withLock {
+        verify(control)
+    }
+
+    private suspend fun verify(control: TransferControl): FullVerifyOutcome {
+        val ready = when (val access = prepare()) {
+            is ProbeAccess.Ready -> access
+            ProbeAccess.Waiting -> return FullVerifyOutcome.UNREACHABLE
+            ProbeAccess.Nothing -> return FullVerifyOutcome.NO_COPY
+        }
+        val link = ready.link
+        // Con ranuras la app lee por esa nube: no prueba que la copia haya subido.
+        if (link.kind != BackupDestinationKind.WEBDAV) return FullVerifyOutcome.NO_COPY
+        val current = ready.state.get() ?: return FullVerifyOutcome.NO_COPY
+        val headRef = headRefOf(current) ?: return FullVerifyOutcome.NO_COPY
+        if (current.headGeneration <= 0) return FullVerifyOutcome.NO_COPY
+        val destination =
+            when (val opened = destinations.open(link)) {
+                is DestinationOpen.Opened -> opened.destination
+                DestinationOpen.PermissionLost -> return FullVerifyOutcome.UNREACHABLE
+                DestinationOpen.RetryLater -> return FullVerifyOutcome.UNREACHABLE
+            }
+        val head =
+            when (val found = headMeta(destination, headRef, current.headGeneration, control)) {
+                is Found.Meta -> found.meta
+                Found.Retry -> return FullVerifyOutcome.UNREACHABLE
+                Found.None -> return FullVerifyOutcome.NO_COPY
+            }
+        val staging = stagingDirectory()
+        val workDirectory = File(staging, DIRECTORY_NAME)
+        val outcome =
+            try {
+                read(destination, headRef, head, staging, workDirectory, control)
+            } finally {
+                withContext(NonCancellable + ioContext) { workDirectory.deleteRecursively() }
+            }
+        when (outcome) {
+            FullVerifyOutcome.MATCHED, FullVerifyOutcome.MISMATCH -> Unit
+
+            FullVerifyOutcome.NO_SPACE,
+            FullVerifyOutcome.NO_COPY,
+            FullVerifyOutcome.UNREACHABLE,
+            -> return outcome
+        }
+        val noted =
+            recordVerify(
+                ready.state,
+                destination,
+                link.destinationId,
+                headRef,
+                head,
+                outcome == FullVerifyOutcome.MATCHED,
+                control,
+            )
+        return if (noted) outcome else FullVerifyOutcome.NO_COPY
+    }
+
+    /** Baja la cabeza y compara su suma. */
+    private suspend fun read(
+        destination: BackupDestination,
+        ref: CopyRef,
+        head: SlMeta,
+        staging: File,
+        workDirectory: File,
+        control: TransferControl,
+    ): FullVerifyOutcome {
+        if (withContext(ioContext) { freeSpaceOf(staging) } < head.fileSize) {
+            return FullVerifyOutcome.NO_SPACE
+        }
+        val download = File(workDirectory, DOWNLOAD_NAME)
+        withContext(ioContext) { workDirectory.mkdirs() }
+        val downloaded =
+            try {
+                withContext(ioContext) {
+                    download.outputStream().use { sink ->
+                        destination.download(
+                            ref,
+                            sink,
+                            BackupLimits.MAX_BACKUP_DOWNLOAD_BYTES,
+                            control,
+                        )
+                    }
+                }
+            } catch (_: IOException) {
+                return FullVerifyOutcome.UNREACHABLE
+            }
+        when (downloaded) {
+            is DestinationResult.Success -> Unit
+
+            is DestinationResult.Failure -> return when (downloaded.failure) {
+                DestinationFailure.Incomplete,
+                DestinationFailure.LocalStorage,
+                is DestinationFailure.Transient,
+                is DestinationFailure.Interrupted,
+                is DestinationFailure.PermissionLost,
+                -> FullVerifyOutcome.UNREACHABLE
+
+                DestinationFailure.VerifyMismatch,
+                is DestinationFailure.Unsupported,
+                is DestinationFailure.ChangedOutside,
+                DestinationFailure.QuotaExceeded,
+                is DestinationFailure.NoSafeSlot,
+                -> FullVerifyOutcome.MISMATCH
+            }
+        }
+        val sum = withContext(ioContext) { sha256Of(download) }
+        return if (sum == head.sha256) FullVerifyOutcome.MATCHED else FullVerifyOutcome.MISMATCH
+    }
+
+    /**
+     * Anota la comprobación bajo el cerrojo, si el destino sigue siendo el de la lectura y la
+     * cabeza leída sigue ahí. Devuelve `false` si no anotó nada.
+     */
+    private suspend fun recordVerify(
+        state: BackupStateDao,
+        destination: BackupDestination,
+        destinationId: String,
+        ref: CopyRef,
+        head: SlMeta,
+        matched: Boolean,
+        control: TransferControl,
+    ): Boolean = mutex.withLock {
+        val stillThere =
+            state.get()?.destinationId == destinationId &&
+                headMeta(destination, ref, head.generation, control).let {
+                    it is Found.Meta && it.meta.sha256 == head.sha256
+                }
+        if (!stillThere) {
+            log.info(ProbeEvent.DEEP_CHECK_STALE)
+            return@withLock false
+        }
+        val now = clock.nowEpochMillis()
+        if (matched) {
+            if (state.markFullVerify(now, destinationId) == 0) return@withLock false
+            fullVerify().advanceTo(head.generation)
+            damaged().remove(head.generation)
+            log.info(ProbeEvent.DEEP_CHECK_PASSED)
+        } else {
+            damaged().add(head.generation)
+            state.recordFailure(BackupFailureCode.VERIFY_MISMATCH.name)
+            // La cabeza dañada no puede seguir contando como la copia válida más reciente.
+            state.forceUpload(now)
+            log.warn(ProbeEvent.DEEP_CHECK_FAILED)
+        }
+        true
     }
 
     private suspend fun drill(control: TransferControl): Drill {

@@ -218,6 +218,7 @@ class OnboardingViewModel(
             BackupAction.CreateConflictFile,
             BackupAction.RunDrill,
             BackupAction.ToggleHealth,
+            BackupAction.CheckFullCopy,
             -> Unit
         }
     }

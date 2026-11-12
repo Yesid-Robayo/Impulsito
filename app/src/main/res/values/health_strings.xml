@@ -20,4 +20,10 @@
     <string name="health_row_pinned">Pinned backups</string>
     <string name="a11y_health_expand">Show details</string>
     <string name="a11y_health_collapse">Hide details</string>
+    <string name="health_full_verify_offer">%1$s days without a full check of the backup. It can be done now, also on mobile data: %2$s.</string>
+    <string name="health_full_verify_action">Check now</string>
+    <string name="health_full_verify_running">Checking the full backup…</string>
+    <string name="health_full_verify_matched">The full backup matches the one that was uploaded.</string>
+    <string name="health_full_verify_mismatch">The backup does not match the one that was uploaded. It stays marked, and a new backup goes out.</string>
+    <string name="health_full_verify_no_space">There is no space on this phone to check the backup.</string>
 </resources>
