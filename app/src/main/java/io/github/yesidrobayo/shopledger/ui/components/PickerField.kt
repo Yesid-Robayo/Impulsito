@@ -17,8 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -43,16 +49,31 @@ fun PickerField(
 ) {
     val locked = lockedReason != null
     val scheme = MaterialTheme.colorScheme
-    // Un solo foco para TalkBack: lee la etiqueta y lo elegido, y lo anuncia como botón.
+    // Un solo foco para TalkBack: lee la etiqueta y lo elegido, lo anuncia como botón y lo abre con
+    // el doble toque. El campo y la capa que recibe el toque no aparecen aparte para TalkBack: serían
+    // dos focos más, uno de ellos sin nombre. Con el campo bloqueado, dice por qué.
+    val spoken = stringResource(R.string.a11y_label_value, label, value)
     Box(
         modifier
             .fillMaxWidth()
-            .semantics(mergeDescendants = true) { if (!locked) role = Role.Button },
+            .semantics(mergeDescendants = true) {
+                contentDescription = spoken
+                if (locked) {
+                    disabled()
+                    lockedReason?.let { stateDescription = it }
+                } else {
+                    role = Role.Button
+                    onClick {
+                        onClick()
+                        true
+                    }
+                }
+            },
     ) {
         OutlinedTextField(
             value = value,
             onValueChange = {},
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().semantics { hideFromAccessibility() },
             readOnly = true,
             enabled = !locked,
             textStyle = MaterialTheme.typography.bodyLarge,
@@ -95,6 +116,7 @@ fun PickerField(
                 Modifier
                     .matchParentSize()
                     .padding(top = AppTheme.spacing.s8)
+                    .clearAndSetSemantics {}
                     .clickable(onClick = onClick),
             )
         }
