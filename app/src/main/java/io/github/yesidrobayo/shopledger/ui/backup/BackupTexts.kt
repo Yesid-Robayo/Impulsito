@@ -25,11 +25,15 @@ import kotlin.time.Instant
 /**
  * Lo que la pantalla necesita para decir el estado del respaldo, además del estado: el nombre de la
  * nube del teléfono, si hay ranuras, y la zona del negocio, para decir `ayer, 21:14`.
+ *
+ * @param sessionRequired si la sesión de la nube del teléfono se cerró: sin acceso, la salida es
+ *   iniciar sesión allí, no crear archivos nuevos.
  */
 data class BackupWording(
     val overview: BackupOverview,
     val providerLabel: String?,
     val zone: BusinessTimeZone?,
+    val sessionRequired: Boolean = false,
 ) {
     /** Con la nube del teléfono, la app entrega y no confirma: cambian las palabras. */
     val slots: Boolean get() = overview.destinationKind == BackupDestinationKind.DOCUMENT_SLOTS
@@ -211,7 +215,12 @@ fun backupTitle(wording: BackupWording): String {
 
         BackupStatus.FAILED -> failureTitle(wording)
 
-        BackupStatus.PERMISSION_LOST -> stringResource(R.string.backup_state_permission_lost)
+        BackupStatus.PERMISSION_LOST ->
+            if (wording.sessionRequired) {
+                stringResource(R.string.backup_session_lost_title, provider)
+            } else {
+                stringResource(R.string.backup_state_permission_lost)
+            }
 
         BackupStatus.CONFLICT -> stringResource(R.string.backup_state_conflict)
     }
@@ -266,7 +275,12 @@ fun backupDetail(wording: BackupWording): String? {
 
         BackupStatus.FAILED -> failureBody(wording, app)
 
-        BackupStatus.PERMISSION_LOST -> stringResource(R.string.backup_permission_lost_detail)
+        BackupStatus.PERMISSION_LOST ->
+            if (wording.sessionRequired) {
+                stringResource(R.string.backup_session_lost_detail, provider)
+            } else {
+                stringResource(R.string.backup_permission_lost_detail)
+            }
 
         BackupStatus.CONFLICT -> stringResource(R.string.backup_conflict_detail)
     }

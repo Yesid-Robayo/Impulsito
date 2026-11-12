@@ -188,6 +188,26 @@ class BackupScheduler internal constructor(
         BackupWorkNames.ALL.forEach { queue.cancel(it) }
     }
 
+    /**
+     * Antes de desconectar: cancela la espera, las dos subidas y la sonda única. Lo que corría se
+     * detiene en su siguiente revisión, y el cerrojo del respaldo espera a que salga.
+     */
+    internal suspend fun cancelForDisconnect() {
+        (BackupWorkNames.ALL + BackupWorkNames.HEAD_PROBE_ONCE).forEach { queue.cancel(it) }
+    }
+
+    /**
+     * El destino volvió a conectarse, o salió de un conflicto: la sonda única contrasta el destino
+     * sin esperar a la semana, y lo pendiente se encola.
+     */
+    internal suspend fun onLinkRestored() {
+        if (paused()) return
+        facts()?.connectedKind?.let { queue.keepHeadChecks(needsNetwork(it)) }
+        probeOnce()
+        val current = uploadable() ?: return
+        enqueueUpload(current, pastInterval = false)
+    }
+
     /** Espera a que ningún trabajo del respaldo figure corriendo. */
     internal suspend fun awaitNoneRunning() {
         queue.awaitNoneRunning(BackupWorkNames.ALL)

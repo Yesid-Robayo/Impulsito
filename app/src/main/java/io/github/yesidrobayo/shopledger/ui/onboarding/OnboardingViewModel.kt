@@ -203,6 +203,19 @@ class OnboardingViewModel(
             BackupAction.ConfirmRelease,
             BackupAction.CloseRelease,
             BackupAction.OpenLocalCopies,
+            BackupAction.Disconnect,
+            BackupAction.ConfirmDisconnect,
+            BackupAction.DismissDisconnect,
+            BackupAction.Reconnect,
+            BackupAction.SignInToProvider,
+            BackupAction.ReviewConflict,
+            BackupAction.RetryConflict,
+            BackupAction.DecideLater,
+            is BackupAction.RestoreCloud,
+            BackupAction.KeepPhone,
+            BackupAction.ConfirmKeep,
+            BackupAction.DismissKeep,
+            BackupAction.CreateConflictFile,
             -> Unit
         }
     }

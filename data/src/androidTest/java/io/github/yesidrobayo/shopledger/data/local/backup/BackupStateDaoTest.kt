@@ -133,6 +133,11 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "connectDestination",
                 // Solo la ranura de la cabeza y la subida forzada: lo comprueba su propia prueba.
                 "forgetHeadFile",
+                // Desconectar, volver tras iniciar sesión y salir de un conflicto con un archivo
+                // nuevo: lo comprueban las pruebas del enlace y de las ranuras.
+                "disconnect",
+                "resumeConnected",
+                "leaveConflictWithNewFile",
             ),
             functionsOf(BackupStateDao::class.java),
         )

@@ -360,4 +360,49 @@ internal interface BackupStateDao {
         folder: String?,
         now: Long,
     ): Int
+
+    /**
+     * Desconecta el destino [destinationId], si sigue siendo ese y no estaba ya desconectado.
+     * Devuelve 0 si no cambió nada.
+     *
+     * - Deja `NOT_CONNECTED` y borra el usuario: sin destino conectado no hace falta.
+     * - Borra el conflicto: al volver a conectar, la guarda mira el destino otra vez y lo vuelve a
+     *   ver si sigue ahí.
+     * - Conserva el tipo, la huella, la carpeta, la cabeza conocida, la pérdida aceptada y la subida
+     *   a medias: reconocen el mismo destino al volver, que sigue con su carpeta y su generación.
+     * - Los cambios siguen contándose: `change_seq` y lo pendiente no cambian.
+     */
+    @Query(
+        "UPDATE backup_state SET link_state = 'NOT_CONNECTED', destination_account = NULL, " +
+            "conflict_kind = NULL, conflict_generation = NULL, conflict_device_id = NULL, " +
+            "conflict_file_ref = NULL WHERE id = 1 AND link_state <> 'NOT_CONNECTED' " +
+            "AND destination_id = :destinationId",
+    )
+    suspend fun disconnect(destinationId: String): Int
+
+    /**
+     * Vuelve a conectar el destino [destinationId] que había perdido el acceso, sin tocar nada más:
+     * la nube del teléfono volvió tras iniciar sesión, con los mismos archivos. Devuelve 0 si el
+     * enlace ya no estaba sin acceso a ese destino.
+     */
+    @Query(
+        "UPDATE backup_state SET link_state = 'CONNECTED' WHERE id = 1 " +
+            "AND link_state = 'PERMISSION_LOST' AND destination_id = :destinationId",
+    )
+    suspend fun resumeConnected(destinationId: String): Int
+
+    /**
+     * Sale del conflicto con el destino [destinationId] porque la persona conservó este teléfono y
+     * creó un archivo nuevo para la ranura que no se podía usar. Ese archivo es nuevo: la revisión
+     * de la persona se olvida, y se fuerza una subida. Devuelve 0 si ya no había conflicto con ese
+     * destino.
+     */
+    @Query(
+        "UPDATE backup_state SET link_state = 'CONNECTED', conflict_kind = NULL, " +
+            "conflict_generation = NULL, conflict_device_id = NULL, conflict_file_ref = NULL, " +
+            "last_human_check_at = NULL, human_check_generation = NULL, " +
+            "change_seq = change_seq + 1, first_unsynced_at = COALESCE(first_unsynced_at, :now) " +
+            "WHERE id = 1 AND link_state = 'CONFLICT' AND destination_id = :destinationId",
+    )
+    suspend fun leaveConflictWithNewFile(now: Long, destinationId: String): Int
 }

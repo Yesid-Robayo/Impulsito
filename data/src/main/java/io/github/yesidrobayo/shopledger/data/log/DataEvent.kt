@@ -31,4 +31,10 @@ internal enum class DataEvent(override val text: String) : LogEvent {
     RESTORE_AUDIT_FAILED("No se pudo anotar la restauración en la auditoría"),
     POLICY_CONSENT_SAVED("Aceptación de la política guardada"),
     POLICY_CONSENT_NOT_SAVED("No se pudo guardar la aceptación de la política"),
+    DESTINATION_DISCONNECTED("Destino desconectado"),
+    DESTINATION_AUDIT_FAILED("No se pudo anotar el cambio del destino en la auditoría"),
+    DESTINATION_TIDY_FAILED(
+        "No se pudo terminar de soltar el destino anterior; se repite al abrir",
+    ),
+    SLOT_SESSION_RESUMED("La nube del teléfono volvió tras iniciar sesión"),
 }

@@ -103,6 +103,17 @@ fun SlotSetupScreen(
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     }
+                    uiState.look?.conflictSlot?.let { slot ->
+                        // Conservar este teléfono: el archivo anterior de esa ranura queda allí.
+                        item(key = CONFLICT) {
+                            val file =
+                                uiState.look.conflictFileName ?: slot.newFileName
+                            NoticeCard(
+                                stringResource(R.string.slots_conflict_intro, file, provider),
+                                NoticeVariant.WARNING,
+                            )
+                        }
+                    }
                     if (uiState.ready) {
                         item(key = READY) { ReadyBlock(appName, provider) }
                     }
@@ -308,6 +319,7 @@ private val CONTINUE = R.string.action_continue
 
 private const val INTRO = "intro"
 private const val READY = "ready"
+private const val CONFLICT = "conflict"
 private const val FILES = "files"
 private const val NOTICE = "notice"
 private const val OTHER_DESTINATION = "other-destination"

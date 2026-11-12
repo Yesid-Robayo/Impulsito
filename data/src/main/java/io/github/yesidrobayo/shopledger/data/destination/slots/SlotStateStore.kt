@@ -18,6 +18,12 @@ internal interface SlotStateStore {
      * @throws IOException si no se pudo escribir. El estado de antes sigue intacto.
      */
     suspend fun save(state: SlotState)
+
+    /**
+     * Borra el estado, al soltar las ranuras porque la persona desconectó o cambió de destino. Un
+     * archivo que no existe ya cuenta como borrado. Devuelve `false` si quedó algo.
+     */
+    suspend fun delete(): Boolean
 }
 
 /** Lo que se encontró al leer el estado de las ranuras. */

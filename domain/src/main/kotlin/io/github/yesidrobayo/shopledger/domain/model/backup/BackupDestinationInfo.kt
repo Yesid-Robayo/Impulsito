@@ -14,6 +14,19 @@ sealed interface BackupDestinationInfo {
      */
     data class WebDav(val account: String?, val host: String?) : BackupDestinationInfo
 
-    /** Las tres ranuras en la nube del teléfono, que se llama [providerLabel] si se sabe. */
-    data class Slots(val providerLabel: String?) : BackupDestinationInfo
+    /**
+     * Las tres ranuras en la nube del teléfono, que se llama [providerLabel] si se sabe.
+     *
+     * @property sessionRequired si la sesión de esa nube se cerró: la salida es iniciar sesión
+     *   allí, nunca crear archivos nuevos.
+     * @property documentUri un archivo de las ranuras, para abrir esa nube; nunca va a un registro.
+     */
+    data class Slots(
+        val providerLabel: String?,
+        val sessionRequired: Boolean = false,
+        val documentUri: String? = null,
+    ) : BackupDestinationInfo {
+        // La dirección del archivo no va a un registro.
+        override fun toString(): String = "Slots($providerLabel, $sessionRequired)"
+    }
 }

@@ -39,12 +39,18 @@ data class SlotSetupFile(val slot: BackupSlot, val status: SlotFileStatus, val f
  * @property otherDestination si hay otro destino guardado, conectado o no. Los archivos se pueden
  *   crear, pero el cambio de destino no se confirma aquí.
  * @property done si las ranuras ya están conectadas y las tres abren: no queda nada que preparar.
+ * @property conflictSlot con las copias detenidas por un conflicto que pide un archivo nuevo, la
+ *   ranura que lo necesita. Su archivo anterior queda en la nube sin tocar.
+ * @property conflictFileName el nombre del archivo anterior de esa ranura, si se sabe. No es
+ *   confiable.
  */
 data class SlotSetupLook(
     val providerLabel: String,
     val files: List<SlotSetupFile>,
     val otherDestination: Boolean,
     val done: Boolean,
+    val conflictSlot: BackupSlot? = null,
+    val conflictFileName: String? = null,
 ) {
     init {
         require(files.map { it.slot } == BackupSlot.entries) { "Un archivo por ranura, en orden" }

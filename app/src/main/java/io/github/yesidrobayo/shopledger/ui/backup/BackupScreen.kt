@@ -153,6 +153,7 @@ fun BackupScreen(
                 canRelease =
                     uiState.wording?.overview?.destinationKind == BackupDestinationKind.WEBDAV,
             )
+            BackupLinkLayer(uiState, onAction)
         }
     }
 }
@@ -416,12 +417,25 @@ private fun MainAction(
                 variant = ActionVariant.PRIMARY,
             )
 
+        // Con la sesión de la nube cerrada, los archivos siguen sirviendo: se inicia sesión allí.
         BackupStatus.PERMISSION_LOST ->
-            PrimaryActionButton(
-                text = stringResource(R.string.backup_action_reconnect),
-                onClick = { onAction(BackupAction.ChooseDestination) },
-                variant = ActionVariant.PRIMARY,
-            )
+            if (wording.sessionRequired) {
+                PrimaryActionButton(
+                    text =
+                        stringResource(
+                            R.string.backup_check_open_action,
+                            wording.providerLabel ?: NO_VALUE_TEXT,
+                        ),
+                    onClick = { onAction(BackupAction.SignInToProvider) },
+                    variant = ActionVariant.PRIMARY,
+                )
+            } else {
+                PrimaryActionButton(
+                    text = stringResource(R.string.backup_action_reconnect),
+                    onClick = { onAction(BackupAction.Reconnect) },
+                    variant = ActionVariant.PRIMARY,
+                )
+            }
 
         BackupStatus.POLICY_PENDING ->
             PrimaryActionButton(
@@ -431,7 +445,12 @@ private fun MainAction(
             )
 
         // El conflicto se decide en su propia hoja; aquí no hay copia que pedir.
-        BackupStatus.CONFLICT -> Unit
+        BackupStatus.CONFLICT ->
+            PrimaryActionButton(
+                text = stringResource(R.string.backup_action_review),
+                onClick = { onAction(BackupAction.ReviewConflict) },
+                variant = ActionVariant.PRIMARY,
+            )
 
         BackupStatus.UPLOADING, BackupStatus.RESTORING ->
             PrimaryActionButton(
@@ -564,7 +583,10 @@ fun MissingHelpSheet(provider: String, onClose: () -> Unit) {
     }
 }
 
-/** `Dónde se guardan`: el usuario y el servidor, o la nube del teléfono, y cambiar el destino. */
+/**
+ * `Dónde se guardan`: el usuario y el servidor, o la nube del teléfono, con `Desconectar` a su
+ * lado, y cambiar el destino.
+ */
 @Composable
 private fun Destination(info: BackupDestinationInfo?, onAction: (BackupAction) -> Unit) {
     val spacing = AppTheme.spacing
@@ -575,24 +597,40 @@ private fun Destination(info: BackupDestinationInfo?, onAction: (BackupAction) -
             Modifier.padding(horizontal = spacing.s16),
             verticalArrangement = Arrangement.spacedBy(spacing.s2),
         ) {
-            when (info) {
-                is BackupDestinationInfo.WebDav -> {
-                    Text(info.account ?: NO_VALUE_TEXT, style = MaterialTheme.typography.titleSmall)
-                    info.host?.let {
-                        Text(it, style = MaterialTheme.typography.bodyMedium, color = muted)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(spacing.s2),
+                ) {
+                    when (info) {
+                        is BackupDestinationInfo.WebDav -> {
+                            Text(
+                                info.account ?: NO_VALUE_TEXT,
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            info.host?.let {
+                                Text(it, style = MaterialTheme.typography.bodyMedium, color = muted)
+                            }
+                        }
+
+                        is BackupDestinationInfo.Slots ->
+                            Text(
+                                stringResource(
+                                    R.string.backup_destination_connected,
+                                    info.providerLabel ?: NO_VALUE_TEXT,
+                                ),
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+
+                        null -> Unit
                     }
                 }
-
-                is BackupDestinationInfo.Slots ->
-                    Text(
-                        stringResource(
-                            R.string.backup_destination_connected,
-                            info.providerLabel ?: NO_VALUE_TEXT,
-                        ),
-                        style = MaterialTheme.typography.titleSmall,
+                if (info != null) {
+                    InlineTextButton(
+                        text = stringResource(R.string.backup_action_disconnect),
+                        onClick = { onAction(BackupAction.Disconnect) },
                     )
-
-                null -> Unit
+                }
             }
             InlineTextButton(
                 text = stringResource(R.string.backup_action_change_destination),

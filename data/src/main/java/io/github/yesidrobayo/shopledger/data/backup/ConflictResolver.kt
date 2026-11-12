@@ -2,12 +2,18 @@ package io.github.yesidrobayo.shopledger.data.backup
 
 import io.github.yesidrobayo.shopledger.data.destination.BackupDestination
 import io.github.yesidrobayo.shopledger.data.destination.ConnectedDestination
+import io.github.yesidrobayo.shopledger.data.destination.CopyListing
+import io.github.yesidrobayo.shopledger.data.destination.CopyMetadata
 import io.github.yesidrobayo.shopledger.data.destination.CopyRef
 import io.github.yesidrobayo.shopledger.data.destination.DestinationFailure
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.DestinationResult
+import io.github.yesidrobayo.shopledger.data.destination.ListedCopy
+import io.github.yesidrobayo.shopledger.data.destination.ListedMeta
+import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
+import io.github.yesidrobayo.shopledger.data.destination.identity
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupConflictKind
@@ -34,6 +40,8 @@ import kotlinx.coroutines.sync.withLock
  * @param pinner fija las copias de la cabeza con WebDAV. Si no puede, conservar este teléfono con
  *   WebDAV no se confirma: sin fijar la cabeza, la poda podría borrarla.
  * @param mutex el cerrojo del respaldo, uno por proceso.
+ * @param slotFile con ranuras, lo que `slots.json` recuerda de la ranura: su nombre y cuándo se
+ *   escribió. Sin él, el diálogo no tiene fecha ni nombre para esa ranura.
  */
 internal class ConflictResolver(
     private val state: BackupStateDao,
@@ -43,6 +51,7 @@ internal class ConflictResolver(
     private val schemaVersion: Int,
     private val mutex: Mutex,
     private val pinner: HeadPinner = CopyPinning,
+    private val slotFile: suspend (CopyRef) -> SlotFileFacts? = { null },
 ) {
     /**
      * Lo que el diálogo del conflicto compara: los datos de cada lado. Lee el destino, así que
@@ -123,6 +132,7 @@ internal class ConflictResolver(
             val device: String,
             val local: LocalCounts,
             val head: List<KnownCopy>,
+            val listing: CopyListing,
         ) : Read
 
         class Done(val look: ConflictLook) : Read
@@ -141,10 +151,16 @@ internal class ConflictResolver(
         if (state.isEmpty()) return Read.Done(ConflictLook.EmptyDatabase)
         if (link.kind == BackupDestinationKind.DOCUMENT_SLOTS && needsNewSlotFile(kind, current)) {
             // Ese lado no tiene datos que mostrar: la app no sabe qué tiene ese archivo.
+            val slot =
+                current.conflictFileRef?.takeIf { it.length <= CopyRef.MAX_LENGTH }
+                    ?.takeIf(String::isNotEmpty)?.let(::CopyRef)
             return Read.Done(
                 ConflictLook.NewSlotFileRequired(
-                    current.conflictFileRef?.takeIf { it.length <= CopyRef.MAX_LENGTH }
-                        ?.takeIf(String::isNotEmpty)?.let(::CopyRef),
+                    slot = slot,
+                    fileName = slot?.let { slotFile(it) }?.displayName,
+                    threeBlocked = kind != BackupConflictKind.OTHER_DEVICE,
+                    localRecords = state.recordCount(),
+                    pendingChanges = current.changeSeq - current.verifiedSeq,
                 ),
             )
         }
@@ -195,6 +211,7 @@ internal class ConflictResolver(
             device,
             local,
             BackupGuard.headOf(input),
+            listing,
         )
     }
 
@@ -204,24 +221,42 @@ internal class ConflictResolver(
      * sin destruir nada. Las tres bloqueadas se reconocen porque ese conflicto no guarda generación.
      */
     private fun needsNewSlotFile(kind: BackupConflictKind, current: BackupStateEntity): Boolean =
-        when (kind) {
-            BackupConflictKind.OTHER_DEVICE -> true
-            BackupConflictKind.LOCAL_SHRUNK -> current.conflictGeneration == null
-            BackupConflictKind.CLOUD_AHEAD -> false
-        }
+        slotConflictNeedsNewFile(kind, current.conflictGeneration)
 
-    private fun viewOf(read: Read.Ready): ConflictView {
+    private suspend fun viewOf(read: Read.Ready): ConflictView {
         val head = read.head
+        // La copia que se muestra es la primera de la cabeza: la misma que se restauraría.
+        val top = head.firstOrNull()
+        val listed = top?.let { copy -> read.listing.copies.firstOrNull { it.ref == copy.ref } }
+        val createdAt =
+            when (read.link.kind) {
+                BackupDestinationKind.WEBDAV ->
+                    listed?.name?.createdAt?.epochSeconds?.let { it * MILLIS_PER_SECOND }
+
+                BackupDestinationKind.DOCUMENT_SLOTS -> top?.let { slotFile(it.ref) }?.writtenAt
+            }
         return ConflictView(
             kind = read.kind,
             localRecords = read.local.records,
             localCatalogCount = read.local.catalogCount,
             pendingChanges = read.local.pendingChanges,
-            cloudGeneration = head.firstOrNull()?.generation,
+            cloudGeneration = top?.generation,
             cloudRecords = head.maxOfOrNull(KnownCopy::records),
             cloudCatalogCount = head.maxOfOrNull(KnownCopy::catalogCount),
             cloudFromThisPhone = head.isNotEmpty() && head.all { it.deviceId == read.device },
+            cloudRef = top?.ref,
+            cloudCreatedAtMillis = createdAt,
+            cloudDeviceLabel = listed?.let(::deviceLabelOf),
         )
+    }
+
+    /** El fabricante y el modelo que dicen los metadatos de [copy], si los dicen. */
+    private fun deviceLabelOf(copy: ListedCopy): String? {
+        val bytes = (copy.meta as? ListedMeta.Present)?.bytes ?: return null
+        val decoded =
+            copy.name?.let { SlMetaCodec.decode(bytes, it.identity()) }
+                ?: SlMetaCodec.decodeUnnamed(bytes)
+        return (decoded as? CopyMetadata.Valid)?.meta?.deviceLabel
     }
 
     private fun outcomeOf(look: ConflictLook): KeepOutcome = when (look) {
@@ -240,6 +275,10 @@ internal class ConflictResolver(
  * @property cloudGeneration la generación de la cabeza del destino, o nula si ya no hay cabeza.
  * @property cloudFromThisPhone si toda la cabeza la escribió este mismo teléfono, con una base que
  *   ya no es esta.
+ * @property cloudRef la copia de la cabeza que se muestra, la misma que se restauraría.
+ * @property cloudCreatedAtMillis cuándo se hizo esa copia, si se sabe: por su nombre con WebDAV, o
+ *   por `slots.json` con ranuras.
+ * @property cloudDeviceLabel el fabricante y el modelo que dicen sus metadatos, si los dicen.
  */
 internal data class ConflictView(
     val kind: BackupConflictKind,
@@ -250,6 +289,9 @@ internal data class ConflictView(
     val cloudRecords: Long?,
     val cloudCatalogCount: Long?,
     val cloudFromThisPhone: Boolean,
+    val cloudRef: CopyRef? = null,
+    val cloudCreatedAtMillis: Long? = null,
+    val cloudDeviceLabel: String? = null,
 ) {
     /** Si conservar este teléfono deja menos datos que la cabeza: pide confirmación reforzada. */
     val localHasFewer: Boolean
@@ -271,11 +313,45 @@ internal sealed interface ConflictLook {
     /**
      * Con ranuras, la de [slot] no se puede leer ni contar: la salida es un archivo nuevo para
      * ella, o abrir ese archivo para restaurarlo.
+     *
+     * @property fileName el nombre de ese archivo según `slots.json`, si se sabe. No es confiable.
+     * @property threeBlocked si las tres ranuras están protegidas, y no una que cambió por fuera.
      */
-    data class NewSlotFileRequired(val slot: CopyRef?) : ConflictLook
+    data class NewSlotFileRequired(
+        val slot: CopyRef?,
+        val fileName: String? = null,
+        val threeBlocked: Boolean = false,
+        val localRecords: Long = 0,
+        val pendingChanges: Long = 0,
+    ) : ConflictLook
 
     /** El destino no respondió: sin él no se decide. */
     data class Unreachable(val failure: DestinationFailure) : ConflictLook
+}
+
+/**
+ * Si un conflicto con las ranuras solo se resuelve con un archivo nuevo: un archivo que cambió por
+ * fuera no se puede contar ni leer, y con las tres ranuras bloqueadas no hay dónde escribir. Las
+ * tres bloqueadas se reconocen porque ese conflicto no guarda generación.
+ */
+internal fun slotConflictNeedsNewFile(
+    kind: BackupConflictKind,
+    conflictGeneration: Long?,
+): Boolean = when (kind) {
+    BackupConflictKind.OTHER_DEVICE -> true
+    BackupConflictKind.LOCAL_SHRUNK -> conflictGeneration == null
+    BackupConflictKind.CLOUD_AHEAD -> false
+}
+
+/**
+ * Lo que `slots.json` recuerda de una ranura para el diálogo del conflicto.
+ *
+ * @property displayName el nombre del archivo en esa nube, si se sabe. No es confiable.
+ * @property writtenAt cuándo se escribió su copia, en milisegundos UTC, si tiene una.
+ */
+internal data class SlotFileFacts(val displayName: String?, val writtenAt: Long?) {
+    // El nombre lo escribió la persona en su nube: no va a un registro.
+    override fun toString(): String = "SlotFileFacts"
 }
 
 /** Cómo terminó [ConflictResolver.keepThisPhone]. Salvo [Kept], el conflicto sigue igual. */
@@ -339,3 +415,5 @@ internal sealed interface PinOutcome {
     /** El destino falló al fijar. */
     data class Failed(val failure: DestinationFailure) : PinOutcome
 }
+
+private const val MILLIS_PER_SECOND = 1_000L

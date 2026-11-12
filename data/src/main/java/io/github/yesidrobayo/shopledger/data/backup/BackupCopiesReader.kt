@@ -57,8 +57,15 @@ internal class BackupCopiesReader(
             BackupDestinationKind.WEBDAV ->
                 BackupDestinationInfo.WebDav(row.account, hostOf(row.folder))
 
-            BackupDestinationKind.DOCUMENT_SLOTS ->
-                BackupDestinationInfo.Slots(loadedSlots()?.let(::providerLabelOf))
+            BackupDestinationKind.DOCUMENT_SLOTS -> {
+                val loaded = loadedSlots()
+                BackupDestinationInfo.Slots(
+                    providerLabel = loaded?.let(::providerLabelOf),
+                    sessionRequired = loaded?.sessionRequired == true,
+                    // Cualquiera de los tres sirve para abrir esa nube e iniciar sesión.
+                    documentUri = loaded?.slots?.values?.firstOrNull()?.uri,
+                )
+            }
 
             null -> null
         }

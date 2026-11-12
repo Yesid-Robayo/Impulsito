@@ -349,6 +349,12 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
             folder: String?,
             now: Long,
         ): Int = 0
+
+        override suspend fun disconnect(destinationId: String): Int = 0
+
+        override suspend fun resumeConnected(destinationId: String): Int = 0
+
+        override suspend fun leaveConflictWithNewFile(now: Long, destinationId: String): Int = 0
     }
 
     private companion object {

@@ -1,11 +1,14 @@
 package io.github.yesidrobayo.shopledger.ui.backup
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
@@ -48,9 +51,10 @@ class BackupRestoreScreenTest {
         compose.onNodeWithText(text(R.string.backup_most_recent), substring = true)
             .performScrollTo()
             .performClick()
-        compose.onNodeWithText(text(R.string.backup_action_find_file))
-            .performScrollTo()
-            .performClick()
+        // La lista solo compone lo que está cerca de la vista: primero se desplaza hasta la fila.
+        val findFile = text(R.string.backup_action_find_file)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(findFile))
+        compose.onNodeWithText(findFile).performClick()
 
         assertEquals(listOf(BackupAction.OpenCopy(first.key), BackupAction.FindFile), actions)
     }

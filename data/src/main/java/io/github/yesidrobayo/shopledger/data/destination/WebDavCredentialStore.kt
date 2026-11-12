@@ -83,6 +83,12 @@ internal class WebDavCredentialStore(
         withContext(ioContext) { readNow(expectedDestinationId) }
     }
 
+    /** Si hay una credencial guardada, o su temporal. No la abre ni toca Keystore. */
+    suspend fun exists(): Boolean = withContext(ioContext) {
+        val file = file()
+        file.exists() || DurableFile.temporaryOf(file).exists()
+    }
+
     /**
      * Borra el archivo y sus dos claves, al desconectar el destino o al borrar los datos. Sin clave,
      * una copia del archivo que hubiera quedado en otro lado ya no abre.

@@ -495,4 +495,50 @@ class BackupSchedulerTest {
 
         assertEquals(listOf("keep maintenance", "keep head checks sin red"), queue.calls)
     }
+
+    @Test
+    fun disconnectingCancelsTheWaitTheUploadsAndTheSingleProbe() = runBlocking {
+        scheduler.cancelForDisconnect()
+
+        assertEquals(
+            listOf(
+                "cancel backup-debounce",
+                "cancel backup-upload-unmetered",
+                "cancel backup-upload",
+                "cancel head-probe-once",
+            ),
+            queue.calls,
+        )
+    }
+
+    @Test
+    fun aRestoredLinkProbesTheDestinationAndQueuesWhatIsPending() = runBlocking {
+        scheduler.onLinkRestored()
+
+        assertEquals(
+            listOf(
+                "keep head checks con red",
+                "probe once con red",
+                "keep unmetered",
+                "keep upload 40m con red",
+            ),
+            queue.calls,
+        )
+    }
+
+    @Test
+    fun aRestoredLinkQueuesNothingWithoutADestinationOrWhilePaused() = runBlocking {
+        facts = facts?.copy(connectedKind = null)
+        scheduler.onLinkRestored()
+
+        facts = facts?.copy(connectedKind = BackupDestinationKind.WEBDAV)
+        accepted = false
+        scheduler.onLinkRestored()
+
+        accepted = true
+        restore = true
+        scheduler.onLinkRestored()
+
+        assertEquals(emptyList<String>(), queue.calls)
+    }
 }

@@ -65,6 +65,14 @@ internal class FileSlotStateStore(
         }
     }
 
+    override suspend fun delete(): Boolean = withContext(ioContext) {
+        val removed =
+            listOf(File(directory, FILE_NAME), File(directory, TEMPORARY_NAME))
+                .all { !it.exists() || it.delete() }
+        if (directory.isDirectory) syncDirectory()
+        removed
+    }
+
     private fun syncDirectory() {
         try {
             val descriptor = Os.open(directory.path, OsConstants.O_RDONLY, 0)

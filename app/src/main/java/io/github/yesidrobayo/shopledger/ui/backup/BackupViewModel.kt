@@ -7,10 +7,14 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
+import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
+import io.github.yesidrobayo.shopledger.domain.model.backup.DisconnectResult
+import io.github.yesidrobayo.shopledger.domain.model.backup.KeepPhoneResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.PinRelease
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupLinkUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -45,6 +49,8 @@ import kotlinx.coroutines.withContext
  * @param releaseCopy quita la marca de fijada a una copia, por su clave en la lista.
  * @param uploadedThisMonth con WebDAV, los bytes subidos en el mes; nulo si no se pudo leer.
  * @param copiesEncrypted si las copias salen cifradas; nulo si no se pudo leer.
+ * @param link desconectar, volver tras iniciar sesión y decidir un conflicto; nulo donde no se
+ *   ofrece.
  */
 class BackupViewModel(
     overview: (Flow<Unit>) -> Flow<BackupOverview>,
@@ -58,6 +64,7 @@ class BackupViewModel(
     private val releaseCopy: suspend (String) -> PinRelease = { PinRelease.FAILED },
     private val uploadedThisMonth: suspend () -> Long? = { null },
     private val copiesEncrypted: suspend () -> Boolean? = { null },
+    private val link: BackupLinkUseCase? = null,
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = state.asStateFlow()
@@ -86,7 +93,8 @@ class BackupViewModel(
                     state.update {
                         val slots = it.destination as? BackupDestinationInfo.Slots
                         val provider = slots?.providerLabel
-                        it.copy(wording = BackupWording(current, provider, zone))
+                        val session = slots?.sessionRequired == true
+                        it.copy(wording = BackupWording(current, provider, zone, session))
                     }
                 }
         }
@@ -147,6 +155,39 @@ class BackupViewModel(
                     if (it.release is ReleaseUi.Working) it else it.copy(release = ReleaseUi.Idle)
                 }
 
+            BackupAction.Disconnect ->
+                if (link != null) state.update { it.copy(disconnect = DisconnectUi.ASKING) }
+
+            BackupAction.ConfirmDisconnect -> disconnect()
+
+            BackupAction.DismissDisconnect ->
+                state.update {
+                    if (it.disconnect == DisconnectUi.ASKING) {
+                        it.copy(disconnect = DisconnectUi.HIDDEN)
+                    } else {
+                        it
+                    }
+                }
+
+            BackupAction.ReviewConflict, BackupAction.RetryConflict -> describeConflict()
+
+            // Decidir después no cambia nada: el aviso sigue a la vista.
+            BackupAction.DecideLater -> state.update { it.copy(conflict = null) }
+
+            is BackupAction.RestoreCloud -> {
+                state.update { it.copy(conflict = null) }
+                (action.key?.let(::copyOf) ?: newestRestorable())?.let { restoring?.open(it) }
+            }
+
+            BackupAction.KeepPhone -> askKeep()
+
+            BackupAction.ConfirmKeep -> keep()
+
+            BackupAction.DismissKeep ->
+                state.update { it.copy(conflict = it.conflict?.copy(confirm = null)) }
+
+            BackupAction.CreateConflictFile -> state.update { it.copy(conflict = null) }
+
             // Lo resuelve la navegación.
             BackupAction.Back,
             BackupAction.ChooseDestination,
@@ -154,14 +195,150 @@ class BackupViewModel(
             BackupAction.OpenProvider,
             BackupAction.FindFile,
             BackupAction.OpenLocalCopies,
+            BackupAction.Reconnect,
+            BackupAction.SignInToProvider,
             -> Unit
         }
     }
 
-    /** La pantalla volvió a primer plano: el estado se calcula con la hora de ahora. */
+    /**
+     * La pantalla volvió a primer plano: el estado se calcula con la hora de ahora. Con la sesión
+     * de la nube del teléfono cerrada, comprueba sus archivos: si la persona inició sesión, las
+     * copias siguen solas.
+     */
     fun onReturnToForeground() {
         refreshes.value += 1
         refreshUsage()
+        val slots = state.value.destination as? BackupDestinationInfo.Slots
+        if (link != null && slots?.sessionRequired == true) {
+            viewModelScope.launch {
+                if (read { link.resumeAfterSignIn() } == true) reload()
+            }
+        }
+    }
+
+    private fun disconnect() {
+        val port = link ?: return
+        if (state.value.disconnect != DisconnectUi.ASKING) return
+        state.update { it.copy(disconnect = DisconnectUi.WORKING) }
+        viewModelScope.launch {
+            val result = read { port.disconnect() } ?: DisconnectResult.FAILED
+            val message =
+                when (result) {
+                    DisconnectResult.DISCONNECTED, DisconnectResult.NOT_CONNECTED ->
+                        BackupMessage.DISCONNECTED
+
+                    DisconnectResult.FAILED -> BackupMessage.DISCONNECT_FAILED
+                }
+            state.update { it.copy(disconnect = DisconnectUi.HIDDEN, message = message) }
+            reload()
+        }
+    }
+
+    /** Abre la hoja y lee los dos lados. Con WebDAV lee el destino, así que puede tardar. */
+    private fun describeConflict() {
+        val port = link ?: return
+        if (state.value.conflict?.working == true) return
+        state.update { it.copy(conflict = ConflictUi()) }
+        viewModelScope.launch {
+            val lookup = read { port.describeConflict() } ?: ConflictLookup.Unreachable
+            when (lookup) {
+                // Ya no hay nada que decidir: la hoja no se abre.
+                ConflictLookup.NotInConflict -> state.update { it.copy(conflict = null) }
+
+                is ConflictLookup.Shown,
+                ConflictLookup.EmptyDatabase,
+                is ConflictLookup.NewSlotFileRequired,
+                ConflictLookup.Unreachable,
+                ->
+                    state.update { current ->
+                        val open = current.conflict ?: return@update current
+                        val offline =
+                            lookup == ConflictLookup.Unreachable && !destination.hasNetwork()
+                        current.copy(conflict = open.copy(lookup = lookup, offline = offline))
+                    }
+            }
+        }
+    }
+
+    /** `Conservar este teléfono`: primero se confirma, con los registros de cada lado. */
+    private fun askKeep() {
+        val conflict = state.value.conflict ?: return
+        val confirm =
+            when (val lookup = conflict.lookup) {
+                is ConflictLookup.Shown ->
+                    KeepConfirm.Sides(lookup.sides, reinforced = lookup.sides.localHasFewer)
+
+                is ConflictLookup.NewSlotFileRequired -> KeepConfirm.NewFile(lookup)
+
+                // Sin los dos lados, o con la base vacía, no se ofrece.
+                ConflictLookup.NotInConflict,
+                ConflictLookup.EmptyDatabase,
+                ConflictLookup.Unreachable,
+                null,
+                -> return
+            }
+        state.update { it.copy(conflict = conflict.copy(confirm = confirm)) }
+    }
+
+    private fun keep() {
+        val port = link ?: return
+        val conflict = state.value.conflict ?: return
+        // El archivo nuevo lo resuelve la navegación: aquí solo se confirma con los dos lados.
+        val confirm = conflict.confirm as? KeepConfirm.Sides ?: return
+        if (conflict.working) return
+        state.update { it.copy(conflict = conflict.copy(working = true)) }
+        viewModelScope.launch {
+            val result =
+                read { port.keepThisPhone(fewerRecordsConfirmed = confirm.reinforced) }
+                    ?: KeepPhoneResult.Unreachable
+            onKept(result)
+        }
+    }
+
+    private fun onKept(result: KeepPhoneResult) {
+        state.update { current ->
+            val conflict = current.conflict?.copy(working = false, confirm = null)
+            when (result) {
+                KeepPhoneResult.Kept, KeepPhoneResult.NotInConflict -> current.copy(conflict = null)
+
+                // Este teléfono tiene menos: la confirmación reforzada, con los números nuevos.
+                is KeepPhoneResult.NeedsConfirmation ->
+                    current.copy(
+                        conflict =
+                            conflict?.copy(
+                                lookup = ConflictLookup.Shown(result.sides),
+                                confirm = KeepConfirm.Sides(result.sides, reinforced = true),
+                            ),
+                    )
+
+                // La nube cambió: la persona decide otra vez con lo nuevo a la vista.
+                is KeepPhoneResult.CloudChanged ->
+                    current.copy(
+                        conflict = conflict?.copy(lookup = ConflictLookup.Shown(result.sides)),
+                    )
+
+                is KeepPhoneResult.NewSlotFileRequired -> current.copy(conflict = conflict)
+
+                KeepPhoneResult.TooManyPinned ->
+                    current.copy(conflict = conflict, message = BackupMessage.PINNED_MAX)
+
+                KeepPhoneResult.Unreachable -> {
+                    val message =
+                        if (destination.hasNetwork()) {
+                            BackupMessage.CONFLICT_UNREACHABLE
+                        } else {
+                            BackupMessage.CONFLICT_NO_INTERNET
+                        }
+                    current.copy(conflict = conflict, message = message)
+                }
+
+                KeepPhoneResult.EmptyDatabase ->
+                    current.copy(conflict = conflict?.copy(lookup = ConflictLookup.EmptyDatabase))
+            }
+        }
+        // Con un archivo nuevo de por medio, se vuelve a leer qué ranura lo necesita.
+        if (result is KeepPhoneResult.NewSlotFileRequired) describeConflict()
     }
 
     private fun webDav(): Boolean =
@@ -252,14 +429,18 @@ class BackupViewModel(
             }
             val encrypted = if (info != null) read { copiesEncrypted() } else null
             state.update { current ->
-                val provider = (info as? BackupDestinationInfo.Slots)?.providerLabel
+                val slots = info as? BackupDestinationInfo.Slots
                 current.copy(
                     destination = info,
                     copies = copies,
                     handoff = handoff,
                     uploadedThisMonth = usage,
                     copiesEncrypted = encrypted,
-                    wording = current.wording?.copy(providerLabel = provider),
+                    wording =
+                        current.wording?.copy(
+                            providerLabel = slots?.providerLabel,
+                            sessionRequired = slots?.sessionRequired == true,
+                        ),
                 )
             }
         }
@@ -296,6 +477,10 @@ class BackupViewModel(
             state.update { it.copy(handoff = handoff, message = BackupMessage.CHECK_SAVED) }
         }
     }
+
+    /** La copia más reciente que se puede restaurar, para un conflicto sin cabeza a la vista. */
+    private fun newestRestorable(): BackupCopySummary? =
+        (state.value.copies as? BackupCopyList.Listed)?.copies?.firstOrNull { it.restorable }
 
     private fun copyOf(key: String): BackupCopySummary? =
         (state.value.copies as? BackupCopyList.Listed)?.copies?.firstOrNull { it.key == key }

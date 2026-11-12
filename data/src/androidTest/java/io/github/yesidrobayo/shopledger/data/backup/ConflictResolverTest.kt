@@ -271,7 +271,7 @@ class ConflictResolverTest {
     fun theDialogComparesBothSidesInNeutralCounts() = runBlocking {
         fixture.addProduct("Pan de prueba")
         val destination = FakeBackupDestination()
-        putCopy(destination, generation = 5, deviceId = OTHER_DEVICE_ID, records = 12)
+        val foreign = putCopy(destination, generation = 5, deviceId = OTHER_DEVICE_ID, records = 12)
         fixture.runner(destination).run(control)
 
         val look = resolver(destination, RecordingPinner()).describe(control)
@@ -283,6 +283,10 @@ class ConflictResolverTest {
         assertEquals(1L, view.localCatalogCount)
         assertEquals(false, view.cloudFromThisPhone)
         assertEquals(fixture.state().changeSeq - fixture.state().verifiedSeq, view.pendingChanges)
+        // La copia que se muestra es la que se restauraría, con la fecha de su nombre.
+        assertEquals(CopyRef(foreign.fileName), view.cloudRef)
+        assertEquals(foreign.createdAt.epochSeconds * 1_000, view.cloudCreatedAtMillis)
+        assertNull("Esa copia no dice su teléfono", view.cloudDeviceLabel)
     }
 
     private fun assertConflict(kind: BackupConflictKind, run: BackupRun) {

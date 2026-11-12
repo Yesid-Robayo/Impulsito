@@ -2,10 +2,12 @@ package io.github.yesidrobayo.shopledger.data.destination.slots
 
 import android.net.Uri
 import io.github.yesidrobayo.shopledger.data.DataAccess
+import io.github.yesidrobayo.shopledger.data.backup.slotConflictNeedsNewFile
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLink
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupConflictKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
@@ -53,6 +55,9 @@ internal enum class SlotConfirmStep {
  * - **Nunca cambia de destino:** con otro destino guardado, conectado o no, los archivos se crean
  *   pero no se confirman. Ese cambio tiene su propio camino, bajo el cerrojo, que limpia todo lo del
  *   destino anterior.
+ * - **Un conflicto que pide un archivo nuevo** deja esa ranura por crear, aunque su archivo abra:
+ *   otro teléfono lo cambió, o las tres ranuras están protegidas. El archivo anterior queda en la
+ *   nube sin tocar, y confirmar es conservar este teléfono: el conflicto termina y sale una copia.
  *
  * La confirmación corre bajo el cerrojo del respaldo, para que ninguna copia escriba a la vez, y en
  * este orden, pensado para que un corte entre dos pasos no deje nada inseguro:
@@ -185,13 +190,18 @@ internal class SlotFilesSetup(
         }
         checkpoint(SlotConfirmStep.SLOTS_SAVED)
         val connected =
-            dao.connectDestination(
-                kind = BackupDestinationKind.DOCUMENT_SLOTS.name,
-                account = null,
-                destinationId = DOCUMENT_SLOTS_DESTINATION_ID,
-                folder = null,
-                now = now,
-            ) == 1
+            if (plan.conflictSlot != null) {
+                // Conservar este teléfono con un archivo nuevo: el conflicto termina aquí.
+                dao.leaveConflictWithNewFile(now, DOCUMENT_SLOTS_DESTINATION_ID) == 1
+            } else {
+                dao.connectDestination(
+                    kind = BackupDestinationKind.DOCUMENT_SLOTS.name,
+                    account = null,
+                    destinationId = DOCUMENT_SLOTS_DESTINATION_ID,
+                    folder = null,
+                    now = now,
+                ) == 1
+            }
         if (!connected) return ConfirmOutcome.Stopped(SlotSetupConfirm.Failed)
         checkpoint(SlotConfirmStep.DESTINATION_CONNECTED)
         // Si `link.json` o el avance no quedan, el destino ya está conectado: repetir lo termina.
@@ -245,11 +255,12 @@ internal class SlotFilesSetup(
         val row = requireNotNull(dao.get()) { "Falta la fila del respaldo" }
         val other = row.destinationId != null && row.destinationId != DOCUMENT_SLOTS_DESTINATION_ID
         val current = (slots.load() as? SlotStateLoad.Loaded)?.state
+        val conflictSlot = conflictSlotOf(row).takeIf { current != null && !other }
         val kept =
             if (current == null || other) {
                 emptySet()
             } else {
-                BackupSlot.entries.filter { opens(current[it]) }.toSet()
+                BackupSlot.entries.filter { it != conflictSlot && opens(current[it]) }.toSet()
             }
         val keptUris = kept.mapNotNull { current?.get(it)?.uri }.toSet()
         val created = LinkedHashMap<BackupSlot, PendingSlotFile>()
@@ -257,7 +268,20 @@ internal class SlotFilesSetup(
             val repeated = entry.uri in keptUris || created.values.any { it.uri == entry.uri }
             if (slot !in kept && !repeated && stillEmpty(entry)) created[slot] = entry
         }
-        return Plan(row, current, kept, created, other)
+        return Plan(row, current, kept, created, other, conflictSlot)
+    }
+
+    /**
+     * La ranura que necesita un archivo nuevo para salir del conflicto, o nula si las copias no
+     * están detenidas por uno así: otro teléfono cambió esa ranura, o las tres están protegidas.
+     */
+    private fun conflictSlotOf(row: BackupStateEntity): BackupSlot? {
+        if (row.linkState != BackupLinkState.CONFLICT.name) return null
+        if (row.destinationId != DOCUMENT_SLOTS_DESTINATION_ID) return null
+        val kind =
+            BackupConflictKind.entries.firstOrNull { it.name == row.conflictKind } ?: return null
+        if (!slotConflictNeedsNewFile(kind, row.conflictGeneration)) return null
+        return BackupSlot.fromFileRefOrNull(row.conflictFileRef)
     }
 
     /**
@@ -301,6 +325,7 @@ internal class SlotFilesSetup(
      * @property kept las ranuras de [current] que siguen abriendo.
      * @property created los archivos nuevos que sirven, para las ranuras que no siguen.
      * @property otherDestination si hay otro destino guardado.
+     * @property conflictSlot la ranura que necesita un archivo nuevo para salir de un conflicto.
      */
     private inner class Plan(
         val row: BackupStateEntity,
@@ -308,6 +333,7 @@ internal class SlotFilesSetup(
         val kept: Set<BackupSlot>,
         val created: Map<BackupSlot, PendingSlotFile>,
         val otherDestination: Boolean,
+        val conflictSlot: BackupSlot?,
     ) {
         /** Si las ranuras ya son el destino conectado, o detenido por un conflicto. */
         val connected: Boolean =
@@ -382,6 +408,8 @@ internal class SlotFilesSetup(
                 files = files,
                 otherDestination = otherDestination,
                 done = connected && kept.size == BackupSlot.entries.size,
+                conflictSlot = conflictSlot,
+                conflictFileName = conflictSlot?.let { current?.get(it)?.displayName },
             )
         }
     }

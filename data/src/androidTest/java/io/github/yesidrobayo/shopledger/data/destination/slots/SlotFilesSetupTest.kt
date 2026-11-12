@@ -352,6 +352,115 @@ class SlotFilesSetupTest {
         assertTrue(requested.isEmpty())
     }
 
+    // Conservar este teléfono con un archivo nuevo
+
+    @Test
+    fun aSlotChangedOutsideIsAskedAgainAndConfirmingKeepsThisPhone() = runBlocking<Unit> {
+        conflictIn(BackupSlot.B, head = BackupSlot.B)
+        val before = fixture.state()
+        val setup = setup()
+
+        val look = requireNotNull(setup.look())
+        assertEquals(BackupSlot.B, look.conflictSlot)
+        assertEquals("copia-b-del-otro", look.conflictFileName)
+        assertEquals(
+            listOf(SlotFileStatus.READY, SlotFileStatus.MISSING, SlotFileStatus.READY),
+            look.files.map { it.status },
+        )
+        assertFalse(look.done)
+        documents.add(uriOf(BackupSlot.B))
+        setup.addFile(BackupSlot.B, uriOf(BackupSlot.B))
+        assertEquals(SlotSetupConfirm.Done(hasData = false), setup.confirm())
+
+        val state = fixture.state()
+        assertEquals("CONNECTED", state.linkState)
+        assertNull(state.conflictKind)
+        assertNull(state.conflictFileRef)
+        assertNull("La cabeza ya no apunta a un archivo vacío", state.headFileRef)
+        assertNull("Un archivo nuevo no hereda la revisión", state.lastHumanCheckAt)
+        assertTrue("Sale una copia nueva", state.changeSeq > before.changeSeq)
+        val saved = loaded()
+        assertEquals(uriOf(BackupSlot.B), saved[BackupSlot.B].uri)
+        assertNull(saved[BackupSlot.B].copy)
+        assertEquals(OLD_A, saved[BackupSlot.A].uri)
+        assertEquals(OLD_C, saved[BackupSlot.C].uri)
+        // El archivo anterior queda en la nube sin tocar: solo se suelta su permiso.
+        assertTrue(OLD_B in documents.released)
+        assertEquals(0, documents.writes)
+        assertEquals(DOCUMENT_SLOTS_DESTINATION_ID, links.read()?.destinationId)
+    }
+
+    @Test
+    fun threeBlockedSlotsAskForAFileForTheMarkedOne() = runBlocking<Unit> {
+        conflictIn(BackupSlot.C, head = BackupSlot.A, kind = "LOCAL_SHRUNK")
+
+        val look = requireNotNull(setup().look())
+
+        assertEquals(BackupSlot.C, look.conflictSlot)
+        assertEquals(SlotFileStatus.MISSING, look.files[BackupSlot.C.ordinal].status)
+    }
+
+    @Test
+    fun aConflictThatTheGuardSawNeedsNoNewFile() = runBlocking<Unit> {
+        // Con generación, la pérdida de datos la vio la guarda: se decide en el diálogo.
+        conflictIn(BackupSlot.C, head = BackupSlot.A, kind = "LOCAL_SHRUNK", generation = 3)
+
+        val look = requireNotNull(setup().look())
+
+        assertNull(look.conflictSlot)
+        assertTrue(look.files.all { it.status == SlotFileStatus.READY })
+    }
+
+    @Test
+    fun aCutWhileKeepingThisPhoneNeverPointsTheHeadAtAnEmptyFile() = runBlocking<Unit> {
+        for (step in SlotConfirmStep.entries) {
+            val case = "conflicto, corte tras $step"
+            restart()
+            documents.reset()
+            conflictIn(BackupSlot.B, head = BackupSlot.B)
+            documents.add(uriOf(BackupSlot.B))
+            setup().addFile(BackupSlot.B, uriOf(BackupSlot.B))
+
+            try {
+                setup(cutAfter = step).confirm()
+                fail("La prueba debía cortar tras $step")
+            } catch (_: Cut) {
+            }
+            assertSafe(case)
+            val cut = fixture.state()
+            assertTrue(case, cut.linkState == "CONFLICT" || cut.linkState == "CONNECTED")
+
+            assertTrue(case, setup().confirm() is SlotSetupConfirm.Done)
+            val state = fixture.state()
+            assertEquals(case, "CONNECTED", state.linkState)
+            assertNull(case, state.conflictKind)
+            assertEquals(case, uriOf(BackupSlot.B), loaded()[BackupSlot.B].uri)
+            assertEquals(case, OLD_A, loaded()[BackupSlot.A].uri)
+        }
+    }
+
+    /**
+     * Las ranuras conectadas, detenidas por un conflicto de clase [kind] en [slot], con la cabeza
+     * en [head]. Sin [generation], como cuando una ranura cambió por fuera o las tres se bloquean.
+     */
+    private suspend fun conflictIn(
+        slot: BackupSlot,
+        head: BackupSlot,
+        kind: String = "OTHER_DEVICE",
+        generation: Long? = null,
+    ) {
+        lostSlotsWithHeadIn(head)
+        val current = loaded()
+        val name = "copia-${slot.name.lowercase()}-del-otro"
+        slots.save(current.with(slot, current[slot].copy(displayName = name)))
+        fixture.sql(
+            "UPDATE backup_state SET link_state = 'CONFLICT', conflict_kind = '$kind', " +
+                "conflict_generation = ${generation ?: "NULL"}, " +
+                "conflict_file_ref = '${slot.name}', " +
+                "last_human_check_at = 77, human_check_generation = 3",
+        )
+    }
+
     // Cortes en la confirmación
 
     @Test

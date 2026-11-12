@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Desconectar, volver tras iniciar sesión y decidir un conflicto. Textos de la guía de redacción. -->
+    <string name="backup_action_disconnect">Disconnect</string>
+    <string name="dialog_disconnect_destination_title">Disconnect %1$s?</string>
+    <string name="dialog_disconnect_destination_body">The data and backups stay intact, but no new backups will be saved. To use earlier ones, go to Find a file.</string>
+    <string name="dialog_disconnect_webdav_note">The password is deleted from this phone, but it stays valid on the service. It is cancelled there.</string>
+    <string name="confirm_destination_disconnected">Cloud disconnected</string>
+    <string name="error_disconnect">Could not disconnect. Everything is as it was.</string>
+    <string name="backup_session_lost_title">Sign in to %1$s</string>
+    <string name="backup_session_lost_detail">The %1$s session ended, and backups are stopped. Once signed in they continue on their own, with no new files. Until then, anything new is only on this phone.</string>
+    <string name="backup_session_open_failed">%1$s could not be opened from here. Open that app by hand and sign in.</string>
+    <string name="backup_pinned_max">There are already %1$d pinned backups. Release one to continue.</string>
+    <string name="conflict_body_other_device">The backup from %1$s comes from another phone. Backups were stopped so nothing is lost.</string>
+    <string name="conflict_body_cloud_ahead">The backup from %1$s is newer than what is on this phone. Backups were stopped so nothing is lost.</string>
+    <string name="conflict_body_local_shrunk">This phone has fewer records than the last backup, and information may be missing. Backups were stopped so nothing is lost.</string>
+    <string name="conflict_body_slots_blocked">All three backups in %1$s are protected, and a new backup would have to replace one of them. Backups were stopped so nothing is lost.</string>
+    <string name="conflict_body_slot_changed">%1$s was changed outside %2$s. Backups were stopped so nothing is lost.</string>
+    <string name="conflict_comparison">In the cloud: %1$s, %2$s, %3$s. On this phone: %4$s and %5$s.</string>
+    <string name="conflict_comparison_slot_changed">%1$s does not know what %2$s contains, so that side has no date or records. On this phone: %3$s and %4$s.</string>
+    <string name="conflict_option_restore">Restore the cloud backup</string>
+    <string name="conflict_option_restore_body">It replaces what is here. What is current stays in a local copy.</string>
+    <string name="conflict_option_restore_slot_body">That file is opened with Find a file. It replaces what is here, and what is current stays in a local copy.</string>
+    <string name="conflict_option_keep">Keep this phone</string>
+    <string name="conflict_option_keep_body">The next backup will be the most recent. The cloud backup stays pinned.</string>
+    <string name="conflict_option_keep_slots_body">The next backup will be the most recent. %1$s keeps that cloud backup while it has more records, or more products, customers and suppliers, than the new one.</string>
+    <string name="conflict_option_keep_slots_new_file_body">%1$s does not write over %2$s. A new file must be created in %3$s, and %2$s stays there untouched.</string>
+    <string name="conflict_option_later">Decide later</string>
+    <string name="conflict_option_later_body">Work can continue, but no backups are saved.</string>
+    <string name="conflict_keep_confirm_title">Keep this phone?</string>
+    <string name="conflict_keep_confirm_body">On this phone: %1$s. In the backup from %2$s: %3$s. That backup stops being the most recent, but it stays pinned and %4$s does not delete it.</string>
+    <string name="conflict_keep_confirm_slots_body">On this phone: %1$s. In the backup from %2$s: %3$s. That backup stops being the most recent. It is not pinned: %4$s keeps it while it has more records, or more products, customers and suppliers, than the new one.</string>
+    <string name="conflict_keep_confirm_slots_new_file_body">On this phone: %1$s. To continue, a new file is created in %2$s. %3$s stays there untouched, and it opens with Find a file. Without the new file, nothing changes.</string>
+    <plurals name="conflict_keep_fewer_body">
+        <item quantity="one">It has %1$d fewer record than the backup from %2$s. If this phone is chosen, what is missing here stays only in that backup.</item>
+        <item quantity="other">It has %1$d fewer records than the backup from %2$s. If this phone is chosen, what is missing here stays only in that backup.</item>
+    </plurals>
+    <string name="conflict_keep_fewer_check">I understand this phone has fewer records</string>
+    <string name="conflict_both_sides">They cannot be merged. Before discarding a side, export its data.</string>
+    <string name="slots_conflict_intro">A new file is needed to continue. %1$s stays in %2$s untouched. If it is not created, backups stay stopped.</string>
+</resources>

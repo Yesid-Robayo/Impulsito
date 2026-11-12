@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Desconectar, volver tras iniciar sesión y decidir un conflicto. Textos de la guía de redacción. -->
+    <string name="backup_action_disconnect">Desconectar</string>
+    <string name="dialog_disconnect_destination_title">¿Desconectar %1$s?</string>
+    <string name="dialog_disconnect_destination_body">Los datos y las copias quedan intactos, pero no se guardarán copias nuevas. Para usar las anteriores está Buscar un archivo.</string>
+    <string name="dialog_disconnect_webdav_note">La contraseña se borra de este teléfono, pero sigue valiendo en el servicio. Se anula allí.</string>
+    <string name="confirm_destination_disconnected">Nube desconectada</string>
+    <string name="error_disconnect">No se pudo desconectar. Todo sigue como estaba.</string>
+    <string name="backup_session_lost_title">Iniciar sesión en %1$s</string>
+    <string name="backup_session_lost_detail">La sesión de %1$s se cerró, y las copias están detenidas. Al iniciar sesión siguen solas, sin crear archivos nuevos. Hasta entonces, lo nuevo solo está en este teléfono.</string>
+    <string name="backup_session_open_failed">No se pudo abrir %1$s desde aquí. Se puede abrir esa app a mano e iniciar sesión.</string>
+    <string name="backup_pinned_max">Ya hay %1$d copias fijadas. Para seguir se debe liberar una.</string>
+    <string name="conflict_body_other_device">La copia del %1$s viene de otro teléfono. Las copias se detuvieron para no perder nada.</string>
+    <string name="conflict_body_cloud_ahead">La copia del %1$s es más nueva que lo que hay en este teléfono. Las copias se detuvieron para no perder nada.</string>
+    <string name="conflict_body_local_shrunk">Este teléfono tiene menos registros que la última copia, y puede faltar información. Las copias se detuvieron para no perder nada.</string>
+    <string name="conflict_body_slots_blocked">Las tres copias de %1$s están protegidas, y una copia nueva tendría que reemplazar alguna. Las copias se detuvieron para no perder nada.</string>
+    <string name="conflict_body_slot_changed">%1$s cambió por fuera de %2$s. Las copias se detuvieron para no perder nada.</string>
+    <string name="conflict_comparison">En la nube: %1$s, %2$s, %3$s. En este teléfono: %4$s y %5$s.</string>
+    <string name="conflict_comparison_slot_changed">%1$s no sabe qué contiene %2$s, así que ese lado no tiene fecha ni registros. En este teléfono: %3$s y %4$s.</string>
+    <string name="conflict_option_restore">Restaurar la copia de la nube</string>
+    <string name="conflict_option_restore_body">Reemplaza lo que hay aquí. Lo actual queda en una copia local.</string>
+    <string name="conflict_option_restore_slot_body">Ese archivo se abre con Buscar un archivo. Reemplaza lo que hay aquí, y lo actual queda en una copia local.</string>
+    <string name="conflict_option_keep">Conservar este teléfono</string>
+    <string name="conflict_option_keep_body">La próxima copia será la más reciente. La copia de la nube queda fijada.</string>
+    <string name="conflict_option_keep_slots_body">La próxima copia será la más reciente. %1$s conserva esa copia de la nube mientras tenga más registros, o más productos, clientes y proveedores, que la nueva.</string>
+    <string name="conflict_option_keep_slots_new_file_body">%1$s no escribe sobre %2$s. Hay que crear un archivo nuevo en %3$s, y %2$s queda allí sin tocar.</string>
+    <string name="conflict_option_later">Decidir después</string>
+    <string name="conflict_option_later_body">Se puede seguir trabajando, pero no se guardan copias.</string>
+    <string name="conflict_keep_confirm_title">¿Conservar este teléfono?</string>
+    <string name="conflict_keep_confirm_body">En este teléfono: %1$s. En la copia del %2$s: %3$s. Esa copia deja de ser la más reciente, pero queda fijada y %4$s no la borra.</string>
+    <string name="conflict_keep_confirm_slots_body">En este teléfono: %1$s. En la copia del %2$s: %3$s. Esa copia deja de ser la más reciente. No queda fijada: %4$s la conserva mientras tenga más registros, o más productos, clientes y proveedores, que la nueva.</string>
+    <string name="conflict_keep_confirm_slots_new_file_body">En este teléfono: %1$s. Para seguir se crea un archivo nuevo en %2$s. %3$s queda allí sin tocar, y se abre con Buscar un archivo. Sin el archivo nuevo, nada cambia.</string>
+    <plurals name="conflict_keep_fewer_body">
+        <item quantity="one">Tiene %1$d registro menos que la copia del %2$s. Al elegir este teléfono, lo que falta aquí solo quedará en esa copia.</item>
+        <item quantity="many">Tiene %1$d de registros menos que la copia del %2$s. Al elegir este teléfono, lo que falta aquí solo quedará en esa copia.</item>
+        <item quantity="other">Tiene %1$d registros menos que la copia del %2$s. Al elegir este teléfono, lo que falta aquí solo quedará en esa copia.</item>
+    </plurals>
+    <string name="conflict_keep_fewer_check">Entiendo que este teléfono tiene menos registros</string>
+    <string name="conflict_both_sides">No se pueden mezclar. Antes de descartar un lado, conviene exportar sus datos.</string>
+    <string name="slots_conflict_intro">Falta un archivo nuevo para seguir. %1$s queda en %2$s sin tocar. Si no se crea, las copias siguen detenidas.</string>
+</resources>

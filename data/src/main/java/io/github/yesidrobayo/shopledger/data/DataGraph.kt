@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.data.backup.BackupStaging
 import io.github.yesidrobayo.shopledger.data.backup.BackupWorkQueue
 import io.github.yesidrobayo.shopledger.data.backup.CandidateUnpacker
 import io.github.yesidrobayo.shopledger.data.backup.CandidateValidator
+import io.github.yesidrobayo.shopledger.data.backup.ConflictResolver
 import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
 import io.github.yesidrobayo.shopledger.data.backup.DamagedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
@@ -53,6 +54,7 @@ import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
 import io.github.yesidrobayo.shopledger.data.backup.recordFullCopyExported
 import io.github.yesidrobayo.shopledger.data.backup.savedDestination
 import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
+import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkService
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
 import io.github.yesidrobayo.shopledger.data.destination.ProductionDestinationOpener
@@ -60,6 +62,7 @@ import io.github.yesidrobayo.shopledger.data.destination.WebDavConnectionService
 import io.github.yesidrobayo.shopledger.data.destination.WebDavConnector
 import io.github.yesidrobayo.shopledger.data.destination.WebDavCredentialStore
 import io.github.yesidrobayo.shopledger.data.destination.WebDavDestinationOpener
+import io.github.yesidrobayo.shopledger.data.destination.factsOf
 import io.github.yesidrobayo.shopledger.data.destination.slots.ContentResolverDocumentAccess
 import io.github.yesidrobayo.shopledger.data.destination.slots.DocumentSlotDestination
 import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStore
@@ -89,6 +92,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
+import io.github.yesidrobayo.shopledger.domain.port.BackupLinkPort
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import io.github.yesidrobayo.shopledger.domain.port.BackupSettingsPort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -381,11 +385,49 @@ class DataGraph internal constructor(
                 ) == 1
             },
             backupLock = backupMutex,
-            onConnected = { backupScheduler.onDataChanged() },
+            onConnected = { backupScheduler.onLinkRestored() },
             network = { backupNetworkOf(context).validated },
             nowMillis = { clock.now().toEpochMilliseconds() },
         )
     }
+
+    /**
+     * El enlace al destino desde la pantalla del respaldo: desconectar, volver a la nube del
+     * teléfono tras iniciar sesión y decidir un conflicto, todo bajo el cerrojo del respaldo. Al
+     * abrir la base, deja en orden lo que un corte dejó a medias. Crearlo no toca el disco.
+     */
+    internal val destinationLinks: DestinationLinkService by lazy {
+        val slots = FileSlotStateStore.inNoBackupDir(context, ioContext)
+        DestinationLinkService(
+            open = ::open,
+            mutex = backupMutex,
+            credentials = webDavCredentials,
+            links = DestinationLinkStore({ context.noBackupFilesDir }, ioContext),
+            slots = slots,
+            pending = SlotPendingStore.inNoBackupDir(context, ioContext),
+            permissions = ResolverSlotFileDocuments(context.contentResolver),
+            documents = ContentResolverDocumentAccess(context.contentResolver),
+            cancelWork = { backupScheduler.cancelForDisconnect() },
+            afterLinkRestored = { backupScheduler.onLinkRestored() },
+            conflicts = { dao ->
+                ConflictResolver(
+                    state = dao,
+                    destinations = destinations,
+                    deviceId = deviceIdentity::deviceId,
+                    clock = clock,
+                    schemaVersion = schemaVersion,
+                    mutex = backupMutex,
+                    slotFile = { ref -> slots.factsOf(ref) },
+                )
+            },
+            clock = clock,
+            log = log,
+            ioContext = ioContext,
+        )
+    }
+
+    /** Desconectar, volver tras iniciar sesión y decidir un conflicto, para la pantalla. */
+    val backupLink: BackupLinkPort get() = destinationLinks
 
     /**
      * Restaurar desde la pantalla: una copia de la lista del destino conectado o un archivo elegido
@@ -766,7 +808,12 @@ class DataGraph internal constructor(
                 ready = opened
                 // Al arrancar, y tras reemplazar la base: retoma lo pendiente y deja programado el
                 // mantenimiento. Va aparte: la apertura no espera por él.
-                if (workQueue != null) backgroundScope.launch { backupScheduler.reconcile() }
+                if (workQueue != null) {
+                    backgroundScope.launch {
+                        destinationLinks.tidy()
+                        backupScheduler.reconcile()
+                    }
+                }
                 log.info(
                     DataEvent.DATABASE_OPENED,
                     LogField.durationMillis("duración", started.elapsedNow().inWholeMilliseconds),

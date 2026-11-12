@@ -35,6 +35,12 @@ internal class MemorySlotStore(initial: SlotState?) : SlotStateStore {
         if (failSave) throw IOException("disco")
         this.state = state
     }
+
+    override suspend fun delete(): Boolean {
+        state = null
+        unreadable = false
+        return true
+    }
 }
 
 /**

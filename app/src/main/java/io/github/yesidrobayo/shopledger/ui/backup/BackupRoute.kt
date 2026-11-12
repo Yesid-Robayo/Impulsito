@@ -15,7 +15,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupLinkUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ChangeMeteredBackupPolicyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RecordCloudCheckUseCase
@@ -65,6 +67,7 @@ fun BackupRoute(navigator: AppNavigator) {
                 releaseCopy = { key -> container.data.backupSettings.releasePinnedCopy(key) },
                 uploadedThisMonth = { container.data.backupSettings.uploadedThisMonth() },
                 copiesEncrypted = { container.data.backupSettings.copiesEncrypted() },
+                link = BackupLinkUseCase(container.data.backupLink),
             )
         }
     when (model) {
@@ -95,25 +98,26 @@ fun BackupRoute(navigator: AppNavigator) {
                     provider,
                     uiState.handoff?.fileName ?: NO_VALUE_TEXT,
                 )
+            val sessionOpenFailed = stringResource(R.string.backup_session_open_failed, provider)
+            val disconnected = stringResource(R.string.confirm_destination_disconnected)
+            val disconnectFailed = stringResource(R.string.error_disconnect)
+            val pinnedMax = stringResource(R.string.backup_pinned_max, MAX_PINNED_COPIES)
+            val unreachable = stringResource(R.string.backup_list_error)
+            val conflictOffline = stringResource(R.string.backup_list_no_internet)
             LaunchedEffect(uiState.message) {
-                when (uiState.message) {
-                    BackupMessage.NO_INTERNET -> {
-                        viewModel.onAction(BackupAction.MessageShown)
+                val message = uiState.message ?: return@LaunchedEffect
+                viewModel.onAction(BackupAction.MessageShown)
+                when (message) {
+                    BackupMessage.NO_INTERNET ->
                         messages.show(AppSnackbarVisuals(noInternet, SnackbarVariant.INFO))
-                    }
 
-                    BackupMessage.CHECK_SAVED -> {
-                        viewModel.onAction(BackupAction.MessageShown)
+                    BackupMessage.CHECK_SAVED ->
                         messages.show(AppSnackbarVisuals(checkSaved, SnackbarVariant.SUCCESS))
-                    }
 
-                    BackupMessage.RELEASED -> {
-                        viewModel.onAction(BackupAction.MessageShown)
+                    BackupMessage.RELEASED ->
                         messages.show(AppSnackbarVisuals(released, SnackbarVariant.SUCCESS))
-                    }
 
                     BackupMessage.RELEASE_FAILED -> {
-                        viewModel.onAction(BackupAction.MessageShown)
                         val failed = (uiState.release as? ReleaseUi.Failed)?.copy?.key
                         messages.show(
                             AppSnackbarVisuals(releaseFailed, SnackbarVariant.ERROR, retry),
@@ -122,7 +126,20 @@ fun BackupRoute(navigator: AppNavigator) {
                         }
                     }
 
-                    null -> Unit
+                    BackupMessage.DISCONNECTED ->
+                        messages.show(AppSnackbarVisuals(disconnected, SnackbarVariant.SUCCESS))
+
+                    BackupMessage.DISCONNECT_FAILED ->
+                        messages.show(AppSnackbarVisuals(disconnectFailed, SnackbarVariant.ERROR))
+
+                    BackupMessage.PINNED_MAX ->
+                        messages.show(AppSnackbarVisuals(pinnedMax, SnackbarVariant.INFO))
+
+                    BackupMessage.CONFLICT_UNREACHABLE ->
+                        messages.show(AppSnackbarVisuals(unreachable, SnackbarVariant.ERROR))
+
+                    BackupMessage.CONFLICT_NO_INTERNET ->
+                        messages.show(AppSnackbarVisuals(conflictOffline, SnackbarVariant.INFO))
                 }
             }
             // El selector del sistema, para `Buscar un archivo`: cualquier tipo, porque una copia
@@ -154,11 +171,40 @@ fun BackupRoute(navigator: AppNavigator) {
 
                         BackupAction.FindFile -> {
                             viewModel.onAction(BackupAction.CloseRestore)
+                            // Desde la hoja del conflicto, el archivo de la ranura se busca aquí.
+                            viewModel.onAction(BackupAction.DecideLater)
                             picker.launch(arrayOf(ANY_FILE))
                         }
 
                         BackupAction.StartRestore -> scope.launch {
                             if (sensitive.confirm(restoreTitle)) viewModel.onAction(action)
+                        }
+
+                        // WebDAV pide la contraseña otra vez; la nube del teléfono, sus archivos.
+                        BackupAction.Reconnect ->
+                            navigator.open(
+                                when (uiState.destination) {
+                                    is BackupDestinationInfo.WebDav -> AppNavKey.WebDavConnect()
+                                    is BackupDestinationInfo.Slots -> AppNavKey.DocumentSlotsSetup
+                                    null -> AppNavKey.BackupDestinationChoice()
+                                },
+                            )
+
+                        // Con la sesión cerrada se inicia sesión en esa nube: nunca archivos nuevos.
+                        BackupAction.SignInToProvider -> {
+                            val uri = (uiState.destination as? BackupDestinationInfo.Slots)
+                                ?.documentUri
+                            val opened = uri?.let { openInProvider(context, it) } == true
+                            if (!opened) {
+                                messages.show(
+                                    AppSnackbarVisuals(sessionOpenFailed, SnackbarVariant.INFO),
+                                )
+                            }
+                        }
+
+                        BackupAction.CreateConflictFile -> {
+                            viewModel.onAction(action)
+                            navigator.open(AppNavKey.DocumentSlotsSetup)
                         }
 
                         BackupAction.OpenProvider -> {
@@ -189,6 +235,16 @@ fun BackupRoute(navigator: AppNavigator) {
                         is BackupAction.ReleaseCopy,
                         BackupAction.ConfirmRelease,
                         BackupAction.CloseRelease,
+                        BackupAction.Disconnect,
+                        BackupAction.ConfirmDisconnect,
+                        BackupAction.DismissDisconnect,
+                        BackupAction.ReviewConflict,
+                        BackupAction.RetryConflict,
+                        BackupAction.DecideLater,
+                        is BackupAction.RestoreCloud,
+                        BackupAction.KeepPhone,
+                        BackupAction.ConfirmKeep,
+                        BackupAction.DismissKeep,
                         -> viewModel.onAction(action)
                     }
                 },
@@ -224,3 +280,6 @@ internal fun restartForRestore(context: Context) {
 
 /** Cualquier tipo de archivo en el selector. */
 private const val ANY_FILE = "*/*"
+
+/** Cuántas copias fijadas admite el destino, como dice la regla de retención. */
+private const val MAX_PINNED_COPIES = 3
