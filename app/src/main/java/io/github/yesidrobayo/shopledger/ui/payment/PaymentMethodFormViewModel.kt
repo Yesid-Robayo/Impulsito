@@ -28,9 +28,12 @@ import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObservePaymentMet
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ReactivatePaymentMethodResult
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ReactivatePaymentMethodUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.SavePaymentMethodResult
+import io.github.yesidrobayo.shopledger.ui.ReadOutcome
+import io.github.yesidrobayo.shopledger.ui.readOutcome
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -69,8 +72,10 @@ class PaymentMethodFormViewModel(
 
     init {
         load()
+        // Las dos lecturas de apoyo no tapan el formulario si fallan: sin ellas solo falta la
+        // comprobación del nombre de un inicial y el redondeo de muestra, y guardar lo comprueba igual.
         viewModelScope.launch {
-            useCases.observe(ArchiveFilter.ACTIVE).collect { active ->
+            useCases.observe(ArchiveFilter.ACTIVE).catch {}.collect { active ->
                 val initial =
                     active
                         .filter { it.details.name == null && it.id != methodId }
@@ -80,7 +85,7 @@ class PaymentMethodFormViewModel(
             }
         }
         viewModelScope.launch {
-            useCases.observeCashRounding().collect { step ->
+            useCases.observeCashRounding().catch {}.collect { step ->
                 cashRounding = step
                 updateEditing { it.copy(cashRounding = step) }
             }
@@ -110,6 +115,11 @@ class PaymentMethodFormViewModel(
                 edit(FormField.INSTRUCTIONS) { it.copy(instructions = action.value) }
 
             PaymentMethodFormAction.Save -> save()
+
+            PaymentMethodFormAction.Retry -> {
+                state.value = PaymentMethodFormUiState.Loading
+                load()
+            }
 
             PaymentMethodFormAction.AskArchive -> askFor(FormDialog.ARCHIVE)
 
@@ -148,7 +158,15 @@ class PaymentMethodFormViewModel(
             return
         }
         viewModelScope.launch {
-            val options = useCases.loadOptions(methodId)
+            val options =
+                when (val read = readOutcome { useCases.loadOptions(methodId) }) {
+                    is ReadOutcome.Read -> read.value
+
+                    ReadOutcome.Failed -> {
+                        state.value = PaymentMethodFormUiState.ReadFailed
+                        return@launch
+                    }
+                }
             state.value =
                 if (options == null) {
                     PaymentMethodFormUiState.NotFound

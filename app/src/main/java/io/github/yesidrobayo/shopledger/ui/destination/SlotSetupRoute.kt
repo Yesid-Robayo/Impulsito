@@ -65,12 +65,16 @@ fun SlotSetupRoute(navigator: AppNavigator) {
             LaunchedEffect(uiState.message) {
                 val message = uiState.message ?: return@LaunchedEffect
                 viewModel.onAction(SlotSetupAction.MessageShown)
-                val text =
+                // Cancelar es un aviso; no poder guardar es un error.
+                val visuals =
                     when (message) {
-                        SlotSetupMessage.CANCELLED -> cancelled
-                        SlotSetupMessage.SAVE_FAILED -> saveFailed
+                        SlotSetupMessage.CANCELLED ->
+                            AppSnackbarVisuals(cancelled, SnackbarVariant.INFO)
+
+                        SlotSetupMessage.SAVE_FAILED ->
+                            AppSnackbarVisuals(saveFailed, SnackbarVariant.ERROR)
                     }
-                messages.show(AppSnackbarVisuals(text, SnackbarVariant.INFO))
+                messages.show(visuals)
             }
             LaunchedEffect(uiState.target) {
                 val target = uiState.target ?: return@LaunchedEffect

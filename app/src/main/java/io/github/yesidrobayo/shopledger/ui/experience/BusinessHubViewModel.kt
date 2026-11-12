@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -62,7 +63,11 @@ class BusinessHubViewModel(usage: Flow<Set<BusinessTool>>?) : ViewModel() {
     init {
         if (usage != null) {
             viewModelScope.launch {
-                usage.collect { tools -> state.update { it.copy(inUse = tools) } }
+                // Si no se puede leer qué está en uso, ninguna herramienta se marca en uso: todas
+                // siguen a la mano, y la pantalla no se cierra.
+                usage
+                    .catch { emit(emptySet()) }
+                    .collect { tools -> state.update { it.copy(inUse = tools) } }
             }
         }
     }

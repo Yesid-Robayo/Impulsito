@@ -43,6 +43,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CashTenderRow
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
+import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
@@ -118,6 +119,18 @@ fun CheckoutScreen(
                         }
                     }
                     RegisterBar(uiState, onAction)
+                }
+                if (uiState.content == CheckoutContent.ReadFailed) {
+                    EmptyState(
+                        icon = R.drawable.ic_error,
+                        title = stringResource(R.string.state_error_read),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        InlineTextButton(
+                            stringResource(R.string.action_retry),
+                            { onAction(CheckoutAction.Retry) },
+                        )
+                    }
                 }
             }
             uiState.qr?.let { QrOverlay(it, uiState, onAction) }

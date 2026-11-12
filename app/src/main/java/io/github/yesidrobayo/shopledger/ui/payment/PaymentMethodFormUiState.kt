@@ -98,6 +98,9 @@ sealed interface PaymentMethodFormUiState {
     /** El método ya no existe, por ejemplo porque se eliminó en otra pantalla. */
     data object NotFound : PaymentMethodFormUiState
 
+    /** La lectura falló: se dice, con `Reintentar`. */
+    data object ReadFailed : PaymentMethodFormUiState
+
     /**
      * El formulario de [methodId], o de uno nuevo si es `null`.
      *
@@ -132,6 +135,9 @@ sealed interface PaymentMethodFormUiState {
 /** Lo que la persona hace en el formulario. */
 sealed interface PaymentMethodFormAction {
     data object Back : PaymentMethodFormAction
+
+    /** Vuelve a leer el método tras una falla de lectura. */
+    data object Retry : PaymentMethodFormAction
 
     data class NameChanged(val value: String) : PaymentMethodFormAction
 

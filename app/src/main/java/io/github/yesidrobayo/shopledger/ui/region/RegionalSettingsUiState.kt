@@ -114,6 +114,9 @@ sealed interface RegionalSettingsUiState {
 
 /** Lo que la persona puede hacer en la pantalla. */
 sealed interface RegionalSettingsAction {
+    /** Vuelve a leer lo guardado tras una falla de lectura. */
+    data object Retry : RegionalSettingsAction
+
     data class OpenSheet(val sheet: RegionalSheet) : RegionalSettingsAction
 
     data object CloseSheet : RegionalSettingsAction

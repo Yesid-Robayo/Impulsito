@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.ReadDataHealthUseC
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunFullVerifyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
+import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -98,19 +99,20 @@ class BackupViewModel(
             )
         }
 
+    /** El estado del respaldo y la zona: una falla se dice con `Reintentar`, sin cerrar nada. */
+    private val reads = ScreenReads()
+
+    /** El estado del respaldo, que se vuelve a calcular con cada refresco, junto a la zona del negocio. */
+    private val status =
+        combine(
+            overview(refreshes.map {}),
+            calendar.map { (it as? BusinessCalendarResult.Ready)?.calendar?.zone },
+        ) { current, zone -> current to zone }
+
     init {
-        val zones = calendar.map { (it as? BusinessCalendarResult.Ready)?.calendar?.zone }
+        observeStatus()
         viewModelScope.launch {
-            combine(overview(refreshes.map {}), zones) { current, zone -> current to zone }
-                .collect { (current, zone) ->
-                    state.update {
-                        val slots = it.destination as? BackupDestinationInfo.Slots
-                        val provider = slots?.providerLabel
-                        val session = slots?.sessionRequired == true
-                        it.copy(wording = BackupWording(current, provider, zone, session))
-                    }
-                    refreshHealth()
-                }
+            reads.failed.collect { failed -> state.update { it.copy(statusReadFailed = failed) } }
         }
         // El destino y la lista se leen de nuevo con otro destino o con una copia nueva.
         viewModelScope.launch {
@@ -121,11 +123,31 @@ class BackupViewModel(
         }
     }
 
+    /**
+     * Lee el estado del respaldo y la zona del negocio. Una falla de lectura no cierra la pantalla:
+     * el bloque del estado la dice, con `Reintentar`.
+     */
+    private fun observeStatus() {
+        viewModelScope.launch {
+            reads.guard { status }.collect { (current, zone) ->
+                state.update {
+                    val slots = it.destination as? BackupDestinationInfo.Slots
+                    val provider = slots?.providerLabel
+                    val session = slots?.sessionRequired == true
+                    it.copy(wording = BackupWording(current, provider, zone, session))
+                }
+                refreshHealth()
+            }
+        }
+    }
+
     fun onAction(action: BackupAction) {
         when (action) {
             BackupAction.BackUpNow -> backUpNow()
 
             BackupAction.RetryCopies -> reload()
+
+            BackupAction.RetryStatus -> reads.retry()
 
             BackupAction.MessageShown -> state.update { it.copy(message = null) }
 
@@ -472,7 +494,10 @@ class BackupViewModel(
 
     private fun applyPolicy(policy: MeteredBackupPolicy) {
         viewModelScope.launch {
-            read { changePolicy(policy) }
+            // Si no se pudo guardar, la fila vuelve sola a la política guardada, y se dice.
+            if (read { changePolicy(policy) } == null) {
+                state.update { it.copy(message = BackupMessage.SAVE_FAILED) }
+            }
             // El estado y los límites cambian con la política: se calculan de nuevo.
             refreshes.value += 1
         }
@@ -559,7 +584,10 @@ class BackupViewModel(
         state.update { it.copy(requesting = true) }
         viewModelScope.launch {
             try {
-                withContext(computation) { requestBackup() }
+                if (read { requestBackup() } == null) {
+                    state.update { it.copy(message = BackupMessage.REQUEST_FAILED) }
+                    return@launch
+                }
                 // Con WebDAV, sin red la copia queda encolada: se dice, para que nadie espere.
                 val webDav =
                     state.value.wording?.overview?.destinationKind == BackupDestinationKind.WEBDAV
@@ -580,7 +608,10 @@ class BackupViewModel(
         val generation = state.value.handoff?.generation ?: return
         viewModelScope.launch {
             val saved = read { recordCheck(generation) } == true
-            if (!saved) return@launch
+            if (!saved) {
+                state.update { it.copy(message = BackupMessage.SAVE_FAILED) }
+                return@launch
+            }
             val handoff = read { destination.latestHandoff() }
             state.update { it.copy(handoff = handoff, message = BackupMessage.CHECK_SAVED) }
         }

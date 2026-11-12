@@ -286,11 +286,15 @@ class BulkPriceViewModel(
         combine(
             input,
             content,
+            // Las listas de los filtros no cierran la pantalla si fallan: el contenido ya muestra el
+            // error de lectura con `Reintentar`, y los filtros quedan vacíos mientras tanto.
             combine(
-                operations.categories(),
-                operations.suppliers(),
-                catalog.map { it.orEmpty().filterNot(Product::isArchived) },
-                operations.defaultStep(),
+                operations.categories().catch { emit(emptyList()) },
+                operations.suppliers().catch { emit(emptyList()) },
+                catalog.map {
+                    it.orEmpty().filterNot(Product::isArchived)
+                }.catch { emit(emptyList()) },
+                operations.defaultStep().catch { emit(Money.ZERO) },
             ) { categories, suppliers, products, step ->
                 Lists(categories, suppliers, products, step)
             },

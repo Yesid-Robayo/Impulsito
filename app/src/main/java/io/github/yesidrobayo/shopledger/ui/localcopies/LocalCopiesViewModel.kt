@@ -121,7 +121,10 @@ class LocalCopiesViewModel(
     private fun setFollow(follow: Boolean) {
         val port = second ?: return
         viewModelScope.launch {
-            safely { port.setFollowMainBackup(follow) }
+            // Si no se pudo guardar, el interruptor vuelve solo a lo guardado, y se dice.
+            if (safely { port.setFollowMainBackup(follow) } == null) {
+                state.update { it.copy(message = LocalCopiesMessage.FOLDER_FAILED) }
+            }
             refreshSecond()
         }
     }
@@ -130,7 +133,9 @@ class LocalCopiesViewModel(
         val port = second ?: return
         state.update { it.copy(confirmRemove = false) }
         viewModelScope.launch {
-            safely { port.remove() }
+            if (safely { port.remove() } == null) {
+                state.update { it.copy(message = LocalCopiesMessage.FOLDER_FAILED) }
+            }
             refreshSecond()
         }
     }

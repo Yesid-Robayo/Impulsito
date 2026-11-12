@@ -63,6 +63,9 @@ sealed interface StockAdjustmentContent {
      */
     data object Unavailable : StockAdjustmentContent
 
+    /** La lectura falló: se dice, con `Reintentar`. */
+    data object ReadFailed : StockAdjustmentContent
+
     /** El producto, listo para ajustar. */
     data class Ready(val subject: StockAdjustmentSubject) : StockAdjustmentContent
 }
@@ -108,6 +111,9 @@ data class StockAdjustmentUiState(
 
 /** Lo que la persona puede hacer en el ajuste de stock. */
 sealed interface StockAdjustmentAction {
+    /** Vuelve a leer el producto tras una falla de lectura. */
+    data object Retry : StockAdjustmentAction
+
     data class ModeChanged(val mode: AdjustmentMode) : StockAdjustmentAction
 
     data class QuantityChanged(val text: String) : StockAdjustmentAction

@@ -36,6 +36,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolic
  */
 data class BackupUiState(
     val wording: BackupWording? = null,
+    val statusReadFailed: Boolean = false,
     val destination: BackupDestinationInfo? = null,
     val copies: BackupCopyList? = null,
     val requesting: Boolean = false,
@@ -166,6 +167,12 @@ enum class BackupMessage {
 
     /** `Comprobar ahora`: sin espacio en el teléfono para bajarla. */
     VERIFY_NO_SPACE,
+
+    /** `Respaldar ahora` no se pudo pedir: nada cambió, y se puede reintentar. */
+    REQUEST_FAILED,
+
+    /** No se pudo guardar la política con datos móviles o la revisión: todo sigue como estaba. */
+    SAVE_FAILED,
 }
 
 /** Lo que la persona puede hacer en la pantalla del respaldo. */
@@ -178,6 +185,9 @@ sealed interface BackupAction {
     data object ChooseDestination : BackupAction
 
     data object RetryCopies : BackupAction
+
+    /** Vuelve a leer el estado del respaldo tras una falla de lectura. */
+    data object RetryStatus : BackupAction
 
     /** Copias en pausa por la política: la muestra para aceptarla. */
     data object ReviewPolicy : BackupAction

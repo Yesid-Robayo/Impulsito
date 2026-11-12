@@ -139,7 +139,7 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
 
                         ExpensesAction.OpenRecurring -> navigator.open(AppNavKey.RecurringExpenses)
 
-                        ExpensesAction.ConfirmCurrency ->
+                        ExpensesAction.ConfirmCurrency, ExpensesAction.ChooseZone ->
                             navigator.open(AppNavKey.RegionalSettings())
 
                         ExpensesAction.PreviousMonth,

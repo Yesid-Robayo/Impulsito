@@ -48,6 +48,8 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
@@ -305,8 +307,8 @@ private fun DayList(
 ) {
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
     // Al acercarse al final de lo leído, se pide el tramo siguiente.
-    LaunchedEffect(listState, content.endReached) {
-        if (content.endReached) return@LaunchedEffect
+    LaunchedEffect(listState, content.endReached, content.moreFailed) {
+        if (content.endReached || content.moreFailed) return@LaunchedEffect
         snapshotFlow {
             val info = listState.layoutInfo
             val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -328,12 +330,25 @@ private fun DayList(
         }
         if (!content.endReached) {
             item(key = MORE, contentType = MORE) {
-                SkeletonBlock(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(AppTheme.spacing.s16)
-                        .heightIn(min = AppTheme.sizes.listRowSingle),
-                )
+                if (content.moreFailed) {
+                    // El tramo siguiente no se pudo leer: lo leído sigue, y se puede reintentar.
+                    EmptyStateInline(
+                        title = stringResource(R.string.state_error_read),
+                        modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
+                    ) {
+                        InlineTextButton(
+                            stringResource(R.string.action_retry),
+                            { onAction(PurchaseHistoryAction.LoadMore) },
+                        )
+                    }
+                } else {
+                    SkeletonBlock(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(AppTheme.spacing.s16)
+                            .heightIn(min = AppTheme.sizes.listRowSingle),
+                    )
+                }
             }
         }
     }

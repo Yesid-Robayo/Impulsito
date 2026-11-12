@@ -81,7 +81,7 @@ fun HeldSalesScreen(
     LaunchedEffect(uiState.notice) {
         if (uiState.notice == null) return@LaunchedEffect
         onAction(HeldSalesAction.NoticeShown)
-        notices.showSnackbar(AppSnackbarVisuals(failed, SnackbarVariant.INFO))
+        notices.showSnackbar(AppSnackbarVisuals(failed, SnackbarVariant.ERROR))
     }
     Surface(
         modifier.fillMaxSize(),

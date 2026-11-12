@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.OpeningBalanceRes
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.AdjustStockUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentSubject
+import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import io.github.yesidrobayo.shopledger.ui.product.ProductNumberFormat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,16 +48,28 @@ class StockAdjustmentViewModel(
     /** Si ya llegó el producto una vez: el modo inicial se elige solo entonces. */
     private var loaded = false
 
+    /** El producto: una falla se dice con `Reintentar`, y lo escrito sigue en el estado. */
+    private val reads = ScreenReads()
+
     init {
         viewModelScope.launch {
-            operations.subject(productId).collect { subject ->
-                state.update { current -> current.withSubject(subject) }
+            reads.guard { operations.subject(productId) }
+                .collect { subject -> state.update { current -> current.withSubject(subject) } }
+        }
+        viewModelScope.launch {
+            reads.failed.collect { failed ->
+                if (failed) state.update { it.copy(content = StockAdjustmentContent.ReadFailed) }
             }
         }
     }
 
     fun onAction(action: StockAdjustmentAction) {
         when (action) {
+            StockAdjustmentAction.Retry -> {
+                state.update { it.copy(content = StockAdjustmentContent.Loading) }
+                reads.retry()
+            }
+
             is StockAdjustmentAction.ModeChanged ->
                 edit { copy(mode = action.mode, errors = emptyMap()) }
 

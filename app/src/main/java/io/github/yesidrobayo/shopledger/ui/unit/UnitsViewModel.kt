@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteConversionR
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UnitLifecycleResult
+import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import io.github.yesidrobayo.shopledger.ui.product.ProductNumberFormat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,9 +80,12 @@ class UnitsViewModel(
             onSaved = { removed -> if (!removed) show(UnitsMessage.ConversionSaved) },
         )
 
+    /** Unidades, conversiones y productos: una falla se dice con `Reintentar`, sin cerrar nada. */
+    private val reads = ScreenReads()
+
     init {
         viewModelScope.launch {
-            operations.units().collect { overview ->
+            reads.guard { operations.units() }.collect { overview ->
                 state.update {
                     it.copy(
                         loading = false,
@@ -93,12 +97,19 @@ class UnitsViewModel(
             }
         }
         viewModelScope.launch {
-            operations.conversions().collect { list ->
+            reads.guard { operations.conversions() }.collect { list ->
                 state.update { it.copy(conversions = list) }
             }
         }
         viewModelScope.launch {
-            operations.products().collect { list -> state.update { it.copy(products = list) } }
+            reads.guard { operations.products() }.collect { list ->
+                state.update { it.copy(products = list) }
+            }
+        }
+        viewModelScope.launch {
+            reads.failed.collect { failed ->
+                state.update { it.copy(readFailed = failed, loading = it.loading && !failed) }
+            }
         }
     }
 
@@ -106,6 +117,11 @@ class UnitsViewModel(
         when (action) {
             // La pantalla vuelve atrás: aquí no cambia nada.
             UnitsAction.Back -> Unit
+
+            UnitsAction.Retry -> {
+                state.update { it.copy(loading = true) }
+                reads.retry()
+            }
 
             is UnitsAction.SelectTab -> state.update { it.copy(tab = action.tab) }
 

@@ -43,8 +43,13 @@ sealed interface CheckoutContent {
     /** Leyendo. Casi nunca se ve: todo está en memoria. */
     data object Loading : CheckoutContent
 
-    /** No hay venta que cobrar, o no se pudo leer: se vuelve a la venta. */
+    /** No hay venta que cobrar: se vuelve a la venta. */
     data object Unavailable : CheckoutContent
+
+    /**
+     * No se pudo leer el catálogo: se dice, con `Reintentar`, y los pagos escritos se conservan.
+     */
+    data object ReadFailed : CheckoutContent
 
     data object Ready : CheckoutContent
 }

@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -59,6 +60,18 @@ class TaxSettingsViewModelTest {
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun aFailedReadShowsTheErrorAndRetryReadsAgain() {
+        store.failingReads = 1
+        runScreen { viewModel ->
+            assertEquals(TaxSettingsUiState.ReadFailed, viewModel.uiState.value)
+
+            viewModel.onAction(TaxSettingsAction.Retry)
+
+            assertEquals(TaxMode.NONE, ready(viewModel).mode)
+        }
     }
 
     @Test
@@ -260,12 +273,20 @@ private class MemoryTaxStore :
     val rates = MutableStateFlow<Map<Long, TaxRate>>(emptyMap())
     val settings = MutableStateFlow(TaxSettings(TaxMode.NONE, null, purchaseTaxRecoverable = false))
     val productCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
+
+    /** Cuántas lecturas de los ajustes fallan antes de responder. */
+    var failingReads = 0
     var failure: StorageFailure? = null
     private var nextId = 1L
 
     val settingsPort =
         object : TaxSettingsRepository {
-            override fun observe(): Flow<TaxSettings> = settings
+            override fun observe(): Flow<TaxSettings> = if (failingReads > 0) {
+                failingReads--
+                flow { throw IllegalStateException("lectura fallida de prueba") }
+            } else {
+                settings
+            }
 
             override suspend fun get(): TaxSettings = settings.value
 

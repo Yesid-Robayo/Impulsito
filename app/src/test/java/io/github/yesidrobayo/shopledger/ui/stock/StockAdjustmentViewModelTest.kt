@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -57,6 +58,23 @@ class StockAdjustmentViewModelTest {
                 AdjustmentPreview(QuantityMilli(10_000L), QuantityMilli(-2_000L), Money(-2_710L)),
                 model.uiState.value.preview,
             )
+        }
+
+    @Test
+    fun `a failed read says so, keeps what was written, and retry reads again`() =
+        runTest(dispatcher) {
+            operations.failingReads = 1
+            val model = viewModel()
+            model.onAction(StockAdjustmentAction.QuantityChanged("10"))
+            advanceUntilIdle()
+
+            assertEquals(StockAdjustmentContent.ReadFailed, model.uiState.value.content)
+
+            model.onAction(StockAdjustmentAction.Retry)
+            advanceUntilIdle()
+
+            assertTrue(model.uiState.value.content is StockAdjustmentContent.Ready)
+            assertEquals("10", model.uiState.value.quantityText)
         }
 
     @Test
@@ -253,7 +271,16 @@ class StockAdjustmentViewModelTest {
             StockAdjustmentResult.Adjusted(movementId = 7L, onHandAfter = QuantityMilli(9_000L))
         var opening: Triple<Long, QuantityMilli, Money>? = null
 
-        override fun subject(productId: Long): Flow<StockAdjustmentSubject?> = subject
+        /** Cuántas lecturas del producto fallan antes de responder. */
+        var failingReads = 0
+
+        override fun subject(productId: Long): Flow<StockAdjustmentSubject?> =
+            if (failingReads > 0) {
+                failingReads--
+                flow { throw IllegalStateException("lectura fallida de prueba") }
+            } else {
+                subject
+            }
 
         override suspend fun adjust(request: StockAdjustmentRequest): StockAdjustmentResult {
             requests += request

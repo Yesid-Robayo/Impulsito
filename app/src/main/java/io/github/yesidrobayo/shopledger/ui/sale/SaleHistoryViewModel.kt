@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,13 +53,15 @@ class SaleHistoryViewModel(
     private var loading: Job? = null
 
     init {
+        // Los filtros, el calendario y los avisos de cambios no cierran la pantalla si fallan: sin
+        // ellos falta un filtro o la fecha de hoy, y la lista lo dice con su propio error.
         viewModelScope.launch {
-            methods.collect { list ->
+            methods.catch {}.collect { list ->
                 state.update { it.copy(filters = it.filters.copy(methods = list)) }
             }
         }
         viewModelScope.launch {
-            calendar.collect { result ->
+            calendar.catch {}.collect { result ->
                 val ready = (result as? BusinessCalendarResult.Ready)?.calendar
                 businessCalendar = ready
                 state.update {
@@ -71,7 +74,7 @@ class SaleHistoryViewModel(
             }
         }
         // Cada venta nueva o anulada vuelve a leer lo que ya se mostraba.
-        viewModelScope.launch { reader.changes().collect { reload(keep = rows.size) } }
+        viewModelScope.launch { reader.changes().catch {}.collect { reload(keep = rows.size) } }
     }
 
     fun onAction(action: SaleHistoryAction) {
@@ -159,6 +162,8 @@ class SaleHistoryViewModel(
         if (endReached || loading?.isActive == true || rows.isEmpty()) return
         val filter = filterOf(state.value.filters)
         val after = rows.last().cursor
+        // Tras un tramo que falló, el pie vuelve a esperar mientras se reintenta.
+        state.update { it.copy(content = contentOf(filter)) }
         loading = viewModelScope.launch { read(filter, after, PAGE_SIZE, replace = false) }
     }
 
@@ -182,11 +187,23 @@ class SaleHistoryViewModel(
             throw cancelled
         } catch (failure: Exception) {
             // Una falla de lectura no cierra la pantalla: muestra el error y deja reintentar.
-            if (replace) state.update { it.copy(content = HistoryContent.ReadError) }
+            // El tramo siguiente que falla deja lo leído y ofrece reintentar en el pie de la lista.
+            state.update {
+                it.copy(
+                    content = if (replace) {
+                        HistoryContent.ReadError
+                    } else {
+                        contentOf(
+                            filter,
+                            moreFailed = true,
+                        )
+                    },
+                )
+            }
         }
     }
 
-    private fun contentOf(filter: SaleHistoryFilter): HistoryContent {
+    private fun contentOf(filter: SaleHistoryFilter, moreFailed: Boolean = false): HistoryContent {
         if (rows.isEmpty()) {
             return if (filter.isFiltered) HistoryContent.EmptyFiltered else HistoryContent.Empty
         }
@@ -194,7 +211,7 @@ class SaleHistoryViewModel(
             // Un día sin ventas activas suma cero, como lo dice su encabezado.
             HistoryDay(date, totals[date] ?: Money.ZERO, dayRows)
         }
-        return HistoryContent.Days(days, endReached)
+        return HistoryContent.Days(days, endReached, moreFailed)
     }
 
     private fun filterOf(filters: HistoryFilters) = SaleHistoryFilter(

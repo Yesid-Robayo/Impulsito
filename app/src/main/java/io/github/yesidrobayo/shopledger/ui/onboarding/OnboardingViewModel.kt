@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -103,8 +104,10 @@ class OnboardingViewModel(
         savedState.get<Boolean>(LOCK_CHOSEN)?.let { chosen ->
             state.update { it.copy(lockChosen = chosen) }
         }
+        // Sin calendario la zona queda sin elegir, como en un teléfono que no la conoce: el primer
+        // uso sigue, y no se cierra.
         viewModelScope.launch {
-            calendar.collect { result ->
+            calendar.catch {}.collect { result ->
                 val zone = (result as? BusinessCalendarResult.Ready)?.calendar?.zone
                 state.update { it.copy(zone = zone) }
             }
@@ -213,6 +216,7 @@ class OnboardingViewModel(
             BackupAction.BackUpNow,
             BackupAction.ChooseDestination,
             BackupAction.RetryCopies,
+            BackupAction.RetryStatus,
             BackupAction.ReviewPolicy,
             BackupAction.MessageShown,
             BackupAction.OpenProvider,

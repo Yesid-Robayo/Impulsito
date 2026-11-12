@@ -92,6 +92,8 @@ fun BackupRoute(navigator: AppNavigator) {
             val released = stringResource(R.string.backup_release_done)
             val releaseFailed = stringResource(R.string.backup_release_failed)
             val retry = stringResource(R.string.action_retry)
+            val requestFailed = stringResource(R.string.backup_state_failed)
+            val saveFailed = stringResource(R.string.state_error_save)
             val context = LocalContext.current
             // Con el bloqueo encendido, restaurar y desconectar piden de nuevo la verificación del
             // sistema.
@@ -176,6 +178,14 @@ fun BackupRoute(navigator: AppNavigator) {
 
                     BackupMessage.VERIFY_NO_SPACE ->
                         messages.show(AppSnackbarVisuals(verifyNoSpace, SnackbarVariant.INFO))
+
+                    BackupMessage.REQUEST_FAILED ->
+                        messages.show(
+                            AppSnackbarVisuals(requestFailed, SnackbarVariant.ERROR, retry),
+                        ) { viewModel.onAction(BackupAction.BackUpNow) }
+
+                    BackupMessage.SAVE_FAILED ->
+                        messages.show(AppSnackbarVisuals(saveFailed, SnackbarVariant.ERROR))
                 }
             }
             // El selector del sistema, para `Buscar un archivo`: cualquier tipo, porque una copia
@@ -259,6 +269,7 @@ fun BackupRoute(navigator: AppNavigator) {
 
                         BackupAction.BackUpNow,
                         BackupAction.RetryCopies,
+                        BackupAction.RetryStatus,
                         BackupAction.MessageShown,
                         BackupAction.MarkSeen,
                         BackupAction.ShowMissingHelp,

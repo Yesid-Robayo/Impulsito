@@ -24,4 +24,5 @@
     <string name="a11y_voided_expense_amount">%1$s, anulada</string>
     <string name="dialog_correct_expense_body">Esta despesa é anulada e uma nova é aberta com os mesmos dados. Se a nova não for salva, esta continua anulada.</string>
     <string name="notice_fix_archived_category">A categoria original está arquivada. É preciso escolher outra.</string>
+    <string name="expense_zone_unknown_title">Este telefone não conhece o fuso horário do negócio. Ao escolhê-lo, as despesas aparecem.</string>
 </resources>

@@ -76,7 +76,11 @@ sealed interface HistoryContent {
      * Las ventas leídas, por día, de la más nueva a la más antigua. Con [endReached] no hay más que
      * leer; si no, se lee el tramo siguiente al acercarse al final.
      */
-    data class Days(val days: List<HistoryDay>, val endReached: Boolean) : HistoryContent
+    data class Days(
+        val days: List<HistoryDay>,
+        val endReached: Boolean,
+        val moreFailed: Boolean = false,
+    ) : HistoryContent
 }
 
 /**

@@ -25,11 +25,11 @@ import io.github.yesidrobayo.shopledger.domain.usecase.tax.ReactivateTaxRateResu
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.ReactivateTaxRateUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.SaveTaxRateResult
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.TaxSettingsChange
+import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -52,12 +52,17 @@ class TaxSettingsUseCases(
  * confirmación y el aviso viven aquí. Una falla al guardar nunca borra lo escrito en la hoja.
  */
 class TaxSettingsViewModel(private val useCases: TaxSettingsUseCases) : ViewModel() {
+    /** Los ajustes y las tasas: una falla se dice con `Reintentar`, y la pantalla no se cierra. */
+    private val reads = ScreenReads()
+
     private val setup: StateFlow<TaxSetup?> =
-        useCases.observe().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        reads.guard { useCases.observe() }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private val overlay = MutableStateFlow(Overlay())
 
     val uiState: StateFlow<TaxSettingsUiState> =
-        combine(setup.filterNotNull(), overlay) { current, shown ->
+        combine(setup, overlay, reads.failed) { current, shown, failed ->
+            if (failed) return@combine TaxSettingsUiState.ReadFailed
+            if (current == null) return@combine TaxSettingsUiState.Loading
             TaxSettingsUiState.Ready(
                 mode = current.settings.mode,
                 purchaseTaxRecoverable = current.settings.purchaseTaxRecoverable,
@@ -78,6 +83,8 @@ class TaxSettingsViewModel(private val useCases: TaxSettingsUseCases) : ViewMode
         when (action) {
             // Volver lo resuelve la navegación.
             TaxSettingsAction.Back -> Unit
+
+            TaxSettingsAction.Retry -> reads.retry()
 
             is TaxSettingsAction.SelectMode -> {
                 if (action.mode != setup.value?.settings?.mode) {

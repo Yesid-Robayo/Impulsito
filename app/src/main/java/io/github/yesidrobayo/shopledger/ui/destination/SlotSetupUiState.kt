@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.SlotSetupLook
  * Lo que muestra `Preparar archivos en la nube`.
  *
  * @param look los tres archivos y la nube, o nulo mientras se lee `slots.json`, que es local.
+ * @param readFailed si no se pudo leer lo que hay: se dice, con `Reintentar`.
  * @param notice por qué no sirvió el último archivo elegido, hasta elegir otro.
  * @param working si se está revisando un archivo o confirmando las ranuras.
  * @param ready si las ranuras quedaron listas: se muestra `Archivos listos`, y la acción es
@@ -19,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.SlotSetupLook
  */
 data class SlotSetupUiState(
     val look: SlotSetupLook? = null,
+    val readFailed: Boolean = false,
     val notice: SlotSetupNotice? = null,
     val working: Boolean = false,
     val ready: Boolean = false,
@@ -81,6 +83,9 @@ enum class SlotSetupTarget {
 /** Lo que la persona puede hacer en la pantalla. */
 sealed interface SlotSetupAction {
     data object Back : SlotSetupAction
+
+    /** Vuelve a leer lo que hay tras una falla de lectura. */
+    data object Retry : SlotSetupAction
 
     data object Help : SlotSetupAction
 

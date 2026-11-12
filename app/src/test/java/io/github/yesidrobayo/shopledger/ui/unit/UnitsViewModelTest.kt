@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -69,6 +70,24 @@ class UnitsViewModelTest {
         assertEquals(1, state.conversions.size)
         assertEquals(listOf(RICE), state.products)
     }
+
+    @Test
+    fun `a failed read shows the error instead of closing and retry reads again`() =
+        runTest(dispatcher) {
+            operations.failingReads = 1
+            val model = model()
+
+            advanceUntilIdle()
+
+            assertTrue(model.uiState.value.readFailed)
+            assertFalse(model.uiState.value.loading)
+
+            model.onAction(UnitsAction.Retry)
+            advanceUntilIdle()
+
+            assertFalse(model.uiState.value.readFailed)
+            assertEquals(listOf(COUNT, KILO), model.uiState.value.active)
+        }
 
     @Test
     fun `a new unit is saved with what was written and says so`() = runTest(dispatcher) {
@@ -407,7 +426,15 @@ class UnitsViewModelTest {
         val lifecycle = mutableListOf<Pair<String, Long>>()
         val deleted = mutableListOf<Long>()
 
-        override fun units(): Flow<UnitsOverview> = overview
+        /** Cuántas lecturas de las unidades fallan antes de responder. */
+        var failingReads = 0
+
+        override fun units(): Flow<UnitsOverview> = if (failingReads > 0) {
+            failingReads--
+            flow { throw IllegalStateException("lectura fallida de prueba") }
+        } else {
+            overview
+        }
 
         override fun conversions(): Flow<List<ConversionEntry>> =
             MutableStateFlow(listOf(ConversionEntry(SAVED, RICE)))

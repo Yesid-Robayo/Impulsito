@@ -55,6 +55,12 @@ sealed interface ExpensesContent {
     /** No se pudo leer. Se puede reintentar. */
     data object ReadError : ExpensesContent
 
+    /**
+     * El teléfono no conoce la zona horaria del negocio, así que no sabe qué mes es hoy: se ofrece
+     * elegirla, porque reintentar no lo cambia.
+     */
+    data object UnknownZone : ExpensesContent
+
     /** Los gastos del mes por día, del más nuevo al más antiguo. */
     data class Days(val days: List<ExpenseListDay>) : ExpensesContent
 }
@@ -193,6 +199,9 @@ data class ExpenseNumberFormat(val moneySymbols: NumberSymbols, val currencyDeci
 
 /** Lo que la persona hace en la pantalla de gastos. */
 sealed interface ExpensesAction {
+    /** Abre la configuración regional para elegir la zona horaria del negocio. */
+    data object ChooseZone : ExpensesAction
+
     data object PreviousMonth : ExpensesAction
 
     data object NextMonth : ExpensesAction

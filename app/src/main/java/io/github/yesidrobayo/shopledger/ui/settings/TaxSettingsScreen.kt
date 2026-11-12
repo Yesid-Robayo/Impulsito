@@ -54,6 +54,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
@@ -139,6 +140,18 @@ fun TaxSettingsScreen(
             )
             when (uiState) {
                 TaxSettingsUiState.Loading -> LoadingRows()
+
+                TaxSettingsUiState.ReadFailed ->
+                    EmptyState(
+                        icon = R.drawable.ic_error,
+                        title = stringResource(R.string.state_error_read),
+                    ) {
+                        InlineTextButton(
+                            stringResource(R.string.action_retry),
+                            { onAction(TaxSettingsAction.Retry) },
+                        )
+                    }
+
                 is TaxSettingsUiState.Ready -> TaxContent(uiState, onAction)
             }
         }

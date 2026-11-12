@@ -139,7 +139,9 @@ class HeldSalesViewModel(
         overlay.update { it.copy(rename = editor.copy(working = true)) }
         viewModelScope.launch {
             val result = rename(editor.heldSaleId, editor.text)
-            overlay.update { it.copy(rename = null) }
+            // Si no se pudo guardar, la hoja sigue abierta con lo escrito, y el aviso lo dice.
+            val keep = result is HeldSaleChangeResult.StorageFailed
+            overlay.update { it.copy(rename = if (keep) editor.copy(working = false) else null) }
             report(result)
         }
     }

@@ -30,7 +30,10 @@ import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ResumeHeldSaleResult
+import io.github.yesidrobayo.shopledger.ui.ReadOutcome
 import io.github.yesidrobayo.shopledger.ui.payment.plainNumberText
+import io.github.yesidrobayo.shopledger.ui.readOrNull
+import io.github.yesidrobayo.shopledger.ui.readOutcome
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -672,7 +675,10 @@ class NewSaleViewModel(
                 }
                 changeDraft { SaleDraft(methodId = it.methodId, prefilled = true) }
             }
-            when (val result = resumeHeldSale(heldSaleId)) {
+            // Una falla de lectura se dice como una venta que no se pudo abrir: la actual ya quedó
+            // en espera, y la pantalla no se cierra.
+            val result = readOrNull { resumeHeldSale(heldSaleId) } ?: ResumeHeldSaleResult.NotFound
+            when (result) {
                 is ResumeHeldSaleResult.Resumed -> {
                     val sale = result.sale
                     changeDraft {
@@ -723,7 +729,11 @@ class NewSaleViewModel(
         if (correctionLoading) return
         correctionLoading = true
         viewModelScope.launch {
-            val correction = loadCorrection(saleId)
+            val read = readOutcome { loadCorrection(saleId) }
+            val correction = (read as? ReadOutcome.Read)?.value
+            if (read == ReadOutcome.Failed) {
+                overlay.update { it.copy(notice = SaleNotice.CORRECTION_FAILED) }
+            }
             val today = readyCatalog()?.today
             changeDraft { current ->
                 if (correction == null) {
@@ -757,7 +767,7 @@ class NewSaleViewModel(
 
     private fun reactivateProduct(productId: Long) {
         viewModelScope.launch {
-            if (!reactivate(productId)) {
+            if (readOrNull { reactivate(productId) } != true) {
                 overlay.update { it.copy(notice = SaleNotice.REACTIVATE_FAILED) }
             }
         }

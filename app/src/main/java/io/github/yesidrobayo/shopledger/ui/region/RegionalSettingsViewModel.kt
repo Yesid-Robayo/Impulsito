@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.region.RegionalSettingsProblem
 import io.github.yesidrobayo.shopledger.domain.rule.region.RegionalSettingsRules
 import io.github.yesidrobayo.shopledger.domain.usecase.region.SaveRegionalSettingsResult
+import io.github.yesidrobayo.shopledger.ui.readOrNull
 import java.util.Locale
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -60,13 +61,18 @@ class RegionalSettingsViewModel(
     )
 
     init {
+        load()
+    }
+
+    /** Lee lo guardado. Una falla de lectura no cierra la pantalla: se dice, con `Reintentar`. */
+    private fun load() {
         viewModelScope.launch {
             val source = settings()
-            if (source == null) {
+            val saved = source?.let { readOrNull { it.first() } }
+            if (saved == null) {
                 state.value = RegionalSettingsUiState.Unavailable
                 return@launch
             }
-            val saved = source.first()
             stored = saved
             state.value = withContext(workContext) { initialState(saved) }
         }
@@ -94,6 +100,11 @@ class RegionalSettingsViewModel(
 
     fun onAction(action: RegionalSettingsAction) {
         when (action) {
+            RegionalSettingsAction.Retry -> {
+                state.value = RegionalSettingsUiState.Loading
+                load()
+            }
+
             is RegionalSettingsAction.OpenSheet ->
                 update { it.copy(sheet = action.sheet, query = "").filtered() }
 

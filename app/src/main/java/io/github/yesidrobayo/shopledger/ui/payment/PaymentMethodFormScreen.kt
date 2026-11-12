@@ -106,6 +106,18 @@ fun PaymentMethodFormScreen(
                     modifier = Modifier.weight(1f),
                 )
 
+            PaymentMethodFormUiState.ReadFailed ->
+                EmptyState(
+                    icon = R.drawable.ic_error,
+                    title = stringResource(R.string.state_error_read),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    InlineTextButton(
+                        stringResource(R.string.action_retry),
+                        { onAction(PaymentMethodFormAction.Retry) },
+                    )
+                }
+
             is PaymentMethodFormUiState.Editing -> {
                 Column(
                     Modifier

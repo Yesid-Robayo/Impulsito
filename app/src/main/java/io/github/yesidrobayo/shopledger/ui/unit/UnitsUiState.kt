@@ -36,14 +36,16 @@ sealed interface UnitsMessage {
 /**
  * El estado de la pantalla de unidades y conversiones.
  *
- * [loading] hasta que llegan las unidades. [active] y [archived] van en el orden en que se crearon;
- * las vigentes en [inUse] no se eliminan, solo se archivan. [conversions] son las de los productos
+ * [loading] hasta que llegan las unidades, y [readFailed] si una lectura falló: se dice, con
+ * `Reintentar`. [active] y [archived] van en el orden en que se crearon; las vigentes en [inUse] no
+ * se eliminan, solo se archivan. [conversions] son las de los productos
  * vigentes, y [products] los productos vigentes que se pueden elegir al crear una. Las hojas abiertas
  * llegan aparte, con su propio estado.
  */
 @Immutable
 data class UnitsUiState(
     val loading: Boolean = true,
+    val readFailed: Boolean = false,
     val tab: UnitsTab = UnitsTab.UNITS,
     val active: List<MeasureUnit> = emptyList(),
     val archived: List<MeasureUnit> = emptyList(),
@@ -60,6 +62,9 @@ data class UnitsUiState(
 /** Lo que la persona hace en la pantalla, fuera de las hojas. */
 sealed interface UnitsAction {
     data object Back : UnitsAction
+
+    /** Vuelve a leer tras una falla de lectura. */
+    data object Retry : UnitsAction
 
     data class SelectTab(val tab: UnitsTab) : UnitsAction
 

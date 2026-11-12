@@ -80,7 +80,11 @@ sealed interface PurchaseHistoryContent {
      * Las compras leídas, por día, de la más nueva a la más antigua. Con [endReached] no hay más
      * que leer; si no, se lee el tramo siguiente al acercarse al final.
      */
-    data class Days(val days: List<PurchaseDay>, val endReached: Boolean) : PurchaseHistoryContent
+    data class Days(
+        val days: List<PurchaseDay>,
+        val endReached: Boolean,
+        val moreFailed: Boolean = false,
+    ) : PurchaseHistoryContent
 }
 
 /** Un día del historial, con lo comprado ese día en compras activas: una anulada no suma. */

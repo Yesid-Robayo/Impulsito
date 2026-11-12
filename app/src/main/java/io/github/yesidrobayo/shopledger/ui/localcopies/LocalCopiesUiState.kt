@@ -55,7 +55,7 @@ enum class LocalCopiesMessage {
     /** La copia quedó guardada y comprobada en el archivo. */
     SAVED,
 
-    /** No se pudo guardar la carpeta elegida: nada quedó a medias. */
+    /** No se pudo guardar la carpeta elegida, `Mantener al día` o quitarla: nada quedó a medias. */
     FOLDER_FAILED,
 
     /** Un toque llegó a través de otra app dibujada encima: no se guardó nada. */

@@ -48,6 +48,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
 import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
@@ -169,12 +170,13 @@ private fun UnitsList(uiState: UnitsUiState, onAction: (UnitsAction) -> Unit, mo
                 )
                 when {
                     uiState.loading -> LoadingRows()
+                    uiState.readFailed -> ReadFailed(onAction)
                     uiState.tab == UnitsTab.UNITS -> UnitsTabContent(uiState, onAction)
                     else -> ConversionsTabContent(uiState, onAction)
                 }
             }
         }
-        if (!uiState.loading) {
+        if (!uiState.loading && !uiState.readFailed) {
             val (text, action) =
                 when (uiState.tab) {
                     UnitsTab.UNITS -> R.string.unit_new_action to UnitsAction.NewUnit
@@ -495,3 +497,11 @@ private fun messageText(message: UnitsMessage): String = when (message) {
 }
 
 private const val SKELETON_ROWS = 6
+
+/** La lectura falló: se dice, y `Reintentar` vuelve a leer. Nada de lo guardado se tocó. */
+@Composable
+private fun ReadFailed(onAction: (UnitsAction) -> Unit) {
+    EmptyState(icon = R.drawable.ic_error, title = stringResource(R.string.state_error_read)) {
+        InlineTextButton(stringResource(R.string.action_retry), { onAction(UnitsAction.Retry) })
+    }
+}

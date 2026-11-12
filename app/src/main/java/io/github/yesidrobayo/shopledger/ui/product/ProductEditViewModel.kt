@@ -19,6 +19,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
+import io.github.yesidrobayo.shopledger.ui.ReadOutcome
+import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorModel
 import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorModel
 import io.github.yesidrobayo.shopledger.ui.unit.UnitNames
@@ -79,9 +81,15 @@ class ProductEditViewModel(
             onSaved = {},
         )
 
+    /**
+     * Categorías, unidades, precios, el producto que se edita y sus conversiones. Una falla de lectura
+     * no cierra el formulario: se dice con `Reintentar`, y lo escrito sigue en el estado.
+     */
+    private val reads = ScreenReads()
+
     init {
         viewModelScope.launch {
-            useCases.choices().collect { choices ->
+            reads.guard { useCases.choices() }.collect { choices ->
                 state.update { current ->
                     // Un producto nuevo empieza en la unidad de conteo, la primera de las iniciales.
                     val unitId = current.form.unitId ?: choices.units.firstOrNull()?.id
@@ -94,15 +102,35 @@ class ProductEditViewModel(
             }
         }
         viewModelScope.launch {
-            useCases.pricing().collect { context ->
+            reads.guard { useCases.pricing() }.collect { context ->
                 state.update { it.copy(pricing = context).withProfit() }
             }
         }
-        if (productId != null) viewModelScope.launch { loadProduct(productId) }
+        if (productId != null) {
+            viewModelScope.launch { showProduct(productId) }
+            viewModelScope.launch {
+                reads.guard { useCases.conversions(productId) }.collect { list ->
+                    state.update { it.copy(conversions = list) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            reads.failed.collect { failed ->
+                state.update { it.copy(readFailed = failed, loading = it.loading && !failed) }
+            }
+        }
     }
 
     fun onAction(action: ProductEditAction) {
         when (action) {
+            ProductEditAction.Retry -> {
+                // Un producto ya cargado no se vuelve a cargar, para no pisar lo que se cambió.
+                val reload = productId != null && state.value.product == null
+                state.update { it.copy(loading = reload) }
+                reads.retry()
+                if (reload && productId != null) viewModelScope.launch { showProduct(productId) }
+            }
+
             is ProductEditAction.NameChange -> edit(ProductEditField.NAME) {
                 copy(name = action.name)
             }
@@ -230,8 +258,12 @@ class ProductEditViewModel(
         )
     }
 
-    private suspend fun loadProduct(id: Long) {
-        val editing = useCases.load(id)
+    private suspend fun showProduct(id: Long) {
+        val editing =
+            when (val read = reads.once { useCases.load(id) }) {
+                is ReadOutcome.Read -> read.value
+                ReadOutcome.Failed -> return
+            }
         if (editing == null) {
             state.update { it.copy(loading = false, notFound = true) }
             return
@@ -270,7 +302,6 @@ class ProductEditViewModel(
                 averageCost = catalogCost,
             ).withProfit()
         }
-        useCases.conversions(id).collect { list -> state.update { it.copy(conversions = list) } }
     }
 
     /** Cambia el formulario con [change] y borra el error de [field], si lo tenía. */

@@ -270,6 +270,19 @@ private fun ExpenseList(
                 }
             }
 
+            ExpensesContent.UnknownZone -> CenteredState {
+                EmptyState(
+                    icon = R.drawable.ic_error,
+                    title = stringResource(R.string.expense_zone_unknown_title),
+                ) {
+                    PrimaryActionButton(
+                        text = stringResource(R.string.stats_zone_unknown_action),
+                        onClick = { onAction(ExpensesAction.ChooseZone) },
+                        variant = ActionVariant.TONAL,
+                    )
+                }
+            }
+
             ExpensesContent.ReadError -> CenteredState {
                 EmptyState(
                     icon = R.drawable.ic_error,

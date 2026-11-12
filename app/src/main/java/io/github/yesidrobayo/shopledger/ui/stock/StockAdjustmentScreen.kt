@@ -38,6 +38,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
@@ -89,6 +90,18 @@ fun StockAdjustmentScreen(
                     title = stringResource(R.string.state_error_read),
                     modifier = Modifier.weight(1f),
                 )
+
+            StockAdjustmentContent.ReadFailed ->
+                EmptyState(
+                    icon = R.drawable.ic_error,
+                    title = stringResource(R.string.state_error_read),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    InlineTextButton(
+                        stringResource(R.string.action_retry),
+                        { onAction(StockAdjustmentAction.Retry) },
+                    )
+                }
 
             is StockAdjustmentContent.Ready -> {
                 Column(

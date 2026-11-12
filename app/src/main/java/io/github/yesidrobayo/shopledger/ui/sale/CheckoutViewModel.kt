@@ -33,8 +33,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -91,9 +93,17 @@ class CheckoutViewModel(
         }
     }
 
-    private val catalog: StateFlow<CatalogLoad> = catalogSource()
-        .map<SaleCatalog, CatalogLoad> { CatalogLoad.Ready(it) }
-        .catch { emit(CatalogLoad.Failed) }
+    /** Cada `Reintentar` vuelve a leer el catálogo; los pagos escritos siguen en [editing]. */
+    private val attempts = MutableStateFlow(0)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val catalog: StateFlow<CatalogLoad> = attempts
+        .flatMapLatest {
+            catalogSource()
+                .map<SaleCatalog, CatalogLoad> { CatalogLoad.Ready(it) }
+                .onStart { emit(CatalogLoad.Loading) }
+                .catch { emit(CatalogLoad.Failed) }
+        }
         .flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.Eagerly, CatalogLoad.Loading)
 
@@ -118,6 +128,8 @@ class CheckoutViewModel(
 
     fun onAction(action: CheckoutAction) {
         when (action) {
+            CheckoutAction.Retry -> attempts.update { it + 1 }
+
             is CheckoutAction.AmountChange -> amount(action.index, action.text)
 
             is CheckoutAction.FeeChange -> fee(action.index, action.text)
@@ -557,7 +569,7 @@ class CheckoutViewModel(
         val current = sale ?: return CheckoutUiState(content = CheckoutContent.Unavailable)
         val catalog = when (load) {
             CatalogLoad.Loading -> return CheckoutUiState()
-            CatalogLoad.Failed -> return CheckoutUiState(content = CheckoutContent.Unavailable)
+            CatalogLoad.Failed -> return CheckoutUiState(content = CheckoutContent.ReadFailed)
             is CatalogLoad.Ready -> load.catalog
         }
         val methods = catalog.methods.associateBy { it.id }

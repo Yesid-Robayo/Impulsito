@@ -8,6 +8,9 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.SlotFileRejection
 import io.github.yesidrobayo.shopledger.domain.model.backup.SlotSetupConfirm
 import io.github.yesidrobayo.shopledger.domain.model.backup.SlotSetupLook
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.PrepareSlotFilesUseCase
+import io.github.yesidrobayo.shopledger.ui.ReadOutcome
+import io.github.yesidrobayo.shopledger.ui.readOrNull
+import io.github.yesidrobayo.shopledger.ui.readOutcome
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,10 +42,19 @@ class SlotSetupViewModel(
     val uiState: StateFlow<SlotSetupUiState> = state.asStateFlow()
 
     init {
+        read()
+    }
+
+    /**
+     * Lee lo que hay, sin red. Si no se puede leer, la pantalla lo dice con `Reintentar`, en lugar
+     * de quedarse en el esqueleto.
+     */
+    private fun read() {
         viewModelScope.launch {
-            val look = withContext(computation) { setup.look() }
+            val read = readOutcome { withContext(computation) { setup.look() } }
+            val look = (read as? ReadOutcome.Read)?.value
             if (look == null) {
-                state.update { it.copy(message = SlotSetupMessage.SAVE_FAILED) }
+                state.update { it.copy(readFailed = true) }
                 return@launch
             }
             show(look)
@@ -70,6 +82,11 @@ class SlotSetupViewModel(
 
             SlotSetupAction.Back -> go(SlotSetupTarget.BACK)
 
+            SlotSetupAction.Retry -> {
+                state.update { it.copy(readFailed = false) }
+                read()
+            }
+
             SlotSetupAction.Help -> go(SlotSetupTarget.HELP)
 
             SlotSetupAction.ConnectService -> go(SlotSetupTarget.WEBDAV_CONNECT)
@@ -95,7 +112,9 @@ class SlotSetupViewModel(
         if (state.value.working) return
         state.update { it.copy(working = true, notice = null) }
         viewModelScope.launch {
-            val outcome = withContext(computation) { setup.addFile(slot, uri) }
+            val outcome =
+                readOrNull { withContext(computation) { setup.addFile(slot, uri) } }
+                    ?: SlotFileOutcome.Unavailable
             state.update { it.copy(working = false) }
             when (outcome) {
                 is SlotFileOutcome.Accepted -> show(outcome.look)
@@ -133,14 +152,21 @@ class SlotSetupViewModel(
         if (state.value.working) return
         state.update { it.copy(working = true, confirmFailed = false) }
         viewModelScope.launch {
-            val result = withContext(computation) { setup.confirm() }
+            val result =
+                readOrNull { withContext(computation) { setup.confirm() } }
+                    ?: SlotSetupConfirm.Failed
             when (result) {
                 is SlotSetupConfirm.Done ->
                     state.update { it.copy(working = false, ready = true) }
 
                 SlotSetupConfirm.Incomplete, SlotSetupConfirm.OtherDestination -> {
                     // Algo cambió mientras tanto: se vuelve a leer lo que hay.
-                    val look = withContext(computation) { setup.look() }
+                    val look =
+                        (
+                            readOutcome {
+                                withContext(computation) { setup.look() }
+                            } as? ReadOutcome.Read
+                            )?.value
                     state.update { it.copy(working = false, look = look ?: it.look) }
                 }
 

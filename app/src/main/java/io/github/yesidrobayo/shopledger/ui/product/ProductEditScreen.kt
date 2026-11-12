@@ -136,6 +136,17 @@ fun ProductEditScreen(
                     title = stringResource(R.string.state_error_read),
                 )
 
+            uiState.readFailed ->
+                EmptyState(
+                    icon = R.drawable.ic_error,
+                    title = stringResource(R.string.state_error_read),
+                ) {
+                    InlineTextButton(
+                        stringResource(R.string.action_retry),
+                        { onAction(ProductEditAction.Retry) },
+                    )
+                }
+
             else -> {
                 Column(
                     Modifier

@@ -289,6 +289,9 @@ enum class SaleNotice {
      * `leftOut` del estado.
      */
     LINES_LEFT_OUT,
+
+    /** La venta que corrige a otra no pudo traer sus datos: abrió vacía, y se dice. */
+    CORRECTION_FAILED,
 }
 
 /** Lo que pasó con la espera, para decirlo una vez. */

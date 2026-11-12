@@ -222,19 +222,21 @@ class ExpensesViewModelTest {
         }
 
     @Test
-    fun `a read error can be retried, and an unknown zone is an error too`() = runTest(dispatcher) {
-        months.fail = true
-        val model = viewModel()
-        assertEquals(ExpensesContent.ReadError, model.uiState.value.content)
+    fun `a read error can be retried, and an unknown zone offers to choose it`() =
+        runTest(dispatcher) {
+            months.fail = true
+            val model = viewModel()
+            assertEquals(ExpensesContent.ReadError, model.uiState.value.content)
 
-        months.fail = false
-        model.onAction(ExpensesAction.Retry)
-        advanceUntilIdle()
-        assertEquals(ExpensesContent.Empty, model.uiState.value.content)
+            months.fail = false
+            model.onAction(ExpensesAction.Retry)
+            advanceUntilIdle()
+            assertEquals(ExpensesContent.Empty, model.uiState.value.content)
 
-        val lost = viewModel(BusinessCalendarResult.UnknownZone("Nowhere/Unknown"))
-        assertEquals(ExpensesContent.ReadError, lost.uiState.value.content)
-    }
+            // Reintentar no cambia la zona: se ofrece elegirla.
+            val lost = viewModel(BusinessCalendarResult.UnknownZone("Nowhere/Unknown"))
+            assertEquals(ExpensesContent.UnknownZone, lost.uiState.value.content)
+        }
 
     @Test
     fun `a new expense proposes other and today, and saves what was written`() =

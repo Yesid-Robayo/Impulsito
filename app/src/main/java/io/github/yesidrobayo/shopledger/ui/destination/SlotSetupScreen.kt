@@ -34,7 +34,9 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
+import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.HelpLink
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
@@ -135,7 +137,7 @@ fun SlotSetupScreen(
                     if (uiState.ready) {
                         item(key = READY) { ReadyBlock(appName, provider) }
                     }
-                    item(key = FILES) { Files(uiState) }
+                    item(key = FILES) { Files(uiState, onAction) }
                     uiState.notice?.let { notice ->
                         item(key = NOTICE) { Rejection(notice, appName, provider, onAction) }
                     }
@@ -179,8 +181,16 @@ private fun ReadyBlock(appName: String, provider: String) {
 
 /** Las tres filas, o su esqueleto mientras se lee `slots.json`, solo si tarda. */
 @Composable
-private fun Files(uiState: SlotSetupUiState) {
+private fun Files(uiState: SlotSetupUiState, onAction: (SlotSetupAction) -> Unit) {
     val look = uiState.look
+    if (look == null && uiState.readFailed) {
+        EmptyStateInline(title = stringResource(R.string.state_error_read)) {
+            InlineTextButton(stringResource(R.string.action_retry), {
+                onAction(SlotSetupAction.Retry)
+            })
+        }
+        return
+    }
     if (look == null) {
         DelayedSkeleton {
             Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {

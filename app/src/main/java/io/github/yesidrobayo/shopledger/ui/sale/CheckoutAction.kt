@@ -2,6 +2,9 @@ package io.github.yesidrobayo.shopledger.ui.sale
 
 /** Lo que la persona hace en el cobro. La navegación la resuelve la ruta. */
 sealed interface CheckoutAction {
+    /** Vuelve a leer el catálogo tras una falla de lectura. */
+    data object Retry : CheckoutAction
+
     /** Lo escrito en el monto del pago número [index]. */
     data class AmountChange(val index: Int, val text: String) : CheckoutAction
 

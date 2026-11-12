@@ -255,6 +255,7 @@ private fun PaymentMethodFormPane(
                         is PaymentMethodFormAction.PriceAdjustmentChanged,
                         is PaymentMethodFormAction.InstructionsChanged,
                         PaymentMethodFormAction.Save,
+                        PaymentMethodFormAction.Retry,
                         PaymentMethodFormAction.AskArchive,
                         PaymentMethodFormAction.AskDelete,
                         PaymentMethodFormAction.DismissDialog,

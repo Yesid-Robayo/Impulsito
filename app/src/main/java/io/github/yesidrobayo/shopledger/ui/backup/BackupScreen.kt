@@ -166,7 +166,14 @@ private fun LazyListScope.overview(uiState: BackupUiState, onAction: (BackupActi
             Modifier.padding(horizontal = AppTheme.spacing.s16, vertical = AppTheme.spacing.s8),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
         ) {
-            if (wording == null) {
+            if (wording == null && uiState.statusReadFailed) {
+                EmptyStateInline(title = stringResource(R.string.state_error_read)) {
+                    InlineTextButton(
+                        stringResource(R.string.action_retry),
+                        { onAction(BackupAction.RetryStatus) },
+                    )
+                }
+            } else if (wording == null) {
                 DelayedSkeleton {
                     SkeletonBlock(
                         Modifier.fillMaxWidth().heightIn(

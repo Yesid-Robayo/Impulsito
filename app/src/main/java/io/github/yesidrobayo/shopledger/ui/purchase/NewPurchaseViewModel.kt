@@ -26,7 +26,10 @@ import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseSubject
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseUnit
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
+import io.github.yesidrobayo.shopledger.ui.ReadOutcome
 import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
+import io.github.yesidrobayo.shopledger.ui.readOrNull
+import io.github.yesidrobayo.shopledger.ui.readOutcome
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -226,7 +229,9 @@ class NewPurchaseViewModel(
      */
     private fun prefillCorrection(catalog: PurchaseCatalog, purchaseId: Long) {
         viewModelScope.launch {
-            val correction = loadCorrection(purchaseId) ?: return@launch
+            // Si no se pudo leer, la compra abre vacía: la anulada ya quedó anulada.
+            val read = readOutcome { loadCorrection(purchaseId) }
+            val correction = (read as? ReadOutcome.Read)?.value ?: return@launch
             val products = catalog.products.associateBy { it.id }
             // Un producto que se archivó entre la anulación y ahora tampoco se trae.
             val kept = correction.lines.filter { it.productId in products }
@@ -321,7 +326,7 @@ class NewPurchaseViewModel(
         val dialog = overlay.value.dialog as? PurchaseDialog.Reactivate ?: return
         overlay.update { it.copy(dialog = null) }
         viewModelScope.launch {
-            if (reactivate(dialog.productId)) {
+            if (readOrNull { reactivate(dialog.productId) } == true) {
                 // Se agrega cuando el catálogo lo traiga ya vigente.
                 val catalog = catalog.first { load ->
                     load is PurchaseCatalogLoad.Ready &&
@@ -341,6 +346,11 @@ class NewPurchaseViewModel(
     }
 
     private fun retry() {
+        // Sin catálogo no hay qué registrar: reintentar siempre vuelve a leerlo primero.
+        if (catalog.value is PurchaseCatalogLoad.Failed) {
+            attempts.update { it + 1 }
+            return
+        }
         when (overlay.value.notice) {
             is PurchaseNotice.RegisterFailed -> register()
 

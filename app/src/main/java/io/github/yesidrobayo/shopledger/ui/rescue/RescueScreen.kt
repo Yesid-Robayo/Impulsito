@@ -45,6 +45,7 @@ import io.github.yesidrobayo.shopledger.ui.components.BackupCopyRow
 import io.github.yesidrobayo.shopledger.ui.components.BackupCopyRowData
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
+import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
@@ -265,12 +266,15 @@ private fun CopiesSheet(uiState: RescueUiState, onAction: (RescueAction) -> Unit
             onAction(RescueAction.Restore(BackupAction.FindFile))
         }
         when (val copies = uiState.copies) {
+            // El esqueleto solo aparece si la lista tarda, como en el resto de la app.
             null ->
-                Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
-                    repeat(SKELETON_ROWS) {
-                        SkeletonBlock(
-                            Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.listRow),
-                        )
+                DelayedSkeleton {
+                    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
+                        repeat(SKELETON_ROWS) {
+                            SkeletonBlock(
+                                Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.listRow),
+                            )
+                        }
                     }
                 }
 

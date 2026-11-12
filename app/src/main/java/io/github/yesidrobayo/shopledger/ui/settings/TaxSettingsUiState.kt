@@ -9,6 +9,9 @@ sealed interface TaxSettingsUiState {
     /** Leyendo los ajustes. Los datos son locales: casi nunca se ve. */
     data object Loading : TaxSettingsUiState
 
+    /** La lectura falló: se dice, con `Reintentar`. Nada de lo guardado cambió. */
+    data object ReadFailed : TaxSettingsUiState
+
     /**
      * Con datos. [missingDefaultRate] avisa que se cobra impuesto sin tasa por defecto. [editor] es
      * la hoja de una tasa, si está abierta; [dialog], la confirmación pendiente; [message], el
@@ -100,6 +103,9 @@ sealed interface TaxMessage {
 /** Lo que la persona hace en la pantalla de impuestos. */
 sealed interface TaxSettingsAction {
     data object Back : TaxSettingsAction
+
+    /** Vuelve a leer tras una falla de lectura. */
+    data object Retry : TaxSettingsAction
 
     /** Tocó un modo. Si es otro, se pide confirmar. */
     data class SelectMode(val mode: TaxMode) : TaxSettingsAction

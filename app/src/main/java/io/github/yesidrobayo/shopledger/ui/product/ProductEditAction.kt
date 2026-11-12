@@ -4,6 +4,9 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 
 /** Lo que la persona hace en el formulario de un producto. */
 sealed interface ProductEditAction {
+    /** Vuelve a leer tras una falla de lectura. */
+    data object Retry : ProductEditAction
+
     data class NameChange(val name: String) : ProductEditAction
 
     /** Salió del campo del nombre: se comprueba si otro producto ya lo usa. */

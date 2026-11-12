@@ -64,6 +64,7 @@ import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
@@ -147,7 +148,12 @@ fun RegionalSettingsScreen(
                     EmptyState(
                         icon = R.drawable.ic_error,
                         title = stringResource(R.string.state_error_read),
-                    )
+                    ) {
+                        InlineTextButton(
+                            stringResource(R.string.action_retry),
+                            { onAction(RegionalSettingsAction.Retry) },
+                        )
+                    }
                 }
 
             is RegionalSettingsUiState.Ready ->

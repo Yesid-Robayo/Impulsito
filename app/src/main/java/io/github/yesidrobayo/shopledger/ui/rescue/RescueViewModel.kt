@@ -118,6 +118,7 @@ class RescueViewModel(
 
             // El selector lo abre la pantalla. Lo demás no existe en el rescate.
             BackupAction.FindFile,
+            BackupAction.RetryStatus,
             BackupAction.Back,
             BackupAction.BackUpNow,
             BackupAction.MessageShown,

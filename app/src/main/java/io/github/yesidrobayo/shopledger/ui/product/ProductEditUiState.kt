@@ -92,7 +92,8 @@ data class ProductEditForm(
 /**
  * El estado del formulario de un producto.
  *
- * [loading] mientras se lee el producto que se edita. [notFound] si ya no existe. Con [costLocked],
+ * [loading] mientras se lee el producto que se edita. [notFound] si ya no existe, y [readFailed] si
+ * una lectura falló: se dice, con `Reintentar`, y lo escrito sigue aquí. Con [costLocked],
  * el costo lo lleva el libro y se muestra [averageCost] solo para leer. Con [unitLocked] y
  * [stockModeLocked], la unidad base y el modo de stock ya no cambian, porque el producto tiene
  * historia. [product] es el producto guardado, y [conversions] sus conversiones de compra y venta:
@@ -108,6 +109,7 @@ data class ProductEditUiState(
     val isNew: Boolean,
     val loading: Boolean = false,
     val notFound: Boolean = false,
+    val readFailed: Boolean = false,
     val form: ProductEditForm = ProductEditForm(),
     val categories: List<Category> = emptyList(),
     val units: List<MeasureUnit> = emptyList(),

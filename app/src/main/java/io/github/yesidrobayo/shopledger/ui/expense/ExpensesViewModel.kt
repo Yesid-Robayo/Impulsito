@@ -21,7 +21,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseMonth
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.SaveExpenseCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseResult
+import io.github.yesidrobayo.shopledger.ui.ReadOutcome
 import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
+import io.github.yesidrobayo.shopledger.ui.readOutcome
 import kotlin.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -80,7 +82,9 @@ class ExpensesViewModel(
 
     init {
         viewModelScope.launch {
-            calendar.collect { result ->
+            // Si el calendario no se puede leer, la pantalla lo trata como una zona que no conoce:
+            // no se cierra, y ofrece elegirla.
+            calendar.catch {}.collect { result ->
                 val ready = when (result) {
                     is BusinessCalendarResult.Ready -> result.calendar
                     is BusinessCalendarResult.UnknownZone -> null
@@ -89,7 +93,7 @@ class ExpensesViewModel(
                 val today = ready?.businessDateOf(now())
                 state.update { it.copy(today = today, weekStartDay = ready?.weekStartDay) }
                 if (today == null) {
-                    state.update { it.copy(content = ExpensesContent.ReadError) }
+                    state.update { it.copy(content = ExpensesContent.UnknownZone) }
                 } else if (query.value == null) {
                     query.value = Query(today.date.yearMonth, categoryId = null, attempt = 0)
                 }
@@ -195,6 +199,7 @@ class ExpensesViewModel(
 
             // Lo resuelve la navegación; la pantalla queda como estaba.
             ExpensesAction.ConfirmCurrency,
+            ExpensesAction.ChooseZone,
             ExpensesAction.OpenRecurring,
             ExpensesAction.ShowSales,
             ExpensesAction.ShowPurchases,
@@ -316,7 +321,13 @@ class ExpensesViewModel(
                 editDetail { it.copy(status = ExpenseSheetStatus.FAILED) }
                 return@launch
             }
-            val correction = loadCorrection(detail.row.id)
+            // El gasto ya quedó anulado: si sus datos no se pueden leer, la hoja nueva no abre, y la
+            // pantalla no se cierra.
+            val correction = (
+                readOutcome {
+                    loadCorrection(detail.row.id)
+                } as? ReadOutcome.Read
+                )?.value
             state.update { current ->
                 current.copy(
                     detail = null,
