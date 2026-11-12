@@ -2,9 +2,6 @@ package io.github.yesidrobayo.shopledger.ui.stock
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
-import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryRules
-import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -91,19 +88,9 @@ class InventoryViewModel(
             value = overview.value,
             archivedValue = overview.archivedValue,
             hasStockWithoutCost = overview.hasStockWithoutCost,
-            items = products.map { itemOf(it, overview) },
+            items = products.map { inventoryItemOf(it, overview.units) },
         )
     }
-
-    private fun itemOf(product: Product, overview: InventoryOverview) = InventoryItem(
-        id = product.id,
-        name = product.details.name,
-        // Solo llegan productos con libro, que siempre tienen estado.
-        status = InventoryRules.statusOf(product) ?: InventoryStatus.NORMAL,
-        onHand = product.onHand,
-        minStock = product.details.minStock,
-        unit = overview.units[product.details.baseUnitId],
-    )
 
     private companion object {
         /** Lo que sigue viva la lectura al rotar la pantalla, para no releer el inventario. */

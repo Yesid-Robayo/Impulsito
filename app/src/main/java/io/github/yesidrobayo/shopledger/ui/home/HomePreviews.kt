@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
+import io.github.yesidrobayo.shopledger.ui.stock.previewInventoryItems
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 import kotlin.time.Instant
@@ -57,6 +58,20 @@ internal fun previewHomeContent(): HomeUiState.Content {
             previewRow(3L, 64, s.LONG_NAME, s.LONG_AMOUNT),
         ),
     )
+}
+
+/** La tarjeta por agotarse de muestra: el stock negativo, el agotado y el bajo del inventario. */
+internal fun previewHomeLowStock(): HomeLowStock {
+    val items = previewInventoryItems()
+    return HomeLowStock(count = items.size, negativeCount = 1, items = items.take(3))
+}
+
+@ThemePreviews
+@Composable
+private fun HomeLowStockPreview() {
+    PreviewTheme {
+        HomeScreen(previewHomeContent(), onAction = {}, lowStock = previewHomeLowStock())
+    }
 }
 
 @ThemePreviews

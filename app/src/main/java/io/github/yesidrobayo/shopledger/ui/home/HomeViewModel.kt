@@ -11,7 +11,9 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.domain.usecase.home.TodaySales
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
+import io.github.yesidrobayo.shopledger.ui.stock.inventoryItemOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
@@ -43,6 +46,9 @@ import kotlinx.coroutines.withContext
  *   plano, para ver un día sin copia aunque nada haya cambiado.
  * @param providerLabel el nombre de la nube del teléfono, si el destino son sus ranuras.
  * @param zones la zona del negocio, para decir cuándo fue la última copia.
+ * @param inventory el inventario, del que sale la tarjeta por agotarse con el mismo conteo y el
+ *   mismo orden que su pantalla. No mira las alertas: se ve aunque las notificaciones estén
+ * negadas.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
@@ -53,6 +59,7 @@ class HomeViewModel(
     backupOverview: (Flow<Unit>) -> Flow<BackupOverview> = { emptyFlow() },
     private val providerLabel: suspend () -> String? = { null },
     zones: Flow<BusinessTimeZone?> = flowOf(null),
+    inventory: Flow<InventoryOverview> = emptyFlow(),
 ) : ViewModel() {
     // La primera mirada a la fecha es al abrir; las demás, al volver a primer plano. Un contador,
     // y no un evento, porque dos vueltas seguidas sin leer entre ellas valen por una.
@@ -88,6 +95,27 @@ class HomeViewModel(
             .catch { emit(null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
 
+    /**
+     * La tarjeta por agotarse, aparte de las ventas: si no se puede leer, Inicio sigue mostrando el
+     * día, sin tarjeta. Sin nada que se esté acabando no hay tarjeta.
+     */
+    val lowStock: StateFlow<HomeLowStock?> =
+        inventory
+            .map<InventoryOverview, HomeLowStock?> { overview ->
+                overview.lowStock.takeIf { it.isNotEmpty() }?.let { low ->
+                    HomeLowStock(
+                        count = low.size,
+                        negativeCount = overview.negative.size,
+                        items = low.take(LOW_STOCK_ROWS).map {
+                            inventoryItemOf(it, overview.units)
+                        },
+                    )
+                }
+            }
+            .flowOn(computation)
+            .catch { emit(null) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
+
     private var providerFor: Pair<BackupDestinationKind?, String?>? = null
 
     private suspend fun providerOf(kind: BackupDestinationKind?): String? {
@@ -111,6 +139,9 @@ class HomeViewModel(
             HomeAction.OpenBackup,
             HomeAction.ChooseDestination,
             HomeAction.ReviewPolicy,
+            HomeAction.OpenPurchase,
+            is HomeAction.OpenLowStock,
+            is HomeAction.OpenProduct,
             -> Unit
         }
     }
@@ -156,6 +187,9 @@ class HomeViewModel(
     companion object {
         /** Cuántas ventas muestra Inicio: el resto vive en el historial. */
         const val RECENT_SALES = 5
+
+        /** Cuántos productos muestra la tarjeta por agotarse: el resto vive en el inventario. */
+        const val LOW_STOCK_ROWS = 3
 
         /** Tras girar la pantalla, las lecturas siguen vivas este tiempo y no se repiten. */
         private const val STOP_AFTER_MS = 5_000L

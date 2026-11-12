@@ -4,6 +4,8 @@ import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
 
 /**
@@ -30,6 +32,20 @@ data class InventoryItem(
     val onHand: QuantityMilli,
     val minStock: QuantityMilli,
     val unit: MeasureUnit?,
+)
+
+/**
+ * La fila de [product], con su unidad de [units]. La usan el inventario y la tarjeta de Inicio,
+ * para que las dos digan lo mismo.
+ */
+internal fun inventoryItemOf(product: Product, units: Map<Long, MeasureUnit>) = InventoryItem(
+    id = product.id,
+    name = product.details.name,
+    // Solo llegan productos con libro, que siempre tienen estado.
+    status = InventoryRules.statusOf(product) ?: InventoryStatus.NORMAL,
+    onHand = product.onHand,
+    minStock = product.details.minStock,
+    unit = units[product.details.baseUnitId],
 )
 
 /** Lo que muestra el inventario debajo de sus pestañas. */

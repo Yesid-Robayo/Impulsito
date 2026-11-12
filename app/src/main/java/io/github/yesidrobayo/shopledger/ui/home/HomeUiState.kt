@@ -1,9 +1,11 @@
 package io.github.yesidrobayo.shopledger.ui.home
 
+import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
+import io.github.yesidrobayo.shopledger.ui.stock.InventoryItem
 
 /**
  * Lo que muestra Inicio. Es un resumen: se lee de la base local, así que lo normal es no ver nunca
@@ -73,4 +75,21 @@ sealed interface HomeAction {
 
     /** Copias en pausa por la política: la muestra para aceptarla. */
     data object ReviewPolicy : HomeAction
+
+    /** El atajo `Compra`: abre una compra nueva. */
+    data object OpenPurchase : HomeAction
+
+    /** `Ver todos` de la tarjeta por agotarse, o su línea de stock negativo con [negativeOnly]. */
+    data class OpenLowStock(val negativeOnly: Boolean) : HomeAction
+
+    /** Un producto de la tarjeta por agotarse: abre su detalle. */
+    data class OpenProduct(val productId: Long) : HomeAction
 }
+
+/**
+ * La tarjeta `Por agotarse`: cuántos se están acabando, cuántos en negativo, y los primeros
+ * [items], en el mismo orden y con el mismo conteo que el inventario. Inicio no la muestra si no
+ * hay nada que se esté acabando.
+ */
+@Immutable
+data class HomeLowStock(val count: Int, val negativeCount: Int, val items: List<InventoryItem>)

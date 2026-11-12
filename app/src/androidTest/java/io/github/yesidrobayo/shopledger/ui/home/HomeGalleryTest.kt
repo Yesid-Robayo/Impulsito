@@ -28,8 +28,8 @@ import org.junit.runner.RunWith
 /**
  * Capturas de Inicio para la puerta de calidad visual: un día con ventas, con pérdida y un monto de
  * trece cifras, sin ventas todavía, el primer uso, el modo discreto, sin valor y con error. Con la
- * paleta predeterminada y otra, en claro y en oscuro. Solo corre con `captureDir`; la letra grande y
- * la ventana ancha se fijan en el emulador antes de correrla.
+ * paleta predeterminada y otra, en claro y en oscuro. Solo corre con `captureDir`; la letra grande
+ * y la ventana ancha se fijan en el emulador antes de correrla.
  */
 @RunWith(AndroidJUnit4::class)
 class HomeGalleryTest {
@@ -73,6 +73,7 @@ class HomeGalleryTest {
                 false,
             ),
             Triple("error", HomeUiState.ReadError, false),
+            Triple("lowStock", base, false),
         )
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             for (palette in listOf(ColorPalette.INDIGO_MUSTARD, ColorPalette.GARNET_HONEY)) {
@@ -87,7 +88,16 @@ class HomeGalleryTest {
                                         LocalAppFormats provides previewFormats(),
                                         LocalDiscreetMode provides discreet,
                                     ) {
-                                        HomeScreen(uiState = state, onAction = {})
+                                        HomeScreen(
+                                            uiState = state,
+                                            onAction = {},
+                                            lowStock =
+                                                if (name == "lowStock") {
+                                                    previewHomeLowStock()
+                                                } else {
+                                                    null
+                                                },
+                                        )
                                     }
                                 }
                             }

@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -62,26 +63,29 @@ import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.ProductRow
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.stock.inventoryRowData
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
  * Inicio: cómo va el día y qué requiere atención, en un vistazo.
  *
  * - La barra lleva la fecha de hoy en la zona del negocio y el acceso a los ajustes.
- * - El héroe dice lo vendido hoy y en cuántas ventas, la ganancia en ventas en el acento y el margen.
- *   Sin ventas todavía, dice cero y espera la primera. En modo discreto, las cifras de dinero y el
- *   margen se ocultan, y el número de ventas se ve.
+ * - El héroe dice lo vendido hoy y en cuántas ventas, la ganancia en ventas en el acento y el
+ * margen.   Sin ventas todavía, dice cero y espera la primera. En modo discreto, las cifras de
+ * dinero y el   margen se ocultan, y el número de ventas se ve.
  * - Sin productos, una tarjeta lleva a crear el primero.
  * - Los atajos llevan a `Negocio`, la única entrada a sus herramientas en un teléfono.
  * - Las últimas cinco ventas, con `Ver todas` hacia el historial.
@@ -98,6 +102,7 @@ fun HomeScreen(
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
     backup: BackupWording? = null,
+    lowStock: HomeLowStock? = null,
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -156,9 +161,23 @@ fun HomeScreen(
 
                     is HomeUiState.Content ->
                         if (expanded) {
-                            TwoPanes(uiState, backup, onAction, bottom, Modifier.weight(1f))
+                            TwoPanes(
+                                uiState,
+                                backup,
+                                lowStock,
+                                onAction,
+                                bottom,
+                                Modifier.weight(1f),
+                            )
                         } else {
-                            OnePane(uiState, backup, onAction, bottom, Modifier.weight(1f))
+                            OnePane(
+                                uiState,
+                                backup,
+                                lowStock,
+                                onAction,
+                                bottom,
+                                Modifier.weight(1f),
+                            )
                         }
                 }
             }
@@ -167,8 +186,8 @@ fun HomeScreen(
 }
 
 /**
- * Lo que el contenido deja libre al final: la barra del sistema, la barra inferior y lo que sobresale
- * `Vender`, para que la última venta no quede debajo.
+ * Lo que el contenido deja libre al final: la barra del sistema, la barra inferior y lo que
+ * sobresale `Vender`, para que la última venta no quede debajo.
  */
 @Composable
 private fun bottomSpace(): Dp {
@@ -182,6 +201,7 @@ private fun bottomSpace(): Dp {
 private fun OnePane(
     content: HomeUiState.Content,
     backup: BackupWording?,
+    lowStock: HomeLowStock?,
     onAction: (HomeAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
@@ -196,7 +216,7 @@ private fun OnePane(
                     Modifier.padding(horizontal = AppTheme.spacing.s16),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
                 ) {
-                    Overview(content, backup, onAction)
+                    Overview(content, backup, lowStock, onAction)
                 }
             }
             recentSales(content, onAction)
@@ -209,6 +229,7 @@ private fun OnePane(
 private fun TwoPanes(
     content: HomeUiState.Content,
     backup: BackupWording?,
+    lowStock: HomeLowStock?,
     onAction: (HomeAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
@@ -225,7 +246,7 @@ private fun TwoPanes(
                 .padding(start = AppTheme.spacing.s8, bottom = bottom),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
         ) {
-            Overview(content, backup, onAction)
+            Overview(content, backup, lowStock, onAction)
         }
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -236,11 +257,12 @@ private fun TwoPanes(
     }
 }
 
-/** El héroe, la tarjeta del primer uso y los atajos, en ese orden. */
+/** El héroe, la tarjeta del primer uso, los atajos y lo que se está acabando, en ese orden. */
 @Composable
 private fun ColumnScope.Overview(
     content: HomeUiState.Content,
     backup: BackupWording?,
+    lowStock: HomeLowStock?,
     onAction: (HomeAction) -> Unit,
 ) {
     backup?.let { BackupSummary(it, onAction) }
@@ -262,12 +284,13 @@ private fun ColumnScope.Overview(
         }
     }
     Shortcuts(onAction)
+    lowStock?.let { LowStockCard(it, onAction) }
 }
 
 /**
- * El respaldo en Inicio: el chip, siempre visible, en su propia línea bajo la barra; el banner sobre
- * el héroe solo si el estado pide atención; y los avisos que ningún estado oculta. Todo abre la
- * pantalla del respaldo, salvo sin destino, que lleva a elegir dónde guardar.
+ * El respaldo en Inicio: el chip, siempre visible, en su propia línea bajo la barra; el banner
+ * sobre el héroe solo si el estado pide atención; y los avisos que ningún estado oculta. Todo abre
+ * la pantalla del respaldo, salvo sin destino, que lleva a elegir dónde guardar.
  */
 @Composable
 private fun BackupSummary(backup: BackupWording, onAction: (HomeAction) -> Unit) {
@@ -336,8 +359,8 @@ private fun BackupNoticeCard(text: String, onAction: (HomeAction) -> Unit) {
 }
 
 /**
- * Los atajos tonales, que reparten el ancho y bajan a otra línea si la letra no cabe. Hoy solo
- * `Negocio`: `Compra` y `Gasto` se suman aquí cuando existan sus pantallas.
+ * Los atajos tonales, que reparten el ancho y bajan a otra línea si la letra no cabe: `Compra` y
+ * `Negocio`. `Gasto` se suma aquí cuando exista su pantalla.
  */
 @Composable
 private fun Shortcuts(onAction: (HomeAction) -> Unit) {
@@ -347,11 +370,65 @@ private fun Shortcuts(onAction: (HomeAction) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
     ) {
         PrimaryActionButton(
+            text = stringResource(R.string.home_shortcut_purchase),
+            onClick = { onAction(HomeAction.OpenPurchase) },
+            variant = ActionVariant.TONAL,
+            modifier = Modifier.weight(1f),
+        )
+        PrimaryActionButton(
             text = stringResource(R.string.hub_entry_action),
             onClick = { onAction(HomeAction.OpenBusiness) },
             variant = ActionVariant.TONAL,
             modifier = Modifier.weight(1f),
         )
+    }
+}
+
+/**
+ * `Por agotarse`: cuántos se están acabando, con `Ver todos` hacia el inventario, la línea del
+ * stock negativo si lo hay, que abre el inventario con ese filtro, y los primeros productos, en el
+ * mismo orden que el inventario. Cada producto abre su detalle. El stock se ve en modo discreto.
+ */
+@Composable
+private fun LowStockCard(lowStock: HomeLowStock, onAction: (HomeAction) -> Unit) {
+    val spacing = AppTheme.spacing
+    AppCard(contentPadding = PaddingValues(vertical = spacing.s8)) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = spacing.s16, end = spacing.s8),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.home_low_stock_count, lowStock.count),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
+            InlineTextButton(
+                stringResource(R.string.action_view_all_masculine),
+                { onAction(HomeAction.OpenLowStock(negativeOnly = false)) },
+            )
+        }
+        if (lowStock.negativeCount > 0) {
+            NoticeCard(
+                text = pluralStringResource(
+                    R.plurals.notice_negative_stock,
+                    lowStock.negativeCount,
+                    lowStock.negativeCount,
+                ),
+                variant = NoticeVariant.WARNING,
+                modifier = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s4),
+                icon = R.drawable.ic_error,
+                actionLabel = stringResource(R.string.action_view),
+                onAction = { onAction(HomeAction.OpenLowStock(negativeOnly = true)) },
+            )
+        }
+        lowStock.items.forEachIndexed { index, item ->
+            ProductRow(
+                data = inventoryRowData(item),
+                onClick = { onAction(HomeAction.OpenProduct(item.id)) },
+                divider = index < lowStock.items.lastIndex,
+            )
+        }
     }
 }
 
@@ -501,8 +578,8 @@ private fun LazyListScope.recentSales(
 }
 
 /**
- * Una venta reciente: la hora si es de hoy, o la fecha si no, el primer producto y cuántos más, y el
- * total a la derecha. Anulada, va apagada, tachada y con su etiqueta, como en el historial.
+ * Una venta reciente: la hora si es de hoy, o la fecha si no, el primer producto y cuántos más, y
+ * el total a la derecha. Anulada, va apagada, tachada y con su etiqueta, como en el historial.
  */
 @Composable
 private fun RecentSaleRow(
@@ -545,8 +622,8 @@ private fun RecentSaleRow(
             voided = row.voided,
         )
     }
-    // Con letra grande, un total largo dejaría al nombre sin ancho: el total baja a su propia línea,
-    // a la derecha, y el nombre conserva la fila.
+    // Con letra grande, un total largo dejaría al nombre sin ancho: el total baja a su propia
+    // línea, a la derecha, y el nombre conserva la fila.
     val stacked = LocalDensity.current.fontScale >= STACKED_FONT_SCALE
     Column(Modifier.clickable(onClick = onClick)) {
         Column(

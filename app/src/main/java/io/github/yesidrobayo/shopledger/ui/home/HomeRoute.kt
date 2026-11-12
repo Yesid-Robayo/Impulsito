@@ -11,8 +11,10 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverv
 import io.github.yesidrobayo.shopledger.domain.usecase.home.ObserveTodaySalesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
+import io.github.yesidrobayo.shopledger.navigation.InventoryFilter
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.TopLevelDestination
@@ -21,8 +23,8 @@ import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 import kotlinx.coroutines.flow.map
 
 /**
- * Inicio en la navegación. Cada vez que la pantalla vuelve a primer plano, mira de nuevo qué día es:
- * así las cifras de hoy reinician al día siguiente sin recargar nada a mano.
+ * Inicio en la navegación. Cada vez que la pantalla vuelve a primer plano, mira de nuevo qué día
+ * es: así las cifras de hoy reinician al día siguiente sin recargar nada a mano.
  */
 @Composable
 fun HomeRoute(navigator: AppNavigator) {
@@ -51,6 +53,7 @@ fun HomeRoute(navigator: AppNavigator) {
                 zones = BusinessCalendarSource(ports.settings).observe().map {
                     (it as? BusinessCalendarResult.Ready)?.calendar?.zone
                 },
+                inventory = ObserveInventoryUseCase(ports.products, ports.units)(),
             )
         }
     when (model) {
@@ -62,6 +65,7 @@ fun HomeRoute(navigator: AppNavigator) {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val backup by viewModel.backup.collectAsStateWithLifecycle()
+            val lowStock by viewModel.lowStock.collectAsStateWithLifecycle()
             val policy = LocalPolicyPrompt.current
             LifecycleResumeEffect(viewModel) {
                 viewModel.onReturnToForeground()
@@ -69,6 +73,7 @@ fun HomeRoute(navigator: AppNavigator) {
             }
             HomeScreen(
                 backup = backup,
+                lowStock = lowStock,
                 uiState = uiState,
                 onAction = { action ->
                     when (action) {
@@ -90,6 +95,22 @@ fun HomeRoute(navigator: AppNavigator) {
                             navigator.open(AppNavKey.BackupDestinationChoice())
 
                         HomeAction.ReviewPolicy -> policy.review()
+
+                        HomeAction.OpenPurchase -> navigator.open(AppNavKey.Purchase())
+
+                        is HomeAction.OpenLowStock ->
+                            navigator.open(
+                                AppNavKey.Inventory(
+                                    if (action.negativeOnly) {
+                                        InventoryFilter.NEGATIVE_STOCK
+                                    } else {
+                                        InventoryFilter.LOW_STOCK
+                                    },
+                                ),
+                            )
+
+                        is HomeAction.OpenProduct ->
+                            navigator.open(AppNavKey.ProductDetail(action.productId))
 
                         HomeAction.Retry -> viewModel.onAction(action)
                     }

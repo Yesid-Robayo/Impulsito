@@ -270,18 +270,11 @@ private fun ArchivedNote(amount: Money) {
  */
 @Composable
 private fun InventoryRow(item: InventoryItem, onAction: (InventoryAction) -> Unit) {
-    val fallback = UnitLabel(stringResource(R.string.seed_units_unit), false)
-    val unit = item.unit?.let { unitLabel(it) } ?: fallback
     val adjust = stringResource(R.string.stock_adjust_title)
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ProductRow(
-                data =
-                    ProductRowData(
-                        name = item.name,
-                        stock = stockOf(item, unit),
-                        trailing = ProductRowTrailing.Stock(item.onHand, item.minStock, unit),
-                    ),
+                data = inventoryRowData(item),
                 modifier = Modifier.weight(1f),
                 onClick = { onAction(InventoryAction.OpenProduct(item.id)) },
                 divider = false,
@@ -300,6 +293,21 @@ private fun InventoryRow(item: InventoryItem, onAction: (InventoryAction) -> Uni
             color = MaterialTheme.colorScheme.outlineVariant,
         )
     }
+}
+
+/**
+ * Lo que dice la fila de [item]: su nombre, su stock con el icono de su estado, y a la derecha el
+ * stock y el mínimo. La usan el inventario y la tarjeta por agotarse de Inicio.
+ */
+@Composable
+internal fun inventoryRowData(item: InventoryItem): ProductRowData {
+    val fallback = UnitLabel(stringResource(R.string.seed_units_unit), false)
+    val unit = item.unit?.let { unitLabel(it) } ?: fallback
+    return ProductRowData(
+        name = item.name,
+        stock = stockOf(item, unit),
+        trailing = ProductRowTrailing.Stock(item.onHand, item.minStock, unit),
+    )
 }
 
 private fun stockOf(item: InventoryItem, unit: UnitLabel): ProductStock = when (item.status) {

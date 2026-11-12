@@ -28,4 +28,12 @@
     <string name="empty_low_stock_body">Todos os produtos estão acima do mínimo.</string>
     <string name="notice_inventory_no_cost">Há produtos sem custo: o valor real do estoque pode ser maior.</string>
     <string name="inventory_archived_value">Inclui %1$s de produtos arquivados.</string>
+    <string name="home_shortcut_purchase">Compra</string>
+    <string name="home_low_stock_count">Acabando: %1$d</string>
+    <string name="action_view_all_masculine">Ver todos</string>
+    <plurals name="notice_negative_stock">
+        <item quantity="one">%1$d produto com estoque negativo</item>
+        <item quantity="many">%1$d de produtos com estoque negativo</item>
+        <item quantity="other">%1$d produtos com estoque negativo</item>
+    </plurals>
 </resources>
