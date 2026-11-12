@@ -1,10 +1,12 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.backup
 
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
 import io.github.yesidrobayo.shopledger.domain.model.backup.SafetyCopyInfo
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
+import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -26,6 +28,16 @@ class RestoreBackupUseCaseTest {
                 return RestoreProgress.Refused(RestoreProblem.DAMAGED)
             }
 
+            override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? {
+                calls += "before-update-copy"
+                return BeforeUpdateCopy(Instant.parse("2026-11-01T10:00:00Z"))
+            }
+
+            override suspend fun restoreBeforeUpdate(): RestoreProgress {
+                calls += "before-update"
+                return RestoreProgress.Refused(RestoreProblem.NEEDS_UPDATE)
+            }
+
             override suspend fun answer(answer: RestoreAnswer): RestoreProgress {
                 calls += "answer:$answer"
                 return RestoreProgress.ReadyToRestart(1)
@@ -45,7 +57,22 @@ class RestoreBackupUseCaseTest {
         assertEquals(RestoreProgress.Refused(RestoreProblem.DAMAGED), use.file("content://b"))
         assertEquals(RestoreProgress.ReadyToRestart(1), use.answer(RestoreAnswer.Repair))
         assertTrue(use.cancel())
-        assertEquals(listOf("copy:a", "file:content://b", "answer:Repair", "cancel"), calls)
+        assertEquals(
+            BeforeUpdateCopy(Instant.parse("2026-11-01T10:00:00Z")),
+            use.beforeUpdateCopy(),
+        )
+        assertEquals(RestoreProgress.Refused(RestoreProblem.NEEDS_UPDATE), use.beforeUpdate())
+        assertEquals(
+            listOf(
+                "copy:a",
+                "file:content://b",
+                "answer:Repair",
+                "cancel",
+                "before-update-copy",
+                "before-update",
+            ),
+            calls,
+        )
     }
 
     @Test

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
@@ -93,6 +94,10 @@ class OnboardingViewModelTest {
             started += uri
             return RestoreProgress.ReadyToRestart(0)
         }
+
+        override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = null
+
+        override suspend fun restoreBeforeUpdate(): RestoreProgress = RestoreProgress.Failed
 
         override suspend fun answer(answer: RestoreAnswer) = RestoreProgress.ReadyToRestart(0)
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Volver a antes de la actualización de los datos. Textos de la guía de redacción. -->
+    <string name="backup_undo_migration_label">Voltar a antes da atualização</string>
+    <string name="dialog_undo_migration_title">Voltar a antes da atualização?</string>
+    <string name="dialog_undo_migration_body">Os dados voltam a como estavam em %1$s, antes de atualizar %2$s. O que foi registrado depois não estará lá.</string>
+    <string name="dialog_go_back_action">Voltar a essa cópia</string>
+    <string name="dialog_go_back_exit">Continuar aqui</string>
+</resources>

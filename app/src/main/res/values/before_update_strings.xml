@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Volver a antes de la actualización de los datos. Textos de la guía de redacción. -->
+    <string name="backup_undo_migration_label">Go back to before the update</string>
+    <string name="dialog_undo_migration_title">Go back to before the update?</string>
+    <!-- dialog_undo_migration_body: %1$s = date, %2$s = app -->
+    <string name="dialog_undo_migration_body">The data returns to how it was on %1$s, before updating %2$s. Anything recorded later will be missing.</string>
+    <string name="dialog_go_back_action">Go back to that copy</string>
+    <string name="dialog_go_back_exit">Stay here</string>
+</resources>

@@ -69,7 +69,20 @@ enum class RestoreProblem {
 
     /** Otra causa, como una migración que falló: los datos actuales no cambiaron. */
     OTHER,
+
+    /**
+     * La copia previa a la actualización no abre con esta versión de la app, que todavía no trae la
+     * migración corregida: hay que instalar la versión más reciente.
+     */
+    NEEDS_UPDATE,
 }
+
+/**
+ * La copia que la app guardó en este teléfono justo antes de su última actualización de los datos.
+ *
+ * @property createdAt cuándo se guardó, según el reloj del teléfono.
+ */
+data class BeforeUpdateCopy(val createdAt: Instant)
 
 /** Lo que la persona contesta cuando la restauración pregunta. */
 sealed interface RestoreAnswer {

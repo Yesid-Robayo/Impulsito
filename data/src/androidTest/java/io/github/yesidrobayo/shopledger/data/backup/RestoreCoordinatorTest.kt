@@ -10,6 +10,10 @@ import io.github.yesidrobayo.shopledger.data.destination.FakeBackupDestination
 import io.github.yesidrobayo.shopledger.data.destination.ListedCopy
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
+import io.github.yesidrobayo.shopledger.data.local.PreMigrationResult
+import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
+import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
+import io.github.yesidrobayo.shopledger.data.local.deleteDatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.inspectWithoutRoom
 import io.github.yesidrobayo.shopledger.data.local.longValue
 import io.github.yesidrobayo.shopledger.data.local.texts
@@ -30,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -578,6 +583,178 @@ class RestoreCoordinatorTest {
             death++
         }
         assertTrue("La preparación hizo operaciones en disco: $death", death > 3)
+    }
+
+    @Test
+    fun goingBackToBeforeTheUpdateBringsBackWhatAMigrationLostAndForcesAnUpload() =
+        runBlocking<Unit> {
+            val before = migrationThatLostRows()
+            val copy = files.databaseFiles.preMigrationCandidate.readBytes()
+            assertEquals(1L, count("products"))
+
+            assertEquals(
+                RestoreStage.ReadyToRestart(0),
+                coordinator().start(RestoreSource.BeforeUpdate),
+            )
+            reopen()
+
+            assertEquals(3L, count("products"))
+            val state = fixture.state()
+            assertEquals("Fuerza una subida", before.changeSeq + 1, state.changeSeq)
+            assertEquals(before.verifiedSeq, state.verifiedSeq)
+            assertEquals(fixture.now.toEpochMilliseconds(), state.firstUnsyncedAt)
+            assertEquals(
+                "Conserva su última copia buena",
+                before.lastSuccessAt,
+                state.lastSuccessAt,
+            )
+            // La copia previa no se consume, y lo que dejó la migración quedó en la de seguridad.
+            assertArrayEquals(copy, files.databaseFiles.preMigrationCandidate.readBytes())
+            assertEquals(1, SafetyCopyStore(files, ops, Dispatchers.IO).copies().size)
+            assertNothingLeft()
+            assertEquals(BackupRun.Verified(2), fixture.runner(destination).run(control))
+        }
+
+    @Test
+    fun aCorrectedVersionMigratesTheCopyBeforeTheUpdateAndABrokenOneChangesNothing() =
+        runBlocking<Unit> {
+            migrationThatLostRows()
+            val copy = files.databaseFiles.preMigrationCandidate.readBytes()
+            val migrated = mutableListOf<File>()
+
+            // La versión instalada todavía trae la migración rota: no cambia nada.
+            val broken =
+                coordinator(appSchemaVersion = 2, migrator = { error("migración rota de prueba") })
+            assertEquals(
+                RestoreStage.Refused(RestoreRefusal.MigrationFailed),
+                broken.start(RestoreSource.BeforeUpdate),
+            )
+            assertNothingLeft()
+            assertEquals(1L, count("products"))
+            assertArrayEquals(copy, files.databaseFiles.preMigrationCandidate.readBytes())
+
+            // La versión corregida migra la candidata, nunca la copia previa.
+            val corrected = coordinator(appSchemaVersion = 2, migrator = { migrated += it })
+            assertEquals(
+                RestoreStage.ReadyToRestart(0),
+                corrected.start(RestoreSource.BeforeUpdate),
+            )
+            assertEquals(listOf(files.candidate), migrated)
+            assertArrayEquals(copy, files.databaseFiles.preMigrationCandidate.readBytes())
+        }
+
+    @Test
+    fun withoutACopyBeforeTheUpdateNothingStartsAndNothingChanges() = runBlocking<Unit> {
+        fixture.addProduct("Pan de prueba")
+
+        assertEquals(
+            RestoreStage.Refused(RestoreRefusal.NoBeforeUpdateCopy),
+            coordinator().start(RestoreSource.BeforeUpdate),
+        )
+
+        assertNothingLeft()
+        assertEquals(1L, count("products"))
+        assertFalse(files.databaseFiles.preMigrationCandidate.exists())
+    }
+
+    @Test
+    fun aDeathAfterEachStepOfGoingBackLeavesTheOldOrTheNewDatabaseNeverAnEmptyOne() =
+        runBlocking<Unit> {
+            migrationThatLostRows()
+            var copy = files.databaseFiles.preMigrationCandidate.readBytes()
+            var death = 1
+            while (true) {
+                var operations = 0
+                backupMutex = Mutex()
+                ops = DurableFileOps(listener = { if (++operations == death) throw ProcessDeath() })
+                val died = diesGoingBack()
+                if (died) {
+                    // Una segunda muerte seguida, en la primera operación del intento siguiente.
+                    runCatching { fixture.ports.closeForRestore() }
+                    ops = DurableFileOps()
+                    reopen()
+                    var again = 0
+                    ops = DurableFileOps(listener = { if (++again == 1) throw ProcessDeath() })
+                    diesGoingBack()
+                    runCatching { fixture.ports.closeForRestore() }
+                }
+                ops = DurableFileOps()
+                reopen()
+
+                val products = count("products")
+                assertTrue(
+                    "Muerte tras la operación $death: $products productos",
+                    products == 1L || products == 3L,
+                )
+                if (!died) assertEquals(3L, products)
+                assertArrayEquals(copy, files.databaseFiles.preMigrationCandidate.readBytes())
+                assertFalse(files.lock.exists())
+                assertFalse(files.journal.exists())
+                assertFalse(files.candidate.exists())
+                assertFalse(files.safetyCopyTemporary.exists())
+                if (!died) break
+                // Cada caso empieza otra vez desde la base que dejó la migración defectuosa.
+                if (products == 3L) {
+                    // Un proceso nuevo con una base nueva, como en la prueba de muertes de la lista.
+                    fixture.ports.closeForRestore()
+                    fixture.close()
+                    reopen()
+                    fixture.connect()
+                    migrationThatLostRows(backUp = false)
+                    copy = files.databaseFiles.preMigrationCandidate.readBytes()
+                }
+                death++
+            }
+            assertTrue("Volver atrás hizo operaciones en disco: $death", death > 3)
+        }
+
+    /**
+     * Vuelve a antes de la actualización hasta dejarla lista para reiniciar. `true` si el proceso
+     * murió a mitad.
+     *
+     * Una muerte tras la copia de seguridad la deja en disco, con cambios que no llegaron a la nube:
+     * tras dos así, la preparación pregunta cuál descartar y nunca descarta sola. La prueba contesta
+     * como la persona, con la más vieja.
+     */
+    private suspend fun diesGoingBack(): Boolean = try {
+        val coordinator = coordinator()
+        var stage = coordinator.start(RestoreSource.BeforeUpdate)
+        while (stage is RestoreStage.ChooseSafetyCopyToDiscard) {
+            stage = coordinator.decide(RestoreDecision.DiscardSafetyCopy(stage.copies.first()))
+        }
+        assertEquals(RestoreStage.ReadyToRestart(0), stage)
+        false
+    } catch (_: ProcessDeath) {
+        true
+    }
+
+    /**
+     * Deja lo que deja una migración que pierde filas sin fallar: la copia previa tiene tres
+     * productos, y la base activa solo uno. Devuelve el estado del respaldo de la copia previa.
+     * Con [backUp], antes sube la primera copia, para que la copia previa ya tenga algo verificado.
+     */
+    private suspend fun migrationThatLostRows(backUp: Boolean = true): BackupStateEntity {
+        fixture.addProduct("Pan de prueba")
+        if (backUp) assertEquals(BackupRun.Verified(1), fixture.runner(destination).run(control))
+        val lost = File(fixture.noBackup, "migracion-que-pierde.db")
+        lost.delete()
+        fixture.sql("VACUUM INTO '${lost.path}'")
+        fixture.addProduct("Leche de prueba")
+        fixture.addProduct("Queso de prueba")
+        val before = fixture.state()
+        // La copia previa, como la deja la compuerta antes de migrar.
+        assertEquals(
+            PreMigrationResult.Ready,
+            VacuumPreMigrationCopy(files.databaseFiles, fixture.log)
+                .prepare(AppDatabase.SCHEMA_VERSION),
+        )
+        // La migración defectuosa deja la base con un solo producto.
+        fixture.ports.closeForRestore()
+        deleteDatabaseFiles(fixture.file)
+        lost.copyTo(fixture.file)
+        lost.delete()
+        reopen()
+        return before
     }
 
     /** La muerte del proceso: nada la atrapa, igual que en un teléfono. */

@@ -248,6 +248,7 @@ class OnboardingViewModel(
             BackupAction.RunDrill,
             BackupAction.ToggleHealth,
             BackupAction.CheckFullCopy,
+            BackupAction.UndoUpdate,
             -> Unit
         }
     }

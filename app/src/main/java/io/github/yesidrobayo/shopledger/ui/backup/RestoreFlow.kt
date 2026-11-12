@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
@@ -42,6 +43,10 @@ internal class RestoreFlow(
         if (copy.restorable) set(RestoreUi.ConfirmCopy(copy))
     }
 
+    /** `Volver a antes de la actualización`: pide confirmar, con el día de [copy]. */
+    fun confirmBeforeUpdate(copy: BeforeUpdateCopy) =
+        set(RestoreUi.ConfirmBeforeUpdate(copy.createdAt))
+
     /** El selector devolvió [uri]: pide confirmar, porque no viene de la lista. */
     fun picked(uri: String) = set(RestoreUi.ConfirmFile(uri))
 
@@ -58,6 +63,9 @@ internal class RestoreFlow(
                 }
 
                 is RestoreUi.ConfirmFile -> RestoreOrigin.FILE to suspend { use.file(current.uri) }
+
+                is RestoreUi.ConfirmBeforeUpdate ->
+                    RestoreOrigin.BEFORE_UPDATE to suspend { use.beforeUpdate() }
 
                 RestoreUi.Idle,
                 is RestoreUi.CopySheet,
@@ -92,6 +100,7 @@ internal class RestoreFlow(
                 is RestoreUi.CopySheet,
                 is RestoreUi.ConfirmCopy,
                 is RestoreUi.ConfirmFile,
+                is RestoreUi.ConfirmBeforeUpdate,
                 is RestoreUi.Stopped,
                 RestoreUi.Ready,
                 -> return

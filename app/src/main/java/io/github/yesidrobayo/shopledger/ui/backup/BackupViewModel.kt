@@ -191,6 +191,9 @@ class BackupViewModel(
                     if (it.release is ReleaseUi.Working) it else it.copy(release = ReleaseUi.Idle)
                 }
 
+            BackupAction.UndoUpdate ->
+                state.value.beforeUpdate?.let { restoring?.confirmBeforeUpdate(it) }
+
             BackupAction.Disconnect ->
                 if (link != null) state.update { it.copy(disconnect = DisconnectUi.ASKING) }
 
@@ -560,6 +563,8 @@ class BackupViewModel(
                 null
             }
             val encrypted = if (info != null) read { copiesEncrypted() } else null
+            // La copia previa a migrar es local: se ofrece con o sin destino.
+            val beforeUpdate = restore?.let { use -> read { use.beforeUpdateCopy() } }
             state.update { current ->
                 val slots = info as? BackupDestinationInfo.Slots
                 current.copy(
@@ -568,6 +573,7 @@ class BackupViewModel(
                     handoff = handoff,
                     uploadedThisMonth = usage,
                     copiesEncrypted = encrypted,
+                    beforeUpdate = beforeUpdate,
                     wording =
                         current.wording?.copy(
                             providerLabel = slots?.providerLabel,

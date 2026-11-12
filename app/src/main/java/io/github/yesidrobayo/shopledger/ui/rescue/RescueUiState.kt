@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.rescue
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
 import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
 
@@ -16,6 +17,7 @@ import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
  * @property copies las copias del destino; nulo mientras se leen.
  * @property damagedAvailable si una restauración apartó una base dañada que se puede compartir.
  * @property sharing si el diálogo para compartir esa base está abierto.
+ * @property beforeUpdate la copia previa a la última actualización, o nula si no hay.
  */
 data class RescueUiState(
     val cause: RescueReason,
@@ -27,12 +29,18 @@ data class RescueUiState(
     val languageOpen: Boolean = false,
     val damagedAvailable: Boolean = false,
     val sharing: Boolean = false,
+    val beforeUpdate: BeforeUpdateCopy? = null,
 ) {
     /** La acción principal, según la causa y lo que haya en el teléfono. */
     val primary: RescuePrimary
         get() = when {
             cause is RescueReason.NotEnoughSpace -> RescuePrimary.RETRY
+
+            cause == RescueReason.MigrationFailed && beforeUpdate != null ->
+                RescuePrimary.BEFORE_UPDATE
+
             destinationKind == null -> RescuePrimary.FIND_FILE
+
             else -> RescuePrimary.RESTORE
         }
 
@@ -50,6 +58,9 @@ enum class RescuePrimary {
 
     /** `Reintentar`: sin espacio para migrar, tras liberarlo. */
     RETRY,
+
+    /** `Volver a antes de la actualización`: la migración falló y existe la copia previa. */
+    BEFORE_UPDATE,
 }
 
 /** Lo que la persona hace en la pantalla de rescate. */
@@ -63,6 +74,9 @@ sealed interface RescueAction {
 
     /** `Reintentar`: reinicia la app, que vuelve a pasar por la compuerta. */
     data object Retry : RescueAction
+
+    /** `Volver a antes de la actualización`: primero la confirmación, con el día de la copia. */
+    data object BeforeUpdate : RescueAction
 
     /** Lo de restaurar, igual que en la pantalla del respaldo. */
     data class Restore(val action: BackupAction) : RescueAction

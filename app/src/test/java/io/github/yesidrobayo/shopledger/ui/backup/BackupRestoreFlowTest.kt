@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKin
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
@@ -97,6 +98,10 @@ class BackupRestoreFlowTest {
             gate?.await()
             return next
         }
+
+        override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = null
+
+        override suspend fun restoreBeforeUpdate(): RestoreProgress = RestoreProgress.Failed
 
         override suspend fun answer(answer: RestoreAnswer): RestoreProgress {
             answers += answer

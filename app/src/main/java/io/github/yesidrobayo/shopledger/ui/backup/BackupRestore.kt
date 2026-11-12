@@ -48,6 +48,9 @@ import kotlin.time.Instant
 enum class RestoreOrigin {
     LIST,
     FILE,
+
+    /** La copia previa a la última actualización, en este teléfono. */
+    BEFORE_UPDATE,
 }
 
 /** Por qué se detuvo una restauración, ya en lo que dice la pantalla. */
@@ -63,6 +66,9 @@ enum class RestoreNotice {
     NOT_A_BACKUP,
     OTHER,
     CANCELLED,
+
+    /** La copia previa a la actualización no abre con esta versión: hay que instalar la corregida. */
+    NEEDS_UPDATE,
 }
 
 /** En qué va la restauración en la pantalla del respaldo. Ninguno cambia los datos. */
@@ -77,6 +83,9 @@ sealed interface RestoreUi {
 
     /** `¿Restaurar este archivo?`: un archivo de afuera, del que no se sabe quién lo hizo. */
     data class ConfirmFile(val uri: String) : RestoreUi
+
+    /** `¿Volver a antes de la actualización?`, con el día de la copia previa. */
+    data class ConfirmBeforeUpdate(val createdAt: Instant) : RestoreUi
 
     /** Revisando y preparando: se puede cancelar, no navegar. */
     data class Working(val origin: RestoreOrigin) : RestoreUi
@@ -120,12 +129,14 @@ private fun noticeOf(problem: RestoreProblem, origin: RestoreOrigin): RestoreNot
         RestoreProblem.DAMAGED, RestoreProblem.MARKED_FATAL ->
             when (origin) {
                 RestoreOrigin.FILE -> RestoreNotice.TRY_ANOTHER_FILE
-                RestoreOrigin.LIST -> RestoreNotice.DAMAGED
+                RestoreOrigin.LIST, RestoreOrigin.BEFORE_UPDATE -> RestoreNotice.DAMAGED
             }
 
         RestoreProblem.NEWER_VERSION -> RestoreNotice.NEWER_VERSION
 
         RestoreProblem.TOO_LARGE -> RestoreNotice.TOO_LARGE
+
+        RestoreProblem.NEEDS_UPDATE -> RestoreNotice.NEEDS_UPDATE
 
         RestoreProblem.ENCRYPTED,
         RestoreProblem.NOT_CONNECTED,
@@ -182,6 +193,23 @@ internal fun RestoreLayer(
                 onDismiss = { onAction(BackupAction.CloseRestore) },
                 variant = ConfirmVariant.DESTRUCTIVE,
                 dismissLabel = stringResource(R.string.action_cancel),
+                sensitive = true,
+            )
+
+        is RestoreUi.ConfirmBeforeUpdate ->
+            ConfirmDialog(
+                title = stringResource(R.string.dialog_undo_migration_title),
+                body =
+                    stringResource(
+                        R.string.dialog_undo_migration_body,
+                        dateOf(restore.createdAt),
+                        stringResource(R.string.app_name),
+                    ),
+                confirmLabel = stringResource(R.string.dialog_go_back_action),
+                onConfirm = { onAction(BackupAction.StartRestore) },
+                onDismiss = { onAction(BackupAction.CloseRestore) },
+                variant = ConfirmVariant.DESTRUCTIVE,
+                dismissLabel = stringResource(R.string.dialog_go_back_exit),
                 sensitive = true,
             )
 
@@ -415,6 +443,11 @@ internal fun RestoreStoppedNotice(stopped: RestoreUi.Stopped, onAction: (BackupA
             RestoreNotice.OTHER -> stringResource(R.string.restore_error_other)
 
             RestoreNotice.CANCELLED -> stringResource(R.string.restore_error_cancelled)
+
+            RestoreNotice.NEEDS_UPDATE -> stringResource(
+                R.string.rescue_premigration_incompatible,
+                app,
+            )
         }
     // Con un archivo que no sirvió, la salida es elegir otro; con la lista, otra copia de la lista.
     val findFile = stopped.notice == RestoreNotice.TRY_ANOTHER_FILE ||

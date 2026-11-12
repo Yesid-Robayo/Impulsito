@@ -4,9 +4,11 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
+import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
@@ -84,6 +86,15 @@ class RescueViewModelTest {
             return next
         }
 
+        var beforeUpdate: BeforeUpdateCopy? = null
+
+        override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = beforeUpdate
+
+        override suspend fun restoreBeforeUpdate(): RestoreProgress {
+            started += "before-update"
+            return next
+        }
+
         override suspend fun answer(answer: RestoreAnswer): RestoreProgress = next
 
         override suspend fun cancel(): Boolean = true
@@ -109,7 +120,7 @@ class RescueViewModelTest {
                 destination = BackupDestinationReader(destination),
                 destinationKind = { kind },
                 hasDamagedOriginal = { damaged },
-                restore = RestoreBackupUseCase(restore),
+                use = RestoreBackupUseCase(restore),
                 computation = dispatcher,
             )
         advanceUntilIdle()
@@ -250,13 +261,56 @@ class RescueViewModelTest {
                     destination = BackupDestinationReader(destination),
                     destinationKind = { error("link.json no se pudo leer") },
                     hasDamagedOriginal = { error("la carpeta no se pudo leer") },
-                    restore = RestoreBackupUseCase(restore),
+                    use = RestoreBackupUseCase(restore),
                     computation = dispatcher,
                 )
             advanceUntilIdle()
 
             assertEquals(RescuePrimary.FIND_FILE, model.uiState.value.primary)
             assertFalse(model.uiState.value.damagedAvailable)
+        }
+
+    @Test
+    fun `a failed migration with the copy before the update leads to going back to it`() =
+        runTest(dispatcher) {
+            val copyAt = Instant.parse("2026-11-01T10:00:00Z")
+            restore.beforeUpdate = BeforeUpdateCopy(copyAt)
+            val model = model(cause = RescueReason.MigrationFailed)
+
+            assertEquals(RescuePrimary.BEFORE_UPDATE, model.uiState.value.primary)
+            model.onAction(RescueAction.BeforeUpdate)
+            assertEquals(RestoreUi.ConfirmBeforeUpdate(copyAt), model.uiState.value.restore)
+            model.onAction(RescueAction.Restore(BackupAction.StartRestore))
+            advanceUntilIdle()
+
+            assertEquals(listOf("before-update"), restore.started)
+            assertEquals(RestoreUi.Ready, model.uiState.value.restore)
+        }
+
+    @Test
+    fun `a copy that this version cannot migrate says to install the newer one`() =
+        runTest(dispatcher) {
+            restore.beforeUpdate = BeforeUpdateCopy(Instant.parse("2026-11-01T10:00:00Z"))
+            restore.next = RestoreProgress.Refused(RestoreProblem.NEEDS_UPDATE)
+            val model = model(cause = RescueReason.MigrationFailed)
+
+            model.onAction(RescueAction.BeforeUpdate)
+            model.onAction(RescueAction.Restore(BackupAction.StartRestore))
+            advanceUntilIdle()
+
+            val stopped = model.uiState.value.restore as RestoreUi.Stopped
+            assertEquals(RestoreNotice.NEEDS_UPDATE, stopped.notice)
+        }
+
+    @Test
+    fun `without the copy before the update nothing is offered and a migration failure waits`() =
+        runTest(dispatcher) {
+            val model = model(cause = RescueReason.MigrationFailed)
+
+            assertNull(model.uiState.value.beforeUpdate)
+            assertEquals(RescuePrimary.RESTORE, model.uiState.value.primary)
+            model.onAction(RescueAction.BeforeUpdate)
+            assertEquals(RestoreUi.Idle, model.uiState.value.restore)
         }
 
     @Test

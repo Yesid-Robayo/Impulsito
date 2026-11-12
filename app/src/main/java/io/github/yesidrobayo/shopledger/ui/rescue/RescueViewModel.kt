@@ -32,7 +32,7 @@ import kotlinx.coroutines.withContext
  * @param destination el destino de `link.json` y sus copias.
  * @param destinationKind el tipo de ese destino, o nulo sin `link.json`.
  * @param hasDamagedOriginal si una restauración apartó una base dañada.
- * @param restore restaurar una copia o un archivo, sin la base.
+ * @param use restaurar una copia, un archivo o la copia previa a la actualización, sin la base.
  * @param computation el hilo de las lecturas, fuera del principal.
  */
 class RescueViewModel(
@@ -40,7 +40,7 @@ class RescueViewModel(
     private val destination: BackupDestinationReader,
     private val destinationKind: suspend () -> BackupDestinationKind?,
     private val hasDamagedOriginal: suspend () -> Boolean,
-    restore: RestoreBackupUseCase,
+    private val use: RestoreBackupUseCase,
     private val computation: CoroutineDispatcher,
 ) : ViewModel() {
     private val state = MutableStateFlow(RescueUiState(cause))
@@ -49,7 +49,7 @@ class RescueViewModel(
     private var listing: Job? = null
     private val restoring =
         RestoreFlow(
-            use = restore,
+            use = use,
             scope = viewModelScope,
             computation = computation,
             get = { state.value.restore },
@@ -62,7 +62,14 @@ class RescueViewModel(
         viewModelScope.launch {
             val kind = read { destinationKind() }
             val damaged = read { hasDamagedOriginal() } == true
-            state.update { it.copy(destinationKind = kind, damagedAvailable = damaged) }
+            val beforeUpdate = read { use.beforeUpdateCopy() }
+            state.update {
+                it.copy(
+                    destinationKind = kind,
+                    damagedAvailable = damaged,
+                    beforeUpdate = beforeUpdate,
+                )
+            }
         }
     }
 
@@ -75,6 +82,9 @@ class RescueViewModel(
             RescueAction.RetryCopies -> list()
 
             is RescueAction.Restore -> onRestore(action.action)
+
+            RescueAction.BeforeUpdate ->
+                state.value.beforeUpdate?.let(restoring::confirmBeforeUpdate)
 
             RescueAction.ShowSupport -> state.update { it.copy(supportOpen = true) }
 
@@ -115,6 +125,8 @@ class RescueViewModel(
             BackupAction.CloseRestore -> restoring.close()
 
             BackupAction.RetryCopies -> list()
+
+            BackupAction.UndoUpdate -> state.value.beforeUpdate?.let(restoring::confirmBeforeUpdate)
 
             // El selector lo abre la pantalla. Lo demás no existe en el rescate.
             BackupAction.FindFile,

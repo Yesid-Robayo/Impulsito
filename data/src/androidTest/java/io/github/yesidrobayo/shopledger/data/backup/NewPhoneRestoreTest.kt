@@ -168,6 +168,8 @@ class NewPhoneRestoreTest {
             destinations = opener,
             coordinator = { coordinator },
             files = ResolverFiles(),
+            beforeUpdate = { File(phone.noBackup, "sin-copia-previa.db") },
+            ioContext = Dispatchers.IO,
         )
     }
 

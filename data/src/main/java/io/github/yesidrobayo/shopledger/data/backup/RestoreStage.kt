@@ -31,6 +31,13 @@ internal sealed interface RestoreSource {
     class Undo(val copy: SafetyCopy) : RestoreSource {
         override fun toString(): String = "Undo"
     }
+
+    /**
+     * La copia previa a la última actualización, en `pre-migration/`, para volver a antes de una
+     * migración que perdió datos. Se copia como candidata sin consumirla: si la preparación se
+     * cancela o falla, sigue en su sitio. Nunca subió, así que restaurarla fuerza una subida.
+     */
+    data object BeforeUpdate : RestoreSource
 }
 
 /**
@@ -118,6 +125,9 @@ internal sealed interface RestoreRefusal {
 
     /** No cupo la copia de seguridad de la base activa. */
     data object SafetyCopyNoSpace : RestoreRefusal
+
+    /** Se pidió volver a antes de la actualización, y no hay copia previa. */
+    data object NoBeforeUpdateCopy : RestoreRefusal
 
     /**
      * El cerrojo venció o dejó de ser el de esta preparación: pudo entrar una venta después de la

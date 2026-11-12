@@ -696,6 +696,17 @@ private fun LazyListScope.copies(uiState: BackupUiState, onAction: (BackupAction
         }
     }
     if (connected) item(key = DRILL) { Drill(uiState.drilling, onAction) }
+    // Solo si existe la copia previa a migrar: es local, así que no depende del destino.
+    if (uiState.beforeUpdate != null) {
+        item(key = UNDO_UPDATE) {
+            Column(Modifier.padding(horizontal = AppTheme.spacing.s8)) {
+                InlineTextButton(
+                    stringResource(R.string.backup_undo_migration_label),
+                    { onAction(BackupAction.UndoUpdate) },
+                )
+            }
+        }
+    }
     val wording = uiState.wording
     if (connected && wording != null) {
         item(key = PROTECTION) { Protection(wording, uiState.copiesEncrypted) }
@@ -916,3 +927,4 @@ private fun Drill(drilling: Boolean, onAction: (BackupAction) -> Unit) {
         }
     }
 }
+private const val UNDO_UPDATE = "undoUpdate"

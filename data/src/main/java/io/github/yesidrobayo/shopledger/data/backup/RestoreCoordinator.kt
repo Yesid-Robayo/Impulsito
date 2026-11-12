@@ -79,7 +79,8 @@ internal fun interface CandidateMigrator {
  * 3. **Espacio.** Tres veces la base de la copia y 50 MiB, o nueve veces el archivo si no se sabe
  *    cuánto ocupa descomprimido. Si no cabe, dice cuánto falta y no baja nada.
  * 4. **Bajar.** A un nombre fijo, con el tope de tamaño. Un nombre que venga de afuera nunca es una
- *    ruta. Al deshacer, la copia de seguridad se aparta y se copia como candidata.
+ *    ruta. Al deshacer, la copia de seguridad se aparta y se copia como candidata. Al volver a
+ *    antes de la actualización, la copia previa se copia como candidata y queda en su sitio.
  * 5. a 11. **Revisar.** Suma, formato, descompresión con tope y el validador entero. Un hallazgo
  *    reparable, o una copia vacía sobre una base con datos, se detienen a preguntar.
  * 12. **Migrar** la candidata si es de un esquema anterior: una migración que falla nunca llega a la
@@ -280,6 +281,9 @@ internal class RestoreCoordinator(
 
                 is RestoreSource.Undo ->
                     RAW_FACTOR * withContext(ioContext) { source.copy.files.database.length() }
+
+                RestoreSource.BeforeUpdate ->
+                    RAW_FACTOR * withContext(ioContext) { beforeUpdateCopy().length() }
             }
         val required = estimate + SPACE_MARGIN_BYTES
         val free = withContext(ioContext) {
@@ -288,6 +292,9 @@ internal class RestoreCoordinator(
         }
         return if (free < required) RestoreStage.NotEnoughSpace(required - free) else null
     }
+
+    /** La copia previa a la última actualización. Pedirla no toca el disco. */
+    private fun beforeUpdateCopy(): File = files.databaseFiles.preMigrationCandidate
 
     private fun compressedEstimate(sizeBytes: Long): Long? =
         if (sizeBytes < 0 || sizeBytes > BackupLimits.MAX_BACKUP_DOWNLOAD_BYTES) {
@@ -305,6 +312,19 @@ internal class RestoreCoordinator(
                 withContext(ioContext) { prepareUndo(files, ops, source.copy) }
                 current.undoPrepared = true
                 return null
+            }
+
+            // Se copia, y la copia previa queda como estaba: el paso 7 y los que siguen la revisan
+            // entera, como a cualquier otra.
+            RestoreSource.BeforeUpdate -> {
+                val copied =
+                    withContext(ioContext) {
+                        val copy = beforeUpdateCopy()
+                        if (!copy.isFile) return@withContext false
+                        ops.copyAtomically(copy, files.candidate, files.candidateTemporary)
+                        true
+                    }
+                return if (copied) null else RestoreStage.Refused(RestoreRefusal.NoBeforeUpdateCopy)
             }
 
             is RestoreSource.Listed -> download(source.copy)?.let { return it }
@@ -475,7 +495,10 @@ internal class RestoreCoordinator(
                 linkState = view.linkState,
                 destination = view.columns,
                 head = view.head ?: RestoredHead.FromCopy(current.sourceRef()),
-                keepLastSuccess = current.source is RestoreSource.Undo,
+                // Una copia local trae su propia última copia buena: no tiene sello.
+                keepLastSuccess =
+                    current.source is RestoreSource.Undo ||
+                        current.source == RestoreSource.BeforeUpdate,
                 activeChecks = current.activeDatabase?.checks,
                 deviceSecure = deviceSecure(),
             )
@@ -677,6 +700,7 @@ internal class RestoreCoordinator(
         RestoreRefusal.NoDestination -> RefusalCode.NO_DESTINATION
         RestoreRefusal.SafetyCopyNoSpace -> RefusalCode.SAFETY_COPY_NO_SPACE
         RestoreRefusal.TooLarge -> RefusalCode.TOO_LARGE
+        RestoreRefusal.NoBeforeUpdateCopy -> RefusalCode.NO_BEFORE_UPDATE_COPY
     }
 
     /** Los rechazos que no vienen de la candidata, por su nombre en el registro. */
@@ -688,6 +712,7 @@ internal class RestoreCoordinator(
         NO_DESTINATION,
         SAFETY_COPY_NO_SPACE,
         TOO_LARGE,
+        NO_BEFORE_UPDATE_COPY,
     }
 
     /** Una preparación en curso, con lo que ya se sabe y lo que la persona ya decidió. */
@@ -714,10 +739,11 @@ internal class RestoreCoordinator(
 
         /**
          * Si la candidata ya está en el destino conectado, por suma, sin reparación de por medio.
-         * Deshacer nunca cuenta: esa copia nunca subió.
+         * Deshacer y volver a antes de la actualización nunca cuentan: esas copias nunca subieron.
          */
         fun isBackedUpIn(view: DestinationView): Boolean {
-            if (source is RestoreSource.Undo || repairConfirmed) return false
+            if (source is RestoreSource.Undo || source == RestoreSource.BeforeUpdate) return false
+            if (repairConfirmed) return false
             val sha = sourceSha256 ?: return false
             return sha in view.listedSha256
         }

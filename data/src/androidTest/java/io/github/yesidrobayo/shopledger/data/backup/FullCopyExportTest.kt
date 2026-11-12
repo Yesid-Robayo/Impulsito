@@ -221,6 +221,8 @@ class FullCopyExportTest {
             destinations = opener,
             coordinator = { coordinator },
             files = ResolverPickedFiles(context.contentResolver),
+            beforeUpdate = { DatabaseFiles(phone.file, phone.noBackup).preMigrationCandidate },
+            ioContext = Dispatchers.IO,
         )
     }
 

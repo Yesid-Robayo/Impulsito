@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.onboarding
 import androidx.lifecycle.SavedStateHandle
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConnectFolderResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.FoundLocalCopies
 import io.github.yesidrobayo.shopledger.domain.model.backup.FoundLocalCopy
@@ -92,6 +93,10 @@ class OnboardingLocalCopyTest {
                 restored += uri
                 return restoreResult
             }
+
+            override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = null
+
+            override suspend fun restoreBeforeUpdate() = RestoreProgress.Failed
 
             override suspend fun answer(answer: RestoreAnswer) = RestoreProgress.ReadyToRestart(0)
 

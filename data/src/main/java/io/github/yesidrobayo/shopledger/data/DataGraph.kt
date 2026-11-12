@@ -474,8 +474,14 @@ class DataGraph internal constructor(
             destinations = destinations,
             coordinator = ::restoreCoordinator,
             files = ResolverPickedFiles(context.contentResolver),
+            beforeUpdate = ::preMigrationCopy,
+            ioContext = ioContext,
         )
     }
+
+    /** La copia previa a migrar. Pedir los archivos de la base toca el disco. */
+    private suspend fun preMigrationCopy(): File =
+        withContext(ioContext) { files().preMigrationCandidate }
 
     /** El destino conectado según la base abierta. */
     private suspend fun savedInDatabase(): SavedDestination? =
@@ -507,6 +513,8 @@ class DataGraph internal constructor(
                     destinations = destinations,
                     coordinator = ::restoreCoordinator,
                     files = ResolverPickedFiles(context.contentResolver),
+                    beforeUpdate = ::preMigrationCopy,
+                    ioContext = ioContext,
                 ),
             savedKind = { links.read()?.kind },
             restoreFiles = { RestoreFiles(files()) },

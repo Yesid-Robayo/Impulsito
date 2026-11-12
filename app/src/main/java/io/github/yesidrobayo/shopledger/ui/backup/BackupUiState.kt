@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.backup
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictSides
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
@@ -33,6 +34,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolic
  * @param healthOpen si el panel está abierto por la persona; nulo mientras no lo toque: entonces va
  *   plegado solo si todo está bien.
  * @param verifying si `Comprobar ahora` está corriendo.
+ * @param beforeUpdate la copia previa a la última actualización, o nula si no hay.
  */
 data class BackupUiState(
     val wording: BackupWording? = null,
@@ -54,6 +56,7 @@ data class BackupUiState(
     val health: List<HealthRow>? = null,
     val healthOpen: Boolean? = null,
     val verifying: Boolean = false,
+    val beforeUpdate: BeforeUpdateCopy? = null,
 )
 
 /** `Copias con datos móviles`: cerrada, la hoja con las tres opciones o la advertencia. */
@@ -309,4 +312,7 @@ sealed interface BackupAction {
 
     /** `Comprobar ahora`: la comprobación completa, que gasta datos. Solo la pide la persona. */
     data object CheckFullCopy : BackupAction
+
+    /** `Volver a antes de la actualización`: pide confirmar, con el día de la copia previa. */
+    data object UndoUpdate : BackupAction
 }

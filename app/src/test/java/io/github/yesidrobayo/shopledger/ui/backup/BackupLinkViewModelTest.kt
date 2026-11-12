@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictSides
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
@@ -160,6 +161,10 @@ class BackupLinkViewModelTest {
         override suspend fun restoreCopy(copyKey: String): RestoreProgress = error(NOT_HERE)
 
         override suspend fun restoreFile(uri: String): RestoreProgress = error(NOT_HERE)
+
+        override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = null
+
+        override suspend fun restoreBeforeUpdate(): RestoreProgress = error(NOT_HERE)
 
         override suspend fun answer(answer: RestoreAnswer): RestoreProgress = error(NOT_HERE)
 

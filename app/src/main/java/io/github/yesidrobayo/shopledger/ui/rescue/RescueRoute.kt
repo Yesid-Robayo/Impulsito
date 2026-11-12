@@ -62,7 +62,7 @@ fun RescueRoute(cause: RescueReason) {
                             destination = BackupDestinationReader(rescue.destination),
                             destinationKind = rescue::savedDestinationKind,
                             hasDamagedOriginal = rescue::hasDamagedOriginal,
-                            restore = RestoreBackupUseCase(rescue.restore),
+                            use = RestoreBackupUseCase(rescue.restore),
                             computation = io,
                         )
                     }
@@ -141,6 +141,7 @@ fun RescueRoute(cause: RescueReason) {
                 RescueAction.ShowLanguage,
                 RescueAction.CloseLanguage,
                 RescueAction.ShareDamaged,
+                RescueAction.BeforeUpdate,
                 RescueAction.CloseShareDamaged,
                 -> viewModel.onAction(action)
             }

@@ -10,8 +10,11 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
+import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
+import kotlin.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -160,6 +163,44 @@ class RescueScreenTest {
             }
         assertFalse(copied.contains("cuenta"))
         assertTrue(copied.contains("Fabricante Modelo"))
+    }
+
+    @Test
+    fun goingBackBeforeTheUpdateIsConfirmedAndThenStartsLikeAnyRestore() {
+        // El botón lleva a la misma preparación que restaurar, y la ruta pide antes la credencial.
+        val copyAt = Instant.parse("2026-11-01T10:00:00Z")
+        show(
+            RescueUiState(
+                RescueReason.MigrationFailed,
+                BackupDestinationKind.WEBDAV,
+                beforeUpdate = BeforeUpdateCopy(copyAt),
+                restore = RestoreUi.ConfirmBeforeUpdate(copyAt),
+            ),
+        )
+
+        compose.onNodeWithText(text(R.string.dialog_undo_migration_title)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.dialog_go_back_action)).performClick()
+        assertEquals(
+            listOf<RescueAction>(RescueAction.Restore(BackupAction.StartRestore)),
+            actions,
+        )
+    }
+
+    @Test
+    fun aFailedMigrationWithTheCopyBeforeTheUpdateLeadsToGoingBack() {
+        show(
+            RescueUiState(
+                RescueReason.MigrationFailed,
+                BackupDestinationKind.WEBDAV,
+                beforeUpdate = BeforeUpdateCopy(Instant.parse("2026-11-01T10:00:00Z")),
+            ),
+        )
+
+        compose.onNodeWithText(text(R.string.rescue_detail_migration)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.backup_undo_migration_label))
+            .performScrollTo()
+            .performClick()
+        assertEquals(listOf<RescueAction>(RescueAction.BeforeUpdate), actions)
     }
 
     @Test

@@ -96,7 +96,7 @@ fun RescueScreen(
                     .padding(AppTheme.spacing.s24),
                 verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
             ) {
-                Heading(uiState.cause)
+                Heading(uiState.cause, hasBeforeUpdate = uiState.beforeUpdate != null)
                 NoticeCard(
                     text = stringResource(
                         R.string.rescue_warning,
@@ -142,7 +142,7 @@ fun RescueScreen(
 
 /** El icono, el título y la causa, en palabras que no prometen nada que no pasó. */
 @Composable
-private fun Heading(cause: RescueReason) {
+private fun Heading(cause: RescueReason, hasBeforeUpdate: Boolean) {
     val app = stringResource(R.string.app_name)
     Icon(
         painter = painterResource(R.drawable.ic_error),
@@ -176,11 +176,16 @@ private fun Heading(cause: RescueReason) {
             RescueReason.RestoreLeftNoDatabase,
             -> listOf(stringResource(R.string.rescue_detail_missing))
 
+            // Con la copia previa, la salida es volver a ella; sin ella, esperar una versión corregida.
             RescueReason.MigrationFailed, RescueReason.PreMigrationCopyFailed ->
-                listOf(
-                    stringResource(R.string.rescue_detail_migration),
-                    stringResource(R.string.rescue_no_premigration, app),
-                )
+                if (hasBeforeUpdate) {
+                    listOf(stringResource(R.string.rescue_detail_migration))
+                } else {
+                    listOf(
+                        stringResource(R.string.rescue_detail_migration),
+                        stringResource(R.string.rescue_no_premigration, app),
+                    )
+                }
 
             RescueReason.NewerVersion ->
                 listOf(stringResource(R.string.rescue_premigration_incompatible, app))
@@ -222,6 +227,10 @@ private fun Actions(uiState: RescueUiState, onAction: (RescueAction) -> Unit) {
 
             RescuePrimary.RETRY ->
                 stringResource(R.string.action_retry) to { onAction(RescueAction.Retry) }
+
+            RescuePrimary.BEFORE_UPDATE ->
+                stringResource(R.string.backup_undo_migration_label) to
+                    { onAction(RescueAction.BeforeUpdate) }
         }
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
         PrimaryActionButton(primaryText, primaryClick, ActionVariant.PRIMARY)
@@ -232,10 +241,24 @@ private fun Actions(uiState: RescueUiState, onAction: (RescueAction) -> Unit) {
                 ActionVariant.OUTLINED,
             )
         }
+        if (primary == RescuePrimary.BEFORE_UPDATE) {
+            PrimaryActionButton(
+                stringResource(R.string.backup_action_restore),
+                { onAction(RescueAction.ShowCopies) },
+                ActionVariant.OUTLINED,
+            )
+        }
         if (primary != RescuePrimary.FIND_FILE) {
             PrimaryActionButton(
                 stringResource(R.string.backup_action_find_file),
                 findFile,
+                ActionVariant.OUTLINED,
+            )
+        }
+        if (uiState.beforeUpdate != null && primary != RescuePrimary.BEFORE_UPDATE) {
+            PrimaryActionButton(
+                stringResource(R.string.backup_undo_migration_label),
+                { onAction(RescueAction.BeforeUpdate) },
                 ActionVariant.OUTLINED,
             )
         }
@@ -390,6 +413,11 @@ private fun RescueStoppedNotice(stopped: RestoreUi.Stopped, onAction: (BackupAct
             RestoreNotice.OTHER -> stringResource(R.string.restore_error_other)
 
             RestoreNotice.CANCELLED -> stringResource(R.string.restore_error_cancelled)
+
+            RestoreNotice.NEEDS_UPDATE -> stringResource(
+                R.string.rescue_premigration_incompatible,
+                app,
+            )
         }
     NoticeCard(
         text = text,
@@ -405,6 +433,7 @@ private fun RescueStoppedNotice(stopped: RestoreUi.Stopped, onAction: (BackupAct
                 RestoreNotice.TOO_LARGE,
                 RestoreNotice.NOT_A_BACKUP,
                 RestoreNotice.OTHER,
+                RestoreNotice.NEEDS_UPDATE,
                 -> NoticeVariant.ERROR
             },
         actionLabel = stringResource(R.string.action_close),
