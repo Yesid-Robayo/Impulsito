@@ -131,4 +131,7 @@ sealed interface StockAdjustmentAction {
 
     /** Confirmó que descarta lo escrito. */
     data object Discard : StockAdjustmentAction
+
+    /** Quiere corregir el costo desde el aviso sin costo: lo resuelve la navegación. */
+    data object FixCost : StockAdjustmentAction
 }

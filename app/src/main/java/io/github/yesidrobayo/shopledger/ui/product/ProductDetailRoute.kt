@@ -12,6 +12,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductOverviewUseCase
@@ -52,7 +54,12 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
         )
     val model =
         rememberAppViewModel(key = "product-${key.productId}") { dependencies ->
-            ProductDetailViewModel(key.productId, ProductDetailUseCases.of(dependencies), numbers)
+            ProductDetailViewModel(
+                key.productId,
+                ProductDetailUseCases.of(dependencies),
+                numbers,
+                openCostSheet = key.openCostSheet,
+            )
         }
     when (model) {
         ScreenModel.Opening -> ProductDetailScreen(ProductDetailUiState(), {})
@@ -64,6 +71,9 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             ShowMessage(uiState.message) { viewModel.onAction(ProductDetailAction.MessageShown) }
             LaunchedEffect(uiState.closed) { if (uiState.closed) navigator.back() }
+            BackHandler(enabled = uiState.priceSheet != null) {
+                viewModel.onAction(ProductDetailAction.DismissPriceSheet)
+            }
             BackHandler(enabled = uiState.costSheet != null) {
                 viewModel.onAction(ProductDetailAction.DismissCostSheet)
             }
@@ -94,6 +104,8 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
                                     navigator.open(AppNavKey.PurchaseDetail(document.purchaseId))
                             }
 
+                        ProductDetailAction.OpenPriceSheet, is ProductDetailAction.PriceText,
+                        ProductDetailAction.SavePrice, ProductDetailAction.DismissPriceSheet,
                         is ProductDetailAction.SelectTab, ProductDetailAction.OpenCostSheet,
                         is ProductDetailAction.CostText, is ProductDetailAction.CostNote,
                         ProductDetailAction.SaveCost, ProductDetailAction.DismissCostSheet,
@@ -121,6 +133,7 @@ private fun ShowMessage(message: ProductDetailMessage?, onShown: () -> Unit) {
         stringResource(
             when (it) {
                 ProductDetailMessage.CostCorrected -> R.string.product_cost_corrected
+                ProductDetailMessage.PriceChanged -> R.string.product_price_changed
                 ProductDetailMessage.Archived -> R.string.product_archived
                 ProductDetailMessage.Reactivated -> R.string.product_reactivated
                 ProductDetailMessage.Deleted -> R.string.product_deleted
@@ -132,7 +145,8 @@ private fun ShowMessage(message: ProductDetailMessage?, onShown: () -> Unit) {
         )
     }
     val variant = when (message) {
-        null, ProductDetailMessage.CostCorrected, ProductDetailMessage.Archived,
+        null, ProductDetailMessage.CostCorrected, ProductDetailMessage.PriceChanged,
+        ProductDetailMessage.Archived,
         ProductDetailMessage.Reactivated, ProductDetailMessage.Deleted,
         ProductDetailMessage.AdjustmentVoided,
         -> SnackbarVariant.SUCCESS
@@ -153,6 +167,7 @@ private fun ShowMessage(message: ProductDetailMessage?, onShown: () -> Unit) {
 class ProductDetailUseCases(
     private val observe: ObserveProductOverviewUseCase,
     private val correct: CorrectCostUseCase,
+    private val changePriceUseCase: ChangePriceUseCase,
     private val archiveUseCase: ArchiveProductUseCase,
     private val reactivateUseCase: ReactivateProductUseCase,
     private val deleteUseCase: DeleteProductUseCase,
@@ -165,6 +180,9 @@ class ProductDetailUseCases(
         cost: Money,
         note: String?,
     ): CorrectCostResult = correct(productId, cost, note)
+
+    override suspend fun changePrice(productId: Long, price: Money): ChangePriceResult =
+        changePriceUseCase(productId, price)
 
     override suspend fun archive(productId: Long): ArchiveProductResult = archiveUseCase(productId)
 
@@ -196,6 +214,15 @@ class ProductDetailUseCases(
                     ports.products,
                     ports.systemRows,
                     ports.stockLedger,
+                    calendar,
+                    CurrencyLock(ports.settings),
+                    clock,
+                ),
+                changePriceUseCase = ChangePriceUseCase(
+                    tx,
+                    ports.products,
+                    ports.systemRows,
+                    ports.priceHistory,
                     calendar,
                     CurrencyLock(ports.settings),
                     clock,

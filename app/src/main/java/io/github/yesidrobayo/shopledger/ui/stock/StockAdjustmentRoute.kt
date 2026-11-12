@@ -80,7 +80,13 @@ fun StockAdjustmentRoute(key: AppNavKey.StockAdjustment, navigator: AppNavigator
             BackHandler(enabled = uiState.dirty) {
                 viewModel.onAction(StockAdjustmentAction.Close)
             }
-            StockAdjustmentScreen(uiState, viewModel::onAction)
+            StockAdjustmentScreen(uiState, onAction = { action ->
+                if (action == StockAdjustmentAction.FixCost) {
+                    navigator.open(AppNavKey.ProductDetail(key.productId, openCostSheet = true))
+                } else {
+                    viewModel.onAction(action)
+                }
+            })
         }
     }
 }

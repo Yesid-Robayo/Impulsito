@@ -154,7 +154,7 @@ private fun AdjustmentForm(
             )
         }
         uiState.preview?.let { ResultLine(it, unit) }
-        Notices(uiState, subject, unit)
+        Notices(uiState, subject, unit, onAction)
     }
 }
 
@@ -295,6 +295,7 @@ private fun Notices(
     uiState: StockAdjustmentUiState,
     subject: StockAdjustmentSubject,
     unit: UnitLabel,
+    onAction: (StockAdjustmentAction) -> Unit,
 ) {
     val preview = uiState.preview
     if (preview != null && preview.left < QuantityMilli.ZERO) {
@@ -307,9 +308,12 @@ private fun Notices(
     if (noCost && uiState.mode != AdjustmentMode.OPENING) {
         val zero = rememberMoneyDisplay(Money.ZERO, LocalAppFormats.current.money).text
         val pattern = stringResource(R.string.notice_adjustment_no_cost)
+        // El aviso lleva a corregir el costo, que es lo que deja de valorar el ajuste en cero.
         NoticeCard(
             text = formatAnnotated(pattern, zero).toString(),
             variant = NoticeVariant.INFO,
+            actionLabel = stringResource(R.string.product_fix_cost),
+            onAction = { onAction(StockAdjustmentAction.FixCost) },
         )
     }
     NoticeCard(

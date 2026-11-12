@@ -51,4 +51,7 @@
     <string name="dialog_void_adjustment_body">O estoque volta a como estava e o custo é recalculado.</string>
     <string name="dialog_void_adjustment_action">Anular ajuste</string>
     <string name="stock_movement_adjustment_reason">Ajuste: %1$s</string>
+    <string name="product_change_price">Alterar preço</string>
+    <string name="product_price_changed">Preço alterado</string>
+    <string name="product_price_margin">Margem resultante: %1$s</string>
 </resources>

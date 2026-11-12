@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
@@ -54,6 +55,22 @@ class ProductDetailViewModelTest {
     }
 
     @Test
+    fun `arriving to fix the cost opens the sheet once`() = runTest(dispatcher) {
+        val model = ProductDetailViewModel(1L, operations, NUMBERS, openCostSheet = true)
+        backgroundScope.launch(dispatcher) { model.uiState.collect {} }
+        advanceUntilIdle()
+        assertEquals("3800,5", model.uiState.value.costSheet?.cost)
+
+        model.onAction(ProductDetailAction.DismissCostSheet)
+        advanceUntilIdle()
+        // Un cambio del producto no la vuelve a abrir.
+        operations.product.value =
+            operations.product.value?.let { it.copy(movements = emptyList()) }
+        advanceUntilIdle()
+        assertNull(model.uiState.value.costSheet)
+    }
+
+    @Test
     fun `the sheet opens with the current cost and saves what is written`() = runTest(dispatcher) {
         val model = model()
 
@@ -71,6 +88,52 @@ class ProductDetailViewModelTest {
         assertEquals(listOf(Money(405_000L) to "Factura"), operations.corrections)
         assertNull(model.uiState.value.costSheet)
         assertEquals(ProductDetailMessage.CostCorrected, model.uiState.value.message)
+    }
+
+    @Test
+    fun `the price sheet opens with the price and saves the new one`() = runTest(dispatcher) {
+        val model = model()
+
+        model.onAction(ProductDetailAction.OpenPriceSheet)
+        advanceUntilIdle()
+        assertEquals("5000", model.uiState.value.priceSheet?.price)
+
+        model.onAction(ProductDetailAction.PriceText("5.200,50"))
+        advanceUntilIdle()
+        model.onAction(ProductDetailAction.SavePrice)
+        advanceUntilIdle()
+
+        assertEquals(listOf(Money(520_050L)), operations.prices)
+        assertNull(model.uiState.value.priceSheet)
+        assertEquals(ProductDetailMessage.PriceChanged, model.uiState.value.message)
+    }
+
+    @Test
+    fun `a price that cannot be read or saved keeps the sheet open`() = runTest(dispatcher) {
+        val model = model()
+        model.onAction(ProductDetailAction.OpenPriceSheet)
+        advanceUntilIdle()
+
+        model.onAction(ProductDetailAction.PriceText("abc"))
+        advanceUntilIdle()
+        model.onAction(ProductDetailAction.SavePrice)
+        advanceUntilIdle()
+        assertEquals(FieldProblem.NotANumber, model.uiState.value.priceSheet?.priceProblem)
+        assertTrue(operations.prices.isEmpty())
+
+        model.onAction(ProductDetailAction.PriceText("10"))
+        advanceUntilIdle()
+        operations.priceResult = ChangePriceResult.StorageFailed(StorageFailure.DISK_FULL)
+        model.onAction(ProductDetailAction.SavePrice)
+        advanceUntilIdle()
+        assertEquals(SaveFailure(outOfSpace = true), model.uiState.value.priceSheet?.saveFailed)
+        assertEquals("10", model.uiState.value.priceSheet?.price)
+
+        operations.priceResult = ChangePriceResult.Unchanged
+        model.onAction(ProductDetailAction.SavePrice)
+        advanceUntilIdle()
+        assertNull(model.uiState.value.priceSheet)
+        assertNull(model.uiState.value.message)
     }
 
     @Test
@@ -228,6 +291,14 @@ private class FakeDetailOperations : ProductDetailOperations {
     ): CorrectCostResult {
         corrections += cost to note
         return correctResult
+    }
+
+    var priceResult: ChangePriceResult = ChangePriceResult.Changed(1L)
+    val prices = mutableListOf<Money>()
+
+    override suspend fun changePrice(productId: Long, price: Money): ChangePriceResult {
+        prices += price
+        return priceResult
     }
 
     override suspend fun archive(productId: Long): ArchiveProductResult =

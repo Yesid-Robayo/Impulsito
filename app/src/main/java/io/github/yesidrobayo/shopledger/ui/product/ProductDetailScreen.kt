@@ -26,13 +26,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -42,9 +45,11 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductMovement
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
+import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockEvaluator
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockAdjustmentRules
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
@@ -180,6 +185,7 @@ fun ProductDetailScreen(
         }
     }
     uiState.costSheet?.let { CostSheetView(it, onAction) }
+    if (ready != null) uiState.priceSheet?.let { PriceSheetView(it, ready.product, onAction) }
     uiState.dialog?.let { ProductConfirm(it, onAction) }
 }
 
@@ -192,6 +198,11 @@ private fun TopBarActions(overview: ProductOverview, onAction: (ProductDetailAct
     val product = overview.product
     if (product.isArchived) return
     val actions = buildList {
+        add(
+            OverflowAction(stringResource(R.string.product_change_price), {
+                onAction(ProductDetailAction.OpenPriceSheet)
+            }),
+        )
         if (product.details.stockMode == ProductStockMode.TRACKED) {
             add(
                 OverflowAction(stringResource(R.string.product_fix_cost), {
@@ -407,7 +418,9 @@ private fun Figures(product: Product) {
 private fun MarginTile(margin: Margin, modifier: Modifier) {
     val text = when (margin) {
         is Margin.Defined -> LocalAppFormats.current.percent.format(margin.value)
-        else -> NO_VALUE_TEXT
+
+        // Sin precio o sin costo, o un margen que no cabe en la cifra: un guion, nunca un número.
+        Margin.NoData, Margin.OutOfRange -> NO_VALUE_TEXT
     }
     val negative = margin is Margin.Defined && margin.value < BasisPoints.ZERO
     Column(modifier.semantics(mergeDescendants = true) {}) {
@@ -684,6 +697,103 @@ private fun PriceRow(change: PriceChange) {
             thickness = AppTheme.sizes.hairline,
             color = MaterialTheme.colorScheme.outlineVariant,
         )
+    }
+}
+
+/**
+ * La hoja de cambiar el precio: el precio nuevo y, debajo, el margen que dejaría con el costo de
+ * ahora, que cambia con cada dígito. El margen se oculta en modo discreto; el precio, no, porque
+ * se está escribiendo.
+ */
+@Composable
+private fun PriceSheetView(
+    sheet: PriceSheet,
+    product: Product,
+    onAction: (ProductDetailAction) -> Unit,
+) {
+    val money = LocalAppFormats.current.money
+    val typed = NumberInputParser.money(
+        sheet.price,
+        money.inputSymbols,
+        money.currencyDecimals,
+        Limit.UNIT_MONEY,
+    )
+    val price = when (typed) {
+        is NumberInput.Value -> typed.value
+        NumberInput.Blank -> Money.ZERO
+        NumberInput.Malformed, is NumberInput.TooManyDecimals, is NumberInput.TooLarge -> null
+    }
+    val cost = catalogCost(product)
+    val margin =
+        if (price != null && price > Money.ZERO && cost != null) {
+            MarginCalculator.margin(price, cost)
+        } else {
+            Margin.NoData
+        }
+    EditorContainer(
+        asPanel = false,
+        title = stringResource(R.string.product_change_price),
+        onDismiss = { onAction(ProductDetailAction.DismissPriceSheet) },
+        action = {
+            Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
+                sheet.saveFailed?.let {
+                    NoticeCard(
+                        text = stringResource(saveErrorText(it.outOfSpace)),
+                        variant = NoticeVariant.ERROR,
+                        icon = R.drawable.ic_error,
+                    )
+                }
+                PrimaryActionButton(
+                    text = stringResource(R.string.product_change_price),
+                    onClick = { onAction(ProductDetailAction.SavePrice) },
+                    variant = ActionVariant.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
+                    state = if (sheet.saving) ActionState.WORKING else ActionState.IDLE,
+                )
+            }
+        },
+    ) {
+        MoneyField(
+            value = sheet.price,
+            onValueChange = { onAction(ProductDetailAction.PriceText(it)) },
+            label = stringResource(R.string.product_sale_price),
+            error = sheet.priceProblem?.let { problemText(it, ProductEditField.SALE_PRICE) },
+            imeAction = ImeAction.Done,
+        )
+        val marginText = when (margin) {
+            is Margin.Defined -> LocalAppFormats.current.percent.format(margin.value)
+            Margin.NoData, Margin.OutOfRange -> NO_VALUE_TEXT
+        }
+        DiscreetValue(style = MaterialTheme.typography.bodyMedium) {
+            Text(
+                stringResource(R.string.product_price_margin, marginText),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+    }
+}
+
+/**
+ * El costo con que se mide el margen, o `null` si no se conoce: sin costo, el margen saldría
+ * inflado contra cero. Un producto por componentes no tiene costo propio aquí.
+ */
+private fun catalogCost(product: Product): Money? {
+    val details = product.details
+    return when (details.stockMode) {
+        ProductStockMode.TRACKED ->
+            if (product.averageCost > Money.ZERO || product.stockValue > Money.ZERO) {
+                MarginCalculator
+                    .catalogUnitCost(product.onHand, product.stockValue, product.averageCost)
+                    .valueOrNull() ?: product.averageCost
+            } else {
+                null
+            }
+
+        ProductStockMode.UNTRACKED -> details.fixedUnitCost.takeIf { it > Money.ZERO }
+
+        ProductStockMode.COMPONENTS -> null
     }
 }
 

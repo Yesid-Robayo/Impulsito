@@ -218,6 +218,19 @@ class StockAdjustmentViewModelTest {
     }
 
     @Test
+    fun `fixing the cost leaves what was written for when it comes back`() = runTest(dispatcher) {
+        val model = viewModel()
+        advanceUntilIdle()
+        model.onAction(StockAdjustmentAction.QuantityChanged("8"))
+        val before = model.uiState.value
+
+        model.onAction(StockAdjustmentAction.FixCost)
+        advanceUntilIdle()
+
+        assertEquals(before, model.uiState.value)
+    }
+
+    @Test
     fun `closing with something written asks first`() = runTest(dispatcher) {
         val model = viewModel()
         advanceUntilIdle()

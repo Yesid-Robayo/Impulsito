@@ -51,4 +51,7 @@
     <string name="dialog_void_adjustment_body">The stock returns to how it was and the cost is recalculated.</string>
     <string name="dialog_void_adjustment_action">Void adjustment</string>
     <string name="stock_movement_adjustment_reason">Adjustment: %1$s</string>
+    <string name="product_change_price">Change price</string>
+    <string name="product_price_changed">Price changed</string>
+    <string name="product_price_margin">Resulting margin: %1$s</string>
 </resources>

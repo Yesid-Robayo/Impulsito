@@ -7,9 +7,11 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
@@ -39,6 +41,8 @@ interface ProductDetailOperations {
     fun overview(productId: Long): Flow<ProductOverview?>
 
     suspend fun correctCost(productId: Long, cost: Money, note: String?): CorrectCostResult
+
+    suspend fun changePrice(productId: Long, price: Money): ChangePriceResult
 
     suspend fun archive(productId: Long): ArchiveProductResult
 
@@ -83,6 +87,18 @@ data class CostSheet(
     val saveFailed: SaveFailure? = null,
 )
 
+/**
+ * La hoja de cambiar el precio mientras se escribe: el precio nuevo como texto, su problema si lo
+ * hay, y si el último guardado falló. Lo escrito siempre se conserva.
+ */
+@Immutable
+data class PriceSheet(
+    val price: String,
+    val priceProblem: FieldProblem? = null,
+    val saving: Boolean = false,
+    val saveFailed: SaveFailure? = null,
+)
+
 /** Lo que se confirma antes de hacerlo. [name] es el del producto, para el título. */
 sealed interface ProductDetailDialog {
     val name: String
@@ -99,6 +115,8 @@ sealed interface ProductDetailDialog {
 /** Un aviso breve, abajo, tras una acción. */
 sealed interface ProductDetailMessage {
     data object CostCorrected : ProductDetailMessage
+
+    data object PriceChanged : ProductDetailMessage
 
     data object Archived : ProductDetailMessage
 
@@ -129,6 +147,7 @@ data class ProductDetailUiState(
     val dialog: ProductDetailDialog? = null,
     val message: ProductDetailMessage? = null,
     val closed: Boolean = false,
+    val priceSheet: PriceSheet? = null,
 )
 
 /** Lo que la persona hace en el detalle. */
@@ -146,6 +165,14 @@ sealed interface ProductDetailAction {
     data class OpenDocument(val document: MovementDocument) : ProductDetailAction
 
     data class SelectTab(val tab: ProductDetailTab) : ProductDetailAction
+
+    data object OpenPriceSheet : ProductDetailAction
+
+    data class PriceText(val text: String) : ProductDetailAction
+
+    data object SavePrice : ProductDetailAction
+
+    data object DismissPriceSheet : ProductDetailAction
 
     data object OpenCostSheet : ProductDetailAction
 
@@ -186,10 +213,14 @@ class ProductDetailViewModel(
     private val productId: Long,
     private val operations: ProductDetailOperations,
     private val numbers: ProductNumberFormat,
+    openCostSheet: Boolean = false,
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val extra = MutableStateFlow(Extra())
     private var latest: ProductOverview? = null
+
+    /** Si falta abrir la hoja de corregir el costo, pedida al llegar: se abre una sola vez. */
+    private var costSheetPending = openCostSheet
 
     private val content = attempts.flatMapLatest {
         operations.overview(productId)
@@ -202,7 +233,16 @@ class ProductDetailViewModel(
             }
             .onStart { emit(ProductDetailContent.Loading) }
             .catch { emit(ProductDetailContent.ReadError) }
-            .onEach { shown -> latest = (shown as? ProductDetailContent.Ready)?.overview }
+            .onEach { shown ->
+                latest = (shown as? ProductDetailContent.Ready)?.overview
+                val product = latest?.product
+                if (costSheetPending && product != null) {
+                    costSheetPending = false
+                    // Solo un producto con libro y vigente tiene costo que corregir.
+                    val tracked = product.details.stockMode == ProductStockMode.TRACKED
+                    if (tracked && !product.isArchived) onAction(ProductDetailAction.OpenCostSheet)
+                }
+            }
     }
 
     val uiState: StateFlow<ProductDetailUiState> =
@@ -214,6 +254,7 @@ class ProductDetailViewModel(
                 dialog = more.dialog,
                 message = more.message,
                 closed = more.closed,
+                priceSheet = more.priceSheet,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -224,6 +265,19 @@ class ProductDetailViewModel(
     fun onAction(action: ProductDetailAction) {
         when (action) {
             is ProductDetailAction.SelectTab -> extra.update { it.copy(tab = action.tab) }
+
+            ProductDetailAction.OpenPriceSheet ->
+                latest?.let { overview ->
+                    val price = moneyText(overview.product.salePrice)
+                    extra.update { it.copy(priceSheet = PriceSheet(price)) }
+                }
+
+            is ProductDetailAction.PriceText ->
+                priceSheet { copy(price = action.text, priceProblem = null, saveFailed = null) }
+
+            ProductDetailAction.SavePrice -> savePrice()
+
+            ProductDetailAction.DismissPriceSheet -> extra.update { it.copy(priceSheet = null) }
 
             ProductDetailAction.OpenCostSheet ->
                 latest?.let { overview ->
@@ -276,6 +330,72 @@ class ProductDetailViewModel(
             ProductDetailAction.RegisterPurchase, ProductDetailAction.AdjustStock,
             is ProductDetailAction.OpenDocument,
             -> Unit
+        }
+    }
+
+    private fun priceSheet(block: PriceSheet.() -> PriceSheet) {
+        extra.update { it.copy(priceSheet = it.priceSheet?.block()) }
+    }
+
+    /** El precio escrito, o `null` si no se puede leer: su problema queda en la hoja. */
+    private fun readPrice(text: String): Money? = when (
+        val read = NumberInputParser.money(
+            text,
+            numbers.moneySymbols,
+            numbers.currencyDecimals,
+            Limit.UNIT_MONEY,
+        )
+    ) {
+        is NumberInput.Value -> read.value
+
+        // En blanco es cero: un producto puede quedar sin precio, y la pantalla lo marca.
+        NumberInput.Blank -> Money.ZERO
+
+        is NumberInput.TooManyDecimals -> {
+            priceSheet { copy(priceProblem = FieldProblem.TooManyDecimals(read.allowed)) }
+            null
+        }
+
+        is NumberInput.TooLarge -> {
+            priceSheet { copy(priceProblem = FieldProblem.TooHigh) }
+            null
+        }
+
+        NumberInput.Malformed -> {
+            priceSheet { copy(priceProblem = FieldProblem.NotANumber) }
+            null
+        }
+    }
+
+    private fun savePrice() {
+        val current = extra.value.priceSheet ?: return
+        if (current.saving) return
+        val price = readPrice(current.price) ?: return
+        priceSheet { copy(saving = true, saveFailed = null) }
+        viewModelScope.launch {
+            when (val result = operations.changePrice(productId, price)) {
+                is ChangePriceResult.Changed ->
+                    extra.update {
+                        it.copy(priceSheet = null, message = ProductDetailMessage.PriceChanged)
+                    }
+
+                // El mismo precio: no hay nada que cambiar, y la hoja se cierra.
+                ChangePriceResult.Unchanged -> extra.update { it.copy(priceSheet = null) }
+
+                ChangePriceResult.PriceOutOfRange ->
+                    priceSheet { copy(saving = false, priceProblem = FieldProblem.TooHigh) }
+
+                // Cambió algo por debajo, o la región o la moneda no permiten guardar: no se
+                // guardó nada, y lo escrito sigue.
+                ChangePriceResult.NotFound, ChangePriceResult.ProductArchived,
+                ChangePriceResult.UnknownTimeZone, ChangePriceResult.CurrencyUnconfirmed,
+                -> priceSheet { copy(saving = false, saveFailed = SaveFailure(outOfSpace = false)) }
+
+                is ChangePriceResult.StorageFailed ->
+                    priceSheet {
+                        copy(saving = false, saveFailed = SaveFailure(result.failure.isOutOfSpace))
+                    }
+            }
         }
     }
 
@@ -386,6 +506,7 @@ class ProductDetailViewModel(
         val dialog: ProductDetailDialog? = null,
         val message: ProductDetailMessage? = null,
         val closed: Boolean = false,
+        val priceSheet: PriceSheet? = null,
     )
 
     companion object {

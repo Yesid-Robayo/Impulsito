@@ -90,6 +90,9 @@ class StockAdjustmentViewModel(
 
             StockAdjustmentAction.Discard ->
                 state.update { it.copy(confirmingDiscard = false, closed = true) }
+
+            // Abre otra pantalla encima: lo escrito aquí se conserva al volver.
+            StockAdjustmentAction.FixCost -> Unit
         }
     }
 
