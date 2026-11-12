@@ -50,6 +50,9 @@ internal val WEBDAV_SUGGESTIONS: List<WebDavSuggestion> =
  * @param record deja el destino en el estado del respaldo; devuelve si quedó escrito.
  * @param onConnected programa la copia tras conectar.
  * @param nowMillis el reloj de pared, en milisegundos UTC.
+ * @param change cambia a este servicio si hay otro destino guardado, conectado o no, con toda su
+ *   limpieza bajo el cerrojo. Sin otro destino responde que no era un cambio, y se conecta como
+ *   siempre. Nulo donde no se ofrece.
  */
 internal class WebDavConnectionService(
     private val connector: WebDavConnector,
@@ -61,6 +64,8 @@ internal class WebDavConnectionService(
     private val network: () -> Boolean,
     private val nowMillis: () -> Long,
     override val suggestions: List<WebDavSuggestion> = WEBDAV_SUGGESTIONS,
+    private val change:
+    (suspend (StoredWebDavCredential, DestinationLink) -> ChangeOutcome)? = null,
 ) : WebDavConnectionPort {
     override fun inspect(url: String): WebDavAddress =
         when (val parsed = WebDavEndpoint.parse(url)) {
@@ -141,8 +146,16 @@ internal class WebDavConnectionService(
         if (checked.destinationId != tested.destinationId) return WebDavSaveResult.SaveFailed
         val result =
             withContext(NonCancellable) {
-                backupLock.withLock {
-                    connector.save(checked, login.password, nowMillis(), record)
+                val now = nowMillis()
+                val link = checked.linkAt(now)
+                when (change?.invoke(checked.credentialWith(login.password), link)) {
+                    ChangeOutcome.CHANGED -> ConnectResult.Connected(link, checked.hasCopies, true)
+
+                    ChangeOutcome.FAILED -> ConnectResult.SaveFailed
+
+                    // Sin otro destino guardado es conectar, como siempre.
+                    ChangeOutcome.NOT_A_CHANGE, null ->
+                        backupLock.withLock { connector.save(checked, login.password, now, record) }
                 }
             }
         return when (result) {

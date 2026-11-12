@@ -138,6 +138,8 @@ internal class BackupStateDaoTest : CatalogDatabaseTest() {
                 "disconnect",
                 "resumeConnected",
                 "leaveConflictWithNewFile",
+                // El cambio de destino: lo comprueba la prueba del cambio.
+                "changeDestination",
             ),
             functionsOf(BackupStateDao::class.java),
         )

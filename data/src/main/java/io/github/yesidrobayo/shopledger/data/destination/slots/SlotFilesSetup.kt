@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.destination.slots
 import android.net.Uri
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.backup.slotConflictNeedsNewFile
+import io.github.yesidrobayo.shopledger.data.destination.ChangeOutcome
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLink
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
@@ -52,9 +53,9 @@ internal enum class SlotConfirmStep {
  *   comprueba otra vez, con su permiso y con 0 bytes.
  * - **Reconectar no rehace lo que sirve:** de las ranuras que había, las que siguen abriendo quedan
  *   como están, con sus copias. Solo se crean las que fallaron.
- * - **Nunca cambia de destino:** con otro destino guardado, conectado o no, los archivos se crean
- *   pero no se confirman. Ese cambio tiene su propio camino, bajo el cerrojo, que limpia todo lo del
- *   destino anterior.
+ * - **Cambiar de destino tiene su propio camino:** con otro destino guardado, conectado o no,
+ *   confirmar pasa por [change], que suelta el destino anterior bajo el cerrojo, con toda su
+ *   limpieza. Sin él, los archivos se crean pero no se confirman.
  * - **Un conflicto que pide un archivo nuevo** deja esa ranura por crear, aunque su archivo abra:
  *   otro teléfono lo cambió, o las tres ranuras están protegidas. El archivo anterior queda en la
  *   nube sin tocar, y confirmar es conservar este teléfono: el conflicto termina y sale una copia.
@@ -80,6 +81,8 @@ internal enum class SlotConfirmStep {
  * @param providers las nubes aprobadas. Solo las pruebas la cambian.
  * @param checkpoint lo que corre tras cada paso de la confirmación. Solo las pruebas lo usan, para
  *   cortar ahí.
+ * @param change cambia a las ranuras de un estado ya armado, desde otro destino. Nulo donde no se
+ *   ofrece.
  */
 internal class SlotFilesSetup(
     private val open: suspend () -> DataAccess,
@@ -94,6 +97,7 @@ internal class SlotFilesSetup(
     private val ioContext: CoroutineContext,
     private val providers: List<SlotProvider> = SLOT_PROVIDERS,
     private val checkpoint: suspend (SlotConfirmStep) -> Unit = {},
+    private val change: (suspend (SlotState) -> ChangeOutcome)? = null,
 ) : SlotFilesSetupPort {
     override suspend fun look(): SlotSetupLook? {
         val state = backupState() ?: return null
@@ -146,6 +150,7 @@ internal class SlotFilesSetup(
     }
 
     override suspend fun confirm(): SlotSetupConfirm {
+        changeIfOtherDestination()?.let { return it }
         val outcome =
             mutex.withLock {
                 val state = backupState() ?: return@withLock null
@@ -153,6 +158,30 @@ internal class SlotFilesSetup(
             } ?: return SlotSetupConfirm.Failed
         if (outcome is ConfirmOutcome.Connected) afterConfirm(outcome.hasData)
         return outcome.result
+    }
+
+    /**
+     * Con otro destino guardado y los tres archivos, cambia a las ranuras. Devuelve nulo si no hay
+     * otro destino, o si mientras tanto dejó de haberlo: entonces se confirma como siempre.
+     */
+    private suspend fun changeIfOtherDestination(): SlotSetupConfirm? {
+        val switch = change ?: return null
+        val dao = backupState() ?: return SlotSetupConfirm.Failed
+        val plan = plan(dao)
+        if (!plan.otherDestination) return null
+        if (BackupSlot.entries.any { it !in plan.created }) return SlotSetupConfirm.Incomplete
+        val state = plan.newState(BackupSlot.entries)
+        return when (switch(state)) {
+            ChangeOutcome.CHANGED -> {
+                val hasData = !dao.isEmpty()
+                afterConfirm(hasData)
+                SlotSetupConfirm.Done(hasData)
+            }
+
+            ChangeOutcome.FAILED -> SlotSetupConfirm.Failed
+
+            ChangeOutcome.NOT_A_CHANGE -> null
+        }
     }
 
     private suspend fun confirmLocked(dao: BackupStateDao): ConfirmOutcome {
@@ -407,6 +436,8 @@ internal class SlotFilesSetup(
                 providerLabel = label,
                 files = files,
                 otherDestination = otherDestination,
+                otherDestinationLabel =
+                    row.destinationFolder?.takeIf { otherDestination }?.let(::hostOf),
                 done = connected && kept.size == BackupSlot.entries.size,
                 conflictSlot = conflictSlot,
                 conflictFileName = conflictSlot?.let { current?.get(it)?.displayName },
@@ -425,4 +456,11 @@ internal class SlotFilesSetup(
             override val result: SlotSetupConfirm get() = SlotSetupConfirm.Done(hasData)
         }
     }
+}
+
+/** El servidor de una carpeta WebDAV, sin usuario, puerto, ruta ni parámetros, o nulo. */
+private fun hostOf(folder: String): String? = try {
+    java.net.URI(folder).host
+} catch (_: java.net.URISyntaxException) {
+    null
 }

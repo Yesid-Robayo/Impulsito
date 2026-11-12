@@ -35,6 +35,17 @@ internal object DurableFile {
         syncDirectory(dir)
     }
 
+    /**
+     * Renombra [from] a [to], reemplazándolo si existe, y sincroniza la carpeta: tras un corte queda
+     * uno de los dos, entero. Los dos van en la misma carpeta, así que el renombrado es atómico.
+     */
+    fun rename(from: File, to: File) {
+        val dir = requireNotNull(to.parentFile) { "El archivo necesita una carpeta" }
+        require(from.parentFile == dir) { "El renombrado va dentro de la misma carpeta" }
+        if (!from.renameTo(to)) throw IOException("No se pudo renombrar el archivo")
+        syncDirectory(dir)
+    }
+
     /** Borra [file] y su temporal. Devuelve `false` si alguno quedó. */
     fun delete(file: File): Boolean {
         val dir = file.parentFile ?: return true

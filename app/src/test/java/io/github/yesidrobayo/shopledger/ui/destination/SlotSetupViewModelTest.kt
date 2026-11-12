@@ -138,23 +138,34 @@ class SlotSetupViewModelTest {
     }
 
     @Test
-    fun `with another destination the files are created but never confirmed`() =
-        runTest(dispatcher) {
-            port.otherDestination = true
-            val model = model()
+    fun `with another destination continuing asks before changing`() = runTest(dispatcher) {
+        port.otherDestination = true
+        val model = model()
+        advanceUntilIdle()
+
+        for (slot in BackupSlot.entries) {
+            model.onAction(SlotSetupAction.FilePicked("content://cloud/${slot.name}"))
             advanceUntilIdle()
-
-            for (slot in BackupSlot.entries) {
-                model.onAction(SlotSetupAction.FilePicked("content://cloud/${slot.name}"))
-                advanceUntilIdle()
-            }
-
-            assertEquals(0, port.confirms)
-            assertFalse(model.uiState.value.ready)
-            assertTrue(model.uiState.value.look?.otherDestination == true)
-            model.onAction(SlotSetupAction.Continue)
-            assertEquals(SlotSetupTarget.BACKUP, model.uiState.value.target)
         }
+
+        // Con otro destino nunca confirma sola: cambiar lo decide la persona.
+        assertEquals(0, port.confirms)
+        assertFalse(model.uiState.value.ready)
+        model.onAction(SlotSetupAction.Continue)
+        assertTrue(model.uiState.value.askingChange)
+        model.onAction(SlotSetupAction.DismissChange)
+        advanceUntilIdle()
+        assertFalse(model.uiState.value.askingChange)
+        assertEquals(0, port.confirms)
+
+        model.onAction(SlotSetupAction.Continue)
+        model.onAction(SlotSetupAction.ConfirmChange)
+        advanceUntilIdle()
+
+        assertEquals(1, port.confirms)
+        assertTrue(model.uiState.value.ready)
+        assertFalse(model.uiState.value.askingChange)
+    }
 
     @Test
     fun `a confirmation cut short is finished when the screen opens again`() = runTest(dispatcher) {

@@ -56,6 +56,7 @@ import io.github.yesidrobayo.shopledger.data.backup.savedDestination
 import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkService
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
+import io.github.yesidrobayo.shopledger.data.destination.DestinationMemory
 import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
 import io.github.yesidrobayo.shopledger.data.destination.ProductionDestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.WebDavConnectionService
@@ -355,6 +356,7 @@ class DataGraph internal constructor(
             },
             clock = clock,
             ioContext = ioContext,
+            change = { state -> destinationLinks.changeToSlots(state) },
         )
     }
 
@@ -388,6 +390,7 @@ class DataGraph internal constructor(
             onConnected = { backupScheduler.onLinkRestored() },
             network = { backupNetworkOf(context).validated },
             nowMillis = { clock.now().toEpochMilliseconds() },
+            change = { credential, link -> destinationLinks.changeToWebDav(credential, link) },
         )
     }
 
@@ -423,6 +426,8 @@ class DataGraph internal constructor(
             clock = clock,
             log = log,
             ioContext = ioContext,
+            memory = DestinationMemory({ files().noBackupDirectory }, ioContext),
+            afterChange = { backupScheduler.onDestinationChanged() },
         )
     }
 

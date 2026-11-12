@@ -47,6 +47,8 @@ internal class WebDavCredentialStore(
 
     private fun file() = File(directory(), FILE_NAME)
 
+    private fun nextFile() = File(directory(), NEXT_FILE_NAME)
+
     private fun sealerOf(alias: String) = KeystoreSealer(alias)
 
     /**
@@ -81,6 +83,96 @@ internal class WebDavCredentialStore(
      */
     suspend fun read(expectedDestinationId: String): CredentialRead = mutex.withLock {
         withContext(ioContext) { readNow(expectedDestinationId) }
+    }
+
+    /**
+     * Sella la credencial de un destino nuevo en `webdav.sealed.new`, al lado de la actual, que
+     * sigue sirviendo hasta que la base confirme el cambio. Usa la clave que la actual no usa, y la
+     * reemplaza: un `.new` anterior que haya quedado ya no abre.
+     */
+    suspend fun saveNext(credential: StoredWebDavCredential): CredentialSave {
+        WebDavCredentialCodec.problem(credential)?.let { return CredentialSave.Rejected(it) }
+        val plaintext = WebDavCredentialCodec.encode(credential)
+        return mutex.withLock {
+            withContext(ioContext) {
+                val previous = currentAlias(file())
+                val next = if (previous == aliases.first) aliases.second else aliases.first
+                val sealer = sealerOf(next)
+                val written =
+                    attempt { sealer.replaceKey() }
+                        ?: attempt { DurableFile.write(nextFile(), sealer.seal(plaintext)) }
+                if (written != null) CredentialSave.Failed(written) else CredentialSave.Saved
+            }
+        }
+    }
+
+    /**
+     * El destino de `webdav.sealed.new`, o `null` si no hay uno o no abre. Abrirlo no crea ni borra
+     * nada.
+     */
+    suspend fun nextDestinationId(): String? = mutex.withLock {
+        withContext(ioContext) {
+            val file = nextFile()
+            if (!file.isFile) return@withContext null
+            when (val read = openFile(file)) {
+                is CredentialRead.Usable -> read.credential.destinationId
+                is CredentialRead.PermissionLost, is CredentialRead.RetryLater -> null
+            }
+        }
+    }
+
+    /**
+     * Termina un cambio de destino que la base ya confirmó: renombra `webdav.sealed.new` a
+     * `webdav.sealed` si es de [destinationId], y después borra la clave del archivo anterior.
+     * Devuelve `true` si la credencial de ese destino quedó en su lugar.
+     */
+    suspend fun promoteNext(destinationId: String): Boolean = mutex.withLock {
+        withContext(ioContext) {
+            val next = nextFile()
+            if (!next.isFile) return@withContext false
+            val opened = openFile(next) as? CredentialRead.Usable ?: return@withContext false
+            if (opened.credential.destinationId != destinationId) return@withContext false
+            val nextAlias = currentAlias(next) ?: return@withContext false
+            val previous = currentAlias(file())
+            try {
+                DurableFile.rename(next, file())
+            } catch (_: IOException) {
+                return@withContext false
+            }
+            // Sin la clave anterior, una copia del archivo de antes que haya quedado ya no abre.
+            if (previous != null &&
+                previous != nextAlias
+            ) {
+                attempt { sealerOf(previous).deleteKey() }
+            }
+            true
+        }
+    }
+
+    /**
+     * Borra un `webdav.sealed.new` que la base no confirmó, con su clave si no es la del archivo
+     * actual. Devuelve `false` si quedó algo.
+     */
+    suspend fun deleteNext(): Boolean = mutex.withLock {
+        withContext(ioContext) {
+            val next = nextFile()
+            val nextAlias = currentAlias(next)
+            val removed =
+                try {
+                    DurableFile.delete(next)
+                } catch (_: IOException) {
+                    false
+                }
+            if (removed && nextAlias != null && nextAlias != currentAlias(file())) {
+                attempt { sealerOf(nextAlias).deleteKey() }
+            }
+            removed
+        }
+    }
+
+    /** Si hay un `webdav.sealed.new`, o su temporal. No lo abre. */
+    suspend fun nextExists(): Boolean = withContext(ioContext) {
+        nextFile().exists() || DurableFile.temporaryOf(nextFile()).exists()
     }
 
     /** Si hay una credencial guardada, o su temporal. No la abre ni toca Keystore. */
@@ -124,6 +216,20 @@ internal class WebDavCredentialStore(
     private fun readNow(expectedDestinationId: String): CredentialRead {
         val file = file()
         if (!file.isFile) return CredentialRead.PermissionLost(PermissionLostReason.NO_FILE)
+        return when (val read = openFile(file)) {
+            is CredentialRead.Usable ->
+                if (read.credential.destinationId != expectedDestinationId) {
+                    CredentialRead.PermissionLost(PermissionLostReason.OTHER_DESTINATION)
+                } else {
+                    read
+                }
+
+            is CredentialRead.PermissionLost, is CredentialRead.RetryLater -> read
+        }
+    }
+
+    /** Abre [file] sin mirar de qué destino es. */
+    private fun openFile(file: File): CredentialRead {
         val bytes =
             try {
                 file.readBytes()
@@ -136,14 +242,10 @@ internal class WebDavCredentialStore(
         return when (val opened = sealerOf(alias).open(bytes)) {
             is SealOpenResult.Opened -> {
                 val credential = WebDavCredentialCodec.decode(opened.plaintext)
-                when {
-                    credential == null ->
-                        CredentialRead.PermissionLost(PermissionLostReason.MALFORMED_CONTENT)
-
-                    credential.destinationId != expectedDestinationId ->
-                        CredentialRead.PermissionLost(PermissionLostReason.OTHER_DESTINATION)
-
-                    else -> CredentialRead.Usable(credential)
+                if (credential == null) {
+                    CredentialRead.PermissionLost(PermissionLostReason.MALFORMED_CONTENT)
+                } else {
+                    CredentialRead.Usable(credential)
                 }
             }
 
@@ -181,6 +283,9 @@ internal class WebDavCredentialStore(
 
     companion object {
         const val FILE_NAME = "webdav.sealed"
+
+        /** La credencial de un destino nuevo, mientras se cambia de destino. */
+        const val NEXT_FILE_NAME = "webdav.sealed.new"
         const val KEY_ALIAS_A = "webdav-credential-a"
         const val KEY_ALIAS_B = "webdav-credential-b"
         private const val FILE_LEFT = "FileLeft"

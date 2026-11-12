@@ -54,10 +54,43 @@ internal enum class DisconnectStep {
     ACCESS_REMOVED,
 }
 
+/** Los pasos de cambiar de destino, en orden. Las pruebas cortan tras cada uno. */
+internal enum class ChangeStep {
+    /** `webdav.sealed.new`, o `slots.json` con las ranuras nuevas, ya están en el disco. */
+    NEXT_WRITTEN,
+
+    /** La base tiene el destino nuevo: desde aquí no hay vuelta atrás. */
+    STATE_CHANGED,
+
+    /** La credencial nueva quedó en `webdav.sealed`, o no hacía falta. */
+    CREDENTIAL_PROMOTED,
+
+    /** Se soltó el destino anterior: su credencial, o sus ranuras con sus permisos. */
+    PREVIOUS_RELEASED,
+
+    /** Se olvidó lo que el teléfono recordaba del destino anterior. */
+    MEMORY_FORGOTTEN,
+
+    /** `link.json` describe el destino nuevo. */
+    LINK_SAVED,
+}
+
+/** Cómo terminó un cambio de destino. */
+internal enum class ChangeOutcome {
+    /** El destino nuevo quedó conectado, y el anterior suelto. */
+    CHANGED,
+
+    /** No había otro destino guardado, o ya era ese: es conectar, no cambiar. Nada cambió. */
+    NOT_A_CHANGE,
+
+    /** No se pudo guardar. El destino anterior sigue igual, y se puede repetir. */
+    FAILED,
+}
+
 /**
  * El enlace al destino desde la pantalla del respaldo: desconectar, volver tras iniciar sesión en
- * la nube del teléfono y decidir un conflicto. También deja en orden, al abrir la app, lo que un
- * corte dejó a medias.
+ * la nube del teléfono, decidir un conflicto y cambiar de destino. También deja en orden, al abrir
+ * la app, lo que un corte dejó a medias.
  *
  * **Desconectar es local y sin red**, para que una muerte del proceso no deje nada a medias:
  *
@@ -77,6 +110,23 @@ internal enum class DisconnectStep {
  * Un corte entre el paso 2 y el 4 deja la base desconectada con archivos de más: al abrir, [tidy]
  * los borra. Nunca al revés: la base nunca dice conectada sin su credencial o sus ranuras.
  *
+ * **Cambiar de destino** es como cambiar de cuenta, y corre bajo el mismo cerrojo: sin él, un
+ * trabajo con la credencial vieja subiría al destino anterior y daría la copia por hecha. Cancela
+ * los trabajos, toma el cerrojo y sigue este orden:
+ *
+ * 1. Escribe lo del destino nuevo al lado de lo actual: `webdav.sealed.new`, o `slots.json` con las
+ *    ranuras nuevas. El destino anterior sigue funcionando.
+ * 2. En una sentencia, la base pasa al destino nuevo sin heredar nada del anterior y fuerza una
+ *    subida. Es el punto de no retorno. Después, y aparte, anota `DESTINATION_CHANGED`.
+ * 3. Renombra `webdav.sealed.new` a `webdav.sealed` y borra la clave del archivo anterior.
+ * 4. Suelta el destino anterior: sus ranuras con sus permisos, o su credencial.
+ * 5. Olvida la sonda, las generaciones recordadas y la copia a medio subir.
+ * 6. Escribe `link.json`, de último.
+ *
+ * Un corte antes del paso 2 deja el destino anterior intacto, y al abrir se borra lo que quedó del
+ * nuevo. Un corte después deja `link.json` distinto de la base, y al abrir se repiten los pasos 3 a
+ * 6. Las copias del destino anterior nunca se tocan.
+ *
  * @param open abre la base de la app, o dice que no se puede.
  * @param mutex el cerrojo del respaldo, uno por proceso.
  * @param cancelWork cancela la espera, las subidas y la sonda única. No espera a que salgan: el
@@ -84,8 +134,12 @@ internal enum class DisconnectStep {
  * @param afterLinkRestored tras volver a conectar o salir de un conflicto, encola lo pendiente y la
  *   sonda única, ya fuera del cerrojo.
  * @param conflicts el que decide los conflictos sobre el estado de la base abierta.
+ * @param memory lo que el teléfono recuerda del destino fuera de la base.
+ * @param afterChange tras cambiar de destino, reprograma la sonda con la red del nuevo y encola
+ *   la subida, ya fuera del cerrojo.
  * @param checkpoint lo que corre tras cada paso de desconectar. Solo las pruebas lo usan, para
  *   cortar ahí.
+ * @param changeCheckpoint lo mismo, tras cada paso de cambiar de destino.
  */
 internal class DestinationLinkService(
     private val open: suspend () -> DataAccess,
@@ -102,7 +156,10 @@ internal class DestinationLinkService(
     private val clock: Clock,
     private val log: EventLog,
     private val ioContext: CoroutineContext,
+    private val memory: DestinationMemory? = null,
+    private val afterChange: suspend () -> Unit = {},
     private val checkpoint: suspend (DisconnectStep) -> Unit = {},
+    private val changeCheckpoint: suspend (ChangeStep) -> Unit = {},
 ) : BackupLinkPort {
     override suspend fun disconnect(): DisconnectResult = withContext(NonCancellable) {
         val ports = ports() ?: return@withContext DisconnectResult.FAILED
@@ -133,8 +190,13 @@ internal class DestinationLinkService(
     /**
      * Deja en orden lo que un corte dejó a medias, al abrir la app y bajo el cerrojo:
      *
-     * - **Sin destino conectado,** borra `link.json`, la credencial y `slots.json` que hayan
-     *   quedado, y suelta los permisos de las ranuras que no estén en una preparación a medias.
+     * - **Sin destino conectado,** borra `link.json`, la credencial, `webdav.sealed.new` y
+     *   `slots.json` que hayan quedado, y suelta los permisos de las ranuras que no estén en una
+     *   preparación a medias.
+     * - **Con un destino,** borra lo que quedó de otro: un `webdav.sealed.new` que la base no
+     *   confirmó, o que sí confirmó y falta renombrar; las ranuras con WebDAV, o la credencial con
+     *   ranuras. Si `link.json` no es del destino de la base, termina el cambio: olvida lo recordado
+     *   del anterior y escribe `link.json` desde la base, también si una conexión se cortó antes.
      * - **Con las ranuras conectadas,** borra la marca de sesión cerrada que quedó tras volver.
      *
      * No usa la red, y una falla queda para la próxima vez.
@@ -144,11 +206,180 @@ internal class DestinationLinkService(
         mutex.withLock {
             val row = dao.get() ?: return@withLock
             when (BackupLinkState.entries.firstOrNull { it.name == row.linkState }) {
-                BackupLinkState.NOT_CONNECTED -> tidyDisconnected()
-                BackupLinkState.CONNECTED -> clearStaleSessionMark(row)
-                BackupLinkState.PERMISSION_LOST, BackupLinkState.CONFLICT, null -> Unit
+                BackupLinkState.NOT_CONNECTED -> {
+                    tidyDisconnected()
+                    if (credentials.nextExists()) credentials.deleteNext()
+                }
+
+                BackupLinkState.CONNECTED -> {
+                    finishChange(row)
+                    clearStaleSessionMark(row)
+                }
+
+                BackupLinkState.PERMISSION_LOST, BackupLinkState.CONFLICT -> finishChange(row)
+
+                null -> Unit
             }
         }
+    }
+
+    /**
+     * Cambia al servicio WebDAV de [link], con [credential], si hay otro destino guardado,
+     * conectado o no. Sin otro destino, o con el mismo, no hace nada y devuelve
+     * [ChangeOutcome.NOT_A_CHANGE]: eso es conectar.
+     */
+    suspend fun changeToWebDav(
+        credential: StoredWebDavCredential,
+        link: DestinationLink,
+    ): ChangeOutcome {
+        val outcome =
+            withContext(NonCancellable) {
+                val ports = ports() ?: return@withContext ChangeOutcome.FAILED
+                cancelWork()
+                mutex.withLock { changeToWebDavLocked(ports, credential, link) }
+            }
+        if (outcome == ChangeOutcome.CHANGED) afterChange()
+        return outcome
+    }
+
+    private suspend fun changeToWebDavLocked(
+        ports: DataPorts,
+        credential: StoredWebDavCredential,
+        link: DestinationLink,
+    ): ChangeOutcome {
+        val dao = ports.backupState
+        val previous = dao.get()?.destinationId ?: return ChangeOutcome.NOT_A_CHANGE
+        if (previous == link.destinationId) return ChangeOutcome.NOT_A_CHANGE
+        when (credentials.saveNext(credential)) {
+            CredentialSave.Saved -> Unit
+            is CredentialSave.Rejected, is CredentialSave.Failed -> return ChangeOutcome.FAILED
+        }
+        changeCheckpoint(ChangeStep.NEXT_WRITTEN)
+        val changed =
+            dao.changeDestination(
+                previousId = previous,
+                kind = BackupDestinationKind.WEBDAV.name,
+                account = link.account,
+                destinationId = link.destinationId,
+                folder = link.folderUrl,
+                now = clock.now().toEpochMilliseconds(),
+            ) == 1
+        if (!changed) {
+            // La base sigue con el destino anterior: la credencial nueva no sirve a nadie.
+            credentials.deleteNext()
+            return ChangeOutcome.FAILED
+        }
+        changeCheckpoint(ChangeStep.STATE_CHANGED)
+        audit(ports, AuditEventType.DESTINATION_CHANGED)
+        finishChange(requireNotNull(dao.get()) { "Falta la fila del respaldo" })
+        return ChangeOutcome.CHANGED
+    }
+
+    /**
+     * Cambia a las ranuras de [state], con sus tres archivos nuevos, si hay otro destino guardado,
+     * conectado o no. Sin otro destino, o si ya eran las ranuras, devuelve
+     * [ChangeOutcome.NOT_A_CHANGE] sin hacer nada.
+     */
+    suspend fun changeToSlots(state: SlotState): ChangeOutcome {
+        val outcome =
+            withContext(NonCancellable) {
+                val ports = ports() ?: return@withContext ChangeOutcome.FAILED
+                cancelWork()
+                mutex.withLock { changeToSlotsLocked(ports, state) }
+            }
+        if (outcome == ChangeOutcome.CHANGED) afterChange()
+        return outcome
+    }
+
+    private suspend fun changeToSlotsLocked(ports: DataPorts, state: SlotState): ChangeOutcome {
+        val dao = ports.backupState
+        val previous = dao.get()?.destinationId ?: return ChangeOutcome.NOT_A_CHANGE
+        if (previous == DOCUMENT_SLOTS_DESTINATION_ID) return ChangeOutcome.NOT_A_CHANGE
+        try {
+            slots.save(state)
+        } catch (_: IOException) {
+            return ChangeOutcome.FAILED
+        }
+        changeCheckpoint(ChangeStep.NEXT_WRITTEN)
+        val changed =
+            dao.changeDestination(
+                previousId = previous,
+                kind = BackupDestinationKind.DOCUMENT_SLOTS.name,
+                account = null,
+                destinationId = DOCUMENT_SLOTS_DESTINATION_ID,
+                folder = null,
+                now = clock.now().toEpochMilliseconds(),
+            ) == 1
+        if (!changed) {
+            // Los archivos siguen en la preparación, con sus permisos: se puede repetir.
+            slots.delete()
+            return ChangeOutcome.FAILED
+        }
+        changeCheckpoint(ChangeStep.STATE_CHANGED)
+        audit(ports, AuditEventType.DESTINATION_CHANGED)
+        finishChange(requireNotNull(dao.get()) { "Falta la fila del respaldo" })
+        return ChangeOutcome.CHANGED
+    }
+
+    /**
+     * Los pasos que siguen al de no retorno, sobre el destino que dice [row]. Se repiten al abrir
+     * tras un corte: cada uno mira el disco, así que hacerlo dos veces no cambia nada.
+     */
+    private suspend fun finishChange(row: BackupStateEntity) {
+        val destinationId = row.destinationId ?: return
+        val kind = kindOf(row) ?: return
+        when (kind) {
+            BackupDestinationKind.WEBDAV ->
+                if (credentials.nextExists()) {
+                    // Confirmada en la base, falta renombrarla; si es de otro destino, sobra.
+                    val promoted = credentials.promoteNext(destinationId)
+                    if (!promoted) credentials.deleteNext()
+                }
+
+            BackupDestinationKind.DOCUMENT_SLOTS ->
+                if (credentials.nextExists()) credentials.deleteNext()
+        }
+        changeCheckpoint(ChangeStep.CREDENTIAL_PROMOTED)
+        when (kind) {
+            // Un `slots.json` con WebDAV es de las ranuras anteriores, o de un cambio que no llegó.
+            BackupDestinationKind.WEBDAV ->
+                if (slots.load() !is SlotStateLoad.Missing) {
+                    removeAccess(BackupDestinationKind.DOCUMENT_SLOTS)
+                }
+
+            BackupDestinationKind.DOCUMENT_SLOTS ->
+                if (credentials.exists()) removeAccess(BackupDestinationKind.WEBDAV)
+        }
+        // La preparación de las ranuras ya está en `slots.json`: no queda nada que confirmar.
+        if (kind == BackupDestinationKind.DOCUMENT_SLOTS) forgetUsedPending()
+        changeCheckpoint(ChangeStep.PREVIOUS_RELEASED)
+        if (links.read()?.destinationId == destinationId) return
+        memory?.forget(clock.now())
+        changeCheckpoint(ChangeStep.MEMORY_FORGOTTEN)
+        val written =
+            try {
+                links.write(
+                    DestinationLink(
+                        kind = kind,
+                        account = row.destinationAccount,
+                        destinationId = destinationId,
+                        folderUrl = row.destinationFolder,
+                        connectedAtMillis = clock.now().toEpochMilliseconds(),
+                    ),
+                )
+                true
+            } catch (failure: IOException) {
+                log.warn(DataEvent.DESTINATION_TIDY_FAILED, failure)
+                false
+            }
+        if (written) changeCheckpoint(ChangeStep.LINK_SAVED)
+    }
+
+    /** Borra la preparación de las ranuras si todos sus archivos ya están en `slots.json`. */
+    private suspend fun forgetUsedPending() {
+        val used = loadedSlots()?.slots?.values?.map { it.uri }?.toSet() ?: return
+        val waiting = pending.load().values.map { it.uri }
+        if (waiting.all { it in used }) pending.delete()
     }
 
     override suspend fun resumeAfterSignIn(): Boolean {

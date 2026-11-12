@@ -93,22 +93,8 @@ internal class WebDavConnector(
         nowMillis: Long,
         record: suspend (DestinationLink) -> Boolean,
     ): ConnectResult {
-        val endpoint = checked.endpoint
-        val link =
-            DestinationLink(
-                kind = BackupDestinationKind.WEBDAV,
-                account = checked.username,
-                destinationId = checked.destinationId,
-                folderUrl = endpoint.urlOf(checked.folder).toString(),
-                connectedAtMillis = nowMillis,
-            )
-        val stored =
-            StoredWebDavCredential(
-                endpoint.baseUrl.toString(),
-                checked.username,
-                password,
-                checked.destinationId,
-            )
+        val link = checked.linkAt(nowMillis)
+        val stored = checked.credentialWith(password)
         when (credentials.save(stored)) {
             CredentialSave.Saved -> Unit
             is CredentialSave.Rejected -> return ConnectResult.SaveFailed
@@ -166,6 +152,19 @@ internal data class CheckedWebDav(
 ) {
     /** El identificador del destino, de la dirección y el usuario. */
     val destinationId: String get() = DestinationIdentity.destinationId(endpoint, username)
+
+    /** Lo que `link.json` y la base guardan de este destino, conectado a las [nowMillis]. */
+    fun linkAt(nowMillis: Long): DestinationLink = DestinationLink(
+        kind = BackupDestinationKind.WEBDAV,
+        account = username,
+        destinationId = destinationId,
+        folderUrl = endpoint.urlOf(folder).toString(),
+        connectedAtMillis = nowMillis,
+    )
+
+    /** La credencial que se sella para este destino, con [password]. */
+    fun credentialWith(password: String): StoredWebDavCredential =
+        StoredWebDavCredential(endpoint.baseUrl.toString(), username, password, destinationId)
 }
 
 /** Cómo terminó la prueba antes de guardar. */
@@ -222,8 +221,17 @@ internal class WebDavDestinationOpener(
      * @param folderUrl el `destination_folder` del estado del respaldo.
      */
     suspend fun open(destinationId: String, folderUrl: String): DestinationOpen {
+        val first = credentials.read(destinationId)
+        // Un cambio de destino que la base confirmó y un corte dejó sin renombrar se termina aquí,
+        // bajo el cerrojo del respaldo: la credencial nueva es la de este destino.
+        val read =
+            if (first is CredentialRead.PermissionLost && credentials.promoteNext(destinationId)) {
+                credentials.read(destinationId)
+            } else {
+                first
+            }
         val credential =
-            when (val read = credentials.read(destinationId)) {
+            when (read) {
                 is CredentialRead.Usable -> read.credential
                 is CredentialRead.PermissionLost -> return DestinationOpen.PermissionLost
                 is CredentialRead.RetryLater -> return DestinationOpen.RetryLater

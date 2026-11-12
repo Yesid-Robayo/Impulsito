@@ -36,8 +36,10 @@ data class SlotSetupFile(val slot: BackupSlot, val status: SlotFileStatus, val f
  * @property providerLabel el nombre de la nube, de la lista fija de proveedores aprobados: nunca lo
  *   que diga el proveedor.
  * @property files los tres archivos, en el orden de las ranuras.
- * @property otherDestination si hay otro destino guardado, conectado o no. Los archivos se pueden
- *   crear, pero el cambio de destino no se confirma aquí.
+ * @property otherDestination si hay otro destino guardado, conectado o no. Confirmar es cambiar de
+ *   destino, y la pantalla lo pregunta antes.
+ * @property otherDestinationLabel el servidor del destino anterior, si es WebDAV, para decir dónde
+ *   quedan sus copias.
  * @property done si las ranuras ya están conectadas y las tres abren: no queda nada que preparar.
  * @property conflictSlot con las copias detenidas por un conflicto que pide un archivo nuevo, la
  *   ranura que lo necesita. Su archivo anterior queda en la nube sin tocar.
@@ -49,6 +51,7 @@ data class SlotSetupLook(
     val files: List<SlotSetupFile>,
     val otherDestination: Boolean,
     val done: Boolean,
+    val otherDestinationLabel: String? = null,
     val conflictSlot: BackupSlot? = null,
     val conflictFileName: String? = null,
 ) {

@@ -53,8 +53,9 @@ internal object SlotSetupSamples {
             look(
                 SlotFileStatus.CREATED,
                 SlotFileStatus.CREATED,
-                SlotFileStatus.MISSING,
+                SlotFileStatus.CREATED,
                 otherDestination = true,
-            ),
+            ).copy(otherDestinationLabel = "dav.example.com"),
+            askingChange = true,
         )
 }

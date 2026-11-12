@@ -106,7 +106,17 @@ internal class WorkManagerBackupQueue(private val context: Context) : BackupWork
             )?.done()
     }
 
-    override suspend fun keepHeadChecks(needsNetwork: Boolean) {
+    override suspend fun keepHeadChecks(needsNetwork: Boolean) =
+        scheduleHeadChecks(needsNetwork, ExistingPeriodicWorkPolicy.KEEP)
+
+    // Actualizar conserva cuándo toca la siguiente, y cambia la red que pide.
+    override suspend fun replaceHeadChecks(needsNetwork: Boolean) =
+        scheduleHeadChecks(needsNetwork, ExistingPeriodicWorkPolicy.UPDATE)
+
+    private suspend fun scheduleHeadChecks(
+        needsNetwork: Boolean,
+        probePolicy: ExistingPeriodicWorkPolicy,
+    ) {
         val manager = manager() ?: return
         val probe =
             PeriodicWorkRequestBuilder<HeadProbeWorker>(
@@ -120,7 +130,7 @@ internal class WorkManagerBackupQueue(private val context: Context) : BackupWork
         manager
             .enqueueUniquePeriodicWork(
                 BackupWorkNames.HEAD_PROBE,
-                ExistingPeriodicWorkPolicy.KEEP,
+                probePolicy,
                 probe,
             ).done()
         val deep =

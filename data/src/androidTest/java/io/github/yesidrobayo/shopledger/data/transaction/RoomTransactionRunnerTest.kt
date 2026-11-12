@@ -355,6 +355,15 @@ internal class RoomTransactionRunnerTest : SaleTransactionTest() {
         override suspend fun resumeConnected(destinationId: String): Int = 0
 
         override suspend fun leaveConflictWithNewFile(now: Long, destinationId: String): Int = 0
+
+        override suspend fun changeDestination(
+            previousId: String,
+            kind: String,
+            account: String?,
+            destinationId: String,
+            folder: String?,
+            now: Long,
+        ): Int = 0
     }
 
     private companion object {

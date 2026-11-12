@@ -61,6 +61,9 @@ class WebDavConnectionServiceTest {
     }
 
     /** El cliente de la app, que en la prueba lleva toda petición al servidor falso, en claro. */
+    private var changeOutcome: ChangeOutcome? = null
+    private val changes = ArrayList<DestinationLink>()
+
     private fun service(server: FakeHttpServer, recordOk: Boolean = true): WebDavConnectionService {
         val http = testHttp()
             .newBuilder()
@@ -82,6 +85,13 @@ class WebDavConnectionServiceTest {
             onConnected = { connectedCalls++ },
             network = { true },
             nowMillis = { NOW },
+            change =
+                changeOutcome?.let { outcome ->
+                    { _, link ->
+                        changes += link
+                        outcome
+                    }
+                },
         )
     }
 
@@ -123,6 +133,37 @@ class WebDavConnectionServiceTest {
         assertEquals(link, links.read())
         assertTrue(credentials.read(link.destinationId) is CredentialRead.Usable)
         assertEquals(1, connectedCalls)
+    }
+
+    @Test
+    fun withAnotherDestinationSavingIsAChangeAndTheConnectorSealsNothing() = runBlocking<Unit> {
+        changeOutcome = ChangeOutcome.CHANGED
+        val (_, server) = server()
+        val service = service(server)
+        val tested = (service.test(login, APP_NAME) {} as WebDavTestResult.Passed).tested
+
+        assertEquals(WebDavSaveResult.Connected(hasCopies = false), service.save(login, tested))
+
+        // El cambio lo hace el servicio del enlace, con su credencial nueva al lado de la actual.
+        assertEquals(tested.destinationId, changes.single().destinationId)
+        assertTrue(recorded.isEmpty())
+        assertFalse(File(directory, WebDavCredentialStore.FILE_NAME).exists())
+        assertEquals(1, connectedCalls)
+    }
+
+    @Test
+    fun aFailedChangeSavesNothingAndNotAChangeConnectsAsAlways() = runBlocking<Unit> {
+        changeOutcome = ChangeOutcome.FAILED
+        val (_, server) = server()
+        val failing = service(server)
+        val tested = (failing.test(login, APP_NAME) {} as WebDavTestResult.Passed).tested
+        assertEquals(WebDavSaveResult.SaveFailed, failing.save(login, tested))
+        nothingSaved()
+
+        changeOutcome = ChangeOutcome.NOT_A_CHANGE
+        val connecting = service(server)
+        assertEquals(WebDavSaveResult.Connected(hasCopies = false), connecting.save(login, tested))
+        assertEquals(tested.destinationId, recorded.single().destinationId)
     }
 
     @Test

@@ -21,7 +21,6 @@
     <string name="slots_error_same_file">That file is already file %1$d of 3. Each one must be different.</string>
     <string name="slots_other_file_action">Create another file</string>
     <string name="slots_error_cancelled">The file was not created. The earlier ones are still ready.</string>
-    <string name="slots_other_destination_note">Backups already go to another place. These files stay created, but %1$s does not switch places from here yet.</string>
     <string name="slots_ready_title">Files ready</string>
     <string name="slots_ready_body">From now on, %1$s hands backups to %2$s. Every week, the file\'s time must be checked in that cloud.</string>
     <string name="backup_action_other_service">Choose another service</string>

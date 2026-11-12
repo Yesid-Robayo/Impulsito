@@ -14,6 +14,8 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.SlotSetupLook
  * @param confirmFailed si la última confirmación no pudo guardar: `Continuar` la repite.
  * @param message un aviso breve pendiente de mostrar.
  * @param target a dónde ir, pendiente de que la navegación lo haga.
+ * @param askingChange si se pregunta antes de cambiar de destino: las copias anteriores quedan
+ *   donde están.
  */
 data class SlotSetupUiState(
     val look: SlotSetupLook? = null,
@@ -23,6 +25,7 @@ data class SlotSetupUiState(
     val confirmFailed: Boolean = false,
     val message: SlotSetupMessage? = null,
     val target: SlotSetupTarget? = null,
+    val askingChange: Boolean = false,
 ) {
     /** El archivo que se crea con `Crear el archivo`, o nulo si ya están los tres. */
     val next: BackupSlot? get() = look?.next
@@ -91,6 +94,12 @@ sealed interface SlotSetupAction {
 
     /** `Continuar`, con los tres archivos. */
     data object Continue : SlotSetupAction
+
+    /** Confirmó cambiar de destino a estos archivos. */
+    data object ConfirmChange : SlotSetupAction
+
+    /** No quiso cambiar de destino: los archivos quedan creados para después. */
+    data object DismissChange : SlotSetupAction
 
     /** `Crear otro archivo`, tras un archivo que no sirvió. */
     data object CreateAnotherFile : SlotSetupAction

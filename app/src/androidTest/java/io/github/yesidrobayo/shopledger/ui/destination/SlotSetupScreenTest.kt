@@ -107,19 +107,16 @@ class SlotSetupScreenTest {
     }
 
     @Test
-    fun anotherDestinationIsSaidAndHelpHasItsName() {
+    fun anotherDestinationAsksBeforeChanging() {
         val actions = show(SlotSetupSamples.otherDestination)
 
-        compose.onNodeWithText(resources.getString(R.string.slots_other_destination_note, appName))
-            .performScrollTo()
-            .assertIsDisplayed()
-        val help =
-            resources.getString(
-                R.string.a11y_help_link,
-                resources.getString(R.string.destination_title),
-            )
-        compose.onNodeWithContentDescription(help).performClick()
-        assertEquals(listOf<SlotSetupAction>(SlotSetupAction.Help), actions)
+        compose.onNodeWithText(
+            resources.getString(R.string.destination_change_body, "dav.example.com", appName),
+        ).assertIsDisplayed()
+        compose.onNodeWithText(resources.getString(R.string.destination_change_action))
+            .performClick()
+
+        assertEquals(listOf<SlotSetupAction>(SlotSetupAction.ConfirmChange), actions)
     }
 
     private companion object {

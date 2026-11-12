@@ -25,7 +25,8 @@ import kotlinx.coroutines.withContext
  * - Cada archivo elegido se revisa enseguida; si no sirve, se dice por qué y la app no lo conserva.
  * - Con los tres, confirma sola. Si un corte dejó la confirmación a mitad, al volver la termina,
  *   también sola: repetirla no cambia nada.
- * - Con otro destino guardado, los archivos se crean, pero no se confirma.
+ * - Con otro destino guardado, `Continuar` pregunta antes de cambiar: las copias anteriores quedan
+ *   donde están, y la app deja de administrarlas.
  *
  * @param setup la preparación de las ranuras.
  * @param computation el hilo donde se lee y se escribe, fuera del principal.
@@ -53,6 +54,13 @@ class SlotSetupViewModel(
             is SlotSetupAction.FilePicked -> picked(action.uri)
 
             SlotSetupAction.Continue -> continueOn()
+
+            SlotSetupAction.ConfirmChange -> {
+                state.update { it.copy(askingChange = false) }
+                confirm()
+            }
+
+            SlotSetupAction.DismissChange -> state.update { it.copy(askingChange = false) }
 
             SlotSetupAction.CreateAnotherFile -> state.update { it.copy(notice = null) }
 
@@ -105,9 +113,10 @@ class SlotSetupViewModel(
         val current = state.value
         val look = current.look ?: return
         when {
-            current.ready || look.otherDestination -> go(SlotSetupTarget.BACKUP)
-            look.next == null -> confirm()
-            else -> Unit
+            current.ready -> go(SlotSetupTarget.BACKUP)
+            look.next != null -> Unit
+            look.otherDestination -> state.update { it.copy(askingChange = true) }
+            else -> confirm()
         }
     }
 

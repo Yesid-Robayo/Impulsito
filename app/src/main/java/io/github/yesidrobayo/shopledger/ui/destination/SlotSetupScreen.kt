@@ -28,9 +28,11 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
 import io.github.yesidrobayo.shopledger.domain.model.backup.SlotFileStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.SlotSetupFile
 import io.github.yesidrobayo.shopledger.domain.model.backup.newFileName
+import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.HelpLink
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
@@ -71,6 +73,21 @@ fun SlotSetupScreen(
     // vista, así que la lista baja hasta el aviso.
     LaunchedEffect(uiState.notice) {
         if (uiState.notice != null) list.animateScrollToItem(if (uiState.ready) 3 else 2)
+    }
+    if (uiState.askingChange) {
+        // Las copias anteriores quedan en el otro destino, y la app deja de administrarlas.
+        ConfirmDialog(
+            title = stringResource(R.string.destination_change_title),
+            body =
+                stringResource(
+                    R.string.destination_change_body,
+                    uiState.look?.otherDestinationLabel ?: NO_VALUE_TEXT,
+                    appName,
+                ),
+            confirmLabel = stringResource(R.string.destination_change_action),
+            onConfirm = { onAction(SlotSetupAction.ConfirmChange) },
+            onDismiss = { onAction(SlotSetupAction.DismissChange) },
+        )
     }
     Surface(
         modifier.fillMaxSize(),
@@ -120,14 +137,6 @@ fun SlotSetupScreen(
                     item(key = FILES) { Files(uiState) }
                     uiState.notice?.let { notice ->
                         item(key = NOTICE) { Rejection(notice, appName, provider, onAction) }
-                    }
-                    if (uiState.look?.otherDestination == true) {
-                        item(key = OTHER_DESTINATION) {
-                            NoticeCard(
-                                stringResource(R.string.slots_other_destination_note, appName),
-                                NoticeVariant.INFO,
-                            )
-                        }
                     }
                     if (uiState.look != null) {
                         item(key = HOW) { Guidance(provider) }
@@ -322,6 +331,5 @@ private const val READY = "ready"
 private const val CONFLICT = "conflict"
 private const val FILES = "files"
 private const val NOTICE = "notice"
-private const val OTHER_DESTINATION = "other-destination"
 private const val HOW = "how"
 private const val NOTES = "notes"

@@ -541,4 +541,27 @@ class BackupSchedulerTest {
 
         assertEquals(emptyList<String>(), queue.calls)
     }
+
+    @Test
+    fun aChangedDestinationProbesWithItsNetworkAndQueuesTheForcedUpload() = runBlocking {
+        facts = facts?.copy(connectedKind = BackupDestinationKind.DOCUMENT_SLOTS)
+
+        scheduler.onDestinationChanged()
+
+        assertEquals(
+            listOf("keep head checks sin red", "probe once sin red", "keep upload 40m sin red"),
+            queue.calls,
+        )
+    }
+
+    @Test
+    fun aChangedDestinationQueuesNothingWhilePausedOrWithoutDestination() = runBlocking {
+        facts = facts?.copy(connectedKind = null)
+        scheduler.onDestinationChanged()
+        facts = facts?.copy(connectedKind = BackupDestinationKind.WEBDAV)
+        accepted = false
+        scheduler.onDestinationChanged()
+
+        assertEquals(emptyList<String>(), queue.calls)
+    }
 }

@@ -208,6 +208,19 @@ class BackupScheduler internal constructor(
         enqueueUpload(current, pastInterval = false)
     }
 
+    /**
+     * Se cambió de destino: la sonda semanal toma la red que pide el destino nuevo, la sonda única
+     * lo contrasta y la subida forzada se encola.
+     */
+    internal suspend fun onDestinationChanged() {
+        if (paused()) return
+        val kind = facts()?.connectedKind ?: return
+        queue.replaceHeadChecks(needsNetwork(kind))
+        probeOnce()
+        val current = uploadable() ?: return
+        enqueueUpload(current, pastInterval = false)
+    }
+
     /** Espera a que ningún trabajo del respaldo figure corriendo. */
     internal suspend fun awaitNoneRunning() {
         queue.awaitNoneRunning(BackupWorkNames.ALL)
@@ -404,6 +417,12 @@ internal interface BackupWorkQueue {
 
     /** Encola la sonda única de la cabeza, salvo que ya haya una encolada o corriendo. */
     suspend fun keepHeadProbeOnce(needsNetwork: Boolean) {}
+
+    /**
+     * Como [keepHeadChecks], pero la sonda que ya estaba toma la red [needsNetwork]: tras cambiar
+     * de destino, la del anterior podría esperar a una red que el nuevo no necesita.
+     */
+    suspend fun replaceHeadChecks(needsNetwork: Boolean) = keepHeadChecks(needsNetwork)
 
     companion object {
         /**

@@ -21,7 +21,6 @@
     <string name="slots_error_same_file">Esse arquivo já é o arquivo %1$d de 3. Cada um tem que ser diferente.</string>
     <string name="slots_other_file_action">Criar outro arquivo</string>
     <string name="slots_error_cancelled">O arquivo não foi criado. Os anteriores continuam prontos.</string>
-    <string name="slots_other_destination_note">As cópias já vão para outro lugar. Estes arquivos ficam criados, mas %1$s ainda não muda de lugar daqui.</string>
     <string name="slots_ready_title">Arquivos prontos</string>
     <string name="slots_ready_body">A partir de agora, %1$s entrega as cópias a %2$s. Toda semana é preciso olhar o horário do arquivo nessa nuvem.</string>
     <string name="backup_action_other_service">Escolher outro serviço</string>

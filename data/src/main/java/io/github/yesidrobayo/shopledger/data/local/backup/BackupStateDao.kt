@@ -405,4 +405,44 @@ internal interface BackupStateDao {
             "WHERE id = 1 AND link_state = 'CONFLICT' AND destination_id = :destinationId",
     )
     suspend fun leaveConflictWithNewFile(now: Long, destinationId: String): Int
+
+    /**
+     * Cambia del destino [previousId] al destino [destinationId], de clase [kind], en una sola
+     * sentencia: es el punto de no retorno del cambio. Devuelve 0 si el destino guardado ya no es
+     * [previousId], y entonces no cambia nada.
+     *
+     * - El destino nuevo queda conectado, sin conflicto.
+     * - **No hereda nada del anterior:** la cabeza, la pérdida aceptada, la subida a medias, la
+     *   lectura completa, el simulacro y la revisión de la persona se borran, igual que los fallos
+     *   propios del destino: servicio lleno o sin soporte, una copia que no coincidió, una cabeza
+     *   de una app más nueva y los cortes seguidos. Un fallo de la base del teléfono se conserva.
+     * - **Fuerza una subida:** sin ella, `verified_seq` diría que todo está guardado en un destino
+     *   que no tiene ninguna copia.
+     *
+     * @param account el usuario WebDAV, o nulo con ranuras.
+     * @param folder la carpeta de copias WebDAV, o nula con ranuras.
+     */
+    @Query(
+        "UPDATE backup_state SET link_state = 'CONNECTED', destination_kind = :kind, " +
+            "destination_account = :account, destination_id = :destinationId, " +
+            "destination_folder = :folder, head_generation = 0, head_device_id = NULL, " +
+            "head_file_ref = NULL, shrink_accepted_generation = NULL, pending_generation = NULL, " +
+            "pending_seq = NULL, pending_sha256 = NULL, pending_size_bytes = NULL, " +
+            "last_full_verify_at = NULL, last_drill_at = NULL, last_drill_result = NULL, " +
+            "last_human_check_at = NULL, human_check_generation = NULL, conflict_kind = NULL, " +
+            "conflict_generation = NULL, conflict_device_id = NULL, conflict_file_ref = NULL, " +
+            "failure_code = CASE WHEN failure_code IN ('QUOTA_EXCEEDED', 'VERIFY_MISMATCH', " +
+            "'CLOUD_SCHEMA_NEWER', 'DESTINATION_UNSUPPORTED', 'TRANSPORT_PERSISTENT') THEN NULL " +
+            "ELSE failure_code END, consecutive_failures = 0, last_failure_kind = NULL, " +
+            "change_seq = change_seq + 1, first_unsynced_at = COALESCE(first_unsynced_at, :now) " +
+            "WHERE id = 1 AND destination_id = :previousId",
+    )
+    suspend fun changeDestination(
+        previousId: String,
+        kind: String,
+        account: String?,
+        destinationId: String,
+        folder: String?,
+        now: Long,
+    ): Int
 }

@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.backup.BackupFixture
+import io.github.yesidrobayo.shopledger.data.destination.ChangeOutcome
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
@@ -49,6 +50,9 @@ class SlotFilesSetupTest {
     @After
     fun close() = fixture.close()
 
+    private var changeOutcome: ChangeOutcome? = null
+    private val changedTo = ArrayList<SlotState>()
+
     private fun setup(
         cutAfter: SlotConfirmStep? = null,
         providers: List<SlotProvider> = PROVIDERS,
@@ -65,6 +69,13 @@ class SlotFilesSetupTest {
         ioContext = Dispatchers.IO,
         providers = providers,
         checkpoint = { if (it == cutAfter) throw Cut() },
+        change =
+            changeOutcome?.let { outcome ->
+                { state ->
+                    changedTo += state
+                    outcome
+                }
+            },
     )
 
     // Preparar de cero
@@ -349,6 +360,46 @@ class SlotFilesSetupTest {
         assertEquals(SlotSetupConfirm.Done(hasData = false), setup.confirm())
 
         assertEquals(before, fixture.state())
+        assertTrue(requested.isEmpty())
+    }
+
+    // Cambiar desde otro destino
+
+    @Test
+    fun withAnotherDestinationConfirmingChangesToTheThreeNewFiles() = runBlocking<Unit> {
+        fixture.connect(BackupDestinationKind.WEBDAV)
+        changeOutcome = ChangeOutcome.CHANGED
+        val setup = setup()
+        createThree(setup)
+        val look = requireNotNull(setup.look())
+        assertTrue(look.otherDestination)
+        assertEquals("dav.example.com", look.otherDestinationLabel)
+
+        assertEquals(SlotSetupConfirm.Done(hasData = false), setup.confirm())
+
+        val state = changedTo.single()
+        assertEquals(BackupSlot.entries.map(::uriOf), BackupSlot.entries.map { state[it].uri })
+        assertTrue(BackupSlot.entries.all { state[it].copy == null })
+        assertEquals(WriteMode.WT, state.writeMode)
+        assertEquals(listOf(false), requested)
+    }
+
+    @Test
+    fun aChangeThatFailsSaysSoAndAnIncompleteSetupIsNotChanged() = runBlocking<Unit> {
+        fixture.connect(BackupDestinationKind.WEBDAV)
+        changeOutcome = ChangeOutcome.FAILED
+        val setup = setup()
+        documents.add(uriOf(BackupSlot.A))
+        setup.addFile(BackupSlot.A, uriOf(BackupSlot.A))
+
+        assertEquals(SlotSetupConfirm.Incomplete, setup.confirm())
+        assertTrue(changedTo.isEmpty())
+
+        for (slot in listOf(BackupSlot.B, BackupSlot.C)) {
+            documents.add(uriOf(slot))
+            setup.addFile(slot, uriOf(slot))
+        }
+        assertEquals(SlotSetupConfirm.Failed, setup.confirm())
         assertTrue(requested.isEmpty())
     }
 
