@@ -65,6 +65,9 @@ import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
 import io.github.yesidrobayo.shopledger.data.backup.recordFullCopyExported
 import io.github.yesidrobayo.shopledger.data.backup.savedDestination
 import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCustody
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryKeyStore
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryStateStore
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkService
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.DestinationMemory
@@ -219,6 +222,19 @@ class DataGraph internal constructor(
             resolver = context.contentResolver,
             mediaDirectory = { File(context.filesDir, StoredImage.FOLDER) },
             ioContext = ioContext,
+        )
+    }
+
+    /**
+     * El código de recuperación sellado y el estado del cifrado, en `no_backup/recovery/`. Una sola
+     * instancia de cada uno: sus cerrojos viven en ellos. Crearlos no toca el disco ni Keystore.
+     */
+    internal val recoveryCustody by lazy {
+        val directory = { File(context.noBackupFilesDir, RecoveryKeyStore.DIRECTORY) }
+        RecoveryCustody(
+            keys = RecoveryKeyStore(directory, ioContext),
+            state = RecoveryStateStore(directory, ioContext),
+            nowUtcMillis = clock::nowEpochMillis,
         )
     }
 
