@@ -38,6 +38,8 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
+import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.ProductRow
@@ -87,7 +89,18 @@ fun ProductListScreen(
                 navigation = TopBarNavigation.NONE,
                 onNavigate = {},
                 navigationLabel = null,
-            )
+            ) {
+                // Con productos, el menú ofrece actualizar sus precios de una vez.
+                if (uiState.content is ProductListContent.Products) {
+                    OverflowMenu(
+                        listOf(
+                            OverflowAction(stringResource(R.string.bulk_title), {
+                                onAction(ProductListAction.UpdatePrices)
+                            }),
+                        ),
+                    )
+                }
+            }
             // Sin detalle a la derecha, la lista queda centrada a su ancho de lectura.
             Column(
                 Modifier

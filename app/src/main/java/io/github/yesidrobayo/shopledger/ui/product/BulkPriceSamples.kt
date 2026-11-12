@@ -1,0 +1,35 @@
+package io.github.yesidrobayo.shopledger.ui.product
+
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceRequest
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceScope
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPricePreviewer
+
+/**
+ * Estados inventados de la actualización masiva para las vistas previas y la galería: un producto
+ * que queda bajo su costo, uno que el redondeo aleja de lo pedido, uno sin precio y nombres largos.
+ */
+object BulkPriceSamples {
+    private val products = listOf(
+        ProductDetailSamples.product(price = 12_350L, cost = 8_000L).copy(id = 1L),
+        ProductDetailSamples.product(price = 10_000L, cost = 9_500L).copy(id = 2L),
+        ProductDetailSamples.product(price = 80L, cost = 50L).copy(id = 3L),
+        ProductDetailSamples.product(price = 0L).copy(id = 4L),
+    )
+
+    /** Con −10 % y paso de 100: un aviso de pérdida, uno de redondeo y uno excluido. */
+    fun ready(percentText: String = "-10", percent: Long = -1_000L): BulkPriceUiState {
+        val request = BulkPriceRequest(BulkPriceScope.All, BasisPoints(percent), Money(100L))
+        return BulkPriceUiState(
+            input = BulkPriceInput(percentText = percentText, rounding = BulkRounding.SAVED_STEP),
+            content = BulkPreviewContent.Ready(BulkPricePreviewer.preview(products, request)),
+            savedStep = Money(100L),
+            percent = BasisPoints(percent),
+        )
+    }
+
+    /** Sin porcentaje todavía. */
+    val needsInput: BulkPriceUiState =
+        BulkPriceUiState(content = BulkPreviewContent.NeedsInput, savedStep = Money(100L))
+}

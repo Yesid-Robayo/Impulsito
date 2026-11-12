@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: la actualización masiva de precios. -->
+    <string name="bulk_which">Which products</string>
+    <string name="bulk_how_much">How much</string>
+    <string name="bulk_round">Round</string>
+    <string name="bulk_no_round">No rounding</string>
+    <string name="bulk_round_to">To %1$s</string>
+    <string name="bulk_summary">Changing: %1$d · With notice: %2$d</string>
+    <string name="bulk_empty_preview">Enter a percentage to see the result</string>
+    <string name="bulk_scope_all">All</string>
+    <string name="bulk_scope_category">Category</string>
+    <string name="bulk_scope_supplier">Supplier</string>
+    <string name="bulk_scope_pick">Choose</string>
+    <string name="bulk_round_other">Other step</string>
+    <string name="empty_bulk_title">No prices to update yet</string>
+    <string name="empty_bulk_body">This option needs products with a price.</string>
+    <string name="empty_bulk_action">Go to products</string>
+    <string name="notice_bulk_rounding">Rounding changes this price more than requested. It can be removed from the list.</string>
+    <string name="bulk_percent_label">Percentage</string>
+    <string name="bulk_step_label">Step</string>
+    <string name="bulk_high_percent">This is a big change: with %1$s, %2$s becomes %3$s.</string>
+    <string name="bulk_remove_a11y">Remove %1$s from the list</string>
+    <string name="bulk_nothing_changed">No price changed: they were already like that</string>
+    <plurals name="bulk_apply">
+        <item quantity="one">Update %1$d price</item>
+        <item quantity="other">Update %1$d prices</item>
+    </plurals>
+    <plurals name="confirm_prices_updated">
+        <item quantity="one">%1$d price updated</item>
+        <item quantity="other">%1$d prices updated</item>
+    </plurals>
+    <plurals name="notice_bulk_excluded">
+        <item quantity="one">%1$d product does not change: no price, archived, over the limit or it would end at %2$s.</item>
+        <item quantity="other">%1$d products do not change: no price, archived, over the limit or they would end at %2$s.</item>
+    </plurals>
+</resources>

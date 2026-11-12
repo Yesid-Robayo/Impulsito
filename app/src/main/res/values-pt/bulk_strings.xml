@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Portugués: la actualización masiva de precios. -->
+    <string name="bulk_which">Quais produtos</string>
+    <string name="bulk_how_much">Quanto</string>
+    <string name="bulk_round">Arredondar</string>
+    <string name="bulk_no_round">Sem arredondar</string>
+    <string name="bulk_round_to">Para %1$s</string>
+    <string name="bulk_summary">Mudam: %1$d · Com aviso: %2$d</string>
+    <string name="bulk_empty_preview">Digitar uma porcentagem para ver o resultado</string>
+    <string name="bulk_scope_all">Todos</string>
+    <string name="bulk_scope_category">Categoria</string>
+    <string name="bulk_scope_supplier">Fornecedor</string>
+    <string name="bulk_scope_pick">Escolher</string>
+    <string name="bulk_round_other">Outro passo</string>
+    <string name="empty_bulk_title">Ainda não há preços para atualizar</string>
+    <string name="empty_bulk_body">Esta opção precisa de produtos com preço.</string>
+    <string name="empty_bulk_action">Ir para produtos</string>
+    <string name="notice_bulk_rounding">O arredondamento muda este preço mais do que o pedido. É possível tirá-lo da lista.</string>
+    <string name="bulk_percent_label">Porcentagem</string>
+    <string name="bulk_step_label">Passo</string>
+    <string name="bulk_high_percent">É uma mudança grande: com %1$s, %2$s passa a %3$s.</string>
+    <string name="bulk_remove_a11y">Tirar %1$s da lista</string>
+    <string name="bulk_nothing_changed">Nenhum preço mudou: já estavam assim</string>
+    <plurals name="bulk_apply">
+        <item quantity="one">Atualizar %1$d preço</item>
+        <item quantity="many">Atualizar %1$d de preços</item>
+        <item quantity="other">Atualizar %1$d preços</item>
+    </plurals>
+    <plurals name="confirm_prices_updated">
+        <item quantity="one">%1$d preço atualizado</item>
+        <item quantity="many">%1$d de preços atualizados</item>
+        <item quantity="other">%1$d preços atualizados</item>
+    </plurals>
+    <plurals name="notice_bulk_excluded">
+        <item quantity="one">%1$d produto não muda: sem preço, arquivado, acima do limite ou ficaria em %2$s.</item>
+        <item quantity="many">%1$d de produtos não mudam: sem preço, arquivados, acima do limite ou ficariam em %2$s.</item>
+        <item quantity="other">%1$d produtos não mudam: sem preço, arquivados, acima do limite ou ficariam em %2$s.</item>
+    </plurals>
+</resources>

@@ -95,7 +95,7 @@ class ProductDetailGalleryTest {
             "archived" to ready(s.overview(s.product(archived = true))),
             "costsheet" to
                 ready(s.overview()).copy(costSheet = CostSheet("3800,5", "Factura perdida")),
-            "pricesheet" to ready(s.overview()).copy(priceSheet = PriceSheet("5200")),
+            "pricesheet" to ready(s.overview()).copy(priceSheet = PriceSheet("520000")),
             "loading" to ProductDetailUiState(),
         )
     }

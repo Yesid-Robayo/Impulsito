@@ -58,8 +58,12 @@ class ProductListViewModel(
     fun onAction(action: ProductListAction) {
         when (action) {
             is ProductListAction.QueryChange -> query.value = action.query
+
             ProductListAction.Retry -> attempts.update { it + 1 }
-            is ProductListAction.OpenProduct, is ProductListAction.CreateProduct -> Unit
+
+            is ProductListAction.OpenProduct, is ProductListAction.CreateProduct,
+            ProductListAction.UpdatePrices,
+            -> Unit
         }
     }
 

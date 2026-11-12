@@ -16,4 +16,7 @@ sealed interface ProductListAction {
 
     /** Reintenta leer el catálogo tras un error. */
     data object Retry : ProductListAction
+
+    /** Abre la actualización masiva de precios, desde el menú. */
+    data object UpdatePrices : ProductListAction
 }
