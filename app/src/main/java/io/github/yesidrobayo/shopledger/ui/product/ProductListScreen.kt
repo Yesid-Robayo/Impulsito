@@ -35,7 +35,9 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.localization.SeedText
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
+import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
@@ -121,6 +123,7 @@ fun ProductListScreen(
                             vertical = spacing.s8,
                         ),
                     )
+                    FiltersButton(uiState.filters) { onAction(ProductListAction.OpenFilters) }
                 }
                 ProductListBody(
                     content = uiState.content,
@@ -137,6 +140,122 @@ fun ProductListScreen(
                 .padding(bottom = bottomClearance),
         ) { floatingAction() }
     }
+    if (uiState.filtersOpen) FiltersSheet(uiState, onAction)
+}
+
+/** `Filtrar y ordenar`, con cuántos filtros hay puestos. */
+@Composable
+private fun FiltersButton(filters: ProductListFilters, onClick: () -> Unit) {
+    val count = filters.activeCount
+    val text =
+        if (count == 0) {
+            stringResource(R.string.product_filter_sort)
+        } else {
+            stringResource(R.string.product_filter_sort_count, count)
+        }
+    PrimaryActionButton(
+        text = text,
+        onClick = onClick,
+        variant = if (count == 0) ActionVariant.TEXT else ActionVariant.TONAL,
+        modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
+    )
+}
+
+/**
+ * La hoja de filtros y orden. Cada elección se aplica al tocarla, y la lista de detrás cambia al
+ * instante; `Quitar filtros` deja el orden.
+ */
+@Composable
+private fun FiltersSheet(uiState: ProductListUiState, onAction: (ProductListAction) -> Unit) {
+    val filters = uiState.filters
+    val spacing = AppTheme.spacing
+    AppBottomSheet(
+        onDismissRequest = { onAction(ProductListAction.CloseFilters) },
+        title = stringResource(R.string.product_filter_sort),
+        action =
+            if (filters.activeCount > 0) {
+                {
+                    PrimaryActionButton(
+                        text = stringResource(R.string.action_clear_filters),
+                        onClick = { onAction(ProductListAction.ClearFilters) },
+                        variant = ActionVariant.OUTLINED,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                null
+            },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+            if (uiState.categories.isNotEmpty()) {
+                SheetLabel(R.string.filter_category)
+                val any = stringResource(R.string.filter_any)
+                CompactChipRow(
+                    options = listOf<Long?>(null) + uiState.categories.map { it.id },
+                    label = { id ->
+                        uiState.categories.firstOrNull { it.id == id }?.details?.name ?: any
+                    },
+                    selected = setOf(filters.categoryId),
+                    onToggle = { onAction(ProductListAction.FilterCategory(it)) },
+                    multiple = false,
+                )
+            }
+            if (uiState.suppliers.isNotEmpty()) {
+                SheetLabel(R.string.filter_supplier)
+                val any = stringResource(R.string.filter_any)
+                CompactChipRow(
+                    options = listOf<Long?>(null) + uiState.suppliers.map { it.id },
+                    label = { id ->
+                        uiState.suppliers.firstOrNull { it.id == id }?.details?.name ?: any
+                    },
+                    selected = setOf(filters.supplierId),
+                    onToggle = { onAction(ProductListAction.FilterSupplier(it)) },
+                    multiple = false,
+                )
+            }
+            SheetLabel(R.string.filter_status)
+            CompactChipRow(
+                options = listOf(false, true),
+                label = { archived ->
+                    val res = when (archived) {
+                        true -> R.string.product_filter_archived
+                        false -> R.string.product_filter_active
+                    }
+                    stringResource(res)
+                },
+                selected = setOf(filters.archived),
+                onToggle = { onAction(ProductListAction.FilterArchived(it)) },
+                multiple = false,
+            )
+            SheetLabel(R.string.sort_title)
+            CompactChipRow(
+                options = ProductSort.entries,
+                label = { sort ->
+                    stringResource(
+                        when (sort) {
+                            ProductSort.NAME -> R.string.sort_by_name
+                            ProductSort.STOCK -> R.string.sort_by_stock
+                            ProductSort.MARGIN -> R.string.sort_by_margin
+                        },
+                    )
+                },
+                selected = setOf(filters.sort),
+                onToggle = { onAction(ProductListAction.SortBy(it)) },
+                multiple = false,
+            )
+        }
+    }
+}
+
+/** El título de un grupo de la hoja. */
+@Composable
+private fun SheetLabel(res: Int) {
+    Text(
+        stringResource(res),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = AppTheme.spacing.s8).semantics { heading() },
+    )
 }
 
 @Composable
@@ -180,6 +299,19 @@ private fun ProductListBody(
             }
         }
 
+        ProductListContent.FilteredOut -> CenteredState {
+            EmptyState(
+                icon = R.drawable.ic_search,
+                title = stringResource(R.string.catalog_filter_empty),
+            ) {
+                PrimaryActionButton(
+                    text = stringResource(R.string.action_clear_filters),
+                    onClick = { onAction(ProductListAction.ClearFilters) },
+                    variant = ActionVariant.TONAL,
+                )
+            }
+        }
+
         is ProductListContent.Products -> ProductListRows(content, onAction, bottomClearance)
 
         ProductListContent.ReadError -> CenteredState {
@@ -207,7 +339,9 @@ private fun ProductListRows(
     // lista a la fila que se veía, y el encabezado fijo taparía la primera de las nuevas. Un cambio
     // del catálogo con la misma búsqueda conserva la posición, también al volver de otra pantalla.
     val listState =
-        rememberSaveable(content.query, saver = LazyListState.Saver) { LazyListState() }
+        rememberSaveable(content.query, content.filters, saver = LazyListState.Saver) {
+            LazyListState()
+        }
     LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = bottomClearance) {
         for (section in content.sections) {
             section.initial?.let { initial ->

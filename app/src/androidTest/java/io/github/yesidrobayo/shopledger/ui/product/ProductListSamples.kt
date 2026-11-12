@@ -2,6 +2,8 @@ package io.github.yesidrobayo.shopledger.ui.product
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
@@ -16,6 +18,17 @@ import kotlin.time.Instant
 internal val SAMPLE_UNIT = MeasureUnit(1L, "UNIT", null, null, UnitKind.COUNT, false, null)
 
 private val CREATED: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000L)
+
+/** Categorías inventadas para la hoja de filtros, con nombres de largo variado. */
+internal val SAMPLE_CATEGORIES: List<Category> =
+    listOf("Granos", "Aseo del hogar y lavandería", "Bebidas", "Panadería").mapIndexed { i, name ->
+        Category(
+            id = i + 1L,
+            details = CategoryDetails(name, TextNormalizer.normalize(name), targetMargin = null),
+            createdAt = CREATED,
+            updatedAt = CREATED,
+        )
+    }
 
 private val WORDS = listOf("Arroz", "Aceite", "Azúcar", "Café", "Jabón", "Piña", "Sal", "Té")
 

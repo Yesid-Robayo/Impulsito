@@ -22,25 +22,70 @@ object ProductListItems {
     const val HEADERS_FROM = 51
 
     /**
-     * El contenido para [products], en el orden en que llegan, que es el de su nombre normalizado.
-     * [units] trae todas las unidades, también las archivadas, por id.
+     * El contenido para [products], que llegan en el orden de su nombre normalizado, con
+     * [filters] aplicados antes que la búsqueda. [units] trae todas las unidades, también las
+     * archivadas, por id.
+     *
+     * Por nombre, con más de 50 productos, la lista va por inicial. Por stock o por margen va en
+     * una sola sección, porque la inicial ya no ayuda a encontrar; los empates conservan el orden
+     * por nombre.
      */
     fun build(
         products: List<Product>,
         units: Map<Long, MeasureUnit>,
         query: String,
+        filters: ProductListFilters = ProductListFilters(),
     ): ProductListContent {
-        if (products.isEmpty()) return ProductListContent.EmptyCatalog
-        val matches = ProductSearch.filter(products, query)
-        if (matches.isEmpty()) return ProductListContent.NoResults(query.trim())
-        val items = matches.map { itemOf(it, units[it.details.baseUnitId]) }
-        if (items.size < HEADERS_FROM) {
-            return ProductListContent.Products(listOf(ProductListSection(null, items)), query)
+        val narrowed = products.filter(filters::matches)
+        if (narrowed.isEmpty()) {
+            val filtered = filters.activeCount > 0 || products.isNotEmpty()
+            return if (filtered) ProductListContent.FilteredOut else ProductListContent.EmptyCatalog
         }
-        val sections = matches.zip(items)
+        val matches = ProductSearch.filter(narrowed, query)
+        if (matches.isEmpty()) return ProductListContent.NoResults(query.trim())
+        val rows = matches.map { it to itemOf(it, units[it.details.baseUnitId]) }
+        val sections = when (filters.sort) {
+            ProductSort.NAME -> byInitial(rows)
+
+            ProductSort.STOCK ->
+                listOf(ProductListSection(null, rows.sortedWith(STOCK_ORDER).map { it.second }))
+
+            ProductSort.MARGIN ->
+                listOf(ProductListSection(null, rows.sortedWith(MARGIN_ORDER).map { it.second }))
+        }
+        return ProductListContent.Products(sections, query, filters)
+    }
+
+    /** Por nombre: una sola sección si son pocos, y por inicial si son muchos. */
+    private fun byInitial(rows: List<Pair<Product, ProductListItem>>): List<ProductListSection> {
+        if (rows.size <
+            HEADERS_FROM
+        ) {
+            return listOf(ProductListSection(null, rows.map { it.second }))
+        }
+        return rows
             .groupBy({ (product, _) -> initialOf(product.details.normalizedName) }, { it.second })
             .map { (initial, grouped) -> ProductListSection(initial, grouped) }
-        return ProductListContent.Products(sections, query)
+    }
+
+    /** Lo que lleva stock, de menos a más; un servicio o uno por componentes, al final. */
+    private val STOCK_ORDER: Comparator<Pair<Product, ProductListItem>> =
+        compareBy<Pair<Product, ProductListItem>> { (product, _) ->
+            product.details.stockMode != ProductStockMode.TRACKED
+        }.thenBy { (product, _) -> product.onHand.milli }
+
+    /**
+     * De menos a más margen. Sin margen definido, al final: sin precio, sin costo conocido o por
+     * componentes, porque un margen contra un costo en cero no dice nada.
+     */
+    private val MARGIN_ORDER: Comparator<Pair<Product, ProductListItem>> =
+        compareBy<Pair<Product, ProductListItem>> { (_, item) -> marginBpOf(item) == null }
+            .thenBy { (_, item) -> marginBpOf(item) ?: 0L }
+
+    private fun marginBpOf(item: ProductListItem): Long? {
+        val trailing = item.trailing
+        val margin = trailing.margin as? Margin.Defined ?: return null
+        return margin.value.bp.takeIf { trailing.hasCost }
     }
 
     /** La fila de [product], en su unidad [unit]. */

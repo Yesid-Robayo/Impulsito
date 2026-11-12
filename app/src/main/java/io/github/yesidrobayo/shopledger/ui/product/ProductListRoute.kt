@@ -5,6 +5,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveBulkPriceChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductCatalogUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -12,6 +15,7 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
+import kotlinx.coroutines.flow.Flow
 
 /**
  * La lista de productos en la navegación: obtiene su ViewModel y resuelve abrir un producto o
@@ -29,6 +33,14 @@ fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = 
                         dependencies.ports.units,
                     ),
                 computation = dependencies.container.dispatchers.default,
+                choices = ProductListChoices(
+                    ObserveBulkPriceChoicesUseCase(
+                        dependencies.ports.products,
+                        dependencies.ports.categories,
+                        dependencies.ports.suppliers,
+                        dependencies.ports.settings,
+                    ),
+                ),
             )
         }
     when (model) {
@@ -52,8 +64,12 @@ fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = 
 
                         ProductListAction.UpdatePrices -> navigator.open(AppNavKey.BulkPriceUpdate)
 
-                        is ProductListAction.QueryChange, ProductListAction.Retry ->
-                            viewModel.onAction(action)
+                        is ProductListAction.QueryChange, ProductListAction.Retry,
+                        ProductListAction.OpenFilters, ProductListAction.CloseFilters,
+                        is ProductListAction.FilterCategory, is ProductListAction.FilterSupplier,
+                        is ProductListAction.FilterArchived, is ProductListAction.SortBy,
+                        ProductListAction.ClearFilters,
+                        -> viewModel.onAction(action)
                     }
                 },
                 tabs = tabs,
@@ -66,4 +82,12 @@ fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = 
             )
         }
     }
+}
+
+/** Las categorías y los proveedores vigentes de los filtros, leídos con los del catálogo. */
+private class ProductListChoices(private val choices: ObserveBulkPriceChoicesUseCase) :
+    ProductFilterChoices {
+    override fun categories(): Flow<List<Category>> = choices.categories()
+
+    override fun suppliers(): Flow<List<Supplier>> = choices.suppliers()
 }

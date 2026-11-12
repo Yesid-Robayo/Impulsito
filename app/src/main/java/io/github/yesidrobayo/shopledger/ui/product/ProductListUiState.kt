@@ -2,7 +2,9 @@ package io.github.yesidrobayo.shopledger.ui.product
 
 import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 
 /**
@@ -13,6 +15,10 @@ import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 data class ProductListUiState(
     val query: String = "",
     val content: ProductListContent = ProductListContent.Loading,
+    val filters: ProductListFilters = ProductListFilters(),
+    val filtersOpen: Boolean = false,
+    val categories: List<Category> = emptyList(),
+    val suppliers: List<Supplier> = emptyList(),
 )
 
 /** Lo que muestra la lista debajo de la búsqueda. */
@@ -23,16 +29,23 @@ sealed interface ProductListContent {
     /** No hay ningún producto vigente: el estado vacío invita a crear el primero. */
     data object EmptyCatalog : ProductListContent
 
+    /** Ningún producto pasa los filtros puestos: se ofrece quitarlos. */
+    data object FilteredOut : ProductListContent
+
     /** Hay productos, pero ninguno coincide con [query]: se ofrece crearlo con ese nombre. */
     data class NoResults(val query: String) : ProductListContent
 
     /**
      * Los productos que coinciden con [query], por nombre. Con muchos, van en [sections] por su
      * inicial, para encontrarlos al desplazar; con pocos, una sola sección sin encabezado. [query]
-     * es la búsqueda con que se armó: un resultado de otra búsqueda empieza arriba.
+     * es la búsqueda con que se armó, y [filters], los filtros y el orden: un resultado de otra
+     * búsqueda o de otro orden empieza arriba.
      */
-    data class Products(val sections: List<ProductListSection>, val query: String = "") :
-        ProductListContent
+    data class Products(
+        val sections: List<ProductListSection>,
+        val query: String = "",
+        val filters: ProductListFilters = ProductListFilters(),
+    ) : ProductListContent
 
     /** No se pudo leer el catálogo. Se puede reintentar. */
     data object ReadError : ProductListContent

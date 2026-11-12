@@ -19,4 +19,23 @@ sealed interface ProductListAction {
 
     /** Abre la actualización masiva de precios, desde el menú. */
     data object UpdatePrices : ProductListAction
+
+    /** Abre la hoja `Filtrar y ordenar`. */
+    data object OpenFilters : ProductListAction
+
+    data object CloseFilters : ProductListAction
+
+    /** Filtra por [categoryId]; `null` quita el filtro. */
+    data class FilterCategory(val categoryId: Long?) : ProductListAction
+
+    /** Filtra por proveedor habitual [supplierId]; `null` quita el filtro. */
+    data class FilterSupplier(val supplierId: Long?) : ProductListAction
+
+    /** Muestra los archivados en vez de los vigentes. */
+    data class FilterArchived(val archived: Boolean) : ProductListAction
+
+    data class SortBy(val sort: ProductSort) : ProductListAction
+
+    /** Quita los filtros y deja el orden. */
+    data object ClearFilters : ProductListAction
 }

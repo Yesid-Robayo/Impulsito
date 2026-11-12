@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: filtrar y ordenar la lista de productos. -->
+    <string name="product_filter_sort">Filter and sort</string>
+    <string name="product_filter_sort_count">Filter and sort · %1$d</string>
+    <string name="product_filter_active">Active</string>
+    <string name="filter_category">Category</string>
+    <string name="filter_status">Status</string>
+    <string name="filter_any">Any</string>
+    <string name="sort_title">Sort</string>
+    <string name="sort_by_name">By name</string>
+    <string name="sort_by_stock">By stock</string>
+    <string name="sort_by_margin">By margin</string>
+    <string name="catalog_filter_empty">No products with these filters</string>
+</resources>

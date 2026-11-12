@@ -127,6 +127,25 @@ class ProductListGalleryTest {
             "noresults" to ProductListUiState("acite", ProductListItems.build(few, units, "acite")),
             "empty" to ProductListUiState(content = ProductListContent.EmptyCatalog),
             "error" to ProductListUiState(content = ProductListContent.ReadError),
+            "bystock" to ProductListUiState(
+                content = ProductListItems.build(
+                    few,
+                    units,
+                    "",
+                    ProductListFilters(sort = ProductSort.STOCK),
+                ),
+                filters = ProductListFilters(sort = ProductSort.STOCK),
+            ),
+            "filteredout" to ProductListUiState(
+                content = ProductListContent.FilteredOut,
+                filters = ProductListFilters(archived = true),
+            ),
+            "filters" to ProductListUiState(
+                content = ProductListItems.build(few, units, ""),
+                filters = ProductListFilters(categoryId = 1L, sort = ProductSort.MARGIN),
+                filtersOpen = true,
+                categories = SAMPLE_CATEGORIES,
+            ),
         )
     }
 
