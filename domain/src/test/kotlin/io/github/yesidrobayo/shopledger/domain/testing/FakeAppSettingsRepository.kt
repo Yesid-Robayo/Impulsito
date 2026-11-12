@@ -173,8 +173,21 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
         )
     }
 
-    override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant): Unit =
-        error("No se usa en estas pruebas")
+    /** Cada cambio de preferencia escrito, en orden. */
+    val preferenceWrites = mutableListOf<PreferenceChange>()
+
+    // Solo la política con datos móviles se aplica; las demás no hacen falta en estas pruebas.
+    override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant) {
+        val policy = (change as? PreferenceChange.MeteredBackup)?.policy
+            ?: error("No se usa en estas pruebas")
+        preferenceWrites += change
+        val current = settings.value
+        settings.value =
+            current.copy(
+                preferences = current.preferences.copy(meteredBackupPolicy = policy),
+                updatedAt = updatedAt,
+            )
+    }
 
     override suspend fun markOnboardingCompleted(completedAt: Instant) {
         settings.value =

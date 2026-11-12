@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cópia de segurança: cópias com dados móveis, consumo do mês e cópias fixadas. Textos do guia de redação. -->
+    <string name="backup_metered_row">Cópias com dados móveis</string>
+    <string name="backup_metered_help">Cada cópia envia todos os dados. Aqui se escolhe a frequência de uso dos dados móveis.</string>
+    <string name="backup_metered_every_60">A cada hora</string>
+    <string name="backup_metered_every_30">A cada 30 minutos</string>
+    <string name="backup_metered_wifi_only">Somente com Wi-Fi</string>
+    <string name="dialog_wifi_only_title">Copiar somente com Wi-Fi?</string>
+    <string name="dialog_wifi_only_body">Sem Wi-Fi não serão salvas cópias sozinhas. Se o telefone for perdido, o que foi registrado desde a última cópia será perdido. Fazer cópia agora está sempre disponível.</string>
+    <string name="dialog_wifi_only_action">Copiar somente com Wi-Fi</string>
+    <string name="backup_uploaded_month_label">Enviado este mês</string>
+    <string name="backup_action_release">Liberar cópia</string>
+    <string name="backup_pinned_help">%1$s não apaga uma cópia fixada. Ela é fixada sozinha antes de uma alteração que deixa menos dados do que os dessa cópia.</string>
+    <string name="dialog_release_copy_title">Liberar esta cópia?</string>
+    <string name="dialog_release_copy_body">%1$s poderá apagá-la quando for a vez dela na retenção de cópias. Até lá, continua na nuvem.</string>
+    <string name="backup_release_done">Cópia liberada</string>
+    <string name="backup_release_failed">Não foi possível liberar. A cópia continua fixada.</string>
+</resources>

@@ -1,6 +1,9 @@
 package io.github.yesidrobayo.shopledger.ui.backup
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
@@ -15,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
+import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 import kotlin.time.Duration.Companion.days
@@ -100,6 +104,8 @@ internal fun previewBackupState(
         destination = destination,
         copies = if (overview.destinationKind == null) BackupCopyList.NotConnected else copies,
         handoff = if (slots) PREVIEW_HANDOFF else null,
+        uploadedThisMonth =
+            if (overview.destinationKind == BackupDestinationKind.WEBDAV) 86_400_000 else null,
     )
 }
 
@@ -146,5 +152,15 @@ private fun BackupNotConnectedPreview() {
     PreviewTheme {
         BackupScreen(previewBackupState(previewOverview(BackupStatus.NOT_CONNECTED, kind = null)), {
         })
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun BackupMeteredOptionsPreview() {
+    PreviewTheme {
+        Column(Modifier.padding(AppTheme.spacing.s16)) {
+            MeteredOptions(MeteredBackupPolicy.EVERY_60_MIN) {}
+        }
     }
 }

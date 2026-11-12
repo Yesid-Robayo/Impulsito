@@ -215,6 +215,7 @@ internal sealed interface ConnectResult {
 internal class WebDavDestinationOpener(
     private val http: OkHttpClient,
     private val credentials: WebDavCredentialStore,
+    private val usage: UploadUsageMeter = UploadUsageMeter.None,
 ) {
     /**
      * @param destinationId el `destination_id` del estado del respaldo.
@@ -234,7 +235,7 @@ internal class WebDavDestinationOpener(
             ?: return DestinationOpen.PermissionLost
         val client =
             WebDavClient(endpoint, WebDavCredential(credential.username, credential.password), http)
-        return DestinationOpen.Opened(WebDavDestination(client, folder))
+        return DestinationOpen.Opened(WebDavDestination(client, folder, usage))
     }
 
     /** La carpeta [url] relativa a la dirección base, o `null` si no está debajo de ella. */

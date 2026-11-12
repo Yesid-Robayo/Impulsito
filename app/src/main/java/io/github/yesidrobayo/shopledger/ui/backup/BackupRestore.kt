@@ -134,18 +134,25 @@ private fun noticeOf(problem: RestoreProblem, origin: RestoreOrigin): RestoreNot
         -> RestoreNotice.OTHER
     }
 
-/** La hoja, los diálogos y la pantalla de progreso de la restauración, según [restore]. */
+/**
+ * La hoja, los diálogos y la pantalla de progreso de la restauración, según [restore].
+ *
+ * @param canRelease si la hoja de una copia fijada ofrece liberarla: solo en la pantalla del
+ *   respaldo con WebDAV, nunca al traer los datos en un teléfono nuevo.
+ */
 @Composable
 internal fun RestoreLayer(
     restore: RestoreUi,
     rowOf: @Composable (BackupCopySummary) -> BackupCopyRowData,
     dateOf: @Composable (Instant?) -> String,
     onAction: (BackupAction) -> Unit,
+    canRelease: Boolean = false,
 ) {
     when (restore) {
         RestoreUi.Idle, is RestoreUi.Stopped -> Unit
 
-        is RestoreUi.CopySheet -> CopySheet(restore.copy, rowOf(restore.copy), onAction)
+        is RestoreUi.CopySheet ->
+            CopySheet(restore.copy, rowOf(restore.copy), canRelease, onAction)
 
         is RestoreUi.ConfirmCopy ->
             ConfirmDialog(
@@ -192,6 +199,7 @@ internal fun RestoreLayer(
 private fun CopySheet(
     copy: BackupCopySummary,
     row: BackupCopyRowData,
+    canRelease: Boolean,
     onAction: (BackupAction) -> Unit,
 ) {
     AppBottomSheet(
@@ -212,6 +220,18 @@ private fun CopySheet(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Una copia fijada nunca se poda: solo esta acción la libera, nunca el tiempo.
+            if (copy.pinned && canRelease) {
+                Text(
+                    stringResource(R.string.backup_pinned_help, stringResource(R.string.app_name)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                InlineTextButton(
+                    stringResource(R.string.backup_action_release),
+                    { onAction(BackupAction.ReleaseCopy(copy.key)) },
+                )
+            }
         }
     }
 }

@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.ChangeMeteredBackupPolicyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RecordCloudCheckUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
@@ -51,6 +52,15 @@ fun BackupRoute(navigator: AppNavigator) {
                 },
                 computation = container.dispatchers.io,
                 restore = RestoreBackupUseCase(container.data.backupRestore),
+                changePolicy = { policy ->
+                    ChangeMeteredBackupPolicyUseCase(
+                        ports.settings,
+                        container.data.backupSettings,
+                        container.clock,
+                    )(policy)
+                },
+                releaseCopy = { key -> container.data.backupSettings.releasePinnedCopy(key) },
+                uploadedThisMonth = { container.data.backupSettings.uploadedThisMonth() },
             )
         }
     when (model) {
@@ -66,6 +76,9 @@ fun BackupRoute(navigator: AppNavigator) {
             val noInternet = stringResource(R.string.backup_now_no_internet)
             val checkSaved =
                 stringResource(R.string.backup_check_saved, stringResource(R.string.app_name))
+            val released = stringResource(R.string.backup_release_done)
+            val releaseFailed = stringResource(R.string.backup_release_failed)
+            val retry = stringResource(R.string.action_retry)
             val context = LocalContext.current
             val provider = uiState.wording?.providerLabel ?: NO_VALUE_TEXT
             val openFailed =
@@ -84,6 +97,21 @@ fun BackupRoute(navigator: AppNavigator) {
                     BackupMessage.CHECK_SAVED -> {
                         viewModel.onAction(BackupAction.MessageShown)
                         messages.show(AppSnackbarVisuals(checkSaved, SnackbarVariant.SUCCESS))
+                    }
+
+                    BackupMessage.RELEASED -> {
+                        viewModel.onAction(BackupAction.MessageShown)
+                        messages.show(AppSnackbarVisuals(released, SnackbarVariant.SUCCESS))
+                    }
+
+                    BackupMessage.RELEASE_FAILED -> {
+                        viewModel.onAction(BackupAction.MessageShown)
+                        val failed = (uiState.release as? ReleaseUi.Failed)?.copy?.key
+                        messages.show(
+                            AppSnackbarVisuals(releaseFailed, SnackbarVariant.ERROR, retry),
+                        ) {
+                            if (failed != null) viewModel.onAction(BackupAction.ReleaseCopy(failed))
+                        }
                     }
 
                     null -> Unit
@@ -141,6 +169,13 @@ fun BackupRoute(navigator: AppNavigator) {
                         is BackupAction.Answer,
                         BackupAction.CancelRestore,
                         BackupAction.CloseRestore,
+                        BackupAction.OpenMeteredPolicy,
+                        is BackupAction.PickMeteredPolicy,
+                        BackupAction.ConfirmWifiOnly,
+                        BackupAction.CloseMeteredPolicy,
+                        is BackupAction.ReleaseCopy,
+                        BackupAction.ConfirmRelease,
+                        BackupAction.CloseRelease,
                         -> viewModel.onAction(action)
                     }
                 },

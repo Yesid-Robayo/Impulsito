@@ -171,6 +171,13 @@ class OnboardingViewModel(
             BackupAction.ShowMissingHelp,
             BackupAction.CloseMissingHelp,
             BackupAction.FindFile,
+            BackupAction.OpenMeteredPolicy,
+            is BackupAction.PickMeteredPolicy,
+            BackupAction.ConfirmWifiOnly,
+            BackupAction.CloseMeteredPolicy,
+            is BackupAction.ReleaseCopy,
+            BackupAction.ConfirmRelease,
+            BackupAction.CloseRelease,
             -> Unit
         }
     }

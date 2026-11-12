@@ -137,6 +137,7 @@ internal enum class BackupEvent(override val text: String) : LogEvent {
     PRUNE_DONE("Poda terminada"),
     WORKER_FAILED("Falla no prevista del trabajo de respaldo"),
     SCHEDULING_FAILED("Falla no prevista al programar el respaldo"),
+    UPLOAD_USAGE_FAILED("No se pudo anotar el consumo del mes, y la copia sigue"),
 }
 
 /** Deja en el registro cómo terminó [run]: solo motivos, códigos y la generación. */

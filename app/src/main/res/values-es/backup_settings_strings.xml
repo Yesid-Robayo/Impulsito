@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Respaldo: copias con datos móviles, consumo del mes y copias fijadas. Textos de la guía de redacción. -->
+    <string name="backup_metered_row">Copias con datos móviles</string>
+    <string name="backup_metered_help">Cada copia sube todos los datos. Aquí se elige cada cuánto usar los datos móviles.</string>
+    <string name="backup_metered_every_60">Cada hora</string>
+    <string name="backup_metered_every_30">Cada 30 minutos</string>
+    <string name="backup_metered_wifi_only">Solo con Wi-Fi</string>
+    <string name="dialog_wifi_only_title">¿Copiar solo con Wi-Fi?</string>
+    <string name="dialog_wifi_only_body">Sin Wi-Fi no se guardarán copias solas. Si se pierde el teléfono, se pierde lo registrado desde la última copia. Respaldar ahora siempre está disponible.</string>
+    <string name="dialog_wifi_only_action">Copiar solo con Wi-Fi</string>
+    <string name="backup_uploaded_month_label">Subido este mes</string>
+    <string name="backup_action_release">Liberar copia</string>
+    <string name="backup_pinned_help">%1$s no borra una copia fijada. Se fija sola antes de un cambio que deja menos datos que los de esa copia.</string>
+    <string name="dialog_release_copy_title">¿Liberar esta copia?</string>
+    <string name="dialog_release_copy_body">%1$s podrá borrarla cuando corresponda según la retención de copias. Hasta entonces se mantiene en la nube.</string>
+    <string name="backup_release_done">Copia liberada</string>
+    <string name="backup_release_failed">No se pudo liberar. La copia sigue fijada.</string>
+</resources>

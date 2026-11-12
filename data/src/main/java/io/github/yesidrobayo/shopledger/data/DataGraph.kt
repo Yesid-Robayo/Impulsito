@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupEvent
 import io.github.yesidrobayo.shopledger.data.backup.BackupRestoreService
 import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
+import io.github.yesidrobayo.shopledger.data.backup.BackupSettingsService
 import io.github.yesidrobayo.shopledger.data.backup.BackupStaging
 import io.github.yesidrobayo.shopledger.data.backup.BackupWorkQueue
 import io.github.yesidrobayo.shopledger.data.backup.CandidateUnpacker
@@ -33,6 +34,8 @@ import io.github.yesidrobayo.shopledger.data.backup.ScheduleFacts
 import io.github.yesidrobayo.shopledger.data.backup.ScheduledBackupWork
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestore
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestoreGate
+import io.github.yesidrobayo.shopledger.data.backup.UploadUsageRecorder
+import io.github.yesidrobayo.shopledger.data.backup.UploadUsageStore
 import io.github.yesidrobayo.shopledger.data.backup.cleanUpExpiredLocalCopies
 import io.github.yesidrobayo.shopledger.data.backup.probeAccess
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
@@ -72,8 +75,10 @@ import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironm
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
+import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
+import io.github.yesidrobayo.shopledger.domain.port.BackupSettingsPort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
@@ -84,7 +89,11 @@ import io.github.yesidrobayo.shopledger.domain.port.WebDavConnectionPort
 import io.github.yesidrobayo.shopledger.domain.port.error
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.domain.port.info
+import io.github.yesidrobayo.shopledger.domain.port.warn
 import io.github.yesidrobayo.shopledger.domain.rule.backup.HeadProbeRule
+import io.github.yesidrobayo.shopledger.domain.rule.backup.UploadUsageRule
+import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
+import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import java.io.File
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.TimeSource
@@ -174,9 +183,21 @@ class DataGraph internal constructor(
         DeviceIdentityStore.inNoBackupDir(context, ioContext)
     }
 
+    /** Los bytes subidos en el mes, en `no_backup/upload-usage.json`. Crearlo no toca el disco. */
+    private val uploadUsage by lazy {
+        UploadUsageStore({ File(context.noBackupFilesDir, UploadUsageStore.FILE_NAME) }, ioContext)
+    }
+
     /** Abre el destino conectado, para el respaldo y para restaurar. Crearlo no abre nada. */
     internal val destinations by lazy {
-        ProductionDestinationOpener(WebDavDestinationOpener(http, webDavCredentials)) {
+        val meter =
+            UploadUsageRecorder(
+                store = uploadUsage,
+                // Con la base ya abierta por el trabajo; sin ella, el mes guardado.
+                month = { ready?.ports?.let { businessMonth(it.settings) } },
+                onFailure = { log.warn(BackupEvent.UPLOAD_USAGE_FAILED, it) },
+            )
+        ProductionDestinationOpener(WebDavDestinationOpener(http, webDavCredentials, meter)) {
             DocumentSlotDestination(
                 store = FileSlotStateStore.inNoBackupDir(context, ioContext),
                 documents = ContentResolverDocumentAccess(context.contentResolver),
@@ -243,6 +264,29 @@ class DataGraph internal constructor(
             deviceId = deviceIdentity::deviceId,
             hasNetwork = { backupNetworkOf(context).validated },
         )
+    }
+
+    /**
+     * Los ajustes del respaldo con WebDAV en su pantalla: el consumo del mes, liberar una copia
+     * fijada y volver a programar la subida con otra política. Crearlo no toca el disco.
+     */
+    val backupSettings: BackupSettingsPort by lazy {
+        BackupSettingsService(
+            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            destinations = destinations,
+            usage = uploadUsage,
+            month = { (open() as? DataAccess.Ready)?.ports?.let { businessMonth(it.settings) } },
+            backupLock = backupMutex,
+            rescheduled = backupScheduler::onMeteredPolicyChanged,
+        )
+    }
+
+    /** El mes de ahora en la zona del negocio, como `AAAA-MM`, o nulo si la zona no se entiende. */
+    private suspend fun businessMonth(settings: AppSettingsRepository): String? {
+        val calendar =
+            (BusinessCalendar.of(settings.get().regional) as? BusinessCalendarResult.Ready)
+                ?.calendar ?: return null
+        return UploadUsageRule.monthOf(calendar.businessDateOf(clock.now()))
     }
 
     /**

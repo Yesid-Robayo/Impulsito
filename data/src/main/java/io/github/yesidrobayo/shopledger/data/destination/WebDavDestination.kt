@@ -5,8 +5,11 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.OutputStream
 import java.io.RandomAccessFile
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.random.Random
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 /**
  * Las copias en una carpeta de un servicio WebDAV, según la tabla de respuestas por método.
@@ -24,6 +27,7 @@ import kotlinx.coroutines.delay
  *   tamaño que se subió.
  *
  * @param folder la carpeta de las copias, relativa a la dirección guardada.
+ * @param usage recibe los bytes enviados de cada copia, para el consumo del mes.
  * @param sleep la espera entre reintentos. Las pruebas la reemplazan para no esperar de verdad.
  * @param jitterMillis el azar que se suma a cada espera, para que varios teléfonos no reintenten a
  *   la vez.
@@ -31,6 +35,7 @@ import kotlinx.coroutines.delay
 internal class WebDavDestination(
     private val client: WebDavClient,
     private val folder: WebDavPath,
+    private val usage: UploadUsageMeter = UploadUsageMeter.None,
     private val sleep: suspend (Long) -> Unit = { delay(it) },
     private val jitterMillis: () -> Long = { Random.nextLong(MAX_JITTER_MILLIS + 1) },
 ) : BackupDestination {
@@ -102,12 +107,25 @@ internal class WebDavDestination(
     ): DestinationResult<StoredCopy> {
         val copy = plan.copy
         val name = copy.name.fileName
-        when (
-            val sent =
+        // Lo enviado se anota pase lo que pase, también si la subida se corta o se cancela: esos
+        // datos ya se gastaron.
+        val sentBytes = AtomicLong()
+        val sent =
+            try {
                 putThenMove(name, copy.sizeBytes, control) { path ->
-                    client.putFile(path, copy.file, copy.name.format.contentType, control)
+                    client.putFile(
+                        path,
+                        copy.file,
+                        copy.name.format.contentType,
+                        control,
+                        onSent = { sentBytes.addAndGet(it) },
+                    )
                 }
-        ) {
+            } finally {
+                val total = sentBytes.get()
+                if (total > 0) withContext(NonCancellable) { usage.sent(total) }
+            }
+        when (sent) {
             is Outcome.Ok -> Unit
             is Outcome.Failed -> return sent.result
         }

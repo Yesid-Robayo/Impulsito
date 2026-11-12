@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Backup: backups on mobile data, monthly usage and pinned backups. Texts from the writing guide. -->
+    <string name="backup_metered_row">Backups on mobile data</string>
+    <string name="backup_metered_help">Each backup uploads all the data. Choose how often to use mobile data.</string>
+    <string name="backup_metered_every_60">Every hour</string>
+    <string name="backup_metered_every_30">Every 30 minutes</string>
+    <string name="backup_metered_wifi_only">Wi-Fi only</string>
+    <string name="dialog_wifi_only_title">Back up on Wi-Fi only?</string>
+    <string name="dialog_wifi_only_body">Without Wi-Fi, backups will not be saved automatically. If the phone is lost, everything recorded since the last backup is lost. Back up now is always available.</string>
+    <string name="dialog_wifi_only_action">Back up on Wi-Fi only</string>
+    <string name="backup_uploaded_month_label">Uploaded this month</string>
+    <string name="backup_action_release">Release backup</string>
+    <string name="backup_pinned_help">%1$s does not delete a pinned backup. It is pinned automatically before a change that leaves less data than that backup has.</string>
+    <string name="dialog_release_copy_title">Release this backup?</string>
+    <string name="dialog_release_copy_body">%1$s may delete it when the backup retention calls for it. Until then it stays in the cloud.</string>
+    <string name="backup_release_done">Backup released</string>
+    <string name="backup_release_failed">Could not release. The backup is still pinned.</string>
+</resources>

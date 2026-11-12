@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -39,10 +41,12 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
+import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.format.DataSizeFormatter
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
@@ -51,6 +55,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.BackupCopyRow
 import io.github.yesidrobayo.shopledger.ui.components.BackupCopyRowData
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
@@ -58,6 +63,8 @@ import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.backupToneContainer
@@ -90,6 +97,8 @@ fun BackupScreen(
             onAction(BackupAction.CloseMissingHelp)
         }
     }
+    uiState.wording?.overview?.meteredPolicy?.let { MeteredLayer(uiState.metered, it, onAction) }
+    ReleaseLayer(uiState.release, onAction)
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
@@ -141,6 +150,8 @@ fun BackupScreen(
                 rowOf = { copyRowData(it, uiState.wording) },
                 dateOf = { instantText(it, uiState.wording) },
                 onAction = onAction,
+                canRelease =
+                    uiState.wording?.overview?.destinationKind == BackupDestinationKind.WEBDAV,
             )
         }
     }
@@ -173,6 +184,142 @@ private fun LazyListScope.overview(uiState: BackupUiState, onAction: (BackupActi
     }
     if (wording != null && wording.overview.report.status != BackupStatus.NOT_CONNECTED) {
         item(key = DESTINATION) { Destination(uiState.destination, onAction) }
+    }
+    // Solo con WebDAV: con ranuras, la red y lo que se sube los decide la app de esa nube.
+    if (wording != null && wording.overview.report.status != BackupStatus.NOT_CONNECTED &&
+        wording.overview.destinationKind == BackupDestinationKind.WEBDAV
+    ) {
+        item(key = METERED) {
+            MeteredSettings(wording.overview.meteredPolicy, uiState.uploadedThisMonth, onAction)
+        }
+    }
+}
+
+/** `Copias con datos móviles`, con la opción elegida, y `Subido este mes`. */
+@Composable
+private fun MeteredSettings(
+    policy: MeteredBackupPolicy,
+    uploadedThisMonth: Long?,
+    onAction: (BackupAction) -> Unit,
+) {
+    val formats = LocalAppFormats.current
+    val uploaded =
+        uploadedThisMonth?.let {
+            DataSizeFormatter(formats.date.formatLocale, formats.uiLocale).megabytes(it)
+        } ?: NO_VALUE_TEXT
+    Column {
+        SectionHeader(stringResource(R.string.backup_metered_row))
+        SettingsRow(
+            title = stringResource(policy.label()),
+            action = SettingsRowAction.Navigation { onAction(BackupAction.OpenMeteredPolicy) },
+        )
+        SettingsRow(
+            title = stringResource(R.string.backup_uploaded_month_label),
+            action =
+                SettingsRowAction.Value {
+                    Text(
+                        uploaded,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                    )
+                },
+        )
+    }
+}
+
+/** El nombre de cada política con datos móviles. */
+internal fun MeteredBackupPolicy.label(): Int = when (this) {
+    MeteredBackupPolicy.EVERY_60_MIN -> R.string.backup_metered_every_60
+    MeteredBackupPolicy.EVERY_30_MIN -> R.string.backup_metered_every_30
+    MeteredBackupPolicy.WIFI_ONLY -> R.string.backup_metered_wifi_only
+}
+
+/** La hoja con las tres opciones, o la advertencia de `Solo con Wi-Fi`. */
+@Composable
+private fun MeteredLayer(
+    metered: MeteredUi,
+    current: MeteredBackupPolicy,
+    onAction: (BackupAction) -> Unit,
+) {
+    when (metered) {
+        MeteredUi.Closed -> Unit
+
+        MeteredUi.Choosing ->
+            AppBottomSheet(
+                onDismissRequest = { onAction(BackupAction.CloseMeteredPolicy) },
+                title = stringResource(R.string.backup_metered_row),
+            ) {
+                MeteredOptions(current, onAction)
+            }
+
+        MeteredUi.ConfirmWifiOnly ->
+            ConfirmDialog(
+                title = stringResource(R.string.dialog_wifi_only_title),
+                body = stringResource(R.string.dialog_wifi_only_body),
+                confirmLabel = stringResource(R.string.dialog_wifi_only_action),
+                onConfirm = { onAction(BackupAction.ConfirmWifiOnly) },
+                onDismiss = { onAction(BackupAction.CloseMeteredPolicy) },
+                dismissLabel = stringResource(R.string.action_cancel),
+            )
+    }
+}
+
+/** Las tres opciones, con la marca de la elegida, que no depende del color. */
+@Composable
+internal fun MeteredOptions(current: MeteredBackupPolicy, onAction: (BackupAction) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4)) {
+        Text(
+            stringResource(R.string.backup_metered_help),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        for (policy in MeteredBackupPolicy.entries) {
+            val selected = policy == current
+            SettingsRow(
+                title = stringResource(policy.label()),
+                action =
+                    SettingsRowAction.Value {
+                        if (selected) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(AppTheme.sizes.icon),
+                            )
+                        }
+                    },
+                modifier =
+                    Modifier.selectable(
+                        selected = selected,
+                        role = Role.RadioButton,
+                        onClick = { onAction(BackupAction.PickMeteredPolicy(policy)) },
+                    ),
+            )
+        }
+    }
+}
+
+/** `¿Liberar esta copia?`. Mientras se libera, la pregunta sigue sin poder confirmarse de nuevo. */
+@Composable
+private fun ReleaseLayer(release: ReleaseUi, onAction: (BackupAction) -> Unit) {
+    val working = release is ReleaseUi.Working
+    when (release) {
+        ReleaseUi.Idle, is ReleaseUi.Failed -> Unit
+
+        is ReleaseUi.Confirm, is ReleaseUi.Working ->
+            ConfirmDialog(
+                title = stringResource(R.string.dialog_release_copy_title),
+                body =
+                    stringResource(
+                        R.string.dialog_release_copy_body,
+                        stringResource(R.string.app_name),
+                    ),
+                confirmLabel = stringResource(R.string.backup_action_release),
+                onConfirm = { if (!working) onAction(BackupAction.ConfirmRelease) },
+                onDismiss = { onAction(BackupAction.CloseRelease) },
+                dismissLabel = stringResource(R.string.action_cancel),
+            )
     }
 }
 
@@ -612,6 +759,7 @@ private val EXPANDED_WIDTH = 840.dp
 private const val SKELETON_ROWS = 3
 private const val STATUS = "status"
 private const val DESTINATION = "destination"
+private const val METERED = "metered"
 private const val COPIES_HEADER = "copiesHeader"
 private const val COPIES_LOADING = "copiesLoading"
 private const val COPIES_STATE = "copiesState"

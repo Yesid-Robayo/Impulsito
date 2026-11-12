@@ -106,14 +106,18 @@ internal class WebDavClient(
      * `PUT` de [file] en [path], en flujo y con `Content-Length`, sin cargarlo en memoria. Entre una
      * escritura y la siguiente revisa [control]: si debe detenerse, corta la petición y el destino
      * se queda solo con un nombre temporal a medias.
+     *
+     * [onSent] recibe cada tramo que se escribió hacia el servidor, también en una petición que
+     * después se corta o se repite: esos datos ya se gastaron.
      */
     suspend fun putFile(
         path: WebDavPath,
         file: File,
         contentType: String,
         control: TransferControl = TransferControl.Unbounded,
+        onSent: (Long) -> Unit = {},
     ): PutResult {
-        val body = FileBody(file, contentType.toMediaType(), control)
+        val body = FileBody(file, contentType.toMediaType(), control, onSent)
         return put(path, body, control) { body.sentFully }
     }
 
@@ -597,6 +601,7 @@ internal class WebDavClient(
         private val file: File,
         private val type: MediaType,
         private val control: TransferControl,
+        private val onSent: (Long) -> Unit,
     ) : RequestBody() {
         private val length = file.length()
 
@@ -622,6 +627,7 @@ internal class WebDavClient(
                     if (read < 0) throw IOException("El archivo se acortó mientras se subía")
                     sink.write(buffer, 0, read)
                     sent += read
+                    onSent(read.toLong())
                 }
                 sink.flush()
             }

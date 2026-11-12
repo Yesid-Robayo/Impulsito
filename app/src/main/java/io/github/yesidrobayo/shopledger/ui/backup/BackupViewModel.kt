@@ -7,6 +7,8 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
+import io.github.yesidrobayo.shopledger.domain.model.backup.PinRelease
+import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
@@ -39,6 +41,9 @@ import kotlinx.coroutines.withContext
  * @param recordCheck anota `Ya la vi en {provider}` con la generación en pantalla; devuelve si quedó.
  * @param computation el hilo donde se leen el destino y la lista, fuera del principal.
  * @param restore restaurar una copia de la lista o un archivo elegido; nulo donde no se ofrece.
+ * @param changePolicy guarda la política con datos móviles y vuelve a programar la subida.
+ * @param releaseCopy quita la marca de fijada a una copia, por su clave en la lista.
+ * @param uploadedThisMonth con WebDAV, los bytes subidos en el mes; nulo si no se pudo leer.
  */
 class BackupViewModel(
     overview: (Flow<Unit>) -> Flow<BackupOverview>,
@@ -48,6 +53,9 @@ class BackupViewModel(
     private val recordCheck: suspend (Long) -> Boolean,
     private val computation: CoroutineDispatcher,
     private val restore: RestoreBackupUseCase? = null,
+    private val changePolicy: suspend (MeteredBackupPolicy) -> Unit = {},
+    private val releaseCopy: suspend (String) -> PinRelease = { PinRelease.FAILED },
+    private val uploadedThisMonth: suspend () -> Long? = { null },
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = state.asStateFlow()
@@ -117,6 +125,26 @@ class BackupViewModel(
 
             BackupAction.CloseRestore -> state.update { it.copy(restore = RestoreUi.Idle) }
 
+            BackupAction.OpenMeteredPolicy -> openMetered()
+
+            is BackupAction.PickMeteredPolicy -> pickPolicy(action.policy)
+
+            BackupAction.ConfirmWifiOnly -> {
+                state.update { it.copy(metered = MeteredUi.Closed) }
+                applyPolicy(MeteredBackupPolicy.WIFI_ONLY)
+            }
+
+            BackupAction.CloseMeteredPolicy -> state.update { it.copy(metered = MeteredUi.Closed) }
+
+            is BackupAction.ReleaseCopy -> askRelease(action.key)
+
+            BackupAction.ConfirmRelease -> release()
+
+            BackupAction.CloseRelease ->
+                state.update {
+                    if (it.release is ReleaseUi.Working) it else it.copy(release = ReleaseUi.Idle)
+                }
+
             // Lo resuelve la navegación.
             BackupAction.Back,
             BackupAction.ChooseDestination,
@@ -130,6 +158,78 @@ class BackupViewModel(
     /** La pantalla volvió a primer plano: el estado se calcula con la hora de ahora. */
     fun onReturnToForeground() {
         refreshes.value += 1
+        refreshUsage()
+    }
+
+    private fun webDav(): Boolean =
+        state.value.wording?.overview?.destinationKind == BackupDestinationKind.WEBDAV
+
+    /** Con ranuras, la red la decide la app de esa nube: la hoja no se abre. */
+    private fun openMetered() {
+        if (webDav()) state.update { it.copy(metered = MeteredUi.Choosing) }
+    }
+
+    /**
+     * Elegir `Solo con Wi-Fi` pide confirmar con su advertencia, salvo si ya era la elegida; las
+     * otras dos se guardan enseguida.
+     */
+    private fun pickPolicy(policy: MeteredBackupPolicy) {
+        val current = state.value.wording?.overview?.meteredPolicy
+        if (policy == MeteredBackupPolicy.WIFI_ONLY && current != MeteredBackupPolicy.WIFI_ONLY) {
+            state.update { it.copy(metered = MeteredUi.ConfirmWifiOnly) }
+            return
+        }
+        state.update { it.copy(metered = MeteredUi.Closed) }
+        if (policy != current) applyPolicy(policy)
+    }
+
+    private fun applyPolicy(policy: MeteredBackupPolicy) {
+        viewModelScope.launch {
+            read { changePolicy(policy) }
+            // El estado y los límites cambian con la política: se calculan de nuevo.
+            refreshes.value += 1
+        }
+    }
+
+    /**
+     * `Liberar copia` solo existe para una copia fijada de la lista. Reintentar tras un fallo vuelve
+     * a preguntar por la misma copia.
+     */
+    private fun askRelease(key: String) {
+        val failed = (state.value.release as? ReleaseUi.Failed)?.copy?.takeIf { it.key == key }
+        val copy = failed ?: copyOf(key)?.takeIf { it.pinned && webDav() } ?: return
+        state.update { it.copy(restore = RestoreUi.Idle, release = ReleaseUi.Confirm(copy)) }
+    }
+
+    /** Libera la copia confirmada y vuelve a leer la lista, para ver la copia sin la marca. */
+    private fun release() {
+        val copy = (state.value.release as? ReleaseUi.Confirm)?.copy ?: return
+        state.update { it.copy(release = ReleaseUi.Working(copy)) }
+        viewModelScope.launch {
+            val result = read { releaseCopy(copy.key) } ?: PinRelease.FAILED
+            state.update {
+                when (result) {
+                    PinRelease.RELEASED ->
+                        it.copy(release = ReleaseUi.Idle, message = BackupMessage.RELEASED)
+
+                    PinRelease.FAILED ->
+                        it.copy(
+                            release = ReleaseUi.Failed(copy),
+                            message = BackupMessage.RELEASE_FAILED,
+                        )
+                }
+            }
+            if (result == PinRelease.RELEASED) reload()
+        }
+    }
+
+    /** Con WebDAV, lo subido este mes; con ranuras no aparece, porque sube otra app. */
+    private fun refreshUsage() {
+        if (!webDav()) return
+        viewModelScope.launch {
+            val bytes = read { uploadedThisMonth() }
+            state.update { it.copy(uploadedThisMonth = bytes) }
+        }
     }
 
     private fun reload() {
@@ -140,12 +240,20 @@ class BackupViewModel(
             val info = read { destination.describe() }
             val copies = read { destination.listCopies() } ?: BackupCopyList.Failed
             val handoff = read { destination.latestHandoff() }
+            val usage = if (info is BackupDestinationInfo.WebDav) {
+                read {
+                    uploadedThisMonth()
+                }
+            } else {
+                null
+            }
             state.update { current ->
                 val provider = (info as? BackupDestinationInfo.Slots)?.providerLabel
                 current.copy(
                     destination = info,
                     copies = copies,
                     handoff = handoff,
+                    uploadedThisMonth = usage,
                     wording = current.wording?.copy(providerLabel = provider),
                 )
             }
