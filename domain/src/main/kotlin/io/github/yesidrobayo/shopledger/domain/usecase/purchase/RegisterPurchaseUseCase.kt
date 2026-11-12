@@ -2,28 +2,20 @@ package io.github.yesidrobayo.shopledger.domain.usecase.purchase
 
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
-import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Limit
-import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
-import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
-import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineAmount
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
-import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
-import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
-import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
-import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
@@ -37,14 +29,11 @@ import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
-import io.github.yesidrobayo.shopledger.domain.rule.PurchaseLineTax
-import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
-import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
-import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
-import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
-import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
-import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseLineAmounts
-import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseLineRules
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PricedPurchaseLine
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricing
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricingResult
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseSubject
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseTotals
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
@@ -115,13 +104,18 @@ class RegisterPurchaseUseCase(
                 ?: return reject(RegisterPurchaseResult.SupplierNotFound)
             if (supplier.isArchived) return reject(RegisterPurchaseResult.SupplierArchived)
         }
-        val priced = when (val result = priceLines(request.lines, current.taxes)) {
-            is Priced.Lines -> result
-            is Priced.Rejected -> return reject(result.rejection)
+        val subjects = subjectsOf(request.lines, current.taxes)
+        val priced = when (
+            val result = PurchasePricing.price(request.lines, subjects, current.taxes)
+        ) {
+            is PurchasePricingResult.Priced -> result
+
+            is PurchasePricingResult.LineRejected ->
+                return reject(RegisterPurchaseResult.LineRejected(result.index, result.reason))
+
+            PurchasePricingResult.TotalTooLarge ->
+                return reject(RegisterPurchaseResult.PurchaseTotalTooLarge)
         }
-        val totals = totalsOf(priced.lines) ?: return reject(
-            RegisterPurchaseResult.PurchaseTotalTooLarge,
-        )
 
         // Justo antes de escribir: la primera compra bloquea la moneda en esta misma transacción,
         // y si la compra se deshace, el bloqueo también.
@@ -131,15 +125,9 @@ class RegisterPurchaseUseCase(
             CurrencyLockResult.Unconfirmed ->
                 return reject(RegisterPurchaseResult.CurrencyNotConfirmed)
         }
-        val purchaseId = write(request.supplierId, reference, priced.lines, totals, time, now)
-        val changes = priced.costBefore.map { (productId, before) ->
-            PurchaseCostChange(
-                productId = productId,
-                averageCostBefore = before,
-                averageCostAfter = checkNotNull(priced.costAfter[productId]).averageCost,
-            )
-        }
-        return TxResult.Commit(RegisterPurchaseResult.Registered(purchaseId, changes))
+        val purchaseId =
+            write(request.supplierId, reference, priced.lines, priced.totals, time, now)
+        return TxResult.Commit(RegisterPurchaseResult.Registered(purchaseId, priced.costChanges))
     }
 
     /** Lo que se rechaza sin leer la base: la forma de la compra. */
@@ -175,167 +163,37 @@ class RegisterPurchaseUseCase(
     }
 
     /**
-     * Calcula cada línea en orden, con los productos leídos de una vez dentro de la transacción. Un
-     * producto que se repite calcula su segunda línea con el costo que dejó la primera.
+     * Lo que el cálculo necesita de cada producto de la compra, leído una vez dentro de la
+     * transacción: el producto con su costo, si su unidad admite fracciones y la tasa que paga. Un
+     * producto que no existe queda fuera, y el cálculo rechaza su línea.
      */
-    private suspend fun priceLines(
-        requests: List<PurchaseLineRequest>,
+    private suspend fun subjectsOf(
+        lines: List<PurchaseLineRequest>,
         taxes: TaxSettings,
-    ): Priced {
-        val byId = products.findByIds(requests.map { it.productId }.toSet()).associateBy { it.id }
-        val costBefore = LinkedHashMap<Long, Money>()
-        val costAfter = HashMap<Long, CostState>()
+    ): Map<Long, PurchaseSubject> {
         val fractionByUnit = HashMap<Long, Boolean>()
         val taxByRate = HashMap<Long, AppliedTax>()
-        val lines = ArrayList<PricedLine>(requests.size)
-        for ((index, request) in requests.withIndex()) {
-            val product = byId[request.productId]
-                ?: return rejected(index, PurchaseLineRejection.PRODUCT_NOT_FOUND)
-            productRejection(product)?.let { return rejected(index, it) }
+        return products.findByIds(lines.map { it.productId }.toSet()).associate { product ->
             val allowsFraction = fractionByUnit.getOrPut(product.details.baseUnitId) {
                 // La unidad base de un producto siempre existe: su llave no deja borrarla.
                 (units.findById(product.details.baseUnitId) ?: damaged()).allowsFraction
             }
-            quantityRejection(request.quantity, allowsFraction)?.let { return rejected(index, it) }
-            val amounts = when (val result = amountsOf(request)) {
-                is LineAmounts.Ready -> result.amounts
-                is LineAmounts.Rejected -> return rejected(index, result.reason)
-            }
-            val tax = appliedTax(product, taxes, taxByRate)
-            val split = when (
-                val checked = TaxCalculator.purchaseLine(
-                    amounts.written,
-                    taxes.mode,
-                    tax.rate,
-                    taxes.purchaseTaxRecoverable,
-                )
-            ) {
-                is Checked.Value -> checked.value
-
-                Checked.Overflow, is Checked.AboveLimit ->
-                    return rejected(index, PurchaseLineRejection.LINE_TOTAL_TOO_LARGE)
-            }
-            // La fila del libro congela el costo de una unidad base con lo que entró al stock.
-            val movementCost = PurchaseLineRules.costPerUnit(request.quantity, split.costAmount)
-                .valueOrNull()
-                ?: return rejected(index, PurchaseLineRejection.UNIT_COST_TOO_LARGE)
-            val before = costAfter[product.id]
-                ?: CostState(product.onHand, product.averageCost, product.stockValue)
-            costBefore.putIfAbsent(product.id, product.averageCost)
-            val after = entryAfter(before, request.quantity, split.costAmount)
-                ?: return rejected(index, PurchaseLineRejection.STOCK_ABOVE_LIMIT)
-            costAfter[product.id] = after
-            lines += PricedLine(
-                productId = product.id,
-                unitId = product.details.baseUnitId,
-                quantity = request.quantity,
-                amounts = amounts,
-                tax = tax,
-                split = split,
-                movementCost = movementCost,
-                after = after,
-            )
-        }
-        return Priced.Lines(lines, costBefore, costAfter)
-    }
-
-    private fun productRejection(product: Product): PurchaseLineRejection? = when {
-        product.isArchived -> PurchaseLineRejection.PRODUCT_ARCHIVED
-        !StockModeRules.hasLedger(product.details.stockMode) -> PurchaseLineRejection.NOT_STOCKED
-        product.details.tracksLots -> PurchaseLineRejection.LOTS_NOT_SUPPORTED
-        else -> null
-    }
-
-    private fun quantityRejection(
-        quantity: QuantityMilli,
-        allowsFraction: Boolean,
-    ): PurchaseLineRejection? {
-        if (!Limit.LINE_QUANTITY_MILLI.allows(quantity.milli)) {
-            return PurchaseLineRejection.INVALID_QUANTITY
-        }
-        return when (UnitQuantityRule.check(quantity, allowsFraction)) {
-            UnitQuantityCheck.Valid -> null
-            UnitQuantityCheck.NotPositive -> PurchaseLineRejection.INVALID_QUANTITY
-            UnitQuantityCheck.FractionNotAllowed -> PurchaseLineRejection.FRACTION_NOT_ALLOWED
-        }
-    }
-
-    /** El costo unitario y el total de la línea, con la cantidad ya revisada. */
-    private fun amountsOf(request: PurchaseLineRequest): LineAmounts {
-        val written = when (val amount = request.amount) {
-            is PurchaseLineAmount.UnitCost -> amount.cost
-            is PurchaseLineAmount.LineTotal -> amount.total
-        }
-        if (written < Money.ZERO) return LineAmounts.Rejected(PurchaseLineRejection.NEGATIVE_AMOUNT)
-        return when (val checked = PurchaseLineRules.amounts(request.quantity, request.amount)) {
-            is Checked.Value -> LineAmounts.Ready(checked.value)
-
-            is Checked.AboveLimit -> LineAmounts.Rejected(
-                if (checked.limit == Limit.UNIT_MONEY) {
-                    PurchaseLineRejection.UNIT_COST_TOO_LARGE
-                } else {
-                    PurchaseLineRejection.LINE_TOTAL_TOO_LARGE
-                },
-            )
-
-            Checked.Overflow -> LineAmounts.Rejected(PurchaseLineRejection.LINE_TOTAL_TOO_LARGE)
-        }
-    }
-
-    /**
-     * El estado del costo tras la entrada, o `null` si deja el stock, su valor o el costo promedio
-     * por encima de sus topes: las cuentas que vienen después no los soportarían.
-     */
-    private fun entryAfter(before: CostState, quantity: QuantityMilli, total: Money): CostState? {
-        val after = WeightedAverageCost.entry(before, quantity, total).valueOrNull() ?: return null
-        return after.takeIf {
-            Limit.ON_HAND_MILLI.allows(it.onHand.milli) &&
-                Limit.STOCK_VALUE.allows(it.stockValue.minor) &&
-                Limit.UNIT_MONEY.allows(it.averageCost.minor)
-        }
-    }
-
-    /**
-     * La tasa que paga [product]: la suya, o la tasa por defecto del negocio si no tiene, leída una
-     * sola vez por compra. Sin impuesto en el negocio, o sin ninguna tasa, la línea no lleva.
-     */
-    private suspend fun appliedTax(
-        product: Product,
-        taxes: TaxSettings,
-        cache: MutableMap<Long, AppliedTax>,
-    ): AppliedTax {
-        if (taxes.mode == TaxMode.NONE) return AppliedTax.NONE
-        val rateId = product.details.taxRateId ?: taxes.defaultTaxRateId ?: return AppliedTax.NONE
-        return cache.getOrPut(rateId) {
-            // Su llave deja sin tasa al producto y al negocio si se elimina: nunca falta.
-            val rate = taxRates.findById(rateId) ?: damaged()
-            AppliedTax(rate.details.rate, rate.details.name.take(MAX_TAX_NAME_LENGTH))
-        }
-    }
-
-    /** Las sumas de la cabecera, o `null` si alguna pasa del total máximo de un documento. */
-    private fun totalsOf(lines: List<PricedLine>): Totals? {
-        val total = lines.map { it.split.lineTotal }.sumOrNull() ?: return null
-        val tax = lines.map { it.split.taxAmount }.sumOrNull() ?: return null
-        val cost = lines.map { it.split.costAmount }.sumOrNull() ?: return null
-        val inLimit = listOf(total, tax, cost).all { Limit.DOCUMENT_TOTAL.allows(it.minor) }
-        return if (inLimit) {
-            Totals(
-                net = total - tax,
-                tax = tax,
-                total = total,
-                cost = cost,
-            )
-        } else {
-            null
+            val tax = PurchasePricing.taxRateIdOf(product, taxes)?.let { rateId ->
+                taxByRate.getOrPut(rateId) {
+                    // Su llave deja sin tasa al producto y al negocio si se elimina: nunca falta.
+                    val rate = taxRates.findById(rateId) ?: damaged()
+                    AppliedTax(rate.details.rate, rate.details.name.take(MAX_TAX_NAME_LENGTH))
+                }
+            } ?: AppliedTax.NONE
+            product.id to PurchaseSubject(product, allowsFraction, tax.rate, tax.name)
         }
     }
 
     private suspend fun write(
         supplierId: Long?,
         reference: String?,
-        lines: List<PricedLine>,
-        totals: Totals,
+        lines: List<PricedPurchaseLine>,
+        totals: PurchaseTotals,
         time: RecordTime,
         now: Instant,
     ): Long {
@@ -366,7 +224,7 @@ class RegisterPurchaseUseCase(
             ledger.append(
                 NewStockMovement(
                     movement = StockMovementDraft(
-                        key = StockKey(line.productId, location, lotId = null),
+                        key = StockKey(line.subject.product.id, location, lotId = null),
                         type = StockMovementType.PURCHASE,
                         quantity = line.quantity,
                         reversesMovementId = null,
@@ -388,16 +246,16 @@ class RegisterPurchaseUseCase(
         return purchaseId
     }
 
-    private fun PricedLine.toNewLine(): NewPurchaseLine = NewPurchaseLine(
-        productId = productId,
-        unitId = unitId,
+    private fun PricedPurchaseLine.toNewLine(): NewPurchaseLine = NewPurchaseLine(
+        productId = subject.product.id,
+        unitId = subject.product.details.baseUnitId,
         unitFactor = QuantityMilli.ofUnits(1L),
         enteredQuantity = quantity,
         quantity = quantity,
         unitCost = amounts.unitCost,
         lineTotal = split.lineTotal,
-        taxRate = tax.rate,
-        taxNameSnapshot = tax.name,
+        taxRate = subject.taxRate,
+        taxNameSnapshot = subject.taxName,
         taxAmount = split.taxAmount,
         costAmount = split.costAmount,
         lotId = null,
@@ -406,9 +264,6 @@ class RegisterPurchaseUseCase(
 
     private fun reject(result: RegisterPurchaseResult): TxResult<RegisterPurchaseResult> =
         TxResult.Rollback(result)
-
-    private fun rejected(index: Int, reason: PurchaseLineRejection): Priced =
-        Priced.Rejected(RegisterPurchaseResult.LineRejected(index, reason))
 
     /** Una fila que la base garantiza y no está: la base está dañada, y no se escribe nada. */
     private fun damaged(): Nothing =
@@ -419,36 +274,6 @@ class RegisterPurchaseUseCase(
         companion object {
             val NONE = AppliedTax(BasisPoints.ZERO, name = null)
         }
-    }
-
-    /** Una línea ya calculada, lista para guardarse. [after] es el costo del producto tras ella. */
-    private class PricedLine(
-        val productId: Long,
-        val unitId: Long,
-        val quantity: QuantityMilli,
-        val amounts: PurchaseLineAmounts,
-        val tax: AppliedTax,
-        val split: PurchaseLineTax,
-        val movementCost: Money,
-        val after: CostState,
-    )
-
-    private class Totals(val net: Money, val tax: Money, val total: Money, val cost: Money)
-
-    private sealed interface Priced {
-        class Lines(
-            val lines: List<PricedLine>,
-            val costBefore: Map<Long, Money>,
-            val costAfter: Map<Long, CostState>,
-        ) : Priced
-
-        class Rejected(val rejection: RegisterPurchaseResult) : Priced
-    }
-
-    private sealed interface LineAmounts {
-        class Ready(val amounts: PurchaseLineAmounts) : LineAmounts
-
-        class Rejected(val reason: PurchaseLineRejection) : LineAmounts
     }
 
     private companion object {

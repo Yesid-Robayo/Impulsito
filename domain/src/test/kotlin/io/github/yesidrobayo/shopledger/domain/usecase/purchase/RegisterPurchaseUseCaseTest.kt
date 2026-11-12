@@ -6,7 +6,9 @@ import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCostChange
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineAmount
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRejection
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
@@ -458,6 +460,19 @@ class RegisterPurchaseUseCaseTest {
         )
         // El tope exacto del stock sí entra.
         assertTrue(register(atUnitCost(1, 1_000, cost = 1)) is RegisterPurchaseResult.Registered)
+    }
+
+    @Test
+    fun `a stock value that does not fit in a long rejects the line`() = runTest {
+        // Un valor imposible, como el de una copia dañada: sumarle la compra no cabe en Long.
+        world.addProduct(
+            product(1, onHandMilli = 1_000, averageCost = 1, stockValue = Long.MAX_VALUE - 10),
+        )
+
+        assertEquals(
+            RegisterPurchaseResult.LineRejected(0, PurchaseLineRejection.STOCK_ABOVE_LIMIT),
+            register(forTotal(1, 1_000, total = 1_000)),
+        )
     }
 
     @Test

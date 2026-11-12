@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de la compra nueva, copiados de ux-writing.md. -->
+<resources>
+    <string name="purchase_supplier">Supplier</string>
+    <string name="purchase_no_supplier">No supplier</string>
+    <string name="purchase_invoice_ref">Document reference</string>
+    <string name="purchase_register">Record purchase</string>
+    <string name="purchase_supplier_unavailable">That supplier can no longer be chosen. Choose another one.</string>
+    <string name="empty_purchase_title">Add the first product to this purchase</string>
+    <string name="empty_purchase_action">Add product</string>
+    <string name="confirm_purchase_registered">Purchase recorded: %1$s</string>
+    <string name="error_purchase_register">The purchase could not be recorded. Everything is still here.</string>
+    <string name="error_stock_over_limit">With this purchase, %1$s would exceed the stock limit. Check the quantity.</string>
+    <string name="notice_purchase_cost_change">The cost of %1$s goes from %2$s to %3$s.</string>
+    <string name="notice_cost_differs">It used to cost %1$s. Check the value.</string>
+    <string name="notice_product_archived">%1$s is archived. Reactivate it to use it.</string>
+</resources>

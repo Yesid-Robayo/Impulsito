@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.purchase
 
-import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCostChange
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRejection
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 
 /**
@@ -53,46 +54,3 @@ sealed interface RegisterPurchaseResult {
     /** La base no pudo escribir, por [failure]. No quedó nada guardado. */
     data class StorageFailed(val failure: StorageFailure) : RegisterPurchaseResult
 }
-
-/** Por qué no se registra una línea de compra. */
-enum class PurchaseLineRejection {
-    /** El producto ya no existe. */
-    PRODUCT_NOT_FOUND,
-
-    /** El producto está archivado: se reactiva antes de comprarlo. */
-    PRODUCT_ARCHIVED,
-
-    /** El producto no lleva stock propio, como un servicio o un combo: no hay libro que sumar. */
-    NOT_STOCKED,
-
-    /** El producto lleva lotes, y comprar por lote todavía no se ofrece. */
-    LOTS_NOT_SUPPORTED,
-
-    /** La cantidad no es positiva o pasa del máximo de una línea. */
-    INVALID_QUANTITY,
-
-    /** La unidad del producto no admite fracciones, y la cantidad las tiene. */
-    FRACTION_NOT_ALLOWED,
-
-    /** El costo o el total escritos son negativos. Una bonificación vale cero. */
-    NEGATIVE_AMOUNT,
-
-    /** El costo de una unidad entera pasa del máximo de un costo unitario. */
-    UNIT_COST_TOO_LARGE,
-
-    /** El total de la línea pasa del máximo de un documento. */
-    LINE_TOTAL_TOO_LARGE,
-
-    /** El stock del producto, o su valor, quedarían por encima de su tope. */
-    STOCK_ABOVE_LIMIT,
-}
-
-/**
- * Cómo dejó una compra el costo de un producto: el costo promedio antes de la compra y después de
- * todas sus líneas.
- */
-data class PurchaseCostChange(
-    val productId: Long,
-    val averageCostBefore: Money,
-    val averageCostAfter: Money,
-)

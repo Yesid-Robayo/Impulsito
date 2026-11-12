@@ -51,6 +51,24 @@ object PurchaseLineRules {
     }
 
     /**
+     * Lo mismo que [amounts], con el rechazo ya dicho como lo entiende la persona: el costo
+     * unitario o el total de la línea pasan de su tope. Una cuenta que no cabe en `Long` es un total
+     * demasiado grande.
+     */
+    fun check(quantity: QuantityMilli, amount: PurchaseLineAmount): PurchaseLineCheck =
+        when (val checked = amounts(quantity, amount)) {
+            is Checked.Value -> PurchaseLineCheck.Ready(checked.value)
+
+            is Checked.AboveLimit -> if (checked.limit == Limit.UNIT_MONEY) {
+                PurchaseLineCheck.UnitCostTooLarge
+            } else {
+                PurchaseLineCheck.LineTotalTooLarge
+            }
+
+            Checked.Overflow -> PurchaseLineCheck.LineTotalTooLarge
+        }
+
+    /**
      * El costo de una unidad entera cuando [quantity] milésimas valen [total]: `roundDiv(total ×
      * 1000, cantidad)`. Con la cantidad en la unidad base y lo que entró al valor del stock, es el
      * costo que congela la fila del libro. Rechaza un total sobre [Limit.DOCUMENT_TOTAL] o un costo

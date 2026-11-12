@@ -115,4 +115,35 @@ class PurchaseLineRulesTest {
             PurchaseLineRules.costPerUnit(QuantityMilli(-1), Money(1))
         }
     }
+
+    @Test
+    fun `the check names which value is too large`() {
+        val unitCap = Limit.UNIT_MONEY.max
+        assertEquals(
+            PurchaseLineCheck.Ready(PurchaseLineAmounts(Money(1_200), Money(12_000))),
+            PurchaseLineRules.check(
+                QuantityMilli(10_000),
+                PurchaseLineAmount.UnitCost(Money(1_200)),
+            ),
+        )
+        assertEquals(
+            PurchaseLineCheck.UnitCostTooLarge,
+            PurchaseLineRules.check(QuantityMilli(1), PurchaseLineAmount.LineTotal(Money(unitCap))),
+        )
+        assertEquals(
+            PurchaseLineCheck.LineTotalTooLarge,
+            PurchaseLineRules.check(
+                QuantityMilli(1_000_000_000),
+                PurchaseLineAmount.UnitCost(Money(unitCap)),
+            ),
+        )
+        // Una cantidad sin tope, que la compra nunca deja llegar, no cabe ni en Long.
+        assertEquals(
+            PurchaseLineCheck.LineTotalTooLarge,
+            PurchaseLineRules.check(
+                QuantityMilli(Long.MAX_VALUE),
+                PurchaseLineAmount.UnitCost(Money(unitCap)),
+            ),
+        )
+    }
 }
