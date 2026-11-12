@@ -26,6 +26,7 @@
     <string name="support_field_last_backup">Last backup</string>
     <string name="support_field_last_error">Last error</string>
     <string name="support_unavailable">Not available</string>
+    <string name="support_line">%1$s: %2$s</string>
     <string name="action_copy">Copy</string>
     <string name="backup_damaged_notice">Damaged data: that file is kept for 30 days in case it can be rescued. It contains the whole business.</string>
     <string name="backup_damaged_share_action">Share damaged data</string>

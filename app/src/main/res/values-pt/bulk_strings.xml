@@ -40,6 +40,7 @@
     <string name="bulk_undo_last">Desfazer a última</string>
     <string name="dialog_undo_prices_title">Desfazer a última atualização?</string>
     <string name="bulk_undo_gone">Essa atualização já não pode ser desfeita</string>
+    <string name="bulk_undo_mixed">%1$s %2$s</string>
     <plurals name="dialog_undo_prices_body">
         <item quantity="one">%1$d preço volta ao valor anterior. Os alterados depois ficam como estão.</item>
         <item quantity="many">%1$d de preços voltam ao valor anterior. Os alterados depois ficam como estão.</item>

@@ -154,7 +154,10 @@ class RescueScreenTest {
         assertEquals(listOf<RescueAction>(RescueAction.CopySupport), actions)
         // Cinco datos técnicos, y ninguno sale de la base.
         assertEquals(5, lines.size)
-        val copied = supportText(lines)
+        val copied =
+            supportText(lines) { label, value ->
+                context.getString(R.string.support_line, label, value)
+            }
         assertFalse(copied.contains("cuenta"))
         assertTrue(copied.contains("Fabricante Modelo"))
     }

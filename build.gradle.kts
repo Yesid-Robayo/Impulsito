@@ -136,6 +136,12 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 """\b[C]olor\(\s*(0x|red\s*=)|#[0-9A-Fa-f]{6}\b|\b[C]olor\.(Black|White|Gray|LightGray|DarkGray|Red|Green|Blue|Yellow|Cyan|Magenta)\b""",
             )
         val dynamicColor = Regex("""\b[d]ynamic(Light|Dark)ColorScheme\b""")
+        // Todo texto visible, también el que lee TalkBack y el de una notificación, sale de recursos en los tres idiomas. Un
+        // literal, o una frase armada con una plantilla, se queda en un idioma y con la puntuación de ese idioma.
+        val visibleLiteral =
+            Regex(
+                """\b(Text|BasicText)\(\s*"|\b(contentDescription|stateDescription|onClickLabel|paneTitle)\s*=\s*"|\.(setContentTitle|setContentText|setTicker|setName|setDescription)\(\s*"""",
+            )
 
         val binary = setOf("png", "webp", "jpg", "jpeg", "gif", "ttf", "otf", "jar", "so", "jks", "keystore", "db", "gz", "zip", "apk")
         val skippedDirs = setOf("build", ".gradle", ".kotlin", ".idea", ".cxx")
@@ -220,6 +226,9 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 }
                 if (isSource && dynamicColor.containsMatchIn(line)) {
                     problems += "$where: sin color dinámico de Android: la paleta la elige la persona"
+                }
+                if (isSource && path.startsWith("app/src/main/") && visibleLiteral.containsMatchIn(line)) {
+                    problems += "$where: un texto visible sale de un recurso en los tres idiomas, sin literales ni frases armadas"
                 }
             }
         }

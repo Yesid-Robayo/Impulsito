@@ -9,6 +9,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -74,6 +75,7 @@ fun RescueRoute(cause: RescueReason) {
             value = withContext(io) { SupportFacts.of(context, cause).lines(context) }
         }
     val supportLabel = stringResource(R.string.settings_support)
+    val labels = LocalResources.current
     val authenticator = LocalDeviceAuthenticator.current
     val restoreCheck = remember(authenticator) { DeviceCredentialCheck(authenticator) }
     val restoreTitle = stringResource(R.string.backup_action_restore)
@@ -102,7 +104,9 @@ fun RescueRoute(cause: RescueReason) {
                 RescueAction.CopySupport -> copyToClipboard(
                     context,
                     supportLabel,
-                    supportText(support),
+                    supportText(support) { label, value ->
+                        labels.getString(R.string.support_line, label, value)
+                    },
                 )
 
                 RescueAction.ConfirmShareDamaged -> {

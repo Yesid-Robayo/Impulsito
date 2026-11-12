@@ -37,6 +37,7 @@
     <string name="bulk_undo_last">Undo the last one</string>
     <string name="dialog_undo_prices_title">Undo the last update?</string>
     <string name="bulk_undo_gone">That update can no longer be undone</string>
+    <string name="bulk_undo_mixed">%1$s %2$s</string>
     <plurals name="dialog_undo_prices_body">
         <item quantity="one">%1$d price goes back to its previous value. Those changed later stay as they are.</item>
         <item quantity="other">%1$d prices go back to their previous value. Those changed later stay as they are.</item>

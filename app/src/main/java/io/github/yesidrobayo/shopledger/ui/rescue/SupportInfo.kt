@@ -83,9 +83,12 @@ val RescueReason.code: String
         RescueReason.RestoreLeftNoDatabase -> "RESTORE_LEFT_NO_DATABASE"
     }
 
-/** El texto que se copia: una línea por dato, `etiqueta: valor`. */
-fun supportText(lines: List<SupportLine>): String =
-    lines.joinToString(separator = "\n") { "${it.label}: ${it.value}" }
+/**
+ * El texto que se copia: una línea por dato. [line] une etiqueta y valor con el recurso del idioma
+ * activo, porque la puntuación entre los dos también cambia entre idiomas.
+ */
+fun supportText(lines: List<SupportLine>, line: (label: String, value: String) -> String): String =
+    lines.joinToString(separator = "\n") { line(it.label, it.value) }
 
 /**
  * Copia [text] al portapapeles. No es un dato sensible, pero desde Android 13 se marca igual para

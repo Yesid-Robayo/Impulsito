@@ -297,7 +297,7 @@ class RescueViewModelTest {
         val text =
             supportText(
                 listOf(SupportLine("Versión", "1.0.0 (1)"), SupportLine("Último error", "X")),
-            )
+            ) { label, value -> "$label: $value" }
 
         assertEquals("Versión: 1.0.0 (1)\nÚltimo error: X", text)
     }

@@ -74,6 +74,11 @@ class StatisticsScreenTest {
         compose.onNodeWithContentDescription(summaryStart, substring = true).assertIsDisplayed()
         scrollTo(text(R.string.term_final_profit))
         compose.onNodeWithText(text(R.string.term_margin)).assertExists()
+        // TalkBack oye la etiqueta y el valor unidos con el recurso del idioma.
+        compose.onNodeWithContentDescription(
+            resources.getString(R.string.a11y_label_value, text(R.string.term_margin), ""),
+            substring = true,
+        ).assertExists()
         assertTrue(
             compose.onAllNodesWithText(
                 text(R.string.stats_row_fees),

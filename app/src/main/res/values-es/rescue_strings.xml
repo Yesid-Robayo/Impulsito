@@ -21,6 +21,7 @@
     <string name="support_field_last_backup">Última copia</string>
     <string name="support_field_last_error">Último error</string>
     <string name="support_unavailable">No disponible</string>
+    <string name="support_line">%1$s: %2$s</string>
     <string name="action_copy">Copiar</string>
     <string name="backup_damaged_notice">Datos dañados: ese archivo se guarda 30 días, por si se puede rescatar. Contiene todo el negocio.</string>
     <string name="backup_damaged_share_action">Compartir datos dañados</string>

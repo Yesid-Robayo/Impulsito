@@ -272,13 +272,18 @@ private fun FeeField(fee: PaymentFeeState) {
     var editing by remember { mutableStateOf(false) }
     val label = stringResource(R.string.checkout_fee)
     if (discreet && !editing) {
-        val hidden = stringResource(R.string.a11y_checkout_discreet_fee)
+        val spoken =
+            stringResource(
+                R.string.a11y_label_value,
+                label,
+                stringResource(R.string.a11y_checkout_discreet_fee),
+            )
         Row(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = AppTheme.sizes.touchTarget)
                 .clickable(role = Role.Button) { editing = true }
-                .clearAndSetSemantics { contentDescription = "$label, $hidden" },
+                .clearAndSetSemantics { contentDescription = spoken },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(

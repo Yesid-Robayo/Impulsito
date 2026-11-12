@@ -607,13 +607,14 @@ private fun MarginRow(margin: Margin) {
             else -> text
         }
     val label = stringResource(R.string.term_margin)
+    val description = stringResource(R.string.a11y_label_value, label, spoken)
     LedgerLineLayout(
         gap = AppTheme.spacing.s16,
         modifier =
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = AppTheme.sizes.touchTarget)
-                .semantics(mergeDescendants = true) { contentDescription = "$label, $spoken" },
+                .semantics(mergeDescendants = true) { contentDescription = description },
         leading = { Text(label, style = MaterialTheme.typography.bodyLarge) },
         trailing = { Text(text, style = AppTheme.amounts.row) },
     )

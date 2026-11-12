@@ -41,6 +41,7 @@
 
     <!-- TalkBack. -->
     <string name="a11y_no_value">Sin dato</string>
+    <string name="a11y_label_value">%1$s, %2$s</string>
     <string name="a11y_loading">Cargando</string>
     <string name="a11y_voided_amount">%1$s, anulada</string>
     <string name="a11y_percent">%1$s por ciento</string>

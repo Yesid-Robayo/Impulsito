@@ -57,7 +57,7 @@ fun bulkMessageText(resources: Resources, message: BulkMessage): String = when (
         when {
             message.reverted == 0 -> partial
             message.kept == 0 -> undone
-            else -> "$undone $partial"
+            else -> resources.getString(R.string.bulk_undo_mixed, undone, partial)
         }
     }
 
