@@ -31,6 +31,8 @@ import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
+import io.github.yesidrobayo.shopledger.data.DataAccess
+import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.safety.PolicyConsentUseCase
 import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
@@ -44,6 +46,9 @@ import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.onboarding.OnboardingRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodFormRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodsRoute
+import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
+import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionHost
+import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
 import io.github.yesidrobayo.shopledger.ui.placeholder.EmptyContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderAction
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
@@ -75,6 +80,7 @@ import io.github.yesidrobayo.shopledger.ui.supplier.SupplierListRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
 import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
+import kotlinx.coroutines.flow.first
 
 /**
  * La navegación de la app: la pila de Navigation 3 y la barra inferior encima de las cuatro raíces.
@@ -82,9 +88,17 @@ import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
  * Cambiar de pestaña es un fundido corto, sin deslizamiento lateral. Abrir un detalle entra desde
  * la derecha con un fundido, y volver lo saca hacia la derecha, también con el gesto predictivo del
  * sistema. Atrás en Inicio no se intercepta: lo resuelve el sistema, que cierra la app.
+ *
+ * @param openRequest un destino pedido desde fuera, como tocar un aviso de stock: se abre encima de
+ *   lo visible, y [onOpenHandled] lo da por cumplido. Durante el primer uso no se abre nada.
  */
 @Composable
-fun AppNavHost(modifier: Modifier = Modifier, onboardingPending: Boolean = false) {
+fun AppNavHost(
+    modifier: Modifier = Modifier,
+    onboardingPending: Boolean = false,
+    openRequest: AppOpenRequest? = null,
+    onOpenHandled: () -> Unit = {},
+) {
     val backStack = rememberNavBackStack(AppNavKey.Home)
     val navigator = remember(backStack) { AppNavigator(backStack) }
     // El primer uso se abre encima de Inicio una sola vez, y se cierra solo al terminar.
@@ -93,6 +107,11 @@ fun AppNavHost(modifier: Modifier = Modifier, onboardingPending: Boolean = false
             navigator.open(AppNavKey.Onboarding)
         }
     }
+    LaunchedEffect(openRequest, onboardingPending) {
+        if (openRequest == null) return@LaunchedEffect
+        if (!onboardingPending) navigator.open(openRequest.key)
+        onOpenHandled()
+    }
     val density = LocalDensity.current
     val messageScope = rememberCoroutineScope()
     val messages = remember(messageScope) { AppMessages(messageScope) }
@@ -100,6 +119,15 @@ fun AppNavHost(modifier: Modifier = Modifier, onboardingPending: Boolean = false
     val policy =
         remember(messageScope) {
             PolicyPrompt(PolicyConsentUseCase(container.data.policyConsent), messageScope)
+        }
+    val context = LocalContext.current
+    val notificationPermission =
+        remember(messageScope) {
+            NotificationPermissionPrompt(
+                needsAsking = { NotificationPermissionPrompt.needsAsking(context) },
+                isFirstProduct = { hasOnlyOneProduct(container.data.open()) },
+                scope = messageScope,
+            )
         }
     // Cada apertura vuelve a mirar si cambió lo aceptado, hasta que la persona acepte.
     LifecycleStartEffect(policy) {
@@ -110,6 +138,7 @@ fun AppNavHost(modifier: Modifier = Modifier, onboardingPending: Boolean = false
         CompositionLocalProvider(
             LocalAppMessages provides messages,
             LocalPolicyPrompt provides policy,
+            LocalNotificationPermission provides notificationPermission,
         ) {
             NavDisplay(
                 backStack = backStack,
@@ -125,6 +154,7 @@ fun AppNavHost(modifier: Modifier = Modifier, onboardingPending: Boolean = false
                 entryProvider = { key -> entryOf(key, navigator) },
             )
             PolicyPromptHost(policy)
+            NotificationPermissionHost(notificationPermission)
         }
         AnimatedVisibility(
             visible = navigator.showsBottomBar,
@@ -366,3 +396,14 @@ private fun emptyOf(key: AppNavKey, title: String): Pair<EmptyContent, AppNavKey
 
         null -> EmptyContent(title = title) to null
     }
+
+/** Si el catálogo tiene un solo producto, contando los archivados: el que se acaba de guardar. */
+private suspend fun hasOnlyOneProduct(access: DataAccess): Boolean = when (access) {
+    is DataAccess.Ready -> {
+        val products = access.ports.products
+        products.observe(ArchiveFilter.ACTIVE).first().size +
+            products.observe(ArchiveFilter.ARCHIVED).first().size == 1
+    }
+
+    is DataAccess.Rescue -> false
+}

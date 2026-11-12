@@ -25,6 +25,7 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
 import io.github.yesidrobayo.shopledger.ui.unit.ResourceUnitNames
 
 /**
@@ -62,7 +63,12 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val unitEditor by viewModel.unitEditor.editor.collectAsStateWithLifecycle()
             val conversionEditor by viewModel.conversionEditor.editor.collectAsStateWithLifecycle()
+            val notificationPermission = LocalNotificationPermission.current
             LaunchedEffect(uiState.savedProductId, uiState.closed) {
+                // Con el primer producto se entiende para qué sirven los avisos de stock.
+                if (uiState.savedProductId != null && key.productId == null) {
+                    notificationPermission?.offerAfterNewProduct()
+                }
                 if (uiState.savedProductId != null || uiState.closed) navigator.back()
             }
             // Con algo escrito, atrás pregunta antes de descartarlo.

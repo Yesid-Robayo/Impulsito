@@ -49,12 +49,21 @@ class NotificationChannels(
          */
         const val BACKUP_CHANNEL_ID = "backup"
 
+        /** El canal de los avisos de stock bajo: un producto que llegó a su mínimo. */
+        const val STOCK_CHANNEL_ID = "low_stock"
+
         /**
          * Los canales de la app. Cada aviso suma aquí su canal cuando llega, con un ID que no cambia
          * nunca.
          */
         val APP_CHANNELS: List<NotificationChannelSpec> =
             listOf(
+                NotificationChannelSpec(
+                    id = STOCK_CHANNEL_ID,
+                    name = R.string.notif_channel_stock,
+                    description = null,
+                    importance = ChannelImportance.DEFAULT,
+                ),
                 NotificationChannelSpec(
                     id = BACKUP_CHANNEL_ID,
                     name = R.string.notif_channel_backup,

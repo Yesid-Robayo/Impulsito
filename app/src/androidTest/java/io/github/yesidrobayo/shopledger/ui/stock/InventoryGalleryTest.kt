@@ -25,7 +25,7 @@ import org.junit.runner.RunWith
 /**
  * Capturas del inventario para la puerta de calidad visual: la lista por agotarse con stock
  * negativo, agotado y bajo, nombre de 80 caracteres y valor de trece cifras; nada por agotarse;
- * el modo discreto; abierto desde Inicio con flecha; el catálogo vacío y el error. Con la paleta
+ * los avisos apagados; el modo discreto; abierto desde Inicio con flecha; el catálogo vacío y el error. Con la paleta
  * predeterminada y otra, en claro y en oscuro. Solo corre con `captureDir`; la letra grande se fija
  * en el emulador antes de correrla. Productos y montos inventados.
  */
@@ -42,6 +42,7 @@ class InventoryGalleryTest {
         val state: InventoryUiState,
         val discreet: Boolean = false,
         val navigation: TopBarNavigation = TopBarNavigation.NONE,
+        val notificationsBlocked: Boolean = false,
     )
 
     @Test
@@ -51,6 +52,11 @@ class InventoryGalleryTest {
         val scenes = listOf(
             Scene("lowStock", InventoryUiState(content = previewInventory())),
             Scene("nothingLow", InventoryUiState(content = previewInventory(items = emptyList()))),
+            Scene(
+                "notificationsOff",
+                InventoryUiState(content = previewInventory()),
+                notificationsBlocked = true,
+            ),
             Scene("discreet", InventoryUiState(content = previewInventory()), discreet = true),
             Scene(
                 "negativeFromHome",
@@ -80,6 +86,7 @@ class InventoryGalleryTest {
                                             uiState = scene.state,
                                             onAction = {},
                                             navigation = scene.navigation,
+                                            notificationsBlocked = scene.notificationsBlocked,
                                         )
                                     }
                                 }

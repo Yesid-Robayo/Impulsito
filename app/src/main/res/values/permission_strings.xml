@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés, el respaldo: lo ven también los teléfonos en un idioma sin carpeta propia. -->
+
+    <!-- La hoja que explica el permiso de avisos antes del diálogo del sistema. Nombra sus dos usos. -->
+    <string name="permission_notifications_rationale">It is used to alert when a product reaches its minimum and when backups need attention.</string>
+    <string name="permission_notifications_action">Turn on alerts</string>
+
+    <!-- En la lista de lo que se está acabando, si los avisos no pueden salir. -->
+    <string name="permission_notifications_denied_inventory">Alerts are off. This list still works.</string>
+
+    <!-- Abre los ajustes de avisos de la app en el teléfono. -->
+    <string name="action_open_settings">Open settings</string>
+</resources>

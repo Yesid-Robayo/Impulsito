@@ -66,6 +66,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * discreto. Debajo, los chips y la lista. Cada fila abre el producto, ofrece `Reponer` a la derecha
  * y `Ajustar stock` en su menú. No lee las alertas, así que funciona sin notificaciones.
  *
+ * @param notificationsBlocked si los avisos de stock no pueden salir: sin permiso, con los avisos de
+ *   la app apagados o con su canal silenciado. Un aviso discreto lo dice y lleva a los ajustes.
  * @param navigation cómo se sale: sin flecha como pestaña de Productos, con flecha si se abrió
  * desde   otra pantalla, como el aviso de Inicio.
  * @param tabs las pestañas de Productos, que da la pantalla que la contiene; vacías si va sola.
@@ -78,6 +80,7 @@ fun InventoryScreen(
     navigation: TopBarNavigation = TopBarNavigation.NONE,
     onNavigate: () -> Unit = {},
     tabs: @Composable () -> Unit = {},
+    notificationsBlocked: Boolean = false,
 ) {
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         AppTopBar(
@@ -125,7 +128,8 @@ fun InventoryScreen(
                         )
                     }
 
-                is InventoryContent.Ready -> InventoryList(uiState.chip, content, onAction)
+                is InventoryContent.Ready ->
+                    InventoryList(uiState.chip, content, notificationsBlocked, onAction)
             }
         }
     }
@@ -135,6 +139,7 @@ fun InventoryScreen(
 private fun InventoryList(
     chip: InventoryChip,
     content: InventoryContent.Ready,
+    notificationsBlocked: Boolean,
     onAction: (InventoryAction) -> Unit,
 ) {
     val spacing = AppTheme.spacing
@@ -142,7 +147,7 @@ private fun InventoryList(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = AppTheme.sizes.bottomBar + spacing.s24),
     ) {
-        item(key = "summary") { Summary(content) }
+        item(key = "summary") { Summary(content, notificationsBlocked, onAction) }
         item(key = "chips") {
             val chips = buildList {
                 add(InventoryChip.LOW_STOCK)
@@ -181,7 +186,11 @@ private fun InventoryList(
 }
 
 @Composable
-private fun Summary(content: InventoryContent.Ready) {
+private fun Summary(
+    content: InventoryContent.Ready,
+    notificationsBlocked: Boolean,
+    onAction: (InventoryAction) -> Unit,
+) {
     val spacing = AppTheme.spacing
     Column(
         Modifier.padding(start = spacing.s16, end = spacing.s16, top = spacing.s16),
@@ -189,6 +198,14 @@ private fun Summary(content: InventoryContent.Ready) {
     ) {
         SummaryTiles(content)
         content.archivedValue?.let { ArchivedNote(it) }
+        if (notificationsBlocked) {
+            NoticeCard(
+                text = stringResource(R.string.permission_notifications_denied_inventory),
+                variant = NoticeVariant.INFO,
+                actionLabel = stringResource(R.string.action_open_settings),
+                onAction = { onAction(InventoryAction.OpenNotificationSettings) },
+            )
+        }
         if (content.hasStockWithoutCost) {
             NoticeCard(
                 text = stringResource(R.string.notice_inventory_no_cost),

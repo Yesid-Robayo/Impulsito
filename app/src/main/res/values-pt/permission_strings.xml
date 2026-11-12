@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="permission_notifications_rationale">Serve para avisar quando um produto chegar ao mínimo e quando as cópias precisarem de atenção.</string>
+    <string name="permission_notifications_action">Ativar avisos</string>
+
+    <string name="permission_notifications_denied_inventory">Os avisos estão desligados. Esta lista funciona do mesmo jeito.</string>
+
+    <string name="action_open_settings">Abrir configurações</string>
+</resources>

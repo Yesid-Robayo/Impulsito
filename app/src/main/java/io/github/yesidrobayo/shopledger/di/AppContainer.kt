@@ -22,6 +22,8 @@ import io.github.yesidrobayo.shopledger.localization.LocalizedContextProvider
 import io.github.yesidrobayo.shopledger.localization.LocalizedSurfaces
 import io.github.yesidrobayo.shopledger.localization.installedVersionOf
 import io.github.yesidrobayo.shopledger.notification.AndroidBackupNotifier
+import io.github.yesidrobayo.shopledger.notification.AndroidLowStockNotifier
+import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -96,6 +98,24 @@ class AppContainer(application: Application) {
     /** Las notificaciones del respaldo, en el idioma de la interfaz. */
     val backupNotifier: AndroidBackupNotifier =
         AndroidBackupNotifier(application, localizedContext)
+
+    /**
+     * Los avisos de stock bajo pendientes, mientras la base está abierta. La actividad principal
+     * empieza a seguirlos al abrir la base.
+     */
+    val lowStockAlertDelivery: LowStockAlertDelivery by lazy {
+        LowStockAlertDelivery(
+            scope = applicationScope,
+            notifier =
+                AndroidLowStockNotifier(application, localizedContext) {
+                    when (val access = data.open()) {
+                        is DataAccess.Ready -> access.ports.settings.get()
+                        is DataAccess.Rescue -> error("Sin base no hay alertas que avisar")
+                    }
+                },
+            log = log,
+        )
+    }
 
     /** Los textos que viven fuera de la app, como los nombres de los canales de avisos. */
     val localizedSurfaces: LocalizedSurfaces =

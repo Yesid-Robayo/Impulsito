@@ -13,4 +13,17 @@
     <!-- Con la nube del teléfono, toca revisar que la copia aparezca. %1$s es el nombre de esa nube, que no se traduce. -->
     <string name="notif_backup_check_title">Falta revisar la copia en %1$s</string>
     <string name="notif_backup_check_body">Tocar para ver qué hora debe mostrar el archivo.</string>
+
+    <string name="notif_channel_stock">Avisos de stock</string>
+
+    <string name="notif_stock_low_title">Se está acabando: %1$s</string>
+    <string name="notif_stock_low_body">Quedan %1$s. El mínimo es %2$s.</string>
+    <string name="notif_stock_out_title">Se acabó: %1$s</string>
+    <plurals name="notif_stock_many_title">
+        <item quantity="one">%1$d producto se está acabando</item>
+        <item quantity="many">%1$d de productos se están acabando</item>
+        <item quantity="other">%1$d productos se están acabando</item>
+    </plurals>
+    <string name="notif_stock_many_body">Tocar para ver.</string>
+    <string name="notif_stock_public">Un producto está por agotarse</string>
 </resources>

@@ -76,6 +76,18 @@ private fun InventoryNothingLowPreview() {
 
 @ThemePreviews
 @Composable
+private fun InventoryNotificationsOffPreview() {
+    PreviewTheme {
+        InventoryScreen(
+            InventoryUiState(content = previewInventory()),
+            {},
+            notificationsBlocked = true,
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
 private fun InventoryDiscreetPreview() {
     PreviewTheme(discreet = true) {
         InventoryScreen(InventoryUiState(content = previewInventory()), {})

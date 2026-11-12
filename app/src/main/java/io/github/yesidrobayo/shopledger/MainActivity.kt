@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
@@ -20,6 +21,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.navigation.AppNavHost
+import io.github.yesidrobayo.shopledger.navigation.AppOpenRequest
 import io.github.yesidrobayo.shopledger.ui.format.BusinessDisplay
 import io.github.yesidrobayo.shopledger.ui.format.ProvideBusinessFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -52,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private val shownDisplay = mutableStateOf<BusinessDisplay?>(null)
     private val dataUnavailable = mutableStateOf(false)
     private val onboardingPending = mutableStateOf(false)
+    private val openRequest = mutableStateOf<AppOpenRequest?>(null)
 
     /** La paleta y el modo que leyó de los ajustes, o `null` mientras la base no responde. */
     internal val appearance: State<Appearance?> get() = shownAppearance
@@ -61,10 +64,14 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         // Solo en debug: un extra de adb abre el arnés del respaldo encima. En release no hace nada.
         if (savedInstanceState == null) DebugEntry.openIfRequested(this, intent)
+        // Un aviso de stock abre su producto. Al recrearse la actividad, el pedido ya se cumplió.
+        if (savedInstanceState == null) openRequest.value = AppOpenRequest.readFrom(intent)
         val container = (application as ShopLedgerApp).container
         lifecycleScope.launch {
             when (val access = container.data.open()) {
-                is DataAccess.Ready ->
+                is DataAccess.Ready -> {
+                    // Desde aquí se avisa lo que quedó pendiente y cada alerta nueva.
+                    container.lowStockAlertDelivery.follow(access.ports)
                     repeatOnLifecycle(Lifecycle.State.STARTED) {
                         access.ports.settings
                             .observe()
@@ -86,6 +93,7 @@ class MainActivity : AppCompatActivity() {
                                 shownDisplay.value = display
                             }
                     }
+                }
 
                 // La causa ya quedó registrada. La pantalla de rescate todavía no existe: hasta
                 // entonces sigue la navegación, que no lee la base.
@@ -107,10 +115,21 @@ class MainActivity : AppCompatActivity() {
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
                 } else {
                     ProvideBusinessFormats(shownDisplay.value) {
-                        AppNavHost(onboardingPending = onboardingPending.value)
+                        AppNavHost(
+                            onboardingPending = onboardingPending.value,
+                            openRequest = openRequest.value,
+                            onOpenHandled = { openRequest.value = null },
+                        )
                     }
                 }
             }
         }
+    }
+
+    /** Con la app abierta, tocar un aviso de stock llega aquí. Lo desconocido no cambia nada. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        AppOpenRequest.readFrom(intent)?.let { openRequest.value = it }
     }
 }

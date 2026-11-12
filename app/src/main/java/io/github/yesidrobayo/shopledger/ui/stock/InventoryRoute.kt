@@ -2,6 +2,11 @@ package io.github.yesidrobayo.shopledger.ui.stock
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -11,6 +16,7 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
 
 /**
  * El inventario en la navegación. Como pestaña de Productos recibe las pestañas en [tabs] y va sin
@@ -36,6 +42,13 @@ fun InventoryRoute(
             )
         }
     val navigation = if (asTab) TopBarNavigation.NONE else TopBarNavigation.BACK
+    val context = LocalContext.current
+    // Se mira al volver a la pantalla: la persona pudo cambiarlo en los ajustes del teléfono.
+    var notificationsBlocked by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        notificationsBlocked = NotificationPermissionPrompt.stockAlertsBlocked(context)
+        onPauseOrDispose {}
+    }
     when (model) {
         ScreenModel.Opening ->
             InventoryScreen(InventoryUiState(initialChip), {}, navigation = navigation, tabs = tabs)
@@ -60,6 +73,9 @@ fun InventoryRoute(
 
                         InventoryAction.CreateProduct -> navigator.open(AppNavKey.ProductEdit())
 
+                        InventoryAction.OpenNotificationSettings ->
+                            NotificationPermissionPrompt.openSettings(context)
+
                         is InventoryAction.ChipChanged, InventoryAction.Retry ->
                             viewModel.onAction(action)
                     }
@@ -67,6 +83,7 @@ fun InventoryRoute(
                 navigation = navigation,
                 onNavigate = { navigator.back() },
                 tabs = tabs,
+                notificationsBlocked = notificationsBlocked,
             )
         }
     }

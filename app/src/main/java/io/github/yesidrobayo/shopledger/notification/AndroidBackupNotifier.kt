@@ -27,10 +27,9 @@ import io.github.yesidrobayo.shopledger.localization.LocalizedContextProvider
  * - **Dice si salió.** Sin el permiso de avisos, o con el canal silenciado por la persona, no sale y
  *   responde `false`: quien la pidió no la cuenta como lanzada.
  *
- * El permiso de avisos de Android 13 o superior todavía no está en el manifiesto: llega con el
- * permiso en contexto de las alertas de stock. Hasta entonces, desde Android 13 el sistema no deja
- * salir ninguna, y esta clase lo dice con `false`, sin fallar: mira antes si los avisos están
- * permitidos, y atrapa el rechazo del sistema si cambió entre una cosa y la otra.
+ * Desde Android 13 hace falta el permiso de avisos, que la app pide en contexto. Sin él, el sistema
+ * no deja salir ninguna, y esta clase lo dice con `false`, sin fallar: mira antes si los avisos
+ * están permitidos, y atrapa el rechazo del sistema si cambió entre una cosa y la otra.
  *
  * @param app el contexto de la aplicación.
  * @param texts da el contexto con el idioma de la interfaz.

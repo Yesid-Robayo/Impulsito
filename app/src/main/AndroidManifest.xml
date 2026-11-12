@@ -8,6 +8,10 @@
         android:name="android.permission.FOREGROUND_SERVICE"
         tools:node="remove" />
 
+    <!-- Desde Android 13, los avisos de stock y del respaldo necesitan este permiso. Se pide en contexto, nunca al abrir la
+         app, y sin él todo sigue funcionando: la lista de lo que se está acabando y el respaldo se ven en la app. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS. -->
     <application
         android:name=".ShopLedgerApp"

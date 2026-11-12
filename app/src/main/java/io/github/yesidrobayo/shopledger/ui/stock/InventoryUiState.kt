@@ -95,5 +95,8 @@ sealed interface InventoryAction {
     /** Desde el inventario vacío, quiere crear el primer producto. */
     data object CreateProduct : InventoryAction
 
+    /** Con los avisos apagados, quiere abrir los ajustes de avisos del teléfono. */
+    data object OpenNotificationSettings : InventoryAction
+
     data object Retry : InventoryAction
 }

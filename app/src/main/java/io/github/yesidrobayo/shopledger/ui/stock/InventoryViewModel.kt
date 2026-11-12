@@ -71,6 +71,7 @@ class InventoryViewModel(
 
             is InventoryAction.OpenProduct, is InventoryAction.Restock, is InventoryAction.Adjust,
             InventoryAction.CreateProduct,
+            InventoryAction.OpenNotificationSettings,
             -> Unit
         }
     }
