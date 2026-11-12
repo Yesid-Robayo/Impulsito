@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ajustes: datos del negocio y exportar a CSV. Textos de la guía de redacción. -->
+    <string name="settings_export">Exportar a CSV</string>
+    <string name="settings_export_summary">Un archivo .zip con un CSV por cada tipo de dato</string>
+    <string name="settings_export_working">Exportando</string>
+    <string name="settings_export_saved">Datos exportados al archivo</string>
+    <string name="settings_export_error">No se pudo exportar. Los datos no cambiaron.</string>
+    <string name="settings_export_error_space">No hay espacio para guardar el archivo. Los datos no cambiaron.</string>
+</resources>

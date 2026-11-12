@@ -5,6 +5,8 @@ import androidx.room3.useWriterConnection
 import io.github.yesidrobayo.shopledger.data.backup.BackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.data.backup.BackupStatusReader
 import io.github.yesidrobayo.shopledger.data.backup.RoomHumanCheckRecorder
+import io.github.yesidrobayo.shopledger.data.export.CsvRowSource
+import io.github.yesidrobayo.shopledger.data.export.RoomCsvRowSource
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
@@ -241,6 +243,9 @@ class DataPorts internal constructor(
 
     /** El registro de auditoría, para lo que la capa de datos anota por su cuenta. */
     internal val auditEvents: AuditEventDao = database.auditEventDao()
+
+    /** La base leída para exportar a CSV, en una sola transacción de lectura. */
+    internal val csvRows: CsvRowSource = RoomCsvRowSource(database)
 
     /**
      * Cierra la base para que el arranque siguiente la reemplace: pasa el `-wal` al archivo y

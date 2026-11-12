@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.rule.region
 
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.region.DecimalSeparator
@@ -45,6 +46,12 @@ class CsvFormat(
      */
     fun quantityCell(quantity: QuantityMilli): String = cell(quantity.milli, QUANTITY_DECIMALS)
 
+    /**
+     * La celda de un porcentaje, con dos decimales: 1250 puntos básicos dan `12,50`. Es el número
+     * del porcentaje, sin el signo `%`, para que la hoja de cálculo lo lea como número.
+     */
+    fun percentCell(rate: BasisPoints): String = cell(rate.bp, PERCENT_DECIMALS)
+
     private fun cell(scaled: Long, decimals: Int): String {
         val number = decimal(scaled, decimals)
         return if (separator.char in number) "$QUOTE$number$QUOTE" else number
@@ -72,6 +79,9 @@ class CsvFormat(
 
         /** Decimales de una cantidad en milésimas. */
         const val QUANTITY_DECIMALS: Int = 3
+
+        /** Decimales de un porcentaje en puntos básicos. */
+        const val PERCENT_DECIMALS: Int = 2
 
         private const val QUOTE = '"'
         private const val ZERO = '0'

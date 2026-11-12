@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.rule.region
 
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -159,6 +160,17 @@ class CsvFormatTest(defaults: ForeignSystemDefaults) {
         assertEquals("0,250", commaWithTab.quantityCell(QuantityMilli(250L)))
         val pointWithTab = CsvFormat(CsvSeparator.TAB, DecimalSeparator.POINT, 3)
         assertEquals("1.234", pointWithTab.moneyCell(Money(1234L)))
+    }
+
+    @Test
+    fun `a percentage has two decimals and no sign`() {
+        assertEquals("19,00", commaRegion(decimals = 0).percentCell(BasisPoints(1_900L)))
+        assertEquals("12.50", pointRegion(decimals = 3).percentCell(BasisPoints(1_250L)))
+        assertEquals("0,00", commaRegion(decimals = 2).percentCell(BasisPoints.ZERO))
+        assertEquals("-0.05", pointRegion(decimals = 2).percentCell(BasisPoints(-5L)))
+        // Con columnas por coma y coma decimal, va entre comillas como cualquier número con decimales.
+        val quoted = CsvFormat(CsvSeparator.COMMA, DecimalSeparator.COMMA, currencyDecimals = 0)
+        assertEquals("\"8,25\"", quoted.percentCell(BasisPoints(825L)))
     }
 
     @Test

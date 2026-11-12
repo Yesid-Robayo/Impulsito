@@ -84,6 +84,7 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE }
  * @param deviceLockMissing el teléfono no tiene bloqueo de pantalla.
  * @param version la versión y la compilación, o `null` mientras se leen.
  * @param readLicense lee el texto de una licencia, fuera del hilo principal.
+ * @param csvExport `Exportar a CSV`, en `Datos del negocio`, o `null` sin base.
  */
 @Composable
 fun SettingsEntryScreen(
@@ -102,6 +103,8 @@ fun SettingsEntryScreen(
     version: String? = null,
     links: SettingsLinks = SettingsLinks(onOpen),
     readLicense: suspend (String) -> String? = { null },
+    csvExport: CsvExportUiState? = null,
+    onCsvExportAction: (CsvExportAction) -> Unit = {},
 ) {
     var aboutSheet by rememberSaveable { mutableStateOf<AboutSheet?>(null) }
     var license by rememberSaveable { mutableStateOf<LicensedComponent?>(null) }
@@ -147,6 +150,7 @@ fun SettingsEntryScreen(
                 }
                 if (overview != null) {
                     SectionHeader(stringResource(R.string.settings_group_data))
+                    if (csvExport != null) CsvExportRow(csvExport, onCsvExportAction)
                     SettingsRow(
                         title = stringResource(R.string.offsite_title),
                         action = SettingsRowAction.Navigation { onOpen(AppNavKey.LocalCopies) },

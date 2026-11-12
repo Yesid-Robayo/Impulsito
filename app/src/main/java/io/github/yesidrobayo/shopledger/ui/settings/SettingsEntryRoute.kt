@@ -5,7 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -18,9 +21,11 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
+import io.github.yesidrobayo.shopledger.domain.model.region.DecimalSeparator
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverviewUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.export.ExportCsvUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveTipsEnabledUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.SetTipsEnabledUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
@@ -28,10 +33,17 @@ import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreference
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ObserveAppLockUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ObserveBusinessProfileUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.SaveBusinessProfileUseCase
+import io.github.yesidrobayo.shopledger.format.CsvFormatFactory
+import io.github.yesidrobayo.shopledger.format.FormatLocale
+import io.github.yesidrobayo.shopledger.localization.CsvExportNaming
 import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
+import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
+import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
+import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.rescue.appVersionOf
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
@@ -131,6 +143,59 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
         withContext(io) { readLicenseText(context, asset) }
     }
     val scope = rememberCoroutineScope()
+    val appName = stringResource(R.string.app_name)
+    val exportModel =
+        rememberAppViewModel { dependencies ->
+            val container = dependencies.container
+            val settings = dependencies.ports.settings
+            val exportCsv =
+                ExportCsvUseCase(settings, container.data.csvExport) { tag ->
+                    // Una etiqueta que este teléfono no reconoce sale con punto decimal, el de las
+                    // hojas de cálculo sin coma decimal.
+                    FormatLocale.of(tag)?.let(CsvFormatFactory::decimalSeparator)
+                        ?: DecimalSeparator.POINT
+                }
+            val naming = CsvExportNaming { container.localizedContext.context().resources }
+            CsvExportViewModel(
+                export = { uri, progress -> exportCsv(uri, naming, progress) },
+                zone = {
+                    val current = BusinessCalendarSource(settings).current()
+                    (current as? BusinessCalendarResult.Ready)?.calendar?.zone
+                },
+                now = container.clock::now,
+                appName = appName,
+                computation = container.dispatchers.io,
+            )
+        }
+    val export = (exportModel as? ScreenModel.Ready)?.viewModel
+    val exportState = export?.uiState?.collectAsStateWithLifecycle()?.value
+    val csvPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(ZIP_TYPE)) { uri ->
+            uri?.let { export?.onAction(CsvExportAction.DocumentCreated(it.toString())) }
+        }
+    // Con el bloqueo encendido, exportar pide de nuevo la verificación del sistema: el archivo lleva
+    // todos los datos del negocio.
+    val sensitive = rememberSensitiveCheck()
+    val exportTitle = stringResource(R.string.settings_export)
+    val startExport: () -> Unit = {
+        if (export != null && exportState?.working != true) {
+            export.onAction(CsvExportAction.Export)
+            val name = export.suggestedName()
+            scope.launch {
+                if (sensitive.confirm(exportTitle)) {
+                    // Sin una app que cree documentos no hay selector: es como cancelar.
+                    try {
+                        csvPicker.launch(name)
+                    } catch (_: ActivityNotFoundException) {
+                        Unit
+                    }
+                }
+            }
+        }
+    }
+    CsvExportMessages(exportState?.message, onShown = {
+        export?.onAction(CsvExportAction.MessageShown)
+    }, onRetry = startExport)
     val promptTitle = stringResource(R.string.lock_setting)
     when (model) {
         ScreenModel.Opening, ScreenModel.Unavailable ->
@@ -179,6 +244,17 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 version = version,
                 links = links,
                 readLicense = readLicense,
+                csvExport = exportState,
+                onCsvExportAction = { action ->
+                    when (action) {
+                        CsvExportAction.Export -> startExport()
+
+                        is CsvExportAction.DocumentCreated,
+                        CsvExportAction.ObscuredTouch,
+                        CsvExportAction.MessageShown,
+                        -> export?.onAction(action)
+                    }
+                },
             )
         }
     }
@@ -196,3 +272,49 @@ private fun openInBrowser(context: Context, url: String): Boolean = try {
 } catch (_: ActivityNotFoundException) {
     false
 }
+
+/**
+ * Los avisos de la exportación, una sola vez cada uno: guardado, sin espacio u otra falla, estos dos
+ * con `Reintentar`, que vuelve a empezar por la verificación y el selector.
+ */
+@Composable
+private fun CsvExportMessages(
+    message: CsvExportMessage?,
+    onShown: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    val messages = LocalAppMessages.current
+    val saved = stringResource(R.string.settings_export_saved)
+    val noSpace = stringResource(R.string.settings_export_error_space)
+    val failed = stringResource(R.string.settings_export_error)
+    val obscured = stringResource(R.string.security_obscured_touch)
+    val retry = stringResource(R.string.action_retry)
+    LaunchedEffect(message) {
+        when (message) {
+            CsvExportMessage.SAVED -> {
+                onShown()
+                messages.show(AppSnackbarVisuals(saved, SnackbarVariant.SUCCESS))
+            }
+
+            CsvExportMessage.NO_SPACE -> {
+                onShown()
+                messages.show(AppSnackbarVisuals(noSpace, SnackbarVariant.ERROR, retry), onRetry)
+            }
+
+            CsvExportMessage.FAILED -> {
+                onShown()
+                messages.show(AppSnackbarVisuals(failed, SnackbarVariant.ERROR, retry), onRetry)
+            }
+
+            CsvExportMessage.OBSCURED_TOUCH -> {
+                onShown()
+                messages.show(AppSnackbarVisuals(obscured, SnackbarVariant.INFO))
+            }
+
+            null -> Unit
+        }
+    }
+}
+
+/** El tipo del archivo exportado: un `.zip` con un CSV por archivo. */
+private const val ZIP_TYPE = "application/zip"

@@ -82,6 +82,9 @@ import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStor
 import io.github.yesidrobayo.shopledger.data.destination.slots.ResolverSlotFileDocuments
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotFilesSetup
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotPendingStore
+import io.github.yesidrobayo.shopledger.data.export.ContentCsvDocument
+import io.github.yesidrobayo.shopledger.data.export.CsvExporter
+import io.github.yesidrobayo.shopledger.data.export.recordCsvExported
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.DatabaseGate
@@ -110,6 +113,7 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupLinkPort
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import io.github.yesidrobayo.shopledger.domain.port.BackupSettingsPort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CsvExportPort
 import io.github.yesidrobayo.shopledger.domain.port.DataHealthSource
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.FullCopyExportPort
@@ -344,6 +348,22 @@ class DataGraph internal constructor(
             recordExport = {
                 (open() as? DataAccess.Ready)?.ports?.let { recordFullCopyExported(it, clock, log) }
             },
+            ioContext = ioContext,
+        )
+    }
+
+    /**
+     * Exportar los datos del negocio a CSV, en el archivo que eligió la persona y sin red. Solo lee
+     * la base. Crearlo no toca el disco.
+     */
+    val csvExport: CsvExportPort by lazy {
+        CsvExporter(
+            rows = { (open() as? DataAccess.Ready)?.ports?.csvRows },
+            documentFor = { uri -> ContentCsvDocument(context.contentResolver, Uri.parse(uri)) },
+            recordExport = {
+                (open() as? DataAccess.Ready)?.ports?.let { recordCsvExported(it, clock, log) }
+            },
+            log = log,
             ioContext = ioContext,
         )
     }
