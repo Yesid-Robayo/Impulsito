@@ -68,10 +68,12 @@ import io.github.yesidrobayo.shopledger.data.backup.recordFullCopyExported
 import io.github.yesidrobayo.shopledger.data.backup.savedDestination
 import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
 import io.github.yesidrobayo.shopledger.data.crypto.EncryptionActivation
+import io.github.yesidrobayo.shopledger.data.crypto.EncryptionDeactivation
 import io.github.yesidrobayo.shopledger.data.crypto.EncryptionService
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCustody
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryKeyRead
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryKeyStore
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryState
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryStateStore
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkService
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
@@ -112,6 +114,7 @@ import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
 import io.github.yesidrobayo.shopledger.data.work.backupNetworkOf
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
@@ -144,6 +147,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.backup.UploadUsageRule
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import java.io.File
+import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Instant
 import kotlin.time.TimeSource
@@ -264,6 +268,32 @@ class DataGraph internal constructor(
                 ioContext = ioContext,
             )
         EncryptionService(
+            deactivation =
+                EncryptionDeactivation(
+                    custody = recoveryCustody,
+                    backupMutex = backupMutex,
+                    recordChanged = {
+                        (open() as? DataAccess.Ready)?.ports?.let {
+                            recordEncryptionChanged(
+                                it,
+                                clock,
+                                log,
+                                DataEvent.ENCRYPTION_AUDIT_FAILED,
+                            )
+                        }
+                    },
+                    forceUpload = {
+                        (open() as? DataAccess.Ready)?.ports?.backupState?.forceUpload(
+                            clock.nowEpochMillis(),
+                        )
+                        backupScheduler.onDataChanged()
+                    },
+                    nowUtcMillis = clock::nowEpochMillis,
+                ),
+            keyUnavailableFailure = {
+                (open() as? DataAccess.Ready)?.ports?.backupState?.get()?.failureCode ==
+                    BackupFailureCode.ENCRYPTION_KEY_UNAVAILABLE.name
+            },
             custody = recoveryCustody,
             activation =
                 EncryptionActivation(
@@ -768,6 +798,7 @@ class DataGraph internal constructor(
             secondDestination = ::secondDestinationWriter,
             encryption = ::packEncryption,
             localEncryption = ::localEncryption,
+            offHeadKeyId = ::noteOffHeadKeyId,
             currentKeyId = ::currentKeyId,
         )
     }
@@ -800,6 +831,25 @@ class DataGraph internal constructor(
      */
     private suspend fun currentKeyId(): String? =
         recoveryCustody.alignAtStartup().let { if (it.enabled) it.keyIdHex else null }
+
+    /**
+     * Completa `disabled_key_id` con la clave de la cabeza cifrada si se apagó el cifrado sin código
+     * en este teléfono. Corre con el cerrojo del respaldo tomado, y nunca enciende nada.
+     */
+    private suspend fun noteOffHeadKeyId(keyIdHex: String) {
+        if (!RecoveryState.isKeyIdHex(keyIdHex)) return
+        try {
+            recoveryCustody.state.update { state ->
+                val offWithoutKey =
+                    !state.enabled &&
+                        state.offConfirmedAtUtcMillis != null &&
+                        state.disabledKeyIdHex == null
+                if (offWithoutKey) state.copy(disabledKeyIdHex = keyIdHex) else state
+            }
+        } catch (_: IOException) {
+            // Se vuelve a intentar en la siguiente lista.
+        }
+    }
 
     /** El cifrado de las copias en este teléfono, como lo leen la guarda y el segundo destino. */
     private suspend fun localEncryption(): LocalEncryption {

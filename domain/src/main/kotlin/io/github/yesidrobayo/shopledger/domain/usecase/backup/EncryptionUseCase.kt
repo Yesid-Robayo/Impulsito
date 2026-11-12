@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.DeactivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
@@ -32,4 +33,6 @@ class EncryptionUseCase(private val port: EncryptionPort) {
 
     /** La prueba del código: periódica o pedida con `Probar el código`. */
     suspend fun checkCode(typed: String): CodeCheckOutcome = port.checkCode(typed)
+
+    suspend fun deactivate(): DeactivationOutcome = port.deactivate()
 }

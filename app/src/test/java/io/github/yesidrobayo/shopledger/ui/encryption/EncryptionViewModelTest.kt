@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.encryption
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.DeactivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
@@ -302,6 +303,74 @@ class EncryptionViewModelTest {
         assertEquals(0, port.codesCreated)
     }
 
+    @Test
+    fun `turning off asks first and then says it is off`() = runTest(dispatcher) {
+        port.status = EncryptionStatus.On(1L)
+        val model = viewModel()
+        model.onAction(EncryptionAction.AskDeactivate)
+        assertTrue(model.uiState.value.confirmDeactivate)
+        model.onAction(EncryptionAction.CloseDeactivate)
+        assertFalse(model.uiState.value.confirmDeactivate)
+        assertEquals(0, port.deactivations)
+
+        model.onAction(EncryptionAction.AskDeactivate)
+        model.onAction(EncryptionAction.ConfirmDeactivate)
+        advanceUntilIdle()
+        assertFalse(model.uiState.value.confirmDeactivate)
+        assertEquals(1, port.deactivations)
+        assertEquals(EncryptionMessage.DEACTIVATED, model.uiState.value.message)
+        assertEquals(EncryptionStatusUi.Off(wasOn = true), model.uiState.value.status)
+        model.onAction(EncryptionAction.MessageShown)
+        assertNull(model.uiState.value.message)
+    }
+
+    @Test
+    fun `a failed turn off says so and stays on`() = runTest(dispatcher) {
+        port.status = EncryptionStatus.On(1L)
+        port.deactivation = DeactivationOutcome.FAILED
+        val model = viewModel()
+        model.onAction(EncryptionAction.ConfirmDeactivate)
+        advanceUntilIdle()
+        assertEquals(EncryptionMessage.DEACTIVATE_FAILED, model.uiState.value.message)
+        assertEquals(EncryptionStatusUi.On, model.uiState.value.status)
+    }
+
+    @Test
+    fun `turning off is offered on or stopped but never off or mid activation`() =
+        runTest(dispatcher) {
+            val off = viewModel()
+            off.onAction(EncryptionAction.AskDeactivate)
+            off.onAction(EncryptionAction.ConfirmDeactivate)
+            advanceUntilIdle()
+            assertFalse(off.uiState.value.confirmDeactivate)
+            assertEquals(0, port.deactivations)
+
+            port.status = EncryptionStatus.On(1L)
+            val changing = viewModel()
+            changing.onAction(EncryptionAction.AskChange)
+            changing.onAction(EncryptionAction.ConfirmChange)
+            changing.onAction(EncryptionAction.AskDeactivate)
+            assertFalse(changing.uiState.value.confirmDeactivate)
+
+            port.status = EncryptionStatus.KeyUnavailable
+            val stopped = viewModel()
+            stopped.onAction(EncryptionAction.AskDeactivate)
+            assertTrue(stopped.uiState.value.confirmDeactivate)
+        }
+
+    @Test
+    fun `without a code on this phone it is stopped and the code cannot be typed`() =
+        runTest(dispatcher) {
+            port.status = EncryptionStatus.NoCodeHere
+            val model = viewModel()
+            assertEquals(EncryptionStatusUi.KeyUnavailable, model.uiState.value.status)
+            assertFalse(model.uiState.value.canTypeCode)
+            model.onAction(EncryptionAction.TypeExistingCode)
+            assertNull(model.uiState.value.step)
+            model.onAction(EncryptionAction.CreateNewCode)
+            assertTrue(model.uiState.value.step is ActivationStepUi.ShowCode)
+        }
+
     private inner class FakePort : EncryptionPort {
         var status: EncryptionStatus = EncryptionStatus.Off(wasOn = false)
         var failStatus = false
@@ -311,6 +380,8 @@ class EncryptionViewModelTest {
         var activations = 0
         var reseal = ResealOutcome.SEALED
         var reseals = 0
+        var deactivation = DeactivationOutcome.DEACTIVATED
+        var deactivations = 0
 
         override suspend fun status(): EncryptionStatus {
             if (failStatus) error("Falla inventada")
@@ -337,6 +408,12 @@ class EncryptionViewModelTest {
         override suspend fun reseal(typed: String): ResealOutcome {
             reseals++
             return reseal
+        }
+
+        override suspend fun deactivate(): DeactivationOutcome {
+            deactivations++
+            if (deactivation == DeactivationOutcome.DEACTIVATED) status = EncryptionStatus.Off(true)
+            return deactivation
         }
 
         override suspend fun activate(draft: RecoveryCodeDraft): ActivationOutcome {

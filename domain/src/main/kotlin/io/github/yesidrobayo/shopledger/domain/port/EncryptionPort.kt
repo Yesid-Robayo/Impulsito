@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.port
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.DeactivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
@@ -49,4 +50,10 @@ interface EncryptionPort {
      * prueba; si no, no escribe nada. No tiene límite de intentos.
      */
     suspend fun checkCode(typed: String): CodeCheckOutcome
+
+    /**
+     * Apaga el cifrado por decisión de la persona, también sin código en este teléfono. No borra el
+     * código guardado: las copias cifradas que queden se siguen abriendo.
+     */
+    suspend fun deactivate(): DeactivationOutcome
 }

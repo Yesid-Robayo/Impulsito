@@ -96,6 +96,7 @@ internal data class LocalEncryption(
  *
  * @property ref su lugar: el nombre del archivo, o la ranura.
  * @property format `1` en claro, `2` cifrada.
+ * @property keyId el `key_id` de una copia cifrada, o nulo en claro.
  */
 internal data class KnownCopy(
     val ref: CopyRef,
@@ -105,6 +106,7 @@ internal data class KnownCopy(
     val format: Int,
     val records: Long,
     val catalogCount: Long,
+    val keyId: String? = null,
 )
 
 /** Lo que decidió la guarda. */

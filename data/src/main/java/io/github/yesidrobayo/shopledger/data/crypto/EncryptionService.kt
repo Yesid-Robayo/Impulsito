@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data.crypto
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.DeactivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
@@ -17,14 +18,17 @@ import java.io.IOException
 internal class EncryptionService(
     private val custody: RecoveryCustody,
     private val activation: EncryptionActivation,
+    private val deactivation: EncryptionDeactivation? = null,
+    private val keyUnavailableFailure: suspend () -> Boolean = { false },
 ) : EncryptionPort {
     override suspend fun status(): EncryptionStatus {
         val state = custody.alignAtStartup()
         if (!state.enabled) {
-            return EncryptionStatus.Off(
-                wasOn =
-                    state.offConfirmedAtUtcMillis != null,
-            )
+            // Sin código en este teléfono y con copias cifradas en el destino, el respaldo se detiene
+            // para no subir en claro encima: la salida es crear otro código o apagar a sabiendas.
+            val offConfirmed = state.offConfirmedAtUtcMillis != null
+            if (!offConfirmed && keyUnavailableFailure()) return EncryptionStatus.NoCodeHere
+            return EncryptionStatus.Off(wasOn = offConfirmed)
         }
         return when (custody.keys.open()) {
             is RecoveryKeyRead.Available ->
@@ -51,13 +55,7 @@ internal class EncryptionService(
                 val range = index * GROUP until (index + 1) * GROUP
                 normalized.substring(range) != expected.substring(range)
             }
-        return if (group ==
-            null
-        ) {
-            TypedCodeCheck.Matches
-        } else {
-            TypedCodeCheck.GroupMismatch(group + 1)
-        }
+        return group?.let { TypedCodeCheck.GroupMismatch(it + 1) } ?: TypedCodeCheck.Matches
     }
 
     override suspend fun roundTrip(draft: RecoveryCodeDraft): Boolean =
@@ -121,6 +119,11 @@ internal class EncryptionService(
             is RecoveryKeyRead.RetryLater,
             -> CodeCheckOutcome.UNAVAILABLE
         }
+
+    override suspend fun deactivate(): DeactivationOutcome = when (deactivation?.deactivate()) {
+        DeactivationResult.Deactivated -> DeactivationOutcome.DEACTIVATED
+        DeactivationResult.Failed, null -> DeactivationOutcome.FAILED
+    }
 
     private fun draftOf(code: RecoveryCode): RecoveryCodeDraft =
         RecoveryCodeDraft(RecoveryCodec.printable(code).split('-'))

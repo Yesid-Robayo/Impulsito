@@ -65,4 +65,10 @@
     <string name="recovery_check_ok">Código correto</string>
     <string name="recovery_lost_action">Código perdido</string>
     <string name="recovery_later_action">Mais tarde</string>
+    <string name="encryption_deactivate_action">Desativar criptografia</string>
+    <string name="encryption_deactivate_confirm_title">Desativar a criptografia?</string>
+    <string name="encryption_deactivate_confirm_body">A próxima cópia sai sem criptografia. As cópias criptografadas são mantidas até verificar uma sem criptografia, e continuam precisando do código.</string>
+    <string name="encryption_deactivate_confirm_action">Desativar</string>
+    <string name="encryption_deactivated">Criptografia desativada. A próxima cópia sai sem criptografia.</string>
+    <string name="encryption_deactivate_error">Não foi possível desativar. A criptografia continua ativa.</string>
 </resources>

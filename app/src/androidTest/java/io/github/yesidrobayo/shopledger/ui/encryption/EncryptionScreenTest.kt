@@ -84,6 +84,44 @@ class EncryptionScreenTest {
     }
 
     @Test
+    fun turningOffIsOfferedWhenOnAndAsksFirst() {
+        show(EncryptionUiState(EncryptionStatusUi.On))
+
+        compose.onNodeWithText(text(R.string.encryption_deactivate_action))
+            .performScrollTo()
+            .performClick()
+
+        assertEquals(listOf<EncryptionAction>(EncryptionAction.AskDeactivate), actions)
+    }
+
+    @Test
+    fun theTurnOffDialogSaysWhatChanges() {
+        show(EncryptionUiState(EncryptionStatusUi.On, confirmDeactivate = true))
+
+        compose.onNodeWithText(
+            text(R.string.encryption_deactivate_confirm_title),
+        ).assertIsDisplayed()
+        compose.onNodeWithText(
+            text(R.string.encryption_deactivate_confirm_body),
+        ).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.encryption_deactivate_confirm_action)).performClick()
+
+        assertEquals(listOf<EncryptionAction>(EncryptionAction.ConfirmDeactivate), actions)
+    }
+
+    @Test
+    fun withoutACodeOnThisPhoneTheCodeCannotBeTyped() {
+        show(EncryptionUiState(EncryptionStatusUi.KeyUnavailable, canTypeCode = false))
+
+        absent(text(R.string.backup_failure_encryption_key_unavailable_action))
+        absent(text(R.string.encryption_view_code_action))
+        compose.onNodeWithText(text(R.string.encryption_create_new_code_action)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.encryption_deactivate_action))
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun theFirstStepNeedsTheRiskAccepted() {
         show(
             EncryptionUiState(

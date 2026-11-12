@@ -176,6 +176,7 @@ internal class BackupFixture(
         uploadGate: UploadGate = UploadGate.Open,
         policyAccepted: suspend () -> Boolean = { true },
         encryption: suspend () -> LocalEncryption = { LocalEncryption.NONE },
+        offHeadKeyId: suspend (String) -> Unit = {},
     ): BackupRunner = BackupRunner(
         state = ports.backupState,
         databaseFile = file,
@@ -203,6 +204,7 @@ internal class BackupFixture(
         policyAccepted = policyAccepted,
         uploadGate = uploadGate,
         encryption = encryption,
+        offHeadKeyId = offHeadKeyId,
     )
 
     fun advance(by: Duration) {

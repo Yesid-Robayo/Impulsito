@@ -80,6 +80,10 @@ class EncryptionCaptureTest {
                         EncryptionStatusUi.KeyUnavailable,
                         ActivationStepUi.TypeExisting(groups, ResealProblem.MISMATCH),
                     ),
+                "deactivate-confirm" to
+                    EncryptionUiState(EncryptionStatusUi.On, confirmDeactivate = true),
+                "stopped-no-code" to
+                    EncryptionUiState(EncryptionStatusUi.KeyUnavailable, canTypeCode = false),
                 "done-changed" to
                     EncryptionUiState(EncryptionStatusUi.On, ActivationStepUi.Done(changed = true)),
                 "view-code" to

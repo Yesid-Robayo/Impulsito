@@ -20,6 +20,15 @@ data class EncryptionUiState(
     val checkDates: CheckDatesUi? = null,
     val codeCheck: CodeCheckUi? = null,
     val codeCheckPassed: Boolean = false,
+    /**
+     * Con el cifrado detenido, si hay un código guardado con qué comparar el que se escriba. Sin él
+     * solo se ofrece crear otro código o apagar.
+     */
+    val canTypeCode: Boolean = true,
+    /** La pregunta `¿Desactivar el cifrado?` a la vista. */
+    val confirmDeactivate: Boolean = false,
+    /** El aviso breve por mostrar, una sola vez. */
+    val message: EncryptionMessage? = null,
 )
 
 /**
@@ -72,6 +81,15 @@ sealed interface CodeViewUi {
     data object Unavailable : CodeViewUi
 }
 
+/** Los avisos breves de la pantalla. */
+enum class EncryptionMessage {
+    /** `Cifrado desactivado. La siguiente copia sale sin cifrar.` */
+    DEACTIVATED,
+
+    /** `No se pudo desactivar. El cifrado sigue activo.` */
+    DEACTIVATE_FAILED,
+}
+
 /** Lo que muestra la pantalla fuera de la activación. */
 sealed interface EncryptionStatusUi {
     /** Leyendo `state.json`, que es local. */
@@ -83,7 +101,7 @@ sealed interface EncryptionStatusUi {
     /** Las copias salen cifradas. */
     data object On : EncryptionStatusUi
 
-    /** Activo, pero el código sellado ya no abre: las copias están detenidas. */
+    /** Las copias están detenidas: el código sellado no abre, o este teléfono no tiene código. */
     data object KeyUnavailable : EncryptionStatusUi
 
     /** No se pudo leer el estado: no se ofrece nada que cambie datos. */
@@ -248,4 +266,17 @@ sealed interface EncryptionAction {
 
     /** El aviso `Código correcto` ya se mostró. */
     data object CheckPassedShown : EncryptionAction
+
+    /** `Desactivar cifrado`: pide confirmar. */
+    data object AskDeactivate : EncryptionAction
+
+    data object CloseDeactivate : EncryptionAction
+
+    /**
+     * Confirmó apagar el cifrado, ya con la verificación del sistema pasada si el teléfono tiene
+     * bloqueo de pantalla. No pide el código.
+     */
+    data object ConfirmDeactivate : EncryptionAction
+
+    data object MessageShown : EncryptionAction
 }

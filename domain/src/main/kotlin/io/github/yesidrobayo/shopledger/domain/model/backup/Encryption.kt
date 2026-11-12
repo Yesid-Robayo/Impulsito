@@ -42,6 +42,13 @@ sealed interface EncryptionStatus {
      */
     data object KeyUnavailable : EncryptionStatus
 
+    /**
+     * Apagado en este teléfono, que no tiene código, con copias cifradas en el destino: las copias
+     * están detenidas para no subir en claro encima. No hay clave con qué comparar un código escrito,
+     * así que las salidas son crear otro código o apagar el cifrado a sabiendas.
+     */
+    data object NoCodeHere : EncryptionStatus
+
     /** No se pudo leer el estado. La pantalla lo dice y no ofrece nada que cambie datos. */
     data object Unknown : EncryptionStatus
 }
@@ -120,4 +127,13 @@ enum class CodeCheckOutcome {
 
     /** El código guardado no abre en este teléfono: no hay con qué comparar. No se anota nada. */
     UNAVAILABLE,
+}
+
+/** Lo que dio apagar el cifrado de las copias. */
+enum class DeactivationOutcome {
+    /** Quedó apagado: la siguiente copia sale sin cifrar, y las cifradas se conservan hasta comprobarla. */
+    DEACTIVATED,
+
+    /** No se pudo apagar. El cifrado sigue activo. */
+    FAILED,
 }

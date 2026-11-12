@@ -38,6 +38,7 @@ import kotlinx.coroutines.sync.Mutex
  *   clave no abre.
  * @param localEncryption el cifrado de las copias como lo mira la guarda.
  * @param currentKeyId la clave vigente para la poda, o nula sin cifrado.
+ * @param offHeadKeyId anota la clave de la cabeza cifrada cuando se apagó el cifrado sin código.
  */
 internal fun productionBackupEngine(
     context: Context,
@@ -54,6 +55,7 @@ internal fun productionBackupEngine(
     secondDestination: ((DataPorts) -> SecondDestinationWriter)? = null,
     encryption: suspend () -> PackEncryption = { PackEncryption.Plain },
     localEncryption: suspend () -> LocalEncryption = { LocalEncryption.NONE },
+    offHeadKeyId: suspend (String) -> Unit = {},
     currentKeyId: suspend () -> String? = { null },
 ): BackupEngine = DatabaseBackupEngine(
     restoreMarkers = { RestoreMarkers(noBackupDirectory()) },
@@ -82,6 +84,7 @@ internal fun productionBackupEngine(
             sealer = SnapshotSealer(ioContext),
             packager = BackupPackager(ioContext, encryption = encryption),
             encryption = localEncryption,
+            offHeadKeyId = offHeadKeyId,
             staging =
                 BackupStaging(File(noBackupDirectory(), BackupStaging.DIRECTORY_NAME), ioContext),
             deviceId = { deviceIdentity().deviceId() },

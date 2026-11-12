@@ -84,7 +84,18 @@ fun EncryptionScreen(
             CodeViewScreen(view, onAction, modifier)
             return
         }
-        StatusScreen(uiState.status, onAction, modifier, uiState.checkDates)
+        StatusScreen(uiState.status, uiState.canTypeCode, onAction, modifier, uiState.checkDates)
+        if (uiState.confirmDeactivate) {
+            ConfirmDialog(
+                title = stringResource(R.string.encryption_deactivate_confirm_title),
+                body = stringResource(R.string.encryption_deactivate_confirm_body),
+                confirmLabel = stringResource(R.string.encryption_deactivate_confirm_action),
+                onConfirm = { onAction(EncryptionAction.ConfirmDeactivate) },
+                onDismiss = { onAction(EncryptionAction.CloseDeactivate) },
+                dismissLabel = stringResource(R.string.action_cancel),
+                sensitive = true,
+            )
+        }
         if (uiState.confirmChange) {
             ConfirmDialog(
                 title = stringResource(R.string.encryption_change_confirm_title),
@@ -121,6 +132,7 @@ fun EncryptionScreen(
 @Composable
 private fun StatusScreen(
     status: EncryptionStatusUi,
+    canTypeCode: Boolean,
     onAction: (EncryptionAction) -> Unit,
     modifier: Modifier,
     checkDates: CheckDatesUi? = null,
@@ -176,11 +188,15 @@ private fun StatusScreen(
                                         },
                                 )
                             }
+                            item(key = DEACTIVATE) { DeactivateLink(onAction) }
                         }
 
                         EncryptionStatusUi.KeyUnavailable -> {
                             item(key = STOPPED) { StoppedBlock() }
-                            item(key = STOPPED_ACTIONS) { StoppedActions(onAction) }
+                            item(key = STOPPED_ACTIONS) {
+                                StoppedActions(canTypeCode, onAction)
+                            }
+                            item(key = DEACTIVATE) { DeactivateLink(onAction) }
                         }
 
                         EncryptionStatusUi.Unknown ->
@@ -379,14 +395,16 @@ private fun StoppedBlock() {
  * necesita el anterior porque la base del teléfono está en claro.
  */
 @Composable
-private fun StoppedActions(onAction: (EncryptionAction) -> Unit) {
+private fun StoppedActions(canTypeCode: Boolean, onAction: (EncryptionAction) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
-        PrimaryActionButton(
-            text = stringResource(R.string.backup_failure_encryption_key_unavailable_action),
-            onClick = { onAction(EncryptionAction.TypeExistingCode) },
-            variant = ActionVariant.TONAL,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (canTypeCode) {
+            PrimaryActionButton(
+                text = stringResource(R.string.backup_failure_encryption_key_unavailable_action),
+                onClick = { onAction(EncryptionAction.TypeExistingCode) },
+                variant = ActionVariant.TONAL,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         PrimaryActionButton(
             text = stringResource(R.string.encryption_create_new_code_action),
             onClick = { onAction(EncryptionAction.CreateNewCode) },
@@ -394,6 +412,15 @@ private fun StoppedActions(onAction: (EncryptionAction) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/** `Desactivar cifrado`: discreto, al final, porque deja las copias nuevas sin cifrar. */
+@Composable
+private fun DeactivateLink(onAction: (EncryptionAction) -> Unit) {
+    InlineTextButton(
+        text = stringResource(R.string.encryption_deactivate_action),
+        onClick = { onAction(EncryptionAction.AskDeactivate) },
+    )
 }
 
 /** `Escribir el código` con el cifrado detenido: el vigente, para guardarlo otra vez aquí. */
@@ -878,6 +905,7 @@ private const val ON = "on"
 private const val STOPPED = "stopped"
 private const val STOPPED_ACTIONS = "stopped_actions"
 private const val CHANGE = "change"
+private const val DEACTIVATE = "deactivate"
 private const val UNKNOWN = "unknown"
 private const val OFF_TITLE = "off_title"
 private const val LEFTOVER = "leftover"

@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -18,6 +19,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.EncryptionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.lock.AuthOutcome
 import io.github.yesidrobayo.shopledger.lock.AuthPurpose
+import io.github.yesidrobayo.shopledger.lock.DeviceCredentialCheck
 import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
 import io.github.yesidrobayo.shopledger.lock.SensitiveScreen
 import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
@@ -100,7 +102,24 @@ fun EncryptionRoute(navigator: AppNavigator) {
             val changeTitle = stringResource(R.string.encryption_change_code_action)
             val newCodeTitle = stringResource(R.string.encryption_create_new_code_action)
             val viewTitle = stringResource(R.string.recovery_view_title)
+            val deactivateTitle = stringResource(R.string.encryption_deactivate_action)
+            val deactivated = stringResource(R.string.encryption_deactivated)
+            val deactivateFailed = stringResource(R.string.encryption_deactivate_error)
+            // Apagar pide la verificación del sistema siempre que el teléfono tenga bloqueo de
+            // pantalla, aunque el bloqueo de la app esté apagado. No pide el código.
             val authenticator = LocalDeviceAuthenticator.current
+            val deviceCheck = remember(authenticator) { DeviceCredentialCheck(authenticator) }
+            LaunchedEffect(uiState.message) {
+                val message = uiState.message ?: return@LaunchedEffect
+                viewModel.onAction(EncryptionAction.MessageShown)
+                when (message) {
+                    EncryptionMessage.DEACTIVATED ->
+                        messages.show(AppSnackbarVisuals(deactivated, SnackbarVariant.SUCCESS))
+
+                    EncryptionMessage.DEACTIVATE_FAILED ->
+                        messages.show(AppSnackbarVisuals(deactivateFailed, SnackbarVariant.ERROR))
+                }
+            }
             val picker =
                 rememberLauncherForActivityResult(
                     ActivityResultContracts.CreateDocument(PDF_TYPE),
@@ -200,6 +219,15 @@ fun EncryptionRoute(navigator: AppNavigator) {
                             }
                         }
 
+                    EncryptionAction.ConfirmDeactivate ->
+                        scope.launch {
+                            if (deviceCheck.allows(deactivateTitle)) {
+                                viewModel.onAction(EncryptionAction.ConfirmDeactivate)
+                            } else {
+                                viewModel.onAction(EncryptionAction.CloseDeactivate)
+                            }
+                        }
+
                     EncryptionAction.CreateNewCode ->
                         scope.launch {
                             if (sensitive.confirm(newCodeTitle)) {
@@ -238,6 +266,9 @@ fun EncryptionRoute(navigator: AppNavigator) {
                     EncryptionAction.SubmitCheck,
                     EncryptionAction.LaterCheck,
                     EncryptionAction.CheckPassedShown,
+                    EncryptionAction.AskDeactivate,
+                    EncryptionAction.CloseDeactivate,
+                    EncryptionAction.MessageShown,
                     -> viewModel.onAction(action)
                 }
             })

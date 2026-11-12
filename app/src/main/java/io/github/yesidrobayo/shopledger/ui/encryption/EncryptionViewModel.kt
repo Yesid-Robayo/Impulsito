@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.DeactivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
@@ -141,7 +142,9 @@ class EncryptionViewModel(
                 }
 
             EncryptionAction.TypeExistingCode ->
-                if (state.value.status == EncryptionStatusUi.KeyUnavailable) {
+                if (state.value.status == EncryptionStatusUi.KeyUnavailable &&
+                    state.value.canTypeCode
+                ) {
                     state.update { it.copy(step = ActivationStepUi.TypeExisting()) }
                 }
 
@@ -191,6 +194,15 @@ class EncryptionViewModel(
             }
 
             EncryptionAction.CheckPassedShown -> state.update { it.copy(codeCheckPassed = false) }
+
+            EncryptionAction.AskDeactivate ->
+                if (canDeactivate()) state.update { it.copy(confirmDeactivate = true) }
+
+            EncryptionAction.CloseDeactivate -> state.update { it.copy(confirmDeactivate = false) }
+
+            EncryptionAction.ConfirmDeactivate -> deactivate()
+
+            EncryptionAction.MessageShown -> state.update { it.copy(message = null) }
         }
     }
 
@@ -232,6 +244,29 @@ class EncryptionViewModel(
         changing = change
         state.update { it.copy(step = ActivationStepUi.ShowCode(code.groups)) }
         viewModelScope.launch { kitDate = safely { today() } }
+    }
+
+    /** Apagar se ofrece con el cifrado activo o detenido, nunca a mitad de una activación. */
+    private fun canDeactivate(): Boolean = state.value.step == null &&
+        (
+            state.value.status == EncryptionStatusUi.On ||
+                state.value.status == EncryptionStatusUi.KeyUnavailable
+            )
+
+    /** Apaga el cifrado. Un fallo no cambia nada y lo dice. */
+    private fun deactivate() {
+        state.update { it.copy(confirmDeactivate = false) }
+        if (!canDeactivate()) return
+        viewModelScope.launch {
+            val outcome = safely { port.deactivate() } ?: DeactivationOutcome.FAILED
+            val message =
+                when (outcome) {
+                    DeactivationOutcome.DEACTIVATED -> EncryptionMessage.DEACTIVATED
+                    DeactivationOutcome.FAILED -> EncryptionMessage.DEACTIVATE_FAILED
+                }
+            state.update { it.copy(message = message) }
+            refresh()
+        }
     }
 
     /** Guarda otra vez el código escrito. Un error no borra lo escrito ni tiene límite de intentos. */
@@ -448,11 +483,17 @@ class EncryptionViewModel(
             val status =
                 when (read) {
                     is EncryptionStatus.Off -> EncryptionStatusUi.Off(read.wasOn)
+
                     is EncryptionStatus.On -> EncryptionStatusUi.On
-                    EncryptionStatus.KeyUnavailable -> EncryptionStatusUi.KeyUnavailable
+
+                    EncryptionStatus.KeyUnavailable, EncryptionStatus.NoCodeHere ->
+                        EncryptionStatusUi.KeyUnavailable
+
                     EncryptionStatus.Unknown, null -> EncryptionStatusUi.Unknown
                 }
-            state.update { it.copy(status = status) }
+            state.update {
+                it.copy(status = status, canTypeCode = read != EncryptionStatus.NoCodeHere)
+            }
             updateSchedule(read as? EncryptionStatus.On)
         }
     }

@@ -238,6 +238,55 @@ class EncryptedBackupRunnerTest {
         }
     }
 
+    @Test
+    fun afterTurningOffWithoutACodeTheFirstListingNotesTheHeadKeyAndAPlainCopyGoesOut() =
+        runBlocking {
+            fixture.addProduct("Pan de prueba")
+            val destination = FakeBackupDestination()
+            val encrypted = packager { PackEncryption.Encrypt(code) }
+            fixture.runner(destination, packager = encrypted, encryption = { on }).run(control)
+            fixture.addProduct("Leche de prueba")
+            val offHere =
+                LocalEncryption(
+                    active = false,
+                    keyAvailable = false,
+                    hasRecoveryCode = false,
+                    offConfirmed = true,
+                )
+            val noted = mutableListOf<String>()
+
+            val run =
+                fixture
+                    .runner(destination, encryption = { offHere }, offHeadKeyId = { noted += it })
+                    .run(control)
+
+            assertEquals(BackupRun.Verified(2), run)
+            assertEquals(listOf(key.keyIdHex), noted)
+            assertTrue(destination.fileNames.any { it.endsWith(".db.gz") })
+        }
+
+    @Test
+    fun withACodeOnThisPhoneOrWithoutTurningOffTheHeadKeyIsNotNoted() = runBlocking {
+        fixture.addProduct("Pan de prueba")
+        val destination = FakeBackupDestination()
+        val encrypted = packager { PackEncryption.Encrypt(code) }
+        fixture.runner(destination, packager = encrypted, encryption = { on }).run(control)
+        fixture.addProduct("Leche de prueba")
+        val noted = mutableListOf<String>()
+        val notTurnedOff = on.copy(active = false, keyAvailable = false, hasRecoveryCode = false)
+
+        val run =
+            fixture
+                .runner(destination, encryption = { notTurnedOff }, offHeadKeyId = { noted += it })
+                .run(control)
+
+        assertEquals(
+            BackupRun.Stopped(StopCause.Failure(BackupFailureCode.ENCRYPTION_KEY_UNAVAILABLE)),
+            run,
+        )
+        assertTrue(noted.isEmpty())
+    }
+
     private fun assertNothingPlainReachedTheDestination(destination: FakeBackupDestination) {
         for (name in destination.fileNames.filter { !it.endsWith(BackupFileName.META_SUFFIX) }) {
             val bytes = requireNotNull(destination.file(name))

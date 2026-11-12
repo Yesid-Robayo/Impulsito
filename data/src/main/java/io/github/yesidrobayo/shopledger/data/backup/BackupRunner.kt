@@ -161,6 +161,7 @@ internal class BackupRunner(
         SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
     private val afterCopy: suspend (Delivery.Upload) -> Unit = {},
     private val encryption: suspend () -> LocalEncryption = { LocalEncryption.NONE },
+    private val offHeadKeyId: suspend (String) -> Unit = {},
 ) {
     private val recovery =
         UploadRecovery(
@@ -563,6 +564,7 @@ internal class BackupRunner(
                 device,
                 recovered.rejected,
             )
+        noteOffHeadKey(input)
         val generation =
             when (val decision = guard.decide(input)) {
                 is GuardDecision.Upload -> decision.generation
@@ -894,6 +896,17 @@ internal class BackupRunner(
         else -> null
     }
 
+    /**
+     * Con el cifrado apagado sin código en este teléfono, apagar no pudo saber qué clave tenía la
+     * cabeza, porque no espera a la red. La primera lista lo completa: así una restauración de esa
+     * copia deja el cifrado apagado.
+     */
+    private suspend fun noteOffHeadKey(input: GuardInput) {
+        if (!input.encryption.offConfirmed || input.encryption.hasRecoveryCode) return
+        val keyId = BackupGuard.headOf(input).firstNotNullOfOrNull(KnownCopy::keyId) ?: return
+        offHeadKeyId(keyId)
+    }
+
     /** Lo que mira la guarda, con las generaciones propias rechazadas, que nunca se confirmaron. */
     private suspend fun guardInput(
         listing: CopyListing,
@@ -1011,6 +1024,7 @@ internal fun knownCopies(listing: CopyListing): List<KnownCopy> =
             format = meta.format,
             records = meta.records,
             catalogCount = meta.catalogCount,
+            keyId = meta.keyId,
         )
     }
 

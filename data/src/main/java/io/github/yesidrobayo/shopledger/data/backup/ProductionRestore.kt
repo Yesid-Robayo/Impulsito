@@ -127,10 +127,16 @@ internal class RoomCandidateMigrator(
 }
 
 /**
- * Anota en la auditoría de la base que acaba de abrir que el código de las copias cifradas cambió
- * al restaurar. Una falla al anotar nunca detiene nada: solo queda en el registro, por su clase.
+ * Anota en la auditoría de la base abierta que el cifrado de las copias cambió: el código, al
+ * restaurar, o el apagado. Una falla al anotar nunca detiene nada: solo queda en el registro, por
+ * su clase, con [failed].
  */
-internal suspend fun recordEncryptionChanged(ports: DataPorts, clock: Clock, log: EventLog) {
+internal suspend fun recordEncryptionChanged(
+    ports: DataPorts,
+    clock: Clock,
+    log: EventLog,
+    failed: DataEvent = DataEvent.RESTORE_AUDIT_FAILED,
+) {
     try {
         ports.auditEvents.insert(
             AuditEventEntity(
@@ -143,7 +149,7 @@ internal suspend fun recordEncryptionChanged(ports: DataPorts, clock: Clock, log
     } catch (cancellation: CancellationException) {
         throw cancellation
     } catch (failure: Exception) {
-        log.warn(DataEvent.RESTORE_AUDIT_FAILED, failure)
+        log.warn(failed, failure)
     }
 }
 
