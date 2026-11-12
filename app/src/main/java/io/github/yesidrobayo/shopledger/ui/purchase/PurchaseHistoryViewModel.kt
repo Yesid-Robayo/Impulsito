@@ -121,7 +121,10 @@ class PurchaseHistoryViewModel(
             }
 
             // Comprar y volver a las ventas los resuelve la navegación.
-            PurchaseHistoryAction.NewPurchase, PurchaseHistoryAction.ShowSales -> Unit
+            PurchaseHistoryAction.NewPurchase,
+            PurchaseHistoryAction.ShowSales,
+            PurchaseHistoryAction.ShowExpenses,
+            -> Unit
         }
     }
 

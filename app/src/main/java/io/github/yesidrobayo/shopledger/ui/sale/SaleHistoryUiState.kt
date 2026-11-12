@@ -111,4 +111,7 @@ sealed interface SaleHistoryAction {
 
     /** Ir al segmento `Compras` de Registros: lo resuelve la navegación. */
     data object ShowPurchases : SaleHistoryAction
+
+    /** Ir al segmento `Gastos` de Registros: lo resuelve la navegación. */
+    data object ShowExpenses : SaleHistoryAction
 }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de los gastos, copiados de ux-writing.md. -->
+<resources>
+    <string name="expense_new_title">Nova despesa</string>
+    <string name="expense_save">Salvar despesa</string>
+    <string name="expense_description">Descrição</string>
+    <string name="expense_month_total">Total do mês</string>
+    <string name="empty_expenses_title">Sem despesas este mês</string>
+    <string name="empty_expenses_body">Aluguel, contas, transporte: ao registrá-los, o lucro real aparece.</string>
+    <string name="empty_expenses_action">Nova despesa</string>
+    <string name="empty_expenses_filtered_title">Nenhuma despesa desta categoria este mês</string>
+    <string name="filter_all_categories">Todas</string>
+    <string name="notice_purchase_as_expense">É mercadoria para vender? O certo é registrá-la como compra.</string>
+    <string name="confirm_expense_saved">Despesa salva: %1$s</string>
+    <string name="confirm_expense_voided">Despesa anulada</string>
+    <string name="dialog_void_expense_title">Anular esta despesa?</string>
+    <string name="dialog_void_expense_body">Deixa de contar nos números de %1$s.</string>
+    <string name="dialog_void_expense_action">Anular despesa</string>
+    <string name="error_expense_void">Não foi possível anular. A despesa continua ativa.</string>
+    <string name="error_expense_category_unavailable">Essa categoria não pode mais ser escolhida. Convém escolher outra.</string>
+    <string name="error_value_zero">O valor deve ser maior que %1$s</string>
+    <string name="error_date_future">A data não pode ser posterior a hoje</string>
+    <string name="status_voided_expense">Anulada</string>
+    <string name="a11y_voided_expense_amount">%1$s, anulada</string>
+</resources>

@@ -113,4 +113,7 @@ sealed interface PurchaseHistoryAction {
 
     /** Volver a las ventas, el otro segmento de Registros: lo resuelve la navegación. */
     data object ShowSales : PurchaseHistoryAction
+
+    /** Ir a los gastos, otro segmento de Registros: lo resuelve la navegación. */
+    data object ShowExpenses : PurchaseHistoryAction
 }

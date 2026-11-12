@@ -71,6 +71,12 @@ fun PurchaseHistoryRoute(key: AppNavKey.PurchaseHistory, navigator: AppNavigator
 
                         PurchaseHistoryAction.ShowSales -> navigator.back()
 
+                        // Los segmentos no se apilan: gastos va sobre ventas, no sobre compras.
+                        PurchaseHistoryAction.ShowExpenses -> {
+                            navigator.open(AppNavKey.SaleHistory)
+                            navigator.open(AppNavKey.Expenses())
+                        }
+
                         else -> viewModel.onAction(action)
                     }
                 },

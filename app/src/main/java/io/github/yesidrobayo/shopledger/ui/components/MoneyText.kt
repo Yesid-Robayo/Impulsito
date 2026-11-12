@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -94,6 +95,8 @@ enum class MoneyTone {
  * @param sensitive si es un costo, una ganancia, un saldo o un total de período: con el modo discreto
  *   encendido se oculta. El precio de lo que se atiende nunca es sensible.
  * @param loading si la cifra aún no llega: un esqueleto del ancho de siete cifras.
+ * @param voidedLabel la etiqueta de un documento anulado, y [voidedDescription] su lectura en
+ *   TalkBack, cuando el documento pide otra concordancia, como un gasto: «Anulado» y no «Anulada».
  */
 @Composable
 fun MoneyText(
@@ -104,18 +107,24 @@ fun MoneyText(
     voided: Boolean = false,
     sensitive: Boolean = false,
     loading: Boolean = false,
+    @StringRes voidedLabel: Int = R.string.status_voided,
+    @StringRes voidedDescription: Int = R.string.a11y_voided_amount,
 ) {
     val style = moneyStyle(size)
+    val voidedText = VoidedText(voidedLabel, voidedDescription).takeIf { voided }
     when {
         loading -> MoneySkeleton(style, modifier)
 
         sensitive -> DiscreetValue(modifier, style, mutedColor(tone)) {
-            MoneyValue(amount, size, style, tone, voided, Modifier)
+            MoneyValue(amount, size, style, tone, voidedText, Modifier)
         }
 
-        else -> MoneyValue(amount, size, style, tone, voided, modifier)
+        else -> MoneyValue(amount, size, style, tone, voidedText, modifier)
     }
 }
+
+/** Los textos de un monto anulado: la etiqueta y su lectura en TalkBack. */
+private class VoidedText(@StringRes val label: Int, @StringRes val description: Int)
 
 @Composable
 private fun MoneyValue(
@@ -123,7 +132,7 @@ private fun MoneyValue(
     size: MoneySize,
     style: TextStyle,
     tone: MoneyTone,
-    voided: Boolean,
+    voided: VoidedText?,
     modifier: Modifier,
 ) {
     if (amount == null) {
@@ -145,14 +154,14 @@ private fun MoneyValue(
 
             else -> null
         }
-    if (!voided) {
+    if (voided == null) {
         MoneyAmountText(display, style, modifier, moneyColor(tone), autoSize)
         return
     }
     val voidedDisplay =
         MoneyDisplay(
             text = display.text,
-            description = stringResource(R.string.a11y_voided_amount, display.description),
+            description = stringResource(voided.description, display.description),
         )
     Row(
         modifier = modifier,
@@ -161,7 +170,7 @@ private fun MoneyValue(
     ) {
         // La etiqueta ya va en la lectura del monto: TalkBack no la repite.
         StatusTag(
-            text = stringResource(R.string.status_voided),
+            text = stringResource(voided.label),
             modifier = Modifier.clearAndSetSemantics {},
         )
         MoneyAmountText(

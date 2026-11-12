@@ -56,6 +56,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.purchase.EXPENSES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.PURCHASES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.RecordsSegments
 import io.github.yesidrobayo.shopledger.ui.purchase.SALES_SEGMENT
@@ -104,7 +105,10 @@ fun SaleHistoryScreen(
                     navigationLabel = null,
                 )
                 RecordsSegments(selected = SALES_SEGMENT) { index ->
-                    if (index == PURCHASES_SEGMENT) onAction(SaleHistoryAction.ShowPurchases)
+                    when (index) {
+                        PURCHASES_SEGMENT -> onAction(SaleHistoryAction.ShowPurchases)
+                        EXPENSES_SEGMENT -> onAction(SaleHistoryAction.ShowExpenses)
+                    }
                 }
                 Row(Modifier.weight(1f)) {
                     val listWidth = if (wide) {

@@ -108,7 +108,10 @@ fun PurchaseHistoryScreen(
                     navigationLabel = stringResource(R.string.a11y_back),
                 )
                 RecordsSegments(selected = PURCHASES_SEGMENT) { index ->
-                    if (index == SALES_SEGMENT) onAction(PurchaseHistoryAction.ShowSales)
+                    when (index) {
+                        SALES_SEGMENT -> onAction(PurchaseHistoryAction.ShowSales)
+                        EXPENSES_SEGMENT -> onAction(PurchaseHistoryAction.ShowExpenses)
+                    }
                 }
                 Row(Modifier.weight(1f)) {
                     val listWidth = if (wide) {
@@ -152,15 +155,14 @@ fun PurchaseHistoryScreen(
     if (uiState.supplierSheet) SupplierSheet(uiState.filters, onAction)
 }
 
-/**
- * Los segmentos de Registros que existen hoy: `Ventas` y `Compras`. `Gastos` llega con su pantalla.
- */
+/** Los segmentos de Registros: `Ventas`, `Compras` y `Gastos`. */
 @Composable
 internal fun RecordsSegments(selected: Int, onSelect: (Int) -> Unit) {
     SegmentedTabs(
         options = listOf(
             stringResource(R.string.records_tab_sales),
             stringResource(R.string.records_tab_purchases),
+            stringResource(R.string.records_tab_expenses),
         ),
         selectedIndex = selected,
         onSelect = onSelect,
@@ -473,9 +475,10 @@ private fun HistorySkeleton() {
     }
 }
 
-/** El segmento de ventas y el de compras en [RecordsSegments]. */
+/** El segmento de ventas, el de compras y el de gastos en [RecordsSegments]. */
 internal const val SALES_SEGMENT = 0
 internal const val PURCHASES_SEGMENT = 1
+internal const val EXPENSES_SEGMENT = 2
 
 // Desde 840 dp, lista y detalle lado a lado.
 private val EXPANDED_WIDTH = 840.dp

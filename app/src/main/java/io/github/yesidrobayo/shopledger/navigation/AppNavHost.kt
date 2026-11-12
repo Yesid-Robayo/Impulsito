@@ -40,6 +40,7 @@ import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.destination.DestinationChoiceRoute
 import io.github.yesidrobayo.shopledger.ui.destination.SlotSetupRoute
+import io.github.yesidrobayo.shopledger.ui.expense.ExpensesRoute
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
 import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
@@ -229,6 +230,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.PurchaseHistory -> PurchaseHistoryRoute(key, navigator)
 
         is AppNavKey.PurchaseDetail -> PurchaseDetailRoute(key, navigator)
+
+        is AppNavKey.Expenses -> ExpensesRoute(key, navigator)
 
         is AppNavKey.SaleDetail -> SaleDetailRoute(key, navigator)
 

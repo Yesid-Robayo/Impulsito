@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de los gastos, copiados de ux-writing.md. -->
+<resources>
+    <string name="expense_new_title">New expense</string>
+    <string name="expense_save">Save expense</string>
+    <string name="expense_description">Description</string>
+    <string name="expense_month_total">Month total</string>
+    <string name="empty_expenses_title">No expenses this month</string>
+    <string name="empty_expenses_body">Rent, utilities, transport: recording them shows the real profit.</string>
+    <string name="empty_expenses_action">New expense</string>
+    <string name="empty_expenses_filtered_title">No expenses in this category this month</string>
+    <string name="filter_all_categories">All</string>
+    <string name="notice_purchase_as_expense">Is it merchandise to sell? Record it as a purchase.</string>
+    <string name="confirm_expense_saved">Expense saved: %1$s</string>
+    <string name="confirm_expense_voided">Expense voided</string>
+    <string name="dialog_void_expense_title">Void this expense?</string>
+    <string name="dialog_void_expense_body">It stops counting in the numbers for %1$s.</string>
+    <string name="dialog_void_expense_action">Void expense</string>
+    <string name="error_expense_void">Could not void. The expense is still active.</string>
+    <string name="error_expense_category_unavailable">That category can no longer be chosen. Choose another one.</string>
+    <string name="error_value_zero">The value must be greater than %1$s</string>
+    <string name="error_date_future">The date cannot be later than today</string>
+    <string name="status_voided_expense">Voided</string>
+    <string name="a11y_voided_expense_amount">%1$s, voided</string>
+</resources>
