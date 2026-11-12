@@ -1,13 +1,9 @@
 package io.github.yesidrobayo.shopledger.data.backup
 
-import io.github.yesidrobayo.shopledger.data.destination.ConnectedDestination
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.DestinationResult
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
-import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
-import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
-import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
@@ -36,11 +32,12 @@ internal interface PickedFiles {
  * - Un archivo elegido no trae suma esperada: lo revisa el CRC de gzip y todo lo demás.
  * - Nada de lo que devuelve lleva texto del destino ni datos del negocio: solo códigos.
  *
- * @param state la fila del respaldo, para saber cuál es el destino conectado.
+ * @param saved el destino conectado: de la fila del respaldo, o de `link.json` en el rescate, donde
+ *   la base no se lee.
  * @param coordinator la preparación de restauraciones, una por proceso.
  */
 internal class BackupRestoreService(
-    private val state: suspend () -> BackupStateEntity?,
+    private val saved: suspend () -> SavedDestination?,
     private val destinations: DestinationOpener,
     private val coordinator: suspend () -> RestoreCoordinator,
     private val files: PickedFiles,
@@ -48,7 +45,7 @@ internal class BackupRestoreService(
     private var waiting: List<SafetyCopy> = emptyList()
 
     override suspend fun restoreCopy(copyKey: String): RestoreProgress {
-        val link = state()?.connected()
+        val link = saved()?.connected()
             ?: return RestoreProgress.Refused(RestoreProblem.NOT_CONNECTED)
         val destination =
             when (val opened = destinations.open(link)) {
@@ -116,20 +113,6 @@ internal class BackupRestoreService(
         }
 
         is RestoreStage.ReadyToRestart -> RestoreProgress.ReadyToRestart(stage.warnings)
-    }
-
-    /** El destino conectado según el estado guardado, o nulo si no hay ninguno. */
-    private fun BackupStateEntity.connected(): ConnectedDestination? {
-        if (linkState == BackupLinkState.NOT_CONNECTED.name) return null
-        val kind = BackupDestinationKind.entries.firstOrNull { it.name == destinationKind }
-        val id = destinationId
-        return if (kind == null ||
-            id == null
-        ) {
-            null
-        } else {
-            ConnectedDestination(kind, id, destinationFolder)
-        }
     }
 
     companion object {

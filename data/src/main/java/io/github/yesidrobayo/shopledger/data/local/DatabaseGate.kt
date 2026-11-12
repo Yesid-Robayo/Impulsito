@@ -125,6 +125,8 @@ internal sealed interface PreMigrationResult {
  * @param schemaVersion la versión del esquema que compila la app.
  * @param preMigrationCopy deja la copia previa a migrar.
  * @param pendingRestore termina una restauración pendiente antes de todo lo demás.
+ * @param onMigrating avisa, antes de la copia previa, que la app va a copiar y migrar: la pantalla
+ *   dice `Actualizando los datos` mientras tanto.
  * @param openDatabase abre la base con Room, y la migra si hace falta. Lanza si no abre.
  */
 internal class DatabaseGate<D : Any>(
@@ -134,6 +136,7 @@ internal class DatabaseGate<D : Any>(
     private val log: EventLog,
     private val preMigrationCopy: PreMigrationCopy,
     private val pendingRestore: PendingRestore<D> = PendingRestore.none(),
+    private val onMigrating: () -> Unit = {},
     private val openDatabase: suspend (File) -> D,
 ) {
     init {
@@ -192,6 +195,7 @@ internal class DatabaseGate<D : Any>(
         }
 
     private suspend fun migrate(version: Int): GateOutcome<D> {
+        onMigrating()
         when (val copy = preMigrationCopy.prepare(version)) {
             PreMigrationResult.Ready -> Unit
 

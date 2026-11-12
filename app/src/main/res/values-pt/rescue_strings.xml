@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- La pantalla de rescate, la de actualizar los datos y la información para soporte. Textos de la guía de redacción. -->
+    <string name="rescue_title">Não foi possível abrir os dados</string>
+    <string name="rescue_detail_missing">As cópias na nuvem, se existirem, não são tocadas. Aqui se escolhe como recuperar os dados.</string>
+    <string name="rescue_detail_migration">A atualização não pôde terminar. Os dados continuam como estavam antes de atualizar.</string>
+    <string name="rescue_detail_journal">Uma restauração ficou pela metade. Os dados continuam neste telefone. Aqui se escolhe como seguir.</string>
+    <string name="rescue_warning">Não desinstalar %1$s. Desinstalar apaga o que resta neste telefone.</string>
+    <string name="rescue_no_space_title">Não há espaço para atualizar os dados</string>
+    <string name="rescue_no_space_body">É preciso liberar %1$s MB e tentar novamente. Os dados continuam como estavam.</string>
+    <string name="rescue_premigration_incompatible">É preciso instalar a versão mais recente de %1$s. Os dados continuam como estavam.</string>
+    <string name="rescue_no_premigration">Quando houver uma versão corrigida de %1$s, convém instalá-la. Os dados continuam como estavam.</string>
+    <string name="rescue_no_internet">Ver as cópias requer internet. Também é possível buscar um arquivo.</string>
+    <string name="migration_title">Atualizando os dados</string>
+    <string name="migration_body">Antes de começar, uma cópia é salva neste telefone. Pode levar alguns segundos.</string>
+    <string name="settings_support">Informações para suporte</string>
+    <string name="support_help">Versão, modelo e estado das cópias, para pedir ajuda. Não inclui dados do negócio.</string>
+    <string name="support_field_version">Versão de %1$s</string>
+    <string name="support_field_android">Android</string>
+    <string name="support_field_device">Telefone</string>
+    <string name="support_field_last_backup">Última cópia</string>
+    <string name="support_field_last_error">Último erro</string>
+    <string name="support_unavailable">Não disponível</string>
+    <string name="action_copy">Copiar</string>
+    <string name="backup_damaged_notice">Dados danificados: esse arquivo fica guardado por 30 dias, caso possa ser recuperado. Contém todo o negócio.</string>
+    <string name="backup_damaged_share_action">Compartilhar dados danificados</string>
+    <string name="dialog_share_damaged_title">Compartilhar este arquivo?</string>
+    <string name="dialog_share_damaged_body">Contém todo o negócio e não está criptografado. Só convém compartilhá-lo com quem estiver ajudando a recuperá-lo.</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lo único que el proveedor de archivos comparte: cache/exports/, que se vacía antes de cada exportación y al volver del
+     selector. Sin root-path, files-path ni external: nada de la base ni de noBackupFilesDir sale por aquí. -->
+<paths>
+    <cache-path name="exports" path="exports/" />
+</paths>

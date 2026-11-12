@@ -37,6 +37,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Comparte lo que la persona decide sacar por el selector del sistema, solo desde cache/exports/ y solo para leer.
+             Sin exportar y sin intent-filter: cada dirección lleva su permiso, que la app concede al compartir. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- La biblioteca de trabajos arranca cuando la app la pide, con la fábrica de la capa de datos, y no sola al
              abrir el proceso. -->
         <provider

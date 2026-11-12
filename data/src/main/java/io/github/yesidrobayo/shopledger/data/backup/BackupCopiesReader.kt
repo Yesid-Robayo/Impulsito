@@ -1,7 +1,6 @@
 package io.github.yesidrobayo.shopledger.data.backup
 
 import io.github.yesidrobayo.shopledger.data.destination.BackupDestination
-import io.github.yesidrobayo.shopledger.data.destination.ConnectedDestination
 import io.github.yesidrobayo.shopledger.data.destination.CopyMetadata
 import io.github.yesidrobayo.shopledger.data.destination.DestinationFailure
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
@@ -16,12 +15,10 @@ import io.github.yesidrobayo.shopledger.data.destination.identity
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotState
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateStore
-import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
-import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
@@ -40,24 +37,25 @@ import kotlin.time.Instant
  *
  * Nunca escribe, sube, borra ni fija nada, y ningún texto del servicio sale de aquí.
  *
- * @param state la fila guardada del respaldo, o nula si la base no abre.
+ * @param saved el destino conectado: de la fila del respaldo, o de `link.json` en el rescate. Nulo
+ *   sin destino.
  * @param destinations abre el destino conectado, igual que para el respaldo.
  * @param slots el estado de las ranuras.
  * @param deviceId el identificador de este teléfono, para decir qué copias son suyas.
  * @param hasNetwork si hay una red que el sistema comprobó.
  */
 internal class BackupCopiesReader(
-    private val state: suspend () -> BackupStateEntity?,
+    private val saved: suspend () -> SavedDestination?,
     private val destinations: DestinationOpener,
     private val slots: SlotStateStore,
     private val deviceId: suspend () -> String,
     private val hasNetwork: () -> Boolean,
 ) : BackupDestinationSource {
     override suspend fun describe(): BackupDestinationInfo? {
-        val row = connectedRow() ?: return null
-        return when (kindOf(row)) {
+        val row = saved() ?: return null
+        return when (row.kind) {
             BackupDestinationKind.WEBDAV ->
-                BackupDestinationInfo.WebDav(row.destinationAccount, hostOf(row.destinationFolder))
+                BackupDestinationInfo.WebDav(row.account, hostOf(row.folder))
 
             BackupDestinationKind.DOCUMENT_SLOTS ->
                 BackupDestinationInfo.Slots(loadedSlots()?.let(::providerLabelOf))
@@ -67,8 +65,8 @@ internal class BackupCopiesReader(
     }
 
     override suspend fun listCopies(): BackupCopyList {
-        val row = connectedRow() ?: return BackupCopyList.NotConnected
-        return when (kindOf(row)) {
+        val row = saved() ?: return BackupCopyList.NotConnected
+        return when (row.kind) {
             BackupDestinationKind.WEBDAV -> webDavCopies(row)
             BackupDestinationKind.DOCUMENT_SLOTS -> slotCopies()
             null -> BackupCopyList.NotConnected
@@ -78,8 +76,8 @@ internal class BackupCopiesReader(
     override fun hasNetwork(): Boolean = hasNetwork.invoke()
 
     override suspend fun latestHandoff(): HandoffCopy? {
-        val row = connectedRow() ?: return null
-        if (kindOf(row) != BackupDestinationKind.DOCUMENT_SLOTS) return null
+        val row = saved() ?: return null
+        if (row.kind != BackupDestinationKind.DOCUMENT_SLOTS) return null
         val loaded = loadedSlots() ?: return null
         val latest =
             loaded.slots.values
@@ -96,10 +94,9 @@ internal class BackupCopiesReader(
         )
     }
 
-    private suspend fun webDavCopies(row: BackupStateEntity): BackupCopyList {
+    private suspend fun webDavCopies(row: SavedDestination): BackupCopyList {
         if (!hasNetwork()) return BackupCopyList.NoInternet
-        val id = row.destinationId ?: return BackupCopyList.NotConnected
-        val link = ConnectedDestination(BackupDestinationKind.WEBDAV, id, row.destinationFolder)
+        val link = row.connected() ?: return BackupCopyList.NotConnected
         val destination: BackupDestination =
             when (val opened = destinations.open(link)) {
                 is DestinationOpen.Opened -> opened.destination
@@ -197,12 +194,6 @@ internal class BackupCopiesReader(
         meta.deviceId == ownDeviceId -> CopyOrigin.THIS_PHONE
         else -> CopyOrigin.OTHER_PHONE
     }
-
-    private suspend fun connectedRow(): BackupStateEntity? =
-        state()?.takeIf { it.linkState != BackupLinkState.NOT_CONNECTED.name }
-
-    private fun kindOf(row: BackupStateEntity): BackupDestinationKind? =
-        BackupDestinationKind.entries.firstOrNull { it.name == row.destinationKind }
 
     private suspend fun loadedSlots(): SlotState? = (slots.load() as? SlotStateLoad.Loaded)?.state
 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- La pantalla de rescate, la de actualizar los datos y la información para soporte. Textos de la guía de redacción. -->
+    <string name="rescue_title">The data could not be opened</string>
+    <string name="rescue_detail_missing">Backups in the cloud, if any, are not touched. Choose how to recover the data here.</string>
+    <string name="rescue_detail_migration">The update could not finish. The data is as it was before updating.</string>
+    <string name="rescue_detail_journal">A restore was left halfway. The data is still on this phone. Choose how to continue here.</string>
+    <!-- rescue_warning: %1$s = app -->
+    <string name="rescue_warning">Do not uninstall %1$s. Uninstalling deletes what is left on this phone.</string>
+    <string name="rescue_no_space_title">There is no space to update the data</string>
+    <!-- rescue_no_space_body: %1$s = n -->
+    <string name="rescue_no_space_body">Free up %1$s MB and try again. The data is as it was.</string>
+    <!-- rescue_premigration_incompatible: %1$s = app -->
+    <string name="rescue_premigration_incompatible">Install the latest version of %1$s. The data is as it was.</string>
+    <!-- rescue_no_premigration: %1$s = app -->
+    <string name="rescue_no_premigration">When a corrected version of %1$s is available, install it. The data is as it was.</string>
+    <string name="rescue_no_internet">Viewing backups needs internet. A file can also be searched for.</string>
+    <string name="migration_title">Updating the data</string>
+    <string name="migration_body">A copy is saved on this phone before starting. It may take a few seconds.</string>
+    <string name="settings_support">Support information</string>
+    <string name="support_help">Version, model and backup status, to ask for help. It includes no business data.</string>
+    <!-- support_field_version: %1$s = app -->
+    <string name="support_field_version">%1$s version</string>
+    <string name="support_field_android">Android</string>
+    <string name="support_field_device">Phone</string>
+    <string name="support_field_last_backup">Last backup</string>
+    <string name="support_field_last_error">Last error</string>
+    <string name="support_unavailable">Not available</string>
+    <string name="action_copy">Copy</string>
+    <string name="backup_damaged_notice">Damaged data: that file is kept for 30 days in case it can be rescued. It contains the whole business.</string>
+    <string name="backup_damaged_share_action">Share damaged data</string>
+    <string name="dialog_share_damaged_title">Share this file?</string>
+    <string name="dialog_share_damaged_body">It contains the whole business and is not encrypted. Only share it with whoever is helping to rescue it.</string>
+</resources>

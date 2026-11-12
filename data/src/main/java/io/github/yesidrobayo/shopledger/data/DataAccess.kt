@@ -87,3 +87,18 @@ sealed interface RescueCause {
      */
     data object RestoreLeftNoDatabase : RescueCause
 }
+
+/**
+ * Lo que hace la compuerta mientras la app espera la base, para que la pantalla diga algo mientras
+ * tanto. Ninguno trae datos del negocio.
+ */
+enum class OpeningStep {
+    /** Abre la base, o todavía no la pidió nadie: se ve solo el papel, sin cifras. */
+    OPENING,
+
+    /** Copia la base y la migra a la versión de la app: `Actualizando los datos`. */
+    MIGRATING,
+
+    /** Termina el reemplazo de una restauración: `Restaurando los datos`. */
+    RESTORING,
+}

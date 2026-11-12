@@ -30,6 +30,7 @@ import io.github.yesidrobayo.shopledger.data.backup.RestoreLockFile
 import io.github.yesidrobayo.shopledger.data.backup.RestoreMarkers
 import io.github.yesidrobayo.shopledger.data.backup.RoomMaintenanceDatabase
 import io.github.yesidrobayo.shopledger.data.backup.RoomRestoredDatabaseVerifier
+import io.github.yesidrobayo.shopledger.data.backup.SavedDestination
 import io.github.yesidrobayo.shopledger.data.backup.ScheduleFacts
 import io.github.yesidrobayo.shopledger.data.backup.ScheduledBackupWork
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestore
@@ -41,6 +42,7 @@ import io.github.yesidrobayo.shopledger.data.backup.probeAccess
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.productionRestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
+import io.github.yesidrobayo.shopledger.data.backup.savedDestination
 import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.HttpClientFactory
@@ -65,6 +67,7 @@ import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
 import io.github.yesidrobayo.shopledger.data.media.MediaImporter
+import io.github.yesidrobayo.shopledger.data.rescue.RescueData
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
@@ -101,6 +104,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -258,7 +264,7 @@ class DataGraph internal constructor(
      */
     val backupDestination: BackupDestinationSource by lazy {
         BackupCopiesReader(
-            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            saved = ::savedInDatabase,
             destinations = destinations,
             slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
             deviceId = deviceIdentity::deviceId,
@@ -350,12 +356,58 @@ class DataGraph internal constructor(
      */
     val backupRestore: BackupRestorePort by lazy {
         BackupRestoreService(
-            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            saved = ::savedInDatabase,
             destinations = destinations,
             coordinator = ::restoreCoordinator,
             files = ResolverPickedFiles(context.contentResolver),
         )
     }
+
+    /** El destino conectado según la base abierta. */
+    private suspend fun savedInDatabase(): SavedDestination? =
+        (open() as? DataAccess.Ready)?.ports?.backupState?.get()?.savedDestination()
+
+    /** `link.json`: el destino que se conectó, sin secretos, para cuando la base no se lee. */
+    private val links by lazy { DestinationLinkStore({ files().noBackupDirectory }, ioContext) }
+
+    /**
+     * Lo que ofrece la pantalla de rescate sin abrir la base: el destino de `link.json` con sus
+     * copias, restaurar una de ellas o un archivo elegido, y la base dañada que apartó una
+     * restauración. Nada de esto llama a [open]: con una migración que falló, eso la intentaría
+     * otra vez. Crearlo no toca el disco.
+     */
+    val rescue: RescueData by lazy {
+        val saved: suspend () -> SavedDestination? = { links.read()?.savedDestination() }
+        RescueData(
+            destination =
+                BackupCopiesReader(
+                    saved = saved,
+                    destinations = destinations,
+                    slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
+                    deviceId = deviceIdentity::deviceId,
+                    hasNetwork = { backupNetworkOf(context).validated },
+                ),
+            restore =
+                BackupRestoreService(
+                    saved = saved,
+                    destinations = destinations,
+                    coordinator = ::restoreCoordinator,
+                    files = ResolverPickedFiles(context.contentResolver),
+                ),
+            savedKind = { links.read()?.kind },
+            restoreFiles = { RestoreFiles(files()) },
+            clock = clock,
+            ioContext = ioContext,
+        )
+    }
+
+    private val openingStep = MutableStateFlow(OpeningStep.OPENING)
+
+    /**
+     * Lo que hace ahora la compuerta para la app en primer plano: copiar y migrar, o terminar una
+     * restauración. La pantalla lo muestra mientras espera la base.
+     */
+    val opening: StateFlow<OpeningStep> = openingStep.asStateFlow()
 
     /** La última sonda de la cabeza, en `no_backup/last-probe`. Pedirla toca el disco. */
     private suspend fun lastProbeStore(): LastProbeStore = withContext(ioContext) {
@@ -619,6 +671,22 @@ class DataGraph internal constructor(
                 return DataAccess.Rescue(RescueCause.OpenFailed)
             }
         val restoreFiles = RestoreFiles(databaseFiles)
+        val foreground = caller == GateCaller.APP_IN_FOREGROUND
+        // Con un diario, la compuerta termina primero el reemplazo de una restauración.
+        if (foreground && restoreFiles.journal.exists()) openingStep.value = OpeningStep.RESTORING
+        try {
+            return passGate(caller, databaseFiles, restoreFiles, started)
+        } finally {
+            openingStep.value = OpeningStep.OPENING
+        }
+    }
+
+    private suspend fun passGate(
+        caller: GateCaller,
+        databaseFiles: DatabaseFiles,
+        restoreFiles: RestoreFiles,
+        started: TimeSource.Monotonic.ValueTimeMark,
+    ): WorkAccess {
         val operations = DurableFileOps()
         val pendingRestore =
             StartupRestoreGate(StartupRestore(restoreFiles, operations, clock), log) { open ->
@@ -632,6 +700,8 @@ class DataGraph internal constructor(
                 log = log,
                 preMigrationCopy = preMigrationCopy(databaseFiles),
                 pendingRestore = pendingRestore,
+                // Solo la app en primer plano migra: un trabajo nunca llega aquí.
+                onMigrating = { openingStep.value = OpeningStep.MIGRATING },
             ) { file -> AppDatabase.open(context, file, ioContext, clock) }
         return when (val outcome = gate.pass(caller)) {
             is GateOutcome.Opened -> {

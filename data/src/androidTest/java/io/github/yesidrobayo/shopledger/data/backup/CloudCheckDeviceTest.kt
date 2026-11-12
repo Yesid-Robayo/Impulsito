@@ -50,7 +50,7 @@ class CloudCheckDeviceTest {
     }
 
     private fun reader() = BackupCopiesReader(
-        state = { fixture.ports.backupState.get() },
+        saved = { fixture.ports.backupState.get()?.savedDestination() },
         destinations = DestinationOpener { error("Con ranuras no se abre nada para leer") },
         slots = slots,
         deviceId = { "dispositivo-de-prueba" },

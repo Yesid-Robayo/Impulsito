@@ -164,7 +164,7 @@ class NewPhoneRestoreTest {
                 scheduledWork = ScheduledBackupWork.None,
             )
         return BackupRestoreService(
-            state = { phone.ports.backupState.get() },
+            saved = { phone.ports.backupState.get()?.savedDestination() },
             destinations = opener,
             coordinator = { coordinator },
             files = ResolverFiles(),
