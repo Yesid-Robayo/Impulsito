@@ -33,6 +33,8 @@ import kotlinx.coroutines.sync.Mutex
  *   el disco.
  * @param secondDestination el escritor del segundo destino sobre la base abierta, para el paso 9b.
  * @param log el registro, para un fallo del paso 9b, que nunca detiene la subida.
+ * @param encryptionActive si las copias deben salir cifradas: con el cifrado activo nunca sale una
+ *   en claro.
  */
 internal fun productionBackupEngine(
     context: Context,
@@ -47,6 +49,7 @@ internal fun productionBackupEngine(
     mutex: Mutex,
     policyAccepted: suspend () -> Boolean,
     secondDestination: ((DataPorts) -> SecondDestinationWriter)? = null,
+    encryptionActive: suspend () -> Boolean = { false },
 ): BackupEngine = DatabaseBackupEngine(
     restoreMarkers = { RestoreMarkers(noBackupDirectory()) },
     openForWork = openForWork,
@@ -72,7 +75,7 @@ internal fun productionBackupEngine(
             destinations = destinations,
             snapshots = SnapshotCreator(ports.databaseFile, ioContext),
             sealer = SnapshotSealer(ioContext),
-            packager = BackupPackager(ioContext),
+            packager = BackupPackager(ioContext, encryptionActive = encryptionActive),
             staging =
                 BackupStaging(File(noBackupDirectory(), BackupStaging.DIRECTORY_NAME), ioContext),
             deviceId = { deviceIdentity().deviceId() },

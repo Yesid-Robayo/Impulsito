@@ -158,6 +158,7 @@ class RescueViewModel(
             BackupAction.ConfirmRelease,
             BackupAction.CloseRelease,
             BackupAction.OpenLocalCopies,
+            BackupAction.OpenEncryption,
             BackupAction.Disconnect,
             BackupAction.ConfirmDisconnect,
             BackupAction.DismissDisconnect,

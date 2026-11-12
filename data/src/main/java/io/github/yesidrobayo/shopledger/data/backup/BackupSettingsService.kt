@@ -28,8 +28,8 @@ import kotlinx.coroutines.sync.Mutex
  * @param month el mes de ahora en la zona del negocio, o nulo si no se sabe.
  * @param backupLock el cerrojo del respaldo: una ejecución a la vez en todo el proceso.
  * @param rescheduled lo que vuelve a encolar la subida con la política nueva.
- * @param encryption el cifrado de las copias en este teléfono. Mientras no exista el cifrado
- *   opcional, sin cifrado: es lo mismo que usa el motor al armar cada copia.
+ * @param encryption el cifrado de las copias en este teléfono, el mismo que mira el motor al armar
+ *   cada copia.
  */
 internal class BackupSettingsService(
     private val state: suspend () -> BackupStateEntity?,

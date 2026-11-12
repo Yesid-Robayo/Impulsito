@@ -105,6 +105,9 @@ data class WebDavConnectUiState(
 
 /** Lo que la persona hace en la pantalla. */
 sealed interface WebDavConnectAction {
+    /** `Cifrar las copias`: lo resuelve la navegación, sin perder lo escrito. */
+    data object OpenEncryption : WebDavConnectAction
+
     data class UrlChange(val value: String) : WebDavConnectAction
 
     data class UserChange(val value: String) : WebDavConnectAction

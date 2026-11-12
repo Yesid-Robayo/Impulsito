@@ -13,4 +13,6 @@
     <string name="license_ofl" translatable="false">SIL Open Font License 1.1</string>
     <!-- La página publicada de la política de privacidad. Vacía hasta publicarla: mientras tanto, la fila abre los términos dentro de la app. -->
     <string name="legal_privacy_url" translatable="false"></string>
+    <!-- La herramienta de rescate y el formato público de las copias cifradas. Vacía hasta publicarlos: mientras tanto, el kit de recuperación no lleva esa línea. -->
+    <string name="rescue_tool_url" translatable="false"></string>
 </resources>

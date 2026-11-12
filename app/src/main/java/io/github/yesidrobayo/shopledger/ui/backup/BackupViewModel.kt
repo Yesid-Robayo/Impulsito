@@ -244,6 +244,7 @@ class BackupViewModel(
             BackupAction.OpenProvider,
             BackupAction.FindFile,
             BackupAction.OpenLocalCopies,
+            BackupAction.OpenEncryption,
             BackupAction.Reconnect,
             BackupAction.SignInToProvider,
             -> Unit

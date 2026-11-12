@@ -118,7 +118,7 @@ class WebDavConnectViewModel(
             }
 
             // Lo resuelve la navegación.
-            WebDavConnectAction.Back -> Unit
+            WebDavConnectAction.Back, WebDavConnectAction.OpenEncryption -> Unit
 
             WebDavConnectAction.ConnectedHandled -> state.update { it.copy(connected = null) }
         }

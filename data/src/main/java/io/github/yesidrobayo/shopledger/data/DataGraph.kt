@@ -31,6 +31,7 @@ import io.github.yesidrobayo.shopledger.data.backup.LastProbeStore
 import io.github.yesidrobayo.shopledger.data.backup.LocalCopyBuilder
 import io.github.yesidrobayo.shopledger.data.backup.LocalEncryption
 import io.github.yesidrobayo.shopledger.data.backup.MaintenanceAccess
+import io.github.yesidrobayo.shopledger.data.backup.PendingPlainUpload
 import io.github.yesidrobayo.shopledger.data.backup.ProbeAccess
 import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.ResolverPickedFiles
@@ -65,7 +66,10 @@ import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
 import io.github.yesidrobayo.shopledger.data.backup.recordFullCopyExported
 import io.github.yesidrobayo.shopledger.data.backup.savedDestination
 import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
+import io.github.yesidrobayo.shopledger.data.crypto.EncryptionActivation
+import io.github.yesidrobayo.shopledger.data.crypto.EncryptionService
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCustody
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryKeyRead
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryKeyStore
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryStateStore
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkService
@@ -118,6 +122,7 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupSettingsPort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.CsvExportPort
 import io.github.yesidrobayo.shopledger.domain.port.DataHealthSource
+import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.FullCopyExportPort
 import io.github.yesidrobayo.shopledger.domain.port.FullVerifyPort
@@ -238,6 +243,44 @@ class DataGraph internal constructor(
         )
     }
 
+    /**
+     * El cifrado de las copias en su pantalla: el estado y la activación. El código nuevo solo vive
+     * en memoria hasta sellarlo. Crearlo no toca el disco ni Keystore.
+     */
+    val encryption: EncryptionPort by lazy {
+        val pending =
+            PendingPlainUpload(
+                state = { (open() as? DataAccess.Ready)?.ports?.backupState },
+                staging = {
+                    BackupStaging(
+                        File(files().noBackupDirectory, BackupStaging.DIRECTORY_NAME),
+                        ioContext,
+                    )
+                },
+                rejected = {
+                    noBackupStore(RejectedGenerationStore.FILE_NAME, ::RejectedGenerationStore)
+                },
+                ioContext = ioContext,
+            )
+        EncryptionService(
+            custody = recoveryCustody,
+            activation =
+                EncryptionActivation(
+                    custody = recoveryCustody,
+                    backupMutex = backupMutex,
+                    discardPendingPlainUpload = { pending.discard() },
+                    forceUpload = {
+                        (open() as? DataAccess.Ready)?.ports?.backupState?.forceUpload(
+                            clock.nowEpochMillis(),
+                        )
+                        backupScheduler.onDataChanged()
+                    },
+                    nowUtcMillis = clock::nowEpochMillis,
+                    ioContext = ioContext,
+                ),
+        )
+    }
+
     /** El identificador de la instalación. Una sola instancia: su caché vive en ella. */
     private val deviceIdentity by lazy {
         DeviceIdentityStore.inNoBackupDir(context, ioContext)
@@ -349,6 +392,7 @@ class DataGraph internal constructor(
             month = { (open() as? DataAccess.Ready)?.ports?.let { businessMonth(it.settings) } },
             backupLock = backupMutex,
             rescheduled = backupScheduler::onMeteredPolicyChanged,
+            encryption = ::localEncryption,
         )
     }
 
@@ -389,7 +433,7 @@ class DataGraph internal constructor(
         snapshots = SnapshotCreator(ports.databaseFile, ioContext),
         sealer = SnapshotSealer(ioContext),
         validation = SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
-        packager = BackupPackager(ioContext),
+        packager = BackupPackager(ioContext, encryptionActive = ::encryptionActive),
         headGeneration = { ports.backupState.get()?.headGeneration ?: 0 },
         deviceId = { deviceIdentity.deviceId() },
         clock = clock,
@@ -719,6 +763,22 @@ class DataGraph internal constructor(
             mutex = backupMutex,
             policyAccepted = consentGate::allowsUploads,
             secondDestination = ::secondDestinationWriter,
+            encryptionActive = ::encryptionActive,
+        )
+    }
+
+    /** Si las copias deben salir cifradas. El sobre manda sobre el estado, como al arrancar. */
+    private suspend fun encryptionActive(): Boolean = recoveryCustody.alignAtStartup().enabled
+
+    /** El cifrado de las copias en este teléfono, como lo leen la guarda y el segundo destino. */
+    private suspend fun localEncryption(): LocalEncryption {
+        val state = recoveryCustody.alignAtStartup()
+        val key = recoveryCustody.keys.open()
+        return LocalEncryption(
+            active = state.enabled,
+            keyAvailable = key is RecoveryKeyRead.Available,
+            hasRecoveryCode = key !is RecoveryKeyRead.Absent,
+            offConfirmed = state.offConfirmedAtUtcMillis != null,
         )
     }
 
@@ -820,8 +880,8 @@ class DataGraph internal constructor(
                 )
             },
             state = { ports.backupState.get() },
-            // Sin cifrado opcional todavía: es lo mismo que usa el motor al armar cada copia.
-            encryption = { LocalEncryption.NONE },
+            // El mismo cifrado que mira el motor al armar cada copia.
+            encryption = ::localEncryption,
             schemaVersion = schemaVersion,
             deviceId = { deviceIdentity.deviceId() },
             clock = clock,

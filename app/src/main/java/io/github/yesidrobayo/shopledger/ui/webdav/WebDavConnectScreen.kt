@@ -237,7 +237,12 @@ private fun ColumnScope.Form(
     if (suggestion?.declaresLimits == true) {
         NoticeCard(stringResource(R.string.webdav_suggestion_limits_warning), NoticeVariant.WARNING)
     }
-    NoticeCard(stringResource(R.string.webdav_encrypt_offer), NoticeVariant.INFO)
+    NoticeCard(
+        stringResource(R.string.webdav_encrypt_offer),
+        NoticeVariant.INFO,
+        actionLabel = stringResource(R.string.onboarding_encrypt_row),
+        onAction = { onAction(WebDavConnectAction.OpenEncryption) },
+    )
 }
 
 @Composable

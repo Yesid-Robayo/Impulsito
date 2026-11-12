@@ -96,6 +96,10 @@ internal class LocalCopyBuilder(
 
             PackageResult.Mismatch -> LocalCopy.Failed
 
+            // Con el cifrado activo nada sale en claro: tampoco la copia exportada ni el segundo
+            // destino.
+            PackageResult.EncryptionUnavailable -> LocalCopy.Failed
+
             is PackageResult.Failed -> LocalCopy.Failed
         }
     }

@@ -173,6 +173,8 @@ fun OnboardingRoute(navigator: AppNavigator) {
                         AppNavKey.DataTransparency,
                     )
 
+                    OnboardingAction.OpenEncryption -> navigator.open(AppNavKey.BackupEncryption)
+
                     is OnboardingAction.Restore ->
                         if (action.action == BackupAction.FindFile) picker.launch(arrayOf(ANY_FILE))
 

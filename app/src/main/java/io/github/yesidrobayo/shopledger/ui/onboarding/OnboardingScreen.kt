@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.onboarding
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -501,8 +502,14 @@ fun ProtectionStep(uiState: OnboardingUiState, onAction: (OnboardingAction) -> U
             color = MaterialTheme.colorScheme.outlineVariant,
             thickness = AppTheme.sizes.hairline,
         )
+        // Sin destino se muestra desactivado, con la razón: no hay copias que cifrar todavía.
         Column(
-            Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = AppTheme.sizes.touchTarget)
+                .clickable(enabled = uiState.connected, role = Role.Button) {
+                    onAction(OnboardingAction.OpenEncryption)
+                }.semantics(mergeDescendants = true) {},
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
         ) {
             Row(

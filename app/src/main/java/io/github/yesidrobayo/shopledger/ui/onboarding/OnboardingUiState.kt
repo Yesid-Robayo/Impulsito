@@ -122,6 +122,9 @@ sealed interface OnboardingAction {
 
     data object OpenDataTransparency : OnboardingAction
 
+    /** `Cifrar las copias`, con un destino ya elegido: abre la pantalla del cifrado. */
+    data object OpenEncryption : OnboardingAction
+
     /** Volvió a primer plano, quizá desde conectar un destino. */
     data object Resumed : OnboardingAction
 

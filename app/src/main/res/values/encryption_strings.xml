@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cifrado de copias y código de recuperación. Textos de la guía de redacción. -->
+    <string name="encryption_status_off">Off</string>
+    <string name="encryption_status_on">On</string>
+    <string name="encryption_off_title">Protect backups with a code</string>
+    <string name="encryption_protects_title">What it protects</string>
+    <string name="encryption_protects_body">Without the code, backups cannot be opened, even if someone gets into the cloud account or the backup folder.</string>
+    <string name="encryption_not_protects_title">What it does not protect</string>
+    <string name="encryption_not_protects_body">Data on this phone stays unencrypted, and older backups do not change until retention removes them.</string>
+    <string name="encryption_risk_title">The real risk</string>
+    <string name="encryption_activate_action">Turn on encryption</string>
+    <string name="encryption_on_title">Backups are encrypted</string>
+    <string name="encryption_step_before_title">Before turning it on</string>
+    <string name="encryption_step_test_title">Testing encryption</string>
+    <string name="encryption_test_encrypting">Encrypting a test backup</string>
+    <string name="encryption_test_opening">Opening the test backup</string>
+    <string name="encryption_test_comparing">Comparing with the data</string>
+    <string name="encryption_done_title">Encryption is on</string>
+    <string name="encryption_old_copies_title">Older unencrypted backups</string>
+    <string name="encryption_old_copies_body">They leave through normal retention. Pinned backups, the trash and cloud versions may last longer. Pinned backups stay until released.</string>
+    <string name="encryption_keep_plain_action">Keep them for now</string>
+    <string name="encryption_leftover_title">Encrypted backups remain</string>
+    <string name="encryption_leftover_body">They stay until an unencrypted backup is checked, then leave through normal retention. Pinned backups stay until released. Opening them needs the code.</string>
+    <string name="encryption_reactivate_note">Turning it on again creates a new code.</string>
+    <string name="encryption_error_roundtrip">The test failed. Encryption stays off and backups do not change.</string>
+    <string name="encryption_error_save_code">The code could not be saved on this phone. Encryption stays off.</string>
+    <string name="encryption_error_kit">The kit could not be saved. Choose another place or write the code on paper.</string>
+    <string name="encryption_key_unavailable_title">Backups are stopped</string>
+    <string name="encryption_key_unavailable_body">The code is no longer available on this phone. Backups stopped so that nothing is uploaded unencrypted.</string>
+    <string name="recovery_code_title">Recovery code</string>
+    <string name="recovery_code_body">This code opens the backups if the phone is lost. Keep it somewhere else.</string>
+    <string name="recovery_keep_apart_body">Keep it away from this phone and outside the same cloud account.</string>
+    <string name="recovery_code_no_copy">For security, the code cannot be copied or captured on screen.</string>
+    <string name="recovery_kit_save_action">Save recovery kit</string>
+    <string name="recovery_kit_saved">Kit saved</string>
+    <string name="recovery_paper_action">Written on paper</string>
+    <string name="recovery_type_code_title">Type the code</string>
+    <string name="recovery_type_code_body">Type the 28 characters to confirm it was saved correctly.</string>
+    <string name="recovery_check_action">Check code</string>
+    <string name="legal_encryption_warning_title">If the code is lost, the data cannot be recovered</string>
+    <!-- legal_encryption_warning_body: %1$s = app -->
+    <string name="legal_encryption_warning_body">If this phone and every copy of the code are lost, the data in encrypted backups cannot be recovered. Nobody can recover it, not even the makers of %1$s.</string>
+    <string name="legal_encryption_ack">I understand that if this phone and every copy of the code are lost, the data in encrypted backups cannot be recovered</string>
+    <!-- recovery_kit_title: %1$s = app -->
+    <string name="recovery_kit_title">%1$s recovery kit</string>
+    <!-- recovery_kit_created: %1$s = date -->
+    <string name="recovery_kit_created">Created on %1$s</string>
+    <string name="recovery_kit_howto_title">How to use it</string>
+    <!-- recovery_kit_howto_body: %1$s = app -->
+    <string name="recovery_kit_howto_body">When restoring an encrypted backup, %1$s asks for this code. Without it, nobody can open those backups.</string>
+    <string name="recovery_kit_keep_body">Keep this paper somewhere safe, away from the phone. This code and a backup are enough to read the business data.</string>
+    <!-- recovery_kit_format: %1$s = url -->
+    <string name="recovery_kit_format">Public format and rescue tool: %1$s</string>
+</resources>

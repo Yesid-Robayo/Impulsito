@@ -41,10 +41,13 @@ import kotlinx.coroutines.withContext
  * @param maxFileBytes el mayor archivo comprimido que se acepta.
  * @param compressor abre el compresor sobre el archivo. Siempre el gzip con su nivel por defecto;
  *   las pruebas lo cambian para fabricar un archivo dañado.
+ * @param encryptionActive si las copias deben salir cifradas. Con el cifrado activo, nunca arma una
+ *   copia en claro: no hay caída a texto plano.
  */
 internal class BackupPackager(
     private val ioContext: CoroutineContext,
     private val maxFileBytes: Long = BackupLimits.MAX_BACKUP_DOWNLOAD_BYTES,
+    private val encryptionActive: suspend () -> Boolean = { false },
     private val compressor: (OutputStream) -> GZIPOutputStream = {
         GZIPOutputStream(it, BUFFER_BYTES)
     },
@@ -56,6 +59,9 @@ internal class BackupPackager(
      */
     suspend fun compress(snapshot: File, target: File): PackageResult {
         require(target.isAbsolute) { "La ruta del archivo comprimido debe ser absoluta" }
+        // Mientras el cifrado no esté en este flujo, una copia con el cifrado activo no se arma:
+        // nada sale en claro, y la instantánea queda para la limpieza.
+        if (encryptionActive()) return PackageResult.EncryptionUnavailable
         var packed = false
         try {
             val result = withContext(ioContext) {
@@ -244,6 +250,9 @@ internal sealed interface PackageResult {
 
     /** El archivo escrito no se descomprime en la instantánea, o su suma cambió. No se sube. */
     data object Mismatch : PackageResult
+
+    /** El cifrado está activo y no hay con qué cifrar: no se arma nada, y nunca en claro. */
+    data object EncryptionUnavailable : PackageResult
 
     /** Otra falla del disco. Solo la clase de [cause] puede ir al registro. */
     class Failed(val cause: IOException) : PackageResult

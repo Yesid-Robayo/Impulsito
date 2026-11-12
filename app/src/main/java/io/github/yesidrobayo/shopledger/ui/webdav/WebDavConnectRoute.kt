@@ -79,6 +79,8 @@ fun WebDavConnectRoute(
                     // Atrás lo resuelve la navegación; lo demás, el ViewModel.
                     if (action == WebDavConnectAction.Back) {
                         navigator.back()
+                    } else if (action == WebDavConnectAction.OpenEncryption) {
+                        navigator.open(AppNavKey.BackupEncryption)
                     } else {
                         viewModel.onAction(action)
                     }

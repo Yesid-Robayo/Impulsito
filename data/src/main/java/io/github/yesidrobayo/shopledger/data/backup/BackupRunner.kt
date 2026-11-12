@@ -669,9 +669,16 @@ internal class BackupRunner(
                 val result = packager.compress(snapshot.file, staging.compressedFile(generation))
             ) {
                 is PackageResult.Packed -> result
+
                 PackageResult.TooLarge -> return stopWith(BackupFailureCode.BACKUP_TOO_LARGE)
+
                 PackageResult.StorageFull -> return stopWith(BackupFailureCode.LOCAL_STORAGE_LOW)
+
                 PackageResult.Mismatch -> return stopWith(BackupFailureCode.UNEXPECTED)
+
+                PackageResult.EncryptionUnavailable ->
+                    return stopWith(BackupFailureCode.ENCRYPTION_KEY_UNAVAILABLE)
+
                 is PackageResult.Failed -> return localFailure(result.cause)
             }
         val meta =

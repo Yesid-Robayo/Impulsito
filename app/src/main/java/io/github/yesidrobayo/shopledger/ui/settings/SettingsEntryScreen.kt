@@ -206,6 +206,15 @@ fun SettingsEntryScreen(
                 }
                 if (security != null) {
                     SecurityGroup(security, stringResource(R.string.app_name), onSecurityAction)
+                    // `Cifrado de copias` va al final de `Seguridad`, tras el bloqueo y el modo
+                    // discreto.
+                    if (!security.readFailed && security.lock != null) {
+                        SettingsRow(
+                            title = stringResource(R.string.encryption_title),
+                            action =
+                                SettingsRowAction.Navigation { onOpen(AppNavKey.BackupEncryption) },
+                        )
+                    }
                 }
                 usage?.let { AppearanceGroup(it, onUsageAction) { colorsOpen = true } }
                 if (overview != null) {

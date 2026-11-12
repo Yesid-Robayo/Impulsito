@@ -215,6 +215,8 @@ fun BackupRoute(navigator: AppNavigator) {
 
                         BackupAction.OpenLocalCopies -> navigator.open(AppNavKey.LocalCopies)
 
+                        BackupAction.OpenEncryption -> navigator.open(AppNavKey.BackupEncryption)
+
                         BackupAction.FindFile -> {
                             viewModel.onAction(BackupAction.CloseRestore)
                             // Desde la hoja del conflicto, el archivo de la ranura se busca aquí.

@@ -694,6 +694,23 @@ private fun LazyListScope.copies(uiState: BackupUiState, onAction: (BackupAction
                 )
             }
         }
+        // Se puede activar también sin destino: cifra la copia exportada, y la nube al conectarla.
+        item(key = ENCRYPTION) {
+            SettingsRow(
+                title = stringResource(R.string.encryption_title),
+                action = SettingsRowAction.Navigation { onAction(BackupAction.OpenEncryption) },
+                summary =
+                    uiState.copiesEncrypted?.let { encrypted ->
+                        val status =
+                            if (encrypted) {
+                                R.string.encryption_status_on
+                            } else {
+                                R.string.encryption_status_off
+                            }
+                        stringResource(status)
+                    },
+            )
+        }
     }
     if (connected) item(key = DRILL) { Drill(uiState.drilling, onAction) }
     // Solo si existe la copia previa a migrar: es local, así que no depende del destino.
@@ -896,6 +913,7 @@ private const val RESTORE_NOTICE = "restoreNotice"
 private const val FIND_FILE = "findFile"
 private const val PROTECTION = "protection"
 private const val EXPORT_COPY = "exportCopy"
+private const val ENCRYPTION = "encryption"
 private const val DRILL = "drill"
 private const val HEALTH = "health"
 

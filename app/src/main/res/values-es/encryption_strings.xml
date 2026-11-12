@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cifrado de copias y código de recuperación. Textos de la guía de redacción. -->
+    <string name="encryption_status_off">Apagado</string>
+    <string name="encryption_status_on">Activo</string>
+    <string name="encryption_off_title">Proteger las copias con un código</string>
+    <string name="encryption_protects_title">Qué protege</string>
+    <string name="encryption_protects_body">Sin el código, las copias no se pueden abrir, aunque alguien entre a la cuenta de la nube o a la carpeta de copias.</string>
+    <string name="encryption_not_protects_title">Qué no protege</string>
+    <string name="encryption_not_protects_body">Los datos en este teléfono siguen sin cifrar, y las copias anteriores no cambian hasta salir por la retención.</string>
+    <string name="encryption_risk_title">El riesgo real</string>
+    <string name="encryption_activate_action">Activar cifrado</string>
+    <string name="encryption_on_title">Las copias salen cifradas</string>
+    <string name="encryption_step_before_title">Antes de activar</string>
+    <string name="encryption_step_test_title">Probando el cifrado</string>
+    <string name="encryption_test_encrypting">Cifrando una copia de prueba</string>
+    <string name="encryption_test_opening">Abriendo la copia de prueba</string>
+    <string name="encryption_test_comparing">Comparando con los datos</string>
+    <string name="encryption_done_title">Cifrado activado</string>
+    <string name="encryption_old_copies_title">Copias anteriores sin cifrar</string>
+    <string name="encryption_old_copies_body">Salen con la retención normal. Las fijadas, la papelera y las versiones de la nube pueden durar más. Las copias fijadas no se tocan hasta liberarlas.</string>
+    <string name="encryption_keep_plain_action">Conservarlas por ahora</string>
+    <string name="encryption_leftover_title">Quedan copias cifradas</string>
+    <string name="encryption_leftover_body">Se conservan hasta comprobar una copia sin cifrar, y luego salen con la retención normal. Las fijadas no se tocan hasta liberarlas. Para abrirlas se necesita el código.</string>
+    <string name="encryption_reactivate_note">Volver a activar crea un código nuevo.</string>
+    <string name="encryption_error_roundtrip">La prueba no pasó. El cifrado sigue apagado y las copias no cambian.</string>
+    <string name="encryption_error_save_code">No se pudo guardar el código en este teléfono. El cifrado sigue apagado.</string>
+    <string name="encryption_error_kit">No se pudo guardar el kit. Se puede elegir otro lugar o copiar el código en papel.</string>
+    <string name="encryption_key_unavailable_title">Las copias están detenidas</string>
+    <string name="encryption_key_unavailable_body">El código ya no está disponible en este teléfono. Para no subir nada sin cifrar, las copias se detuvieron.</string>
+    <string name="recovery_code_title">Código de recuperación</string>
+    <string name="recovery_code_body">Este código abre las copias si se pierde el teléfono. Se debe guardar fuera de él.</string>
+    <string name="recovery_keep_apart_body">Conviene guardarlo fuera de este teléfono y fuera de la misma cuenta de la nube.</string>
+    <string name="recovery_code_no_copy">Por seguridad, el código no se puede copiar ni capturar en pantalla.</string>
+    <string name="recovery_kit_save_action">Guardar kit de recuperación</string>
+    <string name="recovery_kit_saved">Kit guardado</string>
+    <string name="recovery_paper_action">Copiado en papel</string>
+    <string name="recovery_type_code_title">Escribir el código</string>
+    <string name="recovery_type_code_body">Escribir los 28 caracteres para confirmar que quedó bien guardado.</string>
+    <string name="recovery_check_action">Comprobar código</string>
+    <string name="legal_encryption_warning_title">Si se pierde el código, no hay forma de recuperar los datos</string>
+    <string name="legal_encryption_warning_body">Si se pierden este teléfono y todas las copias del código, los datos de las copias cifradas serán irrecuperables. Nadie puede recuperarlos, tampoco quien hizo %1$s.</string>
+    <string name="legal_encryption_ack">Entiendo que si se pierden este teléfono y todas las copias del código, los datos de las copias cifradas serán irrecuperables</string>
+    <string name="recovery_kit_title">Kit de recuperación de %1$s</string>
+    <string name="recovery_kit_created">Creado el %1$s</string>
+    <string name="recovery_kit_howto_title">Cómo usarlo</string>
+    <string name="recovery_kit_howto_body">Al restaurar una copia cifrada, %1$s pide este código. Sin él, nadie puede abrir esas copias.</string>
+    <string name="recovery_kit_keep_body">Este papel se debe guardar en un lugar seguro, lejos del teléfono. Con este código y una copia se pueden leer los datos del negocio.</string>
+    <string name="recovery_kit_format">Formato público y herramienta de rescate: %1$s</string>
+</resources>

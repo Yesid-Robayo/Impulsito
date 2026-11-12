@@ -256,6 +256,9 @@ sealed interface BackupAction {
     /** `Exportar copia`: lo resuelve la navegación, con `Copias locales`. */
     data object OpenLocalCopies : BackupAction
 
+    /** `Cifrado de copias`: lo resuelve la navegación. */
+    data object OpenEncryption : BackupAction
+
     /** `Desconectar`: pide confirmar. */
     data object Disconnect : BackupAction
 

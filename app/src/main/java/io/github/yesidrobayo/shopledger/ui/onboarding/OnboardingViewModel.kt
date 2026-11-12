@@ -190,6 +190,7 @@ class OnboardingViewModel(
             OnboardingAction.BringWithWebDav,
             OnboardingAction.FindFile,
             OnboardingAction.OpenDataTransparency,
+            OnboardingAction.OpenEncryption,
             OnboardingAction.FindLocalCopy,
             -> state.update { it.copy(bringSheet = false) }
         }
@@ -232,6 +233,7 @@ class OnboardingViewModel(
             BackupAction.ConfirmRelease,
             BackupAction.CloseRelease,
             BackupAction.OpenLocalCopies,
+            BackupAction.OpenEncryption,
             BackupAction.Disconnect,
             BackupAction.ConfirmDisconnect,
             BackupAction.DismissDisconnect,
