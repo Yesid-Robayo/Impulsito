@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- La pantalla de ajustes: grupos, acerca de, licencias y pasos para borrar. Textos de la guía de redacción. -->
+    <string name="settings_group_data">Dados do negócio</string>
+    <string name="settings_group_help_about">Ajuda e sobre</string>
+    <string name="settings_delete_data">Como apagar os dados</string>
+    <string name="settings_licenses">Licenças</string>
+    <string name="settings_privacy">Política de privacidade</string>
+    <!-- about_not_accounting: %1$s = app -->
+    <string name="about_not_accounting">%1$s não substitui a contabilidade oficial, e um comprovante dele não é uma nota fiscal.</string>
+    <string name="delete_guide_before">Convém exportar o que se quer manter. Apagar não pode ser desfeito.</string>
+    <!-- delete_guide_step_1: %1$s = app -->
+    <string name="delete_guide_step_1">Neste telefone: desconectar a nuvem em Cópia de segurança. Depois, apagar os dados de %1$s nas configurações do Android ou desinstalá-lo. Se o Android oferecer manter os dados, é preciso recusar.</string>
+    <!-- delete_guide_step_2: %1$s = app -->
+    <string name="delete_guide_step_2">Na nuvem: apagar as cópias de %1$s, a pasta media ou os três arquivos, e esvaziar a lixeira, se essa nuvem tiver uma. O mesmo vale para uma nuvem usada antes.</string>
+    <string name="delete_guide_step_3">No serviço WebDAV, se foi usado: alterar ou cancelar a senha. Desconectar a apaga deste telefone, mas ela continua válida lá.</string>
+    <!-- delete_guide_step_4: %1$s = app -->
+    <string name="delete_guide_step_4">Fora de %1$s: apagar os arquivos CSV, planilhas, comprovantes, cópias e fotos exportadas e o kit de recuperação salvos ou compartilhados, e as cópias do segundo destino em pastas locais, cartões ou USB. O %1$s não consegue alcançá-los.</string>
+    <!-- licenses_help: %1$s = app -->
+    <string name="licenses_help">%1$s usa estes componentes de outras pessoas e empresas.</string>
+    <!-- licenses_row: %1$s = component, %2$s = license -->
+    <string name="licenses_row">%1$s: %2$s</string>
+    <string name="licenses_public_domain">Domínio público</string>
+</resources>

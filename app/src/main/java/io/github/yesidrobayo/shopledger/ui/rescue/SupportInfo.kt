@@ -47,27 +47,29 @@ data class SupportFacts(
 
     companion object {
         /** Los datos de este teléfono para [cause]. Lee el sistema: va fuera del hilo principal. */
-        fun of(context: Context, cause: RescueReason): SupportFacts {
-            val manager = context.packageManager
-            val info =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    manager.getPackageInfo(
-                        context.packageName,
-                        PackageManager.PackageInfoFlags.of(0),
-                    )
-                } else {
-                    @Suppress("DEPRECATION")
-                    manager.getPackageInfo(context.packageName, 0)
-                }
-            val code = PackageInfoCompat.getLongVersionCode(info)
-            return SupportFacts(
-                appVersion = "${info.versionName} ($code)",
-                android = "${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})",
-                device = "${Build.MANUFACTURER} ${Build.MODEL}",
-                lastError = cause.code,
-            )
-        }
+        fun of(context: Context, cause: RescueReason): SupportFacts = SupportFacts(
+            appVersion = appVersionOf(context),
+            android = "${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})",
+            device = "${Build.MANUFACTURER} ${Build.MODEL}",
+            lastError = cause.code,
+        )
     }
+}
+
+/**
+ * La versión y el número de compilación de la app, como `1.2.0 (12)`. Lee el sistema: va fuera del
+ * hilo principal.
+ */
+fun appVersionOf(context: Context): String {
+    val manager = context.packageManager
+    val info =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            manager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            manager.getPackageInfo(context.packageName, 0)
+        }
+    return "${info.versionName} (${PackageInfoCompat.getLongVersionCode(info)})"
 }
 
 /** El código estable de cada causa, en inglés, para soporte: no es un texto para la persona. */

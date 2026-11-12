@@ -227,7 +227,7 @@ internal fun languageFacts(installed: List<String>, uiTag: String): LanguageScre
 }
 
 /** El nombre de [tag] escrito en ese mismo idioma, con mayúscula para una lista. */
-private fun ownName(tag: String): String {
+internal fun ownName(tag: String): String {
     val locale = ULocale.forLanguageTag(tag)
     return LocaleDisplayNames
         .getInstance(locale, DisplayContext.CAPITALIZATION_FOR_UI_LIST_OR_MENU)

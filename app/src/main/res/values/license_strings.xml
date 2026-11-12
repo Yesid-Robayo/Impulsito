@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nombres propios de los componentes incluidos y de sus licencias: no se traducen. -->
+    <string name="license_component_androidx" translatable="false">AndroidX</string>
+    <string name="license_component_kotlin" translatable="false">Kotlin</string>
+    <string name="license_component_okhttp" translatable="false">OkHttp</string>
+    <string name="license_component_vico" translatable="false">Vico</string>
+    <string name="license_component_sqlite" translatable="false">SQLite</string>
+    <string name="license_component_material_symbols" translatable="false">Material Symbols</string>
+    <string name="license_component_figtree" translatable="false">Figtree</string>
+    <string name="license_component_noto" translatable="false">Noto Sans</string>
+    <string name="license_apache" translatable="false">Apache 2.0</string>
+    <string name="license_ofl" translatable="false">SIL Open Font License 1.1</string>
+    <!-- La página publicada de la política de privacidad. Vacía hasta publicarla: mientras tanto, la fila abre los términos dentro de la app. -->
+    <string name="legal_privacy_url" translatable="false"></string>
+</resources>

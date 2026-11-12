@@ -278,7 +278,7 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         is AppNavKey.PaymentMethodEdit -> PaymentMethodFormRoute(key, navigator)
 
-        // Una entrada mínima a la región y al idioma, hasta que exista la pantalla completa.
+        // Ajustes: solo configuración, en grupos.
         AppNavKey.Settings ->
             SettingsEntryRoute(onOpen = { navigator.open(it) }, onBack = { navigator.back() })
 

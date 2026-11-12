@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- La pantalla de ajustes: grupos, acerca de, licencias y pasos para borrar. Textos de la guía de redacción. -->
+    <string name="settings_group_data">Business data</string>
+    <string name="settings_group_help_about">Help and about</string>
+    <string name="settings_delete_data">How to delete the data</string>
+    <string name="settings_licenses">Licenses</string>
+    <string name="settings_privacy">Privacy policy</string>
+    <!-- about_not_accounting: %1$s = app -->
+    <string name="about_not_accounting">%1$s does not replace official accounting, and its receipts are not invoices.</string>
+    <string name="delete_guide_before">Export whatever should be kept. Deleting cannot be undone.</string>
+    <!-- delete_guide_step_1: %1$s = app -->
+    <string name="delete_guide_step_1">On this phone: disconnect the cloud in Backup. Then delete %1$s\'s data in Android settings or uninstall it. If Android offers to keep the data, decline.</string>
+    <!-- delete_guide_step_2: %1$s = app -->
+    <string name="delete_guide_step_2">In the cloud: delete %1$s\'s backups, its media folder or its three files, and empty the trash if that cloud has one. The same goes for any cloud used before.</string>
+    <string name="delete_guide_step_3">On the WebDAV service, if one was used: change or cancel the password. Disconnecting deletes it from this phone, but it stays valid there.</string>
+    <!-- delete_guide_step_4: %1$s = app -->
+    <string name="delete_guide_step_4">Outside %1$s: delete any CSV files, spreadsheets, receipts, exported backups and photos and the recovery kit that were saved or shared, and second-destination backups in local folders, cards or USB drives. %1$s cannot reach them.</string>
+    <!-- licenses_help: %1$s = app -->
+    <string name="licenses_help">%1$s uses these components from other people and companies.</string>
+    <!-- licenses_row: %1$s = component, %2$s = license -->
+    <string name="licenses_row">%1$s: %2$s</string>
+    <string name="licenses_public_domain">Public domain</string>
+</resources>
