@@ -13,10 +13,12 @@ import io.github.yesidrobayo.shopledger.data.local.testDatabaseFile
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleHistorySource
 import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryCursor
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import io.github.yesidrobayo.shopledger.domain.rule.ReportPeriods
+import io.github.yesidrobayo.shopledger.domain.rule.report.PeriodNavigation
 import java.io.OutputStream
 import java.util.zip.GZIPOutputStream
 import kotlin.time.Instant
@@ -151,6 +153,29 @@ internal class SeedVolumeMeasurementTest {
                 mark.elapsedNow().inWholeMicroseconds
             }.drop(1)
         log("mes, lista de ventas: ${summary(times)}")
+        measureStatistics(ports, month)
+    }
+
+    /**
+     * Lo que lee `Números` al abrir un mes y al pasar al anterior: sus sumas, su serie por día y la
+     * última fecha con datos, por los puertos, como en la app. Cada ronda pide un mes distinto, para
+     * que ninguna lectura salga de una caché. El tope de referencia es de 800 ms por período.
+     */
+    private suspend fun measureStatistics(ports: DataPorts, month: ReportPeriod) {
+        val reports = ports.periodReports
+        val times =
+            List(ROUNDS + 1) { round ->
+                val period = (0 until round).fold(month) { shown, _ ->
+                    PeriodNavigation.previous(shown)
+                }
+                val mark = TimeSource.Monotonic.markNow()
+                val totals = reports.observeTotals(period).first()
+                val days = reports.observeDailyTotals(period).first()
+                reports.observeLastActiveDate().first()
+                assertTrue(totals.salesCount > 0 && days.isNotEmpty())
+                mark.elapsedNow().inWholeMicroseconds
+            }.drop(1)
+        log("mes, estadísticas: ${summary(times)}")
     }
 
     /**

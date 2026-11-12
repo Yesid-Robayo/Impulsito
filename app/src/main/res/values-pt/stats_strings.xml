@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stats_metric_sales">Vendas</string>
+    <string name="stats_metric_profit">Lucro</string>
+    <string name="stats_average_ticket">Venda média %1$s</string>
+    <string name="stats_view_list">Ver como lista</string>
+    <string name="stats_view_chart">Ver como gráfico</string>
+    <string name="stats_how_calculated">Como foi calculado</string>
+    <string name="stats_bar_value">%1$s: %2$s</string>
+    <string name="stats_row_expenses">Despesas</string>
+    <string name="stats_row_fees">Taxas</string>
+    <string name="stats_tool_estimated_tax">Imposto estimado</string>
+    <string name="stats_tax_collected">Cobrado</string>
+    <string name="stats_tax_paid">Pago</string>
+    <string name="empty_stats_period_body">Sem movimentos neste período.</string>
+    <string name="stats_chart_summary_sales">Gráfico de vendas, %1$s. Total %2$s. Maior: %3$s, %4$s. Menor: %5$s, %6$s.</string>
+    <string name="stats_chart_summary_profit">Gráfico de lucro nas vendas, %1$s. Total %2$s. Maior: %3$s, %4$s. Menor: %5$s, %6$s.</string>
+    <string name="stats_zone_unknown_title">Este telefone não conhece o fuso horário do negócio. Ao escolhê-lo, os números aparecem.</string>
+    <string name="stats_zone_unknown_action">Escolher fuso</string>
+</resources>

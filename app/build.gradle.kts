@@ -130,6 +130,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     // La app configura la biblioteca de trabajos con la fábrica de la capa de datos.
     implementation(libs.androidx.work.runtime)
+    // La gráfica por día de las estadísticas. Vico está entre las dependencias de ejecución permitidas, sin red ni datos.
+    implementation(libs.vico.compose)
+    implementation(libs.vico.compose.m3)
     testImplementation(libs.junit)
     // Los ViewModel se prueban en JVM: dispatchers de prueba en lugar del principal, y Turbine para leer cada estado.
     testImplementation(libs.kotlinx.coroutines.test)

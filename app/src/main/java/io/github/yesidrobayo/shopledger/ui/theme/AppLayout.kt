@@ -160,6 +160,24 @@ class AppSizes internal constructor() {
 
     /** Parte de la pantalla que ocupa como máximo una hoja inferior. */
     val sheetMaxFraction: Float = 0.9f
+
+    /** Alto del área de una gráfica, sin sus ejes. */
+    val chartArea: Dp = 200.dp
+
+    /** Alto del área de una gráfica en una ventana ancha. */
+    val chartAreaExpanded: Dp = 280.dp
+
+    /** Ancho de una columna de la gráfica de una semana: siete caben con aire. */
+    val chartColumnWeek: Dp = 14.dp
+
+    /** Ancho de una columna de la gráfica de un mes: hasta 31 en un teléfono angosto. */
+    val chartColumnMonth: Dp = 6.dp
+
+    /** Punta redondeada de una columna de la semana. La base queda recta. */
+    val chartColumnTipWeek: Dp = 4.dp
+
+    /** Punta redondeada de una columna del mes. */
+    val chartColumnTipMonth: Dp = 3.dp
 }
 
 /**

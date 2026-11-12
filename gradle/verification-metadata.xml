@@ -18,6 +18,7 @@
          <ignored-key id="80C08B1C29100955" reason="Key couldn't be downloaded from any key server"/>
          <ignored-key id="873A8E86B4372146" reason="Key couldn't be downloaded from any key server"/>
          <ignored-key id="C2148900BCD3C2AF" reason="Key couldn't be downloaded from any key server"/>
+         <ignored-key id="CFAE163B64AC9189" reason="Key couldn't be downloaded from any key server"/>
          <ignored-key id="E88979FB9B30ACF2" reason="Key couldn't be downloaded from any key server"/>
          <ignored-key id="EB095DA7D2F6AC0E" reason="Key couldn't be downloaded from any key server"/>
          <ignored-key id="FD533C07C264648F" reason="Key couldn't be downloaded from any key server"/>
@@ -32,6 +33,19 @@
          <trusted-key id="0785B3EFF60B1B1BEA94E0BB7C25280EAE63EBE5" group="org.apache.httpcomponents"/>
          <trusted-key id="09939C73246B4BA7444CAA453D002DBC5EA9615F" group="dev.drewhamilton.poko"/>
          <trusted-key id="0CC641C3A62453AB390066C4A41F13C999945293" group="commons-logging" name="commons-logging" version="1.2"/>
+         <trusted-key id="0E225917414670F4442C250DFD533C07C264648F">
+            <trusting group="androidx.activity"/>
+            <trusting group="androidx.appcompat"/>
+            <trusting group="androidx.core"/>
+            <trusting group="androidx.databinding"/>
+            <trusting group="androidx.lifecycle"/>
+            <trusting group="androidx.navigation3"/>
+            <trusting group="androidx.room3"/>
+            <trusting group="androidx.sqlite"/>
+            <trusting group="androidx.work"/>
+            <trusting group="^androidx[.]compose($|([.].*))" regex="true"/>
+            <trusting group="^com[.]android($|([.].*))" regex="true"/>
+         </trusted-key>
          <trusted-key id="0F06FF86BEEAF4E71866EE5232EE5355A6BC6E42">
             <trusting group="androidx.annotation"/>
             <trusting group="androidx.collection"/>
@@ -47,6 +61,7 @@
          </trusted-key>
          <trusted-key id="13AC2213964ABE1D1C147C0E1939A2520BAB1D90" group="org.freemarker" name="freemarker" version="2.3.32"/>
          <trusted-key id="19BEAB2D799C020F17C69126B16698A4ADF4D638" group="org.checkerframework" name="checker-qual"/>
+         <trusted-key id="1A55F091AD28C07F831FA44D7905DE25C78AD456" group="com.google.protobuf"/>
          <trusted-key id="1BD97A6A154E7810EE0BC832E2F38302C8075E3D" group="org.gradle.toolchains" name="foojay-resolver" version="1.0.0"/>
          <trusted-key id="1D0A8B5E77C678A7C724445ABF984B4145EA13F7" group="com.squareup" name="javapoet" version="1.13.0"/>
          <trusted-key id="1D217F8475EEE9F19AB8DD6B793FD5751A0F0780" group="app.cash.turbine"/>
@@ -57,7 +72,10 @@
             <trusting group="org.apache.commons"/>
          </trusted-key>
          <trusted-key id="2E3A1AFFE42B5F53AF19F780BCF4173966770193" group="org.jetbrains" name="annotations" version="13.0"/>
+         <trusted-key id="2E92113263FC31C74CCBAAB20E91C2DE43B72BB1" group="org.ec4j.core"/>
+         <trusted-key id="3051D45031E13516A6E8FAFF280D66A55F5316C5" group="org.bitbucket.b_c" name="jose4j" version="0.9.5"/>
          <trusted-key id="31BAE2E51D95E0F8AD9B7BCC40A3C4432BD7308C" group="com.googlecode.juniversalchardet" name="juniversalchardet" version="1.0.3"/>
+         <trusted-key id="33FD4BFD33554634053D73C0C2148900BCD3C2AF" group="^org[.]jetbrains($|([.].*))" regex="true"/>
          <trusted-key id="34441E504A937F43EB0DAEF96A65176A0FB1CD0B" group="org.apache.groovy"/>
          <trusted-key id="41CD49B4EF5876F9E9F691DABAC30622339994C4" group="org.jspecify" name="jspecify" version="1.0.0"/>
          <trusted-key id="475F3B8E59E6E63AA78067482C7B12F2A511E325" group="org.slf4j"/>
@@ -67,6 +85,7 @@
          <trusted-key id="4F8FEC6785F611D9A712EA2734918B7D3969D2F5" group="com.google.dagger" name="dagger" version="2.28.3"/>
          <trusted-key id="517B94F8D0A46317A28D8AB30DA8A5EC02D11EAD" group="net.sf.jopt-simple" name="jopt-simple" version="4.9"/>
          <trusted-key id="5897253BEA3046AEEA95A067E93671C7272B7B3F" group="org.jdom" name="jdom2" version="2.0.6"/>
+         <trusted-key id="5CD5659487B1BF0BDAC7D5CB28738B6F78315C82" group="com.patrykandpatrick.vico"/>
          <trusted-key id="5DD80B0DDCCBE005F0A47FD66751E1A6E2001B8D" group="^com[.]squareup($|([.].*))" regex="true"/>
          <trusted-key id="60200AC4AE761F1614D6C46766D68DAA073BE985">
             <trusting group="ch.qos.logback"/>
@@ -75,6 +94,7 @@
          <trusted-key id="694621A7227D8D5289699830ABE9F3126BB741C1" group="^com[.]google($|([.].*))" regex="true"/>
          <trusted-key id="6DD3B8C64EF75253BEB2C53AD908A43FB7EC07AC" group="jakarta.activation"/>
          <trusted-key id="6F538074CCEBF35F28AF9B066A0975F8B1127B83" group="^org[.]jetbrains[.]kotlin($|([.].*))" regex="true"/>
+         <trusted-key id="7440F1F7D27BAC115F953D55EB095DA7D2F6AC0E" group="org.tensorflow" name="tensorflow-lite-metadata" version="0.2.0"/>
          <trusted-key id="7616EB882DAF57A11477AAF559A252FB1199D873" group="com.google.code.findbugs" name="jsr305" version="3.0.2"/>
          <trusted-key id="7B121B76A7ED6CE6E60AD51784E913A8E3A748C0" group="org.bouncycastle"/>
          <trusted-key id="7F36E793AE3252E5D9E9B98FEE9E7DC9D92FC896" group="com.google.errorprone"/>
@@ -87,11 +107,21 @@
          </trusted-key>
          <trusted-key id="84789D24DF77A32433CE1F079EB80E92EB2135B1" group="org.apache" name="apache"/>
          <trusted-key id="8569C95CADC508B09FE90F3002216ED811210DAA" group="io.github.detekt.sarif4k"/>
+         <trusted-key id="90EE19787A7BCF6FD37A1E9180C08B1C29100955" group="com.squareup" name="javawriter" version="2.5.0"/>
          <trusted-key id="A413F67D71BEEC23ADD0CE0ACB43338E060CF9FA">
             <trusting group="com.google.code.findbugs"/>
             <trusting group="org.jacoco"/>
          </trusted-key>
          <trusted-key id="A5BD02B93E7A40482EB1D66A5F69AD087600B22C" group="org.ow2.asm"/>
+         <trusted-key id="A5F483CD733A4EBAEA378B2AE88979FB9B30ACF2">
+            <trusting group="androidx.annotation"/>
+            <trusting group="androidx.collection"/>
+            <trusting group="androidx.concurrent"/>
+            <trusting group="androidx.graphics"/>
+            <trusting group="androidx.profileinstaller"/>
+            <trusting group="androidx.startup"/>
+         </trusted-key>
+         <trusted-key id="AA70C7C433D501636392EC02153E7A3C2B4E5118" group="org.eclipse.ee4j" name="project"/>
          <trusted-key id="ADBC987D1A7B91DB6B0AAA81995EFBF4A3D20BEB" group="com.pinterest.ktlint"/>
          <trusted-key id="BCC135FC7ED8214F823D73E97FE9900F412D622E" group="com.google.flatbuffers" name="flatbuffers-java" version="1.12.0"/>
          <trusted-key id="BDB5FA4FE719D787FB3D3197F6D4A1D411E9D1AE" group="^com[.]google($|([.].*))" regex="true"/>
@@ -103,6 +133,7 @@
          <trusted-key id="DBD744ACE7ADE6AA50DD591F66B50994442D2D40" group="com.squareup"/>
          <trusted-key id="E7DC75FC24FB3C8DFE8086AD3D5839A2262CBBFB" group="^org[.]jetbrains[.]kotlinx($|([.].*))" regex="true"/>
          <trusted-key id="EE0CA873074092F806F59B65D364ABAA39A47320" group="com.google.errorprone"/>
+         <trusted-key id="FA7929F83AD44C4590F6CC6815C71C0A4E0B8EDD" group="net.java.dev.jna"/>
          <trusted-key id="FAABC3738B1F58DA2D776FA2EB380DC13C39F675" group="com.intellij" name="annotations" version="12.0"/>
          <trusted-key id="FC411CD3CB7DCB0ABC9801058118B3BCDB1A5000" group="jakarta.xml.bind"/>
          <trusted-key id="FF6E2C001948C5F2F38B0CC385911F425EC61B51">
@@ -627,6 +658,7 @@
       </component>
       <component group="androidx.core" name="core" version="1.13.0">
          <artifact name="core-1.13.0.module">
+            <pgp value="A5F483CD733A4EBAEA378B2AE88979FB9B30ACF2"/>
             <sha256 value="2e0e6e5c1205b7462a0c5c3e32b58c2e525435812ed89946c7be6737493b51e3" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
          </artifact>
       </component>
@@ -2340,6 +2372,32 @@
             <sha256 value="faf82de0dc02e0c0ae327cd653f37255496b2e53fce280b3ab4cb34553a89086" origin="Generated by Gradle"/>
          </artifact>
       </component>
+      <component group="com.patrykandpatrick.vico" name="compose" version="3.3.1">
+         <artifact name="compose-3.3.1.module">
+            <sha256 value="a41f2173f01843bc0554c5b67e7da02d84d2270027bd60b65cae815caff64d93" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="com.patrykandpatrick.vico" name="compose-android" version="3.3.1">
+         <artifact name="compose-android-3.3.1.module">
+            <sha256 value="d17e3a4e31002a877b8fe75b61e326c5df4cbce93ba1a47ef1816f787fe9f369" origin="Generated by Gradle"/>
+         </artifact>
+         <artifact name="compose.aar">
+            <sha256 value="193ec0e95330a26288ad60880c244f706047799ae26c42df9d0fe1344374aa01" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="com.patrykandpatrick.vico" name="compose-m3" version="3.3.1">
+         <artifact name="compose-m3-3.3.1.module">
+            <sha256 value="9e54aa18248c4306850d45038769dba0bc75e392e72e6c2c09a3a7c3512e59f6" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="com.patrykandpatrick.vico" name="compose-m3-android" version="3.3.1">
+         <artifact name="compose-m3-android-3.3.1.module">
+            <sha256 value="fa0173f63fc08d836fffd0a0fc69fac333bb1d64762621b99cac9d1688557a58" origin="Generated by Gradle"/>
+         </artifact>
+         <artifact name="compose-m3.aar">
+            <sha256 value="3e72c3a91a2b9af2d31cfb06f6a9fb8bdcbfa2bebbbce4981bf2e1022b733596" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
       <component group="com.pinterest.ktlint" name="ktlint-cli" version="1.8.0">
          <artifact name="ktlint-cli-1.8.0.jar">
             <sha256 value="eb540f5ad442ba0b3392c7947c87929dab709ac056fdde7e300beaffcb86e243" origin="Generated by Gradle"/>
@@ -2741,6 +2799,7 @@
       </component>
       <component group="org.apache" name="apache" version="13">
          <artifact name="apache-13.pom">
+            <pgp value="F254B35617DC255D9344BCFA873A8E86B4372146"/>
             <sha256 value="ff513db0361fd41237bef4784968bc15aae478d4ec0a9496f811072ccaf3841d" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
          </artifact>
       </component>
@@ -3098,6 +3157,250 @@
          </artifact>
          <artifact name="annotations-23.0.0.pom">
             <sha256 value="c9490f655132328df2cfbcfdf743f53fc3916d6c1d10437175a6ca6e3a67771c" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.androidx.lifecycle" name="lifecycle-common" version="2.9.6">
+         <artifact name="lifecycle-common-2.9.6.module">
+            <sha256 value="805e4521b03379810848c7ac314cf3c954fc8d2df34a5b0911c456d438dcda26" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.androidx.lifecycle" name="lifecycle-runtime" version="2.9.6">
+         <artifact name="lifecycle-runtime-2.9.6.module">
+            <sha256 value="2d237bf1103971c56967a19531bc08f1006e4993a84319a92f4e15fb0f90ca1b" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.androidx.lifecycle" name="lifecycle-runtime-compose" version="2.9.6">
+         <artifact name="lifecycle-runtime-compose-2.9.6.module">
+            <sha256 value="80030c6408a8f20b1955787e1a613cb69f05876eaf5b9185fbe159480c0f6721" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.androidx.savedstate" name="savedstate" version="1.3.6">
+         <artifact name="savedstate-1.3.6.module">
+            <sha256 value="e59f9a0d872ce33b78e16d7c5ea63696046e6172934a8ce8d427726b07791934" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.androidx.savedstate" name="savedstate-compose" version="1.3.6">
+         <artifact name="savedstate-compose-1.3.6.module">
+            <sha256 value="afc3e5bd44604ea9ca610c23405a096b4089d62cd346797d339ff5e2c8a0e5b4" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.animation" name="animation" version="1.12.0">
+         <artifact name="animation-1.12.0.module">
+            <sha256 value="b86b0ecf5690525c6d4606597f2591a26ac8ca33327c36ccce7f2c87621751ed" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.animation" name="animation-android" version="1.12.0">
+         <artifact name="animation-android-1.12.0.module">
+            <sha256 value="72092af420e05f863de7b81691adabc53cbea94dd503187faac18c07f9e635ba" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="animation.aar">
+            <sha256 value="d13a4f113b767b62d56a5f5b78ed01e56831c634c41135bd89b4bb991dc750ad" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.animation" name="animation-core" version="1.12.0">
+         <artifact name="animation-core-1.12.0.module">
+            <sha256 value="64d0aa3e276a7f5ee82af0c1cbe98692ef8cae053b2823a176e058ea7cc97679" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.animation" name="animation-core" version="1.9.1">
+         <artifact name="animation-core-1.9.1.module">
+            <sha256 value="b0b35c69720dd845aa32bf434d4c8c6a560e1387a52008748ef94678948ea324" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.animation" name="animation-core-android" version="1.12.0">
+         <artifact name="animation-core-android-1.12.0.module">
+            <sha256 value="524bc9a2ee745634d6b2328c18fa74d13e6966260deaa42138d069fca534f9ec" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="animation-core.aar">
+            <sha256 value="db26201d7cb3d407bb98776e937a0fedbe9f3d56425f3a061d0e76dde10238a6" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.annotation-internal" name="annotation" version="1.9.1">
+         <artifact name="annotation-1.9.1.module">
+            <sha256 value="46c9279e57d594ebf9ef21c27c633cc20cbceb2a4520832b94e81a7a36890a98" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.collection-internal" name="collection" version="1.9.1">
+         <artifact name="collection-1.9.1.module">
+            <sha256 value="66beb8f1c3f4d92067ffd6158ae7dbf1679994e07544ce8d34c4a90f77d9b1f0" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.foundation" name="foundation" version="1.12.0">
+         <artifact name="foundation-1.12.0.module">
+            <sha256 value="e104b8529a23c5f1a1c7aa9a231739ca8f7ab8dcfb97b831177167b357d993fa" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.foundation" name="foundation-android" version="1.12.0">
+         <artifact name="foundation-android-1.12.0.module">
+            <sha256 value="70f89aa6b452c9b312c259c18a25a6525f3d74251631cbf88c88b412c76516b4" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="foundation.aar">
+            <sha256 value="17c4466ca753a6ce68dcf4333674e0934d15c8246b223653d18f5dbaef0f6c10" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.foundation" name="foundation-layout" version="1.12.0">
+         <artifact name="foundation-layout-1.12.0.module">
+            <sha256 value="e10e8b5f2e1f31f15b56f21fabe06679899f5300634c6342b91aa9c35b9f8d73" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.foundation" name="foundation-layout" version="1.9.1">
+         <artifact name="foundation-layout-1.9.1.module">
+            <sha256 value="e48e01da28ba055424f2ca2b71b6d4e44cfd93c0f1ef4893aa5bd91fa0359471" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.foundation" name="foundation-layout-android" version="1.12.0">
+         <artifact name="foundation-layout-android-1.12.0.module">
+            <sha256 value="3adc6b56e2d2249152dd89221ee7b148218d0b6535a3f1d73158b86f6c859519" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="foundation-layout.aar">
+            <sha256 value="a3bce509f3412b8002c7eb2084f4605e1f8d04a8eff420b7b165d1a396f611df" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.material" name="material-ripple" version="1.9.1">
+         <artifact name="material-ripple-1.9.1.module">
+            <sha256 value="898dbe9a0e62c9ca391b375ec1a27b49965743b74a06ad85f6e710a0bbb4a3da" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.material3" name="material3" version="1.9.0">
+         <artifact name="material3-1.9.0.module">
+            <sha256 value="fa7a745df9170591d98f3773303bcf53829313acfb43c72c1aa4f8fb99ba45a4" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.runtime" name="runtime" version="1.12.0">
+         <artifact name="runtime-1.12.0.module">
+            <sha256 value="8ba3f2319dc93229e59d085c2d1d36caaf9cb7dffb20feefd4fa96e6d9450dff" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.runtime" name="runtime-android" version="1.12.0">
+         <artifact name="runtime-android-1.12.0.module">
+            <sha256 value="175180ae6fda93fe3867d1346dfb17244c192c86c1f7c4a6e3c35f5cfc0b739c" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="runtime.aar">
+            <sha256 value="5732b59bc214b94c5a0c2c29410eda6ca8a28c52bc57ba20964f0259910bd9fe" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.runtime" name="runtime-saveable" version="1.12.0">
+         <artifact name="runtime-saveable-1.12.0.module">
+            <sha256 value="60b770e6585027e0213da1367c7527d1a58fd29e93d52840380cf481e0d0e129" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.runtime" name="runtime-saveable-android" version="1.12.0">
+         <artifact name="runtime-saveable-android-1.12.0.module">
+            <sha256 value="1bdba4fb0afca02427e5ef174a30e86c9713c327d95c5cc90f6d67d470ab04c8" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="runtime-saveable.aar">
+            <sha256 value="ac260d459f82f654b7336bc18c9f835c9f0d2b2adc5096dfc729aad386eac5c5" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui" version="1.12.0">
+         <artifact name="ui-1.12.0.module">
+            <sha256 value="e1263c66daebdab9479edcc5aa0b13e1bbf5b7b11e444c88135cf778898799dd" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-android" version="1.12.0">
+         <artifact name="ui-android-1.12.0.module">
+            <sha256 value="aa4e93b7a67da9e83d7bde1874a5126b1708d8c22d15e9dda318f141b304d8e5" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="ui.aar">
+            <sha256 value="8abae416be8db5bf5861b7705a1e1bb03369a45d253f0e54d4215b9e80ac7ed8" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-backhandler" version="1.12.0">
+         <artifact name="ui-backhandler-1.12.0.module">
+            <sha256 value="d43b5f8152775b26bec4d807a1873d8964f965fcab6ca91edb13841af5220e86" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-backhandler" version="1.9.1">
+         <artifact name="ui-backhandler-1.9.1.module">
+            <sha256 value="31dfa186cd71b355cb1be78607ffd5256dcc83cff115a260ea4d697492092582" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-backhandler-android" version="1.12.0">
+         <artifact name="ui-backhandler-android-1.12.0.module">
+            <sha256 value="ca0295f405a7a709a705f91169780d414f6169e95cc3f3d1c78039f1be8972d7" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="ui-backhandler.aar">
+            <sha256 value="663a8a2072379a3de4465d7d0bf5ec6d0d3e0ae1f21a914e037f1c96b553674a" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-geometry" version="1.12.0">
+         <artifact name="ui-geometry-1.12.0.module">
+            <sha256 value="d3c60e20fde8b4af07590546497cd15762152bfc1d181155b9e7f887826b119a" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-geometry-android" version="1.12.0">
+         <artifact name="ui-geometry-android-1.12.0.module">
+            <sha256 value="9aa75cb5e43c0da1b4b3666f94a10b5a9cefa7641e26a2d5b7ab0493086d407d" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="ui-geometry.aar">
+            <sha256 value="0efa6af8d9ff9c8d28930deabe9ede9844ce2d8ceab552d9e237ca08412e4120" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-graphics" version="1.12.0">
+         <artifact name="ui-graphics-1.12.0.module">
+            <sha256 value="73bca565936cac68570d3302dafdb9b05d621909c59058e6eb072d4027dbc91e" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-graphics" version="1.9.1">
+         <artifact name="ui-graphics-1.9.1.module">
+            <sha256 value="b6d264ac8e5c48dd4f6f13d9fd8190780f1a386e4a10bd90c3bb055652d47401" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-graphics-android" version="1.12.0">
+         <artifact name="ui-graphics-android-1.12.0.module">
+            <sha256 value="1a39f8d974331d3693c42e540d07d47514a7976319957f63a3baff8f605cb55e" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="ui-graphics.aar">
+            <sha256 value="755edf074fc2a455ad7c35308048fb76de1736a620c37d7fe8c3de1486e74abe" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-text" version="1.12.0">
+         <artifact name="ui-text-1.12.0.module">
+            <sha256 value="88451b02405a4f71dcc73007c9f4581b91ff2754c02c7509ff0d2c76e4342218" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-text" version="1.9.1">
+         <artifact name="ui-text-1.9.1.module">
+            <sha256 value="944bf0e17834b956ab4606b78e05c6f74331a92540727609d10ab572377a17d9" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-text-android" version="1.12.0">
+         <artifact name="ui-text-android-1.12.0.module">
+            <sha256 value="3c99ea2c0fb512cde77260864770e5d03009e43c6bb207b736d68429d194bbd4" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="ui-text.aar">
+            <sha256 value="06eca5c263fac0f7d403e8c0d3c2eb1d683723cd671901d583f1675bd19937e5" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-unit" version="1.12.0">
+         <artifact name="ui-unit-1.12.0.module">
+            <sha256 value="a0af3668bffda4bc0d603725976ff63e844d5e370b0aee5d6e59e913bc604d23" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-unit-android" version="1.12.0">
+         <artifact name="ui-unit-android-1.12.0.module">
+            <sha256 value="01d25c109d3c66afdd9c77561b901960d86f212955cf771ea62a1d3833ef0afd" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="ui-unit.aar">
+            <sha256 value="3478a9d0818fde7de41b84512521d4b8b5536e40abef334c105b07c903f866c3" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-util" version="1.12.0">
+         <artifact name="ui-util-1.12.0.module">
+            <sha256 value="c82a66f205cb92c3e3bd44e9e532f0c54e86ec9eb5c4e5257b916495721824ba" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-util" version="1.9.1">
+         <artifact name="ui-util-1.9.1.module">
+            <sha256 value="8037cfcd912def30911b46411ee28d1355a6457e05111d4354d0fec333aafc77" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+      </component>
+      <component group="org.jetbrains.compose.ui" name="ui-util-android" version="1.12.0">
+         <artifact name="ui-util-android-1.12.0.module">
+            <sha256 value="2fcbd1dd726484c17ef9ab974e653ddda4d306e7391595aa926c487e69a37f6f" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
+         <artifact name="ui-util.aar">
+            <sha256 value="76d359b874d8f0cd4f01717cbefe7cb3cc31ea06a50dca6d4d9a5368e3a42c7b" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
          </artifact>
       </component>
       <component group="org.jetbrains.intellij.deps" name="coverage-report" version="1.0.25">

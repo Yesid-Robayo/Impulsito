@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.format
 
+import android.icu.text.CompactDecimalFormat
 import android.icu.text.DecimalFormat
 import android.icu.text.NumberFormat
 import android.icu.util.Currency
@@ -94,6 +95,24 @@ class MoneyFormatter(
      * Sirve donde la moneda ya se dijo, como una columna con la moneda en el título.
      */
     fun format(amount: Money): String = readFields(amount).signedNumber
+
+    /**
+     * El monto en forma corta y sin símbolo, con las palabras y los separadores de la región, como
+     * `300 mil` o `1,2 M`: lo que cabe en el eje de una gráfica, con la moneda dicha en su título.
+     *
+     * Solo sirve para dibujar marcas aproximadas: nunca para una cifra que se lee como dato.
+     */
+    fun compact(amount: Money): String {
+        val value = BigDecimal.valueOf(amount.minor, currencyDecimals)
+        val text = synchronized(compactFormat) { compactFormat.format(value) }
+        return IcuTextNormalizer.normalizeNumber(text)
+    }
+
+    private val compactFormat: CompactDecimalFormat =
+        CompactDecimalFormat.getInstance(
+            formatLocale.numberLocale,
+            CompactDecimalFormat.CompactStyle.SHORT,
+        )
 
     private fun readFields(amount: Money): Fields {
         val value = BigDecimal.valueOf(amount.minor, currencyDecimals)

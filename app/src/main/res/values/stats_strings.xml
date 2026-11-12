@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stats_metric_sales">Sales</string>
+    <string name="stats_metric_profit">Profit</string>
+    <string name="stats_average_ticket">Average sale %1$s</string>
+    <string name="stats_view_list">View as list</string>
+    <string name="stats_view_chart">View as chart</string>
+    <string name="stats_how_calculated">How it was calculated</string>
+    <string name="stats_bar_value">%1$s: %2$s</string>
+    <string name="stats_row_expenses">Expenses</string>
+    <string name="stats_row_fees">Fees</string>
+    <string name="stats_tool_estimated_tax">Estimated tax</string>
+    <string name="stats_tax_collected">Collected</string>
+    <string name="stats_tax_paid">Paid</string>
+    <string name="empty_stats_period_body">No movements in this period.</string>
+    <string name="stats_chart_summary_sales">Sales chart, %1$s. Total %2$s. Highest: %3$s, %4$s. Lowest: %5$s, %6$s.</string>
+    <string name="stats_chart_summary_profit">Sales profit chart, %1$s. Total %2$s. Highest: %3$s, %4$s. Lowest: %5$s, %6$s.</string>
+    <string name="stats_zone_unknown_title">This phone does not know the business time zone. Choose it to see the numbers.</string>
+    <string name="stats_zone_unknown_action">Choose zone</string>
+</resources>

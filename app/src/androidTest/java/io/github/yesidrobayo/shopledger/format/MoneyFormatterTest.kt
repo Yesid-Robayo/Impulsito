@@ -7,6 +7,7 @@ import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -174,6 +175,20 @@ class MoneyFormatterTest(private val device: ForeignDevice) {
         } finally {
             pool.shutdownNow()
         }
+    }
+
+    @Test
+    fun compactAmountsForChartAxesFollowTheRegionWithoutSymbol() {
+        // Solo para las marcas de un eje: aproximadas, con la coma y las palabras de la región. La
+        // palabra corta de los miles cambia entre versiones de ICU, así que se mira la cifra.
+        val commaRegion = money("es-AR", 0)
+        assertEquals("300K", money("en-US", 2).compact(Money(30_000_000)))
+        assertEquals("1.2M", money("en-US", 0).compact(Money(1_200_000)))
+        assertTrue(commaRegion.compact(Money(1_200_000)).startsWith("1,2"))
+        assertTrue(commaRegion.compact(Money(300_000)).startsWith("300"))
+        assertFalse(commaRegion.compact(Money(300_000)).contains("$"))
+        assertEquals("0", money("es-AR", 2).compact(Money.ZERO))
+        assertTrue(commaRegion.compact(Money(-45_000)).startsWith("−45"))
     }
 
     private fun money(tag: String, decimals: Int): MoneyFormatter =

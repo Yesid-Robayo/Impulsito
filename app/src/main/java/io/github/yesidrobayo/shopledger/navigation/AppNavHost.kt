@@ -75,6 +75,7 @@ import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleHistoryRoute
 import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryRoute
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.stats.StatisticsRoute
 import io.github.yesidrobayo.shopledger.ui.stock.InventoryRoute
 import io.github.yesidrobayo.shopledger.ui.stock.StockAdjustmentRoute
 import io.github.yesidrobayo.shopledger.ui.supplier.SupplierDetailRoute
@@ -200,6 +201,8 @@ private fun entryOf(key: NavKey, navigator: AppNavigator): NavEntry<NavKey> {
 private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
     when (key) {
         AppNavKey.Home -> HomeRoute(navigator)
+
+        AppNavKey.Statistics -> StatisticsRoute(navigator)
 
         AppNavKey.Onboarding -> OnboardingRoute(navigator)
 
