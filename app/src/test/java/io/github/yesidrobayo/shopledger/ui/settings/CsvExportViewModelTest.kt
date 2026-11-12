@@ -1,8 +1,11 @@
 package io.github.yesidrobayo.shopledger.ui.settings
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
+import io.github.yesidrobayo.shopledger.domain.model.export.CsvDateRange
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExport
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportProgress
+import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +16,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.DayOfWeek
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,6 +37,7 @@ class CsvExportViewModelTest {
     private var result: CsvExport = CsvExport.Saved(files = 9, rows = 120L)
     private var gate: CompletableDeferred<Unit>? = null
     private var zone: BusinessTimeZone? = BusinessTimeZone.of("Etc/GMT+5")
+    private val ranges = mutableListOf<CsvDateRange?>()
 
     @Before
     fun useTestMain() = Dispatchers.setMain(dispatcher)
@@ -43,13 +48,17 @@ class CsvExportViewModelTest {
     private fun TestScope.viewModel(): CsvExportViewModel {
         val model =
             CsvExportViewModel(
-                export = { uri, progress ->
+                export = { uri, range, progress ->
                     exported += uri
+                    ranges += range
                     progress(CsvExportProgress(3, 9))
                     gate?.await()
                     result
                 },
                 zone = { zone ?: error("Falla inventada") },
+                calendar = {
+                    zone?.let { BusinessCalendar(it, DayOfWeek.MONDAY) } ?: error("Falla inventada")
+                },
                 now = { now },
                 appName = "App",
                 computation = dispatcher,
@@ -114,7 +123,7 @@ class CsvExportViewModelTest {
     fun `an unexpected failure is a failed export, never a crash`() = runTest(dispatcher) {
         val model =
             CsvExportViewModel(
-                export = { _, _ -> error("Falla inventada") },
+                export = { _, _, _ -> error("Falla inventada") },
                 zone = { null },
                 now = { now },
                 appName = "App",
@@ -138,5 +147,42 @@ class CsvExportViewModelTest {
             model.onAction(CsvExportAction.Export)
             assertNull(model.uiState.value.message)
             assertTrue(exported.isEmpty())
+        }
+
+    @Test
+    fun `the range sheet knows today in the business zone`() = runTest(dispatcher) {
+        val calendar = viewModel().uiState.value.calendar
+
+        // Las 03:07 UTC del 12 son las 22:07 del 11 en Etc/GMT+5.
+        assertEquals(BusinessDate.parse("2026-11-11"), calendar?.today)
+        assertEquals(DayOfWeek.MONDAY, calendar?.weekStartDay)
+    }
+
+    @Test
+    fun `without the business week there is no range to choose`() = runTest(dispatcher) {
+        zone = null
+        assertNull(viewModel().uiState.value.calendar)
+    }
+
+    @Test
+    fun `a range export writes only that range, and a later full export everything`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            val range =
+                requireNotNull(
+                    CsvDateRange.of(
+                        requireNotNull(BusinessDate.parse("2026-11-01")),
+                        requireNotNull(BusinessDate.parse("2026-11-11")),
+                    ),
+                )
+
+            model.onAction(CsvExportAction.ExportRange(range))
+            model.onAction(CsvExportAction.DocumentCreated("content://prueba/rango"))
+            advanceUntilIdle()
+            model.onAction(CsvExportAction.Export)
+            model.onAction(CsvExportAction.DocumentCreated("content://prueba/todo"))
+            advanceUntilIdle()
+
+            assertEquals(listOf(range, null), ranges)
         }
 }

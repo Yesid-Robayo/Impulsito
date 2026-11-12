@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.ui.settings
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -16,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
+import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -63,10 +66,14 @@ class SettingsScreenTest {
     private var termsOpened = 0
     private var privacyOpened = 0
 
+    private val usageActions = mutableListOf<UsageAction>()
+
     private fun show(
         overview: SettingsOverviewUiState? = null,
         deviceLockMissing: Boolean = false,
         read: suspend (String) -> String? = { "Texto de licencia de muestra" },
+        usage: UsageSettingsUiState? = null,
+        notificationsBlocked: Boolean = false,
     ) {
         compose.setContent {
             PreviewTheme {
@@ -84,6 +91,9 @@ class SettingsScreenTest {
                             onOpenPrivacy = { privacyOpened += 1 },
                         ),
                     readLicense = read,
+                    usage = usage,
+                    notificationsBlocked = notificationsBlocked,
+                    onUsageAction = { usageActions += it },
                 )
             }
         }
@@ -228,6 +238,78 @@ class SettingsScreenTest {
         compose.onNodeWithText(text(R.string.region_title)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.settings_licenses)).performScrollTo()
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun theStockAlertsSwitchAsksToChangeIt() {
+        show(
+            overview = connected(),
+            usage = UsageSettingsUiState(stockAlerts = false, theme = ThemeMode.SYSTEM),
+        )
+
+        compose.onNodeWithText(text(R.string.settings_stock_alerts)).performClick()
+
+        assertEquals(listOf<UsageAction>(UsageAction.StockAlerts(true)), usageActions)
+        compose.onNodeWithText(text(R.string.permission_notifications_denied_settings))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun blockedAlertsExplainWhyAndLeadToTheSystemSettings() {
+        show(
+            overview = connected(),
+            usage = UsageSettingsUiState(stockAlerts = true, theme = ThemeMode.SYSTEM),
+            notificationsBlocked = true,
+        )
+
+        compose.onNodeWithText(text(R.string.permission_notifications_denied_settings))
+            .assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.action_open_settings)).performClick()
+        assertEquals(listOf<UsageAction>(UsageAction.OpenNotificationSettings), usageActions)
+    }
+
+    @Test
+    fun turnedOffAlertsDoNotComplainAboutTheSystem() {
+        show(
+            overview = connected(),
+            usage = UsageSettingsUiState(stockAlerts = false, theme = ThemeMode.SYSTEM),
+            notificationsBlocked = true,
+        )
+
+        compose.onNodeWithText(text(R.string.permission_notifications_denied_settings))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun theThemeOffersItsThreeModesAndMarksTheChosenOne() {
+        show(
+            overview = connected(),
+            usage = UsageSettingsUiState(stockAlerts = true, theme = ThemeMode.DARK),
+        )
+
+        compose.onNodeWithText(text(R.string.settings_theme_title)).performScrollTo()
+        compose.onNodeWithText(text(R.string.settings_theme_dark)).assertIsSelected()
+        compose.onNodeWithText(text(R.string.settings_theme_system)).assertIsNotSelected()
+        compose.onNodeWithText(text(R.string.settings_theme_light)).performClick()
+        assertEquals(listOf<UsageAction>(UsageAction.Theme(ThemeMode.LIGHT)), usageActions)
+    }
+
+    @Test
+    fun unreadablePreferencesSaySoWithRetry() {
+        show(overview = connected(), usage = UsageSettingsUiState(readFailed = true))
+
+        compose.onNodeWithText(text(R.string.state_error_read)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.settings_group_appearance)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.action_retry)).performClick()
+        assertEquals(listOf<UsageAction>(UsageAction.Retry), usageActions)
+    }
+
+    @Test
+    fun withoutSettingsNeitherAlertsNorAppearanceShow() {
+        show(overview = connected())
+
+        compose.onNodeWithText(text(R.string.settings_group_alerts)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.settings_group_appearance)).assertDoesNotExist()
     }
 
     @Test

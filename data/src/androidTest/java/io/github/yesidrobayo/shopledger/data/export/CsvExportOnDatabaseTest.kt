@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvCell
+import io.github.yesidrobayo.shopledger.domain.model.export.CsvDateRange
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExport
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportProgress
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportTable
@@ -166,6 +167,38 @@ internal class CsvExportOnDatabaseTest : RepositoryTest() {
     }
 
     @Test
+    fun aDateRangeFiltersTheDocumentsAndKeepsTheCatalogsWhole() = runBlocking {
+        val id = commit { products.insert(newProduct("Pan inventado")) }
+        buy(id, units = 5)
+        val saleId = sell(id, units = 1)
+        val day = requireNotNull(RoomSaleRepository(database).findById(saleId)).content.businessDate
+        val sameDay = requireNotNull(CsvDateRange.of(day, day))
+        val earlier = requireNotNull(CsvDateRange.of(day.plusDays(-10), day.plusDays(-1)))
+
+        exporter { FileDocument(output) }.export(request(sameDay)) {}
+        val inside = unzipCsv(output)
+        output.delete()
+        exporter { FileDocument(output) }.export(request(earlier)) {}
+        val outside = unzipCsv(output)
+
+        // El día de la venta: la venta, su línea, la compra, su línea y los dos movimientos.
+        for ((file, rows) in listOf(
+            "sales.csv" to 1,
+            "sale_lines.csv" to 1,
+            "purchases.csv" to 1,
+            "purchase_lines.csv" to 1,
+            "stock_movements.csv" to 2,
+        )) {
+            assertEquals(file, rows, csvLines(inside.getValue(file)).size - 1)
+            // Diez días antes no hay ningún documento: solo el encabezado.
+            assertEquals(file, 1, csvLines(outside.getValue(file)).size)
+        }
+        // Los catálogos van completos con cualquier rango.
+        assertEquals(inside.getValue("products.csv"), outside.getValue("products.csv"))
+        assertEquals(inside.getValue("suppliers.csv"), outside.getValue("suppliers.csv"))
+    }
+
+    @Test
     fun aSaleRegisteredWhileExportingDoesNotEnterAnyFile() = runBlocking {
         val id = commit { products.insert(newProduct("Pan inventado")) }
         buy(id, units = 5)
@@ -242,7 +275,8 @@ internal class CsvExportOnDatabaseTest : RepositoryTest() {
             override fun seedName(table: SeedTable, systemKey: String): String = "seed:$systemKey"
         }
 
-    private fun request() = CsvExportRequest("content://test/export", writer, naming)
+    private fun request(range: CsvDateRange? = null) =
+        CsvExportRequest("content://test/export", writer, naming, range)
 
     private fun exporter(document: () -> CsvDocument) = CsvExporter(
         rows = { RoomCsvRowSource(database) },

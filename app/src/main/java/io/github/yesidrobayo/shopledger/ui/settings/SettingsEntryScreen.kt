@@ -67,9 +67,11 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE }
  * 1. Un aviso si el teléfono no tiene bloqueo de pantalla: no bloquea nada, solo explica el riesgo.
  * 2. `Respaldo`: el estado y dónde se guardan las copias, que abre la pantalla del respaldo. Sin
  *    destino, ofrece elegir dónde guardar, por el mismo camino de siempre.
- * 3. `Perfil del negocio`, `Región e idioma` con su valor actual, `Ventas y cobro` y `Seguridad`.
- * 4. `Datos del negocio`: las copias locales y los pasos para borrar los datos a mano.
- * 5. `Ayuda y acerca de`: versión, el aviso de que no reemplaza la contabilidad, las licencias, los
+ * 3. `Avisos`: el interruptor de los avisos de stock.
+ * 4. `Perfil del negocio`, `Región e idioma` con su valor actual, `Ventas y cobro`, `Seguridad` y
+ *    `Apariencia`, con el tema.
+ * 5. `Datos del negocio`: las copias locales y los pasos para borrar los datos a mano.
+ * 6. `Ayuda y acerca de`: versión, el aviso de que no reemplaza la contabilidad, las licencias, los
  *    términos y la política de privacidad.
  *
  * Los grupos que leen la base no se dibujan sin ella; región, idioma y lo de `Acerca de` sí.
@@ -85,6 +87,9 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE }
  * @param version la versión y la compilación, o `null` mientras se leen.
  * @param readLicense lee el texto de una licencia, fuera del hilo principal.
  * @param csvExport `Exportar a CSV`, en `Datos del negocio`, o `null` sin base.
+ * @param usage los avisos de stock y el tema, o `null` sin base.
+ * @param notificationsBlocked los avisos no pueden salir del teléfono: sin permiso, apagados o con
+ *   el canal silenciado.
  */
 @Composable
 fun SettingsEntryScreen(
@@ -105,8 +110,12 @@ fun SettingsEntryScreen(
     readLicense: suspend (String) -> String? = { null },
     csvExport: CsvExportUiState? = null,
     onCsvExportAction: (CsvExportAction) -> Unit = {},
+    usage: UsageSettingsUiState? = null,
+    notificationsBlocked: Boolean = false,
+    onUsageAction: (UsageAction) -> Unit = {},
 ) {
     var aboutSheet by rememberSaveable { mutableStateOf<AboutSheet?>(null) }
+    var rangeOpen by rememberSaveable { mutableStateOf(false) }
     var license by rememberSaveable { mutableStateOf<LicensedComponent?>(null) }
     val spacing = AppTheme.spacing
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
@@ -136,6 +145,7 @@ fun SettingsEntryScreen(
                     )
                 }
                 overview?.backup?.let { BackupGroup(it, overview.destination, links) }
+                usage?.let { AlertsGroup(it, notificationsBlocked, onUsageAction) }
                 if (profile != null) {
                     BusinessProfileGroup(profile, onProfileAction) {
                         onOpen(AppNavKey.Categories)
@@ -148,9 +158,17 @@ fun SettingsEntryScreen(
                 if (security != null) {
                     SecurityGroup(security, stringResource(R.string.app_name), onSecurityAction)
                 }
+                usage?.let { AppearanceGroup(it, onUsageAction) }
                 if (overview != null) {
                     SectionHeader(stringResource(R.string.settings_group_data))
-                    if (csvExport != null) CsvExportRow(csvExport, onCsvExportAction)
+                    if (csvExport != null) {
+                        CsvExportRow(csvExport, onCsvExportAction)
+                        CsvExportRangeRow(
+                            csvExport,
+                            onOpen = { rangeOpen = true },
+                            onObscured = { onCsvExportAction(CsvExportAction.ObscuredTouch) },
+                        )
+                    }
                     SettingsRow(
                         title = stringResource(R.string.offsite_title),
                         action = SettingsRowAction.Navigation { onOpen(AppNavKey.LocalCopies) },
@@ -167,6 +185,17 @@ fun SettingsEntryScreen(
         }
     }
     profileSheet?.let { BusinessProfileSheet(it, onProfileAction) }
+    val rangeCalendar = csvExport?.calendar
+    if (rangeOpen && rangeCalendar != null) {
+        CsvExportRangeSheet(
+            calendar = rangeCalendar,
+            onExport = { range ->
+                rangeOpen = false
+                onCsvExportAction(CsvExportAction.ExportRange(range))
+            },
+            onDismiss = { rangeOpen = false },
+        )
+    }
     when (aboutSheet) {
         AboutSheet.LICENSES -> {
             val shown = license

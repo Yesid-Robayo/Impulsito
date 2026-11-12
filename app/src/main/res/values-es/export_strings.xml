@@ -7,4 +7,11 @@
     <string name="settings_export_saved">Datos exportados al archivo</string>
     <string name="settings_export_error">No se pudo exportar. Los datos no cambiaron.</string>
     <string name="settings_export_error_space">No hay espacio para guardar el archivo. Los datos no cambiaron.</string>
+    <!-- Exportar por rango de fechas: propuestos, a revisar. -->
+    <string name="settings_export_range">Exportar un rango de fechas</string>
+    <string name="settings_export_range_help">Ventas, compras, gastos y movimientos de esas fechas. Productos y proveedores van completos.</string>
+    <string name="settings_export_range_from">Desde</string>
+    <string name="settings_export_range_to">Hasta</string>
+    <string name="settings_export_range_action">Exportar</string>
+    <string name="settings_export_range_error_order">La fecha final va después de la inicial</string>
 </resources>

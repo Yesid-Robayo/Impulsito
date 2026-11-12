@@ -21,4 +21,13 @@
     <!-- licenses_row: %1$s = component, %2$s = license -->
     <string name="licenses_row">%1$s: %2$s</string>
     <string name="licenses_public_domain">Public domain</string>
+    <!-- Avisos y apariencia. -->
+    <string name="settings_group_alerts">Alerts</string>
+    <string name="settings_stock_alerts">Alert when a product is running low</string>
+    <string name="permission_notifications_denied_settings">Alerts are off in the phone\'s settings.</string>
+    <string name="settings_group_appearance">Appearance</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_system">Automatic</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
 </resources>

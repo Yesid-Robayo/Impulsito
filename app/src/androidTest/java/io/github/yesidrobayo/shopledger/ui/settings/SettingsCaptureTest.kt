@@ -26,6 +26,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
+import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.AppLockSettings
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -92,6 +93,9 @@ class SettingsCaptureTest {
                 val prefix = "${palette.name.lowercase()}-${if (dark) "dark" else "light"}"
                 show(palette, dark)
                 shoot(requireNotNull(dir), "$prefix-top")
+                compose.onNodeWithText(resources.getString(R.string.settings_theme_title))
+                    .performScrollTo()
+                shoot(dir, "$prefix-appearance")
                 compose.onNodeWithText(resources.getString(R.string.settings_privacy))
                     .performScrollTo()
                 shoot(dir, "$prefix-bottom")
@@ -134,6 +138,11 @@ class SettingsCaptureTest {
                             overview = overview,
                             deviceLockMissing = true,
                             version = "1.0.0 (7)",
+                            usage = UsageSettingsUiState(
+                                stockAlerts = true,
+                                theme = ThemeMode.SYSTEM,
+                            ),
+                            notificationsBlocked = true,
                         )
                     }
                 }

@@ -45,6 +45,8 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
+import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
 import io.github.yesidrobayo.shopledger.ui.rescue.appVersionOf
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 import kotlinx.coroutines.flow.map
@@ -116,11 +118,22 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 computation = app.dispatchers.io,
             )
         }
+    val usageModel =
+        rememberAppViewModel { dependencies ->
+            val settings = dependencies.ports.settings
+            val change = ChangePreferenceUseCase(settings, dependencies.container.clock)
+            UsageSettingsViewModel(
+                preferences = { settings.observe().map { it.preferences } },
+                changePreference = { change(it) },
+            )
+        }
     val authenticator = LocalDeviceAuthenticator.current
     var deviceLockMissing by remember { mutableStateOf(false) }
+    var notificationsBlocked by remember { mutableStateOf(false) }
     val overviewViewModel = (overviewModel as? ScreenModel.Ready)?.viewModel
     LifecycleResumeEffect(authenticator, overviewViewModel) {
         deviceLockMissing = !authenticator.hasDeviceCredential()
+        notificationsBlocked = NotificationPermissionPrompt.stockAlertsBlocked(context)
         overviewViewModel?.onReturnToForeground()
         onPauseOrDispose {}
     }
@@ -157,10 +170,14 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 }
             val naming = CsvExportNaming { container.localizedContext.context().resources }
             CsvExportViewModel(
-                export = { uri, progress -> exportCsv(uri, naming, progress) },
+                export = { uri, range, progress -> exportCsv(uri, naming, range, progress) },
                 zone = {
                     val current = BusinessCalendarSource(settings).current()
                     (current as? BusinessCalendarResult.Ready)?.calendar?.zone
+                },
+                calendar = {
+                    val current = BusinessCalendarSource(settings).current()
+                    (current as? BusinessCalendarResult.Ready)?.calendar
                 },
                 now = container.clock::now,
                 appName = appName,
@@ -177,9 +194,12 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
     // todos los datos del negocio.
     val sensitive = rememberSensitiveCheck()
     val exportTitle = stringResource(R.string.settings_export)
-    val startExport: () -> Unit = {
+    // Lo último pedido, todo o un rango: `Reintentar` repite eso mismo.
+    var lastExport by remember { mutableStateOf<CsvExportAction>(CsvExportAction.Export) }
+    val startExport: (CsvExportAction) -> Unit = { request ->
         if (export != null && exportState?.working != true) {
-            export.onAction(CsvExportAction.Export)
+            lastExport = request
+            export.onAction(request)
             val name = export.suggestedName()
             scope.launch {
                 if (sensitive.confirm(exportTitle)) {
@@ -195,7 +215,25 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
     }
     CsvExportMessages(exportState?.message, onShown = {
         export?.onAction(CsvExportAction.MessageShown)
-    }, onRetry = startExport)
+    }, onRetry = { startExport(lastExport) })
+    val notificationPermission = LocalNotificationPermission.current
+    val usageViewModel = (usageModel as? ScreenModel.Ready)?.viewModel
+    val onUsageAction: (UsageAction) -> Unit = { action ->
+        when (action) {
+            // Encender los avisos ofrece el permiso si nunca se pidió; apagarlos no pregunta nada.
+            is UsageAction.StockAlerts -> {
+                usageViewModel?.onStockAlertsChange(action.enabled)
+                if (action.enabled) notificationPermission?.offer()
+            }
+
+            is UsageAction.Theme -> usageViewModel?.onThemeChange(action.mode)
+
+            UsageAction.OpenNotificationSettings ->
+                NotificationPermissionPrompt.openSettings(context)
+
+            UsageAction.Retry -> usageViewModel?.onRetry()
+        }
+    }
     val promptTitle = stringResource(R.string.lock_setting)
     when (model) {
         ScreenModel.Opening, ScreenModel.Unavailable ->
@@ -214,6 +252,7 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
             val security = (securityModel as? ScreenModel.Ready)?.viewModel
             val securityState = security?.uiState?.collectAsStateWithLifecycle()?.value
             val overview = overviewViewModel?.uiState?.collectAsStateWithLifecycle()?.value
+            val usage = usageViewModel?.uiState?.collectAsStateWithLifecycle()?.value
             BackHandler(enabled = uiState.profileSheet != null) {
                 viewModel.onProfileAction(ProfileAction.Dismiss)
             }
@@ -247,7 +286,8 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 csvExport = exportState,
                 onCsvExportAction = { action ->
                     when (action) {
-                        CsvExportAction.Export -> startExport()
+                        CsvExportAction.Export, is CsvExportAction.ExportRange ->
+                            startExport(action)
 
                         is CsvExportAction.DocumentCreated,
                         CsvExportAction.ObscuredTouch,
@@ -255,6 +295,9 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                         -> export?.onAction(action)
                     }
                 },
+                usage = usage,
+                notificationsBlocked = notificationsBlocked,
+                onUsageAction = onUsageAction,
             )
         }
     }

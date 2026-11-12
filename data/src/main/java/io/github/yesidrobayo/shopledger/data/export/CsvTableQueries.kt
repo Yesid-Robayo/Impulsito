@@ -15,8 +15,29 @@ import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportTable
  * orden con [CsvRow]. Un nombre de otra tabla sale con `LEFT JOIN`: un registro nunca se pierde
  * porque falte su categoría o su proveedor, solo queda esa celda vacía. Las filas salen en orden de
  * `id`, el orden en que se registraron.
+ *
+ * @param rangeFilter la condición que deja solo las fechas de negocio de un rango, con `?1` para la
+ *   primera y `?2` para la última; `null` en los catálogos, que van completos.
  */
-internal class CsvTableQuery(val sql: String, val cells: (CsvRow) -> List<CsvCell>)
+internal class CsvTableQuery(
+    private val sql: String,
+    private val rangeFilter: String? = null,
+    val cells: (CsvRow) -> List<CsvCell>,
+) {
+    /** La consulta sin rango, o con su condición antes del orden, si este archivo se filtra. */
+    fun sqlFor(ranged: Boolean): String = if (ranged && rangeFilter != null) {
+        sql.replace(ORDER_BY, "WHERE $rangeFilter\n$ORDER_BY")
+    } else {
+        sql
+    }
+
+    /** Si esta consulta lleva las dos fechas del rango como parámetros. */
+    fun usesRange(ranged: Boolean): Boolean = ranged && rangeFilter != null
+
+    private companion object {
+        const val ORDER_BY = "ORDER BY"
+    }
+}
 
 /**
  * Lee la fila actual de una consulta, una columna tras otra, como celdas de la exportación. Un valor
@@ -149,6 +170,7 @@ internal object CsvTableQueries {
             LEFT JOIN price_lists pl ON pl.id = s.price_list_id
             ORDER BY s.id
             """.trimIndent(),
+            rangeFilter = "s.business_date BETWEEN ?1 AND ?2",
         ) { row ->
             val id = row.count()
             val date = row.day()
@@ -188,6 +210,8 @@ internal object CsvTableQueries {
             LEFT JOIN units u ON u.id = l.unit_id
             ORDER BY l.id
             """.trimIndent(),
+            rangeFilter =
+                "l.sale_id IN (SELECT id FROM sales WHERE business_date BETWEEN ?1 AND ?2)",
         ) { row ->
             listOf(
                 row.count(),
@@ -219,6 +243,7 @@ internal object CsvTableQueries {
             LEFT JOIN suppliers su ON su.id = pu.supplier_id
             ORDER BY pu.id
             """.trimIndent(),
+            rangeFilter = "pu.business_date BETWEEN ?1 AND ?2",
         ) { row ->
             listOf(
                 row.count(),
@@ -252,6 +277,9 @@ internal object CsvTableQueries {
             LEFT JOIN stock_lots lo ON lo.id = l.lot_id
             ORDER BY l.id
             """.trimIndent(),
+            rangeFilter =
+                "l.purchase_id IN " +
+                    "(SELECT id FROM purchases WHERE business_date BETWEEN ?1 AND ?2)",
         ) { row ->
             listOf(
                 row.count(),
@@ -281,6 +309,7 @@ internal object CsvTableQueries {
             LEFT JOIN stock_lots lo ON lo.id = m.lot_id
             ORDER BY m.id
             """.trimIndent(),
+            rangeFilter = "m.business_date BETWEEN ?1 AND ?2",
         ) { row ->
             listOf(
                 row.count(),
@@ -312,6 +341,7 @@ internal object CsvTableQueries {
             LEFT JOIN money_accounts ma ON ma.id = e.money_account_id
             ORDER BY e.id
             """.trimIndent(),
+            rangeFilter = "e.business_date BETWEEN ?1 AND ?2",
         ) { row ->
             listOf(
                 row.count(),
@@ -338,6 +368,7 @@ internal object CsvTableQueries {
             LEFT JOIN price_lists pl ON pl.id = h.price_list_id
             ORDER BY h.id
             """.trimIndent(),
+            rangeFilter = "h.business_date BETWEEN ?1 AND ?2",
         ) { row ->
             listOf(
                 row.day(),

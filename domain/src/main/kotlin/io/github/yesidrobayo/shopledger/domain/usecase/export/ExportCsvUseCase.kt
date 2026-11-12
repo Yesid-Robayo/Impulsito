@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.export
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
+import io.github.yesidrobayo.shopledger.domain.model.export.CsvDateRange
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExport
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportProgress
 import io.github.yesidrobayo.shopledger.domain.model.region.DecimalSeparator
@@ -19,6 +20,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.CsvFormat
  * decimal sale del formato regional por [decimalSeparator], que solo la interfaz sabe leer. Con una
  * zona que este teléfono no conoce, como la de una copia de un teléfono más nuevo, no exporta: las
  * fechas y horas saldrían en otra zona sin decirlo.
+ *
+ * Con un rango, solo entran los documentos y movimientos de esas fechas de negocio; los catálogos van
+ * completos.
  */
 class ExportCsvUseCase(
     private val settings: AppSettingsRepository,
@@ -28,6 +32,7 @@ class ExportCsvUseCase(
     suspend operator fun invoke(
         documentUri: String,
         naming: CsvNaming,
+        range: CsvDateRange? = null,
         progress: (CsvExportProgress) -> Unit,
     ): CsvExport {
         val regional = settings.get().regional
@@ -39,7 +44,7 @@ class ExportCsvUseCase(
                 regional.currency.decimals,
             )
         return export.export(
-            CsvExportRequest(documentUri, CsvRowWriter(format, zone), naming),
+            CsvExportRequest(documentUri, CsvRowWriter(format, zone), naming, range),
             progress,
         )
     }

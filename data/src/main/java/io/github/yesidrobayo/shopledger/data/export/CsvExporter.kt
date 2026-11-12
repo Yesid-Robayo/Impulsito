@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.audit.AuditEventType
 import io.github.yesidrobayo.shopledger.domain.model.audit.AuditResult
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvCell
+import io.github.yesidrobayo.shopledger.domain.model.export.CsvDateRange
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExport
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportProgress
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportTable
@@ -142,9 +143,10 @@ internal class CsvExporter(
                 zip.putNextEntry(ZipEntry(request.naming.fileName(table)))
                 writer.write(CsvRowWriter.BYTE_ORDER_MARK)
                 writer.write(request.rows.header(table.columns.map(request.naming::header)))
-                total += reader.forEachRow(table, request.naming::seedName) { cells ->
-                    writer.write(request.rows.row(cells))
-                }
+                total +=
+                    reader.forEachRow(table, request.naming::seedName, request.range) { cells ->
+                        writer.write(request.rows.row(cells))
+                    }
                 writer.flush()
                 zip.closeEntry()
                 progress(CsvExportProgress(done + 1, tables.size))
@@ -182,10 +184,14 @@ internal interface CsvRowSource {
 
 /** Recorre las filas de un archivo de la exportación. */
 internal interface CsvRowReader {
-    /** Llama a [each] con las celdas de cada fila de [table], en orden. Devuelve cuántas fueron. */
+    /**
+     * Llama a [each] con las celdas de cada fila de [table], en orden. Devuelve cuántas fueron. Con
+     * [range], los documentos y movimientos se limitan a esas fechas de negocio; los catálogos no.
+     */
     suspend fun forEachRow(
         table: CsvExportTable,
         seedName: (SeedTable, String) -> String,
+        range: CsvDateRange?,
         each: (List<CsvCell>) -> Unit,
     ): Long
 }
@@ -203,10 +209,17 @@ internal class RoomCsvRowSource(private val database: AppDatabase) : CsvRowSourc
                     override suspend fun forEachRow(
                         table: CsvExportTable,
                         seedName: (SeedTable, String) -> String,
+                        range: CsvDateRange?,
                         each: (List<CsvCell>) -> Unit,
                     ): Long {
                         val query = CsvTableQueries.of(table)
-                        return connection.usePrepared(query.sql) { statement ->
+                        val ranged = range != null
+                        return connection.usePrepared(query.sqlFor(ranged)) { statement ->
+                            if (range != null && query.usesRange(ranged)) {
+                                // Las fechas se guardan como `AAAA-MM-DD`: comparar el texto ordena.
+                                statement.bindText(1, range.from.toString())
+                                statement.bindText(2, range.to.toString())
+                            }
                             var count = 0L
                             while (statement.step()) {
                                 each(query.cells(CsvRow(statement, seedName)))

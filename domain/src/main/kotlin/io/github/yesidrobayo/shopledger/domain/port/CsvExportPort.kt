@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
+import io.github.yesidrobayo.shopledger.domain.model.export.CsvDateRange
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExport
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportProgress
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportTable
@@ -25,8 +26,14 @@ interface CsvExportPort {
  * @property documentUri el documento ya creado por el selector.
  * @property rows escribe cada línea con el formato regional del negocio.
  * @property naming los nombres de archivos, columnas y filas iniciales.
+ * @property range las fechas que entran, o `null` para exportar todo.
  */
-class CsvExportRequest(val documentUri: String, val rows: CsvRowWriter, val naming: CsvNaming)
+class CsvExportRequest(
+    val documentUri: String,
+    val rows: CsvRowWriter,
+    val naming: CsvNaming,
+    val range: CsvDateRange? = null,
+)
 
 /**
  * Los nombres que la exportación no guarda en la base: los de los archivos, los de las columnas y el

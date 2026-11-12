@@ -32,8 +32,8 @@ import kotlinx.coroutines.launch
  * se abre el diálogo del sistema. Cerrar la hoja o negar el permiso no cambia nada más: la lista de
  * lo que se está acabando y el estado del respaldo se ven igual en la app, y no se insiste.
  *
- * Hoy se ofrece al guardar el primer producto. Las otras entradas, terminar una restauración y
- * encender los avisos de stock, llaman a [offer] cuando existan.
+ * Se ofrece al guardar el primer producto y al encender los avisos de stock en Ajustes. La otra
+ * entrada, terminar una restauración, llama a [offer] cuando exista.
  *
  * @param needsAsking si hace falta pedirlo: Android 13 o superior y el permiso sin dar.
  * @param isFirstProduct si el producto recién guardado es el único del catálogo.

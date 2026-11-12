@@ -1,8 +1,10 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.export
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvCell
+import io.github.yesidrobayo.shopledger.domain.model.export.CsvDateRange
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExport
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportProgress
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportTable
@@ -60,6 +62,25 @@ class ExportCsvUseCaseTest {
             request.rows.row(listOf(CsvCell.Amount(Money(1234L)), CsvCell.Moment(moment))),
         )
         assertEquals(listOf(CsvExportProgress(1, 9)), progress)
+        assertNull(request.range)
+    }
+
+    @Test
+    fun `a date range reaches the export`() = runTest {
+        val settings =
+            FakeAppSettingsRepository(appSettings(regionalSettings("Etc/GMT+5", DayOfWeek.MONDAY)))
+        val port = RecordingPort(CsvExport.Saved(files = 9, rows = 1L))
+        val range =
+            requireNotNull(
+                CsvDateRange.of(
+                    requireNotNull(BusinessDate.parse("2026-11-01")),
+                    requireNotNull(BusinessDate.parse("2026-11-30")),
+                ),
+            )
+
+        ExportCsvUseCase(settings, port) { DecimalSeparator.POINT }("uri", naming, range) {}
+
+        assertEquals(range, requireNotNull(port.request).range)
     }
 
     @Test
