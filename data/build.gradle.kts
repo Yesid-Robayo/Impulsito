@@ -106,6 +106,17 @@ tasks.withType<Test>().configureEach {
     // Las dos muertes seguidas del reemplazo en todos sus escenarios: -PswapFull=true. Tarda
     // minutos, así que check corre solo los que cambian el camino de la recuperación.
     systemProperty("swap.full", providers.gradleProperty("swapFull").getOrElse("false"))
+    // Los vectores públicos del formato de las copias cifradas, los mismos que usa la herramienta
+    // de rescate en el PC: el lector y el escritor de la app se prueban contra ellos.
+    val backupFormatVectors =
+        rootProject.layout.projectDirectory.file(
+            "tools/backup-format/vectors/format-v2-vectors.json",
+        )
+    systemProperty("backupFormat.vectors", backupFormatVectors.asFile.absolutePath)
+    inputs
+        .files(backupFormatVectors)
+        .withPropertyName("backupFormatVectors")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     // El JSON también se lee como archivo: si cambia, las pruebas vuelven a correr.
     inputs
         .dir(appDatabaseSchemas)
