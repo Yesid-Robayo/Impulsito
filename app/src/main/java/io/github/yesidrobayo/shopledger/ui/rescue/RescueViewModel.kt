@@ -127,6 +127,13 @@ class RescueViewModel(
             BackupAction.ChooseDestination,
             BackupAction.ReviewPolicy,
             BackupAction.OpenProvider,
+            BackupAction.OpenMeteredPolicy,
+            is BackupAction.PickMeteredPolicy,
+            BackupAction.ConfirmWifiOnly,
+            BackupAction.CloseMeteredPolicy,
+            is BackupAction.ReleaseCopy,
+            BackupAction.ConfirmRelease,
+            BackupAction.CloseRelease,
             -> Unit
         }
     }
