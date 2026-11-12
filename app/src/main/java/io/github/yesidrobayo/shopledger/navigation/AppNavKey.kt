@@ -70,6 +70,7 @@ sealed interface AppNavKey : NavKey {
     data class Purchase(
         val prefillProductId: Long? = null,
         val prefillFromPurchaseId: Long? = null,
+        val prefillSupplierId: Long? = null,
     ) : AppNavKey
 
     @Serializable

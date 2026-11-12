@@ -17,6 +17,9 @@ interface SupplierRepository {
     /** Los proveedores de [filter], en el orden de su nombre normalizado. */
     fun observe(filter: ArchiveFilter): Flow<List<Supplier>>
 
+    /** El proveedor [id], o `null` si no existe o deja de existir. */
+    fun observeById(id: Long): Flow<Supplier?>
+
     suspend fun findById(id: Long): Supplier?
 
     /** El proveedor sin archivar con ese nombre normalizado, para no repetir nombres. */

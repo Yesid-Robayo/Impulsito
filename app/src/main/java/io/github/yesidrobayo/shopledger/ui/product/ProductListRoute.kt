@@ -15,11 +15,11 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 
 /**
  * La lista de productos en la navegación: obtiene su ViewModel y resuelve abrir un producto o
- * crear uno. Mientras la base abre, la lista se ve cargando; si la base va al rescate, la pantalla
+ * crear uno. Como pestaña de Productos recibe [tabs], que van bajo su barra. Mientras la base abre, la lista se ve cargando; si la base va al rescate, la pantalla
  * no lee nada y muestra su estado vacío.
  */
 @Composable
-fun ProductListRoute(navigator: AppNavigator) {
+fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = null) {
     val model =
         rememberAppViewModel { dependencies ->
             ProductListViewModel(
@@ -32,7 +32,8 @@ fun ProductListRoute(navigator: AppNavigator) {
             )
         }
     when (model) {
-        ScreenModel.Opening -> ProductListScreen(uiState = ProductListUiState(), onAction = {})
+        ScreenModel.Opening ->
+            ProductListScreen(uiState = ProductListUiState(), onAction = {}, tabs = tabs)
 
         ScreenModel.Unavailable -> PlaceholderRoute(AppNavKey.ProductList, navigator)
 
@@ -53,6 +54,7 @@ fun ProductListRoute(navigator: AppNavigator) {
                             viewModel.onAction(action)
                     }
                 },
+                tabs = tabs,
                 floatingAction = {
                     TonalFab(
                         text = stringResource(R.string.product_new_title),

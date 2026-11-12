@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: la lista y el detalle de proveedores, y su hoja de crear o editar. -->
+    <string name="empty_suppliers_title">Aún no hay proveedores</string>
+    <string name="empty_suppliers_body">Aquí se guarda quién vende al negocio y cuánto se le ha comprado.</string>
+    <string name="empty_suppliers_action">Nuevo proveedor</string>
+    <string name="dialog_delete_supplier_title">¿Eliminar %1$s?</string>
+    <string name="dialog_delete_supplier_body">No tiene compras. Sus productos quedarán sin proveedor.</string>
+    <string name="dialog_delete_supplier_action">Eliminar proveedor</string>
+    <string name="dialog_archive_supplier_title">¿Archivar %1$s?</string>
+    <string name="dialog_archive_supplier_body">Deja de aparecer en compras nuevas. Su historial se conserva.</string>
+    <string name="dialog_archive_supplier_action">Archivar proveedor</string>
+    <string name="error_supplier_reactivate_duplicate">Ya existe un proveedor activo con ese nombre. Se debe cambiar uno de los dos.</string>
+    <string name="form_phone">Teléfono</string>
+    <string name="form_email">Correo</string>
+    <string name="form_notes">Notas</string>
+    <string name="error_phone_format">Solo números, espacios y los signos + - ( )</string>
+    <string name="error_email_format">El correo lleva una @ con texto a cada lado</string>
+    <string name="purchase_total_bought">Total comprado</string>
+    <string name="supplier_new_title">Nuevo proveedor</string>
+    <string name="supplier_edit_title">Editar proveedor</string>
+    <string name="supplier_save">Guardar proveedor</string>
+    <string name="supplier_search_hint">Buscar proveedor</string>
+    <string name="supplier_notes_help">Anotar solo lo necesario. No escribir datos sensibles en las notas.</string>
+    <string name="supplier_error_name_empty">Escribir el nombre del proveedor</string>
+    <string name="supplier_error_name_duplicate">Ya hay un proveedor activo llamado %1$s</string>
+    <string name="supplier_error_has_history">Tiene compras: solo se puede archivar</string>
+    <string name="supplier_saved">Proveedor guardado</string>
+    <string name="supplier_archived">Proveedor archivado</string>
+    <string name="supplier_reactivated">Proveedor reactivado</string>
+    <string name="supplier_deleted">Proveedor eliminado</string>
+    <string name="supplier_group_archived">Archivados (%1$d)</string>
+    <string name="supplier_usual_products">Productos habituales</string>
+    <string name="supplier_no_purchases">Aún no hay compras a este proveedor</string>
+    <string name="supplier_dial_a11y">Marcar %1$s</string>
+    <plurals name="supplier_products_count">
+        <item quantity="one">%1$d producto</item>
+        <item quantity="many">%1$d de productos</item>
+        <item quantity="other">%1$d productos</item>
+    </plurals>
+</resources>

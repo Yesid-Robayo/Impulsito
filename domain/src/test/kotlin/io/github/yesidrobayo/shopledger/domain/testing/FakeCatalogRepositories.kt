@@ -291,12 +291,20 @@ internal class FakeLowStockAlertRepository(private val database: InMemoryDatabas
     }
 }
 
-/** Un [SupplierRepository] que solo lee lo sembrado: estas pruebas no escriben proveedores. */
+/**
+ * Un [SupplierRepository] sobre [InMemoryDatabase]. Su historia son sus compras, como en la base,
+ * donde también cuentan devoluciones y libro. Borrarlo deja sin proveedor habitual a sus productos.
+ */
 internal class FakeSupplierRepository(private val database: InMemoryDatabase) : SupplierRepository {
     override fun observe(filter: ArchiveFilter): Flow<List<Supplier>> =
         database.tables.map { tables ->
-            tables.suppliers.values.filter { it.isArchived == (filter == ArchiveFilter.ARCHIVED) }
+            tables.suppliers.values
+                .filter { it.isArchived == (filter == ArchiveFilter.ARCHIVED) }
+                .sortedWith(compareBy<Supplier> { it.details.normalizedName }.thenBy { it.id })
         }
+
+    override fun observeById(id: Long): Flow<Supplier?> =
+        database.tables.map { tables -> tables.suppliers[id] }
 
     override suspend fun findById(id: Long): Supplier? = database.read().suppliers[id]
 
@@ -305,18 +313,50 @@ internal class FakeSupplierRepository(private val database: InMemoryDatabase) : 
             !it.isArchived && it.details.normalizedName == normalizedName
         }
 
-    override suspend fun hasHistory(id: Long): Boolean = false
+    override suspend fun hasHistory(id: Long): Boolean =
+        database.read().purchases.values.any { it.content.supplierId == id }
 
-    override suspend fun insert(details: SupplierDetails, createdAt: Instant): Long = notUsed()
+    override suspend fun insert(details: SupplierDetails, createdAt: Instant): Long {
+        val id = database.nextId(TABLE)
+        val stored = Supplier(id, details, Money.ZERO, null, createdAt, createdAt)
+        database.write { it.copy(suppliers = it.suppliers + (id to stored)) }
+        return id
+    }
 
-    override suspend fun update(id: Long, details: SupplierDetails, updatedAt: Instant) = notUsed()
+    override suspend fun update(id: Long, details: SupplierDetails, updatedAt: Instant) =
+        change(id) { it.copy(details = details, updatedAt = updatedAt) }
 
     override suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant) =
-        notUsed()
+        change(id) { it.copy(archivedAt = archivedAt, updatedAt = updatedAt) }
 
-    override suspend fun delete(id: Long) = notUsed()
+    override suspend fun delete(id: Long) {
+        // Como la base: con historia, una llave lo impide.
+        check(!hasHistory(id)) { "Una llave impide borrarlo" }
+        database.write { tables ->
+            checkNotNull(tables.suppliers[id]) { "No existe el proveedor" }
+            tables.copy(
+                suppliers = tables.suppliers - id,
+                products = tables.products.mapValues { (_, product) ->
+                    if (product.details.defaultSupplierId == id) {
+                        product.copy(details = product.details.copy(defaultSupplierId = null))
+                    } else {
+                        product
+                    }
+                },
+            )
+        }
+    }
 
-    private fun notUsed(): Nothing = error("Estas pruebas no escriben proveedores")
+    private fun change(id: Long, update: (Supplier) -> Supplier) {
+        database.write { tables ->
+            val supplier = checkNotNull(tables.suppliers[id]) { "No existe el proveedor" }
+            tables.copy(suppliers = tables.suppliers + (id to update(supplier)))
+        }
+    }
+
+    private companion object {
+        const val TABLE = "suppliers"
+    }
 }
 
 /** Un [UnitRepository] que lee lo sembrado. */

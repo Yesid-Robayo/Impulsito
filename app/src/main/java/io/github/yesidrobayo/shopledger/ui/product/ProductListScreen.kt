@@ -62,6 +62,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  * inicial. En una ventana ancha, la lista queda a la izquierda, a su ancho de lectura.
  *
  * @param floatingAction el botón flotante `Nuevo producto`, encima de la barra inferior.
+ * @param tabs las pestañas de Productos, bajo la barra superior, cuando la lista es una de ellas.
  */
 @Composable
 fun ProductListScreen(
@@ -69,6 +70,7 @@ fun ProductListScreen(
     onAction: (ProductListAction) -> Unit,
     modifier: Modifier = Modifier,
     floatingAction: @Composable () -> Unit = {},
+    tabs: (@Composable () -> Unit)? = null,
 ) {
     val spacing = AppTheme.spacing
     val sizes = AppTheme.sizes
@@ -95,6 +97,7 @@ fun ProductListScreen(
                     .fillMaxWidth()
                     .navigationBarsPadding(),
             ) {
+                tabs?.invoke()
                 if (uiState.content != ProductListContent.EmptyCatalog) {
                     SearchField(
                         query = uiState.query,

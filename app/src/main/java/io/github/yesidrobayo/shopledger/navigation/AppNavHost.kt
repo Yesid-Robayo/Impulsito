@@ -55,7 +55,7 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderScreen
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
 import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
-import io.github.yesidrobayo.shopledger.ui.product.ProductListRoute
+import io.github.yesidrobayo.shopledger.ui.product.ProductsRoute
 import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 import io.github.yesidrobayo.shopledger.ui.safety.PolicyGated
@@ -68,6 +68,8 @@ import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleHistoryRoute
 import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryRoute
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.supplier.SupplierDetailRoute
+import io.github.yesidrobayo.shopledger.ui.supplier.SupplierListRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
@@ -197,7 +199,12 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.DocumentSlotsSetup ->
             PolicyGated(onDeclined = { navigator.back() }) { SlotSetupRoute(navigator) }
 
-        AppNavKey.ProductList -> ProductListRoute(navigator)
+        AppNavKey.ProductList -> ProductsRoute(navigator)
+
+        AppNavKey.Suppliers ->
+            SupplierListRoute(navigator, navigation = TopBarNavigation.BACK)
+
+        is AppNavKey.SupplierDetail -> SupplierDetailRoute(key, navigator)
 
         is AppNavKey.NewSale -> NewSaleRoute(key, navigator)
 

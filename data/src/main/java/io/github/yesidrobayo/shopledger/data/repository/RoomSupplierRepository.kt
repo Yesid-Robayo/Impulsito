@@ -29,6 +29,9 @@ internal class RoomSupplierRepository(database: AppDatabase) : SupplierRepositor
         return rows.map { list -> list.map(::toSupplier) }.distinctUntilChanged()
     }
 
+    override fun observeById(id: Long): Flow<Supplier?> =
+        suppliers.observeById(id).map { row -> row?.let(::toSupplier) }.distinctUntilChanged()
+
     override suspend fun findById(id: Long): Supplier? = suppliers.findById(id)?.let(::toSupplier)
 
     override suspend fun findActiveByNormalizedName(normalizedName: String): Supplier? =

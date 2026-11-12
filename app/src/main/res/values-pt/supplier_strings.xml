@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Português: a lista e o detalhe de fornecedores, e a folha de criar ou editar. -->
+    <string name="empty_suppliers_title">Ainda não há fornecedores</string>
+    <string name="empty_suppliers_body">Aqui fica quem vende ao negócio e quanto já foi comprado.</string>
+    <string name="empty_suppliers_action">Novo fornecedor</string>
+    <string name="dialog_delete_supplier_title">Excluir %1$s?</string>
+    <string name="dialog_delete_supplier_body">Não tem compras. Os produtos dele ficarão sem fornecedor.</string>
+    <string name="dialog_delete_supplier_action">Excluir fornecedor</string>
+    <string name="dialog_archive_supplier_title">Arquivar %1$s?</string>
+    <string name="dialog_archive_supplier_body">Deixa de aparecer em novas compras. O histórico é mantido.</string>
+    <string name="dialog_archive_supplier_action">Arquivar fornecedor</string>
+    <string name="error_supplier_reactivate_duplicate">Já existe um fornecedor ativo com esse nome. É preciso alterar um dos dois.</string>
+    <string name="form_phone">Telefone</string>
+    <string name="form_email">E-mail</string>
+    <string name="form_notes">Notas</string>
+    <string name="error_phone_format">Somente números, espaços e os sinais + - ( )</string>
+    <string name="error_email_format">O e-mail precisa de um @ com texto de cada lado</string>
+    <string name="purchase_total_bought">Total comprado</string>
+    <string name="supplier_new_title">Novo fornecedor</string>
+    <string name="supplier_edit_title">Editar fornecedor</string>
+    <string name="supplier_save">Salvar fornecedor</string>
+    <string name="supplier_search_hint">Buscar fornecedor</string>
+    <string name="supplier_notes_help">Anotar só o necessário. Não escrever dados sensíveis nas notas.</string>
+    <string name="supplier_error_name_empty">Escrever o nome do fornecedor</string>
+    <string name="supplier_error_name_duplicate">Já existe um fornecedor ativo chamado %1$s</string>
+    <string name="supplier_error_has_history">Tem compras: só pode ser arquivado</string>
+    <string name="supplier_saved">Fornecedor salvo</string>
+    <string name="supplier_archived">Fornecedor arquivado</string>
+    <string name="supplier_reactivated">Fornecedor reativado</string>
+    <string name="supplier_deleted">Fornecedor excluído</string>
+    <string name="supplier_group_archived">Arquivados (%1$d)</string>
+    <string name="supplier_usual_products">Produtos habituais</string>
+    <string name="supplier_no_purchases">Ainda não há compras deste fornecedor</string>
+    <string name="supplier_dial_a11y">Discar %1$s</string>
+    <plurals name="supplier_products_count">
+        <item quantity="one">%1$d produto</item>
+        <item quantity="many">%1$d de produtos</item>
+        <item quantity="other">%1$d produtos</item>
+    </plurals>
+</resources>

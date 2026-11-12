@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: la lista y el detalle de proveedores, y su hoja de crear o editar. -->
+    <string name="empty_suppliers_title">No suppliers yet</string>
+    <string name="empty_suppliers_body">Keep track of who sells to the business and how much was bought from them.</string>
+    <string name="empty_suppliers_action">New supplier</string>
+    <string name="dialog_delete_supplier_title">Delete %1$s?</string>
+    <string name="dialog_delete_supplier_body">It has no purchases. Its products will be left with no supplier.</string>
+    <string name="dialog_delete_supplier_action">Delete supplier</string>
+    <string name="dialog_archive_supplier_title">Archive %1$s?</string>
+    <string name="dialog_archive_supplier_body">It stops appearing in new purchases. Its history is kept.</string>
+    <string name="dialog_archive_supplier_action">Archive supplier</string>
+    <string name="error_supplier_reactivate_duplicate">An active supplier with that name already exists. Change one of the two.</string>
+    <string name="form_phone">Phone</string>
+    <string name="form_email">Email</string>
+    <string name="form_notes">Notes</string>
+    <string name="error_phone_format">Only numbers, spaces and the signs + - ( )</string>
+    <string name="error_email_format">The email needs an @ with text on each side</string>
+    <string name="purchase_total_bought">Total purchased</string>
+    <string name="supplier_new_title">New supplier</string>
+    <string name="supplier_edit_title">Edit supplier</string>
+    <string name="supplier_save">Save supplier</string>
+    <string name="supplier_search_hint">Search suppliers</string>
+    <string name="supplier_notes_help">Write down only what is needed. Do not write sensitive data in the notes.</string>
+    <string name="supplier_error_name_empty">Enter the supplier name</string>
+    <string name="supplier_error_name_duplicate">An active supplier named %1$s already exists</string>
+    <string name="supplier_error_has_history">It has purchases, so it can only be archived</string>
+    <string name="supplier_saved">Supplier saved</string>
+    <string name="supplier_archived">Supplier archived</string>
+    <string name="supplier_reactivated">Supplier reactivated</string>
+    <string name="supplier_deleted">Supplier deleted</string>
+    <string name="supplier_group_archived">Archived (%1$d)</string>
+    <string name="supplier_usual_products">Usual products</string>
+    <string name="supplier_no_purchases">No purchases from this supplier yet</string>
+    <string name="supplier_dial_a11y">Dial %1$s</string>
+    <plurals name="supplier_products_count">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+</resources>

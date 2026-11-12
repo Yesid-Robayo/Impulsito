@@ -28,6 +28,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomSalePaymentRepositor
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSalesReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomStockLedgerRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierActivitySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSystemRowRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomTaxRateRepository
@@ -62,6 +63,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalesReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.SupplierActivitySource
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
@@ -125,6 +127,9 @@ class DataPorts internal constructor(
     val categories: CategoryRepository = RoomCategoryRepository(database)
 
     val suppliers: SupplierRepository = RoomSupplierRepository(database)
+
+    /** Las compras y los productos habituales de cada proveedor. Solo lee. */
+    val supplierActivity: SupplierActivitySource = RoomSupplierActivitySource(database)
 
     val products: ProductRepository = RoomProductRepository(database)
 
