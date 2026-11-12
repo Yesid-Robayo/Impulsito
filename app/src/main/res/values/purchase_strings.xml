@@ -32,4 +32,6 @@
     <string name="purchase_unit_unavailable">This unit is no longer bought</string>
     <!-- Revisar precios tras una compra. -->
     <string name="notice_low_margin_after_purchase">%1$s fell below the target margin. Check its price.</string>
+    <string name="dialog_correct_purchase_body">This purchase is voided and a new one opens with the same data. If the new one is not saved, this one stays voided anyway.</string>
+    <string name="notice_fix_archived_supplier">The original supplier is archived. Choose another or reactivate it.</string>
 </resources>

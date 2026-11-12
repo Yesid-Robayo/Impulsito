@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.expense
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.OTHER_EXPENSE_CATEGORY
@@ -12,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryInpu
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrection
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
@@ -19,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseMonth
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.SaveExpenseCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseResult
+import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
 import kotlin.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -53,6 +56,7 @@ import kotlinx.datetime.yearMonth
  * @param register registra un gasto en una sola transacción.
  * @param void anula un gasto en una sola transacción.
  * @param createCategory crea una categoría de gasto desde el gasto nuevo.
+ * @param loadCorrection lee lo que trae corregir un gasto, o `null` si ya no existe.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExpensesViewModel(
@@ -65,6 +69,7 @@ class ExpensesViewModel(
     private val createCategory: suspend (ExpenseCategoryDraft) -> SaveExpenseCategoryResult = {
         SaveExpenseCategoryResult.NotFound
     },
+    private val loadCorrection: suspend (Long) -> ExpenseCorrection? = { null },
 ) : ViewModel() {
     private val state = MutableStateFlow(ExpensesUiState())
     val uiState: StateFlow<ExpensesUiState> = state.asStateFlow()
@@ -139,6 +144,14 @@ class ExpensesViewModel(
                 it.copy(detail = null, selectedExpenseId = null)
             }
 
+            ExpensesAction.StartCorrect -> editDetail {
+                it.copy(confirmCorrect = true, status = ExpenseSheetStatus.IDLE)
+            }
+
+            ExpensesAction.CloseCorrect -> editDetail { it.copy(confirmCorrect = false) }
+
+            ExpensesAction.ConfirmCorrect -> confirmCorrect()
+
             ExpensesAction.NewExpense -> state.update {
                 it.copy(form = ExpenseForm(categoryId = defaultCategory(it.categories)?.id))
             }
@@ -209,7 +222,7 @@ class ExpensesViewModel(
                     detail = detail,
                     form = current.form?.let { form ->
                         // Sin categoría elegida todavía, se propone la de otros gastos.
-                        if (form.categoryId == null) {
+                        if (form.categoryId == null && form.proposeCategory) {
                             form.copy(categoryId = defaultCategory(month.categories)?.id)
                         } else {
                             form
@@ -277,6 +290,55 @@ class ExpensesViewModel(
             }
         }
     }
+
+    /**
+     * Anula el gasto con el motivo de error al registrar y abre el gasto nuevo con su valor, su
+     * categoría si sigue vigente, su descripción y su fecha. Son dos pasos: si el nuevo no se
+     * guarda, el original queda anulado, y la hoja lo advirtió antes. Si no se pudo anular, el gasto
+     * sigue activo y la hoja lo dice.
+     */
+    private fun confirmCorrect() {
+        val detail = state.value.detail ?: return
+        if (detail.status == ExpenseSheetStatus.WORKING) return
+        editDetail { it.copy(confirmCorrect = false, status = ExpenseSheetStatus.WORKING) }
+        viewModelScope.launch {
+            val voided = when (void(detail.row.id, VoidReason.ENTRY_ERROR, null)) {
+                // Ya anulado en otra pantalla: igual se corrige.
+                VoidExpenseResult.Voided, VoidExpenseResult.AlreadyVoided -> true
+
+                VoidExpenseResult.ExpenseNotFound,
+                VoidExpenseResult.ReasonNotAllowed,
+                VoidExpenseResult.NoteTooLong,
+                is VoidExpenseResult.StorageFailed,
+                -> false
+            }
+            if (!voided) {
+                editDetail { it.copy(status = ExpenseSheetStatus.FAILED) }
+                return@launch
+            }
+            val correction = loadCorrection(detail.row.id)
+            state.update { current ->
+                current.copy(
+                    detail = null,
+                    selectedExpenseId = null,
+                    form = correction?.let { formOf(it, current.today) },
+                )
+            }
+        }
+    }
+
+    private fun formOf(correction: ExpenseCorrection, today: BusinessDate?) = ExpenseForm(
+        amountText = fixedPointInputText(
+            correction.amount.minor,
+            numbers.currencyDecimals,
+            numbers.moneySymbols,
+        ),
+        categoryId = correction.categoryId,
+        description = correction.description.orEmpty(),
+        date = correction.date.takeIf { it != today },
+        notice = ExpenseFormNotice.CategoryLeftOut.takeIf { correction.categoryLeftOut },
+        proposeCategory = !correction.categoryLeftOut,
+    )
 
     private fun save() {
         val current = state.value

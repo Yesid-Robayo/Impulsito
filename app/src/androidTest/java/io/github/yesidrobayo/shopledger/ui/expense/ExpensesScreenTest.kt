@@ -99,4 +99,23 @@ class ExpensesScreenTest {
 
         assertTrue(ExpensesAction.Retry in actions)
     }
+
+    @Test
+    fun anActiveExpenseOffersVoidAndCorrect() {
+        val state = previewExpenses()
+        val row = (state.content as ExpensesContent.Days).days.last().rows.single()
+        show(state.copy(detail = ExpenseDetailSheet(row)))
+
+        compose.onNodeWithText(text(R.string.dialog_correct_action)).performClick()
+        assertEquals(listOf<ExpensesAction>(ExpensesAction.StartCorrect), actions)
+    }
+
+    @Test
+    fun voidAndCorrectWarnsThatTheOriginalStaysVoided() {
+        val state = previewExpenses()
+        val row = (state.content as ExpensesContent.Days).days.last().rows.single()
+        show(state.copy(detail = ExpenseDetailSheet(row, confirmCorrect = true)))
+
+        compose.onNodeWithText(text(R.string.dialog_correct_expense_body)).assertIsDisplayed()
+    }
 }

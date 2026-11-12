@@ -22,4 +22,6 @@
     <string name="error_date_future">The date cannot be later than today</string>
     <string name="status_voided_expense">Voided</string>
     <string name="a11y_voided_expense_amount">%1$s, voided</string>
+    <string name="dialog_correct_expense_body">This expense is voided and a new one opens with the same data. If the new one is not saved, this one stays voided anyway.</string>
+    <string name="notice_fix_archived_category">The original category is archived. Choose another.</string>
 </resources>

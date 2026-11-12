@@ -22,6 +22,8 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrection
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrectionLine
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import io.github.yesidrobayo.shopledger.ui.product.COUNT_UNIT
 import io.github.yesidrobayo.shopledger.ui.product.CREATED
@@ -117,6 +119,7 @@ class NewPurchaseViewModelTest {
         state: SavedStateHandle = savedState,
         prefillProduct: Long? = null,
         prefillSupplier: Long? = null,
+        correction: PurchaseCorrection? = null,
     ): NewPurchaseViewModel {
         val model = NewPurchaseViewModel(
             catalogSource = source,
@@ -130,6 +133,8 @@ class NewPurchaseViewModelTest {
             computation = dispatcher,
             prefillProductId = prefillProduct,
             prefillSupplierId = prefillSupplier,
+            prefillFromPurchaseId = correction?.let { 318L },
+            loadCorrection = { correction },
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -538,4 +543,62 @@ class NewPurchaseViewModelTest {
             model.act(this, NewPurchaseAction.ReviewPrice(1L))
             assertTrue(model.state.registered != null)
         }
+
+    @Test
+    fun `a correction opens with its lines by total, its supplier and its date`() =
+        runTest(dispatcher) {
+            val correction = PurchaseCorrection(
+                lines = listOf(
+                    PurchaseCorrectionLine(
+                        1L,
+                        COUNT_UNIT.id,
+                        QuantityMilli(2_000L),
+                        Money(12_000L),
+                    ),
+                    // Se archivó entre la anulación y ahora: tampoco se trae.
+                    PurchaseCorrectionLine(3L, COUNT_UNIT.id, QuantityMilli(1_000L), Money(500L)),
+                ),
+                supplierId = 5L,
+                invoiceReference = "F-0042",
+                date = today.plusDays(-3),
+                leftOut = 1,
+                supplierLeftOut = false,
+            )
+            val model = viewModel(correction = correction)
+
+            val line = model.state.lines.single()
+            assertEquals(1L, line.productId)
+            assertEquals("2", line.quantityText)
+            assertEquals("12000", line.amountText)
+            assertTrue(line.byTotal)
+            assertEquals("Proveedor uno", model.state.supplierName)
+            assertEquals(today.plusDays(-3), model.state.date)
+            assertEquals(
+                PurchaseNotice.CorrectionLeftOut(lines = 2, supplier = false),
+                model.state.notice,
+            )
+            assertEquals(Money(12_000L), model.state.total)
+        }
+
+    @Test
+    fun `an archived supplier is left out of the correction and said`() = runTest(dispatcher) {
+        val correction = PurchaseCorrection(
+            lines = listOf(
+                PurchaseCorrectionLine(1L, COUNT_UNIT.id, QuantityMilli(1_000L), Money(900L)),
+            ),
+            supplierId = null,
+            invoiceReference = null,
+            date = today,
+            leftOut = 0,
+            supplierLeftOut = true,
+        )
+        val model = viewModel(correction = correction)
+
+        assertEquals(
+            PurchaseNotice.CorrectionLeftOut(lines = 0, supplier = true),
+            model.state.notice,
+        )
+        assertEquals(null, model.state.date)
+        assertEquals(1, model.state.lines.size)
+    }
 }

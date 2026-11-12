@@ -6,18 +6,28 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.ObservePurchaseCatalogUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.purchase.ObservePurchaseDetailUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
+import io.github.yesidrobayo.shopledger.navigation.DocumentUndoTexts
+import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
+import io.github.yesidrobayo.shopledger.navigation.rememberPurchaseUndo
+import io.github.yesidrobayo.shopledger.navigation.showUndoable
+import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import kotlinx.coroutines.flow.first
 
 /**
  * La compra nueva en la navegación: arma su ViewModel con los casos de uso y resuelve adónde se va.
@@ -86,6 +96,25 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                 computation = container.dispatchers.default,
                 prefillProductId = key.prefillProductId,
                 prefillSupplierId = key.prefillSupplierId,
+                prefillFromPurchaseId = key.prefillFromPurchaseId,
+                loadCorrection = { purchaseId ->
+                    val detail = ObservePurchaseDetailUseCase(
+                        purchases = ports.purchases,
+                        products = ports.products,
+                        suppliers = ports.suppliers,
+                        units = ports.units,
+                        calendar = calendar,
+                    )(purchaseId).first()
+                    detail?.let {
+                        // El proveedor se trae solo si hoy se puede elegir.
+                        val supplier = it.purchase.content.supplierId
+                            ?.let { id -> ports.suppliers.findById(id) }
+                        PurchaseCorrections.of(
+                            it,
+                            supplierAvailable = supplier?.isArchived == false,
+                        )
+                    }
+                },
             )
         }
     when (model) {
@@ -97,10 +126,26 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val haptics = LocalHapticFeedback.current
-            LaunchedEffect(uiState.registered) {
-                if (uiState.registered != null) {
-                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                }
+            val registered = uiState.registered
+            val registeredText = registered?.let {
+                stringResource(
+                    R.string.confirm_purchase_registered,
+                    rememberMoneyDisplay(it.total, formats.money).text.text,
+                )
+            }
+            val messages = LocalAppMessages.current
+            val undo = rememberPurchaseUndo()
+            val undoTexts = DocumentUndoTexts(
+                undoLabel = stringResource(R.string.action_undo),
+                undone = stringResource(R.string.confirm_purchase_voided),
+                failed = stringResource(R.string.error_purchase_void),
+                retry = stringResource(R.string.action_retry),
+            )
+            LaunchedEffect(registered) {
+                if (registered == null || registeredText == null) return@LaunchedEffect
+                haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                // El aviso ofrece `Deshacer` mientras se ve, también después de cerrar el resumen.
+                messages.showUndoable(registeredText, registered.purchaseId, undo, undoTexts)
             }
             LaunchedEffect(uiState.closed) {
                 if (uiState.closed) navigator.back()

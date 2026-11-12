@@ -145,6 +145,12 @@ sealed interface PurchaseNotice {
 
     /** El proveedor elegido se archivó o se eliminó mientras se escribía la compra. */
     data object SupplierUnavailable : PurchaseNotice
+
+    /**
+     * Al corregir una compra, [lines] líneas no se trajeron porque su producto está archivado, y con
+     * [supplier] tampoco el proveedor, que está archivado.
+     */
+    data class CorrectionLeftOut(val lines: Int, val supplier: Boolean) : PurchaseNotice
 }
 
 /** El resumen tras registrar: el total y cómo quedó el costo de cada producto. */

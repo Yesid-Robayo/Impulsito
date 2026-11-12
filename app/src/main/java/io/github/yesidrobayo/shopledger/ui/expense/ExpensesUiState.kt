@@ -61,13 +61,14 @@ sealed interface ExpensesContent {
 
 /**
  * La hoja de un gasto: sus datos, sin campos editables, y su anulación. Con [voiding] la hoja pide el
- * motivo y una nota antes de anular.
+ * motivo y una nota antes de anular. Con [confirmCorrect] pregunta antes de anular y corregir.
  */
 @Immutable
 data class ExpenseDetailSheet(
     val row: ExpenseListRow,
     val voiding: ExpenseVoidDraft? = null,
     val status: ExpenseSheetStatus = ExpenseSheetStatus.IDLE,
+    val confirmCorrect: Boolean = false,
 )
 
 /** El motivo y la nota de una anulación, tal como los elige la persona. */
@@ -99,7 +100,9 @@ enum class ExpenseSheetStatus {
 
 /**
  * El gasto nuevo, tal como lo escribe la persona. [date] falta mientras sea hoy. [errors] solo se
- * muestran después de intentar guardar, para no marcar en rojo un campo que se está llenando.
+ * muestran después de intentar guardar, para no marcar en rojo un campo que se está llenando. Con
+ * [proposeCategory], sin categoría elegida se propone la de otros gastos; al corregir un gasto cuya
+ * categoría se archivó no se propone ninguna: la persona elige.
  */
 @Immutable
 data class ExpenseForm(
@@ -110,6 +113,7 @@ data class ExpenseForm(
     val errors: Set<ExpenseFormError> = emptySet(),
     val status: ExpenseSheetStatus = ExpenseSheetStatus.IDLE,
     val notice: ExpenseFormNotice? = null,
+    val proposeCategory: Boolean = true,
 ) {
     val descriptionTooLong: Boolean
         get() = description.trim().codePointLength() > MAX_DESCRIPTION_LENGTH
@@ -151,6 +155,9 @@ sealed interface ExpenseFormNotice {
 
     /** La categoría elegida se archivó o se eliminó mientras tanto: hay que elegir otra. */
     data object CategoryUnavailable : ExpenseFormNotice
+
+    /** Al corregir, la categoría original está archivada y no se trajo: hay que elegir otra. */
+    data object CategoryLeftOut : ExpenseFormNotice
 }
 
 /**
@@ -209,6 +216,14 @@ sealed interface ExpensesAction {
     data object ConfirmVoid : ExpensesAction
 
     data object CloseDetail : ExpensesAction
+
+    /** Pedir confirmación de anular y corregir. */
+    data object StartCorrect : ExpensesAction
+
+    data object CloseCorrect : ExpensesAction
+
+    /** Anular el gasto y abrir uno nuevo con sus datos. */
+    data object ConfirmCorrect : ExpensesAction
 
     data object NewExpense : ExpensesAction
 

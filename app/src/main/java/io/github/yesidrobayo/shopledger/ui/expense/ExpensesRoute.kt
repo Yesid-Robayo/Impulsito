@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ObserveExpenseMonthUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.SaveExpenseCategoryUseCase
@@ -16,10 +17,13 @@ import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseUseCas
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
+import io.github.yesidrobayo.shopledger.navigation.DocumentUndoTexts
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.navigation.rememberExpenseUndo
+import io.github.yesidrobayo.shopledger.navigation.showUndoable
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
@@ -60,6 +64,15 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                 void = { id, reason, note -> void(id, reason, note) },
                 numbers = numbers,
                 createCategory = { draft -> saveCategory(null, draft) },
+                loadCorrection = { expenseId ->
+                    ports.expenses.findById(expenseId)?.let { expense ->
+                        val categoryId = expense.content.expenseCategoryId
+                        ExpenseCorrections.of(
+                            expense.content,
+                            ports.expenseCategories.findById(categoryId),
+                        )
+                    }
+                },
             )
         }
     when (model) {
@@ -71,6 +84,13 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val messages = LocalAppMessages.current
+            val undo = rememberExpenseUndo()
+            val undoTexts = DocumentUndoTexts(
+                undoLabel = stringResource(R.string.action_undo),
+                undone = stringResource(R.string.confirm_expense_voided),
+                failed = stringResource(R.string.error_expense_void),
+                retry = stringResource(R.string.action_retry),
+            )
             val message = uiState.message
             val text = when (message) {
                 is ExpenseMessage.Saved -> stringResource(
@@ -85,7 +105,14 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
             LaunchedEffect(message) {
                 if (message == null || text == null) return@LaunchedEffect
                 viewModel.onAction(ExpensesAction.MessageShown)
-                messages.show(AppSnackbarVisuals(text, SnackbarVariant.SUCCESS))
+                when (message) {
+                    // El aviso de gasto guardado ofrece `Deshacer`, que sigue aunque se salga.
+                    is ExpenseMessage.Saved ->
+                        messages.showUndoable(text, message.expenseId, undo, undoTexts)
+
+                    ExpenseMessage.Voided ->
+                        messages.show(AppSnackbarVisuals(text, SnackbarVariant.SUCCESS))
+                }
                 // Desde el atajo de Inicio, guardar vuelve a Inicio, con el aviso encima.
                 if (key.startNew && message is ExpenseMessage.Saved) navigator.back()
             }
@@ -139,6 +166,9 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                         is ExpensesAction.NewCategoryNameChange,
                         ExpensesAction.SaveCategory,
                         ExpensesAction.CloseCategory,
+                        ExpensesAction.StartCorrect,
+                        ExpensesAction.CloseCorrect,
+                        ExpensesAction.ConfirmCorrect,
                         -> Unit
                     }
                 },

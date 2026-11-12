@@ -19,12 +19,14 @@ import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductSearch
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PricedPurchaseLine
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrection
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricing
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricingResult
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseSubject
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseUnit
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
+import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -68,6 +70,8 @@ internal sealed interface PurchaseCatalogLoad {
  * @param reactivate reactiva un producto archivado; `true` si quedó vigente.
  * @param prefillProductId el producto con que se abrió la compra, como desde su detalle.
  * @param prefillSupplierId el proveedor con que se abrió la compra, como desde su detalle.
+ * @param prefillFromPurchaseId la compra anulada que esta corrige: la nueva abre con sus datos.
+ * @param loadCorrection lee lo que trae la corrección de una compra, o `null` si ya no existe.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewPurchaseViewModel(
@@ -79,6 +83,8 @@ class NewPurchaseViewModel(
     computation: CoroutineDispatcher,
     private val prefillProductId: Long? = null,
     private val prefillSupplierId: Long? = null,
+    private val prefillFromPurchaseId: Long? = null,
+    private val loadCorrection: suspend (Long) -> PurchaseCorrection? = { null },
 ) : ViewModel() {
     private val draft = MutableStateFlow(PurchaseDraftStore.read(savedState))
     private val overlay = MutableStateFlow(Overlay())
@@ -190,7 +196,10 @@ class NewPurchaseViewModel(
     /** El catálogo llegó o cambió: agrega el producto de entrada y el que se acaba de crear. */
     private fun onCatalog(catalog: PurchaseCatalog) {
         val current = draft.value
-        if (!current.prefilled) {
+        if (!current.prefilled && prefillFromPurchaseId != null) {
+            changeDraft { it.copy(prefilled = true) }
+            prefillCorrection(catalog, prefillFromPurchaseId)
+        } else if (!current.prefilled) {
             val supplier = prefillSupplierId?.takeIf { id -> catalog.suppliers.any { it.id == id } }
             changeDraft {
                 it.copy(
@@ -207,6 +216,55 @@ class NewPurchaseViewModel(
         val created = catalog.products.filter { it.id > awaiting }.minByOrNull { it.id } ?: return
         changeDraft { it.copy(awaitingProductAfter = null) }
         appendLine(catalog, created.id)
+    }
+
+    /**
+     * Abre la compra con los datos de la que corrige: sus líneas, cada una con su cantidad en la
+     * unidad en que se compró y su total, el proveedor, la referencia y la fecha. Se hace una sola
+     * vez, también si Android recrea la pantalla, porque la marca queda en el estado guardado junto
+     * con lo traído. Lo que quedó por fuera, por archivado, se dice.
+     */
+    private fun prefillCorrection(catalog: PurchaseCatalog, purchaseId: Long) {
+        viewModelScope.launch {
+            val correction = loadCorrection(purchaseId) ?: return@launch
+            val products = catalog.products.associateBy { it.id }
+            // Un producto que se archivó entre la anulación y ahora tampoco se trae.
+            val kept = correction.lines.filter { it.productId in products }
+            val leftOut = correction.leftOut + correction.lines.size - kept.size
+            changeDraft { current ->
+                var key = current.nextKey
+                val lines = kept.take(Limit.DOCUMENT_LINES.max.toInt()).map { line ->
+                    val base = products.getValue(line.productId).details.baseUnitId
+                    PurchaseLineDraft(
+                        key = key++,
+                        productId = line.productId,
+                        quantityText = fixedPointInputText(
+                            line.enteredQuantity.milli,
+                            QUANTITY_DECIMALS,
+                            numbers.quantitySymbols,
+                        ),
+                        amountText = fixedPointInputText(
+                            line.lineTotal.minor,
+                            numbers.currencyDecimals,
+                            numbers.moneySymbols,
+                        ),
+                        byTotal = true,
+                        unitId = line.unitId.takeIf { it != base },
+                    )
+                }
+                current.copy(
+                    lines = lines,
+                    supplierId = correction.supplierId,
+                    supplierTouched = true,
+                    reference = correction.invoiceReference.orEmpty(),
+                    date = correction.date.takeIf { it != catalog.today },
+                    nextKey = key,
+                )
+            }
+            if (leftOut > 0 || correction.supplierLeftOut) {
+                notice(PurchaseNotice.CorrectionLeftOut(leftOut, correction.supplierLeftOut))
+            }
+        }
     }
 
     private fun addProduct(productId: Long) {
@@ -292,6 +350,7 @@ class NewPurchaseViewModel(
             PurchaseNotice.TotalTooLarge,
             PurchaseNotice.TooManyLines,
             PurchaseNotice.SupplierUnavailable,
+            is PurchaseNotice.CorrectionLeftOut,
             -> attempts.update { it + 1 }
         }
     }
@@ -710,3 +769,6 @@ class NewPurchaseViewModel(
         const val COST_FACTOR = 3L
     }
 }
+
+/** Las cifras decimales de una cantidad en milésimas. */
+private const val QUANTITY_DECIMALS = 3

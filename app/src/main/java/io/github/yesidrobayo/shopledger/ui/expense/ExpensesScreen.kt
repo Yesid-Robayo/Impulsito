@@ -58,6 +58,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DateField
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
@@ -179,6 +180,15 @@ fun ExpensesScreen(
         }
     }
     if (uiState.categorySheet) CategoryFilterSheet(uiState, onAction)
+    if (uiState.detail?.confirmCorrect == true) {
+        ConfirmDialog(
+            title = stringResource(R.string.dialog_correct_title),
+            body = stringResource(R.string.dialog_correct_expense_body),
+            confirmLabel = stringResource(R.string.dialog_correct_action),
+            onConfirm = { onAction(ExpensesAction.ConfirmCorrect) },
+            onDismiss = { onAction(ExpensesAction.CloseCorrect) },
+        )
+    }
 }
 
 /** El mes con sus flechas, el total del mes y el filtro por categoría. */
@@ -517,11 +527,24 @@ private fun detailAction(
     val voiding = detail.voiding
     return {
         if (voiding == null) {
-            PrimaryActionButton(
-                text = stringResource(R.string.dialog_void_expense_action),
-                onClick = { onAction(ExpensesAction.StartVoid) },
-                variant = ActionVariant.OUTLINED,
-            )
+            // Corregir va sobre anular, los dos delineados: ninguno es la acción principal.
+            Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+                PrimaryActionButton(
+                    text = stringResource(R.string.dialog_correct_action),
+                    onClick = { onAction(ExpensesAction.StartCorrect) },
+                    variant = ActionVariant.OUTLINED,
+                    state = if (detail.status == ExpenseSheetStatus.WORKING) {
+                        ActionState.WORKING
+                    } else {
+                        ActionState.IDLE
+                    },
+                )
+                PrimaryActionButton(
+                    text = stringResource(R.string.dialog_void_expense_action),
+                    onClick = { onAction(ExpensesAction.StartVoid) },
+                    variant = ActionVariant.OUTLINED,
+                )
+            }
         } else {
             PrimaryActionButton(
                 text = stringResource(R.string.dialog_void_expense_action),
@@ -559,6 +582,9 @@ private fun ColumnScope.ExpenseDetailFields(
             color = muted,
         )
         row.description?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
+        if (detail.status == ExpenseSheetStatus.FAILED) {
+            NoticeCard(stringResource(R.string.error_expense_void), NoticeVariant.ERROR)
+        }
         return
     }
     Text(
@@ -687,6 +713,11 @@ private fun FormNotice(notice: ExpenseFormNotice, onAction: (ExpensesAction) -> 
 
         ExpenseFormNotice.CategoryUnavailable -> NoticeCard(
             text = stringResource(R.string.error_expense_category_unavailable),
+            variant = NoticeVariant.WARNING,
+        )
+
+        ExpenseFormNotice.CategoryLeftOut -> NoticeCard(
+            text = stringResource(R.string.notice_fix_archived_category),
             variant = NoticeVariant.WARNING,
         )
     }

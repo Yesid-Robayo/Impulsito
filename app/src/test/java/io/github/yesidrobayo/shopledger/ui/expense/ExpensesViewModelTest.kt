@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrection
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListDay
@@ -132,6 +133,7 @@ class ExpensesViewModelTest {
     private var voidResult: VoidExpenseResult = VoidExpenseResult.Voided
     private val newCategories = mutableListOf<String>()
     private var categoryResult: SaveExpenseCategoryResult = SaveExpenseCategoryResult.Saved(30)
+    private var correction: ExpenseCorrection? = null
 
     private fun TestScope.viewModel(
         calendarResult: BusinessCalendarResult = BusinessCalendarResult.Ready(calendar),
@@ -153,6 +155,7 @@ class ExpensesViewModelTest {
                 newCategories += draft.name
                 categoryResult
             },
+            loadCorrection = { correction },
         )
         advanceUntilIdle()
         return model
@@ -470,5 +473,66 @@ class ExpensesViewModelTest {
             model.onAction(ExpensesAction.NewCategory)
             model.onAction(ExpensesAction.CloseCategory)
             assertNull(model.uiState.value.newCategory)
+        }
+
+    @Test
+    fun `void and correct voids as an entry error and opens the new expense with its data`() =
+        runTest(dispatcher) {
+            months.data.value = mapOf(november to listOf(row(7, 600_050)))
+            val model = viewModel()
+            correction = ExpenseCorrection(
+                Money(600_050),
+                rent.id,
+                "Luz del local",
+                BusinessDate(LocalDate(2026, 10, 30)),
+                categoryLeftOut = false,
+            )
+            model.onAction(ExpensesAction.OpenExpense(7))
+            model.onAction(ExpensesAction.StartCorrect)
+            assertEquals(true, model.uiState.value.detail?.confirmCorrect)
+            model.onAction(ExpensesAction.ConfirmCorrect)
+            advanceUntilIdle()
+
+            assertEquals(listOf(Triple(7L, VoidReason.ENTRY_ERROR, null as String?)), voids)
+            assertNull(model.uiState.value.detail)
+            val form = requireNotNull(model.uiState.value.form)
+            assertEquals("6000,5", form.amountText)
+            assertEquals(rent.id, form.categoryId)
+            assertEquals("Luz del local", form.description)
+            assertEquals(BusinessDate(LocalDate(2026, 10, 30)), form.date)
+            assertNull(form.notice)
+        }
+
+    @Test
+    fun `an archived category is not brought, and a failed void keeps the sheet`() =
+        runTest(dispatcher) {
+            months.data.value = mapOf(november to listOf(row(7, 3_000)))
+            val model = viewModel()
+            model.onAction(ExpensesAction.OpenExpense(7))
+
+            voidResult = VoidExpenseResult.StorageFailed(StorageFailure.IO_ERROR)
+            model.onAction(ExpensesAction.StartCorrect)
+            model.onAction(ExpensesAction.ConfirmCorrect)
+            advanceUntilIdle()
+            assertEquals(ExpenseSheetStatus.FAILED, model.uiState.value.detail?.status)
+            assertNull(model.uiState.value.form)
+            model.onAction(ExpensesAction.StartCorrect)
+            model.onAction(ExpensesAction.CloseCorrect)
+            assertEquals(false, model.uiState.value.detail?.confirmCorrect)
+
+            voidResult = VoidExpenseResult.Voided
+            correction = ExpenseCorrection(Money(3_000), null, null, today, categoryLeftOut = true)
+            model.onAction(ExpensesAction.StartCorrect)
+            model.onAction(ExpensesAction.ConfirmCorrect)
+            advanceUntilIdle()
+
+            val form = requireNotNull(model.uiState.value.form)
+            assertNull(form.categoryId)
+            assertNull(form.date)
+            assertEquals(ExpenseFormNotice.CategoryLeftOut, form.notice)
+            // No se propone otra categoría: la persona elige.
+            months.data.value = mapOf(november to listOf(row(7, 3_000, voided = true)))
+            advanceUntilIdle()
+            assertNull(model.uiState.value.form?.categoryId)
         }
 }

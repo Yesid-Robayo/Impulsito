@@ -314,4 +314,51 @@ class PurchaseRecordsViewModelTest {
         assertEquals(PurchaseDetailUiState.NotFound, failing.uiState.value)
         assertEquals(DocumentStatus.VOIDED, purchase(true).status)
     }
+
+    @Test
+    fun `void and correct asks first, voids as an entry error and asks to open the correction`() =
+        runTest(dispatcher) {
+            val voids = mutableListOf<Pair<VoidReason, String?>>()
+            var result: VoidPurchaseResult = VoidPurchaseResult.StorageFailed(
+                StorageFailure.IO_ERROR,
+            )
+            val model = PurchaseDetailViewModel(
+                detailSource = {
+                    flowOf(PurchaseDetail(purchase(false), null, emptyList(), emptyList()))
+                },
+                voidPurchase = { reason, note ->
+                    voids += reason to note
+                    result
+                },
+                purchaseId = 318L,
+            )
+            backgroundScope.launch { model.uiState.collect {} }
+            advanceUntilIdle()
+            fun ready() = model.uiState.value as PurchaseDetailUiState.Ready
+
+            model.onAction(PurchaseDetailAction.StartCorrect)
+            advanceUntilIdle()
+            assertTrue(ready().confirmCorrect)
+            model.onAction(PurchaseDetailAction.CloseCorrect)
+            advanceUntilIdle()
+            assertEquals(false, ready().confirmCorrect)
+
+            model.onAction(PurchaseDetailAction.StartCorrect)
+            advanceUntilIdle()
+            model.onAction(PurchaseDetailAction.ConfirmCorrect)
+            advanceUntilIdle()
+            assertEquals(PurchaseVoidStatus.FAILED, ready().status)
+            assertNull(ready().correctedId)
+
+            result = VoidPurchaseResult.Voided
+            model.onAction(PurchaseDetailAction.StartCorrect)
+            advanceUntilIdle()
+            model.onAction(PurchaseDetailAction.ConfirmCorrect)
+            advanceUntilIdle()
+            assertEquals(318L, ready().correctedId)
+            model.onAction(PurchaseDetailAction.CorrectionOpened)
+            advanceUntilIdle()
+            assertNull(ready().correctedId)
+            assertEquals(List(2) { VoidReason.ENTRY_ERROR to null }, voids)
+        }
 }

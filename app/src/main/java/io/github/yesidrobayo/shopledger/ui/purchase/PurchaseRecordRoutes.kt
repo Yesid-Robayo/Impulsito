@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.purchase
 
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -134,6 +135,7 @@ fun PurchaseDetailRoute(
             PurchaseDetailViewModel(
                 detailSource = { observe(key.purchaseId) },
                 voidPurchase = { reason, note -> void(key.purchaseId, reason, note) },
+                purchaseId = key.purchaseId,
             )
         }
     when (model) {
@@ -144,6 +146,13 @@ fun PurchaseDetailRoute(
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            // Anulada para corregir: la compra nueva abre con sus datos.
+            val corrected = (uiState as? PurchaseDetailUiState.Ready)?.correctedId
+            LaunchedEffect(corrected) {
+                if (corrected == null) return@LaunchedEffect
+                viewModel.onAction(PurchaseDetailAction.CorrectionOpened)
+                navigator.open(AppNavKey.Purchase(prefillFromPurchaseId = corrected))
+            }
             PurchaseDetailScreen(
                 uiState = uiState,
                 onAction = { action ->

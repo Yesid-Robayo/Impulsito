@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
@@ -401,6 +402,31 @@ private fun PurchaseNoticeCard(notice: PurchaseNotice, onAction: (NewPurchaseAct
             text = stringResource(R.string.error_value_high),
             variant = NoticeVariant.ERROR,
         )
+
+        is PurchaseNotice.CorrectionLeftOut -> Column(
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+        ) {
+            if (notice.lines > 0) {
+                NoticeCard(
+                    pluralStringResource(
+                        R.plurals.notice_fix_archived_products,
+                        notice.lines,
+                        notice.lines,
+                    ),
+                    NoticeVariant.WARNING,
+                    actionLabel = stringResource(R.string.action_close),
+                    onAction = { onAction(NewPurchaseAction.DismissNotice) },
+                )
+            }
+            if (notice.supplier) {
+                NoticeCard(
+                    stringResource(R.string.notice_fix_archived_supplier),
+                    NoticeVariant.WARNING,
+                    actionLabel = stringResource(R.string.purchase_supplier),
+                    onAction = { onAction(NewPurchaseAction.OpenSuppliers) },
+                )
+            }
+        }
 
         PurchaseNotice.SupplierUnavailable -> NoticeCard(
             text = stringResource(R.string.purchase_supplier_unavailable),

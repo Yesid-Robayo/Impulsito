@@ -32,4 +32,6 @@
     <string name="purchase_unit_unavailable">Esta unidade não é mais comprada</string>
     <!-- Revisar precios tras una compra. -->
     <string name="notice_low_margin_after_purchase">%1$s ficou abaixo da margem-alvo. Convém revisar o preço.</string>
+    <string name="dialog_correct_purchase_body">Esta compra é anulada e uma nova é aberta com os mesmos dados. Se a nova não for salva, esta continua anulada.</string>
+    <string name="notice_fix_archived_supplier">O fornecedor original está arquivado. É possível escolher outro ou reativá-lo.</string>
 </resources>

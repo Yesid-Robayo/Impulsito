@@ -40,6 +40,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
@@ -61,7 +62,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
  * El detalle de una compra: el total con la fecha, el proveedor y la referencia, las líneas, y al
- * final `Anular compra`. Una compra no se edita. Anulada, el total va tachado con el motivo y la
+ * final `Anular y corregir` y `Anular compra`. Una compra no se edita. Anulada, el total va tachado con el motivo y la
  * fecha, y ya no se ofrece anular.
  *
  * Los costos y el total van con modo discreto. Es pura: recibe el estado y avisa cada acción.
@@ -117,6 +118,15 @@ fun PurchaseDetailScreen(
         }
     }
     if (ready?.sheet != null) VoidSheet(ready, onAction)
+    if (ready?.confirmCorrect == true) {
+        ConfirmDialog(
+            title = stringResource(R.string.dialog_correct_title),
+            body = stringResource(R.string.dialog_correct_purchase_body),
+            confirmLabel = stringResource(R.string.dialog_correct_action),
+            onConfirm = { onAction(PurchaseDetailAction.ConfirmCorrect) },
+            onDismiss = { onAction(PurchaseDetailAction.CloseCorrect) },
+        )
+    }
 }
 
 /** `Compra 318`, con el número en el formato del negocio; mientras se lee, `Compras`. */
@@ -146,13 +156,36 @@ private fun DetailBody(
         items(ready.detail.lines, key = { it.line.id }) { line -> LineRow(line) }
         if (ready.canVoid) {
             item(key = ACTIONS) {
-                Box(Modifier.padding(spacing.s16).navigationBarsPadding()) {
+                Column(
+                    Modifier.padding(spacing.s16).navigationBarsPadding(),
+                    verticalArrangement = Arrangement.spacedBy(spacing.s8),
+                ) {
+                    // Corregir va sobre anular: es lo que se busca casi siempre tras un error.
+                    PrimaryActionButton(
+                        text = stringResource(R.string.dialog_correct_action),
+                        onClick = { onAction(PurchaseDetailAction.StartCorrect) },
+                        variant = ActionVariant.OUTLINED,
+                        modifier = Modifier.fillMaxWidth(),
+                        state = if (ready.status == PurchaseVoidStatus.WORKING &&
+                            ready.sheet == null
+                        ) {
+                            ActionState.WORKING
+                        } else {
+                            ActionState.IDLE
+                        },
+                    )
                     PrimaryActionButton(
                         text = stringResource(R.string.dialog_void_purchase_action),
                         onClick = { onAction(PurchaseDetailAction.OpenVoid) },
                         variant = ActionVariant.TONAL,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (ready.status == PurchaseVoidStatus.FAILED && ready.sheet == null) {
+                        NoticeCard(
+                            stringResource(R.string.error_purchase_void),
+                            NoticeVariant.ERROR,
+                        )
+                    }
                 }
             }
         }

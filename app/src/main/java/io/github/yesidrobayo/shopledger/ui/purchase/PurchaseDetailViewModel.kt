@@ -32,7 +32,8 @@ sealed interface PurchaseDetailUiState {
 
     /**
      * La compra, con la hoja de anular si está abierta, en qué va la anulación y si acaba de
-     * anularse, para avisarlo una vez.
+     * anularse, para avisarlo una vez. Con [confirmCorrect] pregunta antes de anular y corregir, y
+     * [correctedId] es la compra recién anulada para corregir: la navegación abre la compra nueva.
      */
     @Immutable
     data class Ready(
@@ -40,6 +41,8 @@ sealed interface PurchaseDetailUiState {
         val sheet: PurchaseVoidSheet? = null,
         val status: PurchaseVoidStatus = PurchaseVoidStatus.IDLE,
         val justVoided: Boolean = false,
+        val confirmCorrect: Boolean = false,
+        val correctedId: Long? = null,
     ) : PurchaseDetailUiState {
         /** Solo una compra activa se anula. */
         val canVoid: Boolean get() = detail.purchase.status == DocumentStatus.ACTIVE
@@ -84,6 +87,17 @@ sealed interface PurchaseDetailAction {
 
     data object ConfirmVoid : PurchaseDetailAction
 
+    /** Pedir confirmación de anular y corregir. */
+    data object StartCorrect : PurchaseDetailAction
+
+    data object CloseCorrect : PurchaseDetailAction
+
+    /** Anular la compra y abrir una nueva con sus datos. */
+    data object ConfirmCorrect : PurchaseDetailAction
+
+    /** La compra nueva ya se abrió. */
+    data object CorrectionOpened : PurchaseDetailAction
+
     data object CloseSheet : PurchaseDetailAction
 
     /** El aviso de compra anulada ya se mostró. */
@@ -101,11 +115,13 @@ sealed interface PurchaseDetailAction {
  * @param detailSource lee el detalle, y vuelve a emitir con cada cambio; se pide de nuevo al
  *   reintentar.
  * @param voidPurchase anula la compra en una sola transacción.
+ * @param purchaseId la compra del detalle, que se corrige con `Anular y corregir`.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class PurchaseDetailViewModel(
     private val detailSource: () -> Flow<PurchaseDetail?>,
     private val voidPurchase: suspend (VoidReason, String?) -> VoidPurchaseResult,
+    private val purchaseId: Long = 0L,
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val overlay = MutableStateFlow(Overlay())
@@ -121,7 +137,14 @@ class PurchaseDetailViewModel(
             Loaded.Failed -> PurchaseDetailUiState.ReadError
 
             is Loaded.Read -> read.detail?.let {
-                PurchaseDetailUiState.Ready(it, shown.sheet, shown.status, shown.justVoided)
+                PurchaseDetailUiState.Ready(
+                    it,
+                    shown.sheet,
+                    shown.status,
+                    shown.justVoided,
+                    shown.confirmCorrect,
+                    shown.correctedId,
+                )
             } ?: PurchaseDetailUiState.NotFound
         }
     }.stateIn(
@@ -141,6 +164,16 @@ class PurchaseDetailViewModel(
             is PurchaseDetailAction.NoteChange -> editSheet { it.copy(note = action.note) }
 
             PurchaseDetailAction.ConfirmVoid -> confirm()
+
+            PurchaseDetailAction.StartCorrect -> overlay.update {
+                it.copy(confirmCorrect = true, status = PurchaseVoidStatus.IDLE)
+            }
+
+            PurchaseDetailAction.CloseCorrect -> overlay.update { it.copy(confirmCorrect = false) }
+
+            PurchaseDetailAction.ConfirmCorrect -> correct()
+
+            PurchaseDetailAction.CorrectionOpened -> overlay.update { it.copy(correctedId = null) }
 
             PurchaseDetailAction.CloseSheet -> overlay.update { it.copy(sheet = null) }
 
@@ -182,10 +215,40 @@ class PurchaseDetailViewModel(
         }
     }
 
+    /**
+     * Anula la compra con el motivo de error al registrar y pide abrir la compra nueva con sus
+     * datos. Son dos pasos: si la nueva no se registra, la original queda anulada, y se advirtió
+     * antes. Si no se pudo anular, la compra sigue activa y el detalle lo dice.
+     */
+    private fun correct() {
+        if (overlay.value.status == PurchaseVoidStatus.WORKING) return
+        overlay.update { it.copy(confirmCorrect = false, status = PurchaseVoidStatus.WORKING) }
+        viewModelScope.launch {
+            val result = voidPurchase(VoidReason.ENTRY_ERROR, null)
+            overlay.update {
+                when (result) {
+                    // Ya anulada en otra pantalla: igual se corrige.
+                    VoidPurchaseResult.Voided, VoidPurchaseResult.AlreadyVoided ->
+                        Overlay(correctedId = purchaseId)
+
+                    VoidPurchaseResult.PurchaseNotFound,
+                    VoidPurchaseResult.ReasonNotAllowed,
+                    VoidPurchaseResult.NoteTooLong,
+                    is VoidPurchaseResult.UnknownTimeZone,
+                    VoidPurchaseResult.LedgerDamaged,
+                    is VoidPurchaseResult.StorageFailed,
+                    -> it.copy(status = PurchaseVoidStatus.FAILED)
+                }
+            }
+        }
+    }
+
     private data class Overlay(
         val sheet: PurchaseVoidSheet? = null,
         val status: PurchaseVoidStatus = PurchaseVoidStatus.IDLE,
         val justVoided: Boolean = false,
+        val confirmCorrect: Boolean = false,
+        val correctedId: Long? = null,
     )
 
     private sealed interface Loaded {
