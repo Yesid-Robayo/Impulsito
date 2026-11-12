@@ -5,6 +5,7 @@
     <!-- onboarding_welcome_title: %1$s = app -->
     <string name="onboarding_welcome_title">Bienvenida a %1$s</string>
     <string name="onboarding_protection_title">Proteger el negocio</string>
+    <string name="onboarding_lock_help">Impide que otra persona abra la app. No cifra los datos.</string>
     <string name="onboarding_encrypt_row">Cifrar las copias</string>
     <string name="onboarding_encrypt_optional">Opcional</string>
     <string name="onboarding_encrypt_help">Exige guardar un código de recuperación.</string>

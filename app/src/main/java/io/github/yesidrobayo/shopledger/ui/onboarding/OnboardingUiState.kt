@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.onboarding
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
+import io.github.yesidrobayo.shopledger.lock.AuthOutcome
 import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
 import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
 
@@ -40,6 +41,12 @@ sealed interface FoundCopies {
  * @param saveFailed si no se pudo guardar el fin del primer uso.
  * @param done terminó: la navegación lo cierra.
  * @param regionVisit cuántas veces se entró al paso de la región: cada visita empieza de nuevo.
+ * @param lockOffered si el teléfono tiene bloqueo de pantalla: solo entonces el paso 4 ofrece el
+ *   bloqueo de la app. Sin él, el paso avisa del riesgo y nadie queda fuera.
+ * @param lockChosen si `Bloquear con huella o PIN` está marcado. Nace marcado: rechazarlo es apagar
+ *   el interruptor.
+ * @param lockCheck `Continuar` con el bloqueo marcado pide la verificación del sistema: la navegación
+ *   la abre y entrega su resultado.
  */
 data class OnboardingUiState(
     val step: OnboardingStepId? = null,
@@ -54,6 +61,9 @@ data class OnboardingUiState(
     val saveFailed: Boolean = false,
     val done: Boolean = false,
     val regionVisit: Int = 0,
+    val lockOffered: Boolean = false,
+    val lockChosen: Boolean = true,
+    val lockCheck: Boolean = false,
 )
 
 /** Lo que la persona hace en el primer uso. */
@@ -98,8 +108,20 @@ sealed interface OnboardingAction {
 
     data object DismissStartOver : OnboardingAction
 
-    /** `Continuar` en el paso de la protección: termina el primer uso. */
+    /**
+     * `Continuar` en el paso de la protección: termina el primer uso. Con el bloqueo marcado, antes
+     * pide la verificación del sistema.
+     */
     data object Finish : OnboardingAction
+
+    /** Si el teléfono tiene bloqueo de pantalla, mirado al abrir el paso y al volver a primer plano. */
+    data class DeviceLock(val secure: Boolean) : OnboardingAction
+
+    /** El interruptor `Bloquear con huella o PIN` del paso de la protección. */
+    data class LockChoice(val enabled: Boolean) : OnboardingAction
+
+    /** Lo que resultó de la verificación que pidió `Continuar` con el bloqueo marcado. */
+    data class LockChecked(val outcome: AuthOutcome) : OnboardingAction
 
     /** Una acción de la restauración, la misma que en la pantalla del respaldo. */
     data class Restore(val action: BackupAction) : OnboardingAction

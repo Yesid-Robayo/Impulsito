@@ -16,6 +16,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationR
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.CompleteOnboardingResult
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.OnboardingResume
+import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceResult
+import io.github.yesidrobayo.shopledger.lock.AuthOutcome
 import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
 import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
 import kotlin.time.Instant
@@ -39,7 +41,9 @@ import org.junit.Test
 
 /**
  * El primer uso: los pasos en orden y hacia atrás, retomar donde quedó, `Ahora no` sin red, buscar
- * las copias del servicio recién conectado, ofrecer restaurar o empezar de cero, y terminar.
+ * las copias del servicio recién conectado, ofrecer restaurar o empezar de cero, y terminar. Y el
+ * bloqueo preseleccionado: marcado si el teléfono tiene bloqueo de pantalla, se enciende solo tras la
+ * verificación, se puede rechazar, y sin bloqueo de pantalla nadie queda fuera.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class OnboardingViewModelTest {
@@ -100,6 +104,8 @@ class OnboardingViewModelTest {
     private var resume = OnboardingResume.LANGUAGE
     private var completeResult: CompleteOnboardingResult = CompleteOnboardingResult.Completed
     private var completes = 0
+    private var lockResult: ChangePreferenceResult = ChangePreferenceResult.Saved
+    private var locks = 0
     private val saved = SavedStateHandle()
 
     @Before
@@ -114,6 +120,10 @@ class OnboardingViewModelTest {
             complete = {
                 completes += 1
                 completeResult
+            },
+            enableLock = {
+                locks += 1
+                lockResult
             },
             destination = BackupDestinationReader(destination),
             slotsLabel = { "Drive" },
@@ -283,5 +293,112 @@ class OnboardingViewModelTest {
         model.onAction(OnboardingAction.Restore(BackupAction.FilePicked("content://example/a")))
 
         assertEquals(RestoreUi.ConfirmFile("content://example/a"), model.uiState.value.restore)
+    }
+
+    @Test
+    fun `with a screen lock the lock comes chosen and is turned on after the check`() =
+        runTest(dispatcher) {
+            val model = model()
+            model.onAction(OnboardingAction.DeviceLock(secure = true))
+            assertTrue(model.uiState.value.lockOffered)
+            assertTrue(model.uiState.value.lockChosen)
+
+            model.onAction(OnboardingAction.Finish)
+            advanceUntilIdle()
+            // Antes de la verificación no se enciende ni termina nada.
+            assertTrue(model.uiState.value.lockCheck)
+            assertEquals(0, locks)
+            assertEquals(0, completes)
+
+            model.onAction(OnboardingAction.LockChecked(AuthOutcome.Success))
+            advanceUntilIdle()
+            assertFalse(model.uiState.value.lockCheck)
+            assertEquals(1, locks)
+            assertEquals(1, completes)
+            assertTrue(model.uiState.value.done)
+        }
+
+    @Test
+    fun `rejecting the lock finishes without it`() = runTest(dispatcher) {
+        val model = model()
+        model.onAction(OnboardingAction.DeviceLock(secure = true))
+
+        model.onAction(OnboardingAction.LockChoice(enabled = false))
+        model.onAction(OnboardingAction.Finish)
+        advanceUntilIdle()
+
+        assertFalse(model.uiState.value.lockCheck)
+        assertEquals(0, locks)
+        assertTrue(model.uiState.value.done)
+    }
+
+    @Test
+    fun `without a screen lock it is not offered and finishing never locks anyone out`() =
+        runTest(dispatcher) {
+            val model = model()
+            model.onAction(OnboardingAction.DeviceLock(secure = false))
+            assertFalse(model.uiState.value.lockOffered)
+
+            model.onAction(OnboardingAction.Finish)
+            advanceUntilIdle()
+
+            assertEquals(0, locks)
+            assertTrue(model.uiState.value.done)
+        }
+
+    @Test
+    fun `a cancelled or failed check stays on the step`() = runTest(dispatcher) {
+        val model = model()
+        model.onAction(OnboardingAction.DeviceLock(secure = true))
+
+        model.onAction(OnboardingAction.Finish)
+        model.onAction(OnboardingAction.LockChecked(AuthOutcome.Canceled))
+        model.onAction(OnboardingAction.Finish)
+        model.onAction(OnboardingAction.LockChecked(AuthOutcome.Failed("Demasiados intentos")))
+        advanceUntilIdle()
+
+        assertFalse(model.uiState.value.done)
+        assertFalse(model.uiState.value.lockCheck)
+        assertEquals(0, locks)
+        assertEquals(0, completes)
+    }
+
+    @Test
+    fun `a phone that lost its screen lock stops offering it and goes on`() = runTest(dispatcher) {
+        val model = model()
+        model.onAction(OnboardingAction.DeviceLock(secure = true))
+
+        model.onAction(OnboardingAction.Finish)
+        model.onAction(OnboardingAction.LockChecked(AuthOutcome.NoDeviceCredential))
+        advanceUntilIdle()
+        assertFalse(model.uiState.value.lockOffered)
+        assertFalse(model.uiState.value.done)
+
+        model.onAction(OnboardingAction.Finish)
+        advanceUntilIdle()
+        assertEquals(0, locks)
+        assertTrue(model.uiState.value.done)
+    }
+
+    @Test
+    fun `if the lock cannot be saved the onboarding does not finish`() = runTest(dispatcher) {
+        lockResult = ChangePreferenceResult.Failed(StorageFailure.DISK_FULL)
+        val model = model()
+        model.onAction(OnboardingAction.DeviceLock(secure = true))
+
+        model.onAction(OnboardingAction.Finish)
+        model.onAction(OnboardingAction.LockChecked(AuthOutcome.Success))
+        advanceUntilIdle()
+
+        assertTrue(model.uiState.value.saveFailed)
+        assertFalse(model.uiState.value.done)
+        assertEquals(0, completes)
+    }
+
+    @Test
+    fun `the choice survives the process`() = runTest(dispatcher) {
+        model().onAction(OnboardingAction.LockChoice(enabled = false))
+
+        assertFalse(model().uiState.value.lockChosen)
     }
 }

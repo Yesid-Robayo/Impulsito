@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
@@ -41,6 +44,7 @@ import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
+import io.github.yesidrobayo.shopledger.ui.components.AppSwitch
 import io.github.yesidrobayo.shopledger.ui.components.BackupCopyRow
 import io.github.yesidrobayo.shopledger.ui.components.BackupCopyRowData
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
@@ -385,8 +389,15 @@ private fun rowOf(copy: BackupCopySummary, zone: BusinessTimeZone?): BackupCopyR
 }
 
 /**
- * La protección, paso 4: proteger el negocio. El cifrado de las copias es opcional, va apagado, y
- * se elige en su pantalla; sin destino conectado, dice que primero hay que elegir dónde guardar.
+ * La protección, paso 4: proteger el negocio.
+ *
+ * - **El bloqueo viene marcado** si el teléfono tiene bloqueo de pantalla, con lo que hace y lo que
+ *   no. Rechazarlo es apagar el interruptor: no hay un botón aparte. Sin bloqueo de pantalla, la
+ *   fila no se ofrece y un aviso explica el riesgo, sin bloquear nada.
+ * - **El cifrado de las copias** es opcional, va apagado, y se elige en su pantalla; sin destino
+ *   conectado, dice que primero hay que elegir dónde guardar.
+ *
+ * `Continuar` trabaja mientras se espera la verificación del sistema.
  */
 @Composable
 fun ProtectionStep(uiState: OnboardingUiState, onAction: (OnboardingAction) -> Unit) {
@@ -399,9 +410,20 @@ fun ProtectionStep(uiState: OnboardingUiState, onAction: (OnboardingAction) -> U
                 text = stringResource(R.string.action_continue),
                 onClick = { onAction(OnboardingAction.Finish) },
                 variant = ActionVariant.PRIMARY,
+                modifier = Modifier.keepsMessagesAbove(),
+                state = if (uiState.lockCheck) ActionState.WORKING else ActionState.IDLE,
             )
         },
     ) {
+        if (uiState.lockOffered) {
+            LockChoiceRow(uiState.lockChosen) { onAction(OnboardingAction.LockChoice(it)) }
+        } else {
+            NoticeCard(stringResource(R.string.lock_device_risk), NoticeVariant.WARNING)
+        }
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant,
+            thickness = AppTheme.sizes.hairline,
+        )
         Column(
             Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
@@ -431,6 +453,35 @@ fun ProtectionStep(uiState: OnboardingUiState, onAction: (OnboardingAction) -> U
         if (uiState.saveFailed) {
             NoticeCard(stringResource(R.string.state_error_save), NoticeVariant.ERROR)
         }
+    }
+}
+
+/**
+ * `Bloquear con huella o PIN`, con lo que hace y lo que no: toda la fila es un solo foco y cambia el
+ * interruptor, como una fila de ajustes, alineada con el resto del paso.
+ */
+@Composable
+private fun LockChoiceRow(chosen: Boolean, onChange: (Boolean) -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = AppTheme.sizes.listRowSingle)
+            .toggleable(value = chosen, role = Role.Switch, onValueChange = onChange),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
+        ) {
+            Text(
+                stringResource(R.string.lock_setting),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            AppSwitch(checked = chosen, onCheckedChange = null)
+        }
+        Small(stringResource(R.string.onboarding_lock_help))
     }
 }
 

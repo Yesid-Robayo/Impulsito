@@ -55,3 +55,14 @@ private fun FoundCopiesPreview() {
 private fun ProtectionPreview() {
     PreviewTheme { ProtectionStep(PREVIEW_WELCOME.copy(step = OnboardingStepId.PROTECTION), {}) }
 }
+
+@ThemePreviews
+@Composable
+private fun ProtectionWithLockPreview() {
+    PreviewTheme {
+        ProtectionStep(
+            PREVIEW_WELCOME.copy(step = OnboardingStepId.PROTECTION, lockOffered = true),
+            {},
+        )
+    }
+}

@@ -11,4 +11,5 @@
     <string name="lock_screen_body">Desbloquear para ver el negocio</string>
     <string name="lock_no_device_lock">Esta opción necesita un bloqueo de pantalla en el teléfono.</string>
     <string name="lock_unlock">Desbloquear</string>
+    <string name="lock_device_risk">Este teléfono no tiene bloqueo de pantalla. Sin bloqueo, cualquiera que lo tome puede ver los datos.</string>
 </resources>

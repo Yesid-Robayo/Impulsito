@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.ui.onboarding
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -125,5 +127,37 @@ class WelcomeStepTest {
         compose.onNodeWithText(text(R.string.action_continue)).performClick()
 
         assertEquals(listOf<OnboardingAction>(OnboardingAction.Finish), actions)
+    }
+
+    @Test
+    fun withAScreenLockTheLockComesChosenAndCanBeRejected() {
+        compose.setContent {
+            PreviewTheme {
+                ProtectionStep(
+                    PREVIEW_WELCOME.copy(step = OnboardingStepId.PROTECTION, lockOffered = true),
+                ) { actions += it }
+            }
+        }
+
+        compose.onNodeWithText(text(R.string.onboarding_lock_help)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.lock_device_risk)).assertDoesNotExist()
+        compose.onNode(isToggleable()).assertIsOn().performClick()
+
+        assertEquals(listOf<OnboardingAction>(OnboardingAction.LockChoice(false)), actions)
+    }
+
+    @Test
+    fun withoutAScreenLockOnlyTheRiskIsShown() {
+        compose.setContent {
+            PreviewTheme {
+                ProtectionStep(PREVIEW_WELCOME.copy(step = OnboardingStepId.PROTECTION)) {
+                    actions += it
+                }
+            }
+        }
+
+        compose.onNodeWithText(text(R.string.lock_device_risk)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.lock_setting)).assertDoesNotExist()
+        compose.onNode(isToggleable()).assertDoesNotExist()
     }
 }

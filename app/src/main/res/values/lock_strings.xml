@@ -11,4 +11,5 @@
     <string name="lock_screen_body">Unlock to see the business</string>
     <string name="lock_no_device_lock">This option needs a screen lock on the phone.</string>
     <string name="lock_unlock">Unlock</string>
+    <string name="lock_device_risk">This phone has no screen lock. Without one, anyone who picks it up can see the data.</string>
 </resources>

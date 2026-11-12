@@ -59,6 +59,12 @@ class OnboardingGalleryTest {
             "protection" to {
                 ProtectionStep(PREVIEW_WELCOME.copy(step = OnboardingStepId.PROTECTION), {})
             },
+            "protection-lock" to {
+                ProtectionStep(
+                    PREVIEW_WELCOME.copy(step = OnboardingStepId.PROTECTION, lockOffered = true),
+                    {},
+                )
+            },
         )
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             for (dark in listOf(false, true)) {

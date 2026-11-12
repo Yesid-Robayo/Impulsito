@@ -10,6 +10,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationR
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.CompleteOnboardingResult
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.OnboardingResume
+import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceResult
+import io.github.yesidrobayo.shopledger.lock.AuthOutcome
 import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
 import io.github.yesidrobayo.shopledger.ui.backup.RestoreFlow
 import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
@@ -34,9 +36,13 @@ import kotlinx.coroutines.withContext
  *   copias: si hay, se ofrece restaurar o empezar de cero; una lista que falla nunca cuenta como
  *   vacía. Con un archivo, la misma restauración de la pantalla del respaldo.
  * - **Terminar queda guardado**, también con `Ahora no`: si no, la bienvenida volvería siempre.
+ * - **El bloqueo viene marcado** si el teléfono tiene bloqueo de pantalla, y la persona puede
+ *   apagarlo. Marcado, `Continuar` pide la verificación del sistema, y solo con ella el bloqueo
+ *   queda encendido. Sin bloqueo de pantalla no se ofrece, y nadie queda fuera de sus datos.
  *
  * @param resume dónde retomar según lo guardado.
  * @param complete guarda el fin del primer uso.
+ * @param enableLock enciende el bloqueo de la app, tras la verificación.
  * @param destination el destino conectado y sus copias, y si hay red.
  * @param slotsLabel el nombre de la nube del teléfono, si se sabe.
  * @param calendar la zona del negocio, que la región puede cambiar en el paso 2.
@@ -44,6 +50,7 @@ import kotlinx.coroutines.withContext
 class OnboardingViewModel(
     private val resume: suspend () -> OnboardingResume,
     private val complete: suspend () -> CompleteOnboardingResult,
+    private val enableLock: suspend () -> ChangePreferenceResult,
     private val destination: BackupDestinationReader,
     private val slotsLabel: suspend () -> String?,
     calendar: Flow<BusinessCalendarResult>,
@@ -73,6 +80,9 @@ class OnboardingViewModel(
         )
 
     init {
+        savedState.get<Boolean>(LOCK_CHOSEN)?.let { chosen ->
+            state.update { it.copy(lockChosen = chosen) }
+        }
         viewModelScope.launch {
             calendar.collect { result ->
                 val zone = (result as? BusinessCalendarResult.Ready)?.calendar?.zone
@@ -130,7 +140,21 @@ class OnboardingViewModel(
                 go(OnboardingStepId.PROTECTION)
             }
 
-            OnboardingAction.Finish -> finish()
+            OnboardingAction.Finish ->
+                if (state.value.lockOffered && state.value.lockChosen) {
+                    state.update { it.copy(lockCheck = true, saveFailed = false) }
+                } else {
+                    finish(lock = false)
+                }
+
+            is OnboardingAction.DeviceLock -> state.update { it.copy(lockOffered = action.secure) }
+
+            is OnboardingAction.LockChoice -> {
+                savedState[LOCK_CHOSEN] = action.enabled
+                state.update { it.copy(lockChosen = action.enabled) }
+            }
+
+            is OnboardingAction.LockChecked -> lockChecked(action.outcome)
 
             is OnboardingAction.Restore -> restoreAction(action.action)
 
@@ -247,9 +271,34 @@ class OnboardingViewModel(
         }
     }
 
-    private fun finish() {
+    private fun lockChecked(outcome: AuthOutcome) {
+        state.update { it.copy(lockCheck = false) }
+        when (outcome) {
+            AuthOutcome.Success -> finish(lock = true)
+
+            // El teléfono perdió su bloqueo de pantalla: ya no se ofrece, y el paso avisa del riesgo.
+            // Con otro `Continuar` termina sin bloqueo.
+            AuthOutcome.NoDeviceCredential -> state.update { it.copy(lockOffered = false) }
+
+            // Cancelada o fallida, se queda en el paso: se puede volver a intentar o apagarlo.
+            AuthOutcome.Canceled, is AuthOutcome.Failed -> Unit
+        }
+    }
+
+    /**
+     * Termina el primer uso. Con [lock], primero enciende el bloqueo: si no se guarda, no termina,
+     * para que la persona no crea que su negocio quedó protegido.
+     */
+    private fun finish(lock: Boolean) {
         state.update { it.copy(saveFailed = false) }
         viewModelScope.launch {
+            if (lock) {
+                val locked = read { enableLock() } == ChangePreferenceResult.Saved
+                if (!locked) {
+                    state.update { it.copy(saveFailed = true) }
+                    return@launch
+                }
+            }
             when (read { complete() }) {
                 CompleteOnboardingResult.Completed -> state.update { it.copy(done = true) }
 
@@ -271,5 +320,6 @@ class OnboardingViewModel(
     private companion object {
         const val STEP = "onboardingStep"
         const val DESTINATION_SEEN = "onboardingDestinationSeen"
+        const val LOCK_CHOSEN = "onboardingLockChosen"
     }
 }

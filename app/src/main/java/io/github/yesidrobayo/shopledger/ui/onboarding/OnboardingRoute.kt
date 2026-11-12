@@ -22,13 +22,17 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
+import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.PrepareSlotFilesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.CompleteOnboardingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.ResumeOnboardingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceUseCase
 import io.github.yesidrobayo.shopledger.localization.InstalledLanguages
+import io.github.yesidrobayo.shopledger.lock.AuthPurpose
+import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
@@ -67,6 +71,11 @@ fun OnboardingRoute(navigator: AppNavigator) {
                         ports.settings,
                         container.clock,
                     )::invoke,
+                enableLock = {
+                    ChangePreferenceUseCase(ports.settings, container.clock)(
+                        PreferenceChange.AppLock(true),
+                    )
+                },
                 destination = BackupDestinationReader(container.data.backupDestination),
                 slotsLabel = {
                     PrepareSlotFilesUseCase(container.data.slotFilesSetup).look()?.providerLabel
@@ -99,9 +108,20 @@ fun OnboardingRoute(navigator: AppNavigator) {
             LaunchedEffect(uiState.restore) {
                 if (uiState.restore == RestoreUi.Ready) restartForRestore(context)
             }
-            LifecycleResumeEffect(viewModel) {
+            val authenticator = LocalDeviceAuthenticator.current
+            LifecycleResumeEffect(viewModel, authenticator) {
                 viewModel.onAction(OnboardingAction.Resumed)
+                // El bloqueo de pantalla se pudo configurar en el sistema mientras tanto.
+                viewModel.onAction(OnboardingAction.DeviceLock(authenticator.hasDeviceCredential()))
                 onPauseOrDispose {}
+            }
+            // `Continuar` con el bloqueo marcado: la verificación del sistema antes de encenderlo.
+            val lockTitle = stringResource(R.string.lock_setting)
+            LaunchedEffect(uiState.lockCheck) {
+                if (uiState.lockCheck) {
+                    val outcome = authenticator.authenticate(AuthPurpose.UNLOCK, lockTitle, null)
+                    viewModel.onAction(OnboardingAction.LockChecked(outcome))
+                }
             }
             // Atrás: el paso anterior, o fuera de la app desde el primero.
             BackHandler {
@@ -138,6 +158,9 @@ fun OnboardingRoute(navigator: AppNavigator) {
                     OnboardingAction.ConfirmStartOver,
                     OnboardingAction.DismissStartOver,
                     OnboardingAction.Finish,
+                    is OnboardingAction.DeviceLock,
+                    is OnboardingAction.LockChoice,
+                    is OnboardingAction.LockChecked,
                     -> Unit
                 }
             }
