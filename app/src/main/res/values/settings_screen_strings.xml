@@ -43,4 +43,6 @@
     <string name="settings_palette_carmine_gold">Carmine and gold</string>
     <string name="settings_palette_garnet_honey">Garnet and honey</string>
     <string name="settings_palette_vivid_red_cream">Vivid red and cream</string>
+    <!-- Información para soporte, con la nube del teléfono. -->
+    <string name="support_field_last_handoff">Last handoff</string>
 </resources>

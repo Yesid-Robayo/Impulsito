@@ -51,6 +51,7 @@ class BackupStatusFactsTest {
                 lastUploadFinishedAt = 3_000,
                 failureCode = "LOCAL_INVARIANT",
                 lastHumanCheckAt = 4_000,
+                invariantFailures = 3,
             )
 
         assertEquals(
@@ -71,6 +72,7 @@ class BackupStatusFactsTest {
                 lastHumanCheckAt = Instant.fromEpochMilliseconds(4_000),
                 meteredPolicy = MeteredBackupPolicy.EVERY_30_MIN,
                 network = network,
+                invariantFailures = 3,
             ),
             facts(row, firstHandoffAt = 5_000),
         )

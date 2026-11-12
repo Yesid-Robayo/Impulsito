@@ -104,6 +104,17 @@ class ObserveBackupOverviewUseCaseTest {
     }
 
     @Test
+    fun `a broken stock check carries how many products it found`() = runTest {
+        stored.value =
+            facts.copy(failureCode = BackupFailureCode.LOCAL_INVARIANT, invariantFailures = 4)
+
+        val overview = overview()
+
+        assertEquals(BackupFailureCode.LOCAL_INVARIANT, overview.failureCode)
+        assertEquals(4L, overview.invariantFailures)
+    }
+
+    @Test
     fun `a clock set back is the reason before anything else`() = runTest {
         now = start - 3.hours
         stored.value = facts.copy(network = BackupNetwork.NONE)

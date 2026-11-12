@@ -436,8 +436,8 @@ private fun failureTitle(wording: BackupWording): String {
 }
 
 /**
- * El cuerpo de cada fallo. `LOCAL_INVARIANT` cuenta los productos afectados, y ese número todavía
- * no llega a la pantalla: sin él, el estado va sin cuerpo antes que con un número inventado.
+ * El cuerpo de cada fallo. `LOCAL_INVARIANT` cuenta los productos afectados; si el número no se
+ * sabe, el estado va sin cuerpo antes que con un número inventado.
  */
 @Composable
 private fun failureBody(wording: BackupWording, app: String): String? {
@@ -463,7 +463,7 @@ private fun failureBody(wording: BackupWording, app: String): String? {
         BackupFailureCode.LOCAL_STORAGE_LOW ->
             stringResource(R.string.backup_failure_local_storage_low_body)
 
-        BackupFailureCode.LOCAL_INVARIANT -> null
+        BackupFailureCode.LOCAL_INVARIANT -> invariantBody(wording.overview.invariantFailures, app)
 
         BackupFailureCode.LOCAL_INVARIANT_FATAL ->
             when {
@@ -520,3 +520,14 @@ private fun failureBody(wording: BackupWording, app: String): String? {
 private fun Long.toCount(): Int = coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
 
 private const val SECONDS = 60L
+
+/**
+ * Cuántos productos tienen un stock que no coincide con su historial, y que la app no corrige sola,
+ * o `null` si la verificación no dejó el número.
+ */
+@Composable
+fun invariantBody(count: Long, app: String): String? {
+    if (count <= 0) return null
+    val shown = count.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    return pluralStringResource(R.plurals.backup_failure_local_invariant_body, shown, shown, app)
+}

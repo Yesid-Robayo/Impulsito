@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,7 +49,11 @@ import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
+import io.github.yesidrobayo.shopledger.ui.rescue.SupportFacts
+import io.github.yesidrobayo.shopledger.ui.rescue.SupportLine
 import io.github.yesidrobayo.shopledger.ui.rescue.appVersionOf
+import io.github.yesidrobayo.shopledger.ui.rescue.copyToClipboard
+import io.github.yesidrobayo.shopledger.ui.rescue.supportText
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 import io.github.yesidrobayo.shopledger.ui.theme.LocalPaletteChooser
 import io.github.yesidrobayo.shopledger.ui.theme.PaletteChoice
@@ -252,6 +257,32 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
         }
     }
     val promptTitle = stringResource(R.string.lock_setting)
+    val overview = overviewViewModel?.uiState?.collectAsStateWithLifecycle()?.value
+    // Información para soporte: versión, Android, teléfono, última copia y último código de error.
+    // Sin la base, la última copia dice que no está disponible. Nunca un dato del negocio.
+    val backup = overview?.backup
+    val lastBackup =
+        backup?.overview?.lastSuccessAt?.let { at ->
+            backup.zone?.let { LocalAppFormats.current.date.dayMonthTime(at, it) }
+        }
+    val lastError = backup?.overview?.failureCode?.name
+    val handoff = backup?.slots == true
+    val support by produceState(emptyList<SupportLine>(), lastBackup, lastError, handoff) {
+        value = withContext(io) {
+            SupportFacts.ofDevice(context, lastError, lastBackup, handoff).lines(context)
+        }
+    }
+    val supportLabel = stringResource(R.string.settings_support)
+    val labels = LocalResources.current
+    val copySupport: () -> Unit = {
+        copyToClipboard(
+            context,
+            supportLabel,
+            supportText(support) { label, value ->
+                labels.getString(R.string.support_line, label, value)
+            },
+        )
+    }
     when (model) {
         ScreenModel.Opening, ScreenModel.Unavailable ->
             SettingsEntryScreen(
@@ -261,6 +292,8 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 version = version,
                 links = links,
                 readLicense = readLicense,
+                support = support,
+                onCopySupport = copySupport,
             )
 
         is ScreenModel.Ready -> {
@@ -268,7 +301,6 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val security = (securityModel as? ScreenModel.Ready)?.viewModel
             val securityState = security?.uiState?.collectAsStateWithLifecycle()?.value
-            val overview = overviewViewModel?.uiState?.collectAsStateWithLifecycle()?.value
             val usage = usageViewModel?.uiState?.collectAsStateWithLifecycle()?.value
             BackHandler(enabled = uiState.profileSheet != null) {
                 viewModel.onProfileAction(ProfileAction.Dismiss)
@@ -318,6 +350,8 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 onChoosePalette = choosePalette,
                 paletteFailed = failedPalette != null,
                 onRetryPalette = { failedPalette?.let(choosePalette) },
+                support = support,
+                onCopySupport = copySupport,
             )
         }
     }

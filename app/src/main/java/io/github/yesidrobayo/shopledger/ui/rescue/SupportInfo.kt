@@ -11,21 +11,26 @@ import androidx.core.content.pm.PackageInfoCompat
 import io.github.yesidrobayo.shopledger.R
 
 /**
- * Los datos técnicos de `Información para soporte` en el rescate: la versión de la app y de
- * Android, el teléfono y el código de la causa. Sin la base no hay estado de la última copia, y se
- * dice. Nunca lleva montos, cantidades, nombres, notas, ni la dirección, el usuario o la contraseña
- * del destino.
+ * Los datos técnicos de `Información para soporte`, en el rescate y en Ajustes: la versión de la
+ * app y de Android, el teléfono, la última copia y el último código de error. Sin la base, como en
+ * el rescate, no hay estado de la última copia, y se dice. Nunca lleva montos, cantidades, nombres,
+ * notas, ni la dirección, el usuario o la contraseña del destino.
  *
  * @property appVersion el nombre y el código de la versión instalada.
  * @property android la versión de Android y su nivel de API.
  * @property device el fabricante y el modelo.
- * @property lastError el código de la causa del rescate.
+ * @property lastError el código estable del último error, o `null` si no hay ninguno.
+ * @property lastBackup cuándo fue la última copia, ya escrita con el formato regional, o `null`.
+ * @property handoff con la nube del teléfono la copia se entrega, no se confirma: la línea dice
+ *   `Última entrega`.
  */
 data class SupportFacts(
     val appVersion: String,
     val android: String,
     val device: String,
-    val lastError: String,
+    val lastError: String?,
+    val lastBackup: String? = null,
+    val handoff: Boolean = false,
 ) {
     /** Las líneas de la hoja, con las etiquetas en el idioma de [context]. */
     fun lines(context: Context): List<SupportLine> {
@@ -40,18 +45,43 @@ data class SupportFacts(
             ),
             SupportLine(context.getString(R.string.support_field_android), android),
             SupportLine(context.getString(R.string.support_field_device), device),
-            SupportLine(context.getString(R.string.support_field_last_backup), unavailable),
-            SupportLine(context.getString(R.string.support_field_last_error), lastError),
+            SupportLine(
+                context.getString(
+                    if (handoff) {
+                        R.string.support_field_last_handoff
+                    } else {
+                        R.string.support_field_last_backup
+                    },
+                ),
+                lastBackup ?: unavailable,
+            ),
+            SupportLine(
+                context.getString(R.string.support_field_last_error),
+                lastError ?: unavailable,
+            ),
         )
     }
 
     companion object {
         /** Los datos de este teléfono para [cause]. Lee el sistema: va fuera del hilo principal. */
-        fun of(context: Context, cause: RescueReason): SupportFacts = SupportFacts(
+        fun of(context: Context, cause: RescueReason): SupportFacts = ofDevice(context, cause.code)
+
+        /**
+         * Los datos de este teléfono, con [lastError] y, si se sabe, la última copia. Lee el
+         * sistema: va fuera del hilo principal.
+         */
+        fun ofDevice(
+            context: Context,
+            lastError: String?,
+            lastBackup: String? = null,
+            handoff: Boolean = false,
+        ): SupportFacts = SupportFacts(
             appVersion = appVersionOf(context),
             android = "${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})",
             device = "${Build.MANUFACTURER} ${Build.MODEL}",
-            lastError = cause.code,
+            lastError = lastError,
+            lastBackup = lastBackup,
+            handoff = handoff,
         )
     }
 }

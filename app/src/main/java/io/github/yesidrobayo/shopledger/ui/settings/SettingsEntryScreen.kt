@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
@@ -32,6 +33,7 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.backup.backupBannerLook
 import io.github.yesidrobayo.shopledger.ui.backup.backupChipLook
+import io.github.yesidrobayo.shopledger.ui.backup.invariantBody
 import io.github.yesidrobayo.shopledger.ui.backup.needsBanner
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.BackupStatusBanner
@@ -44,6 +46,8 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.i18n.ownName
+import io.github.yesidrobayo.shopledger.ui.rescue.SupportInfoSheet
+import io.github.yesidrobayo.shopledger.ui.rescue.SupportLine
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -60,7 +64,7 @@ data class SettingsLinks(
 )
 
 /** Las hojas de `Ayuda y acerca de` que se abren dentro de Ajustes. */
-enum class AboutSheet { LICENSES, DELETE_GUIDE }
+enum class AboutSheet { LICENSES, DELETE_GUIDE, SUPPORT }
 
 /**
  * Ajustes: solo configuración, en grupos y de arriba abajo.
@@ -94,6 +98,8 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE }
  * @param onChoosePalette aplica y guarda una paleta; la hoja de colores sigue abierta.
  * @param paletteFailed la última paleta elegida no se guardó, y volvió la anterior.
  * @param onRetryPalette vuelve a elegir la paleta que no se guardó.
+ * @param support las líneas de `Información para soporte`, sin datos del negocio.
+ * @param onCopySupport copia esas líneas al portapapeles.
  */
 @Composable
 fun SettingsEntryScreen(
@@ -120,6 +126,8 @@ fun SettingsEntryScreen(
     onChoosePalette: (ColorPalette) -> Unit = {},
     paletteFailed: Boolean = false,
     onRetryPalette: () -> Unit = {},
+    support: List<SupportLine> = emptyList(),
+    onCopySupport: () -> Unit = {},
 ) {
     var aboutSheet by rememberSaveable { mutableStateOf<AboutSheet?>(null) }
     var rangeOpen by rememberSaveable { mutableStateOf(false) }
@@ -152,6 +160,23 @@ fun SettingsEntryScreen(
                         ),
                     )
                 }
+                // La verificación de stock encontró diferencias: se dice arriba, con cuántos
+                // productos, y la salida es pedir ayuda. La app no corrige nada sola.
+                overview?.backup?.overview
+                    ?.takeIf { it.failureCode == BackupFailureCode.LOCAL_INVARIANT }
+                    ?.let { invariantBody(it.invariantFailures, stringResource(R.string.app_name)) }
+                    ?.let { body ->
+                        NoticeCard(
+                            text = body,
+                            variant = NoticeVariant.WARNING,
+                            actionLabel = stringResource(R.string.settings_support),
+                            onAction = { aboutSheet = AboutSheet.SUPPORT },
+                            modifier = Modifier.padding(
+                                horizontal = spacing.s16,
+                                vertical = spacing.s8,
+                            ),
+                        )
+                    }
                 overview?.backup?.let { BackupGroup(it, overview.destination, links) }
                 usage?.let { AlertsGroup(it, notificationsBlocked, onUsageAction) }
                 if (profile != null) {
@@ -188,7 +213,11 @@ fun SettingsEntryScreen(
                         },
                     )
                 }
-                AboutGroup(version, links) { aboutSheet = AboutSheet.LICENSES }
+                AboutGroup(
+                    version = version,
+                    links = links,
+                    onSupport = { aboutSheet = AboutSheet.SUPPORT },
+                ) { aboutSheet = AboutSheet.LICENSES }
             }
         }
     }
@@ -226,6 +255,9 @@ fun SettingsEntryScreen(
 
         AboutSheet.DELETE_GUIDE -> DeleteGuideSheet(onDismiss = { aboutSheet = null })
 
+        AboutSheet.SUPPORT ->
+            SupportInfoSheet(support, onCopy = onCopySupport, onDismiss = { aboutSheet = null })
+
         null -> Unit
     }
 }
@@ -249,7 +281,11 @@ private fun BackupGroup(
         verticalArrangement = Arrangement.spacedBy(spacing.s8),
     ) {
         BackupStatusChip(backupChipLook(backup), onClick = { links.onOpen(AppNavKey.Backup) })
-        if (status.needsBanner()) {
+        // Las diferencias de stock ya se dicen arriba, con su salida a soporte: no se repiten aquí.
+        val invariantAbove =
+            backup.overview.failureCode == BackupFailureCode.LOCAL_INVARIANT &&
+                backup.overview.invariantFailures > 0
+        if (status.needsBanner() && !invariantAbove) {
             val (label, target) = bannerExit(status)
             BackupStatusBanner(
                 backupBannerLook(backup),
@@ -388,7 +424,12 @@ private fun SalesGroup(
  * contabilidad ni emite facturas, las licencias, los términos y la política de privacidad.
  */
 @Composable
-private fun AboutGroup(version: String?, links: SettingsLinks, onLicenses: () -> Unit) {
+private fun AboutGroup(
+    version: String?,
+    links: SettingsLinks,
+    onSupport: () -> Unit,
+    onLicenses: () -> Unit,
+) {
     val app = stringResource(R.string.app_name)
     SectionHeader(stringResource(R.string.settings_group_help_about))
     SettingsRow(
@@ -413,6 +454,11 @@ private fun AboutGroup(version: String?, links: SettingsLinks, onLicenses: () ->
             )
         }
     }
+    SettingsRow(
+        title = stringResource(R.string.settings_support),
+        summary = stringResource(R.string.support_help),
+        action = SettingsRowAction.Navigation(onSupport),
+    )
     SettingsRow(
         title = stringResource(R.string.settings_licenses),
         action = SettingsRowAction.Navigation(onLicenses),

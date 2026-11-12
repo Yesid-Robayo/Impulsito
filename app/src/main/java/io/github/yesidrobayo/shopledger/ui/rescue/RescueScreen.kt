@@ -393,35 +393,12 @@ private fun SupportSheet(
     crashLog: String?,
     onAction: (RescueAction) -> Unit,
 ) {
-    AppBottomSheet(
-        onDismissRequest = { onAction(RescueAction.CloseSupport) },
-        title = stringResource(R.string.settings_support),
-        action = {
-            PrimaryActionButton(
-                stringResource(R.string.action_copy),
-                { onAction(RescueAction.CopySupport) },
-                ActionVariant.PRIMARY,
-            )
-        },
+    SupportInfoSheet(
+        lines = lines,
+        onCopy = { onAction(RescueAction.CopySupport) },
+        onDismiss = { onAction(RescueAction.CloseSupport) },
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
-            Text(
-                stringResource(R.string.support_help),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            lines.forEach { line ->
-                Column(Modifier.semantics(mergeDescendants = true) {}) {
-                    Text(
-                        line.label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(line.value, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-            if (!crashLog.isNullOrEmpty()) CrashLog(crashLog, onAction)
-        }
+        if (!crashLog.isNullOrEmpty()) CrashLog(crashLog, onAction)
     }
 }
 

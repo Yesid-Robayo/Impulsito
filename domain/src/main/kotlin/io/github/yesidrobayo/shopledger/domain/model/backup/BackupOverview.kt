@@ -20,6 +20,8 @@ import kotlin.time.Instant
  * @property lastFullReadAt con WebDAV, la última lectura completa de una copia, o la conexión si
  *   nunca hubo una: desde ahí cuenta el aviso de comprobación completa atrasada.
  * @property computedAt la hora con que se calculó todo: los tiempos relativos se miden desde ella.
+ * @property invariantFailures con `LOCAL_INVARIANT`, cuántos productos tienen un stock que no
+ *   coincide con su historial; 0 si no se sabe o no hay.
  */
 data class BackupOverview(
     val report: BackupStatusReport,
@@ -31,6 +33,7 @@ data class BackupOverview(
     val nextMeteredUploadAt: Instant?,
     val lastFullReadAt: Instant?,
     val computedAt: Instant,
+    val invariantFailures: Long = 0,
 )
 
 /** Por qué un día sin copia, si se sabe. Cada uno tiene su frase. */

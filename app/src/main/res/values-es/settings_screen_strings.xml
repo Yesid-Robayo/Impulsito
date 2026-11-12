@@ -43,4 +43,6 @@
     <string name="settings_palette_carmine_gold">Carmín y oro</string>
     <string name="settings_palette_garnet_honey">Granate y miel</string>
     <string name="settings_palette_vivid_red_cream">Rojo vivo y crema</string>
+    <!-- Información para soporte, con la nube del teléfono. -->
+    <string name="support_field_last_handoff">Última entrega</string>
 </resources>

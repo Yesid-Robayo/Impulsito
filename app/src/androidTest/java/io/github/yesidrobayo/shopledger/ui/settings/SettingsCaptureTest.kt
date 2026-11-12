@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
@@ -31,6 +32,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.settings.AppLockSettings
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.rescue.SupportLine
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
 import java.io.File
@@ -62,6 +64,13 @@ class SettingsCaptureTest {
 
     private val now = Instant.fromEpochMilliseconds(1_793_631_600_000L)
 
+    private val supportLines =
+        listOf(
+            SupportLine(resources.getString(R.string.support_field_android), "16 (36)"),
+            SupportLine(resources.getString(R.string.support_field_device), "Teléfono de muestra"),
+            SupportLine(resources.getString(R.string.support_field_last_error), "LOCAL_INVARIANT"),
+        )
+
     private val overview =
         SettingsOverviewUiState(
             backup =
@@ -70,12 +79,13 @@ class SettingsCaptureTest {
                         report = BackupStatusReport(BackupStatus.FAILED, 4, savingSoon = false),
                         destinationKind = BackupDestinationKind.WEBDAV,
                         lastSuccessAt = now,
-                        failureCode = null,
+                        failureCode = BackupFailureCode.LOCAL_INVARIANT,
                         staleReason = null,
                         meteredPolicy = MeteredBackupPolicy.EVERY_60_MIN,
                         nextMeteredUploadAt = null,
                         lastFullReadAt = null,
                         computedAt = now,
+                        invariantFailures = 3,
                     ),
                     providerLabel = null,
                     zone = null,
@@ -108,6 +118,11 @@ class SettingsCaptureTest {
                     .performScrollTo()
                     .performClick()
                 shoot(dir, "$prefix-licenses")
+                show(palette, dark)
+                compose.onNodeWithText(resources.getString(R.string.support_help))
+                    .performScrollTo()
+                    .performClick()
+                shoot(dir, "$prefix-support")
             }
         }
     }
@@ -156,6 +171,7 @@ class SettingsCaptureTest {
                             overview = overview,
                             deviceLockMissing = true,
                             version = "1.0.0 (7)",
+                            support = supportLines,
                             usage = UsageSettingsUiState(
                                 stockAlerts = true,
                                 theme = ThemeMode.SYSTEM,

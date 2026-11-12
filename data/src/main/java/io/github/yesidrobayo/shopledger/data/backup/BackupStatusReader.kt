@@ -159,4 +159,5 @@ internal fun backupStatusFacts(
     lastFullVerifyAt = row?.lastFullVerifyAt?.let(Instant::fromEpochMilliseconds),
     connectedAt = connectedAt?.let(Instant::fromEpochMilliseconds),
     serviceSpace = serviceSpace,
+    invariantFailures = row?.invariantFailures ?: 0,
 )

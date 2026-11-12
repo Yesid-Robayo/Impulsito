@@ -54,6 +54,7 @@ class ObserveBackupOverviewUseCase(
                 },
             lastFullReadAt = facts.lastFullVerifyAt ?: facts.connectedAt,
             computedAt = now,
+            invariantFailures = facts.invariantFailures,
         )
     }
 

@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
@@ -20,6 +21,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
@@ -32,6 +34,7 @@ import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.components.paletteName
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.rescue.SupportLine
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
@@ -417,6 +420,74 @@ class SettingsScreenTest {
             .assertIsSelected()
         compose.onNodeWithText(text(R.string.action_retry)).performClick()
         assertEquals(1, retries)
+    }
+
+    private var copies = 0
+
+    private val supportLines =
+        listOf(
+            SupportLine(text(R.string.support_field_android), "16 (36)"),
+            SupportLine(text(R.string.support_field_last_error), "LOCAL_INVARIANT"),
+        )
+
+    private fun showWithSupport(overview: SettingsOverviewUiState) {
+        compose.setContent {
+            PreviewTheme {
+                SettingsEntryScreen(
+                    onOpen = {},
+                    onBack = {},
+                    overview = overview,
+                    support = supportLines,
+                    onCopySupport = { copies += 1 },
+                )
+            }
+        }
+    }
+
+    private fun brokenStock(count: Long) = connected().copy(
+        backup =
+            wording(BackupStatus.FAILED, BackupDestinationKind.WEBDAV).let {
+                it.copy(
+                    overview =
+                        it.overview.copy(
+                            failureCode = BackupFailureCode.LOCAL_INVARIANT,
+                            invariantFailures = count,
+                        ),
+                )
+            },
+    )
+
+    @Test
+    fun aBrokenStockCheckSaysHowManyProductsAndLeadsToSupport() {
+        showWithSupport(brokenStock(3))
+
+        val notice =
+            resources.getQuantityString(R.plurals.backup_failure_local_invariant_body, 3, 3, app)
+        compose.onAllNodesWithText(notice)[0].assertIsDisplayed()
+        compose.onAllNodesWithText(text(R.string.settings_support))[0].performClick()
+
+        compose.onNodeWithText("LOCAL_INVARIANT").assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.action_copy)).performClick()
+        assertEquals(1, copies)
+    }
+
+    @Test
+    fun withoutACountTheStockNoticeDoesNotShow() {
+        showWithSupport(brokenStock(0))
+
+        compose.onNodeWithText(text(R.string.support_help)).performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText(text(R.string.settings_support))
+            .assertCountEquals(1)
+    }
+
+    @Test
+    fun theSupportRowOpensTheSheetWithItsLines() {
+        showWithSupport(connected())
+
+        compose.onNodeWithText(text(R.string.settings_support)).performScrollTo().performClick()
+
+        compose.onNodeWithText(text(R.string.support_field_android)).assertIsDisplayed()
+        compose.onNodeWithText("16 (36)").assertIsDisplayed()
     }
 
     @Test

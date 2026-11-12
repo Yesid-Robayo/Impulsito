@@ -31,6 +31,8 @@ import kotlin.time.Instant
  *   informó un tope.
  * @property storage el espacio del teléfono y lo que ocupa la base, o nulo si no se pudo leer. Solo
  *   sirve a los avisos de espacio: nunca cambia el estado.
+ * @property invariantFailures los productos cuyo stock no coincidió con su historial en la última
+ *   verificación, o 0. Solo se cuentan: la app no corrige nada por su cuenta.
  */
 data class BackupStatusFacts(
     val restoreInProgress: Boolean,
@@ -53,4 +55,5 @@ data class BackupStatusFacts(
     val lastFullVerifyAt: Instant? = null,
     val connectedAt: Instant? = null,
     val serviceSpace: ServiceSpace? = null,
+    val invariantFailures: Long = 0,
 )
