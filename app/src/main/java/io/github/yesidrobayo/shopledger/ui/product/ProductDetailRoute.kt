@@ -208,6 +208,7 @@ class ProductDetailUseCases(
                     ports.stockLedger,
                     ports.priceHistory,
                     ports.movementDocuments,
+                    ports.purchases,
                 ),
                 correct = CorrectCostUseCase(
                     tx,

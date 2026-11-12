@@ -30,4 +30,6 @@
     <string name="dialog_void_purchase_negative_body">%1$s of %2$s would be left. What was sold does not change.</string>
     <!-- Comprar en otra unidad. -->
     <string name="purchase_unit_unavailable">This unit is no longer bought</string>
+    <!-- Revisar precios tras una compra. -->
+    <string name="notice_low_margin_after_purchase">%1$s fell below the target margin. Check its price.</string>
 </resources>

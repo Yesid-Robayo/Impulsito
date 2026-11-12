@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.model.catalog
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 
 /** El documento del que salió una fila del libro, para abrirlo desde el detalle del producto. */
@@ -29,11 +30,14 @@ data class ProductMovement(
 /**
  * Todo lo que muestra el detalle de un producto: el producto, su unidad base, su libro del más
  * reciente al más antiguo y su historial de precios, también del más reciente al más antiguo, con
- * el precio inicial al final.
+ * el precio inicial al final. [lastCosts] es lo último que se pagó a cada proveedor, y
+ * [purchaseUnits] las unidades en que se compró, por id, para decir por qué unidad va cada costo.
  */
 data class ProductOverview(
     val product: Product,
     val unit: MeasureUnit?,
     val movements: List<ProductMovement>,
     val prices: List<PriceChange>,
+    val lastCosts: List<SupplierLastCost> = emptyList(),
+    val purchaseUnits: Map<Long, MeasureUnit> = emptyMap(),
 )

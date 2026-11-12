@@ -434,15 +434,29 @@ private fun ColumnScope.PurchaseSummaryContent(
             )
         }
         items(summary.costs, key = { it.productId }) { change ->
-            Text(
-                text = stringResource(
-                    R.string.notice_purchase_cost_change,
-                    change.name,
-                    rememberMoneyDisplay(change.before, money).text.text,
-                    rememberMoneyDisplay(change.after, money).text.text,
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+                Text(
+                    text = stringResource(
+                        R.string.notice_purchase_cost_change,
+                        change.name,
+                        rememberMoneyDisplay(change.before, money).text.text,
+                        rememberMoneyDisplay(change.after, money).text.text,
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                // El margen quedó bajo el objetivo: se sugiere revisar el precio, sin obligar.
+                if (change.reviewPrice) {
+                    NoticeCard(
+                        text = stringResource(
+                            R.string.notice_low_margin_after_purchase,
+                            change.name,
+                        ),
+                        variant = NoticeVariant.WARNING,
+                        actionLabel = stringResource(R.string.product_change_price),
+                        onAction = { onAction(NewPurchaseAction.ReviewPrice(change.productId)) },
+                    )
+                }
+            }
         }
     }
     Box(Modifier.keepsMessagesAbove().padding(spacing.s16).navigationBarsPadding()) {

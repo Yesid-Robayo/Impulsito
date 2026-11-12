@@ -85,6 +85,25 @@ internal interface PurchaseDao {
         supplierId: Long?,
     ): List<PurchaseDayTotal>
 
+    /**
+     * Por cada proveedor, y una vez por las compras sin proveedor, la línea de [productId] en su
+     * compra activa más reciente, la de id mayor, de la más nueva a la más antigua. Recorre las
+     * líneas del producto por su índice.
+     */
+    @Query(
+        "SELECT pu.supplier_id, s.name AS supplier_name, pu.id AS purchase_id, pu.business_date, " +
+            "l.unit_id, l.unit_cost FROM purchase_lines l " +
+            "JOIN purchases pu ON pu.id = l.purchase_id " +
+            "LEFT JOIN suppliers s ON s.id = pu.supplier_id " +
+            "WHERE l.product_id = :productId AND pu.status = 'ACTIVE' " +
+            "AND l.id = (SELECT MAX(l2.id) FROM purchase_lines l2 " +
+            "JOIN purchases p2 ON p2.id = l2.purchase_id " +
+            "WHERE l2.product_id = :productId AND p2.status = 'ACTIVE' " +
+            "AND p2.supplier_id IS pu.supplier_id) " +
+            "ORDER BY pu.business_date DESC, l.id DESC",
+    )
+    fun observeLastCosts(productId: Long): Flow<List<SupplierLastCostEntity>>
+
     /** Cambia con cada compra nueva y con cada anulación: el historial se vuelve a leer. */
     @Query(
         "SELECT COALESCE(MAX(id), 0) || ':' || " +
@@ -103,6 +122,16 @@ internal data class PurchaseHistoryRowEntity(
     @ColumnInfo(name = "invoice_reference") val invoiceReference: String?,
     @ColumnInfo(name = "supplier_name") val supplierName: String?,
     @ColumnInfo(name = "line_count") val lineCount: Int,
+)
+
+/** Lo último pagado a un proveedor por un producto. */
+internal data class SupplierLastCostEntity(
+    @ColumnInfo(name = "supplier_id") val supplierId: Long?,
+    @ColumnInfo(name = "supplier_name") val supplierName: String?,
+    @ColumnInfo(name = "purchase_id") val purchaseId: Long,
+    @ColumnInfo(name = "business_date") val businessDate: String,
+    @ColumnInfo(name = "unit_id") val unitId: Long,
+    @ColumnInfo(name = "unit_cost") val unitCost: Long,
 )
 
 /** Lo comprado en un día. */

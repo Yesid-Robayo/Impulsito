@@ -1,14 +1,17 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.catalog
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductMovement
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
+import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.port.MovementDocumentSource
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,6 +35,7 @@ class ObserveProductOverviewUseCase(
     private val ledger: StockLedgerRepository,
     private val prices: PriceHistoryRepository,
     private val documents: MovementDocumentSource,
+    private val purchases: PurchaseRepository? = null,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(productId: Long): Flow<ProductOverview?> =
@@ -39,17 +43,26 @@ class ObserveProductOverviewUseCase(
             if (product == null) {
                 flowOf(null)
             } else {
+                // Lo último pagado a cada proveedor: sin compras conectadas, nada que mostrar.
+                val lastCosts =
+                    purchases?.observeLastCosts(productId) ?: flowOf(emptyList<SupplierLastCost>())
                 combine(
                     units.observeAll(),
                     ledger.observeByProduct(productId),
                     prices.observeByProduct(productId),
                     documents.observeDocuments(productId),
-                ) { allUnits, rows, changes, links ->
+                    lastCosts,
+                ) { allUnits, rows, changes, links, costs: List<SupplierLastCost> ->
+                    val unitsById: Map<Long, MeasureUnit> = allUnits.associateBy { it.id }
                     ProductOverview(
                         product = product,
-                        unit = allUnits.firstOrNull { it.id == product.details.baseUnitId },
+                        unit = unitsById[product.details.baseUnitId],
                         movements = movementsOf(product, rows, links),
                         prices = changes.sortedByDescending { it.id },
+                        lastCosts = costs,
+                        purchaseUnits = costs.mapNotNull { cost ->
+                            unitsById[cost.unitId]?.let { cost.unitId to it }
+                        }.toMap(),
                     )
                 }
             }

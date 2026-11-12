@@ -39,12 +39,15 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductMovement
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
@@ -274,6 +277,7 @@ private fun DetailBody(
         when (tab) {
             ProductDetailTab.MOVEMENTS -> movementRows(overview, unit, onAction)
             ProductDetailTab.PRICES -> priceRows(overview.prices)
+            ProductDetailTab.SUPPLIERS -> lastCostRows(overview, onAction)
         }
     }
 }
@@ -648,6 +652,73 @@ private fun signedQuantity(quantity: QuantityMilli, unit: UnitLabel): String {
     return if (quantity > QuantityMilli.ZERO) PLUS + text else text
 }
 
+/**
+ * Lo último que se pagó a cada proveedor, de la compra más nueva a la más antigua: el proveedor o
+ * `Sin proveedor`, la fecha y el costo por unidad de la compra. Tocar una fila abre su compra. Sin
+ * compras, lo dice.
+ */
+private fun LazyListScope.lastCostRows(
+    overview: ProductOverview,
+    onAction: (ProductDetailAction) -> Unit,
+) {
+    if (overview.lastCosts.isEmpty()) {
+        item(key = "no-costs") {
+            EmptyStateInline(title = stringResource(R.string.empty_purchases_title))
+        }
+        return
+    }
+    items(overview.lastCosts, key = { "cost-${it.supplierId}-${it.purchaseId}" }) { cost ->
+        LastCostRow(cost, overview.purchaseUnits[cost.unitId]) {
+            onAction(ProductDetailAction.OpenDocument(MovementDocument.Purchase(cost.purchaseId)))
+        }
+    }
+}
+
+/** Un proveedor: su nombre, la fecha de su última compra y lo que costó cada unidad de compra. */
+@Composable
+private fun LastCostRow(cost: SupplierLastCost, unit: MeasureUnit?, onClick: () -> Unit) {
+    val spacing = AppTheme.spacing
+    val formats = LocalAppFormats.current
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(Modifier.clickable(onClick = onClick).semantics(mergeDescendants = true) {}) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = AppTheme.sizes.listRow)
+                .padding(horizontal = spacing.s16, vertical = spacing.s12),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
+                Text(
+                    cost.supplierName ?: stringResource(R.string.purchase_no_supplier),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    formats.date.dayMonthYear(cost.businessDate),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = muted,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                MoneyText(cost.unitCost, MoneySize.ROW, sensitive = true)
+                unit?.let {
+                    Text(
+                        unitLabel(it).symbol,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = muted,
+                    )
+                }
+            }
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = spacing.s16),
+            thickness = AppTheme.sizes.hairline,
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+    }
+}
+
 private fun LazyListScope.priceRows(prices: List<PriceChange>) {
     items(prices, key = { "price-${it.id}" }) { change -> PriceRow(change) }
 }
@@ -884,6 +955,7 @@ private fun ProductConfirm(dialog: ProductDetailDialog, onAction: (ProductDetail
 private fun tabLabel(tab: ProductDetailTab): Int = when (tab) {
     ProductDetailTab.MOVEMENTS -> R.string.product_tab_movements
     ProductDetailTab.PRICES -> R.string.product_tab_prices
+    ProductDetailTab.SUPPLIERS -> R.string.product_tab_suppliers
 }
 
 @StringRes

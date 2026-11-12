@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -22,6 +23,12 @@ interface PurchaseRepository {
 
     /** Las líneas de una compra, en el orden en que se guardaron. */
     fun observeLines(purchaseId: Long): Flow<List<PurchaseLine>>
+
+    /**
+     * Por cada proveedor, y una vez por las compras sin proveedor, la línea de [productId] en su
+     * compra activa más reciente, de la más nueva a la más antigua. Una compra anulada no cuenta.
+     */
+    fun observeLastCosts(productId: Long): Flow<List<SupplierLastCost>>
 
     suspend fun findById(id: Long): Purchase?
 

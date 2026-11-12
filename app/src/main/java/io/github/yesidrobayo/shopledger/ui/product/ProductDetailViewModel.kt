@@ -71,6 +71,9 @@ sealed interface ProductDetailContent {
 enum class ProductDetailTab {
     MOVEMENTS,
     PRICES,
+
+    /** Lo último que se pagó a cada proveedor por el producto. */
+    SUPPLIERS,
 }
 
 /**

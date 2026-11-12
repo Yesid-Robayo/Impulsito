@@ -67,6 +67,7 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                     clock = container.clock,
                     productUnits = ports.productUnits,
                     alerts = ports.lowStockAlerts,
+                    categories = ports.categories,
                 )
             val reactivate =
                 ReactivateProductUseCase(
@@ -118,6 +119,9 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
 
                         NewPurchaseAction.ConfirmCurrency ->
                             navigator.open(AppNavKey.RegionalSettings())
+
+                        is NewPurchaseAction.ReviewPrice ->
+                            navigator.open(AppNavKey.ProductEdit(productId = action.productId))
 
                         else -> Unit
                     }

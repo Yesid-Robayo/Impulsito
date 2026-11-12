@@ -278,6 +278,7 @@ internal class PurchaseDaoTest : LedgerDatabaseTest() {
                 "historyPage",
                 "dayTotals",
                 "observeHistoryMark",
+                "observeLastCosts",
             ),
             functionsOf(PurchaseDao::class.java),
         )

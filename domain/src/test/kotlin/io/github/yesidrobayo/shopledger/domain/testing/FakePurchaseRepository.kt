@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -27,6 +28,11 @@ internal class FakePurchaseRepository(private val database: InMemoryDatabase) :
 
     override fun observeLines(purchaseId: Long): Flow<List<PurchaseLine>> =
         database.tables.map { linesOf(it, purchaseId) }
+
+    override fun observeLastCosts(productId: Long): Flow<List<SupplierLastCost>> =
+        database.tables.map { tables ->
+            lastCostsOf(tables.purchases, tables.purchaseLines, productId)
+        }
 
     override suspend fun findById(id: Long): Purchase? = database.read().purchases[id]
 

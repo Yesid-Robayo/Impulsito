@@ -150,8 +150,17 @@ sealed interface PurchaseNotice {
 /** El resumen tras registrar: el total y cómo quedó el costo de cada producto. */
 data class PurchaseSummary(val purchaseId: Long, val total: Money, val costs: List<CostChangeUi>)
 
-/** Cómo quedó el costo de un producto tras la compra. */
-data class CostChangeUi(val productId: Long, val name: String, val before: Money, val after: Money)
+/**
+ * Cómo quedó el costo de un producto tras la compra. Con [reviewPrice], su margen quedó por debajo
+ * del objetivo: se sugiere revisar su precio, sin obligar.
+ */
+data class CostChangeUi(
+    val productId: Long,
+    val name: String,
+    val before: Money,
+    val after: Money,
+    val reviewPrice: Boolean = false,
+)
 
 /** Lo que la persona hace en la compra nueva. */
 sealed interface NewPurchaseAction {
@@ -202,6 +211,9 @@ sealed interface NewPurchaseAction {
     data object ConfirmLeave : NewPurchaseAction
 
     data object DismissDialog : NewPurchaseAction
+
+    /** Revisar el precio de un producto desde el resumen: lo resuelve la navegación. */
+    data class ReviewPrice(val productId: Long) : NewPurchaseAction
 
     /** El resumen ya se vio: la pantalla termina. */
     data object Finish : NewPurchaseAction

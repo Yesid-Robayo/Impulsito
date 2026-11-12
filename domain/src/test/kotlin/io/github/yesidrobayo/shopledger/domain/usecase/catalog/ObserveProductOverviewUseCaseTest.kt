@@ -35,7 +35,8 @@ class ObserveProductOverviewUseCaseTest {
             fixture.units,
             fixture.ledger,
             fixture.priceHistory,
-        ) { flowOf(links) }
+            { flowOf(links) },
+        )
 
     @Test
     fun `a cost correction shows the cost before and after, newest first`() = runTest {

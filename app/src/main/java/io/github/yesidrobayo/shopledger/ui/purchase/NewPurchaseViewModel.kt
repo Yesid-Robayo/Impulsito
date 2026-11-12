@@ -181,6 +181,9 @@ class NewPurchaseViewModel(
             NewPurchaseAction.DismissDialog -> overlay.update { it.copy(dialog = null) }
 
             NewPurchaseAction.Finish -> overlay.update { it.copy(closed = true) }
+
+            // Revisar un precio lo resuelve la navegación; el resumen sigue ahí al volver.
+            is NewPurchaseAction.ReviewPrice -> Unit
         }
     }
 
@@ -332,6 +335,7 @@ class NewPurchaseViewModel(
                             names[it.productId].orEmpty(),
                             it.averageCostBefore,
                             it.averageCostAfter,
+                            reviewPrice = it.marginBelowTarget,
                         )
                     },
                 )

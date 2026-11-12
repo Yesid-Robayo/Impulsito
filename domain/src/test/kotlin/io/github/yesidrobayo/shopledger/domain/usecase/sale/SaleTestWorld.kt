@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewHeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
@@ -63,6 +64,7 @@ import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeAppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FixedClock
 import io.github.yesidrobayo.shopledger.domain.testing.appSettings
+import io.github.yesidrobayo.shopledger.domain.testing.lastCostsOf
 import io.github.yesidrobayo.shopledger.domain.testing.regionalSettings
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseCase
@@ -254,8 +256,16 @@ internal class SaleWorld(
             updatedAt: Instant,
         ) = unused()
 
-        override suspend fun setPriceReviewSince(id: Long, since: Instant?, updatedAt: Instant) =
-            unused()
+        override suspend fun setPriceReviewSince(id: Long, since: Instant?, updatedAt: Instant) {
+            val product = read().products[id] ?: brokenRule()
+            write {
+                it.copy(
+                    products = it.products + (
+                        id to product.copy(priceReviewSince = since, updatedAt = updatedAt)
+                        ),
+                )
+            }
+        }
 
         override suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant) =
             unused()
@@ -521,6 +531,17 @@ internal class SaleWorld(
 
         override fun observeLines(purchaseId: Long): Flow<List<PurchaseLine>> =
             committed.map { tables -> purchaseLinesOf(tables, purchaseId) }
+
+        override fun observeLastCosts(productId: Long): Flow<List<SupplierLastCost>> =
+            committed.map { tables ->
+                lastCostsOf(tables.purchases, tables.purchaseLines, productId).map { cost ->
+                    cost.copy(
+                        supplierName = cost.supplierId?.let {
+                            tables.suppliers[it]?.details?.name
+                        },
+                    )
+                }
+            }
 
         override suspend fun findById(id: Long): Purchase? = read().purchases[id]
 

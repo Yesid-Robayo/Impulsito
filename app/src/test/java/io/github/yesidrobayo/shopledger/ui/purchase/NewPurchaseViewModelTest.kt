@@ -516,4 +516,26 @@ class NewPurchaseViewModelTest {
 
         assertEquals(PurchaseFieldError.UNIT_UNAVAILABLE, model.line().quantityError)
     }
+
+    @Test
+    fun `a margin left below its target asks to review the price in the summary`() =
+        runTest(dispatcher) {
+            result = RegisterPurchaseResult.Registered(
+                purchaseId = 9L,
+                costChanges = listOf(
+                    PurchaseCostChange(1L, Money(1_000L), Money(1_200L), marginBelowTarget = true),
+                ),
+            )
+            val model = viewModel()
+            model.act(this, NewPurchaseAction.AddProduct(1L))
+            val key = model.line().key
+            model.act(this, NewPurchaseAction.QuantityChange(key, "10"))
+            model.act(this, NewPurchaseAction.AmountChange(key, "1400"))
+            model.act(this, NewPurchaseAction.Register)
+
+            assertTrue(requireNotNull(model.state.registered).costs.single().reviewPrice)
+            // Revisar el precio lo resuelve la navegación: el resumen sigue ahí.
+            model.act(this, NewPurchaseAction.ReviewPrice(1L))
+            assertTrue(model.state.registered != null)
+        }
 }

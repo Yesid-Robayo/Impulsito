@@ -3,10 +3,12 @@ package io.github.yesidrobayo.shopledger.domain.usecase.purchase
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Limit
+import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCostChange
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
@@ -16,7 +18,9 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
+import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
+import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
@@ -31,6 +35,8 @@ import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
+import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
+import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PricedPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricing
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricingResult
@@ -90,6 +96,7 @@ class RegisterPurchaseUseCase(
     private val clock: Clock,
     private val productUnits: ProductUnitRepository? = null,
     private val alerts: LowStockAlertRepository? = null,
+    private val categories: CategoryRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -143,7 +150,49 @@ class RegisterPurchaseUseCase(
         val purchaseId =
             write(request.supplierId, reference, priced.lines, priced.totals, time, now)
         alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
-        return TxResult.Commit(RegisterPurchaseResult.Registered(purchaseId, priced.costChanges))
+        val changes =
+            reviewPrices(priced, subjects, current.taxes, current.profile.defaultTargetMargin, now)
+        return TxResult.Commit(RegisterPurchaseResult.Registered(purchaseId, changes))
+    }
+
+    /**
+     * Los cambios de costo, con lo que pide revisar el precio. Un costo conocido que sube marca el
+     * producto para revisar su precio, en esta misma transacción, salvo que ya estuviera marcado:
+     * la cola de revisión ordena por la marca más antigua. Además, se dice si el margen del precio
+     * de venta quedó por debajo de su objetivo, el del producto, el de su categoría o el del negocio.
+     */
+    private suspend fun reviewPrices(
+        priced: PurchasePricingResult.Priced,
+        subjects: Map<Long, PurchaseSubject>,
+        taxes: TaxSettings,
+        defaultTarget: BasisPoints,
+        now: Instant,
+    ): List<PurchaseCostChange> {
+        val after = priced.lines.associate { it.subject.product.id to it.after }
+        return priced.costChanges.map { change ->
+            val subject = subjects.getValue(change.productId)
+            val product = subject.product
+            if (change.costRose && product.priceReviewSince == null) {
+                products.setPriceReviewSince(product.id, now, now)
+            }
+            val target = product.details.targetMargin
+                ?: product.details.categoryId?.let {
+                    categories?.findById(it)?.details?.targetMargin
+                }
+                ?: defaultTarget
+            val net = TaxCalculator.catalogNetPrice(product.salePrice, taxes.mode, subject.taxRate)
+                .valueOrNull()
+            val cost = after.getValue(change.productId).averageCost
+            val below = net != null && when (val margin = MarginCalculator.margin(net, cost)) {
+                is Margin.Defined -> margin.value < target
+
+                // Sin precio no hay margen que comparar; uno absurdo se revisa igual.
+                Margin.NoData -> false
+
+                Margin.OutOfRange -> true
+            }
+            change.copy(marginBelowTarget = below)
+        }
     }
 
     /** Lo que se rechaza sin leer la base: la forma de la compra. */

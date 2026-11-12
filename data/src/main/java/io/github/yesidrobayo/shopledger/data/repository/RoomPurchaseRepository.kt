@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseForeignCurrency
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -39,6 +40,22 @@ internal class RoomPurchaseRepository(database: AppDatabase) : PurchaseRepositor
     override fun observeLines(purchaseId: Long): Flow<List<PurchaseLine>> = lines
         .observeByPurchase(purchaseId)
         .map { rows -> rows.map(::toLine) }
+        .distinctUntilChanged()
+
+    override fun observeLastCosts(productId: Long): Flow<List<SupplierLastCost>> = purchases
+        .observeLastCosts(productId)
+        .map { rows ->
+            rows.map {
+                SupplierLastCost(
+                    supplierId = it.supplierId,
+                    supplierName = it.supplierName,
+                    purchaseId = it.purchaseId,
+                    businessDate = storedDate(it.businessDate),
+                    unitId = it.unitId,
+                    unitCost = Money(it.unitCost),
+                )
+            }
+        }
         .distinctUntilChanged()
 
     override suspend fun findById(id: Long): Purchase? = purchases.findById(id)?.let(::toPurchase)
