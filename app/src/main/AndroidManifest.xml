@@ -17,10 +17,13 @@
          Android lo ignora: ahí queda el filtro de toques tapados. -->
     <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
 
-    <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS. -->
+    <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS.
+         Datos frágiles: desde Android 10, al desinstalar el sistema ofrece conservar los datos del negocio. Es una oferta del
+         sistema, que no todos los fabricantes muestran: ningún texto de la app la promete. -->
     <application
         android:name=".ShopLedgerApp"
         android:allowBackup="false"
+        android:hasFragileUserData="true"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:networkSecurityConfig="@xml/network_security_config"
