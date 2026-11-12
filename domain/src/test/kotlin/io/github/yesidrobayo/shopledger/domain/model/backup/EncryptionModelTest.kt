@@ -38,4 +38,15 @@ class EncryptionModelTest {
             RecoveryKitFileName.of(BusinessDate(LocalDate(2027, 1, 5))),
         )
     }
+
+    @Test
+    fun `a shown code never shows itself as text`() {
+        val draft =
+            RecoveryCodeDraft(listOf("G7K2", "M9PQ", "R4ST", "V6WX", "Y8Z3", "ABCD", "EF51"))
+        val view = RecoveryCodeView.Shown(draft)
+
+        assertEquals(draft, view.code)
+        assertFalse(view.toString().contains("G7K2"))
+        assertEquals("Unavailable", RecoveryCodeView.Unavailable.toString())
+    }
 }

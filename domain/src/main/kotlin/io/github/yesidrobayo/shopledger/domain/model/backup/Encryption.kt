@@ -87,3 +87,17 @@ enum class ResealOutcome {
     /** No se pudo guardar en este teléfono. Nada cambió. */
     SAVE_FAILED,
 }
+
+/** Lo que dio pedir el código vigente para mostrarlo en `Ver mi código`. */
+sealed interface RecoveryCodeView {
+    /**
+     * El código sellado en este teléfono, en su forma impresa. Vive solo en memoria mientras la
+     * pantalla lo muestra, y su forma de texto no lo enseña.
+     */
+    class Shown(val code: RecoveryCodeDraft) : RecoveryCodeView {
+        override fun toString(): String = "Shown(****)"
+    }
+
+    /** El código sellado no está o ya no abre en este teléfono: no hay nada que mostrar. */
+    data object Unavailable : RecoveryCodeView
+}

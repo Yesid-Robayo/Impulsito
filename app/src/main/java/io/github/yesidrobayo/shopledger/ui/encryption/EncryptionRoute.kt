@@ -15,6 +15,9 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.EncryptionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.lock.AuthOutcome
+import io.github.yesidrobayo.shopledger.lock.AuthPurpose
+import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
 import io.github.yesidrobayo.shopledger.lock.SensitiveScreen
 import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -39,6 +42,10 @@ import kotlinx.datetime.toLocalDateTime
  *   activación, y el código se descarta.
  * - `Guardar kit de recuperación` abre el selector del sistema para crear el PDF, con el nombre
  *   `recovery-kit-AAAAMMDD.pdf`, sin pedir permisos. Cancelar el selector no cambia nada.
+ * - `Ver mi código` pide la verificación del teléfono siempre que tenga bloqueo de pantalla, aunque
+ *   el bloqueo de la app esté apagado. Sin bloqueo de pantalla no hay con qué pedirla: la pantalla
+ *   avisa y deja seguir, porque un código que no se puede volver a ver deja las copias cifradas sin
+ *   salida. Mientras se ve, la pantalla entera es sensible, y atrás lo cierra.
  */
 @Composable
 fun EncryptionRoute(navigator: AppNavigator) {
@@ -80,6 +87,8 @@ fun EncryptionRoute(navigator: AppNavigator) {
             val activateTitle = stringResource(R.string.encryption_activate_action)
             val changeTitle = stringResource(R.string.encryption_change_code_action)
             val newCodeTitle = stringResource(R.string.encryption_create_new_code_action)
+            val viewTitle = stringResource(R.string.recovery_view_title)
+            val authenticator = LocalDeviceAuthenticator.current
             val picker =
                 rememberLauncherForActivityResult(
                     ActivityResultContracts.CreateDocument(PDF_TYPE),
@@ -97,6 +106,13 @@ fun EncryptionRoute(navigator: AppNavigator) {
                     messages.show(AppSnackbarVisuals(obscured, SnackbarVariant.INFO))
                 }
                 BackHandler { viewModel.onAction(EncryptionAction.Exit) }
+            }
+            if (uiState.codeView != null) {
+                SensitiveScreen {
+                    viewModel.onAction(EncryptionAction.ObscuredTouch)
+                    messages.show(AppSnackbarVisuals(obscured, SnackbarVariant.INFO))
+                }
+                BackHandler { viewModel.onAction(EncryptionAction.CloseCode) }
             }
             EncryptionScreen(uiState, onAction = { action ->
                 when (action) {
@@ -144,6 +160,30 @@ fun EncryptionRoute(navigator: AppNavigator) {
                             }
                         }
 
+                    EncryptionAction.ViewCode ->
+                        scope.launch {
+                            val outcome =
+                                authenticator.authenticate(AuthPurpose.SENSITIVE, viewTitle, null)
+                            when (outcome) {
+                                AuthOutcome.Success ->
+                                    viewModel.onAction(EncryptionAction.ViewCodeAuthorized)
+
+                                AuthOutcome.NoDeviceCredential ->
+                                    viewModel.onAction(EncryptionAction.ViewCodeWithoutScreenLock)
+
+                                AuthOutcome.Canceled -> Unit
+
+                                // El texto del sistema se muestra tal cual y nunca se registra.
+                                is AuthOutcome.Failed ->
+                                    messages.show(
+                                        AppSnackbarVisuals(
+                                            outcome.systemMessage,
+                                            SnackbarVariant.INFO,
+                                        ),
+                                    )
+                            }
+                        }
+
                     is EncryptionAction.Accept,
                     EncryptionAction.ContinueRisk,
                     is EncryptionAction.KitFileCreated,
@@ -159,6 +199,10 @@ fun EncryptionRoute(navigator: AppNavigator) {
                     EncryptionAction.TypeExistingCode,
                     is EncryptionAction.TypedExisting,
                     EncryptionAction.Reseal,
+                    EncryptionAction.ViewCodeAuthorized,
+                    EncryptionAction.ViewCodeWithoutScreenLock,
+                    EncryptionAction.DismissViewWithoutScreenLock,
+                    EncryptionAction.CloseCode,
                     -> viewModel.onAction(action)
                 }
             })

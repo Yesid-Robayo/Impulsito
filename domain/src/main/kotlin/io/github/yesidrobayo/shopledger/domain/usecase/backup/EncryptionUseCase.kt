@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.backup
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
 import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
@@ -24,4 +25,7 @@ class EncryptionUseCase(private val port: EncryptionPort) {
     suspend fun activate(draft: RecoveryCodeDraft): ActivationOutcome = port.activate(draft)
 
     suspend fun reseal(typed: String): ResealOutcome = port.reseal(typed)
+
+    /** El código vigente, para `Ver mi código`, ya con la verificación del teléfono pasada. */
+    suspend fun viewCode(): RecoveryCodeView = port.viewCode()
 }

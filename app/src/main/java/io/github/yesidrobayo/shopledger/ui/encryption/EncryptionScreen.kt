@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -75,6 +77,11 @@ fun EncryptionScreen(
 ) {
     val step = uiState.step
     if (step == null) {
+        val view = uiState.codeView
+        if (view != null) {
+            CodeViewScreen(view, onAction, modifier)
+            return
+        }
         StatusScreen(uiState.status, onAction, modifier)
         if (uiState.confirmChange) {
             ConfirmDialog(
@@ -87,6 +94,7 @@ fun EncryptionScreen(
                 sensitive = true,
             )
         }
+        if (uiState.confirmViewWithoutScreenLock) ViewWithoutScreenLockDialog(onAction)
         return
     }
     // Los pasos dan su color de contenido: sin él, el texto sale con el de la ventana y en oscuro
@@ -143,10 +151,17 @@ private fun StatusScreen(
                                 }
                             }
 
-                        is EncryptionStatusUi.Off -> offItems(status.wasOn)
+                        is EncryptionStatusUi.Off -> {
+                            offItems(status.wasOn)
+                            // Apagado a propósito, las copias cifradas que quedan siguen
+                            // necesitando el código: verlo sigue disponible.
+                            if (status.wasOn) item(key = VIEW_CODE) { ViewCodeRow(onAction) }
+                        }
 
                         EncryptionStatusUi.On -> {
                             item(key = ON) { OnBlock() }
+                            // El orden de la pantalla: ver el código antes de cambiarlo.
+                            item(key = VIEW_CODE) { ViewCodeRow(onAction) }
                             item(key = CHANGE) {
                                 SettingsRow(
                                     title = stringResource(R.string.encryption_change_code_action),
@@ -643,6 +658,122 @@ private fun DoneStep(changed: Boolean, onAction: (EncryptionAction) -> Unit, mod
     }
 }
 
+/** `Ver mi código`: abre el código vigente tras la verificación del teléfono. */
+@Composable
+private fun ViewCodeRow(onAction: (EncryptionAction) -> Unit) {
+    SettingsRow(
+        title = stringResource(R.string.encryption_view_code_action),
+        action = SettingsRowAction.Navigation { onAction(EncryptionAction.ViewCode) },
+    )
+}
+
+/**
+ * El teléfono no tiene bloqueo de pantalla: no hay verificación que pedir. Avisa que cualquiera con
+ * el teléfono en la mano puede ver el código, y deja seguir, porque un código que no se puede volver
+ * a ver deja las copias cifradas sin salida.
+ */
+@Composable
+private fun ViewWithoutScreenLockDialog(onAction: (EncryptionAction) -> Unit) {
+    ConfirmDialog(
+        title = stringResource(R.string.recovery_view_title),
+        body = stringResource(R.string.recovery_view_no_screen_lock),
+        confirmLabel = stringResource(R.string.encryption_view_code_action),
+        onConfirm = { onAction(EncryptionAction.ViewCodeAuthorized) },
+        onDismiss = { onAction(EncryptionAction.DismissViewWithoutScreenLock) },
+        sensitive = true,
+    )
+}
+
+/**
+ * `Ver mi código`: el código vigente, sin copiar ni capturar. Quien la muestra pone `FLAG_SECURE`
+ * y aparta las superposiciones mientras se ve. Cerrar descarta el código.
+ */
+@Composable
+private fun CodeViewScreen(
+    view: CodeViewUi,
+    onAction: (EncryptionAction) -> Unit,
+    modifier: Modifier,
+) {
+    val spacing = AppTheme.spacing
+    Surface(
+        modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            AppTopBar(
+                title = stringResource(R.string.recovery_view_title),
+                navigation = TopBarNavigation.BACK,
+                onNavigate = { onAction(EncryptionAction.CloseCode) },
+                navigationLabel = stringResource(R.string.a11y_back),
+                titleStyle = MaterialTheme.typography.titleLarge,
+            )
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                Column(
+                    Modifier
+                        .widthIn(max = AppTheme.sizes.maxContentWidth)
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = spacing.s16, vertical = spacing.s8),
+                    verticalArrangement = Arrangement.spacedBy(spacing.s16),
+                ) {
+                    CodeViewContent(view)
+                }
+            }
+            HorizontalDivider(
+                thickness = AppTheme.sizes.hairline,
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            Box(
+                Modifier
+                    .widthIn(max = AppTheme.sizes.maxContentWidth)
+                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally)
+                    .keepsMessagesAbove()
+                    .navigationBarsPadding()
+                    .padding(spacing.s16),
+            ) {
+                PrimaryActionButton(
+                    text = stringResource(R.string.action_close),
+                    onClick = { onAction(EncryptionAction.CloseCode) },
+                    variant = ActionVariant.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CodeViewContent(view: CodeViewUi) {
+    when (view) {
+        CodeViewUi.Opening ->
+            DelayedSkeleton {
+                SkeletonBlock(Modifier.fillMaxWidth().height(AppTheme.sizes.touchTarget))
+            }
+
+        is CodeViewUi.Shown -> {
+            Text(
+                stringResource(R.string.recovery_code_body),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            RecoveryCodeBlock(view.groups)
+            Text(
+                stringResource(R.string.recovery_code_no_copy),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            NoticeCard(stringResource(R.string.recovery_keep_apart_body), NoticeVariant.WARNING)
+        }
+
+        CodeViewUi.Unavailable ->
+            NoticeCard(
+                stringResource(R.string.encryption_key_unavailable_body),
+                NoticeVariant.ERROR,
+            )
+    }
+}
+
 /** Salir de la activación: el código se descarta y el cifrado sigue apagado. */
 @Composable
 private fun ColumnScope.ExitLink(onAction: (EncryptionAction) -> Unit) {
@@ -668,3 +799,4 @@ private const val PROTECTS = "protects"
 private const val NOT_PROTECTS = "not_protects"
 private const val RISK = "risk"
 private const val REACTIVATE = "reactivate"
+private const val VIEW_CODE = "view_code"

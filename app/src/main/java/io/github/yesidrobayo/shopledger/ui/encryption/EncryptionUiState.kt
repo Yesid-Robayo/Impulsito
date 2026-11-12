@@ -14,7 +14,26 @@ data class EncryptionUiState(
     val step: ActivationStepUi? = null,
     /** La pregunta `¿Cambiar el código?` a la vista. */
     val confirmChange: Boolean = false,
+    val codeView: CodeViewUi? = null,
+    val confirmViewWithoutScreenLock: Boolean = false,
 )
+
+/**
+ * `Ver mi código`, ya con la verificación del teléfono pasada. El código vive solo en memoria
+ * mientras se ve: cerrar lo descarta, y nunca entra en el estado guardado de la pantalla.
+ */
+sealed interface CodeViewUi {
+    /** Abriendo el código sellado, que es local. */
+    data object Opening : CodeViewUi
+
+    /** [groups] es el código impreso. La forma de texto del estado no lo muestra. */
+    class Shown(val groups: List<String>) : CodeViewUi {
+        override fun toString(): String = "Shown(****)"
+    }
+
+    /** El código sellado no está o ya no abre en este teléfono. */
+    data object Unavailable : CodeViewUi
+}
 
 /** Lo que muestra la pantalla fuera de la activación. */
 sealed interface EncryptionStatusUi {
@@ -160,4 +179,19 @@ sealed interface EncryptionAction {
 
     /** Guardar otra vez el código escrito. */
     data object Reseal : EncryptionAction
+
+    /** `Ver mi código`: la pantalla pide antes la verificación del teléfono. */
+    data object ViewCode : EncryptionAction
+
+    /** La verificación del teléfono pasó, o la persona confirmó sin bloqueo de pantalla. */
+    data object ViewCodeAuthorized : EncryptionAction
+
+    /** El teléfono no tiene bloqueo de pantalla: se avisa y se pide confirmar. */
+    data object ViewCodeWithoutScreenLock : EncryptionAction
+
+    /** No confirmó ver el código sin bloqueo de pantalla. */
+    data object DismissViewWithoutScreenLock : EncryptionAction
+
+    /** Cerrar `Ver mi código`: el código se descarta. */
+    data object CloseCode : EncryptionAction
 }

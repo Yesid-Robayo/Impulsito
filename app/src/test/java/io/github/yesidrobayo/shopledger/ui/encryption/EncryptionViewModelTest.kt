@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
 import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
@@ -329,5 +330,91 @@ class EncryptionViewModelTest {
             if (outcome == ActivationOutcome.ACTIVATED) status = EncryptionStatus.On(2L)
             return outcome
         }
+
+        var view: RecoveryCodeView = RecoveryCodeView.Shown(RecoveryCodeDraft(groups))
+        var failView = false
+        var views = 0
+
+        override suspend fun viewCode(): RecoveryCodeView {
+            views++
+            if (failView) error("Falla inventada")
+            return view
+        }
+    }
+
+    @Test
+    fun `the code is shown only after the phone check and closing drops it`() =
+        runTest(dispatcher) {
+            port.status = EncryptionStatus.On(2L)
+            val model = viewModel()
+            model.onAction(EncryptionAction.ViewCode)
+            advanceUntilIdle()
+            assertNull(model.uiState.value.codeView)
+            assertEquals(0, port.views)
+
+            model.onAction(EncryptionAction.ViewCodeAuthorized)
+            assertEquals(CodeViewUi.Opening, model.uiState.value.codeView)
+            advanceUntilIdle()
+            val shown = model.uiState.value.codeView as CodeViewUi.Shown
+            assertEquals(groups, shown.groups)
+            assertFalse(model.uiState.value.toString().contains("G7K2"))
+
+            model.onAction(EncryptionAction.CloseCode)
+            assertNull(model.uiState.value.codeView)
+            assertEquals(EncryptionStatusUi.On, model.uiState.value.status)
+        }
+
+    @Test
+    fun `without a screen lock it asks to confirm and can be dismissed`() = runTest(dispatcher) {
+        port.status = EncryptionStatus.On(2L)
+        val model = viewModel()
+        model.onAction(EncryptionAction.ViewCodeWithoutScreenLock)
+        assertTrue(model.uiState.value.confirmViewWithoutScreenLock)
+        model.onAction(EncryptionAction.DismissViewWithoutScreenLock)
+        assertFalse(model.uiState.value.confirmViewWithoutScreenLock)
+        assertEquals(0, port.views)
+
+        model.onAction(EncryptionAction.ViewCodeWithoutScreenLock)
+        model.onAction(EncryptionAction.ViewCodeAuthorized)
+        advanceUntilIdle()
+        assertFalse(model.uiState.value.confirmViewWithoutScreenLock)
+        assertTrue(model.uiState.value.codeView is CodeViewUi.Shown)
+    }
+
+    @Test
+    fun `a code that does not open or a failure shows that it is unavailable`() =
+        runTest(dispatcher) {
+            port.status = EncryptionStatus.On(2L)
+            port.view = RecoveryCodeView.Unavailable
+            val model = viewModel()
+            model.onAction(EncryptionAction.ViewCodeAuthorized)
+            advanceUntilIdle()
+            assertEquals(CodeViewUi.Unavailable, model.uiState.value.codeView)
+
+            model.onAction(EncryptionAction.CloseCode)
+            port.failView = true
+            model.onAction(EncryptionAction.ViewCodeAuthorized)
+            advanceUntilIdle()
+            assertEquals(CodeViewUi.Unavailable, model.uiState.value.codeView)
+        }
+
+    @Test
+    fun `closing before the code opens leaves nothing on screen`() = runTest(dispatcher) {
+        port.status = EncryptionStatus.On(2L)
+        val model = viewModel()
+        model.onAction(EncryptionAction.ViewCodeAuthorized)
+        model.onAction(EncryptionAction.CloseCode)
+        advanceUntilIdle()
+        assertNull(model.uiState.value.codeView)
+    }
+
+    @Test
+    fun `viewing is ignored in the middle of an activation`() = runTest(dispatcher) {
+        val model = viewModel()
+        toRetype(model)
+        model.onAction(EncryptionAction.ViewCodeAuthorized)
+        advanceUntilIdle()
+        assertNull(model.uiState.value.codeView)
+        assertEquals(0, port.views)
     }
 }

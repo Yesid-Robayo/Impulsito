@@ -80,6 +80,12 @@ class EncryptionCaptureTest {
                     ),
                 "done-changed" to
                     EncryptionUiState(EncryptionStatusUi.On, ActivationStepUi.Done(changed = true)),
+                "view-code" to
+                    EncryptionUiState(EncryptionStatusUi.On, codeView = CodeViewUi.Shown(groups)),
+                "view-code-unavailable" to
+                    EncryptionUiState(EncryptionStatusUi.On, codeView = CodeViewUi.Unavailable),
+                "view-code-no-lock" to
+                    EncryptionUiState(EncryptionStatusUi.On, confirmViewWithoutScreenLock = true),
             )
         for (dark in listOf(false, true)) {
             for ((name, state) in states) {

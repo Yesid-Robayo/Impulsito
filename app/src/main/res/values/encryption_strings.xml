@@ -59,4 +59,7 @@
     <string name="encryption_create_new_code_action">Create another code</string>
     <string name="recovery_check_mismatch">The code does not match. Nothing was deleted and it can be tried again.</string>
     <string name="backup_failure_encryption_key_unavailable_action">Enter the code</string>
+    <string name="encryption_view_code_action">View my code</string>
+    <string name="recovery_view_title">View my code</string>
+    <string name="recovery_view_no_screen_lock">This phone has no screen lock: anyone holding it can see the code. Turn one on in the phone settings.</string>
 </resources>

@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.backup
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
 import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
@@ -38,6 +39,9 @@ class EncryptionUseCaseTest {
 
             override suspend fun reseal(typed: String): ResealOutcome =
                 ResealOutcome.OTHER_CODE.also { calls += "reseal:$typed" }
+
+            override suspend fun viewCode(): RecoveryCodeView =
+                RecoveryCodeView.Unavailable.also { calls += "view" }
         }
     private val useCase = EncryptionUseCase(port)
 
@@ -49,6 +53,10 @@ class EncryptionUseCaseTest {
         assertEquals(false, useCase.roundTrip(draft))
         assertEquals(ActivationOutcome.SAVE_FAILED, useCase.activate(draft))
         assertEquals(ResealOutcome.OTHER_CODE, useCase.reseal("Y"))
-        assertEquals(listOf("status", "new", "check:X", "trip", "activate", "reseal:Y"), calls)
+        assertEquals(RecoveryCodeView.Unavailable, useCase.viewCode())
+        assertEquals(
+            listOf("status", "new", "check:X", "trip", "activate", "reseal:Y", "view"),
+            calls,
+        )
     }
 }

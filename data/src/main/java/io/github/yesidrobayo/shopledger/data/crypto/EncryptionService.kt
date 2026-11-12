@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.crypto
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
 import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
@@ -83,6 +84,17 @@ internal class EncryptionService(
                     ResealResult.NotNeeded, ResealResult.SealFailed -> ResealOutcome.SAVE_FAILED
                 }
         }
+
+    override suspend fun viewCode(): RecoveryCodeView = when (val read = custody.keys.open()) {
+        is RecoveryKeyRead.Available -> RecoveryCodeView.Shown(draftOf(read.code))
+
+        // Sin sobre, o con uno que no abre, no hay código que mostrar. No se reintenta aquí: la
+        // persona puede volver a tocar `Ver mi código`.
+        RecoveryKeyRead.Absent,
+        is RecoveryKeyRead.Unavailable,
+        is RecoveryKeyRead.RetryLater,
+        -> RecoveryCodeView.Unavailable
+    }
 
     private fun draftOf(code: RecoveryCode): RecoveryCodeDraft =
         RecoveryCodeDraft(RecoveryCodec.printable(code).split('-'))

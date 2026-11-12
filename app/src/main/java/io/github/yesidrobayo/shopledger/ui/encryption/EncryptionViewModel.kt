@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryKitFileName
 import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
@@ -52,6 +53,7 @@ class EncryptionViewModel(
     /** El código de la activación en curso. Nunca sale de la memoria de este objeto. */
     private var draft: RecoveryCodeDraft? = null
     private var running: Job? = null
+    private var viewing: Job? = null
 
     /** Si la activación en curso es un cambio de código. */
     private var changing = false
@@ -135,6 +137,22 @@ class EncryptionViewModel(
                 }
 
             EncryptionAction.Reseal -> reseal()
+
+            // La pantalla pide la verificación del teléfono antes de seguir.
+            EncryptionAction.ViewCode -> Unit
+
+            EncryptionAction.ViewCodeWithoutScreenLock ->
+                state.update { it.copy(confirmViewWithoutScreenLock = true) }
+
+            EncryptionAction.DismissViewWithoutScreenLock ->
+                state.update { it.copy(confirmViewWithoutScreenLock = false) }
+
+            EncryptionAction.ViewCodeAuthorized -> viewCode()
+
+            EncryptionAction.CloseCode -> {
+                viewing?.cancel()
+                state.update { it.copy(codeView = null) }
+            }
         }
     }
 
@@ -269,6 +287,26 @@ class EncryptionViewModel(
                             it.copy(step = ActivationStepUi.Testing(ActivationFailure.SAVE))
                         }
                 }
+            }
+    }
+
+    /**
+     * Abre el código sellado para mostrarlo. Solo lee: no escribe nada ni cambia el estado del
+     * cifrado. El registro de la auditoría llega cuando exista.
+     */
+    private fun viewCode() {
+        if (state.value.step != null || viewing?.isActive == true) return
+        state.update {
+            it.copy(confirmViewWithoutScreenLock = false, codeView = CodeViewUi.Opening)
+        }
+        viewing =
+            viewModelScope.launch {
+                val view =
+                    when (val read = safely { port.viewCode() }) {
+                        is RecoveryCodeView.Shown -> CodeViewUi.Shown(read.code.groups)
+                        RecoveryCodeView.Unavailable, null -> CodeViewUi.Unavailable
+                    }
+                state.update { if (it.codeView == null) it else it.copy(codeView = view) }
             }
     }
 

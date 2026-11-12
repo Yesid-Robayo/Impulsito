@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.data.crypto
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import java.io.File
 import java.security.SecureRandom
@@ -8,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -77,6 +79,13 @@ class EncryptionServiceTest {
             TypedCodeCheck.Incomplete,
             service.checkTyped(draft, "G7K2M9PQR4STV6WXY8Z3ABCDEF510"),
         )
+    }
+
+    @Test
+    fun `without a sealed code there is nothing to view`() = runBlocking {
+        directory.deleteRecursively()
+        assertEquals(RecoveryCodeView.Unavailable, service.viewCode())
+        assertFalse(directory.exists())
     }
 
     @Test

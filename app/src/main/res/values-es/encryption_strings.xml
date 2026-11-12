@@ -54,4 +54,7 @@
     <string name="encryption_create_new_code_action">Crear otro código</string>
     <string name="recovery_check_mismatch">El código no coincide. Nada se borró y se puede volver a intentar.</string>
     <string name="backup_failure_encryption_key_unavailable_action">Escribir el código</string>
+    <string name="encryption_view_code_action">Ver mi código</string>
+    <string name="recovery_view_title">Ver mi código</string>
+    <string name="recovery_view_no_screen_lock">Este teléfono no tiene bloqueo de pantalla: quien lo tenga en la mano puede ver el código. Conviene activar uno en los ajustes del teléfono.</string>
 </resources>

@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.port
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
 import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 
@@ -35,4 +36,10 @@ interface EncryptionPort {
      * estaba ya no abre. No cambia de código ni borra nada.
      */
     suspend fun reseal(typed: String): ResealOutcome
+
+    /**
+     * El código sellado en este teléfono, para `Ver mi código`. Solo abre el sobre: no escribe nada,
+     * y sigue disponible con el cifrado apagado, porque las copias cifradas que quedan lo necesitan.
+     */
+    suspend fun viewCode(): RecoveryCodeView
 }
