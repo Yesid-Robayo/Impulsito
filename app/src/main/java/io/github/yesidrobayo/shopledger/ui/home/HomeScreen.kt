@@ -49,6 +49,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
+import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.backup.backupBannerLook
@@ -73,6 +74,8 @@ import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.ProductRow
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
+import io.github.yesidrobayo.shopledger.ui.components.StatTile
+import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -93,8 +96,10 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  *
  * - El estado del respaldo: el chip bajo la barra, y el banner y los avisos sobre el héroe.
  *
- * Es pura: recibe el estado y avisa cada acción. Aquí se suman después `Por agotarse` antes de las
- * ventas, y la ganancia final de la semana y del mes bajo el héroe.
+ * - Bajo el héroe, la ganancia final de la semana y del mes, después de gastos: la misma cifra que
+ *   las estadísticas. Es ganancia, así que el modo discreto la oculta.
+ *
+ * Es pura: recibe el estado y avisa cada acción.
  */
 @Composable
 fun HomeScreen(
@@ -103,6 +108,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     backup: BackupWording? = null,
     lowStock: HomeLowStock? = null,
+    profit: HomeProfit? = null,
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -165,6 +171,7 @@ fun HomeScreen(
                                 uiState,
                                 backup,
                                 lowStock,
+                                profit,
                                 onAction,
                                 bottom,
                                 Modifier.weight(1f),
@@ -174,6 +181,7 @@ fun HomeScreen(
                                 uiState,
                                 backup,
                                 lowStock,
+                                profit,
                                 onAction,
                                 bottom,
                                 Modifier.weight(1f),
@@ -202,6 +210,7 @@ private fun OnePane(
     content: HomeUiState.Content,
     backup: BackupWording?,
     lowStock: HomeLowStock?,
+    profit: HomeProfit?,
     onAction: (HomeAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
@@ -216,7 +225,7 @@ private fun OnePane(
                     Modifier.padding(horizontal = AppTheme.spacing.s16),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
                 ) {
-                    Overview(content, backup, lowStock, onAction)
+                    Overview(content, backup, lowStock, profit, onAction)
                 }
             }
             recentSales(content, onAction)
@@ -230,6 +239,7 @@ private fun TwoPanes(
     content: HomeUiState.Content,
     backup: BackupWording?,
     lowStock: HomeLowStock?,
+    profit: HomeProfit?,
     onAction: (HomeAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
@@ -246,7 +256,7 @@ private fun TwoPanes(
                 .padding(start = AppTheme.spacing.s8, bottom = bottom),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
         ) {
-            Overview(content, backup, lowStock, onAction)
+            Overview(content, backup, lowStock, profit, onAction)
         }
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -257,16 +267,21 @@ private fun TwoPanes(
     }
 }
 
-/** El héroe, la tarjeta del primer uso, los atajos y lo que se está acabando, en ese orden. */
+/**
+ * El héroe, la ganancia de la semana y del mes, la tarjeta del primer uso, los atajos y lo que se
+ * está acabando, en ese orden.
+ */
 @Composable
 private fun ColumnScope.Overview(
     content: HomeUiState.Content,
     backup: BackupWording?,
     lowStock: HomeLowStock?,
+    profit: HomeProfit?,
     onAction: (HomeAction) -> Unit,
 ) {
     backup?.let { BackupSummary(it, onAction) }
     TodayHeroBlock(content.hero, Modifier.padding(top = AppTheme.spacing.s8))
+    profit?.let { ProfitTiles(it) }
     if (content.firstUse) {
         AppCard {
             EmptyStateInline(
@@ -359,8 +374,40 @@ private fun BackupNoticeCard(text: String, onAction: (HomeAction) -> Unit) {
 }
 
 /**
- * Los atajos tonales, que reparten el ancho y bajan a otra línea si la letra no cabe: `Compra` y
- * `Negocio`. `Gasto` se suma aquí cuando exista su pantalla.
+ * La ganancia final de esta semana y de este mes, lado a lado, cada una con `Después de gastos`
+ * debajo. Bajan una debajo de la otra si la letra no cabe. Una cifra negativa va en pérdida, con su
+ * signo.
+ */
+@Composable
+private fun ProfitTiles(profit: HomeProfit) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+    ) {
+        val after = stringResource(R.string.home_after_expenses)
+        StatTile(
+            label = stringResource(R.string.home_this_week),
+            amount = profit.weekProfit,
+            variant = StatTileVariant.CARD,
+            modifier = Modifier.weight(1f).widthIn(min = PROFIT_TILE_MIN),
+            sensitive = true,
+            caption = after,
+        )
+        StatTile(
+            label = stringResource(R.string.home_this_month),
+            amount = profit.monthProfit,
+            variant = StatTileVariant.CARD,
+            modifier = Modifier.weight(1f).widthIn(min = PROFIT_TILE_MIN),
+            sensitive = true,
+            caption = after,
+        )
+    }
+}
+
+/**
+ * Los atajos tonales, que reparten el ancho y bajan a otra línea si la letra no cabe: `Compra`,
+ * `Gasto` y `Negocio`.
  */
 @Composable
 private fun Shortcuts(onAction: (HomeAction) -> Unit) {
@@ -372,6 +419,12 @@ private fun Shortcuts(onAction: (HomeAction) -> Unit) {
         PrimaryActionButton(
             text = stringResource(R.string.home_shortcut_purchase),
             onClick = { onAction(HomeAction.OpenPurchase) },
+            variant = ActionVariant.TONAL,
+            modifier = Modifier.weight(1f),
+        )
+        PrimaryActionButton(
+            text = stringResource(R.string.home_shortcut_expense),
+            onClick = { onAction(HomeAction.OpenExpense) },
             variant = ActionVariant.TONAL,
             modifier = Modifier.weight(1f),
         )
@@ -685,3 +738,6 @@ private const val SKELETON_ROWS = 3
 private const val STACKED_FONT_SCALE = 1.5f
 private const val HERO = "hero"
 private const val RECENT_HEADER = "recent"
+
+/** El ancho mínimo de cada tarjeta de ganancia: más angostas, bajan una debajo de la otra. */
+private val PROFIT_TILE_MIN = 140.dp

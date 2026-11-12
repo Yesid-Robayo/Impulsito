@@ -10,4 +10,8 @@
         <item quantity="many">%1$d de ventas</item>
         <item quantity="other">%1$d ventas</item>
     </plurals>
+    <string name="home_shortcut_expense">Gasto</string>
+    <string name="home_this_week">Esta semana</string>
+    <string name="home_this_month">Este mes</string>
+    <string name="home_after_expenses">Después de gastos</string>
 </resources>

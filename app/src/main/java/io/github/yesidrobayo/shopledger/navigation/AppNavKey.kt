@@ -75,7 +75,11 @@ sealed interface AppNavKey : NavKey {
     ) : AppNavKey
 
     @Serializable
-    data class Expenses(val prefillFromExpenseId: Long? = null) : AppNavKey
+    data class Expenses(
+        val prefillFromExpenseId: Long? = null,
+        /** Abrir con la hoja del gasto nuevo, como desde el atajo `Gasto` de Inicio. */
+        val startNew: Boolean = false,
+    ) : AppNavKey
 
     /** Números: raíz de su pestaña. */
     @Serializable

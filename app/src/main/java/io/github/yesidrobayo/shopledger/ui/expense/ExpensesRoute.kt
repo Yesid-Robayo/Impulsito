@@ -3,6 +3,9 @@ package io.github.yesidrobayo.shopledger.ui.expense
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
@@ -25,6 +28,7 @@ import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 /**
  * Los gastos en la navegación: arma su ViewModel con los casos de uso y resuelve adónde se va.
  *
+ * Desde el atajo `Gasto` de Inicio abre con la hoja del gasto nuevo, y guardar vuelve a Inicio.
  * `Ventas` vuelve a la raíz de Registros y `Compras` abre las compras sobre ella: los segmentos no se
  * apilan. Confirmar la moneda abre la región y, al volver, la hoja sigue con lo escrito. Guardar o
  * anular deja su aviso en la navegación. Si la base va al rescate, la pantalla no lee nada.
@@ -82,6 +86,17 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                 if (message == null || text == null) return@LaunchedEffect
                 viewModel.onAction(ExpensesAction.MessageShown)
                 messages.show(AppSnackbarVisuals(text, SnackbarVariant.SUCCESS))
+                // Desde el atajo de Inicio, guardar vuelve a Inicio, con el aviso encima.
+                if (key.startNew && message is ExpenseMessage.Saved) navigator.back()
+            }
+            // Desde el atajo de Inicio, la hoja del gasto nuevo se abre una sola vez: al volver de
+            // confirmar la moneda, o tras girar la pantalla, sigue como estaba.
+            var opened by rememberSaveable { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                if (key.startNew && !opened) {
+                    opened = true
+                    viewModel.onAction(ExpensesAction.NewExpense)
+                }
             }
             ExpensesScreen(
                 uiState = uiState,

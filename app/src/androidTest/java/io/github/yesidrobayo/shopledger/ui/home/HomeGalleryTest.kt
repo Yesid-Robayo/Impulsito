@@ -91,6 +91,7 @@ class HomeGalleryTest {
                                         HomeScreen(
                                             uiState = state,
                                             onAction = {},
+                                            profit = previewHomeProfit(),
                                             lowStock =
                                                 if (name == "lowStock") {
                                                     previewHomeLowStock()

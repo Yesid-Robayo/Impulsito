@@ -6,14 +6,17 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
+import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.stock.previewInventoryItems
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.YearMonth
 
 // Vistas previas de Inicio, con datos inventados: un día con ventas y un nombre de 80 caracteres,
 // una ganancia negativa con un monto de trece cifras, el día sin ventas y el primer uso.
@@ -60,6 +63,14 @@ internal fun previewHomeContent(): HomeUiState.Content {
     )
 }
 
+/** La ganancia de la semana en positivo y la del mes en pérdida, con un monto largo. */
+internal fun previewHomeProfit(): HomeProfit = HomeProfit(
+    week = ReportPeriod.Week(BusinessDate(LocalDate(2026, 11, 2))),
+    weekProfit = Money(1_902_300L),
+    month = ReportPeriod.Month(YearMonth(2026, 11)),
+    monthProfit = Money(-1_234_567_890L),
+)
+
 /** La tarjeta por agotarse de muestra: el stock negativo, el agotado y el bajo del inventario. */
 internal fun previewHomeLowStock(): HomeLowStock {
     val items = previewInventoryItems()
@@ -77,7 +88,7 @@ private fun HomeLowStockPreview() {
 @ThemePreviews
 @Composable
 private fun HomeSalesPreview() {
-    PreviewTheme { HomeScreen(previewHomeContent(), onAction = {}) }
+    PreviewTheme { HomeScreen(previewHomeContent(), onAction = {}, profit = previewHomeProfit()) }
 }
 
 @ThemePreviews

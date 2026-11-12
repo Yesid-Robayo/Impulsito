@@ -8,8 +8,10 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInf
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverviewUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.home.ObserveHomeProfitUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.home.ObserveTodaySalesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodReportUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -54,6 +56,13 @@ fun HomeRoute(navigator: AppNavigator) {
                     (it as? BusinessCalendarResult.Ready)?.calendar?.zone
                 },
                 inventory = ObserveInventoryUseCase(ports.products, ports.units)(),
+                homeProfit = { checks ->
+                    ObserveHomeProfitUseCase(
+                        BusinessCalendarSource(ports.settings),
+                        ObservePeriodReportUseCase(ports.periodReports),
+                        container.clock,
+                    )(checks)
+                },
             )
         }
     when (model) {
@@ -66,6 +75,7 @@ fun HomeRoute(navigator: AppNavigator) {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val backup by viewModel.backup.collectAsStateWithLifecycle()
             val lowStock by viewModel.lowStock.collectAsStateWithLifecycle()
+            val profit by viewModel.profit.collectAsStateWithLifecycle()
             val policy = LocalPolicyPrompt.current
             LifecycleResumeEffect(viewModel) {
                 viewModel.onReturnToForeground()
@@ -74,6 +84,7 @@ fun HomeRoute(navigator: AppNavigator) {
             HomeScreen(
                 backup = backup,
                 lowStock = lowStock,
+                profit = profit,
                 uiState = uiState,
                 onAction = { action ->
                     when (action) {
@@ -97,6 +108,9 @@ fun HomeRoute(navigator: AppNavigator) {
                         HomeAction.ReviewPolicy -> policy.review()
 
                         HomeAction.OpenPurchase -> navigator.open(AppNavKey.Purchase())
+
+                        HomeAction.OpenExpense ->
+                            navigator.open(AppNavKey.Expenses(startNew = true))
 
                         is HomeAction.OpenLowStock ->
                             navigator.open(

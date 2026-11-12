@@ -126,4 +126,24 @@ class HomeScreenTest {
 
         assertEquals(listOf<HomeAction>(HomeAction.Retry), actions)
     }
+
+    @Test
+    fun theWeekAndMonthShowTheirFinalProfitAndTheExpenseShortcut() {
+        compose.setContent {
+            PreviewTheme {
+                HomeScreen(previewHomeContent(), { actions += it }, profit = previewHomeProfit())
+            }
+        }
+
+        compose.onNodeWithText(text(R.string.home_this_week)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.home_this_month)).assertIsDisplayed()
+        assertEquals(
+            2,
+            compose.onAllNodesWithText(text(R.string.home_after_expenses))
+                .fetchSemanticsNodes().size,
+        )
+        compose.onNodeWithText(text(R.string.home_shortcut_expense)).performClick()
+
+        assertEquals(listOf<HomeAction>(HomeAction.OpenExpense), actions)
+    }
 }

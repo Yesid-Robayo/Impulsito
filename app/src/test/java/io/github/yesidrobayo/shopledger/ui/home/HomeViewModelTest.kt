@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
@@ -16,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
+import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
 import io.github.yesidrobayo.shopledger.domain.usecase.home.TodaySales
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
 import kotlin.time.Instant
@@ -33,6 +35,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.YearMonth
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -135,6 +138,9 @@ class HomeViewModelTest {
         paymentCount = 1,
     )
 
+    private val profits = MutableStateFlow<HomeProfit?>(null)
+    private var profitChecks = 0
+
     private fun TestScope.viewModel(): HomeViewModel {
         val model = HomeViewModel(
             todaySales = { checks ->
@@ -150,10 +156,14 @@ class HomeViewModelTest {
                 "Nube"
             },
             zones = MutableStateFlow(zone),
+            homeProfit = { checks ->
+                combine(checks.map { profitChecks += 1 }, profits) { _, it -> it }
+            },
         )
         // La pantalla recoge el estado mientras se ve.
         backgroundScope.launch { model.uiState.collect {} }
         backgroundScope.launch { model.backup.collect {} }
+        backgroundScope.launch { model.profit.collect {} }
         advanceUntilIdle()
         return model
     }
@@ -259,6 +269,8 @@ class HomeViewModelTest {
             HomeAction.CreateFirstProduct,
             HomeAction.OpenAllSales,
             HomeAction.OpenSale(1L),
+            HomeAction.OpenPurchase,
+            HomeAction.OpenExpense,
         ).forEach(model::onAction)
         advanceUntilIdle()
 
@@ -290,4 +302,25 @@ class HomeViewModelTest {
             model.onAction(HomeAction.ChooseDestination)
             assertEquals(before, model.uiState.value)
         }
+
+    @Test
+    fun `the week and month profit come apart and follow the date checks`() = runTest(dispatcher) {
+        val model = viewModel()
+        assertEquals(null, model.profit.value)
+        val checksAtStart = profitChecks
+
+        val profit = HomeProfit(
+            week = ReportPeriod.Week(BusinessDate(LocalDate(2026, 11, 2))),
+            weekProfit = Money(70_000),
+            month = ReportPeriod.Month(YearMonth(2026, 11)),
+            monthProfit = Money(-600_000),
+        )
+        profits.value = profit
+        advanceUntilIdle()
+        assertEquals(profit, model.profit.value)
+
+        model.onReturnToForeground()
+        advanceUntilIdle()
+        assertEquals(checksAtStart + 1, profitChecks)
+    }
 }

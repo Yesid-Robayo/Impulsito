@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
+import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
 import io.github.yesidrobayo.shopledger.domain.usecase.home.TodaySales
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
@@ -49,6 +50,8 @@ import kotlinx.coroutines.withContext
  * @param inventory el inventario, del que sale la tarjeta por agotarse con el mismo conteo y el
  *   mismo orden que su pantalla. No mira las alertas: se ve aunque las notificaciones estén
  * negadas.
+ * @param homeProfit la ganancia final de la semana y del mes; recibe las veces que se vuelve a
+ *   mirar la fecha.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
@@ -60,6 +63,7 @@ class HomeViewModel(
     private val providerLabel: suspend () -> String? = { null },
     zones: Flow<BusinessTimeZone?> = flowOf(null),
     inventory: Flow<InventoryOverview> = emptyFlow(),
+    homeProfit: (Flow<Unit>) -> Flow<HomeProfit?> = { flowOf(null) },
 ) : ViewModel() {
     // La primera mirada a la fecha es al abrir; las demás, al volver a primer plano. Un contador,
     // y no un evento, porque dos vueltas seguidas sin leer entre ellas valen por una.
@@ -116,6 +120,15 @@ class HomeViewModel(
             .catch { emit(null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
 
+    /**
+     * La ganancia de la semana y del mes, aparte de las ventas: si no se puede leer, Inicio sigue
+     * mostrando el día, sin esas tarjetas.
+     */
+    val profit: StateFlow<HomeProfit?> =
+        homeProfit(dayChecks.map {})
+            .catch { emit(null) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
+
     private var providerFor: Pair<BackupDestinationKind?, String?>? = null
 
     private suspend fun providerOf(kind: BackupDestinationKind?): String? {
@@ -140,6 +153,7 @@ class HomeViewModel(
             HomeAction.ChooseDestination,
             HomeAction.ReviewPolicy,
             HomeAction.OpenPurchase,
+            HomeAction.OpenExpense,
             is HomeAction.OpenLowStock,
             is HomeAction.OpenProduct,
             -> Unit

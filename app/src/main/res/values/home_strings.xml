@@ -9,4 +9,8 @@
         <item quantity="one">%1$d sale</item>
         <item quantity="other">%1$d sales</item>
     </plurals>
+    <string name="home_shortcut_expense">Expense</string>
+    <string name="home_this_week">This week</string>
+    <string name="home_this_month">This month</string>
+    <string name="home_after_expenses">After expenses</string>
 </resources>

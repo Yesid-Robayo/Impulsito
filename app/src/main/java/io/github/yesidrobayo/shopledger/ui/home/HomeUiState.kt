@@ -79,6 +79,9 @@ sealed interface HomeAction {
     /** El atajo `Compra`: abre una compra nueva. */
     data object OpenPurchase : HomeAction
 
+    /** El atajo `Gasto`: abre el gasto nuevo. */
+    data object OpenExpense : HomeAction
+
     /** `Ver todos` de la tarjeta por agotarse, o su línea de stock negativo con [negativeOnly]. */
     data class OpenLowStock(val negativeOnly: Boolean) : HomeAction
 

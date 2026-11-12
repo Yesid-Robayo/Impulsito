@@ -60,7 +60,8 @@ data class StatChange(val change: BasisPoints, val favorable: Boolean, val compa
  * Una cifra destacada: la etiqueta, el valor y, si hay comparación, la variación con icono, signo y
  * período. Sin comparación no hay línea: nunca un `0 %` que parezca medido.
  *
- * El valor negativo va en pérdida y con su signo. Sobre el héroe no se usan los colores de ganancia ni
+ * Sin comparación puede llevar [caption], una línea que dice qué es la cifra, como `Después de
+ * gastos`. El valor negativo va en pérdida y con su signo. Sobre el héroe no se usan los colores de ganancia ni
  * de pérdida: el signo y la palabra marcan la pérdida, en el acento. Es un solo foco para TalkBack.
  */
 @Composable
@@ -72,15 +73,18 @@ fun StatTile(
     change: StatChange? = null,
     sensitive: Boolean = false,
     loading: Boolean = false,
+    caption: String? = null,
 ) {
     when (variant) {
         StatTileVariant.CARD ->
             AppCard(modifier, contentPadding = PaddingValues(AppTheme.spacing.s12)) {
-                StatTileContent(label, amount, variant, change, sensitive, loading)
+                StatTileContent(label, amount, variant, change, sensitive, loading, caption)
             }
 
         StatTileVariant.HERO, StatTileVariant.PLAIN ->
-            Column(modifier) { StatTileContent(label, amount, variant, change, sensitive, loading) }
+            Column(modifier) {
+                StatTileContent(label, amount, variant, change, sensitive, loading, caption)
+            }
     }
 }
 
@@ -92,6 +96,7 @@ private fun ColumnScope.StatTileContent(
     change: StatChange?,
     sensitive: Boolean,
     loading: Boolean,
+    caption: String?,
 ) {
     val hero = variant == StatTileVariant.HERO
     val app = AppTheme.colors
@@ -133,7 +138,15 @@ private fun ColumnScope.StatTileContent(
                 )
             }
         }
-        if (change != null) ChangeLine(change, hero)
+        when {
+            change != null -> ChangeLine(change, hero)
+
+            caption != null -> Text(
+                caption,
+                style = MaterialTheme.typography.labelMedium,
+                color = labelColor,
+            )
+        }
     }
 }
 
