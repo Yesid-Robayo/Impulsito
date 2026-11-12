@@ -12,6 +12,7 @@ import java.math.BigDecimal
 import java.text.AttributedCharacterIterator
 import java.text.CharacterIterator
 import java.util.Locale
+import java.util.MissingResourceException
 
 /**
  * Formatea montos de la moneda del negocio con el formato regional [formatLocale] y exactamente
@@ -100,19 +101,43 @@ class MoneyFormatter(
      * El monto en forma corta y sin símbolo, con las palabras y los separadores de la región, como
      * `300 mil` o `1,2 M`: lo que cabe en el eje de una gráfica, con la moneda dicha en su título.
      *
-     * Solo sirve para dibujar marcas aproximadas: nunca para una cifra que se lee como dato.
+     * Solo sirve para dibujar marcas aproximadas: nunca para una cifra que se lee como dato. Si la
+     * ICU del teléfono no sabe acortar en esta región, devuelve el monto entero de [format]: un eje
+     * más ancho, nunca una pantalla que se cierra.
      */
     fun compact(amount: Money): String {
+        val compact = compactFormat ?: return format(amount)
         val value = BigDecimal.valueOf(amount.minor, currencyDecimals)
-        val text = synchronized(compactFormat) { compactFormat.format(value) }
+        val text =
+            try {
+                synchronized(compact) { compact.format(value) }
+            } catch (refused: IllegalArgumentException) {
+                return format(amount)
+            }
         return IcuTextNormalizer.normalizeNumber(text)
     }
 
-    private val compactFormat: CompactDecimalFormat =
-        CompactDecimalFormat.getInstance(
-            formatLocale.numberLocale,
-            CompactDecimalFormat.CompactStyle.SHORT,
-        )
+    /**
+     * El formato corto de la región, o `null` si esta ICU no lo puede armar.
+     *
+     * Se arma la primera vez que se pide, y no al crear el formateador: algunas ICU traen datos de
+     * forma corta que su propio código rechaza al leerlos, como los de `so` en Android 8, y ese
+     * rechazo no debe impedir formatear ningún otro monto. ICU lanza [IllegalArgumentException] o
+     * [MissingResourceException] con datos que no puede leer; cualquier otra falla es un error y
+     * sale.
+     */
+    private val compactFormat: CompactDecimalFormat? by lazy {
+        try {
+            CompactDecimalFormat.getInstance(
+                formatLocale.numberLocale,
+                CompactDecimalFormat.CompactStyle.SHORT,
+            )
+        } catch (refused: IllegalArgumentException) {
+            null
+        } catch (missing: MissingResourceException) {
+            null
+        }
+    }
 
     private fun readFields(amount: Money): Fields {
         val value = BigDecimal.valueOf(amount.minor, currencyDecimals)
