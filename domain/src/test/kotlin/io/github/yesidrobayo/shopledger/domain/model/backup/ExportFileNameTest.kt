@@ -21,5 +21,7 @@ class ExportFileNameTest {
     @Test
     fun `without a business zone the name goes in UTC`() {
         assertEquals("shopledger-20261112-0307.db.gz", ExportFileName.of(at, null))
+        // Cifrada, el mismo nombre con la extensión del formato 2.
+        assertEquals("shopledger-20261112-0307.slbk", ExportFileName.of(at, null, encrypted = true))
     }
 }

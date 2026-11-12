@@ -19,6 +19,8 @@ import java.io.SyncFailedException
  *   aquí se dice aparte y nunca toca el estado del respaldo.
  * - **Una copia que la app no podría restaurar** se arma igual y vuelve marcada: quien la usa decide
  *   si la escribe. Una base dañada no se arma.
+ * - **Cifrada con el cifrado activo,** con la misma clave que las copias del destino: nada sale en
+ *   claro. Si la clave no abre, no se arma.
  *
  * Todo queda dentro de [directory], que quien llama borra al terminar.
  *
@@ -28,6 +30,7 @@ import java.io.SyncFailedException
  * @param packager la compresión comprobada.
  * @param headGeneration la generación de la cabeza en el estado del respaldo.
  * @param deviceId el identificador de este teléfono.
+ * @param schemaVersion la versión del esquema, para la cabecera de una copia cifrada.
  */
 internal class LocalCopyBuilder(
     private val snapshots: SnapshotCreator,
@@ -37,11 +40,11 @@ internal class LocalCopyBuilder(
     private val headGeneration: suspend () -> Long,
     private val deviceId: suspend () -> String,
     private val clock: Clock,
+    private val schemaVersion: Int,
 ) {
     /** Arma la copia dentro de [directory], que debe existir. */
     suspend fun build(directory: File): LocalCopy {
         val snapshotFile = File(directory, SNAPSHOT_NAME).absoluteFile
-        val packedFile = File(directory, PACKED_NAME).absoluteFile
         val generation = headGeneration()
         val snapshot =
             when (val created = snapshots.create(snapshotFile)) {
@@ -78,7 +81,16 @@ internal class LocalCopyBuilder(
         if (snapshot.file.length() > BackupLimits.MAX_RESTORE_DECOMPRESSED_BYTES) {
             return LocalCopy.TooLarge
         }
-        return when (val packed = packager.compress(snapshot.file, packedFile)) {
+        val facts = CopyFacts(generation, schemaVersion, clock.nowEpochMillis(), deviceId())
+        val packing =
+            packager.compress(
+                snapshot.file,
+                { encrypted ->
+                    File(directory, if (encrypted) ENCRYPTED_NAME else PACKED_NAME).absoluteFile
+                },
+                facts,
+            )
+        return when (val packed = packing) {
             is PackageResult.Packed ->
                 LocalCopy.Built(
                     file = packed.file,
@@ -88,6 +100,7 @@ internal class LocalCopyBuilder(
                     records = sealed.records,
                     catalogCount = sealed.catalogCount,
                     changeSeq = sealed.changeSeq,
+                    encrypted = packed.encrypted,
                 )
 
             PackageResult.TooLarge -> LocalCopy.TooLarge
@@ -100,6 +113,8 @@ internal class LocalCopyBuilder(
             // destino.
             PackageResult.EncryptionUnavailable -> LocalCopy.Failed
 
+            PackageResult.KeyRetry -> LocalCopy.Failed
+
             is PackageResult.Failed -> LocalCopy.Failed
         }
     }
@@ -110,6 +125,9 @@ internal class LocalCopyBuilder(
 
         /** El archivo comprimido y comprobado. */
         const val PACKED_NAME = "local-copy.db.gz"
+
+        /** El archivo cifrado y comprobado, con el cifrado activo. */
+        const val ENCRYPTED_NAME = "local-copy.slbk"
     }
 }
 
@@ -123,6 +141,7 @@ internal sealed interface LocalCopy {
      * @property records los registros que trae, para sus metadatos.
      * @property catalogCount los productos, proveedores y clientes que trae.
      * @property changeSeq el `change_seq` de la instantánea: lo que la copia trae de verdad.
+     * @property encrypted si es la copia cifrada, el `.slbk`.
      */
     data class Built(
         val file: File,
@@ -132,6 +151,7 @@ internal sealed interface LocalCopy {
         val records: Long,
         val catalogCount: Long,
         val changeSeq: Long,
+        val encrypted: Boolean = false,
     ) : LocalCopy
 
     /** La base no pasó `integrity_check`, o no se pudo leer como una base: no se arma. */

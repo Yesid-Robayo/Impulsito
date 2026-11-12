@@ -35,6 +35,16 @@ internal class BackupStaging(val directory: File, private val ioContext: Corouti
     fun compressedFile(generation: Long): File = file(generation, COMPRESSED_SUFFIX)
 
     /**
+     * La copia cifrada de la generación [generation], la que se sube con el cifrado activo, como
+     * `snapshot-g00000042.slbk`. No toca el disco.
+     */
+    fun encryptedFile(generation: Long): File = file(generation, ENCRYPTED_SUFFIX)
+
+    /** El archivo que se sube de la generación [generation], cifrado o en claro. No toca el disco. */
+    fun packedFile(generation: Long, encrypted: Boolean): File =
+        if (encrypted) encryptedFile(generation) else compressedFile(generation)
+
+    /**
      * Los metadatos de la copia de la generación [generation], como `snapshot-g00000042.slmeta`.
      * Quedan aquí hasta confirmar la copia: si una subida se corta entre el archivo y sus
      * metadatos, se suben estos, sin generar otra copia. No toca el disco.
@@ -60,7 +70,7 @@ internal class BackupStaging(val directory: File, private val ioContext: Corouti
     suspend fun cleanUp(pendingGeneration: Long?, now: Instant): Unit = withContext(ioContext) {
         val kept =
             pendingGeneration
-                ?.let { listOf(compressedFile(it), metaFile(it)) }
+                ?.let { listOf(compressedFile(it), encryptedFile(it), metaFile(it)) }
                 .orEmpty()
                 .filter { isFresh(it, now) }
         for (file in directory.listFiles().orEmpty()) {
@@ -87,6 +97,7 @@ internal class BackupStaging(val directory: File, private val ioContext: Corouti
         private const val SNAPSHOT_PREFIX = "snapshot-g"
         private const val DATABASE_SUFFIX = ".db"
         private const val COMPRESSED_SUFFIX = ".db.gz"
+        private const val ENCRYPTED_SUFFIX = ".slbk"
         private const val META_SUFFIX = ".slmeta"
 
         /** Cifras mínimas de la generación en el nombre: así los nombres se ordenan como números. */

@@ -80,6 +80,13 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
                 ) { uri ->
                     uri?.let { viewModel.onAction(LocalCopiesAction.FileCreated(it.toString())) }
                 }
+            // Con el cifrado activo la copia sale cifrada: otro tipo de archivo, y otra extensión.
+            val encryptedPicker =
+                rememberLauncherForActivityResult(
+                    ActivityResultContracts.CreateDocument(ENCRYPTED_TYPE),
+                ) { uri ->
+                    uri?.let { viewModel.onAction(LocalCopiesAction.FileCreated(it.toString())) }
+                }
             LaunchedEffect(uiState.message) {
                 when (uiState.message) {
                     LocalCopiesMessage.SAVED -> {
@@ -113,7 +120,11 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
                                     // Sin una app que cree documentos no hay selector: es como
                                     // cancelar.
                                     try {
-                                        picker.launch(name)
+                                        if (uiState.encrypted == true) {
+                                            encryptedPicker.launch(name)
+                                        } else {
+                                            picker.launch(name)
+                                        }
                                     } catch (_: ActivityNotFoundException) {
                                         Unit
                                     }
@@ -149,3 +160,6 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
 
 /** El tipo del archivo exportado: una base comprimida con gzip. */
 private const val GZIP_TYPE = "application/gzip"
+
+/** El tipo de una copia cifrada, que no es gzip para nadie más que la app. */
+private const val ENCRYPTED_TYPE = "application/octet-stream"

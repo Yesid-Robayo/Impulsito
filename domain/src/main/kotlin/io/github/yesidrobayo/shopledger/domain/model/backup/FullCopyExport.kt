@@ -32,17 +32,19 @@ sealed interface FullCopyExport {
 
 /**
  * El nombre que se sugiere al guardar una copia exportada: `shopledger-AAAAMMDD-HHmm.db.gz`, con la
- * hora del negocio. No se traduce: es el mismo en cualquier idioma, como el de las copias.
+ * hora del negocio, o `.slbk` si sale cifrada. No se traduce: es el mismo en cualquier idioma, como
+ * el de las copias.
  */
 object ExportFileName {
     private const val PREFIX = "shopledger-"
     private const val SUFFIX = ".db.gz"
+    private const val ENCRYPTED_SUFFIX = ".slbk"
 
     /**
      * El nombre para una copia exportada en [at]. Sin zona del negocio, que solo falta antes de
      * configurar la región, la hora va en UTC: el nombre solo orienta, nunca decide nada.
      */
-    fun of(at: Instant, zone: BusinessTimeZone?): String {
+    fun of(at: Instant, zone: BusinessTimeZone?, encrypted: Boolean = false): String {
         val time = at.toLocalDateTime(zone?.timeZone ?: TimeZone.UTC)
         return buildString {
             append(PREFIX)
@@ -52,7 +54,7 @@ object ExportFileName {
             append('-')
             append(time.hour.toString().padStart(2, '0'))
             append(time.minute.toString().padStart(2, '0'))
-            append(SUFFIX)
+            append(if (encrypted) ENCRYPTED_SUFFIX else SUFFIX)
         }
     }
 

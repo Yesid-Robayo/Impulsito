@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.data.destination.BackupFileFormat
 import io.github.yesidrobayo.shopledger.data.destination.BackupFileName
+import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyInstant
 import io.github.yesidrobayo.shopledger.domain.model.backup.SecondDestinationProblem
@@ -260,6 +261,7 @@ class SecondDestinationWriterTest {
                 headGeneration = { phone.ports.backupState.get()?.headGeneration ?: 0 },
                 deviceId = { DEVICE },
                 clock = phone.clock,
+                schemaVersion = AppDatabase.SCHEMA_VERSION,
             ).build(directory)
         },
         staging = { staging },

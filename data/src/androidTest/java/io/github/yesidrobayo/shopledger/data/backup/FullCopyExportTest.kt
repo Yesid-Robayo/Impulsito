@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotTestProvider
+import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
 import io.github.yesidrobayo.shopledger.domain.model.audit.AuditEventType
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
@@ -194,6 +195,7 @@ class FullCopyExportTest {
                     headGeneration = { phone.ports.backupState.get()?.headGeneration ?: 0 },
                     deviceId = { "7f3a9c1e-0b2d-4c6e-8f10-23456789abcd" },
                     clock = phone.clock,
+                    schemaVersion = AppDatabase.SCHEMA_VERSION,
                 )
             },
             exportsDirectory = { exports },

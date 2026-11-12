@@ -175,6 +175,7 @@ internal class BackupFixture(
         verifyMode: (VerifyRequest) -> VerifyMode? = ::verifyModeFor,
         uploadGate: UploadGate = UploadGate.Open,
         policyAccepted: suspend () -> Boolean = { true },
+        encryption: suspend () -> LocalEncryption = { LocalEncryption.NONE },
     ): BackupRunner = BackupRunner(
         state = ports.backupState,
         databaseFile = file,
@@ -201,6 +202,7 @@ internal class BackupFixture(
         },
         policyAccepted = policyAccepted,
         uploadGate = uploadGate,
+        encryption = encryption,
     )
 
     fun advance(by: Duration) {

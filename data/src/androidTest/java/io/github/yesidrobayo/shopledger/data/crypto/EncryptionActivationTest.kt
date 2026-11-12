@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.data.crypto
 
 import io.github.yesidrobayo.shopledger.data.backup.BackupPackager
 import io.github.yesidrobayo.shopledger.data.backup.BackupStaging
+import io.github.yesidrobayo.shopledger.data.backup.PackEncryption
 import io.github.yesidrobayo.shopledger.data.backup.PackageResult
 import io.github.yesidrobayo.shopledger.data.backup.PendingPlainUpload
 import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
@@ -113,7 +114,8 @@ internal class EncryptionActivationTest : CatalogDatabaseTest() {
         val snapshot = File(root, "snapshot.db").absoluteFile.also { root.mkdirs() }
         snapshot.writeBytes("SQLite format 3\u0000".toByteArray() + ByteArray(4096))
         val target = File(root, "snapshot.db.gz").absoluteFile
-        val packager = BackupPackager(Dispatchers.IO, encryptionActive = { true })
+        val packager =
+            BackupPackager(Dispatchers.IO, encryption = { PackEncryption.KeyUnavailable })
         assertEquals(PackageResult.EncryptionUnavailable, packager.compress(snapshot, target))
         assertFalse(target.exists())
         assertTrue(snapshot.exists())

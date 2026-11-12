@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import io.github.yesidrobayo.shopledger.data.DataPorts
 import io.github.yesidrobayo.shopledger.data.WorkAccess
+import io.github.yesidrobayo.shopledger.data.destination.BackupFileFormat
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.domain.model.backup.MetaValueForm
@@ -33,8 +34,10 @@ import kotlinx.coroutines.sync.Mutex
  *   el disco.
  * @param secondDestination el escritor del segundo destino sobre la base abierta, para el paso 9b.
  * @param log el registro, para un fallo del paso 9b, que nunca detiene la subida.
- * @param encryptionActive si las copias deben salir cifradas: con el cifrado activo nunca sale una
- *   en claro.
+ * @param encryption cómo salen las copias: cifradas con el código sellado, en claro, o nada si la
+ *   clave no abre.
+ * @param localEncryption el cifrado de las copias como lo mira la guarda.
+ * @param currentKeyId la clave vigente para la poda, o nula sin cifrado.
  */
 internal fun productionBackupEngine(
     context: Context,
@@ -49,7 +52,9 @@ internal fun productionBackupEngine(
     mutex: Mutex,
     policyAccepted: suspend () -> Boolean,
     secondDestination: ((DataPorts) -> SecondDestinationWriter)? = null,
-    encryptionActive: suspend () -> Boolean = { false },
+    encryption: suspend () -> PackEncryption = { PackEncryption.Plain },
+    localEncryption: suspend () -> LocalEncryption = { LocalEncryption.NONE },
+    currentKeyId: suspend () -> String? = { null },
 ): BackupEngine = DatabaseBackupEngine(
     restoreMarkers = { RestoreMarkers(noBackupDirectory()) },
     openForWork = openForWork,
@@ -75,7 +80,8 @@ internal fun productionBackupEngine(
             destinations = destinations,
             snapshots = SnapshotCreator(ports.databaseFile, ioContext),
             sealer = SnapshotSealer(ioContext),
-            packager = BackupPackager(ioContext, encryptionActive = encryptionActive),
+            packager = BackupPackager(ioContext, encryption = encryption),
+            encryption = localEncryption,
             staging =
                 BackupStaging(File(noBackupDirectory(), BackupStaging.DIRECTORY_NAME), ioContext),
             deviceId = { deviceIdentity().deviceId() },
@@ -107,6 +113,7 @@ internal fun productionBackupEngine(
                             rejectedGenerations = rejected.load(),
                             fullVerifyGeneration = fullVerify.load(),
                             damagedGenerations = damaged.load(),
+                            currentKeyId = currentKeyId(),
                         )
                     },
                     forceUpload = { ports.backupState.forceUpload(clock.nowEpochMillis()) },
@@ -122,6 +129,7 @@ internal fun productionBackupEngine(
                             upload.copy.sizeBytes,
                             upload.copy.sha256,
                             upload.changeSeq,
+                            encrypted = upload.copy.name.format == BackupFileFormat.ENCRYPTED,
                         )
                     if (run is SecondDestinationRun.Problem) {
                         log.warn(

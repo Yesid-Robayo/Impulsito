@@ -17,8 +17,8 @@ import kotlinx.coroutines.withContext
  * 3. Olvida la intención de subida.
  *
  * Una muerte entre pasos deja la marca, que es lo que protege: la ejecución siguiente borra lo que
- * quede y no reintenta esa copia. Hoy toda subida pendiente es de una copia en claro: el respaldo
- * todavía no cifra.
+ * quede y no reintenta esa copia. Si la retomara igual, la recuperación de la subida tampoco
+ * retoma una copia en claro con el cifrado activo.
  */
 internal class PendingPlainUpload(
     private val state: suspend () -> BackupStateDao?,
@@ -31,6 +31,8 @@ internal class PendingPlainUpload(
         val dao = state() ?: return null
         val generation = dao.get()?.pendingGeneration ?: return null
         val folder = staging()
+        // Una copia cifrada que espera, de un código anterior, puede salir: no es texto plano.
+        if (withContext(ioContext) { folder.encryptedFile(generation).isFile }) return null
         rejected().add(generation)
         withContext(ioContext) {
             DurableFile.delete(folder.compressedFile(generation))

@@ -87,7 +87,15 @@ internal class SecondDestinationWriter(
             if (copy.records == 0L && copy.catalogCount == 0L) return SecondDestinationRun.Empty
             // Una copia que no se podría restaurar no se escribe ni poda: las anteriores siguen.
             if (!copy.restorable) return problem(saved, SecondDestinationProblem.FATAL_SKIPPED)
-            return write(saved, copy.file, copy.sizeBytes, copy.sha256, copy.changeSeq, row)
+            return write(
+                saved,
+                copy.file,
+                copy.sizeBytes,
+                copy.sha256,
+                copy.changeSeq,
+                row,
+                copy.encrypted,
+            )
         } finally {
             withContext(NonCancellable + ioContext) { emptyDirectory(directory) }
         }
@@ -102,12 +110,13 @@ internal class SecondDestinationWriter(
         sizeBytes: Long,
         sha256: String,
         changeSeq: Long,
+        encrypted: Boolean = false,
     ): SecondDestinationRun {
         val saved = loaded() ?: return SecondDestinationRun.NoFolder
         if (!saved.followMainBackup) return SecondDestinationRun.NoFolder
         if (blockedByEncryption()) return problem(saved, SecondDestinationProblem.KEY_UNAVAILABLE)
         val row = state() ?: return SecondDestinationRun.Retry
-        return write(saved, file, sizeBytes, sha256, changeSeq, row)
+        return write(saved, file, sizeBytes, sha256, changeSeq, row, encrypted)
     }
 
     private suspend fun write(
@@ -117,6 +126,7 @@ internal class SecondDestinationWriter(
         sha256: String,
         changeSeq: Long,
         row: BackupStateEntity,
+        encrypted: Boolean,
     ): SecondDestinationRun {
         val now = clock.now()
         val createdAt =
@@ -127,7 +137,8 @@ internal class SecondDestinationWriter(
                 schemaVersion = schemaVersion,
                 createdAt = createdAt,
                 devicePrefix = deviceId().take(DEVICE_PREFIX_LENGTH),
-                format = BackupFileFormat.GZIP,
+                // El nombre dice el formato de los bytes: con el cifrado activo, la copia cifrada.
+                format = if (encrypted) BackupFileFormat.ENCRYPTED else BackupFileFormat.GZIP,
             ).fileName
         val temporary = name + TEMPORARY_SUFFIX
         val folder = folderFor(saved)

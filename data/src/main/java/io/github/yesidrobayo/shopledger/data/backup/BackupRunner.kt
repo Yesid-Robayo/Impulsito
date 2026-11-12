@@ -83,7 +83,9 @@ import kotlinx.coroutines.withContext
  *    no válida, y la base activa guarda cuántos elementos son. Si la app no podría restaurarla,
  *    con WebDAV sube marcada como fatal, solo para un rescate manual, y con ranuras no se escribe:
  *    taparía una copia que sí se restaura.
- * 9. **Comprimir.** gzip con su suma, comprobado al releerlo, y los metadatos en la carpeta.
+ * 9. **Comprimir.** gzip con su suma, comprobado al releerlo, y los metadatos en la carpeta. Con el
+ *    cifrado activo, la copia sale cifrada y se comprueba descifrándola; si la clave no abre, no
+ *    sale nada, nunca en claro: `ENCRYPTION_KEY_UNAVAILABLE`.
  * 10. **Intención y subida.** Guarda en el estado qué copia va en camino, y solo después escribe en
  *     el destino. Al enviar el último byte anota la hora, y también si la subida se corta en red
  *     medida: esos datos ya se gastaron, y el intervalo cuenta desde ahí.
@@ -123,6 +125,8 @@ import kotlinx.coroutines.withContext
  * @param mutex el cerrojo del respaldo, uno por proceso.
  * @param rejected las generaciones propias rechazadas, que nunca se adoptan ni se repiten.
  * @param fullVerify la generación de la última copia leída entera, que la poda conserva.
+ * @param encryption el cifrado de las copias en este teléfono, que la guarda mira para no subir en
+ *   claro encima de copias cifradas sin el código.
  * @param afterCopy el paso 9b: con `Mantener al día esta carpeta`, deja el archivo de cada copia
  *   nueva que no es fatal también en el segundo destino, antes de subir y bajo el mismo cerrojo.
  *   Nunca lanza ni detiene la subida: un fallo ahí se anota aparte.
@@ -156,9 +160,19 @@ internal class BackupRunner(
     private val snapshotValidation: SnapshotValidation =
         SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
     private val afterCopy: suspend (Delivery.Upload) -> Unit = {},
+    private val encryption: suspend () -> LocalEncryption = { LocalEncryption.NONE },
 ) {
     private val recovery =
-        UploadRecovery(state, staging, rejected, clock, log, ioContext, schemaVersion)
+        UploadRecovery(
+            state,
+            staging,
+            rejected,
+            clock,
+            log,
+            ioContext,
+            schemaVersion,
+            encryptionActive = { encryption().active },
+        )
 
     /** Corre una ejecución entera. Solo lanza la cancelación, o una falla que nadie previó. */
     suspend fun run(requested: TransferControl): BackupRun = mutex.withLock {
@@ -666,7 +680,12 @@ internal class BackupRunner(
         // Paso 9: comprimir.
         val packed =
             when (
-                val result = packager.compress(snapshot.file, staging.compressedFile(generation))
+                val result =
+                    packager.compress(
+                        snapshot.file,
+                        { encrypted -> staging.packedFile(generation, encrypted) },
+                        CopyFacts(generation, schemaVersion, now.toEpochMilliseconds(), device),
+                    )
             ) {
                 is PackageResult.Packed -> result
 
@@ -676,15 +695,20 @@ internal class BackupRunner(
 
                 PackageResult.Mismatch -> return stopWith(BackupFailureCode.UNEXPECTED)
 
+                // Sin la clave no sale nada: nunca una copia en claro con el cifrado activo.
                 PackageResult.EncryptionUnavailable ->
                     return stopWith(BackupFailureCode.ENCRYPTION_KEY_UNAVAILABLE)
+
+                // Keystore falló un momento: se reintenta sin cambiar el estado.
+                PackageResult.KeyRetry ->
+                    return Made.Stop(BackupRun.Retry(RetryReason.LOCAL_FAILURE))
 
                 is PackageResult.Failed -> return localFailure(result.cause)
             }
         val meta =
             SlMeta(
-                format = PLAIN_FORMAT,
-                keyId = null,
+                format = if (packed.encrypted) ENCRYPTED_FORMAT else PLAIN_FORMAT,
+                keyId = packed.keyIdHex,
                 deviceId = device,
                 deviceLabel = deviceLabel,
                 generation = generation,
@@ -706,7 +730,8 @@ internal class BackupRunner(
                 schemaVersion = schemaVersion,
                 createdAt = createdAt,
                 devicePrefix = device.take(DEVICE_PREFIX_LENGTH),
-                format = BackupFileFormat.GZIP,
+                format =
+                    if (packed.encrypted) BackupFileFormat.ENCRYPTED else BackupFileFormat.GZIP,
             )
         val outgoing =
             OutgoingCopy(
@@ -893,6 +918,7 @@ internal class BackupRunner(
         shrinkAcceptedGeneration = current.shrinkAcceptedGeneration,
         highestOwnGeneration = highestOwnGeneration(listing, device),
         rejectedGenerations = rejected,
+        encryption = encryption(),
     )
 
     private fun headRefOf(current: BackupStateEntity): CopyRef? =
@@ -902,6 +928,9 @@ internal class BackupRunner(
     private companion object {
         /** Las copias van sin cifrar hasta que exista el cifrado opcional. */
         const val PLAIN_FORMAT = 1
+
+        /** El formato de una copia cifrada, el `.slbk`. */
+        const val ENCRYPTED_FORMAT = 2
 
         const val DEVICE_PREFIX_LENGTH = 8
 

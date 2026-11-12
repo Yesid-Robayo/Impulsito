@@ -185,6 +185,7 @@ internal class UploadRecovery(
     private val log: EventLog,
     private val ioContext: CoroutineContext,
     private val schemaVersion: Int,
+    private val encryptionActive: suspend () -> Boolean = { false },
 ) {
     /**
      * Borra los temporales de este teléfono que quedaron de una subida cortada. Los de otro no se
@@ -225,8 +226,23 @@ internal class UploadRecovery(
         if ((webDav && generation in before) || intent == null) {
             return startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
         }
-        if (!webDav) return recoverSlot(destination, intent, device, rejectedThisRun, control)
         val matches = listing.copies.filter { isOwn(it, generation, device) }
+        // Antidegradación: con el cifrado activo, una subida en claro que quedó en camino nunca se
+        // retoma. Con WebDAV se rechaza y se borra del destino; una ranura nunca se borra.
+        if (encryptionActive() && pendingIsPlain(generation, matches)) {
+            return if (webDav) {
+                reject(
+                    destination,
+                    generation,
+                    matches.map(ListedCopy::ref),
+                    rejectedThisRun,
+                    control,
+                )
+            } else {
+                startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
+            }
+        }
+        if (!webDav) return recoverSlot(destination, intent, device, rejectedThisRun, control)
         val name =
             when (matches.size) {
                 0 -> return reupload(generation, intent, device, rejectedThisRun)
@@ -288,7 +304,7 @@ internal class UploadRecovery(
                 schemaVersion,
                 createdAt,
                 device.take(DEVICE_PREFIX_LENGTH),
-                BackupFileFormat.GZIP,
+                stagedFormat(generation),
             )
         val location =
             when (
@@ -373,7 +389,10 @@ internal class UploadRecovery(
         val createdAt =
             CopyInstant.of(clock.now())
                 ?: return startOver(rejectedThisRun, generation, RecoveryEvent.NO_LOCAL_FILE)
-        if (meta.format != PLAIN_FORMAT || meta.schemaVersion > Int.MAX_VALUE) {
+        val format =
+            fileFormatOf(meta.format)
+                ?: return startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
+        if (meta.schemaVersion > Int.MAX_VALUE) {
             return startOver(rejectedThisRun, generation, RecoveryEvent.DISCARDED)
         }
         val name =
@@ -382,7 +401,7 @@ internal class UploadRecovery(
                 schemaVersion = meta.schemaVersion.toInt(),
                 createdAt = createdAt,
                 devicePrefix = device.take(DEVICE_PREFIX_LENGTH),
-                format = BackupFileFormat.GZIP,
+                format = format,
             )
         val outgoing =
             OutgoingCopy(
@@ -496,7 +515,11 @@ internal class UploadRecovery(
                     // Los metadatos solo usan el nombre: el archivo no se lee, y puede no estar.
                     val outgoing =
                         OutgoingCopy(
-                            file = staging.compressedFile(intent.generation),
+                            file =
+                                staging.packedFile(
+                                    intent.generation,
+                                    name.format == BackupFileFormat.ENCRYPTED,
+                                ),
                             name = name,
                             sizeBytes = intent.sizeBytes,
                             sha256 = intent.sha256,
@@ -542,8 +565,9 @@ internal class UploadRecovery(
         val decoded =
             (metaBytes?.let(SlMetaCodec::decodeUnnamed) as? CopyMetadata.Valid)?.meta
         val createdAt = CopyInstant.of(clock.now())
+        val format = decoded?.let { fileFormatOf(it.format) }
         if (file == null || metaBytes == null || decoded == null || createdAt == null ||
-            decoded.format != PLAIN_FORMAT || decoded.schemaVersion > Int.MAX_VALUE
+            format == null || decoded.schemaVersion > Int.MAX_VALUE
         ) {
             return startOver(rejectedThisRun, generation, RecoveryEvent.NO_LOCAL_FILE)
         }
@@ -553,7 +577,7 @@ internal class UploadRecovery(
                 schemaVersion = decoded.schemaVersion.toInt(),
                 createdAt = createdAt,
                 devicePrefix = device.take(DEVICE_PREFIX_LENGTH),
-                format = BackupFileFormat.GZIP,
+                format = format,
             )
         val meta =
             checkedMeta(metaBytes, name, intent, device)
@@ -722,8 +746,15 @@ internal class UploadRecovery(
      * no, nulo: la muestra no puede compararse con un archivo que no es el que se subió.
      */
     private suspend fun localFileFor(intent: Intent): File? = withContext(ioContext) {
-        val file = staging.compressedFile(intent.generation)
-        if (!file.isFile || file.length() != intent.sizeBytes) return@withContext null
+        // La copia que espera puede ser la cifrada o la que va en claro: solo una tiene el tamaño
+        // y la suma de la intención.
+        val file =
+            listOf(
+                staging.encryptedFile(intent.generation),
+                staging.compressedFile(intent.generation),
+            )
+                .firstOrNull { it.isFile && it.length() == intent.sizeBytes }
+                ?: return@withContext null
         try {
             val digest = newSha256()
             file.inputStream().use { input ->
@@ -740,12 +771,42 @@ internal class UploadRecovery(
         }
     }
 
+    /**
+     * Si la subida pendiente de [generation] es de una copia en claro: lo dicen sus metadatos en la
+     * carpeta de preparación, su archivo `.db.gz`, o su nombre en el destino.
+     */
+    private suspend fun pendingIsPlain(generation: Long, matches: List<ListedCopy>): Boolean {
+        val staged =
+            stagedMeta(generation)?.let {
+                (SlMetaCodec.decodeUnnamed(it) as? CopyMetadata.Valid)?.meta
+            }
+        if (staged?.format == PLAIN_FORMAT) return true
+        if (withContext(ioContext) { staging.compressedFile(generation).isFile }) return true
+        return matches.any { it.name?.format == BackupFileFormat.GZIP }
+    }
+
+    /** El formato del nombre de la subida de [generation], por sus metadatos; en claro si faltan. */
+    private suspend fun stagedFormat(generation: Long): BackupFileFormat = stagedMeta(generation)
+        ?.let { (SlMetaCodec.decodeUnnamed(it) as? CopyMetadata.Valid)?.meta }
+        ?.let { fileFormatOf(it.format) }
+        ?: BackupFileFormat.GZIP
+
+    /** El formato de archivo de un `sl_format`, o `null` si no es uno de los dos conocidos. */
+    private fun fileFormatOf(format: Int): BackupFileFormat? = when (format) {
+        PLAIN_FORMAT -> BackupFileFormat.GZIP
+        ENCRYPTED_FORMAT -> BackupFileFormat.ENCRYPTED
+        else -> null
+    }
+
     private fun failureField(failure: DestinationFailure): LogField =
         LogField.state("fallo", failureName(failure))
 
     private companion object {
-        /** Las copias van sin cifrar hasta que exista el cifrado opcional. */
+        /** La copia en claro, el `.db.gz`. */
         const val PLAIN_FORMAT = 1
+
+        /** La copia cifrada, el `.slbk`. */
+        const val ENCRYPTED_FORMAT = 2
         const val BUFFER_BYTES = 64 * 1024
     }
 }

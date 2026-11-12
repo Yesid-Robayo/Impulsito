@@ -141,7 +141,8 @@ class LocalCopiesViewModel(
     }
 
     /** El nombre que se sugiere al crear el archivo, con la hora del negocio de ahora. */
-    fun suggestedName(): String = ExportFileName.of(now(), state.value.zone)
+    fun suggestedName(): String =
+        ExportFileName.of(now(), state.value.zone, encrypted = state.value.encrypted == true)
 
     private fun exportTo(uri: String) {
         if (state.value.export is ExportUi.Working) return

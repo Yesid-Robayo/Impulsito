@@ -31,6 +31,7 @@ import io.github.yesidrobayo.shopledger.data.backup.LastProbeStore
 import io.github.yesidrobayo.shopledger.data.backup.LocalCopyBuilder
 import io.github.yesidrobayo.shopledger.data.backup.LocalEncryption
 import io.github.yesidrobayo.shopledger.data.backup.MaintenanceAccess
+import io.github.yesidrobayo.shopledger.data.backup.PackEncryption
 import io.github.yesidrobayo.shopledger.data.backup.PendingPlainUpload
 import io.github.yesidrobayo.shopledger.data.backup.ProbeAccess
 import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
@@ -433,10 +434,11 @@ class DataGraph internal constructor(
         snapshots = SnapshotCreator(ports.databaseFile, ioContext),
         sealer = SnapshotSealer(ioContext),
         validation = SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
-        packager = BackupPackager(ioContext, encryptionActive = ::encryptionActive),
+        packager = BackupPackager(ioContext, encryption = ::packEncryption),
         headGeneration = { ports.backupState.get()?.headGeneration ?: 0 },
         deviceId = { deviceIdentity.deviceId() },
         clock = clock,
+        schemaVersion = schemaVersion,
     )
 
     /** El mes de ahora en la zona del negocio, como `AAAA-MM`, o nulo si la zona no se entiende. */
@@ -763,12 +765,40 @@ class DataGraph internal constructor(
             mutex = backupMutex,
             policyAccepted = consentGate::allowsUploads,
             secondDestination = ::secondDestinationWriter,
-            encryptionActive = ::encryptionActive,
+            encryption = ::packEncryption,
+            localEncryption = ::localEncryption,
+            currentKeyId = ::currentKeyId,
         )
     }
 
-    /** Si las copias deben salir cifradas. El sobre manda sobre el estado, como al arrancar. */
-    private suspend fun encryptionActive(): Boolean = recoveryCustody.alignAtStartup().enabled
+    /**
+     * Cómo sale cada copia: cifrada con el código sellado si el cifrado está activo, en claro si
+     * no. Con el cifrado activo y un código que no abre, no sale nada, nunca en claro. El sobre
+     * manda sobre el estado, como al arrancar.
+     */
+    private suspend fun packEncryption(): PackEncryption {
+        val state = recoveryCustody.alignAtStartup()
+        if (!state.enabled) return PackEncryption.Plain
+        return when (val read = recoveryCustody.keys.open()) {
+            is RecoveryKeyRead.Available ->
+                if (read.key.keyIdHex == state.keyIdHex) {
+                    PackEncryption.Encrypt(read.code)
+                } else {
+                    PackEncryption.KeyUnavailable
+                }
+
+            RecoveryKeyRead.Absent, is RecoveryKeyRead.Unavailable -> PackEncryption.KeyUnavailable
+
+            is RecoveryKeyRead.RetryLater -> PackEncryption.RetryLater
+        }
+    }
+
+    /**
+     * La clave vigente para la poda: la del código si el cifrado está activo, o ninguna si está
+     * apagado. Una copia con otra clave no se poda hasta comprobar una con la vigente.
+     */
+    private suspend fun currentKeyId(): String? =
+        recoveryCustody.alignAtStartup().let { if (it.enabled) it.keyIdHex else null }
 
     /** El cifrado de las copias en este teléfono, como lo leen la guarda y el segundo destino. */
     private suspend fun localEncryption(): LocalEncryption {
