@@ -98,6 +98,9 @@ class AppSizes internal constructor() {
     /** Icono dentro del círculo de un estado vacío. */
     val emptyStateIcon: Dp = 32.dp
 
+    /** Icono solo sobre el héroe a sangre, como el candado de la pantalla del bloqueo. */
+    val heroIcon: Dp = 48.dp
+
     /** Indicador de trabajo dentro de un botón. */
     val buttonProgress: Dp = 20.dp
 

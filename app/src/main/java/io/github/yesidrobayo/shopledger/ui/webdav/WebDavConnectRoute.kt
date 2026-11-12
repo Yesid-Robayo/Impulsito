@@ -1,18 +1,13 @@
 package io.github.yesidrobayo.shopledger.ui.webdav
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import android.view.WindowManager
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ConnectWebDavUseCase
+import io.github.yesidrobayo.shopledger.lock.SecureWhileShown
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -94,19 +89,11 @@ private fun backToOpener(navigator: AppNavigator) {
     }
 }
 
-/** `FLAG_SECURE` en la ventana mientras esta pantalla está en la composición. */
+/**
+ * `FLAG_SECURE` en la ventana mientras esta pantalla está en la composición. Lo pide al dueño de la
+ * protección de la ventana: al salir, la ventana sigue protegida si el bloqueo de la app lo pide.
+ */
 @Composable
 internal fun SecureWindow() {
-    val activity = LocalContext.current.findActivity()
-    DisposableEffect(activity) {
-        val window = activity?.window
-        window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
-    }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
+    SecureWhileShown()
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_group_security">Seguridad</string>
+    <string name="lock_setting">Bloquear con huella o PIN</string>
+    <!-- lock_setting_help: %1$s = app -->
+    <string name="lock_setting_help">Al abrir %1$s se pide la huella o el PIN del teléfono. Impide que otra persona abra la app, pero no cifra los datos.</string>
+    <string name="lock_timeout_label">Pedir de nuevo después de</string>
+    <string name="lock_timeout_immediate">Inmediato</string>
+    <string name="lock_timeout_1_min">1 minuto</string>
+    <string name="lock_timeout_5_min">5 minutos</string>
+    <string name="lock_screen_body">Desbloquear para ver el negocio</string>
+    <string name="lock_no_device_lock">Esta opción necesita un bloqueo de pantalla en el teléfono.</string>
+    <string name="lock_unlock">Desbloquear</string>
+</resources>

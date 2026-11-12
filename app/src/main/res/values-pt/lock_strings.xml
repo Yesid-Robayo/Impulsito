@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_group_security">Segurança</string>
+    <string name="lock_setting">Bloquear com digital ou PIN</string>
+    <!-- lock_setting_help: %1$s = app -->
+    <string name="lock_setting_help">Pede a digital ou o PIN do telefone ao abrir %1$s. Evita que outra pessoa abra o app, mas não criptografa os dados.</string>
+    <string name="lock_timeout_label">Pedir de novo depois de</string>
+    <string name="lock_timeout_immediate">Imediato</string>
+    <string name="lock_timeout_1_min">1 minuto</string>
+    <string name="lock_timeout_5_min">5 minutos</string>
+    <string name="lock_screen_body">Desbloquear para ver o negócio</string>
+    <string name="lock_no_device_lock">Esta opção precisa de um bloqueio de tela no telefone.</string>
+    <string name="lock_unlock">Desbloquear</string>
+</resources>

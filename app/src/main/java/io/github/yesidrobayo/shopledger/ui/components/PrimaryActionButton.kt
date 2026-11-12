@@ -4,7 +4,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -50,6 +52,12 @@ enum class ActionVariant {
 
     /** Confirmar algo que no se puede deshacer. */
     DESTRUCTIVE,
+
+    /**
+     * La acción principal sobre el héroe a sangre, como `Desbloquear`: fondo en el texto fuerte del
+     * héroe y texto en su fondo, para que se lea en las nueve paletas, en claro y en oscuro.
+     */
+    ON_HERO,
 }
 
 /** Lo que está haciendo un botón después del toque. */
@@ -113,6 +121,8 @@ fun PrimaryActionButton(
             ActionVariant.TEXT -> ButtonDefaults.textButtonColors(contentColor = scheme.primary)
 
             ActionVariant.DESTRUCTIVE -> ButtonDefaults.buttonColors(scheme.error, scheme.onError)
+
+            ActionVariant.ON_HERO -> ButtonDefaults.buttonColors(app.onHero, app.heroContainer)
         }
     // El botón de texto es una acción menor: basta el área táctil mínima.
     val minHeight =
@@ -197,8 +207,20 @@ private fun PrimaryActionButtonPreview() {
             modifier = Modifier.padding(AppTheme.spacing.s16),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
         ) {
-            ActionVariant.entries.forEach { variant ->
+            ActionVariant.entries.filter { it != ActionVariant.ON_HERO }.forEach { variant ->
                 PrimaryActionButton(stringResource(R.string.empty_home_action), {}, variant)
+            }
+            // Sobre el héroe, como en la pantalla del bloqueo.
+            Box(
+                Modifier
+                    .background(AppTheme.colors.heroContainer)
+                    .padding(AppTheme.spacing.s16),
+            ) {
+                PrimaryActionButton(
+                    stringResource(R.string.lock_unlock),
+                    {},
+                    ActionVariant.ON_HERO,
+                )
             }
             val amount =
                 rememberMoneyDisplay(PreviewSamples.LONG_AMOUNT, LocalAppFormats.current.money)

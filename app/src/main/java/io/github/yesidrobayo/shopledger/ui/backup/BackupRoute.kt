@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -21,6 +22,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.RecordCloudCheckUs
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
+import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -30,6 +32,7 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
+import kotlinx.coroutines.launch
 
 /**
  * La pantalla del respaldo en la navegación. Al volver a primer plano recalcula el estado: un día
@@ -81,6 +84,10 @@ fun BackupRoute(navigator: AppNavigator) {
             val releaseFailed = stringResource(R.string.backup_release_failed)
             val retry = stringResource(R.string.action_retry)
             val context = LocalContext.current
+            // Con el bloqueo encendido, restaurar pide de nuevo la verificación del sistema.
+            val sensitive = rememberSensitiveCheck()
+            val scope = rememberCoroutineScope()
+            val restoreTitle = stringResource(R.string.backup_action_restore)
             val provider = uiState.wording?.providerLabel ?: NO_VALUE_TEXT
             val openFailed =
                 stringResource(
@@ -150,6 +157,10 @@ fun BackupRoute(navigator: AppNavigator) {
                             picker.launch(arrayOf(ANY_FILE))
                         }
 
+                        BackupAction.StartRestore -> scope.launch {
+                            if (sensitive.confirm(restoreTitle)) viewModel.onAction(action)
+                        }
+
                         BackupAction.OpenProvider -> {
                             val opened =
                                 uiState.handoff?.let { openInProvider(context, it.documentUri) } ==
@@ -168,7 +179,6 @@ fun BackupRoute(navigator: AppNavigator) {
                         is BackupAction.OpenCopy,
                         is BackupAction.ConfirmCopy,
                         is BackupAction.FilePicked,
-                        BackupAction.StartRestore,
                         is BackupAction.Answer,
                         BackupAction.CancelRestore,
                         BackupAction.CloseRestore,

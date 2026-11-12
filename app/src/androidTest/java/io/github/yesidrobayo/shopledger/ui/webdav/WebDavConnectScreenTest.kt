@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.webdav
 
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -23,6 +24,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.WebDavTestFailure
 import io.github.yesidrobayo.shopledger.domain.model.backup.WebDavTestStep
+import io.github.yesidrobayo.shopledger.lock.LocalWindowProtection
+import io.github.yesidrobayo.shopledger.lock.WindowProtection
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -192,7 +195,12 @@ class WebDavConnectScreenTest {
     @Test
     fun theWindowIsSecureOnlyWhileTheScreenIsShown() {
         var shown by mutableStateOf(true)
-        compose.setContent { if (shown) SecureWindow() }
+        val protection = WindowProtection.of(compose.activity.window)
+        compose.setContent {
+            CompositionLocalProvider(LocalWindowProtection provides protection) {
+                if (shown) SecureWindow()
+            }
+        }
         compose.waitForIdle()
         val flags = { compose.activity.window.attributes.flags }
 
@@ -202,5 +210,24 @@ class WebDavConnectScreenTest {
         compose.waitForIdle()
 
         assertFalse(flags() and WindowManager.LayoutParams.FLAG_SECURE != 0)
+    }
+
+    @Test
+    fun leavingTheScreenKeepsTheWindowSecureWhileTheAppLockIsOn() {
+        var shown by mutableStateOf(true)
+        val protection = WindowProtection.of(compose.activity.window)
+        compose.runOnUiThread { protection.lockEnabled(true) }
+        compose.setContent {
+            CompositionLocalProvider(LocalWindowProtection provides protection) {
+                if (shown) SecureWindow()
+            }
+        }
+        compose.waitForIdle()
+
+        shown = false
+        compose.waitForIdle()
+
+        val flags = compose.activity.window.attributes.flags
+        assertTrue(flags and WindowManager.LayoutParams.FLAG_SECURE != 0)
     }
 }

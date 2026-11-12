@@ -8,19 +8,33 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.OpeningStep
 import io.github.yesidrobayo.shopledger.data.RescueCause
+import io.github.yesidrobayo.shopledger.di.AppContainer
+import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
+import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.settings.ObserveAppLockUseCase
+import io.github.yesidrobayo.shopledger.lock.AppLockState
+import io.github.yesidrobayo.shopledger.lock.BiometricAuthenticator
+import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
+import io.github.yesidrobayo.shopledger.lock.LocalWindowProtection
+import io.github.yesidrobayo.shopledger.lock.WindowProtection
 import io.github.yesidrobayo.shopledger.navigation.AppNavHost
 import io.github.yesidrobayo.shopledger.navigation.AppOpenRequest
 import io.github.yesidrobayo.shopledger.ui.format.BusinessDisplay
 import io.github.yesidrobayo.shopledger.ui.format.ProvideBusinessFormats
+import io.github.yesidrobayo.shopledger.ui.lock.AppLockGate
+import io.github.yesidrobayo.shopledger.ui.lock.LockRoute
 import io.github.yesidrobayo.shopledger.ui.rescue.OpeningScreen
 import io.github.yesidrobayo.shopledger.ui.rescue.OpeningStage
 import io.github.yesidrobayo.shopledger.ui.rescue.RescueReason
@@ -50,6 +64,11 @@ import kotlinx.coroutines.launch
  * Es una [AppCompatActivity] porque en Android 8 a 12 el idioma elegido dentro de la app solo se
  * aplica a ese tipo de actividad. Sigue siendo una `FragmentActivity`, así que el desbloqueo con
  * huella o rostro también funciona aquí.
+ *
+ * Con el bloqueo encendido, la navegación va detrás de su compuerta: bloqueada, no se compone nada del
+ * negocio, y la ventana no deja capturas ni muestra datos en Recientes. Un aviso tocado con la app
+ * bloqueada espera a que la persona desbloquee, y luego abre su destino. El rescate nunca queda
+ * detrás del bloqueo: sin base no hay ajuste que leer, y la persona debe poder salvar sus datos.
  */
 class MainActivity : AppCompatActivity() {
     private val shownAppearance = mutableStateOf<Appearance?>(null)
@@ -58,6 +77,9 @@ class MainActivity : AppCompatActivity() {
     private val openingStage = mutableStateOf(OpeningStage.OPENING)
     private val onboardingPending = mutableStateOf(false)
     private val openRequest = mutableStateOf<AppOpenRequest?>(null)
+
+    /** Guarda el bloqueo apagado cuando el teléfono ya no tiene con qué autenticar. */
+    private var lockSettings: ChangePreferenceUseCase? = null
 
     /** La paleta y el modo que leyó de los ajustes, o `null` mientras la base no responde. */
     internal val appearance: State<Appearance?> get() = shownAppearance
@@ -70,6 +92,20 @@ class MainActivity : AppCompatActivity() {
         // Un aviso de stock abre su producto. Al recrearse la actividad, el pedido ya se cumplió.
         if (savedInstanceState == null) openRequest.value = AppOpenRequest.readFrom(intent)
         val container = (application as ShopLedgerApp).container
+        val appLock = container.appLock
+        val protection = WindowProtection.of(window)
+        // Con el bloqueo encendido, ni capturas ni Recientes muestran el negocio.
+        lifecycleScope.launch {
+            appLock.state.collect { state ->
+                protection.lockEnabled(
+                    when (state) {
+                        AppLockState.Unknown -> false
+                        is AppLockState.Open -> state.lockEnabled
+                        AppLockState.Locked -> true
+                    },
+                )
+            }
+        }
         // Lo que hace la compuerta mientras se espera la base: copiar y migrar, o restaurar.
         lifecycleScope.launch {
             container.data.opening.collect { openingStage.value = it.toStage() }
@@ -79,6 +115,12 @@ class MainActivity : AppCompatActivity() {
                 is DataAccess.Ready -> {
                     // Desde aquí se avisa lo que quedó pendiente y cada alerta nueva.
                     container.lowStockAlertDelivery.follow(access.ports)
+                    lockSettings = ChangePreferenceUseCase(access.ports.settings, container.clock)
+                    launch {
+                        ObserveAppLockUseCase(access.ports.settings)().collect {
+                            appLock.apply(it.enabled, it.timeout)
+                        }
+                    }
                     repeatOnLifecycle(Lifecycle.State.STARTED) {
                         access.ports.settings
                             .observe()
@@ -103,9 +145,13 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 // La causa ya quedó registrada. El rescate no lee la base ni navega.
-                is DataAccess.Rescue -> rescueReason.value = access.cause.toReason()
+                is DataAccess.Rescue -> {
+                    appLock.withoutSettings()
+                    rescueReason.value = access.cause.toReason()
+                }
             }
         }
+        val authenticator = BiometricAuthenticator(this, appLock)
         setContent {
             val appearance = shownAppearance.value
             val darkTheme = appearance.isDark(systemDark = isSystemInDarkTheme())
@@ -119,20 +165,50 @@ class MainActivity : AppCompatActivity() {
             AppTheme(palette = appearance?.palette ?: DefaultColorPalette, darkTheme = darkTheme) {
                 val reason = rescueReason.value
                 if (reason != null) {
-                    RescueRoute(reason)
+                    // El rescate nunca va detrás del bloqueo, pero restaurar pide la verificación
+                    // del sistema si el teléfono tiene bloqueo de pantalla.
+                    CompositionLocalProvider(LocalDeviceAuthenticator provides authenticator) {
+                        RescueRoute(reason)
+                    }
                 } else if (appearance == null) {
                     OpeningScreen(openingStage.value)
                 } else {
-                    ProvideBusinessFormats(shownDisplay.value) {
-                        AppNavHost(
-                            onboardingPending = onboardingPending.value,
-                            openRequest = openRequest.value,
-                            onOpenHandled = { openRequest.value = null },
-                        )
+                    val lockState by appLock.state.collectAsStateWithLifecycle()
+                    CompositionLocalProvider(
+                        LocalDeviceAuthenticator provides authenticator,
+                        LocalWindowProtection provides protection,
+                    ) {
+                        ProvideBusinessFormats(shownDisplay.value) {
+                            AppLockGate(
+                                state = lockState,
+                                locked = {
+                                    LockRoute(appLock, onNoDeviceCredential = {
+                                        turnLockOffWithoutCredential(container)
+                                    })
+                                },
+                            ) {
+                                AppNavHost(
+                                    onboardingPending = onboardingPending.value,
+                                    openRequest = openRequest.value,
+                                    onOpenHandled = { openRequest.value = null },
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    /**
+     * El teléfono perdió su bloqueo de pantalla con el bloqueo de la app encendido: la app se abre y
+     * el bloqueo se apaga, porque nunca deja a nadie fuera de sus datos. Si el ajuste no se guarda,
+     * igual se abre, y la próxima vez se vuelve a apagar.
+     */
+    private fun turnLockOffWithoutCredential(container: AppContainer) {
+        container.appLock.noDeviceCredential()
+        val change = lockSettings ?: return
+        container.applicationScope.launch { change(PreferenceChange.AppLock(false)) }
     }
 
     /** Con la app abierta, tocar un aviso de stock llega aquí. Lo desconocido no cambia nada. */

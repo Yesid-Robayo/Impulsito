@@ -21,6 +21,7 @@ import io.github.yesidrobayo.shopledger.localization.LanguagePreferenceFile
 import io.github.yesidrobayo.shopledger.localization.LocalizedContextProvider
 import io.github.yesidrobayo.shopledger.localization.LocalizedSurfaces
 import io.github.yesidrobayo.shopledger.localization.installedVersionOf
+import io.github.yesidrobayo.shopledger.lock.AppLock
 import io.github.yesidrobayo.shopledger.notification.AndroidBackupNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidLowStockNotifier
 import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
@@ -159,4 +160,10 @@ class AppContainer(application: Application) {
             onAppOpened = { data.backupScheduler.onAppOpened(it) },
             onAppBackgrounded = { data.backupScheduler.onAppBackgrounded() },
         )
+
+    /**
+     * El bloqueo de la app, uno por proceso. Mide el segundo plano con el reloj que solo avanza desde
+     * que arrancó el teléfono: cambiar la hora no lo engaña.
+     */
+    val appLock: AppLock = AppLock { android.os.SystemClock.elapsedRealtime() }
 }

@@ -33,8 +33,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 /**
  * Los ajustes mientras no tengan su pantalla completa: el `Perfil del negocio`, con su nombre y su
  * margen objetivo; el grupo `Región e idioma`, para llegar a la configuración regional y al idioma;
- * y en `Ventas y cobro` el interruptor `Propinas`, que el cobro necesita para ofrecerlas. La
- * pantalla de ajustes, con todos sus grupos, la reemplaza; aquí no hay nada más.
+ * en `Ventas y cobro` el interruptor `Propinas`, que el cobro necesita para ofrecerlas; y en
+ * `Seguridad` el bloqueo de la app. La pantalla de ajustes, con todos sus grupos, la reemplaza.
  *
  * @param profile el perfil del negocio, o `null` mientras se lee o sin base: el grupo no se dibuja.
  * @param profileSheet la hoja de un dato del perfil, si está abierta.
@@ -42,6 +42,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  * @param tipsEnabled si las propinas están encendidas, o `null` mientras se lee: la fila no se
  *   dibuja hasta saberlo.
  * @param tipsSaveFailed si el último cambio de las propinas no se pudo guardar.
+ *
+ * @param security el grupo `Seguridad`, con el bloqueo de la app, o `null` sin base.
  *
  * @param onOpen abre la pantalla de una fila.
  */
@@ -55,6 +57,8 @@ fun SettingsEntryScreen(
     profile: BusinessProfile? = null,
     profileSheet: ProfileSheet? = null,
     onProfileAction: (ProfileAction) -> Unit = {},
+    security: SecuritySettingsUiState? = null,
+    onSecurityAction: (SecurityAction) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         AppTopBar(
@@ -99,6 +103,9 @@ fun SettingsEntryScreen(
                             modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
                         )
                     }
+                }
+                if (security != null) {
+                    SecurityGroup(security, stringResource(R.string.app_name), onSecurityAction)
                 }
             }
         }

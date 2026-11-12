@@ -112,6 +112,9 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     // El idioma por app en Android 8 a 12 solo funciona con una AppCompatActivity.
     implementation(libs.androidx.appcompat)
+    // El bloqueo de la app pide la huella, el rostro o el PIN del teléfono con el diálogo del sistema. Es de AndroidX y solo
+    // aporta los dos permisos de biometría, sin red.
+    implementation(libs.androidx.biometric)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

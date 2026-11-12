@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_group_security">Security</string>
+    <string name="lock_setting">Lock with fingerprint or PIN</string>
+    <!-- lock_setting_help: %1$s = app -->
+    <string name="lock_setting_help">It asks for the phone\'s fingerprint or PIN when opening %1$s. It stops someone else from opening the app, but it does not encrypt the data.</string>
+    <string name="lock_timeout_label">Ask again after</string>
+    <string name="lock_timeout_immediate">Immediately</string>
+    <string name="lock_timeout_1_min">1 minute</string>
+    <string name="lock_timeout_5_min">5 minutes</string>
+    <string name="lock_screen_body">Unlock to see the business</string>
+    <string name="lock_no_device_lock">This option needs a screen lock on the phone.</string>
+    <string name="lock_unlock">Unlock</string>
+</resources>

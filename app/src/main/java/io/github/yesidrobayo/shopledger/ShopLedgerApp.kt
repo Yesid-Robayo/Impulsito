@@ -65,6 +65,8 @@ class ShopLedgerApp :
         // Solo avisa cuando una pantalla se abre o la app entera pasa a segundo plano: un proceso
         // que el sistema arranca para un trabajo no lo dispara.
         ProcessLifecycleOwner.get().lifecycle.addObserver(container.lifecycleObserver)
+        // El bloqueo cuenta el tiempo en segundo plano de la app entera: rotar no es salir.
+        ProcessLifecycleOwner.get().lifecycle.addObserver(container.appLock)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

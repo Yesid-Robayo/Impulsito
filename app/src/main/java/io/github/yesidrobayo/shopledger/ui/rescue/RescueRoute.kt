@@ -19,6 +19,8 @@ import io.github.yesidrobayo.shopledger.ShopLedgerApp
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.localization.InstalledLanguages
+import io.github.yesidrobayo.shopledger.lock.DeviceCredentialCheck
+import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
 import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
 import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
 import io.github.yesidrobayo.shopledger.ui.backup.restartForRestore
@@ -39,6 +41,9 @@ import kotlinx.coroutines.withContext
  * - `Reintentar` también reinicia: la compuerta decide otra vez desde cero.
  * - Compartir la base dañada la empaqueta en `cache/exports/`, y esa carpeta se vacía al volver
  *   del selector.
+ * - Restaurar pide siempre la verificación del sistema si el teléfono tiene bloqueo de pantalla:
+ *   sin base no se sabe si el bloqueo de la app está encendido. Sin bloqueo de pantalla restaura
+ *   igual, y si la verificación se cancela, se queda aquí sin restaurar.
  */
 @Composable
 fun RescueRoute(cause: RescueReason) {
@@ -69,6 +74,9 @@ fun RescueRoute(cause: RescueReason) {
             value = withContext(io) { SupportFacts.of(context, cause).lines(context) }
         }
     val supportLabel = stringResource(R.string.settings_support)
+    val authenticator = LocalDeviceAuthenticator.current
+    val restoreCheck = remember(authenticator) { DeviceCredentialCheck(authenticator) }
+    val restoreTitle = stringResource(R.string.backup_action_restore)
     // Lo que salió por el selector no se guarda: al volver, la carpeta se vacía.
     LaunchedEffect(Unit) { withContext(io) { ExportFolder.clear(context) } }
     val share =
@@ -112,6 +120,11 @@ fun RescueRoute(cause: RescueReason) {
                     if (action.action == BackupAction.FindFile) {
                         viewModel.onAction(RescueAction.Restore(BackupAction.CloseRestore))
                         picker.launch(arrayOf(ANY_FILE))
+                    } else if (action.action == BackupAction.StartRestore) {
+                        // Cancelada, no restaura y se queda en el rescate.
+                        scope.launch {
+                            if (restoreCheck.allows(restoreTitle)) viewModel.onAction(action)
+                        }
                     } else {
                         viewModel.onAction(action)
                     }

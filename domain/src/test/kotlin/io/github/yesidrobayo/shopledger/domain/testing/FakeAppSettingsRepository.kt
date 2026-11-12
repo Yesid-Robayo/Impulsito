@@ -22,6 +22,8 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
+import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,8 +94,8 @@ fun appSettings(regional: RegionalSettings): AppSettings = AppSettings(
  * Los ajustes en memoria. [settings] se cambia a mano para simular que la persona cambió un ajuste.
  * El bloqueo de la moneda se escribe como lo hace la base, y cada llamada queda en [lockCalls]. La
  * configuración regional se escribe y queda anotada en [regionalWrites], y el perfil del negocio en
- * [profileWrites]. Las demás escrituras del puerto no hacen falta en estas pruebas y fallan si
- * alguien las usa.
+ * [profileWrites]. Las preferencias se escriben y quedan en [preferenceWrites], salvo que
+ * [failNextPreference] pida una falla.
  */
 class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
     val settings = MutableStateFlow(initial)
@@ -176,17 +178,34 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
     /** Cada cambio de preferencia escrito, en orden. */
     val preferenceWrites = mutableListOf<PreferenceChange>()
 
-    // Solo la política con datos móviles se aplica; las demás no hacen falta en estas pruebas.
+    /** La falla con que la próxima preferencia no se guarda, como si la base la rechazara. */
+    var failNextPreference: StorageFailure? = null
+
     override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant) {
-        val policy = (change as? PreferenceChange.MeteredBackup)?.policy
-            ?: error("No se usa en estas pruebas")
+        failNextPreference?.let {
+            failNextPreference = null
+            throw StorageFailureException(it)
+        }
         preferenceWrites += change
         val current = settings.value
-        settings.value =
-            current.copy(
-                preferences = current.preferences.copy(meteredBackupPolicy = policy),
-                updatedAt = updatedAt,
+        val preferences = current.preferences
+        val changed = when (change) {
+            is PreferenceChange.Theme -> preferences.copy(themeMode = change.mode)
+
+            is PreferenceChange.Palette -> preferences.copy(colorPalette = change.palette)
+
+            is PreferenceChange.LowStockNotifications ->
+                preferences.copy(lowStockNotificationsEnabled = change.enabled)
+
+            is PreferenceChange.AppLock -> preferences.copy(appLockEnabled = change.enabled)
+
+            is PreferenceChange.AppLockDelay -> preferences.copy(appLockTimeout = change.timeout)
+
+            is PreferenceChange.MeteredBackup -> preferences.copy(
+                meteredBackupPolicy = change.policy,
             )
+        }
+        settings.value = current.copy(updatedAt = updatedAt, preferences = changed)
     }
 
     override suspend fun markOnboardingCompleted(completedAt: Instant) {
