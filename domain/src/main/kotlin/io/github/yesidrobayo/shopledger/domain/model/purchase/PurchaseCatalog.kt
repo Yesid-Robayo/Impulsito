@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.model.purchase
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
@@ -20,6 +21,8 @@ import kotlinx.datetime.DayOfWeek
  *   archivadas, que un producto conserva. Con ellos la compra muestra el total y el costo que deja.
  * - [today] y [weekStartDay]: la fecha de negocio de hoy y el primer día de la semana, para elegir
  *   una fecha anterior. Faltan si el teléfono no conoce la zona del negocio.
+ * - [conversions]: por producto, las unidades en que se compra además de la base, con su factor,
+ *   por id de unidad. Solo las que se ofrecen al comprar.
  */
 data class PurchaseCatalog(
     val products: List<Product>,
@@ -30,4 +33,5 @@ data class PurchaseCatalog(
     val taxRates: Map<Long, TaxRateDetails>,
     val today: BusinessDate?,
     val weekStartDay: DayOfWeek?,
+    val conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
 )

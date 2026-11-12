@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCatalog
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxSettingsRepository
@@ -16,6 +17,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 /**
  * El catálogo de la compra: los productos que se compran, los archivados que la búsqueda ofrece
@@ -35,6 +38,7 @@ class ObservePurchaseCatalogUseCase(
     private val taxSettings: TaxSettingsRepository,
     private val taxRates: TaxRateRepository,
     private val clock: Clock,
+    private val productUnits: ProductUnitRepository? = null,
 ) {
     operator fun invoke(): Flow<PurchaseCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = when (result) {
@@ -45,6 +49,12 @@ class ObservePurchaseCatalogUseCase(
             taxRates.observe(ArchiveFilter.ACTIVE),
             taxRates.observe(ArchiveFilter.ARCHIVED),
         ) { active, archived -> (active + archived).associate { it.id to it.details } }
+        // Solo las conversiones que se ofrecen al comprar: las de venta no se eligen aquí.
+        val conversions = productUnits?.observeAll()?.map { all ->
+            all.filter { it.details.forPurchase }
+                .groupBy { it.productId }
+                .mapValues { (_, list) -> list.associate { it.details.unitId to it.details } }
+        } ?: flowOf(emptyMap())
         combine(
             products.observe(ArchiveFilter.ACTIVE),
             products.observe(ArchiveFilter.ARCHIVED),
@@ -62,7 +72,7 @@ class ObservePurchaseCatalogUseCase(
                 today = ready?.businessDateOf(clock.now()),
                 weekStartDay = ready?.weekStartDay,
             )
-        }
+        }.combine(conversions) { catalog, byProduct -> catalog.copy(conversions = byProduct) }
     }
 
     private fun isBuyable(product: Product): Boolean =

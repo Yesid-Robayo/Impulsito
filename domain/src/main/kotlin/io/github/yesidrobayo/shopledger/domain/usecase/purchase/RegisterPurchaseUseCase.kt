@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
@@ -34,6 +35,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricing
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricingResult
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseSubject
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseTotals
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseUnit
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
@@ -61,10 +63,14 @@ import kotlin.time.Instant
  *   pero toman su lugar en el orden del libro al registrarse: una compra atrasada cambia el costo
  *   desde hoy, no desde su fecha.
  * - **La moneda se bloquea con la primera compra**, en su misma transacción.
+ * - **Se compra en otra unidad** con la conversión de compra del producto, como la caja: la línea
+ *   congela su factor, su costo unitario va por caja, y el libro suma la cantidad llevada a la
+ *   unidad base con el total de la línea. Una caja de 24 por 10000 deja el valor en 10000 y el
+ *   promedio en 417 por unidad. Una unidad que el producto no compra se rechaza con su motivo.
  *
  * Por ahora la compra va pagada completa al registrarla y sin cuenta de dinero: la compra a plazo
- * y los movimientos de dinero llegan con su libro. Tampoco compra productos con lotes, ni en otra
- * unidad que la base: los rechaza con su motivo.
+ * y los movimientos de dinero llegan con su libro. Tampoco compra productos con lotes: los rechaza
+ * con su motivo.
  */
 class RegisterPurchaseUseCase(
     private val transactions: TransactionRunner,
@@ -77,6 +83,7 @@ class RegisterPurchaseUseCase(
     private val ledger: StockLedgerRepository,
     private val taxRates: TaxRateRepository,
     private val clock: Clock,
+    private val productUnits: ProductUnitRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
 
@@ -185,8 +192,42 @@ class RegisterPurchaseUseCase(
                     AppliedTax(rate.details.rate, rate.details.name.take(MAX_TAX_NAME_LENGTH))
                 }
             } ?: AppliedTax.NONE
-            product.id to PurchaseSubject(product, allowsFraction, tax.rate, tax.name)
+            product.id to PurchaseSubject(
+                product = product,
+                allowsFraction = allowsFraction,
+                taxRate = tax.rate,
+                taxName = tax.name,
+                purchaseUnits = purchaseUnitsOf(product.id, product.details.baseUnitId, lines),
+            )
         }
+    }
+
+    /**
+     * Las conversiones de compra de [productId] que piden sus líneas, leídas dentro de la
+     * transacción para congelar el factor que hay al confirmar. Una que no existe o no es de compra
+     * queda fuera, y el cálculo rechaza su línea.
+     */
+    private suspend fun purchaseUnitsOf(
+        productId: Long,
+        baseUnitId: Long,
+        lines: List<PurchaseLineRequest>,
+    ): Map<Long, PurchaseUnit> {
+        val asked = lines.filter { it.productId == productId }
+            .mapNotNull { it.unitId }
+            .filter { it != baseUnitId }
+            .toSet()
+        if (asked.isEmpty()) return emptyMap()
+        val repository =
+            requireNotNull(productUnits) { "Comprar en otra unidad pide las conversiones" }
+        val found = HashMap<Long, PurchaseUnit>()
+        for (unitId in asked) {
+            val conversion = repository.findByProductAndUnit(productId, unitId) ?: continue
+            if (!conversion.details.forPurchase) continue
+            // La unidad de una conversión siempre existe: su llave no deja borrarla.
+            val unit = units.findById(unitId) ?: damaged()
+            found[unitId] = PurchaseUnit(conversion.details.factorMilli, unit.allowsFraction)
+        }
+        return found
     }
 
     private suspend fun write(
@@ -248,9 +289,9 @@ class RegisterPurchaseUseCase(
 
     private fun PricedPurchaseLine.toNewLine(): NewPurchaseLine = NewPurchaseLine(
         productId = subject.product.id,
-        unitId = subject.product.details.baseUnitId,
-        unitFactor = QuantityMilli.ofUnits(1L),
-        enteredQuantity = quantity,
+        unitId = unitId,
+        unitFactor = unitFactor,
+        enteredQuantity = enteredQuantity,
         quantity = quantity,
         unitCost = amounts.unitCost,
         lineTotal = split.lineTotal,

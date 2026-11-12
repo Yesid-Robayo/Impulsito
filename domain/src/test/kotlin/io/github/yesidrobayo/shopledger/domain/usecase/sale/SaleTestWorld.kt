@@ -540,6 +540,7 @@ internal class SaleWorld(
         ledger = ledger,
         taxRates = taxRateRepository,
         clock = clock,
+        productUnits = productUnitRepository,
     )
 
     fun voidPurchase(): VoidPurchaseUseCase = VoidPurchaseUseCase(

@@ -42,6 +42,7 @@ class NewPurchaseGalleryTest {
         }
 
     private val unit = MeasureUnit(1L, "UNIT", null, null, UnitKind.COUNT, false, null)
+    private val box = MeasureUnit(3L, "BOX", null, null, UnitKind.COUNT, false, null)
     private val today = BusinessDate(LocalDate(2026, 11, 2))
 
     private val lines = NewPurchaseUiState(
@@ -88,6 +89,22 @@ class NewPurchaseGalleryTest {
         assumeTrue("Sin captureDir no hay capturas", dir != null)
         val scenes = listOf(
             "lines" to lines,
+            "box" to lines.copy(
+                lines = listOf(
+                    lines.lines.first().copy(
+                        unit = box,
+                        units = listOf(unit, box),
+                        quantityText = "1",
+                        amountText = "10000",
+                        byTotal = true,
+                        lineTotal = Money(10_000L),
+                        derived = Money(10_000L),
+                        costBefore = Money(380L),
+                        costAfter = Money(398L),
+                    ),
+                ),
+                total = Money(10_000L),
+            ),
             "empty" to
                 NewPurchaseUiState(loading = false, today = today, weekStartDay = DayOfWeek.MONDAY),
             "failed" to lines.copy(notice = PurchaseNotice.RegisterFailed(outOfSpace = false)),

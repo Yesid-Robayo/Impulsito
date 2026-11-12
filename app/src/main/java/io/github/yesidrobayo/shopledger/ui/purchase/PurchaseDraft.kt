@@ -28,13 +28,17 @@ data class PurchaseDraft(
     val nextKey: Long = 1L,
 )
 
-/** Una línea tal como se escribió: los textos se leen al calcular, con el formato regional. */
+/**
+ * Una línea tal como se escribió: los textos se leen al calcular, con el formato regional.
+ * [unitId] es la unidad en que se compra, o `null` para la base.
+ */
 data class PurchaseLineDraft(
     val key: Long,
     val productId: Long,
     val quantityText: String,
     val amountText: String,
     val byTotal: Boolean,
+    val unitId: Long? = null,
 )
 
 /**
@@ -53,7 +57,10 @@ internal object PurchaseDraftStore {
     private const val PREFILLED = "purchase.prefilled"
     private const val NEXT_KEY = "purchase.nextKey"
 
-    private const val FIELDS = 3
+    private const val FIELDS = 4
+
+    /** La unidad base en el arreglo: ningún id real es cero. */
+    private const val BASE_UNIT = 0L
 
     fun read(state: SavedStateHandle): PurchaseDraft = PurchaseDraft(
         lines = decode(
@@ -77,6 +84,7 @@ internal object PurchaseDraftStore {
             numbers[base] = line.key
             numbers[base + 1] = line.productId
             numbers[base + 2] = if (line.byTotal) 1L else 0L
+            numbers[base + 3] = line.unitId ?: BASE_UNIT
         }
         state[LINES] = numbers
         state[QUANTITIES] = ArrayList(draft.lines.map { it.quantityText })
@@ -108,6 +116,7 @@ internal object PurchaseDraftStore {
                 quantityText = quantities[index],
                 amountText = amounts[index],
                 byTotal = numbers[base + 2] == 1L,
+                unitId = numbers[base + 3].takeIf { it != BASE_UNIT },
             )
         }
     }

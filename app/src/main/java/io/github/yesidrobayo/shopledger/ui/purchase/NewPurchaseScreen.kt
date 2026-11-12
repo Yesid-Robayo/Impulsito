@@ -255,6 +255,21 @@ private fun PurchaseLineCard(line: PurchaseLineUi, onAction: (NewPurchaseAction)
                 variant = NoticeVariant.WARNING,
             )
         }
+        if (line.units.size > 1) {
+            val baseId = line.units.first().id
+            CompactChipRow(
+                options = line.units,
+                label = { unitLabel(it).symbol },
+                selected = setOfNotNull(line.unit),
+                onToggle = { chosen ->
+                    onAction(
+                        NewPurchaseAction.UnitChange(line.key, chosen.id.takeIf { it != baseId }),
+                    )
+                },
+                multiple = false,
+                modifier = Modifier.padding(top = spacing.s8),
+            )
+        }
         CompactChipRow(
             options = listOf(false, true),
             label = { if (it) totalLabel else costLabel },
@@ -520,6 +535,8 @@ private fun fieldErrorText(error: PurchaseFieldError, product: String): String =
     PurchaseFieldError.TOO_HIGH -> stringResource(R.string.error_value_high)
 
     PurchaseFieldError.STOCK_OVER_LIMIT -> stringResource(R.string.error_stock_over_limit, product)
+
+    PurchaseFieldError.UNIT_UNAVAILABLE -> stringResource(R.string.purchase_unit_unavailable)
 }
 
 /** El texto de una falla al registrar: el espacio del teléfono, o la falla general. */

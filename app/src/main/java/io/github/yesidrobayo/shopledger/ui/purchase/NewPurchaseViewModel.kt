@@ -22,6 +22,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.purchase.PricedPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricing
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricingResult
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseSubject
+import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseUnit
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import kotlinx.coroutines.CoroutineDispatcher
@@ -137,6 +138,10 @@ class NewPurchaseViewModel(
 
             is NewPurchaseAction.QuantityChange -> editLine(action.key) {
                 it.copy(quantityText = action.text)
+            }
+
+            is NewPurchaseAction.UnitChange -> editLine(action.key) {
+                it.copy(unitId = action.unitId)
             }
 
             is NewPurchaseAction.AmountChange -> editLine(action.key) {
@@ -453,7 +458,8 @@ class NewPurchaseViewModel(
                 key = line.key,
                 productId = line.productId,
                 name = product?.details?.name.orEmpty(),
-                unit = product?.let { catalog.units[it.details.baseUnitId] },
+                unit = product?.let { catalog.units[unitIdOf(it, line)] },
+                units = product?.let { unitsOf(catalog, it) }.orEmpty(),
                 quantityText = line.quantityText,
                 amountText = line.amountText,
                 byTotal = line.byTotal,
@@ -492,7 +498,7 @@ class NewPurchaseViewModel(
         showMissing: Boolean,
     ): Pair<PurchaseFieldError?, PurchaseFieldError?> {
         val allowsFraction =
-            product?.let { catalog.units[it.details.baseUnitId]?.allowsFraction } ?: false
+            product?.let { catalog.units[unitIdOf(it, line)]?.allowsFraction } ?: false
         val quantity = quantityError(line.quantityText, allowsFraction, showMissing)
         val amount = amountError(line, showMissing)
         val fromRule = when (rejection) {
@@ -504,6 +510,9 @@ class NewPurchaseViewModel(
             -> null to null
 
             PurchaseLineRejection.INVALID_QUANTITY -> PurchaseFieldError.TOO_HIGH to null
+
+            // La conversión se quitó mientras se escribía: la línea pide elegir otra unidad.
+            PurchaseLineRejection.UNIT_UNAVAILABLE -> PurchaseFieldError.UNIT_UNAVAILABLE to null
 
             PurchaseLineRejection.FRACTION_NOT_ALLOWED ->
                 PurchaseFieldError.FRACTION_NOT_ALLOWED to null
@@ -565,7 +574,7 @@ class NewPurchaseViewModel(
     ): PurchaseLineRequest? {
         val product = (catalog.products + catalog.archived).firstOrNull { it.id == line.productId }
             ?: return null
-        val allowsFraction = catalog.units[product.details.baseUnitId]?.allowsFraction ?: false
+        val allowsFraction = catalog.units[unitIdOf(product, line)]?.allowsFraction ?: false
         if (quantityError(line.quantityText, allowsFraction, showMissing = true) !=
             null
         ) {
@@ -580,6 +589,7 @@ class NewPurchaseViewModel(
         val amount = readAmount(line) as? NumberInput.Value<Money> ?: return null
         return PurchaseLineRequest(
             productId = line.productId,
+            unitId = line.unitId,
             quantity = quantity.value,
             amount = if (line.byTotal) {
                 PurchaseLineAmount.LineTotal(amount.value)
@@ -599,8 +609,24 @@ class NewPurchaseViewModel(
                 allowsFraction = catalog.units[product.details.baseUnitId]?.allowsFraction ?: false,
                 taxRate = rate?.rate ?: BasisPoints.ZERO,
                 taxName = rate?.name,
+                purchaseUnits = catalog.conversions[product.id].orEmpty()
+                    .mapValues { (unitId, details) ->
+                        PurchaseUnit(
+                            details.factorMilli,
+                            catalog.units[unitId]?.allowsFraction ?: false,
+                        )
+                    },
             )
         }
+
+    /** La unidad en que se escribe la línea: la elegida, o la base del producto. */
+    private fun unitIdOf(product: Product, line: PurchaseLineDraft): Long =
+        line.unitId ?: product.details.baseUnitId
+
+    /** La base y las conversiones de compra del producto, en ese orden. */
+    private fun unitsOf(catalog: PurchaseCatalog, product: Product) =
+        (listOf(product.details.baseUnitId) + catalog.conversions[product.id].orEmpty().keys)
+            .mapNotNull { catalog.units[it] }
 
     private fun sheetOf(catalog: PurchaseCatalog, shown: Overlay): PurchaseSheet? =
         when (shown.sheet) {

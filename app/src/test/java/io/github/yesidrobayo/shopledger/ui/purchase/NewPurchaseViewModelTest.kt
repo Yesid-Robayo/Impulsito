@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
@@ -55,6 +56,7 @@ import org.junit.Test
 class NewPurchaseViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val kilo = MeasureUnit(2L, "KILOGRAM", null, null, UnitKind.MASS, true, null)
+    private val box = MeasureUnit(3L, "BOX", null, null, UnitKind.COUNT, false, null)
     private val soap =
         product(1L, "Jabón", averageCost = 1_000L, stockValue = 10_000L, onHand = 10_000L)
     private val flour = product(
@@ -86,10 +88,11 @@ class NewPurchaseViewModelTest {
     private fun catalogOf(
         products: List<Product> = listOf(soap, flour),
         taxes: TaxSettings = TaxSettings(TaxMode.NONE, null, purchaseTaxRecoverable = false),
+        conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
     ) = PurchaseCatalog(
         products = products,
         archived = listOf(archived),
-        units = listOf(COUNT_UNIT, kilo).associateBy { it.id },
+        units = listOf(COUNT_UNIT, kilo, box).associateBy { it.id },
         suppliers = listOf(supplier(5L, "Proveedor uno"), supplier(6L, "Proveedor dos")),
         taxes = taxes,
         taxRates = mapOf(
@@ -97,6 +100,7 @@ class NewPurchaseViewModelTest {
         ),
         today = today,
         weekStartDay = DayOfWeek.MONDAY,
+        conversions = conversions,
     )
 
     private fun supplier(id: Long, name: String) = Supplier(
@@ -467,5 +471,49 @@ class NewPurchaseViewModelTest {
 
         assertTrue(model.state.lines.isEmpty())
         assertNull(model.state.total)
+    }
+
+    @Test
+    fun `a box bought by its total shows the cost of each unit and registers the box`() =
+        runTest(dispatcher) {
+            val boxOf24 = ConversionDetails(box.id, 24_000L, null, null, false, true)
+            catalog.value = catalogOf(conversions = mapOf(1L to mapOf(box.id to boxOf24)))
+            val model = viewModel()
+            model.act(this, NewPurchaseAction.AddProduct(1L))
+            val key = model.line().key
+            assertEquals(listOf(COUNT_UNIT, box), model.line().units)
+
+            model.act(this, NewPurchaseAction.UnitChange(key, box.id))
+            model.act(this, NewPurchaseAction.AmountModeChange(key, byTotal = true))
+            model.act(this, NewPurchaseAction.QuantityChange(key, "1,5"))
+            assertEquals(PurchaseFieldError.FRACTION_NOT_ALLOWED, model.line().quantityError)
+            model.act(this, NewPurchaseAction.QuantityChange(key, "1"))
+            model.act(this, NewPurchaseAction.AmountChange(key, "10000"))
+
+            assertEquals(box, model.line().unit)
+            // La caja cuesta 10000; con 10 unidades a 1000, el costo pasa a 20000 / 34 = 588.
+            assertEquals(Money(10_000L), model.line().derived)
+            assertEquals(Money(588L), model.line().costAfter)
+            assertEquals(box.id, PurchaseDraftStore.read(savedState).lines.single().unitId)
+
+            model.act(this, NewPurchaseAction.UnitChange(key, null))
+            assertEquals(COUNT_UNIT, model.line().unit)
+            model.act(this, NewPurchaseAction.UnitChange(key, box.id))
+
+            model.act(this, NewPurchaseAction.Register)
+            assertEquals(box.id, requests.single().lines.single().unitId)
+        }
+
+    @Test
+    fun `a unit that is no longer bought marks the quantity`() = runTest(dispatcher) {
+        result = RegisterPurchaseResult.LineRejected(0, PurchaseLineRejection.UNIT_UNAVAILABLE)
+        val model = viewModel()
+        model.act(this, NewPurchaseAction.AddProduct(1L))
+        val key = model.line().key
+        model.act(this, NewPurchaseAction.QuantityChange(key, "1"))
+        model.act(this, NewPurchaseAction.AmountChange(key, "100"))
+        model.act(this, NewPurchaseAction.Register)
+
+        assertEquals(PurchaseFieldError.UNIT_UNAVAILABLE, model.line().quantityError)
     }
 }

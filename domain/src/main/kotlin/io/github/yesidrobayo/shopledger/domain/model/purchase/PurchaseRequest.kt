@@ -19,13 +19,18 @@ data class PurchaseRequest(
 )
 
 /**
- * Una línea de la compra: [quantity] milésimas de la unidad base de [productId], y lo que costó,
- * escrito como costo unitario o como total de la línea, a elección de la persona.
+ * Una línea de la compra: [quantity] milésimas de la unidad [unitId] de [productId], y lo que
+ * costó, escrito como costo unitario o como total de la línea, a elección de la persona.
+ *
+ * [unitId] `null` es la unidad base. Otra unidad tiene que ser una conversión de compra del
+ * producto, como la caja: su factor lleva la cantidad a la unidad base, que es la del libro. El
+ * costo unitario va por unidad entera de [unitId]: una caja, no una unidad suelta.
  */
 data class PurchaseLineRequest(
     val productId: Long,
     val quantity: QuantityMilli,
     val amount: PurchaseLineAmount,
+    val unitId: Long? = null,
 )
 
 /**

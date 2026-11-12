@@ -20,25 +20,40 @@ import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
 import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.UnitConversion
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.UnitConversionResult
 
 /**
  * Lo que el cálculo de una compra necesita de un producto: el producto leído, con su saldo y su
  * costo, si su unidad base admite fracciones, y la tasa que paga con su nombre, ya resuelta.
+ * [purchaseUnits] son las otras unidades en que se compra, por id: sus conversiones de compra.
  */
 data class PurchaseSubject(
     val product: Product,
     val allowsFraction: Boolean,
     val taxRate: BasisPoints,
     val taxName: String?,
+    val purchaseUnits: Map<Long, PurchaseUnit> = emptyMap(),
 )
 
 /**
- * Una línea de compra calculada. [amounts] es lo que escribió la persona con el valor deducido,
- * [split] el impuesto y lo que entra al costo, [movementCost] el costo por unidad base que congela
- * la fila del libro, y [before] y [after] el costo del producto antes y después de esta línea.
+ * Una unidad de compra de un producto que no es la base: [factorMilli] milésimas de la unidad base
+ * por una unidad entera, y si admite fracciones.
+ */
+data class PurchaseUnit(val factorMilli: Long, val allowsFraction: Boolean)
+
+/**
+ * Una línea de compra calculada. [enteredQuantity] va en la unidad [unitId], con [unitFactor]
+ * milésimas de la base por unidad entera, y [quantity] en la unidad base, la del libro. [amounts]
+ * es lo que escribió la persona con el valor deducido, por unidad entera de [unitId]; [split] el
+ * impuesto y lo que entra al costo; [movementCost] el costo por unidad base que congela la fila del
+ * libro; y [before] y [after] el costo del producto antes y después de esta línea.
  */
 data class PricedPurchaseLine(
     val subject: PurchaseSubject,
+    val unitId: Long,
+    val unitFactor: QuantityMilli,
+    val enteredQuantity: QuantityMilli,
     val quantity: QuantityMilli,
     val amounts: PurchaseLineAmounts,
     val split: PurchaseLineTax,
@@ -134,9 +149,25 @@ object PurchasePricing {
         taxes: TaxSettings,
     ): LineResult {
         productRejection(subject.product)?.let { return LineResult.Rejected(it) }
-        quantityRejection(line.quantity, subject.allowsFraction)?.let {
+        val baseUnitId = subject.product.details.baseUnitId
+        val unitId = line.unitId ?: baseUnitId
+        val unit = if (unitId == baseUnitId) {
+            PurchaseUnit(UnitConversion.BASE_UNIT_FACTOR_MILLI, subject.allowsFraction)
+        } else {
+            subject.purchaseUnits[unitId]
+                ?: return LineResult.Rejected(PurchaseLineRejection.UNIT_UNAVAILABLE)
+        }
+        quantityRejection(line.quantity, unit.allowsFraction)?.let {
             return LineResult.Rejected(it)
         }
+        // Un factor imposible no viene de la app; si llega, la unidad no sirve para comprar.
+        if (!UnitConversion.isValidFactor(unit.factorMilli)) {
+            return LineResult.Rejected(PurchaseLineRejection.UNIT_UNAVAILABLE)
+        }
+        // La cantidad escrita ya se revisó: solo la convertida puede pasar del tope o ser cero.
+        val converted = UnitConversion.toBaseQuantity(line.quantity, unit.factorMilli)
+        val baseQuantity = (converted as? UnitConversionResult.Converted)?.quantity
+            ?: return LineResult.Rejected(PurchaseLineRejection.INVALID_QUANTITY)
         val amounts = when (val result = amountsOf(line)) {
             is AmountsResult.Ready -> result.amounts
             is AmountsResult.Rejected -> return LineResult.Rejected(result.reason)
@@ -148,13 +179,24 @@ object PurchasePricing {
             taxes.purchaseTaxRecoverable,
         ).valueOrNull() ?: return LineResult.Rejected(PurchaseLineRejection.LINE_TOTAL_TOO_LARGE)
         // La fila del libro congela el costo de una unidad base con lo que entró al stock.
-        val movementCost = PurchaseLineRules.costPerUnit(line.quantity, split.costAmount)
+        val movementCost = PurchaseLineRules.costPerUnit(baseQuantity, split.costAmount)
             .valueOrNull()
             ?: return LineResult.Rejected(PurchaseLineRejection.UNIT_COST_TOO_LARGE)
-        val after = entryAfter(before, line.quantity, split.costAmount)
+        val after = entryAfter(before, baseQuantity, split.costAmount)
             ?: return LineResult.Rejected(PurchaseLineRejection.STOCK_ABOVE_LIMIT)
         return LineResult.Ready(
-            PricedPurchaseLine(subject, line.quantity, amounts, split, movementCost, before, after),
+            PricedPurchaseLine(
+                subject = subject,
+                unitId = unitId,
+                unitFactor = QuantityMilli(unit.factorMilli),
+                enteredQuantity = line.quantity,
+                quantity = baseQuantity,
+                amounts = amounts,
+                split = split,
+                movementCost = movementCost,
+                before = before,
+                after = after,
+            ),
         )
     }
 

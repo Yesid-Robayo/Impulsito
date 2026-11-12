@@ -50,7 +50,9 @@ data class NewPurchaseUiState(
  * Una línea de la compra en pantalla.
  *
  * @param key la identidad estable de la línea en la lista, aunque se borre otra antes.
- * @param unit la unidad base del producto, con la que se escribe la cantidad.
+ * @param unit la unidad en que se compra la línea, con la que se escribe la cantidad.
+ * @param units las unidades en que se puede comprar el producto: la base y sus conversiones de
+ *   compra. Con una sola, no hay nada que elegir.
  * @param byTotal si la persona escribe el total de la línea en vez del costo unitario.
  * @param lineTotal el total de la línea con el impuesto, si ya se puede calcular.
  * @param derived el valor que se deduce del escrito: el total si se escribe el costo unitario, y
@@ -65,6 +67,7 @@ data class PurchaseLineUi(
     val productId: Long,
     val name: String,
     val unit: MeasureUnit?,
+    val units: List<MeasureUnit> = emptyList(),
     val quantityText: String,
     val amountText: String,
     val byTotal: Boolean,
@@ -97,6 +100,9 @@ enum class PurchaseFieldError {
 
     /** Con esta línea, el stock del producto pasaría de su tope. */
     STOCK_OVER_LIMIT,
+
+    /** La unidad elegida ya no se compra: hay que elegir otra. */
+    UNIT_UNAVAILABLE,
 }
 
 /** Las hojas de la compra. */
@@ -171,6 +177,9 @@ sealed interface NewPurchaseAction {
     data class QuantityChange(val key: Long, val text: String) : NewPurchaseAction
 
     data class AmountChange(val key: Long, val text: String) : NewPurchaseAction
+
+    /** Comprar la línea en otra unidad, como la caja: [unitId] `null` es la base. */
+    data class UnitChange(val key: Long, val unitId: Long?) : NewPurchaseAction
 
     /** Escribir el total de la línea, o volver al costo unitario. */
     data class AmountModeChange(val key: Long, val byTotal: Boolean) : NewPurchaseAction

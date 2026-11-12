@@ -14,7 +14,12 @@ enum class PurchaseLineRejection {
     /** El producto lleva lotes, y comprar por lote todavía no se ofrece. */
     LOTS_NOT_SUPPORTED,
 
-    /** La cantidad no es positiva o pasa del máximo de una línea. */
+    /** La unidad elegida no es la base ni una conversión de compra del producto. */
+    UNIT_UNAVAILABLE,
+
+    /**
+     * La cantidad no es positiva, pasa del máximo de una línea, o en la unidad base redondea a cero.
+     */
     INVALID_QUANTITY,
 
     /** La unidad del producto no admite fracciones, y la cantidad las tiene. */

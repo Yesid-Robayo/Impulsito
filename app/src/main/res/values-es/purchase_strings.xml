@@ -28,4 +28,6 @@
     <string name="dialog_void_purchase_body">Las unidades salen del inventario y el costo promedio se recalcula.</string>
     <string name="dialog_void_purchase_action">Anular compra</string>
     <string name="dialog_void_purchase_negative_body">Quedarían %1$s de %2$s. Lo vendido no cambia.</string>
+    <!-- Comprar en otra unidad. -->
+    <string name="purchase_unit_unavailable">Esta unidad ya no se compra</string>
 </resources>
