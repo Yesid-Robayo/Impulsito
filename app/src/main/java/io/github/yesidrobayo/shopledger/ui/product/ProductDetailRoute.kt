@@ -9,6 +9,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductUseCase
@@ -16,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteProductUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductOverviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
@@ -51,6 +53,7 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
             moneySymbols = formats.money.inputSymbols,
             currencyDecimals = formats.money.currencyDecimals,
             quantitySymbols = formats.quantity.inputSymbols,
+            percentSymbols = formats.percent.inputSymbols,
         )
     val model =
         rememberAppViewModel(key = "product-${key.productId}") { dependencies ->
@@ -106,6 +109,9 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
 
                         ProductDetailAction.OpenPriceSheet, is ProductDetailAction.PriceText,
                         ProductDetailAction.SavePrice, ProductDetailAction.DismissPriceSheet,
+                        is ProductDetailAction.SuggestionTarget,
+                        ProductDetailAction.UseSuggestedPrice,
+                        ProductDetailAction.FixCostForSuggestion,
                         is ProductDetailAction.SelectTab, ProductDetailAction.OpenCostSheet,
                         is ProductDetailAction.CostText, is ProductDetailAction.CostNote,
                         ProductDetailAction.SaveCost, ProductDetailAction.DismissCostSheet,
@@ -172,8 +178,11 @@ class ProductDetailUseCases(
     private val reactivateUseCase: ReactivateProductUseCase,
     private val deleteUseCase: DeleteProductUseCase,
     private val voidUseCase: VoidStockAdjustmentUseCase,
+    private val pricingUseCase: ObservePricingContextUseCase,
 ) : ProductDetailOperations {
     override fun overview(productId: Long): Flow<ProductOverview?> = observe(productId)
+
+    override fun pricing(): Flow<PricingContext> = pricingUseCase()
 
     override suspend fun correctCost(
         productId: Long,
@@ -251,6 +260,8 @@ class ProductDetailUseCases(
                     calendar,
                     clock,
                 ),
+                pricingUseCase =
+                    ObservePricingContextUseCase(ports.settings, ports.categories, ports.taxRates),
             )
         }
     }

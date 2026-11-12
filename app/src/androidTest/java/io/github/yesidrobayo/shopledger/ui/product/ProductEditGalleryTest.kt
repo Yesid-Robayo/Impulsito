@@ -109,6 +109,7 @@ class ProductEditGalleryTest {
             units = listOf(COUNT),
             profit = ProfitPreview.Profit(Money(1_200L), Margin.Defined(BasisPoints(2_400L))),
             dirty = true,
+            suggestTarget = BasisPoints(3_000L),
         )
         return listOf(
             "new" to
@@ -130,6 +131,7 @@ class ProductEditGalleryTest {
             "nocost" to filled.copy(
                 form = filled.form.copy(cost = ""),
                 profit = ProfitPreview.NoCost,
+                suggestTarget = null,
                 notice = ProductEditNotice.CurrencyUnconfirmed,
             ),
             LOCKED to filled.copy(
@@ -139,6 +141,24 @@ class ProductEditGalleryTest {
                 averageCost = Money(3_800L),
             ),
             "discard" to filled.copy(confirmingDiscard = true),
+            // La sugerencia abierta: 3800 con 30 % sugiere 5429, que deja 30,00 %.
+            "suggestion" to filled.copy(
+                suggestion = PriceSuggestionDraft(
+                    "30",
+                    SuggestionOutcome.Suggested(Money(5_429L), Margin.Defined(BasisPoints(3_000L))),
+                ),
+            ),
+            "suggestion-range" to filled.copy(
+                suggestion = PriceSuggestionDraft(
+                    "100",
+                    SuggestionOutcome.InvalidTarget(TargetMarginProblem.OUT_OF_RANGE),
+                ),
+            ),
+            // Sin precio todavía, la tarjeta solo ofrece la sugerencia.
+            "suggest-noprice" to filled.copy(
+                form = filled.form.copy(salePrice = ""),
+                profit = ProfitPreview.NoPrice,
+            ),
             // Un servicio: sin stock que contar, con el modo de stock a la vista.
             "service" to filled.copy(
                 form = filled.form.copy(

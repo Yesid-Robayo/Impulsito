@@ -1,13 +1,17 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
@@ -255,6 +259,103 @@ class ProductDetailViewModelTest {
     }
 
     @Test
+    fun `the price sheet suggests a price for the target margin and uses it`() =
+        runTest(dispatcher) {
+            val model = model()
+
+            model.onAction(ProductDetailAction.OpenPriceSheet)
+            advanceUntilIdle()
+            val sheet = model.uiState.value.priceSheet
+            assertEquals("30", sheet?.suggestion?.targetText)
+            // 3800,50 con 30 % pide 5429,29, que deja 30,00 % contra el costo sin redondear.
+            assertEquals(
+                SuggestionOutcome.Suggested(Money(542_929L), Margin.Defined(BasisPoints(3_000L))),
+                sheet?.suggestion?.outcome,
+            )
+            assertTrue(sheet?.canFixCost == true)
+
+            model.onAction(ProductDetailAction.SuggestionTarget("40"))
+            advanceUntilIdle()
+            assertEquals(Money(633_417L), model.uiState.value.priceSheet?.suggestion?.price)
+
+            model.onAction(ProductDetailAction.UseSuggestedPrice)
+            advanceUntilIdle()
+            assertEquals("6334,17", model.uiState.value.priceSheet?.price)
+
+            model.onAction(ProductDetailAction.SavePrice)
+            advanceUntilIdle()
+            assertEquals(listOf(Money(633_417L)), operations.prices)
+        }
+
+    @Test
+    fun `a target out of range suggests nothing and the price stays`() = runTest(dispatcher) {
+        val model = model()
+        model.onAction(ProductDetailAction.OpenPriceSheet)
+        advanceUntilIdle()
+
+        model.onAction(ProductDetailAction.SuggestionTarget("100"))
+        advanceUntilIdle()
+        assertEquals(
+            SuggestionOutcome.InvalidTarget(TargetMarginProblem.OUT_OF_RANGE),
+            model.uiState.value.priceSheet?.suggestion?.outcome,
+        )
+
+        model.onAction(ProductDetailAction.UseSuggestedPrice)
+        advanceUntilIdle()
+        assertEquals("5000", model.uiState.value.priceSheet?.price)
+    }
+
+    @Test
+    fun `a new business target is where the next suggestion starts`() = runTest(dispatcher) {
+        val model = model()
+        operations.context.value =
+            operations.context.value.copy(defaultTargetMargin = BasisPoints(4_000L))
+        advanceUntilIdle()
+
+        model.onAction(ProductDetailAction.OpenPriceSheet)
+        advanceUntilIdle()
+
+        assertEquals("40", model.uiState.value.priceSheet?.suggestion?.targetText)
+    }
+
+    @Test
+    fun `without a cost the sheet asks to correct it first`() = runTest(dispatcher) {
+        operations.product.value = operations.product.value?.let { overview ->
+            overview.copy(
+                product = overview.product.copy(averageCost = Money.ZERO, stockValue = Money.ZERO),
+            )
+        }
+        val model = model()
+        model.onAction(ProductDetailAction.OpenPriceSheet)
+        advanceUntilIdle()
+        assertEquals(
+            SuggestionOutcome.NoCost,
+            model.uiState.value.priceSheet?.suggestion?.outcome,
+        )
+
+        model.onAction(ProductDetailAction.FixCostForSuggestion)
+        advanceUntilIdle()
+
+        assertNull(model.uiState.value.priceSheet)
+        assertEquals("", model.uiState.value.costSheet?.cost)
+    }
+
+    @Test
+    fun `a product made of components has no suggestion`() = runTest(dispatcher) {
+        operations.product.value = operations.product.value?.let { overview ->
+            val details = overview.product.details.copy(stockMode = ProductStockMode.COMPONENTS)
+            overview.copy(product = overview.product.copy(details = details))
+        }
+        val model = model()
+        model.onAction(ProductDetailAction.OpenPriceSheet)
+        advanceUntilIdle()
+
+        val sheet = model.uiState.value.priceSheet
+        assertEquals("5000", sheet?.price)
+        assertNull(sheet?.suggestion)
+    }
+
+    @Test
     fun `a missing product shows that it could not be opened`() = runTest(dispatcher) {
         operations.product.value = null
         val model = model()
@@ -283,6 +384,20 @@ private class FakeDetailOperations : ProductDetailOperations {
     val corrections = mutableListOf<Pair<Money, String?>>()
 
     override fun overview(productId: Long): Flow<ProductOverview?> = product
+
+    /** Un negocio sin impuesto, con margen objetivo de 30 % y sin paso de redondeo. */
+    val context = MutableStateFlow(
+        PricingContext(
+            defaultTargetMargin = BasisPoints(3_000L),
+            categoryTargets = emptyMap(),
+            taxMode = TaxMode.NONE,
+            defaultTaxRateId = null,
+            taxRates = emptyMap(),
+            roundingStep = Money.ZERO,
+        ),
+    )
+
+    override fun pricing(): Flow<PricingContext> = context
 
     override suspend fun correctCost(
         productId: Long,

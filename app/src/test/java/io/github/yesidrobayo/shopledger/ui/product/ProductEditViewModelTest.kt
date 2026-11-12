@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForEdit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
@@ -19,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
@@ -97,6 +99,88 @@ class ProductEditViewModelTest {
         model.onAction(ProductEditAction.SalePriceChange(""))
         assertEquals(ProfitPreview.NoPrice, model.uiState.value.profit)
         assertTrue(model.uiState.value.dirty)
+    }
+
+    @Test
+    fun `the card suggests a price from the target margin and uses it`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+        assertNull(model.uiState.value.suggestTarget)
+
+        model.onAction(ProductEditAction.CostChange("13,55"))
+        assertEquals(BasisPoints(3_000L), model.uiState.value.suggestTarget)
+
+        model.onAction(ProductEditAction.OpenSuggestion)
+        // 1355 con 30 % pide 1936, que deja 30,01 %.
+        assertEquals(
+            PriceSuggestionDraft(
+                "30",
+                SuggestionOutcome.Suggested(Money(1_936L), Margin.Defined(BasisPoints(3_001L))),
+            ),
+            model.uiState.value.suggestion,
+        )
+
+        model.onAction(ProductEditAction.SuggestionTarget("35"))
+        assertEquals(Money(2_085L), model.uiState.value.suggestion?.price)
+
+        model.onAction(ProductEditAction.UseSuggestedPrice)
+        val state = model.uiState.value
+        assertNull(state.suggestion)
+        assertEquals("20,85", state.form.salePrice)
+        assertEquals(
+            ProfitPreview.Profit(Money(730L), Margin.Defined(BasisPoints(3_501L))),
+            state.profit,
+        )
+        assertTrue(state.dirty)
+    }
+
+    @Test
+    fun `the target follows the chosen category and is not offered without a cost`() =
+        runTest(dispatcher) {
+            operations.pricing.value =
+                operations.pricing.value.copy(
+                    categoryTargets = mapOf(GRAINS.id to BasisPoints(4_000L)),
+                )
+            val model = newProduct()
+            advanceUntilIdle()
+            model.onAction(ProductEditAction.SalePriceChange("50"))
+            assertNull(model.uiState.value.suggestTarget)
+            model.onAction(ProductEditAction.OpenSuggestion)
+            assertNull(model.uiState.value.suggestion)
+
+            model.onAction(ProductEditAction.CostChange("10"))
+            model.onAction(ProductEditAction.CategoryChange(GRAINS.id))
+            assertEquals(BasisPoints(4_000L), model.uiState.value.suggestTarget)
+
+            model.onAction(ProductEditAction.OpenSuggestion)
+            model.onAction(ProductEditAction.DismissSuggestion)
+            assertNull(model.uiState.value.suggestion)
+
+            model.onAction(ProductEditAction.StockModeChange(ProductStockMode.COMPONENTS))
+            assertNull(model.uiState.value.suggestTarget)
+        }
+
+    @Test
+    fun `with the tax inside the price the card measures without it`() = runTest(dispatcher) {
+        operations.pricing.value =
+            operations.pricing.value.copy(
+                taxMode = TaxMode.INCLUDED,
+                defaultTaxRateId = 9L,
+                taxRates = mapOf(9L to BasisPoints(2_100L)),
+            )
+        val model = newProduct()
+        advanceUntilIdle()
+
+        model.onAction(ProductEditAction.SalePriceChange("17,30"))
+        model.onAction(ProductEditAction.CostChange("10"))
+
+        // 1730 sin el 21 % son 1430: deja 430, el 30,07 %.
+        assertEquals(
+            ProfitPreview.Profit(Money(430L), Margin.Defined(BasisPoints(3_007L))),
+            model.uiState.value.profit,
+        )
+        model.onAction(ProductEditAction.OpenSuggestion)
+        assertEquals(Money(1_730L), model.uiState.value.suggestion?.price)
     }
 
     @Test
@@ -478,6 +562,20 @@ class ProductEditViewModelTest {
             unitsSaved += draft
             return SaveUnitResult.Saved(77L)
         }
+
+        /** Un negocio sin impuesto, con margen objetivo de 30 % y sin paso de redondeo. */
+        val pricing = MutableStateFlow(
+            PricingContext(
+                defaultTargetMargin = BasisPoints(3_000L),
+                categoryTargets = emptyMap(),
+                taxMode = TaxMode.NONE,
+                defaultTaxRateId = null,
+                taxRates = emptyMap(),
+                roundingStep = Money.ZERO,
+            ),
+        )
+
+        override fun pricing(): Flow<PricingContext> = pricing
     }
 
     private companion object {

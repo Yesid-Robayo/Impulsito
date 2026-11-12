@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.product
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.ExactUnitCost
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -14,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogName
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogText
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
@@ -91,6 +93,11 @@ class ProductEditViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            useCases.pricing().collect { context ->
+                state.update { it.copy(pricing = context).withProfit() }
+            }
+        }
         if (productId != null) viewModelScope.launch { loadProduct(productId) }
     }
 
@@ -166,7 +173,61 @@ class ProductEditViewModel(
 
             // La pantalla abre la configuración regional; aquí no cambia nada.
             ProductEditAction.ConfirmCurrency -> Unit
+
+            // Sin de dónde sugerir, la tarjeta no ofrece la sugerencia.
+            ProductEditAction.OpenSuggestion ->
+                state.update { current ->
+                    val pricing =
+                        current.draftPricing()?.takeIf { it.canSuggest } ?: return@update current
+                    current.copy(
+                        suggestion = PriceSuggestionDraft.open(pricing, numbers.percentSymbols),
+                    )
+                }
+
+            is ProductEditAction.SuggestionTarget ->
+                state.update { current ->
+                    val pricing = current.draftPricing() ?: return@update current
+                    val outcome =
+                        PriceSuggestionDraft.read(action.text, pricing, numbers.percentSymbols)
+                    current.copy(suggestion = PriceSuggestionDraft(action.text, outcome))
+                }
+
+            ProductEditAction.UseSuggestedPrice -> useSuggestedPrice()
+
+            ProductEditAction.DismissSuggestion -> state.update { it.copy(suggestion = null) }
         }
+    }
+
+    /** Pone el precio sugerido como precio de venta, como si se hubiera escrito, y cierra la hoja. */
+    private fun useSuggestedPrice() {
+        val price = state.value.suggestion?.price ?: return
+        state.update { it.copy(suggestion = null) }
+        edit(ProductEditField.SALE_PRICE) { copy(salePrice = moneyText(price)) }
+    }
+
+    /**
+     * Cómo se mide el margen y se sugiere el precio de lo que se escribe, o `null` mientras no se
+     * leen los ajustes del negocio. Un producto por componentes no tiene costo propio aquí. Con el
+     * costo en manos del libro, el costo es el del producto guardado, sin redondear; si no, el que
+     * se escribe.
+     */
+    private fun ProductEditUiState.draftPricing(): ProductPricing? {
+        val context = pricing ?: return null
+        if (form.stockMode == ProductStockMode.COMPONENTS) return null
+        val saved = product
+        val cost = if (costLocked && saved != null) {
+            ProductPricing.of(saved, context).cost
+        } else {
+            money(form.cost) {}.takeIf { it > Money.ZERO }?.let(ExactUnitCost::perUnit)
+        }
+        return ProductPricing.draft(
+            context = context,
+            cost = cost,
+            replacementCost = saved?.replacementCost ?: Money.ZERO,
+            productTarget = saved?.details?.targetMargin,
+            categoryId = form.categoryId,
+            taxRateId = saved?.details?.taxRateId,
+        )
     }
 
     private suspend fun loadProduct(id: Long) {
@@ -402,16 +463,33 @@ class ProductEditViewModel(
 
     private fun initialCostOf(current: ProductEditUiState): Money = money(current.form.cost) {}
 
+    /**
+     * La tarjeta de ganancia con lo escrito: la ganancia y el margen sin el impuesto que el precio
+     * lleva dentro, y el margen contra el costo sin redondear, como en el detalle. Mientras no se
+     * leen los ajustes del negocio, mide sobre el precio escrito.
+     */
     private fun ProductEditUiState.withProfit(): ProductEditUiState {
         val price = money(form.salePrice) {}
         val cost = if (costLocked) averageCost else money(form.cost) {}
+        val pricing = draftPricing()
+        val net = pricing?.netOf(price) ?: price
         val profit = when {
             price <= Money.ZERO -> ProfitPreview.NoPrice
+
             cost <= Money.ZERO -> ProfitPreview.NoCost
-            cost > price -> ProfitPreview.Loss(cost - price)
-            else -> ProfitPreview.Profit(price - cost, MarginCalculator.margin(price, cost))
+
+            cost > net -> ProfitPreview.Loss(cost - net)
+
+            else ->
+                ProfitPreview.Profit(
+                    net - cost,
+                    pricing?.marginOf(price) ?: MarginCalculator.margin(net, cost),
+                )
         }
-        return copy(profit = profit)
+        return copy(
+            profit = profit,
+            suggestTarget = pricing?.takeIf { it.canSuggest }?.targetMargin,
+        )
     }
 
     private fun nameProblem(name: String): FieldProblem? = when {

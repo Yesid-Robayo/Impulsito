@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -8,18 +9,21 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewPriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductMovement
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import kotlin.time.Instant
 
 /**
@@ -33,6 +37,20 @@ object ProductDetailSamples {
     private val AT: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000L)
     private val DATE: BusinessDate = requireNotNull(BusinessDate.parse("2026-11-10"))
     private val EARLIER: BusinessDate = requireNotNull(BusinessDate.parse("2026-10-28"))
+
+    /** Un negocio sin impuesto, con margen objetivo de 30 % y sin paso de redondeo. */
+    val PRICING: PricingContext = PricingContext(
+        defaultTargetMargin = BasisPoints(3_000L),
+        categoryTargets = emptyMap(),
+        taxMode = TaxMode.NONE,
+        defaultTaxRateId = null,
+        taxRates = emptyMap(),
+        roundingStep = Money.ZERO,
+    )
+
+    /** Cómo se mide y se sugiere el precio de [overview] con [PRICING]. */
+    fun pricing(overview: ProductOverview): ProductPricing =
+        ProductPricing.of(overview.product, PRICING)
 
     val UNIT: MeasureUnit = MeasureUnit(
         id = 1L,

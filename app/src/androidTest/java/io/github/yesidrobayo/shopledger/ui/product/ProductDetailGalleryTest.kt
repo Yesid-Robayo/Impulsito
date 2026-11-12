@@ -13,6 +13,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
@@ -80,7 +81,9 @@ class ProductDetailGalleryTest {
     private fun states(): List<Pair<String, ProductDetailUiState>> {
         val s = ProductDetailSamples
         fun ready(overview: io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview) =
-            ProductDetailUiState(ProductDetailContent.Ready(overview))
+            ProductDetailUiState(
+                ProductDetailContent.Ready(overview, ProductDetailSamples.pricing(overview)),
+            )
         return listOf(
             "low" to ready(s.overview()),
             DISCREET to ready(s.overview()),
@@ -95,7 +98,21 @@ class ProductDetailGalleryTest {
             "archived" to ready(s.overview(s.product(archived = true))),
             "costsheet" to
                 ready(s.overview()).copy(costSheet = CostSheet("3800,5", "Factura perdida")),
-            "pricesheet" to ready(s.overview()).copy(priceSheet = PriceSheet("520000")),
+            "pricesheet" to ready(s.overview()).copy(
+                priceSheet = PriceSheet(
+                    "520000",
+                    suggestion = PriceSuggestionDraft.open(s.pricing(s.overview()), SYMBOLS),
+                ),
+            ),
+            "pricesheet-nocost" to s.overview(s.product(cost = 0L), withHistory = false).let {
+                ready(it).copy(
+                    priceSheet = PriceSheet(
+                        "520000",
+                        suggestion = PriceSuggestionDraft.open(s.pricing(it), SYMBOLS),
+                        canFixCost = true,
+                    ),
+                )
+            },
             "loading" to ProductDetailUiState(),
         )
     }
@@ -109,5 +126,6 @@ class ProductDetailGalleryTest {
     private companion object {
         const val SETTLE_MILLIS = 900L
         const val DISCREET = "discreet"
+        val SYMBOLS = NumberSymbols(decimalSeparator = ',', minusSign = '-', grouping = null)
     }
 }

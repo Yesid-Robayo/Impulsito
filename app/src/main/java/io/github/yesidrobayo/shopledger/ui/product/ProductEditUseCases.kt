@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.product
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogChoices
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDraft
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForEdit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
@@ -15,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.EditProductUseCas
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.FindProductNameClashUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.LoadProductForEditUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveCatalogChoicesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductConversionsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionResult
@@ -50,6 +52,9 @@ interface ProductEditOperations {
 
     /** Crea una unidad sin salir del formulario. */
     suspend fun saveUnit(draft: UnitDraft): SaveUnitResult
+
+    /** Lo que el negocio fija para medir márgenes y sugerir precios. */
+    fun pricing(): Flow<PricingContext>
 }
 
 /** Las operaciones del formulario sobre los casos de uso de catálogo. */
@@ -64,6 +69,7 @@ class ProductEditUseCases(
     private val saveConversionUseCase: SaveConversionUseCase,
     private val deleteConversionUseCase: DeleteConversionUseCase,
     private val saveUnitUseCase: SaveUnitUseCase,
+    private val pricingUseCase: ObservePricingContextUseCase,
 ) : ProductEditOperations {
     override suspend fun load(productId: Long): ProductForEdit? = loadUseCase(productId)
 
@@ -93,4 +99,6 @@ class ProductEditUseCases(
         deleteConversionUseCase(id)
 
     override suspend fun saveUnit(draft: UnitDraft): SaveUnitResult = saveUnitUseCase(null, draft)
+
+    override fun pricing(): Flow<PricingContext> = pricingUseCase()
 }

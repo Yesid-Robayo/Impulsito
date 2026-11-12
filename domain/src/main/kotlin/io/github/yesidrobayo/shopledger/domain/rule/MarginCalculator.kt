@@ -46,6 +46,32 @@ object MarginCalculator {
     }
 
     /**
+     * El margen de [price] contra un costo sin redondear: el de un producto en su detalle y en la
+     * hoja de cambiar el precio.
+     *
+     * Usa el mismo costo que el precio sugerido, una unidad entera por 10000 hacia arriba, así que
+     * un precio sugerido nunca muestra un margen por debajo del pedido: con la caja de 24 por 10000,
+     * 4167 deja 90,00 %, y no los 89,99 % que daría el costo redondeado a 417. Con un costo que ya es
+     * un monto entero da lo mismo que [margin]. Sin precio no hay margen, y uno que no cabe en `Long`
+     * queda fuera de rango.
+     */
+    fun exactMargin(price: Money, cost: ExactUnitCost): Margin {
+        if (price <= Money.ZERO) return Margin.NoData
+        // El costo de una unidad entera por 10000, hacia arriba, como en el precio sugerido.
+        val scaledCost =
+            mulDivCeil(cost.amount.minor, Scale.MILLI * Scale.BASIS_POINTS, cost.quantity.milli)
+                .valueOrNull() ?: return Margin.OutOfRange
+        // Los dos son positivos: la resta no desborda, solo el precio por 10000.
+        val scaledPrice =
+            try {
+                Math.multiplyExact(price.minor, Scale.BASIS_POINTS)
+            } catch (overflow: ArithmeticException) {
+                return Margin.OutOfRange
+            }
+        return Margin.Defined(BasisPoints(roundDiv(scaledPrice - scaledCost, price.minor)))
+    }
+
+    /**
      * El costo de una unidad entera con el que se mide el margen de un producto en el catálogo.
      *
      * Es el costo de catálogo exacto, redondeado a la unidad menor más cercana. Con stock y valor

@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.EditProductUseCas
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.FindProductNameClashUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.LoadProductForEditUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveCatalogChoicesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductConversionsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitUseCase
@@ -41,6 +42,7 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
             moneySymbols = formats.money.inputSymbols,
             currencyDecimals = formats.money.currencyDecimals,
             quantitySymbols = formats.quantity.inputSymbols,
+            percentSymbols = formats.percent.inputSymbols,
         )
     val model =
         rememberAppViewModel { dependencies ->
@@ -136,5 +138,7 @@ private fun useCasesOf(dependencies: ScreenDependencies): ProductEditUseCases {
             ports.productUnits,
         ),
         saveUnitUseCase = SaveUnitUseCase(ports.transactions, ports.unitCatalog, clock),
+        pricingUseCase =
+            ObservePricingContextUseCase(ports.settings, ports.categories, ports.taxRates),
     )
 }

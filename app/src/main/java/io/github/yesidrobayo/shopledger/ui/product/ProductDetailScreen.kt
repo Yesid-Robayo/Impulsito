@@ -28,6 +28,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -52,6 +53,7 @@ import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockEvaluator
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockAdjustmentRules
@@ -164,7 +166,8 @@ fun ProductDetailScreen(
                         }
                     }
 
-                is ProductDetailContent.Ready -> DetailBody(content.overview, uiState.tab, onAction)
+                is ProductDetailContent.Ready ->
+                    DetailBody(content.overview, content.pricing, uiState.tab, onAction)
             }
         }
         if (ready != null && !ready.product.isArchived) {
@@ -188,7 +191,8 @@ fun ProductDetailScreen(
         }
     }
     uiState.costSheet?.let { CostSheetView(it, onAction) }
-    if (ready != null) uiState.priceSheet?.let { PriceSheetView(it, ready.product, onAction) }
+    val pricing = (uiState.content as? ProductDetailContent.Ready)?.pricing
+    if (pricing != null) uiState.priceSheet?.let { PriceSheetView(it, pricing, onAction) }
     uiState.dialog?.let { ProductConfirm(it, onAction) }
 }
 
@@ -235,6 +239,7 @@ private fun TopBarActions(overview: ProductOverview, onAction: (ProductDetailAct
 @Composable
 private fun DetailBody(
     overview: ProductOverview,
+    pricing: ProductPricing,
     tab: ProductDetailTab,
     onAction: (ProductDetailAction) -> Unit,
 ) {
@@ -263,7 +268,7 @@ private fun DetailBody(
         if (tracked && unit != null) {
             item(key = "stock") { StockBlock(product, unit, onAction) }
         }
-        item(key = "figures") { Figures(product) }
+        item(key = "figures") { Figures(product, pricing) }
         item(key = "notices") { Notices(product) }
         item(key = "tabs") {
             val tabs = ProductDetailTab.entries
@@ -343,42 +348,16 @@ private fun StockBlock(product: Product, unit: UnitLabel, onAction: (ProductDeta
 
 /**
  * Precio, costo y margen en una fila, o en columna con letra grande. Un servicio muestra su costo
- * fijo. El margen de un producto por componentes no se calcula aquí.
+ * fijo. El margen se mide sin el impuesto incluido y contra el costo sin redondear, el mismo con
+ * que se sugiere el precio; sin costo va sin dato, y el de un producto por componentes no se
+ * calcula aquí.
  */
 @Composable
-private fun Figures(product: Product) {
+private fun Figures(product: Product, pricing: ProductPricing) {
     val spacing = AppTheme.spacing
     val details = product.details
     val price = product.salePrice
-    val cost = when (details.stockMode) {
-        ProductStockMode.TRACKED ->
-            MarginCalculator.catalogUnitCost(
-                product.onHand,
-                product.stockValue,
-                product.averageCost,
-            )
-                .valueOrNull() ?: product.averageCost
-
-        ProductStockMode.UNTRACKED -> details.fixedUnitCost
-
-        ProductStockMode.COMPONENTS -> null
-    }
-    // Sin costo conocido, el margen saldría inflado contra cero: va sin dato, y el aviso lo dice.
-    val hasCost = when (details.stockMode) {
-        ProductStockMode.TRACKED ->
-            product.averageCost > Money.ZERO ||
-                product.stockValue > Money.ZERO
-
-        ProductStockMode.UNTRACKED -> details.fixedUnitCost > Money.ZERO
-
-        ProductStockMode.COMPONENTS -> false
-    }
-    val margin =
-        if (price > Money.ZERO && cost != null && hasCost) {
-            MarginCalculator.margin(price, cost)
-        } else {
-            Margin.NoData
-        }
+    val margin = pricing.marginOf(price)
     val shownCost = when (details.stockMode) {
         ProductStockMode.TRACKED -> product.averageCost
         ProductStockMode.UNTRACKED -> details.fixedUnitCost
@@ -773,13 +752,14 @@ private fun PriceRow(change: PriceChange) {
 
 /**
  * La hoja de cambiar el precio: el precio nuevo y, debajo, el margen que dejaría con el costo de
- * ahora, que cambia con cada dígito. El margen se oculta en modo discreto; el precio, no, porque
- * se está escribiendo.
+ * ahora, que cambia con cada dígito, y la sugerencia para un margen objetivo. `Usar este precio`
+ * pone el sugerido en el campo, para revisarlo antes de cambiarlo. Los márgenes y el sugerido se
+ * ocultan en modo discreto; el precio, no, porque se está escribiendo.
  */
 @Composable
 private fun PriceSheetView(
     sheet: PriceSheet,
-    product: Product,
+    pricing: ProductPricing,
     onAction: (ProductDetailAction) -> Unit,
 ) {
     val money = LocalAppFormats.current.money
@@ -794,13 +774,7 @@ private fun PriceSheetView(
         NumberInput.Blank -> Money.ZERO
         NumberInput.Malformed, is NumberInput.TooManyDecimals, is NumberInput.TooLarge -> null
     }
-    val cost = catalogCost(product)
-    val margin =
-        if (price != null && price > Money.ZERO && cost != null) {
-            MarginCalculator.margin(price, cost)
-        } else {
-            Margin.NoData
-        }
+    val margin = price?.let(pricing::marginOf) ?: Margin.NoData
     EditorContainer(
         asPanel = false,
         title = stringResource(R.string.product_change_price),
@@ -843,28 +817,25 @@ private fun PriceSheetView(
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
-    }
-}
-
-/**
- * El costo con que se mide el margen, o `null` si no se conoce: sin costo, el margen saldría
- * inflado contra cero. Un producto por componentes no tiene costo propio aquí.
- */
-private fun catalogCost(product: Product): Money? {
-    val details = product.details
-    return when (details.stockMode) {
-        ProductStockMode.TRACKED ->
-            if (product.averageCost > Money.ZERO || product.stockValue > Money.ZERO) {
-                MarginCalculator
-                    .catalogUnitCost(product.onHand, product.stockValue, product.averageCost)
-                    .valueOrNull() ?: product.averageCost
-            } else {
-                null
-            }
-
-        ProductStockMode.UNTRACKED -> details.fixedUnitCost.takeIf { it > Money.ZERO }
-
-        ProductStockMode.COMPONENTS -> null
+        sheet.suggestion?.let { suggestion ->
+            Text(
+                stringResource(R.string.product_suggest_price),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = AppTheme.spacing.s8).semantics { heading() },
+            )
+            PriceSuggestionPanel(
+                draft = suggestion,
+                onTargetChange = { onAction(ProductDetailAction.SuggestionTarget(it)) },
+                onUse = { onAction(ProductDetailAction.UseSuggestedPrice) },
+                onFixCost =
+                    if (sheet.canFixCost) {
+                        { onAction(ProductDetailAction.FixCostForSuggestion) }
+                    } else {
+                        null
+                    },
+            )
+        }
     }
 }
 
@@ -1002,7 +973,11 @@ private const val PLUS = "+"
 private fun ProductDetailPreview() {
     PreviewTheme {
         ProductDetailScreen(
-            ProductDetailUiState(ProductDetailContent.Ready(ProductDetailSamples.overview())),
+            ProductDetailSamples.overview().let { overview ->
+                ProductDetailUiState(
+                    ProductDetailContent.Ready(overview, ProductDetailSamples.pricing(overview)),
+                )
+            },
             {},
         )
     }
@@ -1015,9 +990,9 @@ private fun ProductDetailNoCostPreview() {
         val product = ProductDetailSamples.product(cost = 0L, onHand = -2_000L)
         ProductDetailScreen(
             ProductDetailUiState(
-                ProductDetailContent.Ready(
-                    ProductDetailSamples.overview(product, withHistory = false),
-                ),
+                ProductDetailSamples.overview(product, withHistory = false).let { overview ->
+                    ProductDetailContent.Ready(overview, ProductDetailSamples.pricing(overview))
+                },
                 tab = ProductDetailTab.PRICES,
             ),
             {},

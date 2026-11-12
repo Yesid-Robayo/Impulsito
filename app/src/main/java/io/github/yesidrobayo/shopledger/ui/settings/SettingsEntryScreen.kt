@@ -15,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
@@ -23,15 +25,19 @@ import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 
 /**
- * Los ajustes mientras no tengan su pantalla completa: el grupo `Región e idioma`, para llegar a la
- * configuración regional y al idioma, y en `Ventas y cobro` el interruptor `Propinas`, que el cobro
- * necesita para ofrecerlas. La pantalla de ajustes, con todos sus grupos, la reemplaza; aquí no hay
- * nada más.
+ * Los ajustes mientras no tengan su pantalla completa: el `Perfil del negocio`, con su nombre y su
+ * margen objetivo; el grupo `Región e idioma`, para llegar a la configuración regional y al idioma;
+ * y en `Ventas y cobro` el interruptor `Propinas`, que el cobro necesita para ofrecerlas. La
+ * pantalla de ajustes, con todos sus grupos, la reemplaza; aquí no hay nada más.
+ *
+ * @param profile el perfil del negocio, o `null` mientras se lee o sin base: el grupo no se dibuja.
+ * @param profileSheet la hoja de un dato del perfil, si está abierta.
  *
  * @param tipsEnabled si las propinas están encendidas, o `null` mientras se lee: la fila no se
  *   dibuja hasta saberlo.
@@ -46,6 +52,9 @@ fun SettingsEntryScreen(
     tipsEnabled: Boolean? = null,
     onTipsChange: (Boolean) -> Unit = {},
     tipsSaveFailed: Boolean = false,
+    profile: BusinessProfile? = null,
+    profileSheet: ProfileSheet? = null,
+    onProfileAction: (ProfileAction) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         AppTopBar(
@@ -63,6 +72,7 @@ fun SettingsEntryScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxWidth()) {
+                if (profile != null) BusinessProfileGroup(profile, onProfileAction)
                 SectionHeader(stringResource(R.string.settings_group_region))
                 SettingsRow(
                     title = stringResource(R.string.region_title),
@@ -89,10 +99,40 @@ fun SettingsEntryScreen(
             }
         }
     }
+    profileSheet?.let { BusinessProfileSheet(it, onProfileAction) }
+}
+
+/**
+ * El nombre del negocio, que encabeza los comprobantes, y el margen objetivo, del que parten las
+ * sugerencias de precio. Cada fila abre su hoja. Sin nombre, la fila no inventa uno.
+ */
+@Composable
+private fun BusinessProfileGroup(profile: BusinessProfile, onAction: (ProfileAction) -> Unit) {
+    SectionHeader(stringResource(R.string.settings_group_business))
+    SettingsRow(
+        title = stringResource(R.string.settings_business_name),
+        summary = profile.businessName,
+        action = SettingsRowAction.Navigation { onAction(ProfileAction.Open(ProfileField.NAME)) },
+    )
+    SettingsRow(
+        title = stringResource(R.string.settings_target_margin),
+        summary = LocalAppFormats.current.percent.format(profile.defaultTargetMargin),
+        action =
+            SettingsRowAction.Navigation {
+                onAction(ProfileAction.Open(ProfileField.TARGET_MARGIN))
+            },
+    )
 }
 
 @ThemePreviews
 @Composable
 private fun SettingsEntryScreenPreview() {
-    PreviewTheme { SettingsEntryScreen(onOpen = {}, onBack = {}, tipsEnabled = true) }
+    PreviewTheme {
+        SettingsEntryScreen(
+            onOpen = {},
+            onBack = {},
+            tipsEnabled = true,
+            profile = BusinessProfile("Tienda de muestra", BasisPoints(3_000L)),
+        )
+    }
 }

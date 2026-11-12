@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="product_suggest_price">Suggest price</string>
+    <string name="product_suggest_with_margin">Suggest price with a %1$s margin</string>
+    <string name="product_target_margin">Target margin</string>
+    <string name="product_suggested_price">Suggested price: %1$s</string>
+    <string name="product_suggestion_no_cost">Without a cost there is no suggested price. Correct the cost first.</string>
+    <string name="product_use_price">Use this price</string>
+    <string name="error_percent_range">The percentage must be between %1$s and %2$s</string>
+    <string name="error_percent_decimals">Maximum 2 decimals</string>
+    <string name="settings_group_business">Business profile</string>
+    <string name="settings_business_name">Business name</string>
+    <string name="settings_target_margin">Target margin</string>
+</resources>

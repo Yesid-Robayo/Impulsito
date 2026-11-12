@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
@@ -40,6 +42,9 @@ import kotlinx.coroutines.launch
 interface ProductDetailOperations {
     fun overview(productId: Long): Flow<ProductOverview?>
 
+    /** Lo que el negocio fija para medir márgenes y sugerir precios. */
+    fun pricing(): Flow<PricingContext>
+
     suspend fun correctCost(productId: Long, cost: Money, note: String?): CorrectCostResult
 
     suspend fun changePrice(productId: Long, price: Money): ChangePriceResult
@@ -62,7 +67,12 @@ sealed interface ProductDetailContent {
     /** El producto no existe, por ejemplo porque se acaba de eliminar. */
     data object Missing : ProductDetailContent
 
-    data class Ready(val overview: ProductOverview) : ProductDetailContent
+    /**
+     * El producto y su libro, con [pricing]: cómo se mide el margen de su precio y qué precio se le
+     * sugiere.
+     */
+    data class Ready(val overview: ProductOverview, val pricing: ProductPricing) :
+        ProductDetailContent
 
     data object ReadError : ProductDetailContent
 }
@@ -92,7 +102,9 @@ data class CostSheet(
 
 /**
  * La hoja de cambiar el precio mientras se escribe: el precio nuevo como texto, su problema si lo
- * hay, y si el último guardado falló. Lo escrito siempre se conserva.
+ * hay, y si el último guardado falló. Lo escrito siempre se conserva. [suggestion] es el precio
+ * sugerido para un margen objetivo, o `null` en un producto por componentes, cuyo costo sale de
+ * ellos. Con [canFixCost], sin costo, la hoja ofrece corregirlo.
  */
 @Immutable
 data class PriceSheet(
@@ -100,6 +112,8 @@ data class PriceSheet(
     val priceProblem: FieldProblem? = null,
     val saving: Boolean = false,
     val saveFailed: SaveFailure? = null,
+    val suggestion: PriceSuggestionDraft? = null,
+    val canFixCost: Boolean = false,
 )
 
 /** Lo que se confirma antes de hacerlo. [name] es el del producto, para el título. */
@@ -177,6 +191,15 @@ sealed interface ProductDetailAction {
 
     data object DismissPriceSheet : ProductDetailAction
 
+    /** Escribió otro margen objetivo en la sugerencia. No se guarda en ninguna parte. */
+    data class SuggestionTarget(val text: String) : ProductDetailAction
+
+    /** Pone el precio sugerido en el campo del precio, para revisarlo antes de cambiarlo. */
+    data object UseSuggestedPrice : ProductDetailAction
+
+    /** Sin costo no hay sugerencia: cierra la hoja del precio y abre la de corregir el costo. */
+    data object FixCostForSuggestion : ProductDetailAction
+
     data object OpenCostSheet : ProductDetailAction
 
     data class CostText(val text: String) : ProductDetailAction
@@ -221,23 +244,24 @@ class ProductDetailViewModel(
     private val attempts = MutableStateFlow(0)
     private val extra = MutableStateFlow(Extra())
     private var latest: ProductOverview? = null
+    private var latestPricing: ProductPricing? = null
 
     /** Si falta abrir la hoja de corregir el costo, pedida al llegar: se abre una sola vez. */
     private var costSheetPending = openCostSheet
 
     private val content = attempts.flatMapLatest {
-        operations.overview(productId)
-            .map { overview ->
-                if (overview == null) {
-                    ProductDetailContent.Missing
-                } else {
-                    ProductDetailContent.Ready(overview)
-                }
+        combine(operations.overview(productId), operations.pricing()) { overview, context ->
+            if (overview == null) {
+                ProductDetailContent.Missing
+            } else {
+                ProductDetailContent.Ready(overview, ProductPricing.of(overview.product, context))
             }
+        }
             .onStart { emit(ProductDetailContent.Loading) }
             .catch { emit(ProductDetailContent.ReadError) }
             .onEach { shown ->
                 latest = (shown as? ProductDetailContent.Ready)?.overview
+                latestPricing = (shown as? ProductDetailContent.Ready)?.pricing
                 val product = latest?.product
                 if (costSheetPending && product != null) {
                     costSheetPending = false
@@ -269,11 +293,36 @@ class ProductDetailViewModel(
         when (action) {
             is ProductDetailAction.SelectTab -> extra.update { it.copy(tab = action.tab) }
 
-            ProductDetailAction.OpenPriceSheet ->
-                latest?.let { overview ->
-                    val price = moneyText(overview.product.salePrice)
-                    extra.update { it.copy(priceSheet = PriceSheet(price)) }
+            ProductDetailAction.OpenPriceSheet -> openPriceSheet()
+
+            is ProductDetailAction.SuggestionTarget -> {
+                val pricing = latestPricing ?: return
+                priceSheet {
+                    copy(
+                        suggestion =
+                            PriceSuggestionDraft(
+                                action.text,
+                                PriceSuggestionDraft.read(
+                                    action.text,
+                                    pricing,
+                                    numbers.percentSymbols,
+                                ),
+                            ),
+                    )
                 }
+            }
+
+            ProductDetailAction.UseSuggestedPrice ->
+                priceSheet {
+                    suggestion?.price?.let { suggested ->
+                        copy(price = moneyText(suggested), priceProblem = null, saveFailed = null)
+                    } ?: this
+                }
+
+            ProductDetailAction.FixCostForSuggestion -> {
+                extra.update { it.copy(priceSheet = null) }
+                onAction(ProductDetailAction.OpenCostSheet)
+            }
 
             is ProductDetailAction.PriceText ->
                 priceSheet { copy(price = action.text, priceProblem = null, saveFailed = null) }
@@ -334,6 +383,30 @@ class ProductDetailViewModel(
             is ProductDetailAction.OpenDocument,
             -> Unit
         }
+    }
+
+    /**
+     * Abre la hoja del precio con el de ahora y la sugerencia con el margen objetivo del producto.
+     * Un producto por componentes no tiene sugerencia; sin costo, solo uno con libro y vigente
+     * puede corregirlo desde aquí.
+     */
+    private fun openPriceSheet() {
+        val overview = latest ?: return
+        val pricing = latestPricing ?: return
+        val product = overview.product
+        val mode = product.details.stockMode
+        val suggestion = when (mode) {
+            ProductStockMode.TRACKED, ProductStockMode.UNTRACKED ->
+                PriceSuggestionDraft.open(pricing, numbers.percentSymbols)
+
+            ProductStockMode.COMPONENTS -> null
+        }
+        val sheet = PriceSheet(
+            price = moneyText(product.salePrice),
+            suggestion = suggestion,
+            canFixCost = mode == ProductStockMode.TRACKED && !product.isArchived,
+        )
+        extra.update { it.copy(priceSheet = sheet) }
     }
 
     private fun priceSheet(block: PriceSheet.() -> PriceSheet) {

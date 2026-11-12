@@ -54,4 +54,15 @@ sealed interface ProductEditAction {
 
     /** Quiere confirmar la moneda del negocio: lo resuelve la navegación. */
     data object ConfirmCurrency : ProductEditAction
+
+    /** Abre la sugerencia de precio con el margen objetivo del producto. */
+    data object OpenSuggestion : ProductEditAction
+
+    /** Escribió otro margen objetivo en la sugerencia. No se guarda en ninguna parte. */
+    data class SuggestionTarget(val text: String) : ProductEditAction
+
+    /** Pone el precio sugerido como precio de venta y cierra la sugerencia. */
+    data object UseSuggestedPrice : ProductEditAction
+
+    data object DismissSuggestion : ProductEditAction
 }

@@ -83,6 +83,7 @@ import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditor
 import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorAction
 import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorSheet
 import io.github.yesidrobayo.shopledger.ui.unit.ConversionRow
+import io.github.yesidrobayo.shopledger.ui.unit.EditorContainer
 import io.github.yesidrobayo.shopledger.ui.unit.UnitEditor
 import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorAction
 import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorSheet
@@ -150,6 +151,7 @@ fun ProductEditScreen(
             }
         }
     }
+    uiState.suggestion?.let { SuggestionSheet(it, onAction) }
     unitEditor?.let { UnitEditorSheet(it, onUnitEditorAction) }
     conversionEditor?.let { editor ->
         ConversionEditorSheet(
@@ -205,7 +207,7 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
         lockedReason = if (uiState.unitLocked) stringResource(R.string.unit_base_locked) else null,
     )
     PriceAndCost(uiState, onAction)
-    ProfitCard(uiState.profit)
+    ProfitCard(uiState.profit, uiState.suggestTarget, onAction)
     if (uiState.isNew && uiState.tracksStock) {
         QuantityField(
             value = form.initialStock,
@@ -408,11 +410,16 @@ private fun LockedCost(cost: Money, modifier: Modifier) {
 /**
  * La ganancia de cada unidad mientras se escriben precio y costo. Con pérdida, la tarjeta lo dice
  * en el color de pérdida; sin costo, avisa que la ganancia real no se puede calcular. En modo
- * discreto se oculta.
+ * discreto se oculta. Con [suggestTarget], ofrece sugerir un precio con ese margen, también antes
+ * de escribir el precio.
  */
 @Composable
-private fun ProfitCard(profit: ProfitPreview) {
-    if (profit == ProfitPreview.NoPrice) return
+private fun ProfitCard(
+    profit: ProfitPreview,
+    suggestTarget: BasisPoints?,
+    onAction: (ProductEditAction) -> Unit,
+) {
+    if (profit == ProfitPreview.NoPrice && suggestTarget == null) return
     AppCard(Modifier.fillMaxWidth()) {
         val formats = LocalAppFormats.current
         when (profit) {
@@ -452,6 +459,45 @@ private fun ProfitCard(profit: ProfitPreview) {
                 )
             }
         }
+        suggestTarget?.let { target ->
+            InlineTextButton(
+                text =
+                    stringResource(
+                        R.string.product_suggest_with_margin,
+                        formats.percent.format(target),
+                    ),
+                onClick = { onAction(ProductEditAction.OpenSuggestion) },
+            )
+        }
+    }
+}
+
+/**
+ * La sugerencia de precio: el margen objetivo, que se puede cambiar sin guardarlo, y el precio que
+ * lo alcanza. `Usar este precio` lo pone como precio de venta y cierra la hoja; solo aparece con un
+ * precio que usar.
+ */
+@Composable
+private fun SuggestionSheet(draft: PriceSuggestionDraft, onAction: (ProductEditAction) -> Unit) {
+    EditorContainer(
+        asPanel = false,
+        title = stringResource(R.string.product_suggest_price),
+        onDismiss = { onAction(ProductEditAction.DismissSuggestion) },
+        action = {
+            if (draft.price != null) {
+                PrimaryActionButton(
+                    text = stringResource(R.string.product_use_price),
+                    onClick = { onAction(ProductEditAction.UseSuggestedPrice) },
+                    variant = ActionVariant.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+    ) {
+        PriceSuggestionPanel(
+            draft = draft,
+            onTargetChange = { onAction(ProductEditAction.SuggestionTarget(it)) },
+        )
     }
 }
 

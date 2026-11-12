@@ -1,10 +1,12 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
 import androidx.compose.runtime.Immutable
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
@@ -43,7 +45,10 @@ sealed interface FieldProblem {
     data object FractionNotAllowed : FieldProblem
 }
 
-/** Lo que dice la tarjeta de ganancia mientras se escriben el precio y el costo. */
+/**
+ * Lo que dice la tarjeta de ganancia mientras se escriben el precio y el costo. La ganancia y el
+ * margen se miden sin el impuesto que el precio lleva dentro.
+ */
 sealed interface ProfitPreview {
     /** Sin precio no hay ganancia que mostrar. */
     data object NoPrice : ProfitPreview
@@ -93,6 +98,10 @@ data class ProductEditForm(
  * historia. [product] es el producto guardado, y [conversions] sus conversiones de compra y venta:
  * un producto nuevo no tiene, porque una conversión necesita el producto. [savedProductId] avisa a
  * la pantalla que puede cerrar porque se guardó, y [closed], que la persona cerró sin guardar.
+ *
+ * [pricing] es lo que el negocio fija para medir márgenes y sugerir precios, o `null` mientras se
+ * lee. [suggestTarget] es el margen objetivo con que la tarjeta ofrece sugerir un precio, o `null`
+ * si no hay de dónde sugerirlo, y [suggestion] la hoja de la sugerencia, si está abierta.
  */
 @Immutable
 data class ProductEditUiState(
@@ -116,6 +125,9 @@ data class ProductEditUiState(
     val confirmingDiscard: Boolean = false,
     val savedProductId: Long? = null,
     val closed: Boolean = false,
+    val pricing: PricingContext? = null,
+    val suggestTarget: BasisPoints? = null,
+    val suggestion: PriceSuggestionDraft? = null,
 ) {
     /** La categoría elegida, o `null` si es sin categoría. */
     val category: Category? get() = categories.firstOrNull { it.id == form.categoryId }

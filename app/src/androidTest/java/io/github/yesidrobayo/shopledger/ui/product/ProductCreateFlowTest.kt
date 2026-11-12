@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.EditProductUseCas
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.FindProductNameClashUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.LoadProductForEditUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveCatalogChoicesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductConversionsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionUseCase
@@ -129,6 +130,8 @@ class ProductCreateFlowTest {
                 ports.productUnits,
             ),
             saveUnitUseCase = SaveUnitUseCase(ports.transactions, ports.unitCatalog, clock),
+            pricingUseCase =
+                ObservePricingContextUseCase(ports.settings, ports.categories, ports.taxRates),
         )
     }
 

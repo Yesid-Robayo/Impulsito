@@ -91,8 +91,9 @@ fun appSettings(regional: RegionalSettings): AppSettings = AppSettings(
 /**
  * Los ajustes en memoria. [settings] se cambia a mano para simular que la persona cambió un ajuste.
  * El bloqueo de la moneda se escribe como lo hace la base, y cada llamada queda en [lockCalls]. La
- * configuración regional se escribe y queda anotada en [regionalWrites]. Las demás escrituras del
- * puerto no hacen falta en estas pruebas y fallan si alguien las usa.
+ * configuración regional se escribe y queda anotada en [regionalWrites], y el perfil del negocio en
+ * [profileWrites]. Las demás escrituras del puerto no hacen falta en estas pruebas y fallan si
+ * alguien las usa.
  */
 class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
     val settings = MutableStateFlow(initial)
@@ -152,8 +153,13 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
             )
     }
 
-    override suspend fun updateProfile(profile: BusinessProfile, updatedAt: Instant): Unit =
-        error("No se usa en estas pruebas")
+    /** Cada perfil del negocio escrito, con su instante, en orden. */
+    val profileWrites = mutableListOf<Pair<BusinessProfile, Instant>>()
+
+    override suspend fun updateProfile(profile: BusinessProfile, updatedAt: Instant) {
+        profileWrites += profile to updatedAt
+        settings.value = settings.value.copy(updatedAt = updatedAt, profile = profile)
+    }
 
     /** Cada cambio de las propinas, con su instante, en orden. */
     val tipsWrites = mutableListOf<Pair<Boolean, Instant>>()
