@@ -19,4 +19,13 @@
     <string name="notice_adjustment_history">Los ajustes quedan en el historial. Se pueden anular, no borrar.</string>
     <string name="notice_adjustment_no_cost">Este producto no tiene costo, así que el ajuste vale %1$s. Se puede corregir el costo si se conoce.</string>
     <string name="error_other_reason_note">Falta una nota con lo que pasó</string>
+    <string name="stock_restock">Reponer</string>
+    <string name="stock_filter_negative">Stock negativo</string>
+    <string name="stock_filter_all">Todo el inventario</string>
+    <string name="empty_inventory_title">Crear productos para ver el inventario</string>
+    <string name="empty_inventory_action">Crear producto</string>
+    <string name="empty_low_stock_title">Nada por agotarse</string>
+    <string name="empty_low_stock_body">Todos los productos están por encima de su mínimo.</string>
+    <string name="notice_inventory_no_cost">Hay productos sin costo: el valor real del inventario puede ser mayor.</string>
+    <string name="inventory_archived_value">Incluye %1$s de productos archivados.</string>
 </resources>

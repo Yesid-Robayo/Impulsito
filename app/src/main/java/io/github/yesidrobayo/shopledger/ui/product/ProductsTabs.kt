@@ -1,28 +1,19 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
-import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
-import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.navigation.InventoryFilter
 import io.github.yesidrobayo.shopledger.ui.components.SegmentedTabs
-import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.stock.InventoryRoute
 import io.github.yesidrobayo.shopledger.ui.supplier.SupplierListRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -63,34 +54,10 @@ fun ProductsRoute(navigator: AppNavigator) {
     val tabs: @Composable () -> Unit = { ProductsTabs(tab, { tab = it }) }
     when (tab) {
         ProductsTab.PRODUCTS -> ProductListRoute(navigator, tabs)
-        ProductsTab.INVENTORY -> InventoryPending(tabs)
-        ProductsTab.SUPPLIERS -> SupplierListRoute(navigator, tabs)
-    }
-}
 
-/** La pestaña de inventario mientras no tenga pantalla propia: su barra, las pestañas y su nombre. */
-@Composable
-private fun InventoryPending(tabs: @Composable () -> Unit) {
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        AppTopBar(
-            title = stringResource(R.string.nav_products),
-            navigation = TopBarNavigation.NONE,
-            onNavigate = {},
-            navigationLabel = null,
-        )
-        Box(
-            Modifier
-                .align(Alignment.CenterHorizontally)
-                .widthIn(max = AppTheme.sizes.maxContentWidth)
-                .fillMaxWidth(),
-        ) {
-            Column {
-                tabs()
-                EmptyState(
-                    icon = R.drawable.ic_inventory_2,
-                    title = stringResource(R.string.term_inventory),
-                )
-            }
-        }
+        ProductsTab.INVENTORY ->
+            InventoryRoute(InventoryFilter.LOW_STOCK, navigator, asTab = true, tabs = tabs)
+
+        ProductsTab.SUPPLIERS -> SupplierListRoute(navigator, tabs)
     }
 }

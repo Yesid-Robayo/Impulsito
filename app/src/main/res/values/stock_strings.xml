@@ -19,4 +19,13 @@
     <string name="notice_adjustment_history">Adjustments stay in the history. They can be voided, not deleted.</string>
     <string name="notice_adjustment_no_cost">This product has no cost, so the adjustment is worth %1$s. Correct the cost if it is known.</string>
     <string name="error_other_reason_note">Add a note with what happened</string>
+    <string name="stock_restock">Restock</string>
+    <string name="stock_filter_negative">Negative stock</string>
+    <string name="stock_filter_all">All inventory</string>
+    <string name="empty_inventory_title">Create products to see the inventory</string>
+    <string name="empty_inventory_action">Create product</string>
+    <string name="empty_low_stock_title">Nothing running low</string>
+    <string name="empty_low_stock_body">All products are above their minimum.</string>
+    <string name="notice_inventory_no_cost">Some products have no cost: the real inventory value may be higher.</string>
+    <string name="inventory_archived_value">Includes %1$s from archived products.</string>
 </resources>
