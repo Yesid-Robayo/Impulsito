@@ -510,6 +510,8 @@ internal class SaleWorld(
 
         override suspend fun findById(id: Long): Supplier? = read().suppliers[id]
 
+        override fun observeById(id: Long): Flow<Supplier?> = unused()
+
         override suspend fun findActiveByNormalizedName(normalizedName: String): Supplier? =
             unused()
 
