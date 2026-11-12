@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: el detalle de un producto, su libro, sus precios y corregir su costo. -->
+    <string name="stock_movement_opening_balance">Opening stock</string>
+    <string name="stock_movement_purchase">Purchase</string>
+    <string name="stock_movement_sale">Sale</string>
+    <string name="stock_movement_adjustment">Adjustment</string>
+    <string name="stock_movement_cost_correction">Cost correction</string>
+    <string name="stock_movement_purchase_void">Voided purchase</string>
+    <string name="stock_movement_sale_void">Voided sale</string>
+    <string name="stock_movement_adjustment_void">Voided adjustment</string>
+    <string name="stock_movement_sale_return">Sale return</string>
+    <string name="stock_movement_sale_return_void">Voided sale return</string>
+    <string name="stock_movement_purchase_return">Return to supplier</string>
+    <string name="stock_movement_purchase_return_void">Voided return to supplier</string>
+    <string name="stock_movement_production_out">Used in production</string>
+    <string name="stock_movement_production_in">Made in production</string>
+    <string name="stock_movement_production_void">Voided production</string>
+    <string name="stock_movement_transfer_out">Transfer sent</string>
+    <string name="stock_movement_transfer_in">Transfer received</string>
+    <string name="stock_movement_transfer_void">Voided transfer</string>
+    <string name="price_source_initial">Initial price</string>
+    <string name="price_source_manual">Manual change</string>
+    <string name="price_source_bulk">Bulk update</string>
+    <string name="price_source_bulk_undo">Update undone</string>
+    <string name="price_source_import">Import</string>
+    <string name="empty_movements_title">No movements yet</string>
+    <string name="empty_movements_body">Every entry and exit of this product will appear here.</string>
+    <string name="empty_movements_action">Record purchase</string>
+    <string name="product_tab_movements">Movements</string>
+    <string name="product_tab_prices">Prices</string>
+    <string name="product_sell_this">Sell this one</string>
+    <string name="product_fix_cost_new">New cost</string>
+    <string name="product_fix_cost_help">Past sales do not change; the inventory value does.</string>
+    <string name="product_cost_corrected">Cost corrected</string>
+    <string name="product_change_from_to">From %1$s to %2$s</string>
+    <string name="product_movement_voided_on">Voided on %1$s</string>
+    <string name="product_movement_voids">Voiding of the movement from %1$s</string>
+    <string name="product_archived">Product archived</string>
+    <string name="product_reactivated">Product reactivated</string>
+    <string name="product_deleted">Product deleted</string>
+    <string name="product_error_has_history">It has movements, so it can only be archived</string>
+    <string name="dialog_delete_product_title">Delete %1$s?</string>
+    <string name="dialog_delete_product_body">It has no movements yet, so it is deleted completely.</string>
+    <string name="dialog_delete_product_action">Delete product</string>
+    <string name="dialog_archive_product_title">Archive %1$s?</string>
+    <string name="dialog_archive_product_body">It stops appearing for sale. Its sales are kept and it can be reactivated.</string>
+    <string name="dialog_archive_product_action">Archive product</string>
+    <string name="error_product_reactivate_duplicate">An active product already uses that name or code. Change one of the two.</string>
+    <string name="dialog_void_adjustment_title">Void this adjustment?</string>
+    <string name="dialog_void_adjustment_body">The stock returns to how it was and the cost is recalculated.</string>
+    <string name="dialog_void_adjustment_action">Void adjustment</string>
+    <string name="stock_movement_adjustment_reason">Adjustment: %1$s</string>
+</resources>

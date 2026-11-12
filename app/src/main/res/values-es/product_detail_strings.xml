@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: el detalle de un producto, su libro, sus precios y corregir su costo. -->
+    <string name="stock_movement_opening_balance">Inventario inicial</string>
+    <string name="stock_movement_purchase">Compra</string>
+    <string name="stock_movement_sale">Venta</string>
+    <string name="stock_movement_adjustment">Ajuste</string>
+    <string name="stock_movement_cost_correction">Corrección de costo</string>
+    <string name="stock_movement_purchase_void">Compra anulada</string>
+    <string name="stock_movement_sale_void">Venta anulada</string>
+    <string name="stock_movement_adjustment_void">Ajuste anulado</string>
+    <string name="stock_movement_sale_return">Devolución de venta</string>
+    <string name="stock_movement_sale_return_void">Devolución de venta anulada</string>
+    <string name="stock_movement_purchase_return">Devolución a proveedor</string>
+    <string name="stock_movement_purchase_return_void">Devolución a proveedor anulada</string>
+    <string name="stock_movement_production_out">Salida a producción</string>
+    <string name="stock_movement_production_in">Entrada de producción</string>
+    <string name="stock_movement_production_void">Producción anulada</string>
+    <string name="stock_movement_transfer_out">Transferencia enviada</string>
+    <string name="stock_movement_transfer_in">Transferencia recibida</string>
+    <string name="stock_movement_transfer_void">Transferencia anulada</string>
+    <string name="price_source_initial">Precio inicial</string>
+    <string name="price_source_manual">Cambio manual</string>
+    <string name="price_source_bulk">Actualización masiva</string>
+    <string name="price_source_bulk_undo">Actualización deshecha</string>
+    <string name="price_source_import">Importación</string>
+    <string name="empty_movements_title">Todavía no hay movimientos</string>
+    <string name="empty_movements_body">Aquí aparecerá cada entrada y salida de este producto.</string>
+    <string name="empty_movements_action">Registrar compra</string>
+    <string name="product_tab_movements">Movimientos</string>
+    <string name="product_tab_prices">Precios</string>
+    <string name="product_sell_this">Vender este</string>
+    <string name="product_fix_cost_new">Costo nuevo</string>
+    <string name="product_fix_cost_help">Las ventas pasadas no cambian; el valor del inventario, sí.</string>
+    <string name="product_cost_corrected">Costo corregido</string>
+    <string name="product_change_from_to">De %1$s a %2$s</string>
+    <string name="product_movement_voided_on">Anulado el %1$s</string>
+    <string name="product_movement_voids">Anulación del movimiento del %1$s</string>
+    <string name="product_archived">Producto archivado</string>
+    <string name="product_reactivated">Producto reactivado</string>
+    <string name="product_deleted">Producto eliminado</string>
+    <string name="product_error_has_history">Tiene movimientos: solo se puede archivar</string>
+    <string name="dialog_delete_product_title">¿Eliminar %1$s?</string>
+    <string name="dialog_delete_product_body">Todavía no tiene movimientos, así que se borra por completo.</string>
+    <string name="dialog_delete_product_action">Eliminar producto</string>
+    <string name="dialog_archive_product_title">¿Archivar %1$s?</string>
+    <string name="dialog_archive_product_body">Deja de aparecer para vender. Sus ventas se conservan y se puede reactivar.</string>
+    <string name="dialog_archive_product_action">Archivar producto</string>
+    <string name="error_product_reactivate_duplicate">Ya existe un producto activo con ese nombre o ese código. Se debe cambiar uno de los dos.</string>
+    <string name="dialog_void_adjustment_title">¿Anular este ajuste?</string>
+    <string name="dialog_void_adjustment_body">El stock vuelve a como estaba y el costo se recalcula.</string>
+    <string name="dialog_void_adjustment_action">Anular ajuste</string>
+    <string name="stock_movement_adjustment_reason">Ajuste: %1$s</string>
+</resources>

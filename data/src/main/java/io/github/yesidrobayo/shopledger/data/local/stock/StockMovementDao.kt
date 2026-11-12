@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.data.local.stock
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
@@ -53,4 +54,25 @@ internal interface StockMovementDao {
     /** Agrega la fila y devuelve su id, que fija su lugar en el orden del libro. */
     @Insert
     suspend fun insert(movement: StockMovementEntity): Long
+
+    /**
+     * La venta o la compra de la que salió cada fila de un producto, por la línea que guarda la
+     * fila. Las filas que no salieron de una no aparecen.
+     */
+    @Query(
+        "SELECT sm.id AS movement_id, sl.sale_id AS sale_id, pl.purchase_id AS purchase_id " +
+            "FROM stock_movements sm " +
+            "LEFT JOIN sale_lines sl ON sl.id = sm.sale_line_id " +
+            "LEFT JOIN purchase_lines pl ON pl.id = sm.purchase_line_id " +
+            "WHERE sm.product_id = :productId " +
+            "AND (sm.sale_line_id IS NOT NULL OR sm.purchase_line_id IS NOT NULL) ORDER BY sm.id",
+    )
+    fun observeDocuments(productId: Long): Flow<List<MovementDocumentRow>>
 }
+
+/** El documento de una fila del libro, tal como lo lee [StockMovementDao.observeDocuments]. */
+internal data class MovementDocumentRow(
+    @ColumnInfo(name = "movement_id") val movementId: Long,
+    @ColumnInfo(name = "sale_id") val saleId: Long?,
+    @ColumnInfo(name = "purchase_id") val purchaseId: Long?,
+)

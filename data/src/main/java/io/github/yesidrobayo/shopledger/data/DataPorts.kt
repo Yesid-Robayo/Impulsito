@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomHeldSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLowStockAlertRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMediaAssetRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
+import io.github.yesidrobayo.shopledger.data.repository.RoomMovementDocumentSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
@@ -52,6 +53,7 @@ import io.github.yesidrobayo.shopledger.domain.port.HumanCheckRecorder
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
+import io.github.yesidrobayo.shopledger.domain.port.MovementDocumentSource
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
@@ -148,6 +150,9 @@ class DataPorts internal constructor(
     val systemRows: SystemRowRepository = RoomSystemRowRepository(database)
 
     val stockLedger: StockLedgerRepository = RoomStockLedgerRepository(database)
+
+    /** La venta o la compra de cada fila del libro de un producto. Solo lee. */
+    val movementDocuments: MovementDocumentSource = RoomMovementDocumentSource(database)
 
     val lowStockAlerts: LowStockAlertRepository =
         RoomLowStockAlertRepository(database, restoreLock)
