@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.report.DayTotals
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodTotals
@@ -29,4 +30,11 @@ interface PeriodReportRepository {
      * de nuevo con cada cambio confirmado. Los días sin documentos no aparecen.
      */
     fun observeDailyTotals(period: ReportPeriod): Flow<List<DayTotals>>
+
+    /**
+     * La fecha de negocio más reciente con una venta o un gasto activos, o `null` si no hay
+     * ninguno, de nuevo con cada cambio confirmado. Puede ser posterior a hoy si el reloj del
+     * teléfono estuvo adelantado, y las estadísticas deben poder llegar hasta ella.
+     */
+    fun observeLastActiveDate(): Flow<BusinessDate?>
 }

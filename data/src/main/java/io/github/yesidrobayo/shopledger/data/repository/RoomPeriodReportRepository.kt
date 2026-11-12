@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.repository
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.report.DailyTotalsRow
 import io.github.yesidrobayo.shopledger.data.local.report.PeriodTotalsRow
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitTotals
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
@@ -28,6 +29,11 @@ internal class RoomPeriodReportRepository(database: AppDatabase) : PeriodReportR
     override fun observeDailyTotals(period: ReportPeriod): Flow<List<DayTotals>> = reports
         .observeDailyTotals(period.storedStart, period.storedEnd)
         .map { rows -> rows.map { row -> row.toDay() } }
+        .distinctUntilChanged()
+
+    override fun observeLastActiveDate(): Flow<BusinessDate?> = reports
+        .observeLastActiveDate()
+        .map { text -> if (text.isEmpty()) null else storedDate(text) }
         .distinctUntilChanged()
 }
 

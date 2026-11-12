@@ -30,6 +30,14 @@ internal interface PeriodReportDao {
      */
     @Query(DAILY_TOTALS_SQL)
     fun observeDailyTotals(startDate: String, endDate: String): Flow<List<DailyTotalsRow>>
+
+    /**
+     * La fecha más reciente con una venta o un gasto activos, `AAAA-MM-DD`, o vacía si no hay
+     * ninguno. Cada tabla da su máximo desde el final de su índice `(status, business_date)`, sin
+     * recorrerla.
+     */
+    @Query(LAST_ACTIVE_DATE_SQL)
+    fun observeLastActiveDate(): Flow<String>
 }
 
 /** Las sumas de [PeriodReportDao.observeTotals], en unidad menor, y el número de ventas. */
@@ -136,3 +144,13 @@ internal const val DAILY_TOTALS_SQL =
         "FROM sales sa JOIN sale_payments sp ON sp.sale_id = sa.id " +
         "WHERE sa.status = 'ACTIVE' AND sa.business_date BETWEEN :startDate AND :endDate" +
         ") GROUP BY business_date ORDER BY business_date"
+
+/**
+ * La consulta de [PeriodReportDao.observeLastActiveDate]. `MAX` de dos valores da nulo si uno lo
+ * es, y por eso una tabla sin filas aporta el texto vacío, que ordena antes que cualquier fecha.
+ */
+internal const val LAST_ACTIVE_DATE_SQL =
+    "SELECT MAX(" +
+        "COALESCE((SELECT MAX(business_date) FROM sales WHERE status = 'ACTIVE'), ''), " +
+        "COALESCE((SELECT MAX(business_date) FROM expenses WHERE status = 'ACTIVE'), '')" +
+        ") AS last_active_date"
