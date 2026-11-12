@@ -8,6 +8,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ConnectWebDavUseCase
 import io.github.yesidrobayo.shopledger.lock.SensitiveScreen
+import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -58,6 +59,14 @@ fun WebDavConnectRoute(
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val connectedText = stringResource(R.string.webdav_connected)
+            // Con el bloqueo encendido, guardar la conexión pide de nuevo la verificación del
+            // sistema. Sin bloqueo pasa sola, como en el primer uso, que no lo tiene.
+            val sensitive = rememberSensitiveCheck()
+            val verifyTitle = stringResource(R.string.webdav_title)
+            LaunchedEffect(uiState.phase) {
+                if (uiState.phase != WebDavPhase.VERIFYING) return@LaunchedEffect
+                viewModel.onAction(WebDavConnectAction.Verified(sensitive.confirm(verifyTitle)))
+            }
             LaunchedEffect(uiState.connected) {
                 val connected = uiState.connected ?: return@LaunchedEffect
                 viewModel.onAction(WebDavConnectAction.ConnectedHandled)

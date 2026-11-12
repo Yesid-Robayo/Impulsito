@@ -30,6 +30,12 @@ enum class WebDavPhase {
     /** La prueba pasó y hay otro destino conectado: `¿Cambiar dónde guardar?`. */
     CONFIRM_CHANGE,
 
+    /**
+     * Lo probado espera la verificación del sistema antes de guardarse. Con el bloqueo de la app
+     * apagado pasa sola; cancelada, nada se guarda y lo escrito se conserva.
+     */
+    VERIFYING,
+
     /** Guardando lo probado. No se cancela: dura un instante y no deja nada a medias. */
     SAVING,
 }
@@ -88,7 +94,10 @@ data class WebDavConnectUiState(
 
     /** Si la prueba o el guardado están corriendo, y el botón está en `Trabajando`. */
     val working: Boolean
-        get() = phase == WebDavPhase.TESTING || phase == WebDavPhase.SAVING
+        get() =
+            phase == WebDavPhase.TESTING ||
+                phase == WebDavPhase.VERIFYING ||
+                phase == WebDavPhase.SAVING
 
     /** Quedó conectado; [hasCopies] dice si la carpeta ya tenía copias de esta app. */
     data class Connected(val hasCopies: Boolean)
@@ -120,6 +129,9 @@ sealed interface WebDavConnectAction {
     data object ConfirmChange : WebDavConnectAction
 
     data object DismissChange : WebDavConnectAction
+
+    /** La verificación del sistema terminó: [allowed] dice si se guarda lo probado. */
+    data class Verified(val allowed: Boolean) : WebDavConnectAction
 
     data object Back : WebDavConnectAction
 

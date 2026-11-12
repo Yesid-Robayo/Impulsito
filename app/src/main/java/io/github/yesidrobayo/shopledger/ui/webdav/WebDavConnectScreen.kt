@@ -448,9 +448,14 @@ private fun Dialogs(uiState: WebDavConnectUiState, onAction: (WebDavConnectActio
                 onConfirm = { onAction(WebDavConnectAction.ConfirmChange) },
                 onDismiss = { onAction(WebDavConnectAction.DismissChange) },
                 dismissLabel = stringResource(R.string.action_cancel),
+                sensitive = true,
             )
 
-        WebDavPhase.EDITING, WebDavPhase.TESTING, WebDavPhase.SAVING -> Unit
+        WebDavPhase.EDITING,
+        WebDavPhase.TESTING,
+        WebDavPhase.VERIFYING,
+        WebDavPhase.SAVING,
+        -> Unit
     }
 }
 

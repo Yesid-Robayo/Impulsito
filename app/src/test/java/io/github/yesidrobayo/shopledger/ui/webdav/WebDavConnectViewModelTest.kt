@@ -148,6 +148,12 @@ class WebDavConnectViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, port.tests.size)
+        // Lo probado espera la verificación del sistema antes de guardarse.
+        assertEquals(WebDavPhase.VERIFYING, model.uiState.value.phase)
+        assertTrue(model.uiState.value.working)
+        assertTrue(port.saves.isEmpty())
+        model.onAction(WebDavConnectAction.Verified(true))
+        advanceUntilIdle()
         assertEquals(listOf(tested), port.saves)
         assertEquals(WebDavConnectUiState.Connected(false), model.uiState.value.connected)
         // Conectado, la contraseña ya no queda ni en memoria de la pantalla.
@@ -166,6 +172,8 @@ class WebDavConnectViewModelTest {
             model.onAction(WebDavConnectAction.PasswordChange("inventada"))
 
             model.onAction(WebDavConnectAction.Connect)
+            advanceUntilIdle()
+            model.onAction(WebDavConnectAction.Verified(true))
             advanceUntilIdle()
 
             assertEquals(1, port.tests.size)
@@ -296,6 +304,11 @@ class WebDavConnectViewModelTest {
             advanceUntilIdle()
             model.onAction(WebDavConnectAction.ConfirmChange)
             advanceUntilIdle()
+            assertEquals(WebDavPhase.VERIFYING, model.uiState.value.phase)
+            assertNull(model.uiState.value.changeFrom)
+            assertTrue(port.saves.isEmpty())
+            model.onAction(WebDavConnectAction.Verified(true))
+            advanceUntilIdle()
 
             assertEquals(listOf(tested), port.saves)
             assertEquals(WebDavConnectUiState.Connected(false), model.uiState.value.connected)
@@ -327,6 +340,9 @@ class WebDavConnectViewModelTest {
         model.onAction(WebDavConnectAction.Connect)
         model.onAction(WebDavConnectAction.ConfirmHost)
         advanceUntilIdle()
+        assertEquals(WebDavPhase.VERIFYING, model.uiState.value.phase)
+        model.onAction(WebDavConnectAction.Verified(true))
+        advanceUntilIdle()
         assertEquals(listOf(tested), port.saves)
     }
 
@@ -354,6 +370,8 @@ class WebDavConnectViewModelTest {
 
         model.onAction(WebDavConnectAction.Connect)
         advanceUntilIdle()
+        model.onAction(WebDavConnectAction.Verified(true))
+        advanceUntilIdle()
 
         assertEquals(WebDavNotice.SaveFailed, model.uiState.value.notice)
         assertNull(model.uiState.value.connected)
@@ -373,4 +391,58 @@ class WebDavConnectViewModelTest {
         assertEquals(WebDavAddressProblem.INVALID, model.uiState.value.urlError)
         assertTrue(model.uiState.value.steps.isEmpty())
     }
+
+    @Test
+    fun `a cancelled verification saves nothing and keeps what was typed`() = runTest(dispatcher) {
+        val model = model(suggestionKey = "example")
+        model.onAction(WebDavConnectAction.UserChange("copias"))
+        model.onAction(WebDavConnectAction.PasswordChange("inventada"))
+        // Fuera de la espera, una respuesta no guarda nada.
+        model.onAction(WebDavConnectAction.Verified(true))
+        assertTrue(port.saves.isEmpty())
+
+        model.onAction(WebDavConnectAction.Connect)
+        advanceUntilIdle()
+        model.onAction(WebDavConnectAction.Verified(false))
+        advanceUntilIdle()
+
+        val state = model.uiState.value
+        assertEquals(WebDavPhase.EDITING, state.phase)
+        assertTrue(state.steps.isEmpty())
+        assertEquals("inventada", state.password)
+        assertNull(state.connected)
+        assertTrue(port.saves.isEmpty())
+
+        // Una respuesta tardía tampoco guarda lo que ya se soltó.
+        model.onAction(WebDavConnectAction.Verified(true))
+        advanceUntilIdle()
+        assertTrue(port.saves.isEmpty())
+    }
+
+    @Test
+    fun `a cancelled verification of a change keeps the current destination`() =
+        runTest(dispatcher) {
+            port.currentDestination =
+                CurrentDestination(
+                    BackupDestinationKind.DOCUMENT_SLOTS,
+                    "slots",
+                    null,
+                    null,
+                    "Drive",
+                )
+            val model = model(suggestionKey = "example")
+            model.onAction(WebDavConnectAction.UserChange("copias"))
+            model.onAction(WebDavConnectAction.PasswordChange("inventada"))
+            model.onAction(WebDavConnectAction.Connect)
+            advanceUntilIdle()
+            model.onAction(WebDavConnectAction.ConfirmChange)
+            model.onAction(WebDavConnectAction.Verified(false))
+            advanceUntilIdle()
+
+            assertEquals(WebDavPhase.EDITING, model.uiState.value.phase)
+            assertTrue(port.saves.isEmpty())
+            // Sin lo probado, confirmar otra vez no pide nada: hay que probar de nuevo.
+            model.onAction(WebDavConnectAction.ConfirmChange)
+            assertEquals(WebDavPhase.EDITING, model.uiState.value.phase)
+        }
 }

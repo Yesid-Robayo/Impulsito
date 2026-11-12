@@ -87,6 +87,7 @@ fun SlotSetupScreen(
             confirmLabel = stringResource(R.string.destination_change_action),
             onConfirm = { onAction(SlotSetupAction.ConfirmChange) },
             onDismiss = { onAction(SlotSetupAction.DismissChange) },
+            sensitive = true,
         )
     }
     Surface(

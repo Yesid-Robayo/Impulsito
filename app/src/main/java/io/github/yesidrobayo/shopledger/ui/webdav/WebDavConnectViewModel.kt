@@ -106,7 +106,9 @@ class WebDavConnectViewModel(
 
             WebDavConnectAction.Cancel -> cancel()
 
-            WebDavConnectAction.ConfirmChange -> tested?.let(::save)
+            WebDavConnectAction.ConfirmChange -> if (tested != null) askVerification()
+
+            is WebDavConnectAction.Verified -> verified(action.allowed)
 
             WebDavConnectAction.DismissChange -> {
                 tested = null
@@ -225,7 +227,7 @@ class WebDavConnectViewModel(
                         it.copy(phase = WebDavPhase.CONFIRM_CHANGE, changeFrom = current?.label)
                     }
                 } else {
-                    save(result.tested, login)
+                    askVerification()
                 }
             }
 
@@ -272,6 +274,25 @@ class WebDavConnectViewModel(
                     steps = steps,
                     notice = WebDavNotice.Failed(step, failure),
                 )
+        }
+    }
+
+    /**
+     * Conectar, reconectar o cambiar de destino es sensible: antes de guardar, la pantalla pide la
+     * verificación del sistema y la contesta con [WebDavConnectAction.Verified].
+     */
+    private fun askVerification() =
+        state.update { it.copy(phase = WebDavPhase.VERIFYING, changeFrom = null) }
+
+    private fun verified(allowed: Boolean) {
+        if (state.value.phase != WebDavPhase.VERIFYING) return
+        val candidate = tested
+        if (allowed && candidate != null) {
+            save(candidate)
+        } else {
+            // Cancelada, nada se guarda: lo escrito sigue para intentarlo otra vez.
+            tested = null
+            state.update { it.copy(phase = WebDavPhase.EDITING, steps = emptyList()) }
         }
     }
 

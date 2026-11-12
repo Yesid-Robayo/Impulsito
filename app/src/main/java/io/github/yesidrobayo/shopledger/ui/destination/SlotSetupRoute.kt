@@ -10,11 +10,13 @@ import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.newFileName
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.PrepareSlotFilesUseCase
+import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -23,6 +25,7 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
+import kotlinx.coroutines.launch
 
 /** El artículo de ayuda de los destinos, en la ayuda de la app. */
 private const val HELP_ARTICLE = "help_destinations"
@@ -81,8 +84,17 @@ fun SlotSetupRoute(navigator: AppNavigator) {
                     SlotSetupTarget.HELP -> navigator.open(AppNavKey.Help(HELP_ARTICLE))
                 }
             }
+            // Con el bloqueo encendido, cambiar de destino pide de nuevo la verificación del sistema.
+            val sensitive = rememberSensitiveCheck()
+            val scope = rememberCoroutineScope()
+            val changeTitle = stringResource(R.string.destination_change_action)
             SlotSetupScreen(uiState, appName, onAction = { action ->
                 when (action) {
+                    // Cancelada, el destino actual sigue y la pregunta queda abierta.
+                    SlotSetupAction.ConfirmChange -> scope.launch {
+                        if (sensitive.confirm(changeTitle)) viewModel.onAction(action)
+                    }
+
                     SlotSetupAction.CreateFile -> {
                         viewModel.onAction(action)
                         uiState.next?.let { slot ->
