@@ -22,6 +22,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolic
  * @param uploadedThisMonth con WebDAV, los bytes subidos en el mes, o nulo mientras se leen.
  * @param metered en qué va `Copias con datos móviles`: la hoja o la advertencia de `Solo con Wi-Fi`.
  * @param release en qué va `Liberar copia`.
+ * @param copiesEncrypted con un destino, si las copias salen cifradas; nulo mientras se lee.
  */
 data class BackupUiState(
     val wording: BackupWording? = null,
@@ -35,6 +36,7 @@ data class BackupUiState(
     val uploadedThisMonth: Long? = null,
     val metered: MeteredUi = MeteredUi.Closed,
     val release: ReleaseUi = ReleaseUi.Idle,
+    val copiesEncrypted: Boolean? = null,
 )
 
 /** `Copias con datos móviles`: cerrada, la hoja con las tres opciones o la advertencia. */

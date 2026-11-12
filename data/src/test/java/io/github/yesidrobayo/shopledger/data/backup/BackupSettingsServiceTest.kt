@@ -150,6 +150,24 @@ class BackupSettingsServiceTest {
     }
 
     @Test
+    fun copiesAreEncryptedOnlyWhenEncryptionIsActive() = runBlocking {
+        assertEquals(false, service.copiesEncrypted())
+
+        val active = LocalEncryption.NONE.copy(active = true, keyAvailable = true)
+        val encrypted =
+            BackupSettingsService(
+                state = { row },
+                destinations = { opened },
+                usage = UploadUsageStore({ usageFile }, Dispatchers.Unconfined),
+                month = { month },
+                backupLock = lock,
+                rescheduled = {},
+                encryption = { active },
+            )
+        assertEquals(true, encrypted.copiesEncrypted())
+    }
+
+    @Test
     fun aNewPolicySchedulesTheUploadAgain() = runBlocking {
         service.onMeteredPolicyChanged()
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Respaldo: qué tan protegidos están los datos y el aviso de compartir la carpeta. Textos de la guía de redacción. -->
+    <string name="backup_limits_title">Qué tan protegidos están los datos</string>
+    <string name="backup_limits_every_30_min">Con Wi-Fi, lo normal es arriesgar solo los últimos minutos. Con datos móviles, hasta cerca de media hora, salvo al tocar Respaldar ahora. Sin internet, si se pierde el teléfono se pierde lo registrado desde la última copia.</string>
+    <string name="backup_limits_wifi_only">Con Wi-Fi, lo normal es arriesgar solo los últimos minutos. Sin Wi-Fi no se guardan copias solas: si se pierde el teléfono se pierde lo registrado desde la última copia, salvo al tocar Respaldar ahora.</string>
+    <string name="backup_shared_notice">Compartir la carpeta de copias expone todos los datos del negocio, también los futuros, porque las copias no están cifradas. %1$s no puede saber si está compartida.</string>
+    <string name="backup_shared_notice_encrypted">Compartir la carpeta de copias las deja al alcance de otras personas. Están cifradas, pero quien tenga el código de recuperación podría abrirlas. %1$s no puede saber si está compartida.</string>
+</resources>

@@ -44,6 +44,7 @@ import kotlinx.coroutines.withContext
  * @param changePolicy guarda la política con datos móviles y vuelve a programar la subida.
  * @param releaseCopy quita la marca de fijada a una copia, por su clave en la lista.
  * @param uploadedThisMonth con WebDAV, los bytes subidos en el mes; nulo si no se pudo leer.
+ * @param copiesEncrypted si las copias salen cifradas; nulo si no se pudo leer.
  */
 class BackupViewModel(
     overview: (Flow<Unit>) -> Flow<BackupOverview>,
@@ -56,6 +57,7 @@ class BackupViewModel(
     private val changePolicy: suspend (MeteredBackupPolicy) -> Unit = {},
     private val releaseCopy: suspend (String) -> PinRelease = { PinRelease.FAILED },
     private val uploadedThisMonth: suspend () -> Long? = { null },
+    private val copiesEncrypted: suspend () -> Boolean? = { null },
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = state.asStateFlow()
@@ -247,6 +249,7 @@ class BackupViewModel(
             } else {
                 null
             }
+            val encrypted = if (info != null) read { copiesEncrypted() } else null
             state.update { current ->
                 val provider = (info as? BackupDestinationInfo.Slots)?.providerLabel
                 current.copy(
@@ -254,6 +257,7 @@ class BackupViewModel(
                     copies = copies,
                     handoff = handoff,
                     uploadedThisMonth = usage,
+                    copiesEncrypted = encrypted,
                     wording = current.wording?.copy(providerLabel = provider),
                 )
             }

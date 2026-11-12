@@ -28,6 +28,8 @@ import kotlinx.coroutines.sync.Mutex
  * @param month el mes de ahora en la zona del negocio, o nulo si no se sabe.
  * @param backupLock el cerrojo del respaldo: una ejecución a la vez en todo el proceso.
  * @param rescheduled lo que vuelve a encolar la subida con la política nueva.
+ * @param encryption el cifrado de las copias en este teléfono. Mientras no exista el cifrado
+ *   opcional, sin cifrado: es lo mismo que usa el motor al armar cada copia.
  */
 internal class BackupSettingsService(
     private val state: suspend () -> BackupStateEntity?,
@@ -36,6 +38,7 @@ internal class BackupSettingsService(
     private val month: suspend () -> String?,
     private val backupLock: Mutex,
     private val rescheduled: suspend () -> Unit,
+    private val encryption: suspend () -> LocalEncryption = { LocalEncryption.NONE },
 ) : BackupSettingsPort {
     override suspend fun uploadedThisMonth(): Long {
         val current = month() ?: return 0
@@ -71,4 +74,6 @@ internal class BackupSettingsService(
     }
 
     override suspend fun onMeteredPolicyChanged() = rescheduled()
+
+    override suspend fun copiesEncrypted(): Boolean = encryption().active
 }

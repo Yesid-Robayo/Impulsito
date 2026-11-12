@@ -627,6 +627,55 @@ private fun LazyListScope.copies(uiState: BackupUiState, onAction: (BackupAction
             }
         }
     }
+    val wording = uiState.wording
+    if (connected && wording != null) {
+        item(key = PROTECTION) { Protection(wording, uiState.copiesEncrypted) }
+    }
+}
+
+/**
+ * `Qué tan protegidos están los datos`: lo que se puede perder según el destino y la política con
+ * datos móviles, y qué expone compartir la carpeta de copias. La app no sabe si está compartida, y
+ * la frase lo dice: ni WebDAV ni el selector del sistema lo informan.
+ */
+@Composable
+private fun Protection(wording: BackupWording, encrypted: Boolean?) {
+    val app = stringResource(R.string.app_name)
+    val limits =
+        if (wording.slots) {
+            stringResource(R.string.backup_limits_slots, wording.providerLabel ?: NO_VALUE_TEXT)
+        } else {
+            stringResource(
+                when (wording.overview.meteredPolicy) {
+                    MeteredBackupPolicy.EVERY_60_MIN -> R.string.backup_limits_every_60_min
+                    MeteredBackupPolicy.EVERY_30_MIN -> R.string.backup_limits_every_30_min
+                    MeteredBackupPolicy.WIFI_ONLY -> R.string.backup_limits_wifi_only
+                },
+            )
+        }
+    Column {
+        SectionHeader(stringResource(R.string.backup_limits_title))
+        Column(
+            Modifier.padding(horizontal = AppTheme.spacing.s16),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+        ) {
+            Text(limits, style = MaterialTheme.typography.bodyMedium)
+            encrypted?.let {
+                Text(
+                    stringResource(
+                        if (it) {
+                            R.string.backup_shared_notice_encrypted
+                        } else {
+                            R.string.backup_shared_notice
+                        },
+                        app,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
 /** `Copias en la nube`, con sus estados. */
@@ -765,3 +814,4 @@ private const val COPIES_LOADING = "copiesLoading"
 private const val COPIES_STATE = "copiesState"
 private const val RESTORE_NOTICE = "restoreNotice"
 private const val FIND_FILE = "findFile"
+private const val PROTECTION = "protection"

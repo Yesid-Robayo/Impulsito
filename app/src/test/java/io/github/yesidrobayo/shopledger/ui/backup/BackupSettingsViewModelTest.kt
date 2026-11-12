@@ -104,6 +104,7 @@ class BackupSettingsViewModelTest {
     private val releases = mutableListOf<String>()
     private var releaseResult = PinRelease.RELEASED
     private var uploaded: Long? = 84_000_000
+    private var encrypted = false
 
     @Before
     fun useTestMain() = Dispatchers.setMain(dispatcher)
@@ -128,9 +129,26 @@ class BackupSettingsViewModelTest {
                 releaseResult
             },
             uploadedThisMonth = { uploaded },
+            copiesEncrypted = { encrypted },
         )
         advanceUntilIdle()
         return model
+    }
+
+    @Test
+    fun `with a destination the screen knows whether copies leave encrypted`() =
+        runTest(dispatcher) {
+            assertEquals(false, viewModel().uiState.value.copiesEncrypted)
+
+            encrypted = true
+            assertEquals(true, viewModel().uiState.value.copiesEncrypted)
+        }
+
+    @Test
+    fun `without a destination there is nothing shared to warn about`() = runTest(dispatcher) {
+        destination.info = null
+
+        assertNull(viewModel().uiState.value.copiesEncrypted)
     }
 
     @Test

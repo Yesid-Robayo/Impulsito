@@ -61,6 +61,7 @@ fun BackupRoute(navigator: AppNavigator) {
                 },
                 releaseCopy = { key -> container.data.backupSettings.releasePinnedCopy(key) },
                 uploadedThisMonth = { container.data.backupSettings.uploadedThisMonth() },
+                copiesEncrypted = { container.data.backupSettings.copiesEncrypted() },
             )
         }
     when (model) {

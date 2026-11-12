@@ -32,6 +32,8 @@ class ChangeMeteredBackupPolicyUseCaseTest {
             override suspend fun onMeteredPolicyChanged() {
                 rescheduled += 1
             }
+
+            override suspend fun copiesEncrypted(): Boolean = false
         }
 
     private val change = ChangeMeteredBackupPolicyUseCase(settings, port, Clock { now })

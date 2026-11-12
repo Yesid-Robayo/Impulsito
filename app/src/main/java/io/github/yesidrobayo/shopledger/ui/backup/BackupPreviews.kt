@@ -106,6 +106,7 @@ internal fun previewBackupState(
         handoff = if (slots) PREVIEW_HANDOFF else null,
         uploadedThisMonth =
             if (overview.destinationKind == BackupDestinationKind.WEBDAV) 86_400_000 else null,
+        copiesEncrypted = if (overview.destinationKind == null) null else false,
     )
 }
 

@@ -19,4 +19,10 @@ interface BackupSettingsPort {
 
     /** Cambió la política con datos móviles: la subida en espera se encola con la nueva. */
     suspend fun onMeteredPolicyChanged()
+
+    /**
+     * Si las copias nuevas salen cifradas, para decir qué expone compartir la carpeta de copias.
+     * No usa la red.
+     */
+    suspend fun copiesEncrypted(): Boolean
 }

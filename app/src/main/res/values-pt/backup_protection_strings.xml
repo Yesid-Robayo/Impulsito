@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cópia de segurança: quão protegidos estão os dados e o aviso de compartilhar a pasta. Textos do guia de redação. -->
+    <string name="backup_limits_title">Quão protegidos estão os dados</string>
+    <string name="backup_limits_every_30_min">Com Wi-Fi, o normal é arriscar só os últimos minutos. Com dados móveis, até cerca de meia hora, salvo ao tocar em Fazer cópia agora. Sem internet, se o telefone for perdido, o que foi registrado desde a última cópia será perdido.</string>
+    <string name="backup_limits_wifi_only">Com Wi-Fi, o normal é arriscar só os últimos minutos. Sem Wi-Fi não são salvas cópias sozinhas: se o telefone for perdido, o que foi registrado desde a última cópia será perdido, salvo ao tocar em Fazer cópia agora.</string>
+    <string name="backup_shared_notice">Compartilhar a pasta de cópias expõe todos os dados do negócio, também os futuros, porque as cópias não estão criptografadas. %1$s não consegue saber se ela está compartilhada.</string>
+    <string name="backup_shared_notice_encrypted">Compartilhar a pasta de cópias as deixa ao alcance de outras pessoas. Estão criptografadas, mas quem tiver o código de recuperação poderia abri-las. %1$s não consegue saber se ela está compartilhada.</string>
+</resources>

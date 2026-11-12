@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Backup: how protected the data is and the shared folder notice. Texts from the writing guide. -->
+    <string name="backup_limits_title">How protected the data is</string>
+    <string name="backup_limits_every_30_min">On Wi-Fi, usually only the last few minutes are at risk. On mobile data, up to about half an hour, unless Back up now is tapped. With no internet, if the phone is lost, everything recorded since the last backup is lost.</string>
+    <string name="backup_limits_wifi_only">On Wi-Fi, usually only the last few minutes are at risk. Without Wi-Fi, backups are not saved automatically: if the phone is lost, everything recorded since the last backup is lost, unless Back up now is tapped.</string>
+    <string name="backup_shared_notice">Sharing the backup folder exposes all the business data, including future backups, because backups are not encrypted. %1$s cannot tell whether it is shared.</string>
+    <string name="backup_shared_notice_encrypted">Sharing the backup folder leaves backups within reach of other people. They are encrypted, but anyone with the recovery code could open them. %1$s cannot tell whether it is shared.</string>
+</resources>
