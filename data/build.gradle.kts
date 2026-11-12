@@ -66,6 +66,10 @@ dependencies {
     implementation(libs.okhttp)
     // Los trabajos en segundo plano, como el respaldo, que siguen aunque la app esté cerrada.
     implementation(libs.androidx.work.runtime)
+    // El cifrado en flujo de las copias, solo con AesGcmHkdfStreaming: la clave sale del código de
+    // recuperación, sin KeysetManager ni Keystore. Solo el paquete crypto de esta capa la usa, y
+    // tras R8 quedan unas pocas clases, sin gson ni protobuf.
+    implementation(libs.google.tink.android)
 
     // Las pruebas en la JVM comparan el catálogo del esquema con sus fuentes y lo generan, y prueban
     // lo del destino de copias que no necesita el analizador de XML del sistema.
