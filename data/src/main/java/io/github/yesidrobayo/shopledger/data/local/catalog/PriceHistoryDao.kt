@@ -26,7 +26,23 @@ internal interface PriceHistoryDao {
     @Query("SELECT * FROM product_price_history WHERE batch_id = :batchId ORDER BY id")
     suspend fun findByBatch(batchId: String): List<PriceHistoryEntity>
 
+    /**
+     * El lote que se puede deshacer: el de la última fila con lote, si es `BULK`. Si es un
+     * `BULK_UNDO`, o no hay filas con lote, `null`.
+     */
+    @Query(UNDOABLE_BATCH)
+    fun observeUndoableBatch(): Flow<String?>
+
+    /** Lo mismo, leído una vez, dentro de la transacción que deshace. */
+    @Query(UNDOABLE_BATCH)
+    suspend fun findUndoableBatch(): String?
+
     /** Agrega la fila y devuelve su id. Solo se llama dentro de la transacción del caso de uso. */
     @Insert
     suspend fun insert(change: PriceHistoryEntity): Long
 }
+
+/** La última fila con lote decide: solo un `BULK` se puede deshacer, y un deshacer no se deshace. */
+private const val UNDOABLE_BATCH =
+    "SELECT CASE WHEN source = 'BULK' THEN batch_id END FROM product_price_history " +
+        "WHERE batch_id IS NOT NULL ORDER BY id DESC LIMIT 1"

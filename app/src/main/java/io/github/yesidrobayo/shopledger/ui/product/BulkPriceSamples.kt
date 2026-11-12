@@ -4,7 +4,10 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceRequest
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceScope
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoRevert
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPricePreviewer
+import kotlin.uuid.Uuid
 
 /**
  * Estados inventados de la actualización masiva para las vistas previas y la galería: un producto
@@ -28,6 +31,22 @@ object BulkPriceSamples {
             percent = BasisPoints(percent),
         )
     }
+
+    /**
+     * Con la última actualización por deshacer y el diálogo abierto: dos precios vuelven y uno se
+     * cambió después.
+     */
+    fun confirmingUndo(): BulkPriceUiState = needsInput.copy(
+        undo = BulkUndoPlan(
+            batchId = Uuid.parse("00000000-0000-4000-8000-000000000001"),
+            reverts = listOf(
+                BulkUndoRevert(1L, from = Money(13_400L), to = Money(12_350L)),
+                BulkUndoRevert(3L, from = Money(100L), to = Money(80L)),
+            ),
+            kept = 1,
+        ),
+        confirmingUndo = true,
+    )
 
     /** Sin porcentaje todavía. */
     val needsInput: BulkPriceUiState =

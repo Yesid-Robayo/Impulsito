@@ -5,8 +5,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
 import io.github.yesidrobayo.shopledger.data.DataAccess
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.UndoSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleUseCase
+import io.github.yesidrobayo.shopledger.ui.product.BulkPriceUndo
 import io.github.yesidrobayo.shopledger.ui.sale.SaleUndo
 
 /**
@@ -35,6 +38,34 @@ fun rememberSaleUndo(): SaleUndo {
                             alerts = ports.lowStockAlerts,
                         )
                     UndoSaleUseCase(void)(saleId)
+                }
+
+                is DataAccess.Rescue -> null
+            }
+        }
+    }
+}
+
+/**
+ * Deshacer la actualización masiva recién aplicada, armado como el de la venta: la pantalla ya se
+ * cerró cuando la persona toca `Deshacer` en el aviso.
+ */
+@Composable
+fun rememberBulkPriceUndo(): BulkPriceUndo {
+    val container = (LocalContext.current.applicationContext as ShopLedgerApp).container
+    return remember(container) {
+        BulkPriceUndo(container.applicationScope) { batchId ->
+            when (val access = container.data.open()) {
+                is DataAccess.Ready -> {
+                    val ports = access.ports
+                    UndoBulkPriceUseCase(
+                        transactions = ports.transactions,
+                        products = ports.products,
+                        systemRows = ports.systemRows,
+                        priceHistory = ports.priceHistory,
+                        calendar = BusinessCalendarSource(ports.settings),
+                        clock = container.clock,
+                    )(batchId)
                 }
 
                 is DataAccess.Rescue -> null

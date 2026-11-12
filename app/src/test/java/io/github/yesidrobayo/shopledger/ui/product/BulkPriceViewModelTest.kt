@@ -2,6 +2,8 @@ package io.github.yesidrobayo.shopledger.ui.product
 
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoRevert
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
@@ -9,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -129,7 +132,7 @@ class BulkPriceViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf(listOf(1L, 2L)), operations.applied)
-        assertEquals(BulkMessage.Applied(2), model.uiState.value.message)
+        assertEquals(BulkMessage.Applied(BATCH, 2), model.uiState.value.message)
         assertEquals("", model.uiState.value.input.percentText)
     }
 
@@ -149,6 +152,66 @@ class BulkPriceViewModelTest {
     }
 
     @Test
+    fun `undo is offered only with a price to bring back, and asks first`() = runTest(dispatcher) {
+        val model = model()
+        assertFalse(model.uiState.value.canUndo)
+
+        operations.offer.value = BulkUndoPlan(BATCH, emptyList(), kept = 2)
+        advanceUntilIdle()
+        assertFalse(model.uiState.value.canUndo)
+        // Sin precios que vuelvan, el diálogo no se abre aunque se pida.
+        model.onAction(BulkPriceAction.OpenUndo)
+        advanceUntilIdle()
+        assertFalse(model.uiState.value.confirmingUndo)
+
+        operations.offer.value = BulkUndoPlan(BATCH, listOf(REVERT), kept = 1)
+        advanceUntilIdle()
+        assertTrue(model.uiState.value.canUndo)
+        assertFalse(model.uiState.value.confirmingUndo)
+        model.onAction(BulkPriceAction.OpenUndo)
+        advanceUntilIdle()
+        assertTrue(model.uiState.value.confirmingUndo)
+        model.onAction(BulkPriceAction.DismissUndo)
+        advanceUntilIdle()
+        assertFalse(model.uiState.value.confirmingUndo)
+        assertTrue(operations.undone.isEmpty())
+    }
+
+    @Test
+    fun `confirming undoes once and says what stayed`() = runTest(dispatcher) {
+        operations.offer.value = BulkUndoPlan(BATCH, listOf(REVERT), kept = 1)
+        val model = model()
+
+        model.onAction(BulkPriceAction.OpenUndo)
+        model.onAction(BulkPriceAction.ConfirmUndo)
+        model.onAction(BulkPriceAction.ConfirmUndo)
+        advanceUntilIdle()
+
+        assertEquals(listOf(BATCH), operations.undone)
+        assertEquals(BulkMessage.Undone(reverted = 1, kept = 1), model.uiState.value.message)
+        assertFalse(model.uiState.value.confirmingUndo)
+        assertFalse(model.uiState.value.undoing)
+    }
+
+    @Test
+    fun `each undo result has its message`() {
+        assertEquals(
+            BulkMessage.Undone(reverted = 0, kept = 3),
+            BulkMessage.ofUndo(UndoBulkPriceResult.NothingToRevert(3)),
+        )
+        assertEquals(BulkMessage.UndoGone, BulkMessage.ofUndo(UndoBulkPriceResult.NotUndoable))
+        assertEquals(
+            BulkMessage.Failed(outOfSpace = true),
+            BulkMessage.ofUndo(UndoBulkPriceResult.StorageFailed(StorageFailure.DISK_FULL)),
+        )
+        assertEquals(BulkMessage.Failed(outOfSpace = false), BulkMessage.ofUndo(null))
+        assertEquals(
+            BulkMessage.Failed(outOfSpace = false),
+            BulkMessage.ofUndo(UndoBulkPriceResult.UnknownTimeZone),
+        )
+    }
+
+    @Test
     fun `no product with a price is the empty state`() = runTest(dispatcher) {
         operations.catalog.value = listOf(ProductDetailSamples.product(price = 0L))
         val model = model()
@@ -157,6 +220,8 @@ class BulkPriceViewModelTest {
     }
 
     private companion object {
+        val BATCH: Uuid = Uuid.parse("00000000-0000-4000-8000-000000000001")
+        val REVERT = BulkUndoRevert(1L, from = Money(13_400L), to = Money(12_350L))
         val NUMBERS =
             BulkNumberFormat(
                 percentSymbols = NumberSymbols(',', '-', DigitGrouping('.', 3, 3)),
@@ -177,6 +242,8 @@ private class FakeBulkOperations : BulkPriceOperations {
     var result: ApplyBulkPriceResult =
         ApplyBulkPriceResult.Applied(Uuid.parse("00000000-0000-4000-8000-000000000001"), 2)
     val applied = mutableListOf<List<Long>>()
+    val offer = MutableStateFlow<BulkUndoPlan?>(null)
+    val undone = mutableListOf<Uuid>()
 
     override fun catalog(): Flow<List<Product>> = catalog
 
@@ -193,5 +260,12 @@ private class FakeBulkOperations : BulkPriceOperations {
     ): ApplyBulkPriceResult {
         applied += productIds.toList()
         return result
+    }
+
+    override fun undoOffer(): Flow<BulkUndoPlan?> = offer
+
+    override suspend fun undo(batchId: Uuid): UndoBulkPriceResult {
+        undone += batchId
+        return UndoBulkPriceResult.Undone(reverted = 1, kept = 1)
     }
 }

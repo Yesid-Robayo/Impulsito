@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewPriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewProduct
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChange
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
@@ -229,6 +230,15 @@ internal class FakePriceHistoryRepository(private val database: InMemoryDatabase
         database.read().priceChanges.values.filter {
             it.content.batchId == batchId
         }.sortedBy { it.id }
+
+    override fun observeUndoableBatch(): Flow<Uuid?> = database.tables.map { tables ->
+        tables.priceChanges.values
+            .filter { it.content.batchId != null }
+            .maxByOrNull { it.id }
+            ?.content
+            ?.takeIf { it.source == PriceChangeSource.BULK }
+            ?.batchId
+    }
 
     override suspend fun append(change: NewPriceChange): Long {
         val id = database.nextId(TABLE)

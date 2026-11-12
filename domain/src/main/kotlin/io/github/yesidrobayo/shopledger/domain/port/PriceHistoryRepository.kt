@@ -27,6 +27,19 @@ interface PriceHistoryRepository {
     /** Las filas de una actualización masiva, o de su deshacer, en el orden en que se registraron. */
     suspend fun findByBatch(batchId: Uuid): List<PriceChange>
 
+    /**
+     * El lote de la última actualización masiva, mientras se pueda deshacer, o `null`. Deja de
+     * emitirlo cuando se deshace, porque la última fila con lote pasa a ser un `BULK_UNDO`, y cuando
+     * llega otra actualización masiva, que pasa a ser la última.
+     */
+    fun observeUndoableBatch(): Flow<Uuid?>
+
+    /**
+     * Lo mismo, leído una vez, dentro de la transacción que deshace. Sin implementación propia, lee
+     * lo primero que emite [observeUndoableBatch].
+     */
+    suspend fun findUndoableBatch(): Uuid? = observeUndoableBatch().first()
+
     /** Agrega la fila y devuelve su id. */
     suspend fun append(change: NewPriceChange): Long
 }

@@ -38,6 +38,13 @@ internal class RoomPriceHistoryRepository(database: AppDatabase) : PriceHistoryR
     override suspend fun findByBatch(batchId: Uuid): List<PriceChange> =
         history.findByBatch(batchId.toString()).map(::toPriceChange)
 
+    override fun observeUndoableBatch(): Flow<Uuid?> = history
+        .observeUndoableBatch()
+        .map { it?.let(::storedUuid) }
+        .distinctUntilChanged()
+
+    override suspend fun findUndoableBatch(): Uuid? = history.findUndoableBatch()?.let(::storedUuid)
+
     override suspend fun append(change: NewPriceChange): Long = writes.inTransaction {
         val adjustment = change.bulkRule?.adjustment
         history.insert(

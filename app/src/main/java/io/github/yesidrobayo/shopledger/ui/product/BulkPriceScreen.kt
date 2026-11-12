@@ -47,6 +47,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CheckboxRow
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
@@ -57,6 +58,8 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
+import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
+import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
 import io.github.yesidrobayo.shopledger.ui.components.PercentField
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
@@ -95,7 +98,18 @@ fun BulkPriceScreen(
             navigation = TopBarNavigation.BACK,
             onNavigate = { onAction(BulkPriceAction.Back) },
             navigationLabel = stringResource(R.string.a11y_back),
-        )
+        ) {
+            // Deshacer la última solo se ofrece si al menos un precio volvería.
+            if (uiState.canUndo && !uiState.undoing) {
+                OverflowMenu(
+                    listOf(
+                        OverflowAction(stringResource(R.string.bulk_undo_last), {
+                            onAction(BulkPriceAction.OpenUndo)
+                        }),
+                    ),
+                )
+            }
+        }
         if (uiState.content == BulkPreviewContent.NoPrices) {
             EmptyState(
                 icon = R.drawable.ic_sell,
@@ -175,6 +189,17 @@ fun BulkPriceScreen(
         }
     }
     uiState.sheet?.let { ScopeSheet(it, uiState, onAction) }
+    val undo = uiState.undo
+    if (uiState.confirmingUndo && undo != null) {
+        val reverts = undo.reverts.size
+        ConfirmDialog(
+            title = stringResource(R.string.dialog_undo_prices_title),
+            body = pluralStringResource(R.plurals.dialog_undo_prices_body, reverts, reverts),
+            confirmLabel = stringResource(R.string.action_undo),
+            onConfirm = { onAction(BulkPriceAction.ConfirmUndo) },
+            onDismiss = { onAction(BulkPriceAction.DismissUndo) },
+        )
+    }
 }
 
 /** `Qué productos`, `Cuánto` y `Redondear`, con sus campos. */
@@ -538,4 +563,10 @@ private fun BulkPriceNeedsInputPreview() {
 @Composable
 private fun BulkPriceNoPricesPreview() {
     PreviewTheme { BulkPriceScreen(BulkPriceUiState(content = BulkPreviewContent.NoPrices), {}) }
+}
+
+@Preview(name = "Deshacer la última")
+@Composable
+private fun BulkPriceUndoPreview() {
+    PreviewTheme { BulkPriceScreen(BulkPriceSamples.confirmingUndo(), {}) }
 }

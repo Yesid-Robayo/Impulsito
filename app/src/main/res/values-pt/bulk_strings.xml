@@ -37,4 +37,22 @@
         <item quantity="many">%1$d de produtos não mudam: sem preço, arquivados, acima do limite ou ficariam em %2$s.</item>
         <item quantity="other">%1$d produtos não mudam: sem preço, arquivados, acima do limite ou ficariam em %2$s.</item>
     </plurals>
+    <string name="bulk_undo_last">Desfazer a última</string>
+    <string name="dialog_undo_prices_title">Desfazer a última atualização?</string>
+    <string name="bulk_undo_gone">Essa atualização já não pode ser desfeita</string>
+    <plurals name="dialog_undo_prices_body">
+        <item quantity="one">%1$d preço volta ao valor anterior. Os alterados depois ficam como estão.</item>
+        <item quantity="many">%1$d de preços voltam ao valor anterior. Os alterados depois ficam como estão.</item>
+        <item quantity="other">%1$d preços voltam ao valor anterior. Os alterados depois ficam como estão.</item>
+    </plurals>
+    <plurals name="notice_undo_partial">
+        <item quantity="one">%1$d preço não voltou: foi alterado depois.</item>
+        <item quantity="many">%1$d de preços não voltaram: foram alterados depois.</item>
+        <item quantity="other">%1$d preços não voltaram: foram alterados depois.</item>
+    </plurals>
+    <plurals name="confirm_prices_undone">
+        <item quantity="one">%1$d preço voltou ao valor anterior.</item>
+        <item quantity="many">%1$d de preços voltaram ao valor anterior.</item>
+        <item quantity="other">%1$d preços voltaram ao valor anterior.</item>
+    </plurals>
 </resources>

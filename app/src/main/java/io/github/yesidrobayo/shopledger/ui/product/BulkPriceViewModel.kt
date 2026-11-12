@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPricePreview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceRequest
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceScope
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
@@ -18,7 +19,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPricePreviewer
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPriceRules
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
 import kotlin.math.abs
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -59,6 +62,11 @@ interface BulkPriceOperations {
         percent: BasisPoints,
         step: Money,
     ): ApplyBulkPriceResult
+
+    /** Lo que haría deshacer la última actualización masiva, o `null` si no hay ninguna. */
+    fun undoOffer(): Flow<BulkUndoPlan?>
+
+    suspend fun undo(batchId: Uuid): UndoBulkPriceResult
 }
 
 /** Qué productos: los chips de `Qué productos`. */
@@ -100,14 +108,35 @@ sealed interface BulkPreviewContent {
     data object ReadError : BulkPreviewContent
 }
 
-/** Un aviso tras aplicar. */
+/** Un aviso tras aplicar o deshacer. */
 sealed interface BulkMessage {
-    data class Applied(val changed: Int) : BulkMessage
+    /** Cambiaron [changed] precios con el lote [batchId], que el aviso ofrece deshacer. */
+    data class Applied(val batchId: Uuid, val changed: Int) : BulkMessage
 
     /** Ninguno cambia ya: otra pantalla los cambió mientras tanto. */
     data object NothingChanged : BulkMessage
 
+    /** Volvieron [reverted] precios y se dejaron [kept], cambiados después. */
+    data class Undone(val reverted: Int, val kept: Int) : BulkMessage
+
+    /** El lote ya no se puede deshacer: se deshizo o llegó otro después. */
+    data object UndoGone : BulkMessage
+
     data class Failed(val outOfSpace: Boolean) : BulkMessage
+
+    companion object {
+        /**
+         * El aviso de cada resultado de deshacer. `null` es una base que no abrió sin riesgo. Cada
+         * resultado se nombra, sin rama por defecto, para que uno nuevo obligue a decidir aquí.
+         */
+        fun ofUndo(result: UndoBulkPriceResult?): BulkMessage = when (result) {
+            is UndoBulkPriceResult.Undone -> Undone(result.reverted, result.kept)
+            is UndoBulkPriceResult.NothingToRevert -> Undone(reverted = 0, kept = result.kept)
+            UndoBulkPriceResult.NotUndoable -> UndoGone
+            is UndoBulkPriceResult.StorageFailed -> Failed(result.failure.isOutOfSpace)
+            null, UndoBulkPriceResult.UnknownTimeZone -> Failed(outOfSpace = false)
+        }
+    }
 }
 
 /**
@@ -140,7 +169,13 @@ data class BulkPriceUiState(
     val applying: Boolean = false,
     val message: BulkMessage? = null,
     val percent: BasisPoints? = null,
+    val undo: BulkUndoPlan? = null,
+    val confirmingUndo: Boolean = false,
+    val undoing: Boolean = false,
 ) {
+    /** Si se ofrece `Deshacer la última`: hay un lote y al menos un precio que volvería. */
+    val canUndo: Boolean get() = undo?.canUndo == true
+
     /** Cuántos precios cambian al aplicar. */
     val changing: Int get() = (content as? BulkPreviewContent.Ready)?.preview?.changes?.size ?: 0
 
@@ -182,6 +217,13 @@ sealed interface BulkPriceAction {
     data object MessageShown : BulkPriceAction
 
     data object Retry : BulkPriceAction
+
+    /** `Deshacer la última`: pregunta antes. */
+    data object OpenUndo : BulkPriceAction
+
+    data object DismissUndo : BulkPriceAction
+
+    data object ConfirmUndo : BulkPriceAction
 }
 
 /** Los separadores con que se leen el porcentaje y el paso escritos. */
@@ -252,8 +294,10 @@ class BulkPriceViewModel(
             ) { categories, suppliers, products, step ->
                 Lists(categories, suppliers, products, step)
             },
-            extra,
-        ) { typed, shown, lists, more ->
+            combine(extra, operations.undoOffer().catch { emit(null) }) { more, offer ->
+                more to offer
+            },
+        ) { typed, shown, lists, (more, offer) ->
             BulkPriceUiState(
                 input = typed,
                 content = shown,
@@ -265,6 +309,9 @@ class BulkPriceViewModel(
                 applying = more.applying,
                 message = more.message,
                 percent = percentOf(typed),
+                undo = offer,
+                confirmingUndo = more.confirmingUndo && offer?.canUndo == true,
+                undoing = more.undoing,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -331,6 +378,13 @@ class BulkPriceViewModel(
 
             BulkPriceAction.Retry -> attempts.update { it + 1 }
 
+            BulkPriceAction.OpenUndo ->
+                if (uiState.value.canUndo) extra.update { it.copy(confirmingUndo = true) }
+
+            BulkPriceAction.DismissUndo -> extra.update { it.copy(confirmingUndo = false) }
+
+            BulkPriceAction.ConfirmUndo -> undo()
+
             // La resuelve la pantalla con la navegación.
             BulkPriceAction.Back -> Unit
         }
@@ -347,7 +401,10 @@ class BulkPriceViewModel(
             val message = when (
                 val result = operations.apply(ids, request.percent, request.roundingStep)
             ) {
-                is ApplyBulkPriceResult.Applied -> BulkMessage.Applied(result.changed)
+                is ApplyBulkPriceResult.Applied -> BulkMessage.Applied(
+                    result.batchId,
+                    result.changed,
+                )
 
                 ApplyBulkPriceResult.NothingToChange -> BulkMessage.NothingChanged
 
@@ -362,6 +419,17 @@ class BulkPriceViewModel(
                 input.update { it.copy(percentText = "", removed = emptySet()) }
             }
             extra.update { it.copy(applying = false, message = message) }
+        }
+    }
+
+    /** Deshace el lote ofrecido, una sola vez a la vez, y se queda en la pantalla con su aviso. */
+    private fun undo() {
+        val batchId = uiState.value.undo?.batchId
+        if (extra.value.undoing || batchId == null) return
+        extra.update { it.copy(confirmingUndo = false, undoing = true) }
+        viewModelScope.launch {
+            val message = BulkMessage.ofUndo(operations.undo(batchId))
+            extra.update { it.copy(undoing = false, message = message) }
         }
     }
 
@@ -424,6 +492,8 @@ class BulkPriceViewModel(
         val sheet: BulkSheet? = null,
         val applying: Boolean = false,
         val message: BulkMessage? = null,
+        val confirmingUndo: Boolean = false,
+        val undoing: Boolean = false,
     )
 
     private data class Lists(

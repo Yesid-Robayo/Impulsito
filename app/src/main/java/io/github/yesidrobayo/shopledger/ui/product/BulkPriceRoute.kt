@@ -1,22 +1,28 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
+import android.content.res.Resources
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveBulkPriceChoicesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveBulkUndoUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
+import io.github.yesidrobayo.shopledger.navigation.AppMessages
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -24,10 +30,9 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
-import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
-import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
-import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
+import io.github.yesidrobayo.shopledger.navigation.rememberBulkPriceUndo
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -60,32 +65,25 @@ fun BulkPriceRoute(navigator: AppNavigator) {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val messages = LocalAppMessages.current
+            val resources = LocalResources.current
+            val undo = rememberBulkPriceUndo()
+            val labels = BulkUndoLabels(
+                undo = stringResource(R.string.action_undo),
+                retry = stringResource(R.string.action_retry),
+            )
             val message = uiState.message
-            val text = when (message) {
-                is BulkMessage.Applied ->
-                    pluralStringResource(
-                        R.plurals.confirm_prices_updated,
-                        message.changed,
-                        message.changed,
-                    )
-
-                BulkMessage.NothingChanged -> stringResource(R.string.bulk_nothing_changed)
-
-                is BulkMessage.Failed -> stringResource(saveErrorText(message.outOfSpace))
-
-                null -> null
-            }
             LaunchedEffect(message) {
-                if (text != null) {
-                    val variant = when (message) {
-                        is BulkMessage.Applied, BulkMessage.NothingChanged, null ->
-                            SnackbarVariant.SUCCESS
-
-                        is BulkMessage.Failed -> SnackbarVariant.ERROR
+                if (message == null) return@LaunchedEffect
+                viewModel.onAction(BulkPriceAction.MessageShown)
+                if (message is BulkMessage.Applied) {
+                    // El aviso vive en la navegación: sigue a la vista al volver a la lista, con
+                    // `Deshacer` mientras se ve.
+                    messages.show(bulkMessageVisuals(resources, message, labels.undo)) {
+                        undoFromMessage(undo, messages, resources, message.batchId, labels)
                     }
-                    messages.show(AppSnackbarVisuals(text, variant))
-                    viewModel.onAction(BulkPriceAction.MessageShown)
-                    if (message is BulkMessage.Applied) navigator.back()
+                    navigator.back()
+                } else {
+                    messages.show(bulkMessageVisuals(resources, message))
                 }
             }
             BulkPriceScreen(
@@ -108,6 +106,8 @@ fun BulkPriceRoute(navigator: AppNavigator) {
 class BulkPriceUseCases(
     private val choices: ObserveBulkPriceChoicesUseCase,
     private val applyUseCase: ApplyBulkPriceUseCase,
+    private val undoOfferUseCase: ObserveBulkUndoUseCase,
+    private val undoUseCase: UndoBulkPriceUseCase,
 ) : BulkPriceOperations {
     override fun catalog(): Flow<List<Product>> = choices.catalog()
 
@@ -122,6 +122,10 @@ class BulkPriceUseCases(
         percent: BasisPoints,
         step: Money,
     ): ApplyBulkPriceResult = applyUseCase(productIds, percent, step)
+
+    override fun undoOffer(): Flow<BulkUndoPlan?> = undoOfferUseCase()
+
+    override suspend fun undo(batchId: Uuid): UndoBulkPriceResult = undoUseCase(batchId)
 
     companion object {
         fun of(dependencies: ScreenDependencies): BulkPriceUseCases {
@@ -142,7 +146,40 @@ class BulkPriceUseCases(
                     CurrencyLock(ports.settings),
                     dependencies.container.clock,
                 ),
+                undoOfferUseCase = ObserveBulkUndoUseCase(ports.priceHistory, ports.products),
+                undoUseCase = UndoBulkPriceUseCase(
+                    ports.transactions,
+                    ports.products,
+                    ports.systemRows,
+                    ports.priceHistory,
+                    BusinessCalendarSource(ports.settings),
+                    dependencies.container.clock,
+                ),
             )
+        }
+    }
+}
+
+/** Los rótulos del aviso, ya en el idioma de la app. */
+private data class BulkUndoLabels(val undo: String, val retry: String)
+
+/**
+ * Deshace [batchId] desde el aviso y dice cómo terminó. Si falló, `Reintentar` lo intenta otra vez.
+ */
+private fun undoFromMessage(
+    undo: BulkPriceUndo,
+    messages: AppMessages,
+    resources: Resources,
+    batchId: Uuid,
+    labels: BulkUndoLabels,
+) {
+    undo.undo(batchId) { outcome ->
+        if (outcome is BulkMessage.Failed) {
+            messages.show(bulkMessageVisuals(resources, outcome, labels.retry)) {
+                undoFromMessage(undo, messages, resources, batchId, labels)
+            }
+        } else {
+            messages.show(bulkMessageVisuals(resources, outcome))
         }
     }
 }

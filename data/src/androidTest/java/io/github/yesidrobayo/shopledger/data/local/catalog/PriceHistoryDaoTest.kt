@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -114,6 +115,29 @@ internal class PriceHistoryDaoTest : CatalogDatabaseTest() {
     }
 
     @Test
+    fun onlyTheLastBulkBatchCanBeUndone() = runBlocking {
+        assertNull(history.findUndoableBatch())
+        history.insert(manualChange(productId, priceListId, oldPrice = 9_000, newPrice = 9_500))
+        assertNull(history.findUndoableBatch())
+
+        history.insert(bulk(PERCENT_BATCH, "PERCENT").copy(percentBp = 500))
+        // Un cambio a mano después no tiene lote: el lote sigue siendo el último que se deshace.
+        history.insert(manualChange(productId, priceListId, oldPrice = 9_000, newPrice = 9_100))
+        assertEquals(PERCENT_BATCH, history.findUndoableBatch())
+
+        // Otra actualización masiva pasa a ser la última.
+        history.insert(bulk(AMOUNT_BATCH, "AMOUNT").copy(amountDelta = 100))
+        assertEquals(AMOUNT_BATCH, history.observeUndoableBatch().first())
+
+        // Un deshacer no se deshace, y deja sin nada que deshacer.
+        history.insert(
+            manualChange(productId, priceListId, oldPrice = 9_000, newPrice = 10_000)
+                .copy(source = "BULK_UNDO", batchId = UNDO_BATCH),
+        )
+        assertNull(history.observeUndoableBatch().first())
+    }
+
+    @Test
     fun insertingWithAnExistingIdFailsAndKeepsTheOriginal() = runBlocking {
         val original = manualChange(productId, priceListId, oldPrice = 9_000, newPrice = 9_500)
         val id = history.insert(original)
@@ -178,7 +202,14 @@ internal class PriceHistoryDaoTest : CatalogDatabaseTest() {
         // findByProduct solo lee, como observeByProduct, pero una vez: dentro de una transacción de
         // lectura no se observa.
         assertEquals(
-            setOf("observeByProduct", "findByProduct", "findByBatch", "insert"),
+            setOf(
+                "observeByProduct",
+                "findByProduct",
+                "findByBatch",
+                "observeUndoableBatch",
+                "findUndoableBatch",
+                "insert",
+            ),
             functions,
         )
     }

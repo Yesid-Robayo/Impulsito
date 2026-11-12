@@ -34,4 +34,19 @@
         <item quantity="one">%1$d product does not change: no price, archived, over the limit or it would end at %2$s.</item>
         <item quantity="other">%1$d products do not change: no price, archived, over the limit or they would end at %2$s.</item>
     </plurals>
+    <string name="bulk_undo_last">Undo the last one</string>
+    <string name="dialog_undo_prices_title">Undo the last update?</string>
+    <string name="bulk_undo_gone">That update can no longer be undone</string>
+    <plurals name="dialog_undo_prices_body">
+        <item quantity="one">%1$d price goes back to its previous value. Those changed later stay as they are.</item>
+        <item quantity="other">%1$d prices go back to their previous value. Those changed later stay as they are.</item>
+    </plurals>
+    <plurals name="notice_undo_partial">
+        <item quantity="one">%1$d price did not go back: it was changed later.</item>
+        <item quantity="other">%1$d prices did not go back: they were changed later.</item>
+    </plurals>
+    <plurals name="confirm_prices_undone">
+        <item quantity="one">%1$d price went back to its previous value.</item>
+        <item quantity="other">%1$d prices went back to their previous value.</item>
+    </plurals>
 </resources>
