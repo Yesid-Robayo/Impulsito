@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de las categorías de productos y de gastos, copiados de ux-writing.md. -->
+<resources>
+    <string name="category_new">New category</string>
+    <string name="category_save">Save category</string>
+    <string name="category_archived">Archived</string>
+    <string name="category_fixed_expense">Fixed expense</string>
+    <string name="category_row_detail">%1$s · %2$s</string>
+    <string name="category_initial_name_hint">Leave blank to go back to its usual name</string>
+    <string name="empty_categories_title">No categories yet</string>
+    <string name="empty_categories_body">Grouping products helps find them faster.</string>
+    <string name="empty_categories_action">New category</string>
+    <string name="confirm_category_saved">Category saved</string>
+    <string name="error_category_name_empty">Enter the category name</string>
+    <string name="error_category_name_duplicate">A category with that name already exists</string>
+    <string name="error_category_name_long">Maximum 40 characters</string>
+    <string name="error_category_reactivate_taken">Another active category already uses that name. Rename one of them.</string>
+    <string name="dialog_delete_category_title">Delete %1$s?</string>
+    <string name="dialog_delete_category_expenses_body">It has no recorded expenses.</string>
+    <string name="dialog_delete_category_action">Delete category</string>
+    <string name="dialog_archive_category_title">Archive %1$s?</string>
+    <string name="dialog_archive_category_body">It stops appearing in new expenses. It stays in the numbers and can be reactivated.</string>
+    <string name="dialog_archive_category_action">Archive category</string>
+    <plurals name="category_products_count">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+    <plurals name="category_expenses_count">
+        <item quantity="one">%1$d expense</item>
+        <item quantity="other">%1$d expenses</item>
+    </plurals>
+    <plurals name="dialog_delete_category_products_body">
+        <item quantity="one">%1$d product will be left with no category.</item>
+        <item quantity="other">%1$d products will be left with no category.</item>
+    </plurals>
+</resources>

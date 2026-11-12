@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.local.catalog
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
+import io.github.yesidrobayo.shopledger.data.local.OwnerCount
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -27,6 +28,16 @@ internal interface CategoryDao {
     /** Productos de la categoría, archivados o no: es lo que se muestra antes de eliminarla. */
     @Query("SELECT COUNT(*) FROM products WHERE category_id = :id")
     suspend fun countProducts(id: Long): Int
+
+    /**
+     * Cuántos productos, archivados o no, tiene cada categoría, de nuevo cada vez que cambian los
+     * productos o las categorías. Las categorías sin productos no aparecen.
+     */
+    @Query(
+        "SELECT category_id AS ownerId, COUNT(*) AS count FROM products " +
+            "WHERE category_id IS NOT NULL GROUP BY category_id ORDER BY category_id",
+    )
+    fun observeProductCounts(): Flow<List<OwnerCount>>
 
     /** Devuelve el id nuevo. Falla si el nombre normalizado ya existe. */
     @Insert

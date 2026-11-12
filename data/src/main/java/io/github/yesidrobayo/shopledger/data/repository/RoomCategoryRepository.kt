@@ -33,6 +33,10 @@ internal class RoomCategoryRepository(database: AppDatabase) : CategoryRepositor
 
     override suspend fun countProducts(id: Long): Int = categories.countProducts(id)
 
+    override fun observeProductCounts(): Flow<Map<Long, Int>> = categories.observeProductCounts()
+        .map { rows -> rows.associate { it.ownerId to it.count } }
+        .distinctUntilChanged()
+
     override suspend fun insert(details: CategoryDetails, createdAt: Instant): Long =
         writes.inTransaction {
             val at = createdAt.toStoredMillis()

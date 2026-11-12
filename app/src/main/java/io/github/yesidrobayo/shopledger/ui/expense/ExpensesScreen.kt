@@ -390,7 +390,10 @@ private fun ExpenseAmount(row: ExpenseListRow, size: MoneySize) {
 private fun Sheets(uiState: ExpensesUiState, onAction: (ExpensesAction) -> Unit) {
     val form = uiState.form
     val detail = uiState.detail
+    val category = uiState.newCategory
     when {
+        category != null -> NewCategorySheet(category, onAction)
+
         form != null -> AppBottomSheet(
             onDismissRequest = { onAction(ExpensesAction.CloseForm) },
             title = stringResource(R.string.expense_new_title),
@@ -402,6 +405,45 @@ private fun Sheets(uiState: ExpensesUiState, onAction: (ExpensesAction) -> Unit)
             title = detailTitle(detail),
             action = detailAction(detail, onAction),
         ) { ExpenseDetailFields(detail, onAction) }
+    }
+}
+
+/** La hoja de una categoría nueva desde el gasto nuevo: el nombre y `Guardar categoría`. */
+@Composable
+private fun NewCategorySheet(draft: NewExpenseCategory, onAction: (ExpensesAction) -> Unit) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    AppBottomSheet(
+        onDismissRequest = { onAction(ExpensesAction.CloseCategory) },
+        title = stringResource(R.string.category_new),
+        action = {
+            PrimaryActionButton(
+                text = stringResource(R.string.category_save),
+                onClick = { onAction(ExpensesAction.SaveCategory) },
+                variant = ActionVariant.PRIMARY,
+                state = if (draft.saving) ActionState.WORKING else ActionState.IDLE,
+            )
+        },
+    ) {
+        AppTextField(
+            value = draft.name,
+            onValueChange = { onAction(ExpensesAction.NewCategoryNameChange(it)) },
+            label = stringResource(R.string.form_name),
+            modifier = Modifier.focusRequester(focus),
+            imeAction = ImeAction.Done,
+            error = draft.error?.let {
+                stringResource(
+                    when (it) {
+                        ExpenseCategoryNameError.EMPTY -> R.string.error_category_name_empty
+                        ExpenseCategoryNameError.TOO_LONG -> R.string.error_category_name_long
+                        ExpenseCategoryNameError.DUPLICATE -> R.string.error_category_name_duplicate
+                    },
+                )
+            },
+        )
+        if (draft.saveFailed) {
+            NoticeCard(stringResource(saveErrorText(outOfSpace = false)), NoticeVariant.ERROR)
+        }
     }
 }
 
@@ -580,13 +622,25 @@ private fun ColumnScope.ExpenseFormFields(
         error = amountErrorText(errors),
     )
     val categories = uiState.activeCategories
+    val newCategory = stringResource(R.string.category_new)
+    // `Nueva categoría` va al final de los chips, y abre su hoja sin perder lo escrito.
     CompactChipRow(
-        options = categories.map { it.id },
+        options = categories.map { it.id } + NEW_CATEGORY_CHIP,
         label = { id ->
-            categories.firstOrNull { it.id == id }?.let { categoryName(it) }.orEmpty()
+            if (id == NEW_CATEGORY_CHIP) {
+                newCategory
+            } else {
+                categories.firstOrNull { it.id == id }?.let { categoryName(it) }.orEmpty()
+            }
         },
         selected = setOfNotNull(form.categoryId),
-        onToggle = { onAction(ExpensesAction.FormCategoryChange(it)) },
+        onToggle = { id ->
+            if (id == NEW_CATEGORY_CHIP) {
+                onAction(ExpensesAction.NewCategory)
+            } else {
+                onAction(ExpensesAction.FormCategoryChange(id))
+            }
+        },
         multiple = false,
     )
     AppTextField(
@@ -723,6 +777,9 @@ private fun ListSkeleton() {
 private val EXPANDED_WIDTH = 840.dp
 
 private const val FILTER_CHIP = "category"
+
+/** El chip `Nueva categoría`, al final: ningún id de la base es negativo. */
+private const val NEW_CATEGORY_CHIP = -1L
 private const val SKELETON_ROWS = 6
 private const val DAY = "day"
 private const val ROW = "row"

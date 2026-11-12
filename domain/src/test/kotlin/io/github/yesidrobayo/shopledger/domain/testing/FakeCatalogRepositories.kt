@@ -184,6 +184,10 @@ internal class FakeCategoryRepository(private val database: InMemoryDatabase) : 
     override suspend fun countProducts(id: Long): Int =
         database.read().products.values.count { it.details.categoryId == id }
 
+    override fun observeProductCounts(): Flow<Map<Long, Int>> = database.tables.map { tables ->
+        tables.products.values.mapNotNull { it.details.categoryId }.groupingBy { it }.eachCount()
+    }
+
     override suspend fun insert(details: CategoryDetails, createdAt: Instant): Long {
         val id = database.nextId(TABLE)
         val category = Category(id, details, createdAt, createdAt)

@@ -72,7 +72,11 @@ fun SettingsEntryScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxWidth()) {
-                if (profile != null) BusinessProfileGroup(profile, onProfileAction)
+                if (profile != null) {
+                    BusinessProfileGroup(profile, onProfileAction) {
+                        onOpen(AppNavKey.Categories)
+                    }
+                }
                 SectionHeader(stringResource(R.string.settings_group_region))
                 SettingsRow(
                     title = stringResource(R.string.region_title),
@@ -104,10 +108,15 @@ fun SettingsEntryScreen(
 
 /**
  * El nombre del negocio, que encabeza los comprobantes, y el margen objetivo, del que parten las
- * sugerencias de precio. Cada fila abre su hoja. Sin nombre, la fila no inventa uno.
+ * sugerencias de precio. Cada una abre su hoja. Sin nombre, la fila no inventa uno. Al final,
+ * `Categorías` abre la pantalla de categorías de productos y de gastos.
  */
 @Composable
-private fun BusinessProfileGroup(profile: BusinessProfile, onAction: (ProfileAction) -> Unit) {
+private fun BusinessProfileGroup(
+    profile: BusinessProfile,
+    onAction: (ProfileAction) -> Unit,
+    onCategories: () -> Unit,
+) {
     SectionHeader(stringResource(R.string.settings_group_business))
     SettingsRow(
         title = stringResource(R.string.settings_business_name),
@@ -121,6 +130,10 @@ private fun BusinessProfileGroup(profile: BusinessProfile, onAction: (ProfileAct
             SettingsRowAction.Navigation {
                 onAction(ProfileAction.Open(ProfileField.TARGET_MARGIN))
             },
+    )
+    SettingsRow(
+        title = stringResource(R.string.categories_title),
+        action = SettingsRowAction.Navigation(onCategories),
     )
 }
 

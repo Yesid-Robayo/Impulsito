@@ -190,6 +190,8 @@ internal class ExpenseCategoryDaoTest : CatalogDatabaseTest() {
                 "findById",
                 "findActiveByNormalizedName",
                 "hasExpenses",
+                // Solo lee: cuántos gastos tiene cada categoría.
+                "observeExpenseCounts",
                 "insert",
                 "update",
                 "setArchivedAt",

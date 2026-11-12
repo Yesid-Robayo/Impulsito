@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de las categorías de productos y de gastos, copiados de ux-writing.md. -->
+<resources>
+    <string name="category_new">Nueva categoría</string>
+    <string name="category_save">Guardar categoría</string>
+    <string name="category_archived">Archivadas</string>
+    <string name="category_fixed_expense">Gasto fijo</string>
+    <string name="category_row_detail">%1$s · %2$s</string>
+    <string name="category_initial_name_hint">En blanco, vuelve a su nombre de siempre</string>
+    <string name="empty_categories_title">Sin categorías todavía</string>
+    <string name="empty_categories_body">Agrupar los productos ayuda a encontrarlos más rápido.</string>
+    <string name="empty_categories_action">Nueva categoría</string>
+    <string name="confirm_category_saved">Categoría guardada</string>
+    <string name="error_category_name_empty">Falta el nombre de la categoría</string>
+    <string name="error_category_name_duplicate">Ya existe una categoría con ese nombre</string>
+    <string name="error_category_name_long">Máximo 40 caracteres</string>
+    <string name="error_category_reactivate_taken">Otra categoría vigente ya usa ese nombre. Conviene renombrar una de las dos.</string>
+    <string name="dialog_delete_category_title">¿Eliminar %1$s?</string>
+    <string name="dialog_delete_category_expenses_body">No tiene gastos registrados.</string>
+    <string name="dialog_delete_category_action">Eliminar categoría</string>
+    <string name="dialog_archive_category_title">¿Archivar %1$s?</string>
+    <string name="dialog_archive_category_body">Deja de aparecer en gastos nuevos. Se mantiene en los números y se puede reactivar.</string>
+    <string name="dialog_archive_category_action">Archivar categoría</string>
+    <plurals name="category_products_count">
+        <item quantity="one">%1$d producto</item>
+        <item quantity="many">%1$d de productos</item>
+        <item quantity="other">%1$d productos</item>
+    </plurals>
+    <plurals name="category_expenses_count">
+        <item quantity="one">%1$d gasto</item>
+        <item quantity="many">%1$d de gastos</item>
+        <item quantity="other">%1$d gastos</item>
+    </plurals>
+    <plurals name="dialog_delete_category_products_body">
+        <item quantity="one">%1$d producto quedará sin categoría.</item>
+        <item quantity="many">%1$d de productos quedarán sin categoría.</item>
+        <item quantity="other">%1$d productos quedarán sin categoría.</item>
+    </plurals>
+</resources>

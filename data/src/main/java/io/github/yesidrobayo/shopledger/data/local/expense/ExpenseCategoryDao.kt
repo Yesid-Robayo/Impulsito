@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.local.expense
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
+import io.github.yesidrobayo.shopledger.data.local.OwnerCount
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -42,6 +43,16 @@ internal interface ExpenseCategoryDao {
     /** Si tiene gastos, aunque estén anulados. Con gastos ya no se borra: solo se archiva. */
     @Query("SELECT EXISTS (SELECT 1 FROM expenses WHERE expense_category_id = :id)")
     suspend fun hasExpenses(id: Long): Boolean
+
+    /**
+     * Cuántos gastos, activos o anulados, tiene cada categoría, de nuevo cada vez que cambian los
+     * gastos. Las categorías sin gastos no aparecen.
+     */
+    @Query(
+        "SELECT expense_category_id AS ownerId, COUNT(*) AS count FROM expenses " +
+            "GROUP BY expense_category_id ORDER BY expense_category_id",
+    )
+    fun observeExpenseCounts(): Flow<List<OwnerCount>>
 
     /** Devuelve el id nuevo. Falla si la clave ya existe, o si el nombre ya es de una vigente. */
     @Insert

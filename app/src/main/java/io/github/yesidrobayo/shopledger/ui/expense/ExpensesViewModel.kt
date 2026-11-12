@@ -7,6 +7,8 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.OTHER_EXPENSE_CATEGORY
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
+import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryDraft
+import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
@@ -15,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResul
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseMonth
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseResult
+import io.github.yesidrobayo.shopledger.domain.usecase.expense.SaveExpenseCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseResult
 import kotlin.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,6 +52,7 @@ import kotlinx.datetime.yearMonth
  * @param now el instante actual, del reloj inyectado.
  * @param register registra un gasto en una sola transacción.
  * @param void anula un gasto en una sola transacción.
+ * @param createCategory crea una categoría de gasto desde el gasto nuevo.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExpensesViewModel(
@@ -58,6 +62,9 @@ class ExpensesViewModel(
     private val register: suspend (ExpenseRequest) -> RegisterExpenseResult,
     private val void: suspend (Long, VoidReason, String?) -> VoidExpenseResult,
     private val numbers: ExpenseNumberFormat,
+    private val createCategory: suspend (ExpenseCategoryDraft) -> SaveExpenseCategoryResult = {
+        SaveExpenseCategoryResult.NotFound
+    },
 ) : ViewModel() {
     private val state = MutableStateFlow(ExpensesUiState())
     val uiState: StateFlow<ExpensesUiState> = state.asStateFlow()
@@ -149,6 +156,25 @@ class ExpensesViewModel(
             ExpensesAction.Save -> save()
 
             ExpensesAction.MessageShown -> state.update { it.copy(message = null) }
+
+            ExpensesAction.NewCategory -> state.update {
+                if (it.form == null) it else it.copy(newCategory = NewExpenseCategory())
+            }
+
+            is ExpensesAction.NewCategoryNameChange -> state.update {
+                val draft = it.newCategory
+                if (draft == null || draft.saving) {
+                    it
+                } else {
+                    it.copy(newCategory = draft.copy(name = action.name, error = null))
+                }
+            }
+
+            ExpensesAction.SaveCategory -> saveCategory()
+
+            ExpensesAction.CloseCategory -> state.update {
+                if (it.newCategory?.saving == true) it else it.copy(newCategory = null)
+            }
 
             ExpensesAction.CloseForm -> state.update {
                 if (it.form?.status == ExpenseSheetStatus.WORKING) it else it.copy(form = null)
@@ -312,6 +338,42 @@ class ExpensesViewModel(
 
                 is RegisterExpenseResult.StorageFailed ->
                     fail(notice = ExpenseFormNotice.SaveFailed(result.failure.isOutOfSpace))
+            }
+        }
+    }
+
+    private fun saveCategory() {
+        val draft = state.value.newCategory ?: return
+        if (draft.saving) return
+        state.update { it.copy(newCategory = draft.copy(saving = true, saveFailed = false)) }
+        viewModelScope.launch {
+            val result = createCategory(ExpenseCategoryDraft(draft.name))
+            state.update { current ->
+                when (result) {
+                    // La categoría nueva queda elegida en el gasto, que sigue con lo escrito.
+                    is SaveExpenseCategoryResult.Saved -> current.copy(
+                        newCategory = null,
+                        form = current.form?.copy(categoryId = result.categoryId),
+                    )
+
+                    is SaveExpenseCategoryResult.Invalid -> current.copy(
+                        newCategory = draft.copy(
+                            error = if (ExpenseCategoryInputError.NAME_EMPTY in result.errors) {
+                                ExpenseCategoryNameError.EMPTY
+                            } else {
+                                ExpenseCategoryNameError.TOO_LONG
+                            },
+                        ),
+                    )
+
+                    SaveExpenseCategoryResult.DuplicateName -> current.copy(
+                        newCategory = draft.copy(error = ExpenseCategoryNameError.DUPLICATE),
+                    )
+
+                    SaveExpenseCategoryResult.NotFound,
+                    is SaveExpenseCategoryResult.StorageFailed,
+                    -> current.copy(newCategory = draft.copy(saveFailed = true))
+                }
             }
         }
     }

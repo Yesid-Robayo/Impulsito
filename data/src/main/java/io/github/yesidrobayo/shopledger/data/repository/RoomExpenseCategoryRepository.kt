@@ -39,6 +39,10 @@ internal class RoomExpenseCategoryRepository(database: AppDatabase) : ExpenseCat
 
     override suspend fun hasExpenses(id: Long): Boolean = categories.hasExpenses(id)
 
+    override fun observeExpenseCounts(): Flow<Map<Long, Int>> = categories.observeExpenseCounts()
+        .map { rows -> rows.associate { it.ownerId to it.count } }
+        .distinctUntilChanged()
+
     override suspend fun insert(details: ExpenseCategoryDetails, createdAt: Instant): Long =
         writes.inTransaction {
             val at = createdAt.toStoredMillis()

@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryDetails
+import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
@@ -17,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListDay
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListRow
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseMonth
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseResult
+import io.github.yesidrobayo.shopledger.domain.usecase.expense.SaveExpenseCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseResult
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -128,6 +130,8 @@ class ExpensesViewModelTest {
     private var registerResult: RegisterExpenseResult = RegisterExpenseResult.Registered(41)
     private val voids = mutableListOf<Triple<Long, VoidReason, String?>>()
     private var voidResult: VoidExpenseResult = VoidExpenseResult.Voided
+    private val newCategories = mutableListOf<String>()
+    private var categoryResult: SaveExpenseCategoryResult = SaveExpenseCategoryResult.Saved(30)
 
     private fun TestScope.viewModel(
         calendarResult: BusinessCalendarResult = BusinessCalendarResult.Ready(calendar),
@@ -145,6 +149,10 @@ class ExpensesViewModelTest {
                 voidResult
             },
             numbers = ExpenseNumberFormat(symbols, currencyDecimals = 2),
+            createCategory = { draft ->
+                newCategories += draft.name
+                categoryResult
+            },
         )
         advanceUntilIdle()
         return model
@@ -419,5 +427,48 @@ class ExpensesViewModelTest {
             assertNull(model.uiState.value.detail)
             model.onAction(ExpensesAction.CloseCategories)
             assertEquals(false, model.uiState.value.categorySheet)
+        }
+
+    @Test
+    fun `a category created from the new expense stays chosen, and its errors stay in its sheet`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            model.onAction(ExpensesAction.NewCategory)
+            assertNull(model.uiState.value.newCategory)
+
+            model.onAction(ExpensesAction.NewExpense)
+            model.onAction(ExpensesAction.AmountChange("5"))
+            model.onAction(ExpensesAction.NewCategory)
+            for ((result, error) in listOf(
+                SaveExpenseCategoryResult.DuplicateName to ExpenseCategoryNameError.DUPLICATE,
+                SaveExpenseCategoryResult.Invalid(setOf(ExpenseCategoryInputError.NAME_EMPTY)) to
+                    ExpenseCategoryNameError.EMPTY,
+                SaveExpenseCategoryResult.Invalid(setOf(ExpenseCategoryInputError.NAME_TOO_LONG)) to
+                    ExpenseCategoryNameError.TOO_LONG,
+            )) {
+                categoryResult = result
+                model.onAction(ExpensesAction.SaveCategory)
+                advanceUntilIdle()
+                assertEquals(error, model.uiState.value.newCategory?.error)
+            }
+            categoryResult = SaveExpenseCategoryResult.StorageFailed(StorageFailure.IO_ERROR)
+            model.onAction(ExpensesAction.SaveCategory)
+            advanceUntilIdle()
+            assertEquals(true, model.uiState.value.newCategory?.saveFailed)
+
+            categoryResult = SaveExpenseCategoryResult.Saved(30)
+            model.onAction(ExpensesAction.NewCategoryNameChange("Fumigación"))
+            assertNull(model.uiState.value.newCategory?.error)
+            model.onAction(ExpensesAction.SaveCategory)
+            advanceUntilIdle()
+
+            assertNull(model.uiState.value.newCategory)
+            assertEquals(30L, model.uiState.value.form?.categoryId)
+            assertEquals("5", model.uiState.value.form?.amountText)
+            assertEquals("Fumigación", newCategories.last())
+
+            model.onAction(ExpensesAction.NewCategory)
+            model.onAction(ExpensesAction.CloseCategory)
+            assertNull(model.uiState.value.newCategory)
         }
 }

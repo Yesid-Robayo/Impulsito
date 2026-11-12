@@ -35,6 +35,7 @@ import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.safety.PolicyConsentUseCase
 import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
+import io.github.yesidrobayo.shopledger.ui.category.CategoriesRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
@@ -232,6 +233,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.PurchaseDetail -> PurchaseDetailRoute(key, navigator)
 
         is AppNavKey.Expenses -> ExpensesRoute(key, navigator)
+
+        AppNavKey.Categories -> CategoriesRoute(key, navigator)
 
         is AppNavKey.SaleDetail -> SaleDetailRoute(key, navigator)
 

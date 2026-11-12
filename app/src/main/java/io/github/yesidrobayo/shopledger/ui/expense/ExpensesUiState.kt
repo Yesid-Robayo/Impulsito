@@ -32,6 +32,7 @@ data class ExpensesUiState(
     val form: ExpenseForm? = null,
     val selectedExpenseId: Long? = null,
     val message: ExpenseMessage? = null,
+    val newCategory: NewExpenseCategory? = null,
 ) {
     /** Las categorías que se ofrecen en un gasto nuevo: solo las vigentes. */
     val activeCategories: List<ExpenseCategory> get() = categories.filter { !it.isArchived }
@@ -152,6 +153,25 @@ sealed interface ExpenseFormNotice {
     data object CategoryUnavailable : ExpenseFormNotice
 }
 
+/**
+ * La hoja de una categoría nueva, abierta desde el gasto nuevo: al guardarla, queda elegida en el
+ * gasto, que sigue con lo escrito.
+ */
+@Immutable
+data class NewExpenseCategory(
+    val name: String = "",
+    val error: ExpenseCategoryNameError? = null,
+    val saving: Boolean = false,
+    val saveFailed: Boolean = false,
+)
+
+/** Lo que impide guardar el nombre de la categoría nueva. */
+enum class ExpenseCategoryNameError {
+    EMPTY,
+    TOO_LONG,
+    DUPLICATE,
+}
+
 /** El aviso breve que sigue a guardar o anular, para mostrarlo una vez. */
 sealed interface ExpenseMessage {
     /** Se guardó el gasto [expenseId] por [amount]. */
@@ -203,6 +223,15 @@ sealed interface ExpensesAction {
     data object Save : ExpensesAction
 
     data object CloseForm : ExpensesAction
+
+    /** Abrir la hoja de una categoría nueva desde el gasto nuevo. */
+    data object NewCategory : ExpensesAction
+
+    data class NewCategoryNameChange(val name: String) : ExpensesAction
+
+    data object SaveCategory : ExpensesAction
+
+    data object CloseCategory : ExpensesAction
 
     /** El aviso breve ya se mostró. */
     data object MessageShown : ExpensesAction

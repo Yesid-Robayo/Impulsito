@@ -25,6 +25,13 @@ interface ExpenseCategoryRepository {
     /** Si tiene gastos, aunque estén anulados. Con gastos ya no se borra: solo se archiva. */
     suspend fun hasExpenses(id: Long): Boolean
 
+    /**
+     * Cuántos gastos, activos o anulados, tiene cada categoría, de nuevo con cada cambio. Cuentan
+     * también los anulados porque son los que impiden eliminarla. Una categoría sin gastos no
+     * aparece en el mapa.
+     */
+    fun observeExpenseCounts(): Flow<Map<Long, Int>>
+
     /** Crea una categoría de la persona, sin clave inicial, y devuelve su id. */
     suspend fun insert(details: ExpenseCategoryDetails, createdAt: Instant): Long
 

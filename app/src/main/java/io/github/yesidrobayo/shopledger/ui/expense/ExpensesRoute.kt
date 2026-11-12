@@ -8,6 +8,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ObserveExpenseMonthUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.expense.SaveExpenseCategoryUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -45,6 +46,8 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                 clock = clock,
             )
             val void = VoidExpenseUseCase(ports.transactions, ports.expenses, clock)
+            val saveCategory =
+                SaveExpenseCategoryUseCase(ports.transactions, ports.expenseCategories, clock)
             ExpensesViewModel(
                 observeMonth = { month, categoryId -> observe(month, categoryId) },
                 calendar = BusinessCalendarSource(ports.settings).observe(),
@@ -52,6 +55,7 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                 register = { register(it) },
                 void = { id, reason, note -> void(id, reason, note) },
                 numbers = numbers,
+                createCategory = { draft -> saveCategory(null, draft) },
             )
         }
     when (model) {
@@ -116,6 +120,10 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                         ExpensesAction.Save,
                         ExpensesAction.CloseForm,
                         ExpensesAction.MessageShown,
+                        ExpensesAction.NewCategory,
+                        is ExpensesAction.NewCategoryNameChange,
+                        ExpensesAction.SaveCategory,
+                        ExpensesAction.CloseCategory,
                         -> Unit
                     }
                 },

@@ -51,6 +51,8 @@ class PurchasePriceReviewTest {
 
         override suspend fun countProducts(id: Long): Int = error("No se usa")
 
+        override fun observeProductCounts(): Flow<Map<Long, Int>> = error("No se usa")
+
         override suspend fun insert(details: CategoryDetails, createdAt: Instant): Long =
             error("No se usa")
 

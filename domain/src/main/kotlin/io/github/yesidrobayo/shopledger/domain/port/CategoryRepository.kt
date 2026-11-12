@@ -23,6 +23,12 @@ interface CategoryRepository {
     /** Cuántos productos, archivados o no, tienen esta categoría: se muestra antes de eliminarla. */
     suspend fun countProducts(id: Long): Int
 
+    /**
+     * Cuántos productos, archivados o no, tiene cada categoría, de nuevo con cada cambio. Una
+     * categoría sin productos no aparece en el mapa.
+     */
+    fun observeProductCounts(): Flow<Map<Long, Int>>
+
     /** Crea la categoría y devuelve su id. */
     suspend fun insert(details: CategoryDetails, createdAt: Instant): Long
 

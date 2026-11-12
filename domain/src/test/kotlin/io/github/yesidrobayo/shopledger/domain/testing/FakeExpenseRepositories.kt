@@ -76,6 +76,10 @@ internal class FakeExpenseCategoryRepository(private val database: InMemoryDatab
     override suspend fun hasExpenses(id: Long): Boolean =
         database.read().expenses.values.any { it.content.expenseCategoryId == id }
 
+    override fun observeExpenseCounts(): Flow<Map<Long, Int>> = database.tables.map { tables ->
+        tables.expenses.values.groupingBy { it.content.expenseCategoryId }.eachCount()
+    }
+
     override suspend fun insert(details: ExpenseCategoryDetails, createdAt: Instant): Long {
         details.normalizedName?.let { check(findActiveByNormalizedName(it) == null) }
         val id = database.nextId(TABLE)
