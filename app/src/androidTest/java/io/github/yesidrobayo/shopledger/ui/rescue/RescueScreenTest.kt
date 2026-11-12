@@ -38,9 +38,15 @@ class RescueScreenTest {
 
     private fun text(id: Int) = context.getString(id)
 
-    private fun show(state: RescueUiState, support: List<SupportLine> = emptyList()) {
+    private fun show(
+        state: RescueUiState,
+        support: List<SupportLine> = emptyList(),
+        crashLog: String? = null,
+    ) {
         compose.setContent {
-            PreviewTheme { RescueScreen(state, support, onAction = { actions += it }) }
+            PreviewTheme {
+                RescueScreen(state, support, onAction = { actions += it }, crashLog = crashLog)
+            }
         }
     }
 
@@ -201,6 +207,66 @@ class RescueScreenTest {
             .performScrollTo()
             .performClick()
         assertEquals(listOf<RescueAction>(RescueAction.BeforeUpdate), actions)
+    }
+
+    @Test
+    fun safeModeLeadsWithRetryOpeningAndKeepsTheOtherWays() {
+        show(RescueUiState(RescueReason.SafeMode, BackupDestinationKind.WEBDAV))
+
+        compose.onNodeWithText(text(R.string.rescue_safe_mode_title)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.rescue_safe_mode_body)).assertIsDisplayed()
+        compose.onNodeWithText(
+            text(R.string.rescue_safe_mode_retry),
+        ).performScrollTo().performClick()
+        compose.onNodeWithText(
+            text(R.string.backup_action_restore),
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(
+            text(R.string.backup_action_find_file),
+        ).performScrollTo().assertIsDisplayed()
+        assertEquals(listOf<RescueAction>(RescueAction.RetryOpen), actions)
+    }
+
+    @Test
+    fun safeModeWithAReadableJournalOnlyOffersRetryAndSupport() {
+        show(
+            RescueUiState(
+                RescueReason.SafeMode,
+                BackupDestinationKind.WEBDAV,
+                damagedAvailable = true,
+                restorePending = true,
+            ),
+        )
+
+        compose.onNodeWithText(text(R.string.rescue_detail_journal)).assertIsDisplayed()
+        compose.onNodeWithText(
+            text(R.string.rescue_safe_mode_retry),
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(
+            text(R.string.settings_support),
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.backup_action_restore)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.backup_action_find_file)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.backup_damaged_share_action)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.language_title)).assertDoesNotExist()
+    }
+
+    @Test
+    fun theCrashLogIsShownWholeBeforeItCanBeShared() {
+        val log =
+            "format=1\nkind=java_crash\njava.lang.IllegalStateException\n" +
+                "\tat a.b.C.d(Unknown Source)"
+        show(RescueUiState(RescueReason.SafeMode, supportOpen = true), crashLog = log)
+
+        compose.onNodeWithText(
+            text(R.string.rescue_crash_log_help),
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(
+            "kind=java_crash",
+            substring = true,
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.action_share)).performScrollTo().performClick()
+        assertEquals(listOf<RescueAction>(RescueAction.ShareCrashLog), actions)
     }
 
     @Test

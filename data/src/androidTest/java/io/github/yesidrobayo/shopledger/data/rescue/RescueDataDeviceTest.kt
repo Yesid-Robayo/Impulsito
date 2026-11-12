@@ -185,6 +185,26 @@ class RescueDataDeviceTest {
         assertEquals(OpeningStep.OPENING, graph.opening.value)
     }
 
+    @Test
+    fun onlyAReadableUnfinishedJournalCountsAsPendingAndNothingIsTouched() = runBlocking {
+        val rescue = graph().rescue
+        assertFalse(rescue.hasPendingRestore())
+
+        restoreFiles.restoreDirectory.mkdirs()
+        val readable =
+            "{\"state\":\"PREPARED\",\"expected_sha256\":\"${"a".repeat(64)}\"," +
+                "\"expected_change_seq\":3,\"expected_record_count\":5,\"had_active_db\":true," +
+                "\"safety_copy_ok\":true,\"sha_verified\":false}"
+        restoreFiles.journal.writeText(readable)
+        assertTrue(rescue.hasPendingRestore())
+        assertEquals(readable, restoreFiles.journal.readText())
+
+        restoreFiles.journal.writeText("diario de prueba que no se entiende")
+        assertFalse(rescue.hasPendingRestore())
+        assertTrue(restoreFiles.journal.exists())
+        assertFalse(restoreFiles.journalUnreadable.exists())
+    }
+
     private fun graph() = DataGraph(context, Dispatchers.IO, FIXED_CLOCK, { files }, SilentLog)
 
     /** Una base que ya existió y hoy no es una base: la que lleva al rescate. */

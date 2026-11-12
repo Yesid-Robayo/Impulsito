@@ -58,6 +58,12 @@ class ShopLedgerApp :
      */
     fun retryOpening() = withDiskPermit { bootGuard.retry() }
 
+    /**
+     * El registro local de fallos, para mostrarlo en el rescate antes de compartirlo. Lee el disco:
+     * va fuera del hilo principal.
+     */
+    fun crashReport(): String = bootGuard.crashReport()
+
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
         // Paso 1 del conteo, antes que todo: lee, decide el modo seguro y, si no, anota un intento.

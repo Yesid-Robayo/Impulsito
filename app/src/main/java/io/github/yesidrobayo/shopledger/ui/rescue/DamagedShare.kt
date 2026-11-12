@@ -23,6 +23,12 @@ internal object ExportFolder {
     /** El tipo del paquete. */
     const val ZIP_TYPE = "application/zip"
 
+    /** El registro de fallos, como texto. */
+    const val CRASH_LOG_FILE_NAME = "crash-log.txt"
+
+    /** El tipo del registro de fallos. */
+    const val TEXT_TYPE = "text/plain"
+
     /** La carpeta. Pedirla no toca el disco. */
     fun of(context: Context): File = File(context.cacheDir, NAME)
 
@@ -42,14 +48,32 @@ internal object ExportFolder {
  * compartir, o nula si no hay base dañada o no se pudo escribir. Si algo falla, la carpeta queda
  * vacía. Lee y escribe el disco: va fuera del hilo principal.
  */
-internal suspend fun exportDamaged(context: Context, export: suspend (File) -> Boolean): Uri? {
+internal suspend fun exportDamaged(context: Context, export: suspend (File) -> Boolean): Uri? =
+    exportFile(context, ExportFolder.DAMAGED_FILE_NAME, export)
+
+/**
+ * Deja en `cache/exports/` el registro de fallos, [text], y devuelve su dirección para compartir, o
+ * nula si no se pudo escribir. Si algo falla, la carpeta queda vacía. Lee y escribe el disco.
+ */
+internal suspend fun exportCrashLog(context: Context, text: String): Uri? =
+    exportFile(context, ExportFolder.CRASH_LOG_FILE_NAME) { target ->
+        target.writeText(text, Charsets.UTF_8)
+        true
+    }
+
+/** Vacía la carpeta, escribe [name] con [write] y da su dirección; si algo falla, no deja nada. */
+private suspend fun exportFile(
+    context: Context,
+    name: String,
+    write: suspend (File) -> Boolean,
+): Uri? {
     var shared: Uri? = null
     try {
         ExportFolder.clear(context)
         val folder = ExportFolder.of(context)
         if (!folder.isDirectory && !folder.mkdirs()) throw IOException("Sin carpeta de exportación")
-        val target = File(folder, ExportFolder.DAMAGED_FILE_NAME)
-        if (export(target)) {
+        val target = File(folder, name)
+        if (write(target)) {
             shared = FileProvider.getUriForFile(context, ExportFolder.authority(context), target)
         }
         return shared
@@ -67,10 +91,15 @@ internal suspend fun exportDamaged(context: Context, export: suspend (File) -> B
  * El selector del sistema para compartir [uri], con permiso solo de lectura. Lo lanza un toque de
  * la persona, después de la advertencia: nunca sale solo.
  */
-internal fun damagedShareIntent(uri: Uri): Intent {
+internal fun damagedShareIntent(uri: Uri): Intent = shareIntent(uri, ExportFolder.ZIP_TYPE)
+
+/** El selector del sistema para compartir el registro de fallos, ya mostrado en la pantalla. */
+internal fun crashLogShareIntent(uri: Uri): Intent = shareIntent(uri, ExportFolder.TEXT_TYPE)
+
+private fun shareIntent(uri: Uri, type: String): Intent {
     val send =
         Intent(Intent.ACTION_SEND)
-            .setType(ExportFolder.ZIP_TYPE)
+            .setType(type)
             .putExtra(Intent.EXTRA_STREAM, uri)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     // El permiso viaja con el contenido del recorte: así llega también a la app que se elija.

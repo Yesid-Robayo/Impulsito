@@ -73,6 +73,8 @@ data class SupportLine(val label: String, val value: String)
  *
  * @param support las líneas de `Información para soporte`.
  * @param languageSheet el selector de idioma, que no lee la base.
+ * @param crashLog el registro local de fallos, en modo seguro, o nulo. Se muestra entero antes de
+ *   ofrecer compartirlo.
  */
 @Composable
 fun RescueScreen(
@@ -80,6 +82,7 @@ fun RescueScreen(
     support: List<SupportLine>,
     onAction: (RescueAction) -> Unit,
     languageSheet: @Composable () -> Unit = {},
+    crashLog: String? = null,
 ) {
     val restore: (BackupAction) -> Unit = { onAction(RescueAction.Restore(it)) }
     Surface(
@@ -96,7 +99,11 @@ fun RescueScreen(
                     .padding(AppTheme.spacing.s24),
                 verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
             ) {
-                Heading(uiState.cause, hasBeforeUpdate = uiState.beforeUpdate != null)
+                Heading(
+                    uiState.cause,
+                    hasBeforeUpdate = uiState.beforeUpdate != null,
+                    restorePending = uiState.onlyRetry,
+                )
                 NoticeCard(
                     text = stringResource(
                         R.string.rescue_warning,
@@ -104,7 +111,7 @@ fun RescueScreen(
                     ),
                     variant = NoticeVariant.WARNING,
                 )
-                if (uiState.damagedAvailable) {
+                if (uiState.damagedAvailable && !uiState.onlyRetry) {
                     NoticeCard(
                         text = stringResource(R.string.backup_damaged_notice),
                         variant = NoticeVariant.WARNING,
@@ -118,7 +125,7 @@ fun RescueScreen(
         }
     }
     if (uiState.copiesOpen) CopiesSheet(uiState, onAction)
-    if (uiState.supportOpen) SupportSheet(support, onAction)
+    if (uiState.supportOpen) SupportSheet(support, crashLog, onAction)
     if (uiState.languageOpen) languageSheet()
     if (uiState.sharing) {
         ConfirmDialog(
@@ -142,7 +149,7 @@ fun RescueScreen(
 
 /** El icono, el título y la causa, en palabras que no prometen nada que no pasó. */
 @Composable
-private fun Heading(cause: RescueReason, hasBeforeUpdate: Boolean) {
+private fun Heading(cause: RescueReason, hasBeforeUpdate: Boolean, restorePending: Boolean) {
     val app = stringResource(R.string.app_name)
     Icon(
         painter = painterResource(R.drawable.ic_error),
@@ -195,7 +202,15 @@ private fun Heading(cause: RescueReason, hasBeforeUpdate: Boolean) {
             RescueReason.RestoreJournalUnreadable ->
                 listOf(stringResource(R.string.rescue_detail_journal))
 
-            RescueReason.SafeMode -> listOf(stringResource(R.string.rescue_safe_mode_body))
+            RescueReason.SafeMode ->
+                if (restorePending) {
+                    listOf(
+                        stringResource(R.string.rescue_safe_mode_body),
+                        stringResource(R.string.rescue_detail_journal),
+                    )
+                } else {
+                    listOf(stringResource(R.string.rescue_safe_mode_body))
+                }
 
             is RescueReason.NotEnoughSpace -> {
                 val formats = rememberRescueFormats()
@@ -240,6 +255,17 @@ private fun Actions(uiState: RescueUiState, onAction: (RescueAction) -> Unit) {
                 stringResource(R.string.rescue_safe_mode_retry) to
                     { onAction(RescueAction.RetryOpen) }
         }
+    if (uiState.onlyRetry) {
+        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
+            PrimaryActionButton(primaryText, primaryClick, ActionVariant.PRIMARY)
+            PrimaryActionButton(
+                stringResource(R.string.settings_support),
+                { onAction(RescueAction.ShowSupport) },
+                ActionVariant.TEXT,
+            )
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
         PrimaryActionButton(primaryText, primaryClick, ActionVariant.PRIMARY)
         val retrying = primary == RescuePrimary.RETRY || primary == RescuePrimary.RETRY_OPEN
@@ -362,7 +388,11 @@ private fun CopiesSheet(uiState: RescueUiState, onAction: (RescueAction) -> Unit
 
 /** `Información para soporte`: lo técnico, con `Copiar`, y nunca un dato del negocio. */
 @Composable
-private fun SupportSheet(lines: List<SupportLine>, onAction: (RescueAction) -> Unit) {
+private fun SupportSheet(
+    lines: List<SupportLine>,
+    crashLog: String?,
+    onAction: (RescueAction) -> Unit,
+) {
     AppBottomSheet(
         onDismissRequest = { onAction(RescueAction.CloseSupport) },
         title = stringResource(R.string.settings_support),
@@ -390,7 +420,30 @@ private fun SupportSheet(lines: List<SupportLine>, onAction: (RescueAction) -> U
                     Text(line.value, style = MaterialTheme.typography.bodyLarge)
                 }
             }
+            if (!crashLog.isNullOrEmpty()) CrashLog(crashLog, onAction)
         }
+    }
+}
+
+/**
+ * El registro local de fallos: qué contiene, el texto entero y `Compartir`. Solo clase de error,
+ * versiones y pila ofuscada, nunca un mensaje ni un dato del negocio. Sale solo si la persona lo
+ * comparte.
+ */
+@Composable
+private fun CrashLog(text: String, onAction: (RescueAction) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+        Text(
+            stringResource(R.string.rescue_crash_log_help),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        // La hoja ya se desplaza: el registro va entero, sin un segundo desplazamiento dentro.
+        Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth())
+        InlineTextButton(
+            stringResource(R.string.action_share),
+            { onAction(RescueAction.ShareCrashLog) },
+        )
     }
 }
 

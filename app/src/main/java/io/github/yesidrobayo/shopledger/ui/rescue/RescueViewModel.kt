@@ -32,6 +32,8 @@ import kotlinx.coroutines.withContext
  * @param destination el destino de `link.json` y sus copias.
  * @param destinationKind el tipo de ese destino, o nulo sin `link.json`.
  * @param hasDamagedOriginal si una restauración apartó una base dañada.
+ * @param hasPendingRestore si hay un reemplazo sin terminar con su diario legible. Solo importa en
+ *   modo seguro, que corre antes de terminarlo.
  * @param use restaurar una copia, un archivo o la copia previa a la actualización, sin la base.
  * @param computation el hilo de las lecturas, fuera del principal.
  */
@@ -40,6 +42,7 @@ class RescueViewModel(
     private val destination: BackupDestinationReader,
     private val destinationKind: suspend () -> BackupDestinationKind?,
     private val hasDamagedOriginal: suspend () -> Boolean,
+    private val hasPendingRestore: suspend () -> Boolean,
     private val use: RestoreBackupUseCase,
     private val computation: CoroutineDispatcher,
 ) : ViewModel() {
@@ -63,11 +66,14 @@ class RescueViewModel(
             val kind = read { destinationKind() }
             val damaged = read { hasDamagedOriginal() } == true
             val beforeUpdate = read { use.beforeUpdateCopy() }
+            // Si no se puede leer, se supone que hay uno: ofrecer restaurar podría pisarlo.
+            val pending = read { hasPendingRestore() } ?: true
             state.update {
                 it.copy(
                     destinationKind = kind,
                     damagedAvailable = damaged,
                     beforeUpdate = beforeUpdate,
+                    restorePending = pending,
                 )
             }
         }
@@ -100,7 +106,11 @@ class RescueViewModel(
                 state.update { it.copy(sharing = false) }
 
             // Lo resuelve la pantalla: reiniciar la app, o el portapapeles.
-            RescueAction.Retry, RescueAction.RetryOpen, RescueAction.CopySupport -> Unit
+            RescueAction.Retry,
+            RescueAction.RetryOpen,
+            RescueAction.CopySupport,
+            RescueAction.ShareCrashLog,
+            -> Unit
         }
     }
 
@@ -169,7 +179,7 @@ class RescueViewModel(
     }
 
     private fun showCopies() {
-        if (state.value.destinationKind == null) return
+        if (state.value.destinationKind == null || state.value.onlyRetry) return
         state.update { it.copy(copiesOpen = true) }
         list()
     }

@@ -3,6 +3,8 @@ package io.github.yesidrobayo.shopledger.data.rescue
 import io.github.yesidrobayo.shopledger.data.backup.DamagedOriginals
 import io.github.yesidrobayo.shopledger.data.backup.DurableFileOps
 import io.github.yesidrobayo.shopledger.data.backup.RestoreFiles
+import io.github.yesidrobayo.shopledger.data.backup.RestoreJournalRead
+import io.github.yesidrobayo.shopledger.data.backup.RestoreJournalStore
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
@@ -39,6 +41,15 @@ class RescueData internal constructor(
 ) {
     /** El tipo del destino de `link.json`, o nulo si no hay ninguno guardado. Lee el disco. */
     suspend fun savedDestinationKind(): BackupDestinationKind? = savedKind()
+
+    /**
+     * Si hay un reemplazo de una restauración sin terminar, con su diario legible. El modo seguro
+     * corre antes de terminarlo: entonces solo se ofrece reintentar, porque una restauración nueva
+     * escribiría encima de ese diario. Un diario ilegible no cuenta: ese ya se apartó. Lee el disco.
+     */
+    suspend fun hasPendingRestore(): Boolean = withContext(ioContext) {
+        RestoreJournalStore(restoreFiles(), DurableFileOps()).read() is RestoreJournalRead.Present
+    }
 
     /** Si hay una base dañada apartada por una restauración. Lee el disco. */
     suspend fun hasDamagedOriginal(): Boolean = withContext(ioContext) { newestDamaged() != null }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El registro local de fallos en la información para soporte. Textos de la guía de redacción. -->
+    <string name="rescue_crash_log_help">Includes only the error type, version and technical data. Never business data.</string>
+</resources>

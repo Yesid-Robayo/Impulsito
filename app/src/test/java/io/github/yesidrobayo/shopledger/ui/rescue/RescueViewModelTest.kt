@@ -113,6 +113,7 @@ class RescueViewModelTest {
         cause: RescueReason = RescueReason.OpenFailed,
         kind: BackupDestinationKind? = BackupDestinationKind.WEBDAV,
         damaged: Boolean = false,
+        pending: Boolean = false,
     ): RescueViewModel {
         val model =
             RescueViewModel(
@@ -120,6 +121,7 @@ class RescueViewModelTest {
                 destination = BackupDestinationReader(destination),
                 destinationKind = { kind },
                 hasDamagedOriginal = { damaged },
+                hasPendingRestore = { pending },
                 use = RestoreBackupUseCase(restore),
                 computation = dispatcher,
             )
@@ -261,6 +263,7 @@ class RescueViewModelTest {
                     destination = BackupDestinationReader(destination),
                     destinationKind = { error("link.json no se pudo leer") },
                     hasDamagedOriginal = { error("la carpeta no se pudo leer") },
+                    hasPendingRestore = { false },
                     use = RestoreBackupUseCase(restore),
                     computation = dispatcher,
                 )
@@ -312,6 +315,53 @@ class RescueViewModelTest {
             model.onAction(RescueAction.BeforeUpdate)
             assertEquals(RestoreUi.Idle, model.uiState.value.restore)
         }
+
+    @Test
+    fun `safe mode leads with retry opening and still offers the copies`() = runTest(dispatcher) {
+        val model = model(cause = RescueReason.SafeMode)
+
+        assertEquals(RescuePrimary.RETRY_OPEN, model.uiState.value.primary)
+        assertFalse(model.uiState.value.onlyRetry)
+        model.onAction(RescueAction.ShowCopies)
+        assertTrue(model.uiState.value.copiesOpen)
+    }
+
+    @Test
+    fun `safe mode with a readable unfinished journal offers nothing that restores`() =
+        runTest(dispatcher) {
+            val model = model(cause = RescueReason.SafeMode, pending = true)
+
+            assertTrue(model.uiState.value.onlyRetry)
+            model.onAction(RescueAction.ShowCopies)
+            advanceUntilIdle()
+            assertFalse(model.uiState.value.copiesOpen)
+            assertEquals(0, destination.lists)
+        }
+
+    @Test
+    fun `a journal outside safe mode does not limit the rescue`() = runTest(dispatcher) {
+        val model = model(cause = RescueReason.OpenFailed, pending = true)
+
+        assertFalse(model.uiState.value.onlyRetry)
+        assertEquals(RescuePrimary.RESTORE, model.uiState.value.primary)
+    }
+
+    @Test
+    fun `a journal that cannot be checked counts as pending in safe mode`() = runTest(dispatcher) {
+        val model =
+            RescueViewModel(
+                cause = RescueReason.SafeMode,
+                destination = BackupDestinationReader(destination),
+                destinationKind = { BackupDestinationKind.WEBDAV },
+                hasDamagedOriginal = { false },
+                hasPendingRestore = { error("el diario no se pudo mirar") },
+                use = RestoreBackupUseCase(restore),
+                computation = dispatcher,
+            )
+        advanceUntilIdle()
+
+        assertTrue(model.uiState.value.onlyRetry)
+    }
 
     @Test
     fun `support and language open and close`() = runTest(dispatcher) {

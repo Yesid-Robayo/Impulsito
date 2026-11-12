@@ -63,6 +63,7 @@ fun RescueRoute(cause: RescueReason) {
                             destination = BackupDestinationReader(rescue.destination),
                             destinationKind = rescue::savedDestinationKind,
                             hasDamagedOriginal = rescue::hasDamagedOriginal,
+                            hasPendingRestore = rescue::hasPendingRestore,
                             use = RestoreBackupUseCase(rescue.restore),
                             computation = io,
                         )
@@ -74,6 +75,12 @@ fun RescueRoute(cause: RescueReason) {
     val support by
         produceState(emptyList<SupportLine>(), cause) {
             value = withContext(io) { SupportFacts.of(context, cause).lines(context) }
+        }
+    // El registro de fallos solo se muestra en modo seguro, y solo lo que guardó este teléfono.
+    val crashLog by
+        produceState<String?>(null, cause) {
+            value =
+                if (cause == RescueReason.SafeMode) withContext(io) { app.crashReport() } else null
         }
     val supportLabel = stringResource(R.string.settings_support)
     val labels = LocalResources.current
@@ -115,6 +122,16 @@ fun RescueRoute(cause: RescueReason) {
                     },
                 )
 
+                RescueAction.ShareCrashLog -> {
+                    val text = crashLog
+                    if (!text.isNullOrEmpty()) {
+                        scope.launch {
+                            val uri = withContext(io) { exportCrashLog(context, text) }
+                            if (uri != null) share.launch(crashLogShareIntent(uri))
+                        }
+                    }
+                }
+
                 RescueAction.ConfirmShareDamaged -> {
                     viewModel.onAction(action)
                     scope.launch {
@@ -152,6 +169,7 @@ fun RescueRoute(cause: RescueReason) {
                 -> viewModel.onAction(action)
             }
         },
+        crashLog = crashLog,
         languageSheet = {
             RescueLanguageSheet(onDismiss = { viewModel.onAction(RescueAction.CloseLanguage) })
         },

@@ -18,6 +18,8 @@ import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
  * @property damagedAvailable si una restauración apartó una base dañada que se puede compartir.
  * @property sharing si el diálogo para compartir esa base está abierto.
  * @property beforeUpdate la copia previa a la última actualización, o nula si no hay.
+ * @property restorePending si hay un reemplazo de una restauración sin terminar, con su diario
+ *   legible. En modo seguro, entonces solo se ofrecen `Reintentar abrir` e `Información para soporte`.
  */
 data class RescueUiState(
     val cause: RescueReason,
@@ -30,7 +32,14 @@ data class RescueUiState(
     val damagedAvailable: Boolean = false,
     val sharing: Boolean = false,
     val beforeUpdate: BeforeUpdateCopy? = null,
+    val restorePending: Boolean = false,
 ) {
+    /**
+     * En modo seguro con un diario legible sin terminar: una restauración nueva escribiría encima
+     * de ese diario, así que no se ofrece nada que restaure.
+     */
+    val onlyRetry: Boolean get() = cause == RescueReason.SafeMode && restorePending
+
     /** La acción principal, según la causa y lo que haya en el teléfono. */
     val primary: RescuePrimary
         get() = when {
@@ -95,6 +104,9 @@ sealed interface RescueAction {
 
     /** `Copiar` en la hoja de soporte: lo copia la pantalla, que tiene el portapapeles. */
     data object CopySupport : RescueAction
+
+    /** `Compartir` el registro de fallos, ya a la vista en la hoja de soporte. */
+    data object ShareCrashLog : RescueAction
 
     data object ShowLanguage : RescueAction
 
