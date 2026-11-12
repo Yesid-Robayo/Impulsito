@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos del ajuste de stock y del inventario, copiados de la guía de redacción. -->
+<resources>
+    <string name="stock_tab_counted">Actual count</string>
+    <string name="stock_tab_out">Out</string>
+    <string name="stock_in">In</string>
+    <string name="stock_save_adjustment">Save adjustment</string>
+    <string name="stock_result">%1$s left · Difference %2$s · Value %3$s</string>
+    <string name="form_unit_cost">Unit cost</string>
+    <string name="adjustment_reason_count_correction">Count correction</string>
+    <string name="adjustment_reason_damaged">Damaged or broken</string>
+    <string name="adjustment_reason_expired">Expired</string>
+    <string name="adjustment_reason_lost_or_stolen">Lost or stolen</string>
+    <string name="adjustment_reason_own_use">Own use</string>
+    <string name="adjustment_reason_gift_or_sample">Gift or sample</string>
+    <string name="adjustment_reason_other">Other</string>
+    <string name="confirm_stock_adjusted">Stock updated: %1$s left</string>
+    <string name="confirm_stock_no_difference">No differences: the stock was already correct</string>
+    <string name="notice_adjustment_history">Adjustments stay in the history. They can be voided, not deleted.</string>
+    <string name="notice_adjustment_no_cost">This product has no cost, so the adjustment is worth %1$s. Correct the cost if it is known.</string>
+    <string name="error_other_reason_note">Add a note with what happened</string>
+</resources>

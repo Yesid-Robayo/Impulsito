@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos del ajuste de stock y del inventario, copiados de la guía de redacción. -->
+<resources>
+    <string name="stock_tab_counted">Contagem real</string>
+    <string name="stock_tab_out">Saída</string>
+    <string name="stock_in">Entrada</string>
+    <string name="stock_save_adjustment">Salvar ajuste</string>
+    <string name="stock_result">Restam %1$s · Diferença %2$s · Valor %3$s</string>
+    <string name="form_unit_cost">Custo unitário</string>
+    <string name="adjustment_reason_count_correction">Correção por contagem</string>
+    <string name="adjustment_reason_damaged">Danificado ou quebrado</string>
+    <string name="adjustment_reason_expired">Vencido</string>
+    <string name="adjustment_reason_lost_or_stolen">Perda ou roubo</string>
+    <string name="adjustment_reason_own_use">Consumo próprio</string>
+    <string name="adjustment_reason_gift_or_sample">Presente ou amostra</string>
+    <string name="adjustment_reason_other">Outro</string>
+    <string name="confirm_stock_adjusted">Estoque atualizado: restam %1$s</string>
+    <string name="confirm_stock_no_difference">Sem diferenças: o estoque já estava certo</string>
+    <string name="notice_adjustment_history">Os ajustes ficam no histórico. Podem ser anulados, não apagados.</string>
+    <string name="notice_adjustment_no_cost">Este produto não tem custo, então o ajuste vale %1$s. É possível corrigir o custo, se for conhecido.</string>
+    <string name="error_other_reason_note">Falta uma nota com o que aconteceu</string>
+</resources>
