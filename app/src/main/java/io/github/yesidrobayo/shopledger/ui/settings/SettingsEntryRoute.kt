@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
 import io.github.yesidrobayo.shopledger.domain.model.region.DecimalSeparator
+import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverviewUseCase
@@ -49,6 +50,8 @@ import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermissio
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
 import io.github.yesidrobayo.shopledger.ui.rescue.appVersionOf
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
+import io.github.yesidrobayo.shopledger.ui.theme.LocalPaletteChooser
+import io.github.yesidrobayo.shopledger.ui.theme.PaletteChoice
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -217,6 +220,20 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
         export?.onAction(CsvExportAction.MessageShown)
     }, onRetry = { startExport(lastExport) })
     val notificationPermission = LocalNotificationPermission.current
+    // La paleta cambia en pantalla al instante; si no se guarda, vuelve la anterior y se dice.
+    val paletteChooser = LocalPaletteChooser.current
+    var failedPalette by remember { mutableStateOf<ColorPalette?>(null) }
+    val choosePalette: (ColorPalette) -> Unit = { palette ->
+        failedPalette = null
+        if (paletteChooser != null) {
+            scope.launch {
+                when (paletteChooser.choose(palette)) {
+                    PaletteChoice.SAVED -> Unit
+                    PaletteChoice.NOT_SAVED -> failedPalette = palette
+                }
+            }
+        }
+    }
     val usageViewModel = (usageModel as? ScreenModel.Ready)?.viewModel
     val onUsageAction: (UsageAction) -> Unit = { action ->
         when (action) {
@@ -298,6 +315,9 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 usage = usage,
                 notificationsBlocked = notificationsBlocked,
                 onUsageAction = onUsageAction,
+                onChoosePalette = choosePalette,
+                paletteFailed = failedPalette != null,
+                onRetryPalette = { failedPalette?.let(choosePalette) },
             )
         }
     }

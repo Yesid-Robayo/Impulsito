@@ -30,4 +30,17 @@
     <string name="settings_theme_system">Automatic</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
+    <!-- Colores: el selector de paletas. -->
+    <string name="settings_palette_help">Colors change right away. The app icon stays the same.</string>
+    <string name="settings_palette_default">Default</string>
+    <string name="settings_palette_error">The colors could not be changed. The previous ones remain.</string>
+    <string name="settings_palette_indigo_mustard">Indigo and mustard</string>
+    <string name="settings_palette_berry_honey">Berry and honey</string>
+    <string name="settings_palette_raspberry_gold">Raspberry and gold</string>
+    <string name="settings_palette_wine_champagne">Wine and champagne</string>
+    <string name="settings_palette_plum_coral">Plum and coral</string>
+    <string name="settings_palette_forest_honey">Forest and honey</string>
+    <string name="settings_palette_carmine_gold">Carmine and gold</string>
+    <string name="settings_palette_garnet_honey">Garnet and honey</string>
+    <string name="settings_palette_vivid_red_cream">Vivid red and cream</string>
 </resources>

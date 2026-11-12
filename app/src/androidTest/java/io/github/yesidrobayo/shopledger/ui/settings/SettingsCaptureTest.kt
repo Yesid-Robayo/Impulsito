@@ -112,6 +112,24 @@ class SettingsCaptureTest {
         }
     }
 
+    @Test
+    fun capturesTheColorsSheetInEveryPaletteAndMode() {
+        val dir = captureDir
+        assumeTrue("Sin captureDir no hay capturas", dir != null)
+        for (palette in ColorPalette.entries) {
+            for (dark in listOf(false, true)) {
+                show(palette, dark)
+                compose.onNodeWithText(resources.getString(R.string.settings_palette_title))
+                    .performScrollTo()
+                    .performClick()
+                shoot(
+                    requireNotNull(dir),
+                    "colors-${palette.name.lowercase()}-${if (dark) "dark" else "light"}",
+                )
+            }
+        }
+    }
+
     private fun show(palette: ColorPalette, dark: Boolean) {
         // Primero nada: una hoja abierta de la captura anterior se cierra antes de dibujar de nuevo.
         compose.runOnUiThread { compose.activity.setContent {} }

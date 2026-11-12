@@ -1,8 +1,15 @@
 package io.github.yesidrobayo.shopledger.ui.settings
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -16,12 +23,18 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKin
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
+import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
+import io.github.yesidrobayo.shopledger.ui.components.paletteName
+import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
+import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
 import kotlin.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -310,6 +323,100 @@ class SettingsScreenTest {
 
         compose.onNodeWithText(text(R.string.settings_group_alerts)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.settings_group_appearance)).assertDoesNotExist()
+    }
+
+    /**
+     * Dibuja Ajustes dentro del tema con una paleta que cambia al elegirla, como hace la actividad, y
+     * con un guardado que puede fallar.
+     */
+    private fun showWithPalettes(saves: Boolean = true) {
+        compose.setContent {
+            var palette by remember { mutableStateOf(ColorPalette.INDIGO_MUSTARD) }
+            var failed by remember { mutableStateOf(false) }
+            AppTheme(palette = palette, darkTheme = false) {
+                CompositionLocalProvider(
+                    LocalAppFormats provides previewFormats(),
+                    LocalDiscreetMode provides false,
+                ) {
+                    SettingsEntryScreen(
+                        onOpen = {},
+                        onBack = {},
+                        overview = connected(),
+                        usage = UsageSettingsUiState(stockAlerts = true, theme = ThemeMode.SYSTEM),
+                        onChoosePalette = { chosen ->
+                            chosenPalettes += chosen
+                            if (saves) palette = chosen else failed = true
+                        },
+                        paletteFailed = failed,
+                        onRetryPalette = { retries += 1 },
+                    )
+                }
+            }
+        }
+    }
+
+    private val chosenPalettes = mutableListOf<ColorPalette>()
+    private var retries = 0
+
+    private fun openColors() {
+        compose.onNodeWithText(
+            text(R.string.settings_palette_title),
+        ).performScrollTo().performClick()
+    }
+
+    @Test
+    fun theColorsRowNamesThePaletteOnScreen() {
+        showWithPalettes()
+
+        compose.onNodeWithText(text(R.string.settings_palette_indigo_mustard)).performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun theColorsSheetListsTheNinePalettesWithTheChosenOneMarked() {
+        showWithPalettes()
+        openColors()
+
+        compose.onNodeWithText(text(R.string.settings_palette_help)).assertIsDisplayed()
+        for (palette in ColorPalette.entries) {
+            compose.onNode(hasText(text(paletteName(palette))) and isSelectable()).assertExists()
+        }
+        compose.onNode(hasText(text(R.string.settings_palette_default)) and isSelectable())
+            .assertIsSelected()
+    }
+
+    @Test
+    fun choosingAPaletteAppliesItAtOnceAndTheSheetStaysOpen() {
+        showWithPalettes()
+        openColors()
+
+        compose.onNode(
+            hasText(text(R.string.settings_palette_forest_honey)) and isSelectable(),
+        ).performScrollTo().performClick()
+
+        assertEquals(listOf(ColorPalette.FOREST_HONEY), chosenPalettes)
+        compose.onNode(
+            hasText(text(R.string.settings_palette_forest_honey)) and isSelectable(),
+        ).assertIsSelected()
+        compose.onNode(hasText(text(R.string.settings_palette_default)) and isSelectable())
+            .assertIsNotSelected()
+        compose.onNodeWithText(text(R.string.settings_palette_help)).assertIsDisplayed()
+    }
+
+    @Test
+    fun aPaletteThatWasNotSavedSaysSoInsideTheSheet() {
+        showWithPalettes(saves = false)
+        openColors()
+
+        compose.onNode(
+            hasText(text(R.string.settings_palette_plum_coral)) and isSelectable(),
+        ).performScrollTo().performClick()
+
+        compose.onNodeWithText(text(R.string.settings_palette_error)).assertIsDisplayed()
+        compose.onNode(hasText(text(R.string.settings_palette_default)) and isSelectable())
+            .assertIsSelected()
+        compose.onNodeWithText(text(R.string.action_retry)).performClick()
+        assertEquals(1, retries)
     }
 
     @Test

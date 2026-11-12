@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 
 /**
@@ -19,6 +20,7 @@ fun AppTheme(palette: ColorPalette, darkTheme: Boolean, content: @Composable () 
     val set = paletteOf(palette)
     CompositionLocalProvider(
         LocalAppColors provides if (darkTheme) set.darkColors else set.lightColors,
+        LocalColorPalette provides palette,
     ) {
         MaterialTheme(
             colorScheme = if (darkTheme) set.darkScheme else set.lightScheme,
@@ -36,6 +38,11 @@ object AppTheme {
         @Composable @ReadOnlyComposable
         get() = LocalAppColors.current
 
+    /** La paleta vigente, como la marca el selector de colores. */
+    val palette: ColorPalette
+        @Composable @ReadOnlyComposable
+        get() = LocalColorPalette.current
+
     /** La escala de espaciado. */
     val spacing: AppSpacing = AppSpacing()
 
@@ -45,3 +52,6 @@ object AppTheme {
     /** Los estilos de montos y cantidades, todos con cifras tabulares. */
     val amounts: AppAmounts = AppAmounts()
 }
+
+/** La paleta que dibuja el tema. Fuera de [AppTheme], la predeterminada. */
+private val LocalColorPalette = staticCompositionLocalOf { DefaultColorPalette }

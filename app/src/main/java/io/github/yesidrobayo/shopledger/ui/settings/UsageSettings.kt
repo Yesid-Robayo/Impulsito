@@ -168,11 +168,16 @@ fun AlertsGroup(state: UsageSettingsUiState, blocked: Boolean, onAction: (UsageA
 }
 
 /**
- * `Apariencia`: `Tema`, con `Automático`, `Claro` y `Oscuro` en una fila de selección única. Si el
- * último cambio no se guardó, lo dice debajo.
+ * `Apariencia`: `Tema`, con `Automático`, `Claro` y `Oscuro` en una fila de selección única, y
+ * `Colores`, con el nombre y la muestra de la paleta en pantalla, que abre la hoja de colores. Si el
+ * último cambio de tema no se guardó, lo dice debajo.
  */
 @Composable
-fun AppearanceGroup(state: UsageSettingsUiState, onAction: (UsageAction) -> Unit) {
+fun AppearanceGroup(
+    state: UsageSettingsUiState,
+    onAction: (UsageAction) -> Unit,
+    onOpenColors: () -> Unit = {},
+) {
     val theme = state.theme ?: return
     val spacing = AppTheme.spacing
     SectionHeader(stringResource(R.string.settings_group_appearance))
@@ -198,6 +203,7 @@ fun AppearanceGroup(state: UsageSettingsUiState, onAction: (UsageAction) -> Unit
             modifier = Modifier.padding(horizontal = spacing.s16),
         )
     }
+    PaletteRow(AppTheme.palette, onOpenColors)
 }
 
 @Composable
@@ -214,7 +220,7 @@ private fun UsageGroupsPreview() {
         Column {
             val state = UsageSettingsUiState(stockAlerts = true, theme = ThemeMode.SYSTEM)
             AlertsGroup(state, blocked = true) {}
-            AppearanceGroup(state.copy(saveFailed = true)) {}
+            AppearanceGroup(state.copy(saveFailed = true), onAction = {})
         }
     }
 }

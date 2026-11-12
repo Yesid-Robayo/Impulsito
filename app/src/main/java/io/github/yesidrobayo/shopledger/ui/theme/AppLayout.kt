@@ -161,6 +161,12 @@ class AppSizes internal constructor() {
     /** Grosor del indicador de trabajo dentro de un botón. */
     val progressStroke: Dp = 2.dp
 
+    /** Ancho de la muestra de una paleta en el selector de colores. */
+    val paletteSwatchWidth: Dp = 56.dp
+
+    /** Alto de la muestra de una paleta en el selector de colores. */
+    val paletteSwatchHeight: Dp = 40.dp
+
     /** Ancho de una hoja inferior en tableta, cuando pasa a diálogo lateral. */
     val sideSheet: Dp = 400.dp
 

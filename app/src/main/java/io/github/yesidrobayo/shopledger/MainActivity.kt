@@ -15,6 +15,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,6 +52,8 @@ import io.github.yesidrobayo.shopledger.ui.rescue.RescueRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.Appearance
 import io.github.yesidrobayo.shopledger.ui.theme.DefaultColorPalette
+import io.github.yesidrobayo.shopledger.ui.theme.LocalPaletteChooser
+import io.github.yesidrobayo.shopledger.ui.theme.PaletteChooser
 import io.github.yesidrobayo.shopledger.ui.theme.SplashThemes
 import io.github.yesidrobayo.shopledger.ui.theme.isDark
 import kotlinx.coroutines.delay
@@ -220,7 +223,19 @@ class MainActivity : AppCompatActivity() {
                         // Ocultar las cifras es inmediato; mostrarlas con el bloqueo pide verificar.
                         val discreetSwitch =
                             rememberDiscreetModeSwitch(rememberSensitiveCheck(), ::savePreference)
-                        CompositionLocalProvider(LocalDiscreetModeSwitch provides discreetSwitch) {
+                        // Elegir colores cambia la paleta en pantalla al instante, y la guarda después.
+                        val paletteChooser =
+                            remember {
+                                PaletteChooser(
+                                    shown = { shownAppearance.value },
+                                    show = { shownAppearance.value = it },
+                                    save = ::savePreference,
+                                )
+                            }
+                        CompositionLocalProvider(
+                            LocalDiscreetModeSwitch provides discreetSwitch,
+                            LocalPaletteChooser provides paletteChooser,
+                        ) {
                             ProvideBusinessFormats(shownDisplay.value) {
                                 AppLockGate(
                                     state = lockState,

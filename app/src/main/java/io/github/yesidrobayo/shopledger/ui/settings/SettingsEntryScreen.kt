@@ -25,6 +25,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
+import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.localization.UiLanguage
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -90,6 +91,9 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE }
  * @param usage los avisos de stock y el tema, o `null` sin base.
  * @param notificationsBlocked los avisos no pueden salir del teléfono: sin permiso, apagados o con
  *   el canal silenciado.
+ * @param onChoosePalette aplica y guarda una paleta; la hoja de colores sigue abierta.
+ * @param paletteFailed la última paleta elegida no se guardó, y volvió la anterior.
+ * @param onRetryPalette vuelve a elegir la paleta que no se guardó.
  */
 @Composable
 fun SettingsEntryScreen(
@@ -113,9 +117,13 @@ fun SettingsEntryScreen(
     usage: UsageSettingsUiState? = null,
     notificationsBlocked: Boolean = false,
     onUsageAction: (UsageAction) -> Unit = {},
+    onChoosePalette: (ColorPalette) -> Unit = {},
+    paletteFailed: Boolean = false,
+    onRetryPalette: () -> Unit = {},
 ) {
     var aboutSheet by rememberSaveable { mutableStateOf<AboutSheet?>(null) }
     var rangeOpen by rememberSaveable { mutableStateOf(false) }
+    var colorsOpen by rememberSaveable { mutableStateOf(false) }
     var license by rememberSaveable { mutableStateOf<LicensedComponent?>(null) }
     val spacing = AppTheme.spacing
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
@@ -158,7 +166,7 @@ fun SettingsEntryScreen(
                 if (security != null) {
                     SecurityGroup(security, stringResource(R.string.app_name), onSecurityAction)
                 }
-                usage?.let { AppearanceGroup(it, onUsageAction) }
+                usage?.let { AppearanceGroup(it, onUsageAction) { colorsOpen = true } }
                 if (overview != null) {
                     SectionHeader(stringResource(R.string.settings_group_data))
                     if (csvExport != null) {
@@ -194,6 +202,15 @@ fun SettingsEntryScreen(
                 onCsvExportAction(CsvExportAction.ExportRange(range))
             },
             onDismiss = { rangeOpen = false },
+        )
+    }
+    if (colorsOpen) {
+        PaletteSheet(
+            selected = AppTheme.palette,
+            onSelect = onChoosePalette,
+            onDismiss = { colorsOpen = false },
+            failed = paletteFailed,
+            onRetry = onRetryPalette,
         )
     }
     when (aboutSheet) {
