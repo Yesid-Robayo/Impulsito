@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.data
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.net.Uri
 import androidx.work.WorkerFactory
@@ -17,6 +18,7 @@ import io.github.yesidrobayo.shopledger.data.backup.CandidateValidator
 import io.github.yesidrobayo.shopledger.data.backup.ConflictResolver
 import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
 import io.github.yesidrobayo.shopledger.data.backup.DamagedGenerationStore
+import io.github.yesidrobayo.shopledger.data.backup.DataHealthReader
 import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
 import io.github.yesidrobayo.shopledger.data.backup.DocumentExportSink
 import io.github.yesidrobayo.shopledger.data.backup.DurableFileOps
@@ -99,6 +101,7 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupLinkPort
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import io.github.yesidrobayo.shopledger.domain.port.BackupSettingsPort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.DataHealthSource
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.FullCopyExportPort
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
@@ -550,6 +553,20 @@ class DataGraph internal constructor(
             log = log,
             ioContext = ioContext,
             migrator = RoomCandidateMigrator(context, ioContext, clock),
+        )
+    }
+
+    /**
+     * Lo que `Salud de mis datos` lee aparte del estado del respaldo. Solo lee, sin red. Crearlo no
+     * toca el disco.
+     */
+    val dataHealth: DataHealthSource by lazy {
+        DataHealthReader(
+            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            deviceLocked = {
+                context.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
+            },
+            serviceSpaceKnown = { lastProbeStore().load()?.serviceSpace != null },
         )
     }
 

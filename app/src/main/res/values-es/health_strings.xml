@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Salud de mis datos. Textos de la guía de redacción. -->
+    <string name="health_title">Salud de mis datos</string>
+    <string name="health_row_last_backup">Última copia</string>
+    <string name="health_row_last_handoff">Última entrega</string>
+    <string name="health_row_last_drill">Último simulacro</string>
+    <string name="health_row_cloud_check">Revisión en la nube</string>
+    <string name="health_cloud_check_value">Según lo que vio la persona: %1$s</string>
+    <string name="health_row_full_verify">Comprobación completa</string>
+    <string name="health_row_offsite">Copia local</string>
+    <string name="health_row_code">Código comprobado</string>
+    <string name="health_row_device_lock">Bloqueo de pantalla</string>
+    <string name="health_row_phone_space">Espacio en el teléfono</string>
+    <string name="health_row_destination_space">Espacio en la nube</string>
+    <string name="health_state_ok">Bien</string>
+    <string name="health_state_pending">Pendiente</string>
+    <string name="health_state_attention">Atención</string>
+    <string name="health_state_na">No aplica</string>
+    <string name="health_row_pinned">Copias fijadas</string>
+    <string name="a11y_health_expand">Mostrar el detalle</string>
+    <string name="a11y_health_collapse">Ocultar el detalle</string>
+</resources>

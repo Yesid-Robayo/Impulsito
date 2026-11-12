@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInf
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictSides
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
+import io.github.yesidrobayo.shopledger.domain.model.backup.HealthRow
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 
@@ -28,6 +29,9 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolic
  * @param disconnect en qué va `Desconectar`.
  * @param conflict la hoja del conflicto, o nula si está cerrada.
  * @param drilling si `Probar restauración` está corriendo.
+ * @param health las filas de `Salud de mis datos`, o nulas mientras se leen o sin base.
+ * @param healthOpen si el panel está abierto por la persona; nulo mientras no lo toque: entonces va
+ *   plegado solo si todo está bien.
  */
 data class BackupUiState(
     val wording: BackupWording? = null,
@@ -45,6 +49,8 @@ data class BackupUiState(
     val disconnect: DisconnectUi = DisconnectUi.HIDDEN,
     val conflict: ConflictUi? = null,
     val drilling: Boolean = false,
+    val health: List<HealthRow>? = null,
+    val healthOpen: Boolean? = null,
 )
 
 /** `Copias con datos móviles`: cerrada, la hoja con las tres opciones o la advertencia. */
@@ -276,4 +282,7 @@ sealed interface BackupAction {
 
     /** `Probar restauración`: el simulacro sobre un temporal. */
     data object RunDrill : BackupAction
+
+    /** Abre o pliega `Salud de mis datos`. Solo cambia lo que se ve. */
+    data object ToggleHealth : BackupAction
 }

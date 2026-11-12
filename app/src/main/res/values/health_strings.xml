@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Salud de mis datos. Textos de la guía de redacción. -->
+    <string name="health_title">My data health</string>
+    <string name="health_row_last_backup">Latest backup</string>
+    <string name="health_row_last_handoff">Latest handoff</string>
+    <string name="health_row_last_drill">Latest restore test</string>
+    <string name="health_row_cloud_check">Cloud check</string>
+    <string name="health_cloud_check_value">Based on what the person saw: %1$s</string>
+    <string name="health_row_full_verify">Full check</string>
+    <string name="health_row_offsite">Local backup</string>
+    <string name="health_row_code">Code tested</string>
+    <string name="health_row_device_lock">Screen lock</string>
+    <string name="health_row_phone_space">Space on this phone</string>
+    <string name="health_row_destination_space">Space in the cloud</string>
+    <string name="health_state_ok">Good</string>
+    <string name="health_state_pending">Pending</string>
+    <string name="health_state_attention">Attention</string>
+    <string name="health_state_na">Not applicable</string>
+    <string name="health_row_pinned">Pinned backups</string>
+    <string name="a11y_health_expand">Show details</string>
+    <string name="a11y_health_collapse">Hide details</string>
+</resources>

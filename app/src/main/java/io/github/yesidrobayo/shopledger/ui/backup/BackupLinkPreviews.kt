@@ -7,10 +7,13 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupConflictKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDrillResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictSides
+import io.github.yesidrobayo.shopledger.domain.model.backup.HealthFacts
+import io.github.yesidrobayo.shopledger.domain.rule.backup.DataHealthRule
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheetContent
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -106,6 +109,31 @@ private fun BackupSessionLostPreview() {
             base.copy(
                 destination = BackupDestinationInfo.Slots("Drive", sessionRequired = true),
                 wording = base.wording?.copy(sessionRequired = true),
+            ),
+            {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun BackupHealthPreview() {
+    PreviewTheme {
+        val overview = previewOverview(BackupStatus.UP_TO_DATE)
+        val facts =
+            HealthFacts(
+                lastHumanCheckAt = null,
+                lastFullVerifyAt = Instant.parse("2026-10-30T20:02:00Z"),
+                lastDrillAt = Instant.parse("2026-11-01T22:14:00Z"),
+                lastDrillResult = BackupDrillResult.FAILED,
+                deviceLocked = false,
+                serviceSpaceKnown = true,
+            )
+        val state = previewBackupState(overview)
+        BackupScreen(
+            state.copy(
+                health = DataHealthRule.rows(overview, facts, pinned = 1),
+                healthOpen = true,
             ),
             {},
         )

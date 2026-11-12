@@ -183,6 +183,11 @@ private fun LazyListScope.overview(uiState: BackupUiState, onAction: (BackupActi
             }
         }
     }
+    uiState.health?.let { rows ->
+        item(key = HEALTH) {
+            HealthPanel(rows, uiState.healthOpen ?: !healthFolded(rows), uiState.wording, onAction)
+        }
+    }
     if (wording != null && wording.overview.report.status != BackupStatus.NOT_CONNECTED) {
         item(key = DESTINATION) { Destination(uiState.destination, onAction) }
     }
@@ -867,6 +872,7 @@ private const val FIND_FILE = "findFile"
 private const val PROTECTION = "protection"
 private const val EXPORT_COPY = "exportCopy"
 private const val DRILL = "drill"
+private const val HEALTH = "health"
 
 /**
  * `Probar restauración`: el simulacro sobre una copia aparte. Mientras corre, una barra y qué está

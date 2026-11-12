@@ -10,12 +10,15 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
 import io.github.yesidrobayo.shopledger.domain.model.backup.DisconnectResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.DrillOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.HealthRow
 import io.github.yesidrobayo.shopledger.domain.model.backup.KeepPhoneResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.PinRelease
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
+import io.github.yesidrobayo.shopledger.domain.rule.backup.DataHealthRule
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupLinkUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.ReadDataHealthUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
 import kotlin.coroutines.cancellation.CancellationException
@@ -54,6 +57,7 @@ import kotlinx.coroutines.withContext
  * @param link desconectar, volver tras iniciar sesión y decidir un conflicto; nulo donde no se
  *   ofrece.
  * @param drill `Probar restauración`; nulo donde no se ofrece.
+ * @param health las filas de `Salud de mis datos`, solo de lectura; nulo donde no se ofrece.
  */
 class BackupViewModel(
     overview: (Flow<Unit>) -> Flow<BackupOverview>,
@@ -69,6 +73,7 @@ class BackupViewModel(
     private val copiesEncrypted: suspend () -> Boolean? = { null },
     private val link: BackupLinkUseCase? = null,
     private val drill: RunRestoreDrillUseCase? = null,
+    private val health: ReadDataHealthUseCase? = null,
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = state.asStateFlow()
@@ -100,6 +105,7 @@ class BackupViewModel(
                         val session = slots?.sessionRequired == true
                         it.copy(wording = BackupWording(current, provider, zone, session))
                     }
+                    refreshHealth()
                 }
         }
         // El destino y la lista se leen de nuevo con otro destino o con una copia nueva.
@@ -194,6 +200,12 @@ class BackupViewModel(
 
             BackupAction.RunDrill -> runDrill()
 
+            BackupAction.ToggleHealth ->
+                state.update { current ->
+                    val open = current.healthOpen ?: !healthFolded(current.health)
+                    current.copy(healthOpen = !open)
+                }
+
             // Lo resuelve la navegación.
             BackupAction.Back,
             BackupAction.ChooseDestination,
@@ -222,6 +234,25 @@ class BackupViewModel(
             }
         }
     }
+
+    /**
+     * Vuelve a leer `Salud de mis datos` con el estado y la lista de ahora. Solo lee: el panel no
+     * escribe nada.
+     */
+    private fun refreshHealth() {
+        val use = health ?: return
+        val overview = state.value.wording?.overview ?: return
+        val pinned =
+            (state.value.copies as? BackupCopyList.Listed)?.copies?.count { it.pinned }
+        healthJob?.cancel()
+        healthJob =
+            viewModelScope.launch {
+                val rows = read { use(overview, pinned) } ?: return@launch
+                state.update { it.copy(health = rows) }
+            }
+    }
+
+    private var healthJob: Job? = null
 
     /**
      * `Probar restauración`: corre el simulacro y dice cómo terminó. Nunca cambia los datos; al
@@ -481,6 +512,7 @@ class BackupViewModel(
                         ),
                 )
             }
+            refreshHealth()
         }
     }
 
@@ -535,3 +567,7 @@ class BackupViewModel(
         null
     }
 }
+
+/** Si `Salud de mis datos` va plegado sin que la persona lo haya tocado: solo con todo bien. */
+internal fun healthFolded(rows: List<HealthRow>?): Boolean =
+    rows != null && DataHealthRule.allGood(rows)

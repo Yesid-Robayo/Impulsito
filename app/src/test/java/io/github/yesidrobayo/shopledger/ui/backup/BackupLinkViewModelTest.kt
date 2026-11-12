@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDrillResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
@@ -15,6 +16,9 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.DisconnectResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.DrillOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
+import io.github.yesidrobayo.shopledger.domain.model.backup.HealthFacts
+import io.github.yesidrobayo.shopledger.domain.model.backup.HealthSignal
+import io.github.yesidrobayo.shopledger.domain.model.backup.HealthState
 import io.github.yesidrobayo.shopledger.domain.model.backup.KeepPhoneResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
@@ -25,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupLinkUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.ReadDataHealthUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
 import kotlin.time.Duration.Companion.hours
@@ -162,6 +167,16 @@ class BackupLinkViewModelTest {
     private val destination = FakeDestination()
     private val link = FakeLink()
     private val drillOutcomes = ArrayDeque<DrillOutcome>()
+    private var healthReads = 0
+    private var healthFacts: HealthFacts? =
+        HealthFacts(
+            lastHumanCheckAt = null,
+            lastFullVerifyAt = now - 1.hours,
+            lastDrillAt = now - 1.hours,
+            lastDrillResult = BackupDrillResult.PASSED,
+            deviceLocked = true,
+            serviceSpaceKnown = true,
+        )
 
     @Before
     fun useTestMain() = Dispatchers.setMain(dispatcher)
@@ -180,6 +195,10 @@ class BackupLinkViewModelTest {
             restore = RestoreBackupUseCase(NoRestore),
             link = BackupLinkUseCase(link),
             drill = RunRestoreDrillUseCase { drillOutcomes.removeFirst() },
+            health = ReadDataHealthUseCase {
+                healthReads++
+                healthFacts
+            },
         )
         advanceUntilIdle()
         return model
@@ -443,5 +462,35 @@ class BackupLinkViewModelTest {
         advanceUntilIdle()
         assertEquals(BackupMessage.CONFLICT_NO_INTERNET, model.uiState.value.message)
         assertTrue(drillOutcomes.isEmpty())
+    }
+    // Salud de mis datos
+
+    @Test
+    fun `the health panel reads its rows and only opening it changes what is seen`() =
+        runTest(dispatcher) {
+            overviews.value = overview(BackupStatus.UP_TO_DATE)
+            destination.copies = BackupCopyList.Listed(listOf(copy.copy(pinned = true)))
+            val model = viewModel()
+
+            val rows = requireNotNull(model.uiState.value.health)
+            assertEquals(HealthState.OK, rows.first { it.signal == HealthSignal.LAST_DRILL }.state)
+            assertEquals(1, rows.first { it.signal == HealthSignal.PINNED }.count)
+            // Con todo bien va plegado hasta que la persona lo abra.
+            assertTrue(healthFolded(rows))
+            assertNull(model.uiState.value.healthOpen)
+            model.onAction(BackupAction.ToggleHealth)
+            assertEquals(true, model.uiState.value.healthOpen)
+            model.onAction(BackupAction.ToggleHealth)
+            assertEquals(false, model.uiState.value.healthOpen)
+            assertTrue("Solo lee", healthReads > 0)
+        }
+
+    @Test
+    fun `without the base the panel does not appear`() = runTest(dispatcher) {
+        healthFacts = null
+
+        val model = viewModel()
+
+        assertNull(model.uiState.value.health)
     }
 }

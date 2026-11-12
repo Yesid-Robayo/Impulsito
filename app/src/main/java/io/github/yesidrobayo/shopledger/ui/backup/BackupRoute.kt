@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationR
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupLinkUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ChangeMeteredBackupPolicyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverviewUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.ReadDataHealthUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RecordCloudCheckUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RunRestoreDrillUseCase
@@ -70,6 +71,7 @@ fun BackupRoute(navigator: AppNavigator) {
                 copiesEncrypted = { container.data.backupSettings.copiesEncrypted() },
                 link = BackupLinkUseCase(container.data.backupLink),
                 drill = RunRestoreDrillUseCase(container.data.restoreDrill),
+                health = ReadDataHealthUseCase(container.data.dataHealth),
             )
         }
     when (model) {
@@ -270,6 +272,7 @@ fun BackupRoute(navigator: AppNavigator) {
                         BackupAction.ConfirmKeep,
                         BackupAction.DismissKeep,
                         BackupAction.RunDrill,
+                        BackupAction.ToggleHealth,
                         -> viewModel.onAction(action)
                     }
                 },
