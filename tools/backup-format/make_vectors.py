@@ -197,6 +197,8 @@ def build():
         ("payload-codec-unknown", set_byte(14, 2), "HEADER_OUT_OF_LIST"),
         ("reserved-not-zero", set_byte(15, 1), "HEADER_OUT_OF_LIST"),
         ("raw-size-over-limit", {"op": "set", "offset": 60, "hex": struct.pack(">Q", (1 << 30) + 1).hex()}, "TOO_LARGE"),
+        ("generation-high-bit", set_byte(24, 0x80), "HEADER_OUT_OF_LIST"),
+        ("raw-size-high-bit", set_byte(60, 0x80), "HEADER_OUT_OF_LIST"),
         ("key-id-changed", flip(16), "OTHER_CODE"),
         ("generation-changed", flip(31), "DAMAGED"),
         ("schema-version-changed", flip(35), "DAMAGED"),
@@ -232,6 +234,7 @@ def build():
         "G7K2-M9PQ-R4ST-V6WX-Y8Z3-ABCD-EF52", "G7K2-M9PQ-R4ST-V6WX-Y8Z3-ABCD-FE51",
         "G7K2-M9PQ-R4ST-V6WX-Y8Z3-ABCD-EF5", "G7K2-M9PQ-R4ST-V6WX-Y8Z3-ABCD-EF511",
         "G7K2-M9PQ-R4ST-V6WX-Y8Z3-ABCD-EF5U", "G7K2-M9PQ-R4ST-V6WX-Y8Z3-ABCD-EF5*", "",
+        CODE_A.replace("-", "\t", 1), CODE_A + "\n",
     ]
     typed_entries = []
     for text in typed:

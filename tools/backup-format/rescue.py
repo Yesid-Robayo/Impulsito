@@ -156,9 +156,9 @@ def check_characters(canonical):
 
 
 def normalize(typed):
-    """Como la app: mayúsculas, sin guiones ni espacios, I y L pasan a 1, y O pasa a 0."""
+    """Como la app: mayúsculas, sin guiones ni espacios, I y L pasan a 1, y O pasa a 0. Nada más se quita."""
     replacements = {"I": "1", "L": "1", "O": "0"}
-    return "".join(replacements.get(char, char) for char in typed.upper() if char not in "- \t\r\n")
+    return "".join(replacements.get(char, char) for char in typed.upper() if char not in "- ")
 
 
 def classify_code(typed):
@@ -229,6 +229,9 @@ def parse_header(stream):
         if header[offset] != expected:
             raise Rejected("HEADER_OUT_OF_LIST")
     generation, schema_version, created_at, device_id, raw_size = struct.unpack(">QIq16sQ", header[24:68])
+    # u64 con el bit alto encendido: ninguna copia real llega ahí, y la app no lo representa.
+    if generation >= 1 << 63 or raw_size >= 1 << 63:
+        raise Rejected("HEADER_OUT_OF_LIST")
     position = FIXED_HEADER_LENGTH
     extensions = []
     # Extensiones TLV: lo desconocido se ignora, pero deben llenar la cabecera exacta, sin bytes sueltos.
@@ -365,8 +368,9 @@ def pick_language(requested):
 
 def read_typed_code(texts):
     if sys.stdin.isatty():
-        return getpass.getpass(texts["prompt"])
-    return sys.stdin.readline()
+        return getpass.getpass(texts["prompt"]).strip()
+    # Solo se quita lo que rodea la línea, como el salto final. Lo de adentro lo juzga la normalización.
+    return sys.stdin.readline().strip()
 
 
 def format_utc(epoch_ms):

@@ -102,6 +102,16 @@
       "typed": "",
       "result": "WRONG_LENGTH",
       "canonical": null
+    },
+    {
+      "typed": "G7K2\tM9PQ-R4ST-V6WX-Y8Z3-ABCD-EF51",
+      "result": "WRONG_LENGTH",
+      "canonical": null
+    },
+    {
+      "typed": "G7K2-M9PQ-R4ST-V6WX-Y8Z3-ABCD-EF51\n",
+      "result": "WRONG_LENGTH",
+      "canonical": null
     }
   ],
   "copies": [
@@ -386,6 +396,28 @@
         "hex": "0000000040000001"
       },
       "expected": "TOO_LARGE"
+    },
+    {
+      "name": "generation-high-bit",
+      "base": "database-basic",
+      "code": "G7K2-M9PQ-R4ST-V6WX-Y8Z3-ABCD-EF51",
+      "operation": {
+        "op": "set",
+        "offset": 24,
+        "hex": "80"
+      },
+      "expected": "HEADER_OUT_OF_LIST"
+    },
+    {
+      "name": "raw-size-high-bit",
+      "base": "database-basic",
+      "code": "G7K2-M9PQ-R4ST-V6WX-Y8Z3-ABCD-EF51",
+      "operation": {
+        "op": "set",
+        "offset": 60,
+        "hex": "80"
+      },
+      "expected": "HEADER_OUT_OF_LIST"
     },
     {
       "name": "key-id-changed",

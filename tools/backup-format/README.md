@@ -85,7 +85,8 @@ control   = los primeros 10 bits de SHA-256(código), en 2 caracteres del alfabe
 impreso   = (código + control) en grupos de 4, separados por "-"
 ```
 
-Al leer lo que alguien escribió: se pasa a mayúsculas, se quitan guiones, espacios y saltos de línea, I y L pasan a 1, y O pasa a 0.
+Al leer lo que alguien escribió: se pasa a mayúsculas, se quitan guiones y espacios, I y L pasan a 1, y O pasa a 0. Nada más se
+quita: un tabulador o un salto de línea dentro del código lo hace inválido. `rescue.py` solo quita lo que rodea la línea que lee.
 Debe quedar con 28 caracteres del alfabeto, y los 2 últimos deben ser el control de los 26 primeros. Si no, el código es inválido y no se
 usa para nada.
 
@@ -122,11 +123,11 @@ es UTC, y lo demás vive dentro de la base.
 | 14 | 1 | `payload_codec` | `1`: gzip |
 | 15 | 1 | `reserved` | `0` |
 | 16 | 8 | `key_id` | Ver la derivación |
-| 24 | 8 | `generation` | u64, número de la copia. `0` en una foto |
+| 24 | 8 | `generation` | u64, número de la copia. `0` en una foto. Con el bit alto encendido, fuera de la lista |
 | 32 | 4 | `schema_version` | u32, versión del esquema de la base. `0` en una foto |
 | 36 | 8 | `created_at_utc_ms` | i64, milisegundos desde 1970-01-01T00:00Z |
 | 44 | 16 | `device_id` | UUID binario del teléfono que hizo la copia |
-| 60 | 8 | `raw_size` | u64, bytes del archivo sin comprimir ni cifrar |
+| 60 | 8 | `raw_size` | u64, bytes del archivo sin comprimir ni cifrar. Con el bit alto encendido, fuera de la lista |
 | 68 | variable | extensiones | Hasta `header_len`: `tag` u16, `length` u16 y `length` bytes |
 
 El formato 2 no define ninguna extensión. Una extensión desconocida se ignora, pero va autenticada con el resto. Las extensiones deben
@@ -178,7 +179,8 @@ Un lector correcto valida en este orden, y no usa la clave mientras la cabecera 
 1. El código: forma y control. Si falla, `CODE_INVALID`, sin abrir la copia.
 2. Los primeros bytes: `1F 8B` es formato 1, en claro. Sin `magic`, no es una copia.
 3. `format_version`: mayor que 2 pide una versión nueva, nunca dice "copia dañada". Menor, fuera de la lista.
-4. `header_len`, `aead_id`, `key_source`, `payload_codec`, `reserved` y las extensiones, contra la lista cerrada.
+4. `header_len`, `aead_id`, `key_source`, `payload_codec`, `reserved`, el bit alto de `generation` y `raw_size`, y las
+   extensiones, contra la lista cerrada.
 5. `raw_size`: más de 1 GiB no se abre.
 6. `key_id`: si no es el del código, `OTHER_CODE`. No se intenta descifrar.
 7. Descifrar en flujo, con la cabecera completa como datos asociados. Un segmento alterado, reordenado, de otra copia o faltante detiene
