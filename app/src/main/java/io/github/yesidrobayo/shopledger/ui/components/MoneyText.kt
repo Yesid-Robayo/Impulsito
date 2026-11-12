@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isSensitiveData
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
@@ -93,7 +94,9 @@ enum class MoneyTone {
  * @param voided si el documento está anulado: tachado, apagado y con la etiqueta «Anulada» al lado,
  *   para que el estado no dependa del tachado.
  * @param sensitive si es un costo, una ganancia, un saldo o un total de período: con el modo discreto
- *   encendido se oculta. El precio de lo que se atiende nunca es sensible.
+ *   encendido se oculta. A la vista, va marcado como dato sensible: desde Android 14, un servicio de
+ *   accesibilidad que no se declara herramienta no lo lee. El precio de lo que se atiende nunca es
+ *   sensible.
  * @param loading si la cifra aún no llega: un esqueleto del ancho de siete cifras.
  * @param voidedLabel la etiqueta de un documento anulado, y [voidedDescription] su lectura en
  *   TalkBack, cuando el documento pide otra concordancia, como un gasto: «Anulado» y no «Anulada».
@@ -116,7 +119,7 @@ fun MoneyText(
         loading -> MoneySkeleton(style, modifier)
 
         sensitive -> DiscreetValue(modifier, style, mutedColor(tone)) {
-            MoneyValue(amount, size, style, tone, voidedText, Modifier)
+            MoneyValue(amount, size, style, tone, voidedText, Modifier, sensitive = true)
         }
 
         else -> MoneyValue(amount, size, style, tone, voidedText, modifier)
@@ -134,7 +137,10 @@ private fun MoneyValue(
     tone: MoneyTone,
     voided: VoidedText?,
     modifier: Modifier,
+    sensitive: Boolean = false,
 ) {
+    // Se marca cada texto de la cifra: la marca de un nodo no alcanza a sus hijos.
+    val marked = if (sensitive) Modifier.semantics { isSensitiveData = true } else Modifier
     if (amount == null) {
         val noValue = stringResource(R.string.a11y_no_value)
         Text(
@@ -155,7 +161,7 @@ private fun MoneyValue(
             else -> null
         }
     if (voided == null) {
-        MoneyAmountText(display, style, modifier, moneyColor(tone), autoSize)
+        MoneyAmountText(display, style, modifier.then(marked), moneyColor(tone), autoSize)
         return
     }
     val voidedDisplay =
@@ -176,6 +182,7 @@ private fun MoneyValue(
         MoneyAmountText(
             display = voidedDisplay,
             style = style.copy(textDecoration = TextDecoration.LineThrough),
+            modifier = marked,
             color = mutedColor(tone),
             autoSize = autoSize,
         )

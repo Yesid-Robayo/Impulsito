@@ -166,6 +166,7 @@ internal fun RestoreLayer(
                 onDismiss = { onAction(BackupAction.CloseRestore) },
                 variant = ConfirmVariant.DESTRUCTIVE,
                 dismissLabel = stringResource(R.string.action_cancel),
+                sensitive = true,
             )
 
         is RestoreUi.ConfirmFile ->
@@ -181,6 +182,7 @@ internal fun RestoreLayer(
                 onDismiss = { onAction(BackupAction.CloseRestore) },
                 variant = ConfirmVariant.DESTRUCTIVE,
                 dismissLabel = stringResource(R.string.action_cancel),
+                sensitive = true,
             )
 
         is RestoreUi.Working -> Progress(restore.origin, onAction)
@@ -313,6 +315,7 @@ private fun Question(
                 onConfirm = { onAction(BackupAction.Answer(RestoreAnswer.Repair)) },
                 onDismiss = dismiss,
                 dismissLabel = cancel,
+                sensitive = true,
             )
         }
 
@@ -325,6 +328,7 @@ private fun Question(
                 onDismiss = dismiss,
                 variant = ConfirmVariant.DESTRUCTIVE,
                 dismissLabel = cancel,
+                sensitive = true,
             )
 
         RestoreProgress.AskWithoutSafetyCopy ->
@@ -338,6 +342,7 @@ private fun Question(
                 onDismiss = dismiss,
                 variant = ConfirmVariant.DESTRUCTIVE,
                 dismissLabel = cancel,
+                sensitive = true,
             )
 
         is RestoreProgress.AskDiscardSafetyCopy -> {
@@ -377,6 +382,7 @@ private fun DiscardQuestion(dates: List<String>, onAction: (BackupAction) -> Uni
             },
         ),
         onSecondary = { onAction(BackupAction.Answer(RestoreAnswer.DiscardSafetyCopy(1))) },
+        sensitive = true,
     )
 }
 

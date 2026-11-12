@@ -2,7 +2,9 @@ package io.github.yesidrobayo.shopledger
 
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.view.MotionEvent
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -78,6 +80,9 @@ class MainActivity : AppCompatActivity() {
     private val onboardingPending = mutableStateOf(false)
     private val openRequest = mutableStateOf<AppOpenRequest?>(null)
 
+    /** Lo que la ventana protege: capturas, superposiciones y toques tapados. */
+    private var protection: WindowProtection? = null
+
     /** Guarda el bloqueo apagado cuando el teléfono ya no tiene con qué autenticar. */
     private var lockSettings: ChangePreferenceUseCase? = null
 
@@ -93,7 +98,13 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) openRequest.value = AppOpenRequest.readFrom(intent)
         val container = (application as ShopLedgerApp).container
         val appLock = container.appLock
-        val protection = WindowProtection.of(window)
+        val protection = WindowProtection.of(window).also { this.protection = it }
+        // Recientes nunca muestra la pantalla de la app, con cualquier ajuste.
+        if (Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.TIRAMISU
+        ) {
+            setRecentsScreenshotEnabled(false)
+        }
         // Con el bloqueo encendido, ni capturas ni Recientes muestran el negocio.
         lifecycleScope.launch {
             appLock.state.collect { state ->
@@ -210,6 +221,13 @@ class MainActivity : AppCompatActivity() {
         val change = lockSettings ?: return
         container.applicationScope.launch { change(PreferenceChange.AppLock(false)) }
     }
+
+    /**
+     * En una pantalla entera sensible, como la de la contraseña del servicio, un gesto que llega a
+     * través de otra app dibujada encima se descarta completo, y la pantalla avisa.
+     */
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean =
+        if (protection?.rejects(ev) == true) true else super.dispatchTouchEvent(ev)
 
     /** Con la app abierta, tocar un aviso de stock llega aquí. Lo desconocido no cambia nada. */
     override fun onNewIntent(intent: Intent) {

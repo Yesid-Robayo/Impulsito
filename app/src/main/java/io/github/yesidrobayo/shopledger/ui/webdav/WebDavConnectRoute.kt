@@ -7,7 +7,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ConnectWebDavUseCase
-import io.github.yesidrobayo.shopledger.lock.SecureWhileShown
+import io.github.yesidrobayo.shopledger.lock.SensitiveScreen
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -21,8 +21,9 @@ import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
  * `Conectar el servicio` en la navegación. La política ya se aceptó: la navegación la pregunta
  * antes de mostrar esta pantalla.
  *
- * La ventana lleva `FLAG_SECURE` mientras la pantalla se ve: ni capturas ni la vista de apps
- * recientes muestran lo escrito.
+ * Es una pantalla entera sensible mientras se ve: ni capturas ni la vista de apps recientes muestran
+ * lo escrito, las superposiciones de otras apps se ocultan, y un toque que llega tapado por otra app
+ * se descarta con un aviso.
  *
  * @param onConnected lo que pasa al quedar conectado; [Boolean] dice si la carpeta ya tenía copias.
  *   Por defecto, vuelve a quien abrió `Dónde guardar las copias`, donde el estado del respaldo dice
@@ -34,7 +35,9 @@ fun WebDavConnectRoute(
     navigator: AppNavigator,
     onConnected: (Boolean) -> Unit = { backToOpener(navigator) },
 ) {
-    SecureWindow()
+    val messages = LocalAppMessages.current
+    val obscuredText = stringResource(R.string.security_obscured_touch)
+    SecureWindow { messages.show(AppSnackbarVisuals(obscuredText, SnackbarVariant.INFO)) }
     val appName = stringResource(R.string.app_name)
     val model =
         rememberAppViewModelWithState { dependencies, savedState ->
@@ -54,7 +57,6 @@ fun WebDavConnectRoute(
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-            val messages = LocalAppMessages.current
             val connectedText = stringResource(R.string.webdav_connected)
             LaunchedEffect(uiState.connected) {
                 val connected = uiState.connected ?: return@LaunchedEffect
@@ -90,10 +92,11 @@ private fun backToOpener(navigator: AppNavigator) {
 }
 
 /**
- * `FLAG_SECURE` en la ventana mientras esta pantalla está en la composición. Lo pide al dueño de la
- * protección de la ventana: al salir, la ventana sigue protegida si el bloqueo de la app lo pide.
+ * La pantalla entera es sensible mientras está en la composición: `FLAG_SECURE`, sin superposiciones y
+ * sin toques tapados, que avisan con [onObscuredTouch]. Lo pide al dueño de la protección de la
+ * ventana: al salir, la ventana sigue protegida si el bloqueo de la app lo pide.
  */
 @Composable
-internal fun SecureWindow() {
-    SecureWhileShown()
+internal fun SecureWindow(onObscuredTouch: () -> Unit = {}) {
+    SensitiveScreen(onObscuredTouch)
 }

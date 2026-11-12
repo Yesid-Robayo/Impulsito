@@ -12,6 +12,11 @@
          app, y sin él todo sigue funcionando: la lista de lo que se está acabando y el respaldo se ven en la app. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Desde Android 12, ocultar las ventanas de otras apps dibujadas encima mientras se ve una pantalla o una acción
+         sensible, como restaurar o la contraseña del servicio. Se concede al instalar, sin diálogo, y antes de Android 12
+         Android lo ignora: ahí queda el filtro de toques tapados. -->
+    <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
+
     <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS. -->
     <application
         android:name=".ShopLedgerApp"

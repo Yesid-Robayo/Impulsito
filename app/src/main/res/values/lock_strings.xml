@@ -12,4 +12,5 @@
     <string name="lock_no_device_lock">This option needs a screen lock on the phone.</string>
     <string name="lock_unlock">Unlock</string>
     <string name="lock_device_risk">This phone has no screen lock. Without one, anyone who picks it up can see the data.</string>
+    <string name="security_obscured_touch">Another app is showing on top of this screen. For safety, the tap was not accepted.</string>
 </resources>

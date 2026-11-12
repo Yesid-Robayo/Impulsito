@@ -41,7 +41,9 @@ import io.github.yesidrobayo.shopledger.lock.AppLock
 import io.github.yesidrobayo.shopledger.lock.AppLockState
 import io.github.yesidrobayo.shopledger.lock.AuthOutcome
 import io.github.yesidrobayo.shopledger.lock.AuthPurpose
+import io.github.yesidrobayo.shopledger.lock.HideOverlaysWhileShown
 import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
+import io.github.yesidrobayo.shopledger.lock.rejectObscuredTouches
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
@@ -96,6 +98,7 @@ fun LockRoute(lock: AppLock, onNoDeviceCredential: () -> Unit) {
     val scope = rememberCoroutineScope()
     val title = stringResource(R.string.app_name)
     val body = stringResource(R.string.lock_screen_body)
+    val obscured = stringResource(R.string.security_obscured_touch)
     val unlock: suspend () -> Unit = {
         if (!busy) {
             busy = true
@@ -112,18 +115,32 @@ fun LockRoute(lock: AppLock, onNoDeviceCredential: () -> Unit) {
         }
     }
     LaunchedEffect(prompts) { unlock() }
-    LockScreen(message = message, onUnlock = { scope.launch { unlock() } })
+    LockScreen(
+        message = message,
+        onUnlock = { scope.launch { unlock() } },
+        onObscuredTouch = { message = obscured },
+    )
 }
 
 /**
  * La pantalla del bloqueo: el héroe a sangre con el candado, el nombre de la app y `Desbloquear`
  * abajo. No lleva ningún dato del negocio.
  *
- * @param message el texto del sistema tras una falla, como demasiados intentos, o `null`.
+ * Mientras se ve, las superposiciones de otras apps se ocultan, y un toque en `Desbloquear` que llega
+ * tapado por otra app no abre nada y avisa con [onObscuredTouch].
+ *
+ * @param message el texto del sistema tras una falla, como demasiados intentos, o el aviso de un
+ *   toque tapado, o `null`.
  */
 @Composable
-fun LockScreen(message: String?, onUnlock: () -> Unit, modifier: Modifier = Modifier) {
+fun LockScreen(
+    message: String?,
+    onUnlock: () -> Unit,
+    modifier: Modifier = Modifier,
+    onObscuredTouch: () -> Unit = {},
+) {
     LightSystemBarIcons()
+    HideOverlaysWhileShown()
     val colors = AppTheme.colors
     val spacing = AppTheme.spacing
     Box(
@@ -170,7 +187,11 @@ fun LockScreen(message: String?, onUnlock: () -> Unit, modifier: Modifier = Modi
                 text = stringResource(R.string.lock_unlock),
                 onClick = onUnlock,
                 variant = ActionVariant.ON_HERO,
-                modifier = Modifier.padding(top = spacing.s16).keepsMessagesAbove(),
+                modifier =
+                    Modifier
+                        .padding(top = spacing.s16)
+                        .keepsMessagesAbove()
+                        .rejectObscuredTouches(onObscuredTouch),
             )
         }
     }

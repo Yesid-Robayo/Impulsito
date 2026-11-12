@@ -1,6 +1,9 @@
 package io.github.yesidrobayo.shopledger.lock
 
+import android.view.MotionEvent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -9,7 +12,9 @@ import org.junit.Test
  */
 class WindowProtectionTest {
     private val applied = mutableListOf<Boolean>()
-    private val protection = WindowProtection { applied += it }
+    private val hidden = mutableListOf<Boolean>()
+    private val protection =
+        WindowProtection(applySecure = { applied += it }, applyHideOverlays = { hidden += it })
 
     @Test
     fun `a protected screen secures the window only while it is shown`() {
@@ -57,5 +62,44 @@ class WindowProtectionTest {
 
         protection.remove(second)
         assertEquals(listOf(true, false), applied)
+    }
+
+    @Test
+    fun `overlays are hidden while a sensitive action is shown`() {
+        val dialog = Any()
+
+        protection.hideOverlays(dialog)
+        protection.showOverlays(dialog)
+
+        assertEquals(listOf(true, false), hidden)
+        assertEquals(emptyList<Boolean>(), applied)
+    }
+
+    @Test
+    fun `a sensitive screen is secured, hides overlays and lets them back when it leaves`() {
+        val screen = Any()
+
+        protection.addSensitiveScreen(screen) {}
+        protection.removeSensitiveScreen(screen)
+
+        assertEquals(listOf(true, false), applied)
+        assertEquals(listOf(true, false), hidden)
+    }
+
+    @Test
+    fun `without a sensitive screen no touch is ever rejected`() {
+        assertFalse(protection.rejects(MotionEvent.ACTION_DOWN, true))
+    }
+
+    @Test
+    fun `a gesture that starts covered is rejected whole and warns once`() {
+        var warnings = 0
+        protection.addSensitiveScreen(Any()) { warnings += 1 }
+
+        assertTrue(protection.rejects(MotionEvent.ACTION_DOWN, true))
+        assertTrue(protection.rejects(MotionEvent.ACTION_MOVE, false))
+        assertTrue(protection.rejects(MotionEvent.ACTION_UP, false))
+        assertFalse(protection.rejects(MotionEvent.ACTION_DOWN, false))
+        assertEquals(1, warnings)
     }
 }

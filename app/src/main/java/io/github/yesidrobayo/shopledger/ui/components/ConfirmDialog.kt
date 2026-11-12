@@ -23,15 +23,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.lock.HideOverlaysWhileShown
+import io.github.yesidrobayo.shopledger.lock.rejectObscuredTouches
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -72,8 +77,10 @@ fun ConfirmDialog(
     dismissLabel: String? = null,
     secondaryLabel: String? = null,
     onSecondary: () -> Unit = {},
+    sensitive: Boolean = false,
 ) {
     BasicAlertDialog(onDismissRequest = onDismiss) {
+        if (sensitive) HideOverlaysWhileShown()
         ConfirmDialogContent(
             title,
             body,
@@ -85,6 +92,7 @@ fun ConfirmDialog(
             dismissLabel = dismissLabel,
             secondaryLabel = secondaryLabel,
             onSecondary = onSecondary,
+            sensitive = sensitive,
         )
     }
 }
@@ -106,10 +114,15 @@ fun ConfirmDialogContent(
     dismissLabel: String? = null,
     secondaryLabel: String? = null,
     onSecondary: () -> Unit = {},
+    sensitive: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = AppTheme.spacing
     var acknowledged by rememberSaveable { mutableStateOf(false) }
+    // Un toque de confirmación que llegó a través de otra app dibujada encima no confirma nada.
+    var obscured by remember { mutableStateOf(false) }
+    val guard =
+        if (sensitive) Modifier.rejectObscuredTouches { obscured = true } else Modifier
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.extraLarge,
@@ -169,25 +182,38 @@ fun ConfirmDialogContent(
                         )
                     }
                 }
+                if (obscured) {
+                    Text(
+                        text = stringResource(R.string.security_obscured_touch),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = scheme.error,
+                        modifier =
+                            Modifier.padding(top = spacing.s12).semantics {
+                                liveRegion = LiveRegionMode.Polite
+                            },
+                    )
+                }
                 FlowRow(
                     modifier = Modifier.fillMaxWidth().padding(top = spacing.s16),
                     horizontalArrangement = Arrangement.spacedBy(spacing.s8, Alignment.End),
                     verticalArrangement = Arrangement.spacedBy(spacing.s8),
                 ) {
-                    secondaryLabel?.let { InlineTextButton(it, onSecondary) }
+                    secondaryLabel?.let { InlineTextButton(it, onSecondary, guard) }
                     val dismiss = dismissLabel ?: stringResource(R.string.action_cancel)
                     InlineTextButton(dismiss, onDismiss)
                     val enabled = acknowledgement == null || acknowledged
                     when (variant) {
-                        ConfirmVariant.STANDARD -> InlineTextButton(confirmLabel, {
-                            if (enabled) onConfirm()
-                        })
+                        ConfirmVariant.STANDARD -> InlineTextButton(
+                            confirmLabel,
+                            { if (enabled) onConfirm() },
+                            guard,
+                        )
 
                         ConfirmVariant.DESTRUCTIVE ->
                             Button(
                                 onClick = onConfirm,
                                 enabled = enabled,
-                                modifier = Modifier.heightIn(min = AppTheme.sizes.touchTarget),
+                                modifier = guard.heightIn(min = AppTheme.sizes.touchTarget),
                                 shape = MaterialTheme.shapes.medium,
                                 colors = ButtonDefaults.buttonColors(scheme.error, scheme.onError),
                                 elevation = null,

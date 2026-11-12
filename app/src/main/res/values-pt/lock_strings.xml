@@ -12,4 +12,5 @@
     <string name="lock_no_device_lock">Esta opção precisa de um bloqueio de tela no telefone.</string>
     <string name="lock_unlock">Desbloquear</string>
     <string name="lock_device_risk">Este telefone não tem bloqueio de tela. Sem bloqueio, qualquer pessoa que o pegue pode ver os dados.</string>
+    <string name="security_obscured_touch">Outro app está aparecendo sobre esta tela. Por segurança, o toque não foi aceito.</string>
 </resources>
