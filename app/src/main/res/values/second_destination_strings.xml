@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Copias locales: segundo destino automático y buscar la copia tras reinstalar. Textos de la guía de redacción. -->
+    <string name="offsite_second_title">Automatic second destination</string>
+    <string name="offsite_second_body">Once a day, if anything changed, %1$s makes a backup in a folder on this phone, a card or a USB drive, with or without a connected cloud. It keeps the last 3.</string>
+    <string name="offsite_second_follow_row">Keep this folder up to date</string>
+    <string name="offsite_second_follow_help">Every cloud backup is also kept here, and without a cloud or internet one is made a few minutes after each change. Keeps the last 3 and the last one from each of the two previous days.</string>
+    <string name="offsite_second_folder_rejected">That folder is not on the phone, an SD card or a USB drive. Choose another one.</string>
+    <string name="offsite_choose_folder_action">Choose folder</string>
+    <string name="offsite_folder_value">Folder: %1$s</string>
+    <string name="offsite_last_copy">Last backup here: %1$s</string>
+    <string name="offsite_change_folder_action">Change folder</string>
+    <string name="offsite_remove_destination_action">Remove destination</string>
+    <string name="offsite_remove_confirm_title">Remove this destination?</string>
+    <string name="offsite_remove_confirm_body">Files already in the folder stay there, but no more backups will be saved to it.</string>
+    <string name="offsite_folder_missing">The folder was not found. The card or drive may be out.</string>
+    <string name="offsite_permission_lost">Permission for the folder was lost. Choose it again.</string>
+    <string name="offsite_write_failed">The last backup at the second destination could not be checked. The backup in the cloud did not change.</string>
+    <string name="offsite_key_unavailable">The backup for this folder could not be encrypted. The recovery code is needed.</string>
+    <string name="offsite_fatal_skipped">Today\'s backup was not saved here because it could not be restored. Earlier ones are still in the folder.</string>
+    <string name="onboarding_local_copy_action">Find my backup on this phone</string>
+    <string name="onboarding_local_copy_help">Local backups stay on the phone even after %1$s was uninstalled. Choose their folder and allow access.</string>
+    <string name="onboarding_local_copy_found">Newest backup in this folder: %1$s, %2$s</string>
+    <string name="onboarding_local_copy_none">This folder has no %1$s backups. Another folder can be chosen, or a file can be found.</string>
+    <string name="onboarding_local_copy_reconnected">The folder is connected again as the second destination.</string>
+</resources>

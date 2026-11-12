@@ -6,11 +6,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.SecondDestinationUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -19,6 +23,7 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
+import kotlinx.coroutines.launch
 
 /**
  * `Copias locales` en la navegación. `Guardar en un archivo` abre el selector del sistema para crear
@@ -27,6 +32,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
  */
 @Composable
 fun LocalCopiesRoute(navigator: AppNavigator) {
+    val appName = stringResource(R.string.app_name)
     val model =
         rememberAppViewModel { dependencies ->
             val container = dependencies.container
@@ -39,6 +45,8 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
                 },
                 now = container.clock::now,
                 computation = container.dispatchers.io,
+                second = SecondDestinationUseCase(container.data.secondDestination),
+                appName = appName,
             )
         }
     when (model) {
@@ -51,6 +59,21 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val messages = LocalAppMessages.current
             val saved = stringResource(R.string.offsite_saved)
+            val folderFailed = stringResource(R.string.state_error_save)
+            val obscured = stringResource(R.string.security_obscured_touch)
+            // Con el bloqueo encendido, exportar pide de nuevo la verificación del sistema: el
+            // archivo lleva todo el negocio.
+            val sensitive = rememberSensitiveCheck()
+            val scope = rememberCoroutineScope()
+            val exportTitle = stringResource(R.string.offsite_save_file_action)
+            val folders =
+                rememberLauncherForActivityResult(LocalFolderPicker()) { uri ->
+                    uri?.let { viewModel.onAction(LocalCopiesAction.FolderPicked(it.toString())) }
+                }
+            LifecycleResumeEffect(viewModel) {
+                viewModel.onAction(LocalCopiesAction.Resumed)
+                onPauseOrDispose {}
+            }
             val picker =
                 rememberLauncherForActivityResult(
                     ActivityResultContracts.CreateDocument(GZIP_TYPE),
@@ -64,6 +87,16 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
                         messages.show(AppSnackbarVisuals(saved, SnackbarVariant.SUCCESS))
                     }
 
+                    LocalCopiesMessage.FOLDER_FAILED -> {
+                        viewModel.onAction(LocalCopiesAction.MessageShown)
+                        messages.show(AppSnackbarVisuals(folderFailed, SnackbarVariant.ERROR))
+                    }
+
+                    LocalCopiesMessage.OBSCURED_TOUCH -> {
+                        viewModel.onAction(LocalCopiesAction.MessageShown)
+                        messages.show(AppSnackbarVisuals(obscured, SnackbarVariant.INFO))
+                    }
+
                     null -> Unit
                 }
             }
@@ -75,18 +108,38 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
                         if (uiState.export !is ExportUi.Working) {
                             viewModel.onAction(LocalCopiesAction.DismissResult)
                             val name = viewModel.suggestedName()
-                            // Sin una app que cree documentos no hay selector: es como cancelar.
-                            try {
-                                picker.launch(name)
-                            } catch (_: ActivityNotFoundException) {
-                                Unit
+                            scope.launch {
+                                if (sensitive.confirm(exportTitle)) {
+                                    // Sin una app que cree documentos no hay selector: es como
+                                    // cancelar.
+                                    try {
+                                        picker.launch(name)
+                                    } catch (_: ActivityNotFoundException) {
+                                        Unit
+                                    }
+                                }
                             }
                         }
                     }
 
+                    LocalCopiesAction.ChooseFolder ->
+                        // Sin una app que elija carpetas no hay selector: es como cancelar.
+                        try {
+                            folders.launch(LocalFolderPicker.documents())
+                        } catch (_: ActivityNotFoundException) {
+                            Unit
+                        }
+
                     is LocalCopiesAction.FileCreated,
                     LocalCopiesAction.DismissResult,
                     LocalCopiesAction.MessageShown,
+                    is LocalCopiesAction.FolderPicked,
+                    is LocalCopiesAction.SetFollow,
+                    LocalCopiesAction.AskRemove,
+                    LocalCopiesAction.ConfirmRemove,
+                    LocalCopiesAction.CloseRemove,
+                    LocalCopiesAction.Resumed,
+                    LocalCopiesAction.ObscuredTouch,
                     -> viewModel.onAction(action)
                 }
             })

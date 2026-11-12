@@ -149,4 +149,15 @@ class LocalCopiesViewModelTest {
         assertEquals(ExportUi.Failed(ExportFailure.OTHER), model.uiState.value.export)
         assertEquals("shopledger-20261112-0307.db.gz", model.suggestedName())
     }
+
+    @Test
+    fun `a tap through another app on top saves nothing and says so`() = runTest(dispatcher) {
+        val model = viewModel()
+
+        model.onAction(LocalCopiesAction.ObscuredTouch)
+
+        assertEquals(LocalCopiesMessage.OBSCURED_TOUCH, model.uiState.value.message)
+        assertEquals(emptyList<String>(), exported)
+        assertEquals(ExportUi.Idle, model.uiState.value.export)
+    }
 }

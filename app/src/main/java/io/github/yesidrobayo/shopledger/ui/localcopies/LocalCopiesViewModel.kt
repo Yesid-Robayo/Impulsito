@@ -3,8 +3,11 @@ package io.github.yesidrobayo.shopledger.ui.localcopies
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
+import io.github.yesidrobayo.shopledger.domain.model.backup.ConnectFolderResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.ExportFileName
 import io.github.yesidrobayo.shopledger.domain.model.backup.FullCopyExport
+import io.github.yesidrobayo.shopledger.domain.model.backup.SecondDestinationView
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.SecondDestinationUseCase
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
@@ -26,6 +29,8 @@ import kotlinx.coroutines.withContext
  * @param zone la zona del negocio, para el nombre sugerido; nula si no se sabe.
  * @param now la hora del nombre sugerido.
  * @param computation el hilo donde se exporta, fuera del principal.
+ * @param second el segundo destino; nulo donde no se ofrece.
+ * @param appName el nombre de la app, sin traducir: da la carpeta de la app.
  */
 class LocalCopiesViewModel(
     private val export: suspend (String) -> FullCopyExport,
@@ -33,6 +38,8 @@ class LocalCopiesViewModel(
     private val zone: suspend () -> BusinessTimeZone?,
     private val now: () -> Instant,
     private val computation: CoroutineDispatcher,
+    private val second: SecondDestinationUseCase? = null,
+    private val appName: String = "",
 ) : ViewModel() {
     private val state = MutableStateFlow(LocalCopiesUiState())
     val uiState: StateFlow<LocalCopiesUiState> = state.asStateFlow()
@@ -44,6 +51,7 @@ class LocalCopiesViewModel(
             val businessZone = safely { zone() }
             state.update { it.copy(encrypted = value ?: false, zone = businessZone) }
         }
+        refreshSecond()
     }
 
     fun onAction(action: LocalCopiesAction) {
@@ -57,8 +65,73 @@ class LocalCopiesViewModel(
 
             LocalCopiesAction.MessageShown -> state.update { it.copy(message = null) }
 
+            is LocalCopiesAction.FolderPicked -> connect(action.treeUri)
+
+            is LocalCopiesAction.SetFollow -> setFollow(action.follow)
+
+            LocalCopiesAction.AskRemove -> state.update { it.copy(confirmRemove = true) }
+
+            LocalCopiesAction.CloseRemove -> state.update { it.copy(confirmRemove = false) }
+
+            LocalCopiesAction.ConfirmRemove -> remove()
+
+            LocalCopiesAction.Resumed -> refreshSecond()
+
+            LocalCopiesAction.ObscuredTouch ->
+                state.update { it.copy(message = LocalCopiesMessage.OBSCURED_TOUCH) }
+
             // Lo resuelve la navegación.
-            LocalCopiesAction.Back, LocalCopiesAction.SaveToFile -> Unit
+            LocalCopiesAction.Back,
+            LocalCopiesAction.SaveToFile,
+            LocalCopiesAction.ChooseFolder,
+            -> Unit
+        }
+    }
+
+    private fun refreshSecond() {
+        val port = second ?: return
+        viewModelScope.launch {
+            val view = safely { port.view() } ?: SecondDestinationView.Unreadable
+            state.update { it.copy(second = view) }
+        }
+    }
+
+    /**
+     * Guarda la carpeta elegida. Una que no es del teléfono se rechaza sin guardar nada, y se dice
+     * hasta que se elija otra.
+     */
+    private fun connect(treeUri: String) {
+        val port = second ?: return
+        viewModelScope.launch {
+            val result = safely { port.connect(treeUri, appName) } ?: ConnectFolderResult.FAILED
+            state.update {
+                when (result) {
+                    ConnectFolderResult.CONNECTED -> it.copy(folderRejected = false)
+
+                    ConnectFolderResult.NOT_LOCAL -> it.copy(folderRejected = true)
+
+                    ConnectFolderResult.FAILED ->
+                        it.copy(folderRejected = false, message = LocalCopiesMessage.FOLDER_FAILED)
+                }
+            }
+            refreshSecond()
+        }
+    }
+
+    private fun setFollow(follow: Boolean) {
+        val port = second ?: return
+        viewModelScope.launch {
+            safely { port.setFollowMainBackup(follow) }
+            refreshSecond()
+        }
+    }
+
+    private fun remove() {
+        val port = second ?: return
+        state.update { it.copy(confirmRemove = false) }
+        viewModelScope.launch {
+            safely { port.remove() }
+            refreshSecond()
         }
     }
 

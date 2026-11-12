@@ -5,9 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.FoundLocalCopies
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.SecondDestinationUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.CompleteOnboardingResult
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.OnboardingResume
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceResult
@@ -46,6 +48,9 @@ import kotlinx.coroutines.withContext
  * @param destination el destino conectado y sus copias, y si hay red.
  * @param slotsLabel el nombre de la nube del teléfono, si se sabe.
  * @param calendar la zona del negocio, que la región puede cambiar en el paso 2.
+ * @param localCopies el segundo destino, para `Buscar mi copia en este teléfono`; nulo donde no
+ *   se ofrece.
+ * @param appName el nombre de la app sin traducir: da la carpeta de las copias.
  */
 class OnboardingViewModel(
     private val resume: suspend () -> OnboardingResume,
@@ -57,6 +62,8 @@ class OnboardingViewModel(
     restore: RestoreBackupUseCase,
     private val savedState: SavedStateHandle,
     private val computation: CoroutineDispatcher,
+    private val localCopies: SecondDestinationUseCase? = null,
+    private val appName: String = "",
 ) : ViewModel() {
     private val state = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = state.asStateFlow()
@@ -74,7 +81,20 @@ class OnboardingViewModel(
             scope = viewModelScope,
             computation = computation,
             get = { state.value.restore },
-            set = { next -> state.update { it.copy(restore = next) } },
+            set = { next ->
+                state.update {
+                    // Una copia de la carpeta que no sirvió: se propone la anterior de esa carpeta.
+                    val search = it.localCopy as? LocalCopySearch.Found
+                    if (next is RestoreUi.Stopped && localRestoring && search != null) {
+                        localRestoring = false
+                        it.copy(restore = next, localCopy = search.copy(index = search.index + 1))
+                    } else {
+                        // Cancelada la pregunta, lo que siga ya no es de la carpeta.
+                        if (next == RestoreUi.Idle) localRestoring = false
+                        it.copy(restore = next)
+                    }
+                }
+            },
             needsNetwork = { true },
             hasNetwork = destination::hasNetwork,
         )
@@ -158,11 +178,16 @@ class OnboardingViewModel(
 
             is OnboardingAction.Restore -> restoreAction(action.action)
 
+            is OnboardingAction.LocalFolderPicked -> findLocal(action.treeUri)
+
+            OnboardingAction.RestoreLocalCopy -> restoreLocal()
+
             // Lo resuelve la navegación.
             OnboardingAction.ChooseDestination,
             OnboardingAction.BringWithWebDav,
             OnboardingAction.FindFile,
             OnboardingAction.OpenDataTransparency,
+            OnboardingAction.FindLocalCopy,
             -> state.update { it.copy(bringSheet = false) }
         }
     }
@@ -220,6 +245,42 @@ class OnboardingViewModel(
             BackupAction.ToggleHealth,
             BackupAction.CheckFullCopy,
             -> Unit
+        }
+    }
+
+    /** Si la restauración en curso es de una copia de la carpeta local. */
+    private var localRestoring = false
+
+    /** Lee la carpeta elegida: solo lee, sin tomar el permiso ni guardar nada. */
+    private fun findLocal(treeUri: String) {
+        val use = localCopies ?: return
+        state.update { it.copy(localCopy = LocalCopySearch.Searching) }
+        viewModelScope.launch {
+            val found = read { use.find(treeUri, appName) } ?: FoundLocalCopies.Failed
+            val search =
+                when (found) {
+                    is FoundLocalCopies.Found -> LocalCopySearch.Found(treeUri, found.copies)
+                    FoundLocalCopies.NoCopies -> LocalCopySearch.NoCopies
+                    FoundLocalCopies.NotLocal -> LocalCopySearch.NotLocal
+                    FoundLocalCopies.Failed -> LocalCopySearch.Failed
+                }
+            state.update { it.copy(localCopy = search) }
+        }
+    }
+
+    /**
+     * Restaura la copia propuesta por el camino de `Buscar un archivo`. Antes deja la carpeta
+     * conectada otra vez como segundo destino, con sus copias adoptadas: la app se reinicia al
+     * restaurar, y después ya no tendría el permiso.
+     */
+    private fun restoreLocal() {
+        val use = localCopies ?: return
+        val search = state.value.localCopy as? LocalCopySearch.Found ?: return
+        val copy = search.proposed ?: return
+        viewModelScope.launch {
+            read { use.reconnectAndAdopt(search.treeUri, appName) }
+            localRestoring = true
+            restoring.picked(copy.documentUri)
         }
     }
 

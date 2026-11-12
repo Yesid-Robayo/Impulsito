@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.onboarding
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
@@ -12,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -26,6 +28,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.PrepareSlotFilesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.backup.SecondDestinationUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.CompleteOnboardingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.ResumeOnboardingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
@@ -33,6 +36,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreference
 import io.github.yesidrobayo.shopledger.localization.InstalledLanguages
 import io.github.yesidrobayo.shopledger.lock.AuthPurpose
 import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
+import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
@@ -48,7 +52,9 @@ import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsAction
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsViewModel
 import io.github.yesidrobayo.shopledger.ui.i18n.languageFacts
+import io.github.yesidrobayo.shopledger.ui.localcopies.LocalFolderPicker
 import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
+import kotlinx.coroutines.launch
 
 /**
  * El primer uso en la navegación: cuatro pasos encima de Inicio, que se cierran al terminar.
@@ -59,6 +65,7 @@ import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
  */
 @Composable
 fun OnboardingRoute(navigator: AppNavigator) {
+    val appName = stringResource(R.string.app_name)
     val model =
         rememberAppViewModelWithState { dependencies, savedState ->
             val ports = dependencies.ports
@@ -84,6 +91,8 @@ fun OnboardingRoute(navigator: AppNavigator) {
                 restore = RestoreBackupUseCase(container.data.backupRestore),
                 savedState = savedState,
                 computation = container.dispatchers.io,
+                localCopies = SecondDestinationUseCase(container.data.secondDestination),
+                appName = appName,
             )
         }
     when (model) {
@@ -101,6 +110,10 @@ fun OnboardingRoute(navigator: AppNavigator) {
                     uri?.let {
                         onAction(OnboardingAction.Restore(BackupAction.FilePicked(it.toString())))
                     }
+                }
+            val folders =
+                rememberLauncherForActivityResult(LocalFolderPicker()) { uri ->
+                    uri?.let { onAction(OnboardingAction.LocalFolderPicked(it.toString())) }
                 }
             LaunchedEffect(uiState.done) {
                 if (uiState.done && navigator.current == AppNavKey.Onboarding) navigator.back()
@@ -131,13 +144,30 @@ fun OnboardingRoute(navigator: AppNavigator) {
                     onAction(OnboardingAction.Back)
                 }
             }
+            // Con el bloqueo encendido, restaurar pide de nuevo la verificación del sistema: también
+            // una copia de la carpeta local o un archivo elegido aquí.
+            val sensitive = rememberSensitiveCheck()
+            val scope = rememberCoroutineScope()
+            val restoreTitle = stringResource(R.string.backup_action_restore)
             val route: (OnboardingAction) -> Unit = { action ->
-                onAction(action)
+                if (action == OnboardingAction.Restore(BackupAction.StartRestore)) {
+                    scope.launch { if (sensitive.confirm(restoreTitle)) onAction(action) }
+                } else {
+                    onAction(action)
+                }
                 when (action) {
                     OnboardingAction.ChooseDestination, OnboardingAction.BringWithWebDav ->
                         navigator.open(AppNavKey.BackupDestinationChoice(firstRun = true))
 
                     OnboardingAction.FindFile -> picker.launch(arrayOf(ANY_FILE))
+
+                    // Abre en `Documents/<app_name>/`, donde quedaron las copias de antes.
+                    OnboardingAction.FindLocalCopy ->
+                        try {
+                            folders.launch(LocalFolderPicker.appFolder(appName))
+                        } catch (_: ActivityNotFoundException) {
+                            Unit
+                        }
 
                     OnboardingAction.OpenDataTransparency -> navigator.open(
                         AppNavKey.DataTransparency,
@@ -161,6 +191,8 @@ fun OnboardingRoute(navigator: AppNavigator) {
                     is OnboardingAction.DeviceLock,
                     is OnboardingAction.LockChoice,
                     is OnboardingAction.LockChecked,
+                    is OnboardingAction.LocalFolderPicked,
+                    OnboardingAction.RestoreLocalCopy,
                     -> Unit
                 }
             }

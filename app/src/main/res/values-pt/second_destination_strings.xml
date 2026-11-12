@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Copias locales: segundo destino automático y buscar la copia tras reinstalar. Textos de la guía de redacción. -->
+    <string name="offsite_second_title">Segundo destino automático</string>
+    <string name="offsite_second_body">Uma vez por dia, se houve mudanças, o %1$s faz uma cópia em uma pasta deste telefone, em um cartão ou em um pen drive, com ou sem nuvem conectada. Mantém as 3 últimas.</string>
+    <string name="offsite_second_follow_row">Manter esta pasta em dia</string>
+    <string name="offsite_second_follow_help">Cada cópia da nuvem também fica aqui, e sem nuvem ou sem internet uma é feita alguns minutos depois de cada mudança. Mantém as 3 últimas e a última de cada um dos dois dias anteriores.</string>
+    <string name="offsite_second_folder_rejected">Essa pasta não é do telefone, de um cartão SD nem de um pen drive. É preciso escolher outra.</string>
+    <string name="offsite_choose_folder_action">Escolher pasta</string>
+    <string name="offsite_folder_value">Pasta: %1$s</string>
+    <string name="offsite_last_copy">Última cópia aqui: %1$s</string>
+    <string name="offsite_change_folder_action">Alterar pasta</string>
+    <string name="offsite_remove_destination_action">Remover destino</string>
+    <string name="offsite_remove_confirm_title">Remover este destino?</string>
+    <string name="offsite_remove_confirm_body">Os arquivos que já estão na pasta são mantidos, mas nenhuma outra cópia será salva lá.</string>
+    <string name="offsite_folder_missing">A pasta não foi encontrada. O cartão ou o pen drive pode estar fora.</string>
+    <string name="offsite_permission_lost">A permissão da pasta foi perdida. É preciso escolhê-la novamente.</string>
+    <string name="offsite_write_failed">Não foi possível verificar a última cópia no segundo destino. A cópia na nuvem não mudou.</string>
+    <string name="offsite_key_unavailable">Não foi possível criptografar a cópia desta pasta. É preciso o código de recuperação.</string>
+    <string name="offsite_fatal_skipped">A cópia de hoje não foi salva aqui porque não poderia ser restaurada. As anteriores continuam na pasta.</string>
+    <string name="onboarding_local_copy_action">Buscar minha cópia neste telefone</string>
+    <string name="onboarding_local_copy_help">As cópias locais continuam no telefone mesmo depois de desinstalar o %1$s. É preciso escolher a pasta e permitir o acesso.</string>
+    <string name="onboarding_local_copy_found">Cópia mais recente nesta pasta: %1$s, %2$s</string>
+    <string name="onboarding_local_copy_none">Nesta pasta não há cópias do %1$s. É possível escolher outra pasta ou buscar um arquivo.</string>
+    <string name="onboarding_local_copy_reconnected">A pasta foi conectada de novo como segundo destino.</string>
+</resources>

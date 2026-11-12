@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.onboarding
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
+import io.github.yesidrobayo.shopledger.domain.model.backup.FoundLocalCopy
 import io.github.yesidrobayo.shopledger.lock.AuthOutcome
 import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
 import io.github.yesidrobayo.shopledger.ui.backup.RestoreUi
@@ -26,6 +27,30 @@ sealed interface FoundCopies {
     data object Failed : FoundCopies
 }
 
+/** `Buscar mi copia en este teléfono`: lo que se encontró en la carpeta elegida. */
+sealed interface LocalCopySearch {
+    /** Leyendo la carpeta. */
+    data object Searching : LocalCopySearch
+
+    /**
+     * Las copias de la carpeta [treeUri], de la más reciente a la más vieja. Se propone la de
+     * [index]: si una no pasa la validación, la siguiente.
+     */
+    data class Found(val treeUri: String, val copies: List<FoundLocalCopy>, val index: Int = 0) :
+        LocalCopySearch {
+        val proposed: FoundLocalCopy? get() = copies.getOrNull(index)
+    }
+
+    /** La carpeta no tiene copias de la app. */
+    data object NoCopies : LocalCopySearch
+
+    /** La carpeta no es del almacenamiento del teléfono. */
+    data object NotLocal : LocalCopySearch
+
+    /** No se pudo leer la carpeta: nunca cuenta como vacía. */
+    data object Failed : LocalCopySearch
+}
+
 /**
  * El estado del primer uso.
  *
@@ -47,6 +72,7 @@ sealed interface FoundCopies {
  *   el interruptor.
  * @param lockCheck `Continuar` con el bloqueo marcado pide la verificación del sistema: la navegación
  *   la abre y entrega su resultado.
+ * @param localCopy lo que se encontró con `Buscar mi copia en este teléfono`, o nulo.
  */
 data class OnboardingUiState(
     val step: OnboardingStepId? = null,
@@ -64,6 +90,7 @@ data class OnboardingUiState(
     val lockOffered: Boolean = false,
     val lockChosen: Boolean = true,
     val lockCheck: Boolean = false,
+    val localCopy: LocalCopySearch? = null,
 )
 
 /** Lo que la persona hace en el primer uso. */
@@ -125,4 +152,13 @@ sealed interface OnboardingAction {
 
     /** Una acción de la restauración, la misma que en la pantalla del respaldo. */
     data class Restore(val action: BackupAction) : OnboardingAction
+
+    /** `Buscar mi copia en este teléfono`: lo resuelve la navegación, con el selector de carpetas. */
+    data object FindLocalCopy : OnboardingAction
+
+    /** El selector devolvió la carpeta [treeUri]. */
+    data class LocalFolderPicked(val treeUri: String) : OnboardingAction
+
+    /** `Restaurar` la copia propuesta de la carpeta. */
+    data object RestoreLocalCopy : OnboardingAction
 }

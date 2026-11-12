@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
@@ -134,6 +135,7 @@ private fun WelcomeContent(
                 (uiState.restore as? RestoreUi.Stopped)?.let { stopped ->
                     RestoreStoppedNotice(stopped) { onAction(OnboardingAction.Restore(it)) }
                 }
+                LocalCopy(uiState, app, onAction)
                 NoticeCard(
                     stringResource(R.string.permission_destination_rationale, app),
                     NoticeVariant.INFO,
@@ -188,6 +190,81 @@ private fun WelcomeContent(
                 )
             }
         }
+    }
+}
+
+/**
+ * `Buscar mi copia en este teléfono`: para quien reinstaló la app, la carpeta de copias locales de
+ * antes. Lo que se encontró, con `Restaurar` para la más reciente, o por qué no.
+ */
+@Composable
+private fun LocalCopy(
+    uiState: OnboardingUiState,
+    app: String,
+    onAction: (OnboardingAction) -> Unit,
+) {
+    val find = { onAction(OnboardingAction.FindLocalCopy) }
+    when (val search = uiState.localCopy) {
+        null -> {
+            InlineTextButton(stringResource(R.string.onboarding_local_copy_action), find)
+            Small(stringResource(R.string.onboarding_local_copy_help, app))
+        }
+
+        LocalCopySearch.Searching ->
+            NoticeCard(stringResource(R.string.backup_searching), NoticeVariant.INFO)
+
+        is LocalCopySearch.Found -> {
+            val copy = search.proposed
+            val zone = uiState.zone
+            if (copy == null) {
+                // Ninguna de la carpeta sirvió: queda buscar un archivo.
+                NoticeCard(
+                    stringResource(R.string.onboarding_local_copy_none, app),
+                    NoticeVariant.WARNING,
+                    actionLabel = stringResource(R.string.backup_action_find_file),
+                    onAction = { onAction(OnboardingAction.FindFile) },
+                )
+            } else {
+                val formats = LocalAppFormats.current
+                val date =
+                    zone?.let {
+                        formats.date.dayMonth(BusinessDate.of(copy.createdAt, it))
+                    } ?: NO_VALUE_TEXT
+                val time = zone?.let { formats.date.time(copy.createdAt, it) } ?: NO_VALUE_TEXT
+                NoticeCard(
+                    stringResource(R.string.onboarding_local_copy_found, date, time),
+                    NoticeVariant.INFO,
+                    actionLabel = stringResource(R.string.backup_action_restore),
+                    onAction = { onAction(OnboardingAction.RestoreLocalCopy) },
+                )
+            }
+        }
+
+        LocalCopySearch.NoCopies ->
+            NoticeCard(
+                stringResource(R.string.onboarding_local_copy_none, app),
+                NoticeVariant.WARNING,
+                actionLabel = stringResource(R.string.onboarding_local_copy_action),
+                onAction = find,
+                secondaryLabel = stringResource(R.string.backup_action_find_file),
+                onSecondary = { onAction(OnboardingAction.FindFile) },
+            )
+
+        LocalCopySearch.NotLocal ->
+            NoticeCard(
+                stringResource(R.string.offsite_second_folder_rejected),
+                NoticeVariant.ERROR,
+                actionLabel = stringResource(R.string.onboarding_local_copy_action),
+                onAction = find,
+            )
+
+        LocalCopySearch.Failed ->
+            NoticeCard(
+                stringResource(R.string.backup_list_error),
+                NoticeVariant.ERROR,
+                actionLabel = stringResource(R.string.onboarding_local_copy_action),
+                onAction = find,
+            )
     }
 }
 

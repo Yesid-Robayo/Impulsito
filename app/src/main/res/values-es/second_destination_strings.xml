@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Copias locales: segundo destino automático y buscar la copia tras reinstalar. Textos de la guía de redacción. -->
+    <string name="offsite_second_title">Segundo destino automático</string>
+    <string name="offsite_second_body">Una vez al día, si hubo cambios, %1$s hace una copia en una carpeta de este teléfono, una tarjeta o una memoria USB, con o sin nube conectada. Conserva las 3 últimas.</string>
+    <string name="offsite_second_follow_row">Mantener al día esta carpeta</string>
+    <string name="offsite_second_follow_help">Cada copia de la nube queda también aquí, y sin nube o sin internet se hace una unos minutos después de cada cambio. Conserva las 3 últimas y la última de cada uno de los dos días anteriores.</string>
+    <string name="offsite_second_folder_rejected">Esa carpeta no es del teléfono, de una tarjeta SD ni de una memoria USB. Hay que elegir otra.</string>
+    <string name="offsite_choose_folder_action">Elegir carpeta</string>
+    <string name="offsite_folder_value">Carpeta: %1$s</string>
+    <string name="offsite_last_copy">Última copia aquí: %1$s</string>
+    <string name="offsite_change_folder_action">Cambiar carpeta</string>
+    <string name="offsite_remove_destination_action">Quitar destino</string>
+    <string name="offsite_remove_confirm_title">¿Quitar este destino?</string>
+    <string name="offsite_remove_confirm_body">Los archivos que ya están en la carpeta se conservan, pero no se guardarán más copias allí.</string>
+    <string name="offsite_folder_missing">No se encontró la carpeta. La tarjeta o la memoria puede estar fuera.</string>
+    <string name="offsite_permission_lost">Se perdió el permiso sobre la carpeta. Hay que elegirla de nuevo.</string>
+    <string name="offsite_write_failed">La última copia en el segundo destino no se pudo comprobar. La copia en la nube no cambió.</string>
+    <string name="offsite_key_unavailable">No se pudo cifrar la copia de esta carpeta. Se necesita el código de recuperación.</string>
+    <string name="offsite_fatal_skipped">La copia de hoy no se guardó aquí porque no se podría restaurar. Las anteriores siguen en la carpeta.</string>
+    <string name="onboarding_local_copy_action">Buscar mi copia en este teléfono</string>
+    <string name="onboarding_local_copy_help">Las copias locales siguen en el teléfono aunque se haya desinstalado %1$s. Hay que elegir su carpeta y permitir el acceso.</string>
+    <string name="onboarding_local_copy_found">Copia más reciente en esta carpeta: %1$s, %2$s</string>
+    <string name="onboarding_local_copy_none">En esta carpeta no hay copias de %1$s. Se puede elegir otra carpeta o buscar un archivo.</string>
+    <string name="onboarding_local_copy_reconnected">La carpeta quedó conectada otra vez como segundo destino.</string>
+</resources>

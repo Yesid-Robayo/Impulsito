@@ -47,6 +47,7 @@ import io.github.yesidrobayo.shopledger.data.backup.ScheduledBackupWork
 import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationFacts
 import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationJob
 import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationLoad
+import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationService
 import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationStore
 import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationWriter
 import io.github.yesidrobayo.shopledger.data.backup.SnapshotCreator
@@ -117,6 +118,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.RestoreDrillPort
+import io.github.yesidrobayo.shopledger.domain.port.SecondDestinationPort
 import io.github.yesidrobayo.shopledger.domain.port.SlotFilesSetupPort
 import io.github.yesidrobayo.shopledger.domain.port.WebDavConnectionPort
 import io.github.yesidrobayo.shopledger.domain.port.error
@@ -781,6 +783,20 @@ class DataGraph internal constructor(
             clock = clock,
             ioContext = ioContext,
         )
+
+    /**
+     * Elegir, leer y quitar la carpeta del segundo destino, para `Copias locales` y la bienvenida.
+     * Crearlo no toca el disco.
+     */
+    val secondDestination: SecondDestinationPort by lazy {
+        SecondDestinationService(
+            resolver = context.contentResolver,
+            store = secondDestinationStore,
+            mutex = backupMutex,
+            afterConnect = { backupScheduler.reconcile() },
+            ioContext = ioContext,
+        )
+    }
 
     /** El trabajo del segundo destino, con la base abierta para un trabajo. */
     private val secondDestinationJob by lazy {

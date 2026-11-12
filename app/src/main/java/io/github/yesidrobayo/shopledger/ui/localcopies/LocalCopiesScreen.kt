@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -21,14 +22,27 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.backup.SecondDestinationProblem
+import io.github.yesidrobayo.shopledger.domain.model.backup.SecondDestinationView
+import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
+import io.github.yesidrobayo.shopledger.lock.HideOverlaysWhileShown
+import io.github.yesidrobayo.shopledger.lock.rejectObscuredTouches
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
+import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
+import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
+import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
+import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -52,6 +66,20 @@ fun LocalCopiesScreen(
     modifier: Modifier = Modifier,
 ) {
     val spacing = AppTheme.spacing
+    // Exportar saca todo el negocio: mientras se ve, ninguna otra app se dibuja encima.
+    HideOverlaysWhileShown()
+    if (uiState.confirmRemove) {
+        ConfirmDialog(
+            title = stringResource(R.string.offsite_remove_confirm_title),
+            body = stringResource(R.string.offsite_remove_confirm_body),
+            confirmLabel = stringResource(R.string.offsite_remove_destination_action),
+            onConfirm = { onAction(LocalCopiesAction.ConfirmRemove) },
+            onDismiss = { onAction(LocalCopiesAction.CloseRemove) },
+            variant = ConfirmVariant.DESTRUCTIVE,
+            dismissLabel = stringResource(R.string.action_cancel),
+            sensitive = true,
+        )
+    }
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
@@ -79,6 +107,7 @@ fun LocalCopiesScreen(
                     }
                     item(key = EXPORT) { ExportSection(uiState.encrypted) }
                     item(key = RESULT) { ExportResult(uiState.export, onAction) }
+                    item(key = SECOND) { SecondSection(uiState, onAction) }
                 }
             }
             HorizontalDivider(
@@ -106,7 +135,10 @@ fun LocalCopiesScreen(
                         ),
                     onClick = { onAction(LocalCopiesAction.SaveToFile) },
                     variant = ActionVariant.PRIMARY,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .rejectObscuredTouches { onAction(LocalCopiesAction.ObscuredTouch) },
                     state = if (working) ActionState.WORKING else ActionState.IDLE,
                 )
             }
@@ -194,7 +226,128 @@ private fun ExportResult(export: ExportUi, onAction: (LocalCopiesAction) -> Unit
     }
 }
 
+/**
+ * `Segundo destino automático`: qué hace, la carpeta y su última copia, el problema de la última,
+ * `Mantener al día esta carpeta`, y cambiar o quitar la carpeta. Un problema aquí nunca es un
+ * fallo del respaldo: se dice solo en esta sección.
+ */
+@Composable
+private fun SecondSection(uiState: LocalCopiesUiState, onAction: (LocalCopiesAction) -> Unit) {
+    val app = stringResource(R.string.app_name)
+    val choose = { onAction(LocalCopiesAction.ChooseFolder) }
+    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+        Text(
+            stringResource(R.string.offsite_second_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = AppTheme.spacing.s16).semantics { heading() },
+        )
+        Text(
+            stringResource(R.string.offsite_second_body, app),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (uiState.folderRejected) {
+            NoticeCard(
+                stringResource(R.string.offsite_second_folder_rejected),
+                NoticeVariant.ERROR,
+                actionLabel = stringResource(R.string.offsite_choose_folder_action),
+                onAction = choose,
+            )
+        }
+        when (val second = uiState.second) {
+            // Se lee del teléfono: tras un instante, el esqueleto.
+            null -> DelayedSkeleton {
+                SkeletonBlock(Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.listRow))
+            }
+
+            SecondDestinationView.None ->
+                SettingsRow(
+                    title = stringResource(R.string.offsite_choose_folder_action),
+                    action = SettingsRowAction.Navigation(choose),
+                )
+
+            SecondDestinationView.Unreadable ->
+                NoticeCard(
+                    stringResource(R.string.offsite_permission_lost),
+                    NoticeVariant.WARNING,
+                    actionLabel = stringResource(R.string.offsite_choose_folder_action),
+                    onAction = choose,
+                )
+
+            is SecondDestinationView.Connected -> ConnectedFolder(second, uiState, onAction)
+        }
+    }
+}
+
+@Composable
+private fun ConnectedFolder(
+    second: SecondDestinationView.Connected,
+    uiState: LocalCopiesUiState,
+    onAction: (LocalCopiesAction) -> Unit,
+) {
+    val formats = LocalAppFormats.current
+    val choose = { onAction(LocalCopiesAction.ChooseFolder) }
+    Text(
+        stringResource(R.string.offsite_folder_value, second.folderName ?: NO_VALUE_TEXT),
+        style = MaterialTheme.typography.titleSmall,
+    )
+    val lastCopy = second.lastCopyAt
+    val zone = uiState.zone
+    if (lastCopy != null && zone != null) {
+        Text(
+            stringResource(R.string.offsite_last_copy, formats.date.dayMonthTime(lastCopy, zone)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    second.problem?.let { problem ->
+        when (problem) {
+            SecondDestinationProblem.FOLDER_MISSING ->
+                NoticeCard(
+                    stringResource(R.string.offsite_folder_missing),
+                    NoticeVariant.WARNING,
+                    actionLabel = stringResource(R.string.offsite_choose_folder_action),
+                    onAction = choose,
+                )
+
+            SecondDestinationProblem.PERMISSION_LOST ->
+                NoticeCard(
+                    stringResource(R.string.offsite_permission_lost),
+                    NoticeVariant.WARNING,
+                    actionLabel = stringResource(R.string.offsite_choose_folder_action),
+                    onAction = choose,
+                )
+
+            SecondDestinationProblem.NO_SPACE ->
+                NoticeCard(stringResource(R.string.offsite_error_space), NoticeVariant.WARNING)
+
+            SecondDestinationProblem.WRITE_FAILED ->
+                NoticeCard(stringResource(R.string.offsite_write_failed), NoticeVariant.WARNING)
+
+            SecondDestinationProblem.KEY_UNAVAILABLE ->
+                NoticeCard(stringResource(R.string.offsite_key_unavailable), NoticeVariant.WARNING)
+
+            SecondDestinationProblem.FATAL_SKIPPED ->
+                NoticeCard(stringResource(R.string.offsite_fatal_skipped), NoticeVariant.WARNING)
+        }
+    }
+    SettingsRow(
+        title = stringResource(R.string.offsite_second_follow_row),
+        action =
+            SettingsRowAction.Toggle(second.followMainBackup) {
+                onAction(LocalCopiesAction.SetFollow(it))
+            },
+        summary = stringResource(R.string.offsite_second_follow_help),
+    )
+    InlineTextButton(stringResource(R.string.offsite_change_folder_action), choose)
+    InlineTextButton(
+        stringResource(R.string.offsite_remove_destination_action),
+        { onAction(LocalCopiesAction.AskRemove) },
+    )
+}
+
 private const val INTRO = "intro"
+private const val SECOND = "second"
 private const val EXPORT = "export"
 private const val RESULT = "result"
 
