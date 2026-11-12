@@ -818,6 +818,17 @@ private fun LazyListScope.copyList(
                     InlineState(stringResource(R.string.empty_backups_title))
                 }
             } else {
+                if (list.missingNewer) {
+                    // Solo avisa: la lista sigue igual y cualquier copia se puede restaurar.
+                    item(key = MISSING_NEWER) {
+                        NoticeCard(
+                            stringResource(R.string.recovery_missing_newer) + "\n" +
+                                stringResource(R.string.recovery_missing_newer_body),
+                            NoticeVariant.WARNING,
+                            modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
+                        )
+                    }
+                }
                 items(list.copies, key = { it.key }) { copy ->
                     BackupCopyRow(
                         copyRowData(copy, uiState.wording),
@@ -879,6 +890,7 @@ internal fun copyRowData(copy: BackupCopySummary, wording: BackupWording?): Back
         }
     val tags = buildList {
         if (copy.pinned) add(stringResource(R.string.backup_pinned_tag))
+        if (copy.encrypted) add(stringResource(R.string.backup_copy_encrypted))
         if (copy.withDifferences) add(stringResource(R.string.backup_differences_tag))
         if (!copy.restorable) add(stringResource(R.string.backup_copy_not_restorable))
     }
@@ -910,6 +922,7 @@ private const val COPIES_HEADER = "copiesHeader"
 private const val COPIES_LOADING = "copiesLoading"
 private const val COPIES_STATE = "copiesState"
 private const val RESTORE_NOTICE = "restoreNotice"
+private const val MISSING_NEWER = "missingNewer"
 private const val FIND_FILE = "findFile"
 private const val PROTECTION = "protection"
 private const val EXPORT_COPY = "exportCopy"

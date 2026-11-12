@@ -76,4 +76,10 @@
     <string name="encryption_deactivate_confirm_action">Turn off</string>
     <string name="encryption_deactivated">Encryption is off. The next backup will not be encrypted.</string>
     <string name="encryption_deactivate_error">It could not be turned off. Encryption stays on.</string>
+    <string name="recovery_origin_verified">Backup checked with the code</string>
+    <string name="recovery_origin_unverified">Origin not checked</string>
+    <string name="recovery_missing_newer">Newer backups are missing</string>
+    <string name="recovery_missing_newer_body">Fewer backups are visible than before. This is only a notice: restoring still works.</string>
+    <string name="recovery_no_anchor">This phone has no earlier reference to compare with.</string>
+    <string name="recovery_plain_newer_warning">This unencrypted backup is newer than the last encrypted one. Confirm where it came from before restoring.</string>
 </resources>

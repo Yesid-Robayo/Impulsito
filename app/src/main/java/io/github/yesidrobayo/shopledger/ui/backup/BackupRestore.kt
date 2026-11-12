@@ -40,6 +40,8 @@ import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.StatusTag
+import io.github.yesidrobayo.shopledger.ui.components.StatusTone
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlin.time.Instant
@@ -245,6 +247,7 @@ private fun CopySheet(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
             BackupCopyRow(row)
+            CopyProvenance(copy)
             Text(
                 stringResource(R.string.dialog_restore_body),
                 style = MaterialTheme.typography.bodyMedium,
@@ -263,6 +266,37 @@ private fun CopySheet(
                 )
             }
         }
+    }
+}
+
+/**
+ * De dónde puede venir la copia, antes de restaurarla. Solo avisa: ninguna se rechaza por esto.
+ *
+ * - Una copia cifrada se comprueba con el código al restaurarla; una en claro no tiene cómo probar
+ *   de dónde salió.
+ * - Con el cifrado activo, una copia en claro más nueva que la última cifrada lleva advertencia.
+ * - En un teléfono que nunca vio este destino no hay referencia para saber si faltan copias.
+ */
+@Composable
+private fun CopyProvenance(copy: BackupCopySummary) {
+    if (copy.encrypted) {
+        StatusTag(
+            stringResource(R.string.recovery_origin_verified),
+            icon = R.drawable.ic_lock,
+            tone = StatusTone.PROFIT,
+        )
+    } else {
+        StatusTag(stringResource(R.string.recovery_origin_unverified))
+    }
+    if (copy.plainNewerThanEncrypted) {
+        NoticeCard(stringResource(R.string.recovery_plain_newer_warning), NoticeVariant.WARNING)
+    }
+    if (!copy.anchorKnown) {
+        Text(
+            stringResource(R.string.recovery_no_anchor),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

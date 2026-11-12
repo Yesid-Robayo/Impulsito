@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.data.backup
 
 import io.github.yesidrobayo.shopledger.data.destination.BackupDestination
+import io.github.yesidrobayo.shopledger.data.destination.BackupFileFormat
 import io.github.yesidrobayo.shopledger.data.destination.CopyMetadata
 import io.github.yesidrobayo.shopledger.data.destination.DestinationFailure
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
@@ -22,6 +23,8 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKin
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
+import io.github.yesidrobayo.shopledger.domain.rule.backup.RollbackRule
+import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
 import kotlin.time.Instant
@@ -43,6 +46,9 @@ import kotlin.time.Instant
  * @param slots el estado de las ranuras.
  * @param deviceId el identificador de este teléfono, para decir qué copias son suyas.
  * @param hasNetwork si hay una red que el sistema comprobó.
+ * @param highestSeen la mayor generación ya vista, que cada lista sube: el ancla del aviso de copias
+ *   que faltan. Nula, no se avisa ni se guarda nada.
+ * @param encryptionActive si el cifrado de las copias está activo en este teléfono.
  */
 internal class BackupCopiesReader(
     private val saved: suspend () -> SavedDestination?,
@@ -50,6 +56,8 @@ internal class BackupCopiesReader(
     private val slots: SlotStateStore,
     private val deviceId: suspend () -> String,
     private val hasNetwork: () -> Boolean,
+    private val highestSeen: HighestSeenGenerationStore? = null,
+    private val encryptionActive: suspend () -> Boolean = { false },
 ) : BackupDestinationSource {
     override suspend fun describe(): BackupDestinationInfo? {
         val row = saved() ?: return null
@@ -73,11 +81,39 @@ internal class BackupCopiesReader(
 
     override suspend fun listCopies(): BackupCopyList {
         val row = saved() ?: return BackupCopyList.NotConnected
-        return when (row.kind) {
-            BackupDestinationKind.WEBDAV -> webDavCopies(row)
-            BackupDestinationKind.DOCUMENT_SLOTS -> slotCopies()
-            null -> BackupCopyList.NotConnected
-        }
+        val list =
+            when (row.kind) {
+                BackupDestinationKind.WEBDAV -> webDavCopies(row)
+                BackupDestinationKind.DOCUMENT_SLOTS -> slotCopies()
+                null -> BackupCopyList.NotConnected
+            }
+        return if (list is BackupCopyList.Listed) guarded(list) else list
+    }
+
+    /**
+     * Compara la lista con la mayor generación ya vista y después la sube. Solo avisa: ninguna copia
+     * se quita ni se bloquea. Si el ancla no se lee o no se escribe, la lista sale igual, sin aviso.
+     */
+    private suspend fun guarded(list: BackupCopyList.Listed): BackupCopyList.Listed {
+        val store = highestSeen ?: return list
+        val visibleMax = list.copies.mapNotNull { it.generation }.maxOrNull()
+        val before =
+            try {
+                store.raise(visibleMax ?: 0L)
+            } catch (_: IOException) {
+                return list
+            }
+        val active =
+            try {
+                encryptionActive()
+            } catch (_: IOException) {
+                // Sin saber si está activo, se advierte igual: un aviso de más no quita nada.
+                true
+            }
+        return BackupCopyList.Listed(
+            copies = RollbackRule.annotate(list.copies, active, anchorKnown = before != null),
+            missingNewer = RollbackRule.missingNewer(visibleMax, before),
+        )
     }
 
     override fun hasNetwork(): Boolean = hasNetwork.invoke()
@@ -143,6 +179,9 @@ internal class BackupCopiesReader(
             // Un tamaño que no es el de sus metadatos tampoco cuenta para podar.
             withDifferences = meta != null && (!meta.valid || meta.fileSize != copy.sizeBytes),
             restorable = meta?.fatal != true,
+            generation = copy.name?.generation ?: meta?.generation,
+            encrypted =
+                copy.name?.format == BackupFileFormat.ENCRYPTED || meta?.format == ENCRYPTED_FORMAT,
         )
     }
 
@@ -174,6 +213,9 @@ internal class BackupCopiesReader(
                     pinned = false,
                     withDifferences = !record.facts.valid,
                     restorable = true,
+                    generation = record.generation,
+                    // El formato sale de los primeros bytes al restaurar: aquí, de sus metadatos.
+                    encrypted = meta?.format == ENCRYPTED_FORMAT,
                 )
             }
         return BackupCopyList.Listed(newestFirst(copies))
@@ -217,3 +259,6 @@ internal class BackupCopiesReader(
         }
     }
 }
+
+/** El formato de una copia cifrada en sus metadatos. */
+private const val ENCRYPTED_FORMAT = 2

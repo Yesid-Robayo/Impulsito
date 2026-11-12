@@ -71,4 +71,10 @@
     <string name="encryption_deactivate_confirm_action">Desactivar</string>
     <string name="encryption_deactivated">Cifrado desactivado. La siguiente copia sale sin cifrar.</string>
     <string name="encryption_deactivate_error">No se pudo desactivar. El cifrado sigue activo.</string>
+    <string name="recovery_origin_verified">Copia comprobada con el código</string>
+    <string name="recovery_origin_unverified">Sin comprobar el origen</string>
+    <string name="recovery_missing_newer">Faltan copias más recientes</string>
+    <string name="recovery_missing_newer_body">Se ven menos copias que antes. Es solo un aviso: se puede restaurar igual.</string>
+    <string name="recovery_no_anchor">En este teléfono no hay una referencia anterior para comparar.</string>
+    <string name="recovery_plain_newer_warning">Esta copia sin cifrar es más nueva que la última copia cifrada. Conviene confirmar de dónde salió antes de restaurar.</string>
 </resources>

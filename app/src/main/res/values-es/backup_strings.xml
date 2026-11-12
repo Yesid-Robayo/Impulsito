@@ -129,4 +129,5 @@
     <string name="format_today_at">Hoy, %1$s</string>
     <!-- Propuesto para la guía de redacción: el origen de una copia con su marca de más reciente. -->
     <string name="backup_copy_origin_newest">%1$s · %2$s</string>
+    <string name="backup_copy_encrypted">Cifrada</string>
 </resources>

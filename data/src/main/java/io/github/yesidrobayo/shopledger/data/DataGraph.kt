@@ -27,6 +27,7 @@ import io.github.yesidrobayo.shopledger.data.backup.FullCopyExporter
 import io.github.yesidrobayo.shopledger.data.backup.FullVerifyGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.HeadDeepCheck
 import io.github.yesidrobayo.shopledger.data.backup.HeadProbe
+import io.github.yesidrobayo.shopledger.data.backup.HighestSeenGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.LastProbeStore
 import io.github.yesidrobayo.shopledger.data.backup.LocalCopyBuilder
 import io.github.yesidrobayo.shopledger.data.backup.LocalEncryption
@@ -408,7 +409,14 @@ class DataGraph internal constructor(
             slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
             deviceId = deviceIdentity::deviceId,
             hasNetwork = { backupNetworkOf(context).validated },
+            highestSeen = highestSeenGeneration,
+            encryptionActive = { recoveryCustody.state.read().enabled },
         )
+    }
+
+    /** La mayor generación vista en el destino conectado: el ancla del aviso de copias que faltan. */
+    private val highestSeenGeneration by lazy {
+        HighestSeenGenerationStore({ context.noBackupFilesDir }, ioContext)
     }
 
     /**
@@ -618,6 +626,8 @@ class DataGraph internal constructor(
                     slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
                     deviceId = deviceIdentity::deviceId,
                     hasNetwork = { backupNetworkOf(context).validated },
+                    highestSeen = highestSeenGeneration,
+                    encryptionActive = { recoveryCustody.state.read().enabled },
                 ),
             restore =
                 BackupRestoreService(

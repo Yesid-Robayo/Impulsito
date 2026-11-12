@@ -18,6 +18,13 @@ import kotlin.time.Instant
  * @property withDifferences si se hizo con diferencias, o su tamaño no es el esperado.
  * @property restorable si la app la podría restaurar. Una copia que el motor marcó como imposible de
  *   restaurar se ve, pero sin acción.
+ * @property generation la generación que dicen su nombre o sus metadatos, o nula si no la dicen.
+ * @property encrypted si es una copia cifrada: su origen se comprueba con el código al restaurarla.
+ *   Una copia en claro no tiene cómo probar de dónde salió.
+ * @property plainNewerThanEncrypted con el cifrado activo, si es una copia en claro más nueva que la
+ *   última cifrada: lleva advertencia, nunca se rechaza.
+ * @property anchorKnown si este teléfono ya vio antes alguna generación del destino. En un teléfono
+ *   nuevo no hay referencia para saber si faltan copias, y la hoja lo dice.
  */
 data class BackupCopySummary(
     val key: String,
@@ -30,6 +37,10 @@ data class BackupCopySummary(
     val pinned: Boolean,
     val withDifferences: Boolean,
     val restorable: Boolean,
+    val generation: Long? = null,
+    val encrypted: Boolean = false,
+    val plainNewerThanEncrypted: Boolean = false,
+    val anchorKnown: Boolean = true,
 )
 
 /** De qué teléfono salió una copia. */
@@ -43,8 +54,14 @@ enum class CopyOrigin {
 
 /** La lista de copias del destino, o por qué no se pudo ver. */
 sealed interface BackupCopyList {
-    /** Las copias, de la más nueva a la más vieja. Vacía si el destino no tiene ninguna. */
-    data class Listed(val copies: List<BackupCopySummary>) : BackupCopyList
+    /**
+     * Las copias, de la más nueva a la más vieja. Vacía si el destino no tiene ninguna.
+     *
+     * @property missingNewer si este teléfono ya vio una copia más reciente que la más nueva que se
+     *   ve ahora. Solo avisa: se puede restaurar igual.
+     */
+    data class Listed(val copies: List<BackupCopySummary>, val missingNewer: Boolean = false) :
+        BackupCopyList
 
     /** No hay destino conectado: no hay lista que ver. */
     data object NotConnected : BackupCopyList

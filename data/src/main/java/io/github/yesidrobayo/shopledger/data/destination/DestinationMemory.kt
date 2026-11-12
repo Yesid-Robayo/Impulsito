@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.destination
 import io.github.yesidrobayo.shopledger.data.backup.BackupStaging
 import io.github.yesidrobayo.shopledger.data.backup.DamagedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.FullVerifyGenerationStore
+import io.github.yesidrobayo.shopledger.data.backup.HighestSeenGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.LastProbeStore
 import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
 import io.github.yesidrobayo.shopledger.data.crypto.DurableFile
@@ -49,6 +50,8 @@ internal class DestinationMemory(
                 RejectedGenerationStore.FILE_NAME,
                 DamagedGenerationStore.FILE_NAME,
                 FullVerifyGenerationStore.FILE_NAME,
+                // La mayor generación vista era del destino anterior: con otro, empieza sin ancla.
+                HighestSeenGenerationStore.FILE_NAME,
             )
     }
 }
