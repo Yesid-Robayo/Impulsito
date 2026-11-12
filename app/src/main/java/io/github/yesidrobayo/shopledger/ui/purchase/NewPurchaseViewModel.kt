@@ -277,7 +277,14 @@ class NewPurchaseViewModel(
     private fun retry() {
         when (overlay.value.notice) {
             is PurchaseNotice.RegisterFailed -> register()
-            else -> attempts.update { it + 1 }
+
+            // Sin una falla al registrar, reintentar es volver a leer el catálogo.
+            null,
+            PurchaseNotice.CurrencyUnconfirmed,
+            PurchaseNotice.TotalTooLarge,
+            PurchaseNotice.TooManyLines,
+            PurchaseNotice.SupplierUnavailable,
+            -> attempts.update { it + 1 }
         }
     }
 

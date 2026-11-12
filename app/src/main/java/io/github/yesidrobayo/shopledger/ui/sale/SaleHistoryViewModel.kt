@@ -108,8 +108,8 @@ class SaleHistoryViewModel(
 
             SaleHistoryAction.CloseSale -> state.update { it.copy(selectedSaleId = null) }
 
-            // Vender lo resuelve la navegación.
-            SaleHistoryAction.Sell -> Unit
+            // Vender y cambiar de segmento los resuelve la navegación.
+            SaleHistoryAction.Sell, SaleHistoryAction.ShowPurchases -> Unit
         }
     }
 

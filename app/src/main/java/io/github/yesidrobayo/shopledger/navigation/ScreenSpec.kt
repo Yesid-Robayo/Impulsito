@@ -61,7 +61,7 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     is AppNavKey.Expenses -> detail(R.string.records_tab_expenses, records)
 
-    AppNavKey.PurchaseHistory -> detail(R.string.records_tab_purchases, records)
+    is AppNavKey.PurchaseHistory -> detail(R.string.records_tab_purchases, records)
 
     is AppNavKey.PurchaseDetail -> detail(R.string.records_tab_purchases, records)
 

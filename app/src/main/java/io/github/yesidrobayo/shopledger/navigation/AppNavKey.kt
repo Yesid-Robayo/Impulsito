@@ -86,8 +86,15 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object Backup : AppNavKey
 
+    /**
+     * El historial de compras. Desde un proveedor llega filtrado por él con [supplierId], y desde
+     * `Sin proveedor` con [withoutSupplier].
+     */
     @Serializable
-    data object PurchaseHistory : AppNavKey
+    data class PurchaseHistory(
+        val supplierId: Long? = null,
+        val withoutSupplier: Boolean = false,
+    ) : AppNavKey
 
     @Serializable
     data class PurchaseDetail(val purchaseId: Long) : AppNavKey

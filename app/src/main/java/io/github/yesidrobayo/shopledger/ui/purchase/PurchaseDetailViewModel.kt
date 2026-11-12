@@ -1,0 +1,200 @@
+package io.github.yesidrobayo.shopledger.ui.purchase
+
+import androidx.compose.runtime.Immutable
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
+import io.github.yesidrobayo.shopledger.domain.model.VoidReason
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseDetail
+import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseResult
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/** Lo que muestra el detalle de una compra. */
+sealed interface PurchaseDetailUiState {
+    /** Leyendo. El esqueleto solo aparece si tarda. */
+    data object Loading : PurchaseDetailUiState
+
+    /** La compra no existe. */
+    data object NotFound : PurchaseDetailUiState
+
+    /** No se pudo leer. Se puede reintentar. */
+    data object ReadError : PurchaseDetailUiState
+
+    /**
+     * La compra, con la hoja de anular si está abierta, en qué va la anulación y si acaba de
+     * anularse, para avisarlo una vez.
+     */
+    @Immutable
+    data class Ready(
+        val detail: PurchaseDetail,
+        val sheet: PurchaseVoidSheet? = null,
+        val status: PurchaseVoidStatus = PurchaseVoidStatus.IDLE,
+        val justVoided: Boolean = false,
+    ) : PurchaseDetailUiState {
+        /** Solo una compra activa se anula. */
+        val canVoid: Boolean get() = detail.purchase.status == DocumentStatus.ACTIVE
+    }
+}
+
+/** La hoja de anular: el motivo y la nota que eligió la persona. */
+data class PurchaseVoidSheet(
+    val reason: VoidReason = VoidReason.ENTRY_ERROR,
+    val note: String = "",
+) {
+    val noteTooLong: Boolean get() = note.length > MAX_VOID_NOTE_LENGTH
+
+    companion object {
+        /** Largo máximo de la nota de una anulación. */
+        const val MAX_VOID_NOTE_LENGTH = 200
+
+        /** Los motivos que la persona elige para una compra. */
+        val REASONS: List<VoidReason> =
+            listOf(VoidReason.ENTRY_ERROR, VoidReason.SUPPLIER_RETURN, VoidReason.OTHER)
+    }
+}
+
+/** En qué va la anulación de una compra. */
+enum class PurchaseVoidStatus {
+    IDLE,
+
+    /** Anulando: el botón muestra su indicador e ignora más toques. */
+    WORKING,
+
+    /** No se pudo anular. La compra sigue activa, y se puede reintentar. */
+    FAILED,
+}
+
+/** Lo que la persona hace en el detalle de una compra. */
+sealed interface PurchaseDetailAction {
+    data object OpenVoid : PurchaseDetailAction
+
+    data class ReasonChange(val reason: VoidReason) : PurchaseDetailAction
+
+    data class NoteChange(val note: String) : PurchaseDetailAction
+
+    data object ConfirmVoid : PurchaseDetailAction
+
+    data object CloseSheet : PurchaseDetailAction
+
+    /** El aviso de compra anulada ya se mostró. */
+    data object VoidShown : PurchaseDetailAction
+
+    data object Retry : PurchaseDetailAction
+
+    data object Back : PurchaseDetailAction
+}
+
+/**
+ * El detalle de una compra y su anulación. La compra no se edita: solo se anula, desde una hoja con
+ * el motivo, una nota opcional y lo que pasará con el stock, también si quedaría negativo.
+ *
+ * @param detailSource lee el detalle, y vuelve a emitir con cada cambio; se pide de nuevo al
+ *   reintentar.
+ * @param voidPurchase anula la compra en una sola transacción.
+ */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+class PurchaseDetailViewModel(
+    private val detailSource: () -> Flow<PurchaseDetail?>,
+    private val voidPurchase: suspend (VoidReason, String?) -> VoidPurchaseResult,
+) : ViewModel() {
+    private val attempts = MutableStateFlow(0)
+    private val overlay = MutableStateFlow(Overlay())
+
+    private val loaded: Flow<Loaded> = attempts.flatMapLatest {
+        detailSource()
+            .map<PurchaseDetail?, Loaded> { Loaded.Read(it) }
+            .catch { emit(Loaded.Failed) }
+    }
+
+    val uiState: StateFlow<PurchaseDetailUiState> = combine(loaded, overlay) { read, shown ->
+        when (read) {
+            Loaded.Failed -> PurchaseDetailUiState.ReadError
+
+            is Loaded.Read -> read.detail?.let {
+                PurchaseDetailUiState.Ready(it, shown.sheet, shown.status, shown.justVoided)
+            } ?: PurchaseDetailUiState.NotFound
+        }
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(STOP_MILLIS),
+        PurchaseDetailUiState.Loading,
+    )
+
+    fun onAction(action: PurchaseDetailAction) {
+        when (action) {
+            PurchaseDetailAction.OpenVoid -> overlay.update {
+                it.copy(sheet = PurchaseVoidSheet(), status = PurchaseVoidStatus.IDLE)
+            }
+
+            is PurchaseDetailAction.ReasonChange -> editSheet { it.copy(reason = action.reason) }
+
+            is PurchaseDetailAction.NoteChange -> editSheet { it.copy(note = action.note) }
+
+            PurchaseDetailAction.ConfirmVoid -> confirm()
+
+            PurchaseDetailAction.CloseSheet -> overlay.update { it.copy(sheet = null) }
+
+            PurchaseDetailAction.VoidShown -> overlay.update { it.copy(justVoided = false) }
+
+            PurchaseDetailAction.Retry -> attempts.update { it + 1 }
+
+            // Volver lo resuelve la navegación.
+            PurchaseDetailAction.Back -> Unit
+        }
+    }
+
+    private fun editSheet(change: (PurchaseVoidSheet) -> PurchaseVoidSheet) = overlay.update {
+        it.copy(sheet = it.sheet?.let(change))
+    }
+
+    private fun confirm() {
+        val current = overlay.value
+        val sheet = current.sheet ?: return
+        if (current.status == PurchaseVoidStatus.WORKING || sheet.noteTooLong) return
+        overlay.update { it.copy(status = PurchaseVoidStatus.WORKING) }
+        viewModelScope.launch {
+            val result = voidPurchase(sheet.reason, sheet.note.trim().ifEmpty { null })
+            overlay.update {
+                when (result) {
+                    // Ya anulada en otra pantalla: el detalle lo muestra, sin error.
+                    VoidPurchaseResult.Voided, VoidPurchaseResult.AlreadyVoided ->
+                        Overlay(justVoided = result == VoidPurchaseResult.Voided)
+
+                    VoidPurchaseResult.PurchaseNotFound,
+                    VoidPurchaseResult.ReasonNotAllowed,
+                    VoidPurchaseResult.NoteTooLong,
+                    is VoidPurchaseResult.UnknownTimeZone,
+                    VoidPurchaseResult.LedgerDamaged,
+                    is VoidPurchaseResult.StorageFailed,
+                    -> it.copy(status = PurchaseVoidStatus.FAILED)
+                }
+            }
+        }
+    }
+
+    private data class Overlay(
+        val sheet: PurchaseVoidSheet? = null,
+        val status: PurchaseVoidStatus = PurchaseVoidStatus.IDLE,
+        val justVoided: Boolean = false,
+    )
+
+    private sealed interface Loaded {
+        data class Read(val detail: PurchaseDetail?) : Loaded
+
+        data object Failed : Loaded
+    }
+
+    private companion object {
+        const val STOP_MILLIS = 5_000L
+    }
+}

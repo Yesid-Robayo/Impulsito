@@ -268,7 +268,17 @@ internal class PurchaseDaoTest : LedgerDatabaseTest() {
         // Una función nueva que edite una compra, o que edite o borre una línea, rompe esta prueba
         // a propósito: una compra confirmada solo se anula.
         assertEquals(
-            setOf("observeIn", "observeById", "findById", "insert", "markVoided"),
+            setOf(
+                "observeIn",
+                "observeById",
+                "findById",
+                "insert",
+                "markVoided",
+                // Las lecturas del historial: solo leen.
+                "historyPage",
+                "dayTotals",
+                "observeHistoryMark",
+            ),
             functionsOf(PurchaseDao::class.java),
         )
         assertEquals(

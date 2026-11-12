@@ -66,6 +66,9 @@ fun SaleHistoryRoute(navigator: AppNavigator) {
 
                         SaleHistoryAction.Sell -> navigator.sell()
 
+                        SaleHistoryAction.ShowPurchases ->
+                            navigator.open(AppNavKey.PurchaseHistory())
+
                         else -> viewModel.onAction(action)
                     }
                 },

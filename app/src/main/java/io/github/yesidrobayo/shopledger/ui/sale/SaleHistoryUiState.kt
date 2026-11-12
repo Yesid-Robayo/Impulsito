@@ -108,4 +108,7 @@ sealed interface SaleHistoryAction {
     data object CloseSale : SaleHistoryAction
 
     data object Sell : SaleHistoryAction
+
+    /** Ir al segmento `Compras` de Registros: lo resuelve la navegación. */
+    data object ShowPurchases : SaleHistoryAction
 }

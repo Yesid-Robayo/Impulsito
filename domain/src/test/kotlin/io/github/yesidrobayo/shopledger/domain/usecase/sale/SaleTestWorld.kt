@@ -65,6 +65,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseC
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.DayOfWeek
 
@@ -347,7 +348,7 @@ internal class SaleWorld(
     val unitRepository: UnitRepository = object : UnitRepository {
         override fun observeActive(): Flow<List<MeasureUnit>> = unused()
 
-        override fun observeAll(): Flow<List<MeasureUnit>> = unused()
+        override fun observeAll(): Flow<List<MeasureUnit>> = flowOf(units.values.toList())
 
         override suspend fun findById(id: Long): MeasureUnit? = units[id]
     }
@@ -510,7 +511,7 @@ internal class SaleWorld(
 
         override suspend fun findById(id: Long): Supplier? = read().suppliers[id]
 
-        override fun observeById(id: Long): Flow<Supplier?> = unused()
+        override fun observeById(id: Long): Flow<Supplier?> = committed.map { it.suppliers[id] }
 
         override suspend fun findActiveByNormalizedName(normalizedName: String): Supplier? =
             unused()

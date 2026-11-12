@@ -14,4 +14,18 @@
     <string name="notice_purchase_cost_change">O custo de %1$s passa de %2$s para %3$s.</string>
     <string name="notice_cost_differs">Antes custava %1$s. Convém revisar o valor.</string>
     <string name="notice_product_archived">%1$s está arquivado. É preciso reativá-lo para usar.</string>
+    <!-- Historial y detalle de compras. -->
+    <string name="purchase_row_detail">%1$s · %2$s</string>
+    <string name="filter_supplier">Fornecedor</string>
+    <string name="empty_purchases_title">As compras aparecerão aqui</string>
+    <string name="empty_purchases_body">Registrar uma compra soma estoque e atualiza o custo.</string>
+    <string name="empty_purchases_action">Nova compra</string>
+    <string name="empty_purchases_filtered_title">Nenhuma compra com estes filtros</string>
+    <string name="purchase_detail_title">Compra %1$s</string>
+    <string name="confirm_purchase_voided">Compra anulada</string>
+    <string name="error_purchase_void">Não foi possível anular. A compra continua ativa.</string>
+    <string name="dialog_void_purchase_title">Anular esta compra?</string>
+    <string name="dialog_void_purchase_body">As unidades saem do estoque e o custo médio é recalculado.</string>
+    <string name="dialog_void_purchase_action">Anular compra</string>
+    <string name="dialog_void_purchase_negative_body">Restariam %1$s de %2$s. O que foi vendido não muda.</string>
 </resources>

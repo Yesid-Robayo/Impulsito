@@ -14,4 +14,18 @@
     <string name="notice_purchase_cost_change">The cost of %1$s goes from %2$s to %3$s.</string>
     <string name="notice_cost_differs">It used to cost %1$s. Check the value.</string>
     <string name="notice_product_archived">%1$s is archived. Reactivate it to use it.</string>
+    <!-- Historial y detalle de compras. -->
+    <string name="purchase_row_detail">%1$s · %2$s</string>
+    <string name="filter_supplier">Supplier</string>
+    <string name="empty_purchases_title">Purchases will appear here</string>
+    <string name="empty_purchases_body">Recording a purchase adds stock and updates the cost.</string>
+    <string name="empty_purchases_action">New purchase</string>
+    <string name="empty_purchases_filtered_title">No purchases match these filters</string>
+    <string name="purchase_detail_title">Purchase %1$s</string>
+    <string name="confirm_purchase_voided">Purchase voided</string>
+    <string name="error_purchase_void">Could not void. The purchase is still active.</string>
+    <string name="dialog_void_purchase_title">Void this purchase?</string>
+    <string name="dialog_void_purchase_body">The units leave inventory and the average cost is recalculated.</string>
+    <string name="dialog_void_purchase_action">Void purchase</string>
+    <string name="dialog_void_purchase_negative_body">%1$s of %2$s would be left. What was sold does not change.</string>
 </resources>
