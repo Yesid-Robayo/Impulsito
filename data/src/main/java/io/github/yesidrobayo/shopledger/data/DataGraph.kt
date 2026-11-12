@@ -1,10 +1,12 @@
 package io.github.yesidrobayo.shopledger.data
 
 import android.content.Context
+import android.net.Uri
 import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.backup.BackupCopiesReader
 import io.github.yesidrobayo.shopledger.data.backup.BackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.BackupEvent
+import io.github.yesidrobayo.shopledger.data.backup.BackupPackager
 import io.github.yesidrobayo.shopledger.data.backup.BackupRestoreService
 import io.github.yesidrobayo.shopledger.data.backup.BackupScheduler
 import io.github.yesidrobayo.shopledger.data.backup.BackupSettingsService
@@ -15,11 +17,14 @@ import io.github.yesidrobayo.shopledger.data.backup.CandidateValidator
 import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
 import io.github.yesidrobayo.shopledger.data.backup.DamagedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.DeviceIdentityStore
+import io.github.yesidrobayo.shopledger.data.backup.DocumentExportSink
 import io.github.yesidrobayo.shopledger.data.backup.DurableFileOps
+import io.github.yesidrobayo.shopledger.data.backup.FullCopyExporter
 import io.github.yesidrobayo.shopledger.data.backup.FullVerifyGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.HeadDeepCheck
 import io.github.yesidrobayo.shopledger.data.backup.HeadProbe
 import io.github.yesidrobayo.shopledger.data.backup.LastProbeStore
+import io.github.yesidrobayo.shopledger.data.backup.LocalCopyBuilder
 import io.github.yesidrobayo.shopledger.data.backup.MaintenanceAccess
 import io.github.yesidrobayo.shopledger.data.backup.ProbeAccess
 import io.github.yesidrobayo.shopledger.data.backup.RejectedGenerationStore
@@ -33,6 +38,9 @@ import io.github.yesidrobayo.shopledger.data.backup.RoomRestoredDatabaseVerifier
 import io.github.yesidrobayo.shopledger.data.backup.SavedDestination
 import io.github.yesidrobayo.shopledger.data.backup.ScheduleFacts
 import io.github.yesidrobayo.shopledger.data.backup.ScheduledBackupWork
+import io.github.yesidrobayo.shopledger.data.backup.SnapshotCreator
+import io.github.yesidrobayo.shopledger.data.backup.SnapshotSealer
+import io.github.yesidrobayo.shopledger.data.backup.SnapshotValidation
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestore
 import io.github.yesidrobayo.shopledger.data.backup.StartupRestoreGate
 import io.github.yesidrobayo.shopledger.data.backup.UploadUsageRecorder
@@ -42,6 +50,7 @@ import io.github.yesidrobayo.shopledger.data.backup.probeAccess
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.productionRestoreCoordinator
 import io.github.yesidrobayo.shopledger.data.backup.recordEncryptionChanged
+import io.github.yesidrobayo.shopledger.data.backup.recordFullCopyExported
 import io.github.yesidrobayo.shopledger.data.backup.savedDestination
 import io.github.yesidrobayo.shopledger.data.backup.slotProviderLabel
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
@@ -84,6 +93,7 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import io.github.yesidrobayo.shopledger.domain.port.BackupSettingsPort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
+import io.github.yesidrobayo.shopledger.domain.port.FullCopyExportPort
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
@@ -286,6 +296,33 @@ class DataGraph internal constructor(
             rescheduled = backupScheduler::onMeteredPolicyChanged,
         )
     }
+
+    /**
+     * Exportar una copia completa al archivo que eligió la persona, con los mismos pasos que una
+     * copia del respaldo y sin red. Solo lee la base. Crearlo no toca el disco.
+     */
+    val fullCopyExport: FullCopyExportPort by lazy {
+        FullCopyExporter(
+            builder = { (open() as? DataAccess.Ready)?.ports?.let(::localCopyBuilder) },
+            exportsDirectory = { File(context.cacheDir, FullCopyExporter.DIRECTORY_NAME) },
+            sinkFor = { uri -> DocumentExportSink(context.contentResolver, Uri.parse(uri)) },
+            recordExport = {
+                (open() as? DataAccess.Ready)?.ports?.let { recordFullCopyExported(it, clock, log) }
+            },
+            ioContext = ioContext,
+        )
+    }
+
+    /** Arma copias fuera del destino, con las piezas del respaldo sobre la base de [ports]. */
+    private fun localCopyBuilder(ports: DataPorts): LocalCopyBuilder = LocalCopyBuilder(
+        snapshots = SnapshotCreator(ports.databaseFile, ioContext),
+        sealer = SnapshotSealer(ioContext),
+        validation = SnapshotValidation(CandidateValidator(ioContext, schemaVersion)),
+        packager = BackupPackager(ioContext),
+        headGeneration = { ports.backupState.get()?.headGeneration ?: 0 },
+        deviceId = { deviceIdentity.deviceId() },
+        clock = clock,
+    )
 
     /** El mes de ahora en la zona del negocio, como `AAAA-MM`, o nulo si la zona no se entiende. */
     private suspend fun businessMonth(settings: AppSettingsRepository): String? {

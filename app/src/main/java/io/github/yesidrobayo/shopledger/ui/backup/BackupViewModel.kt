@@ -153,6 +153,7 @@ class BackupViewModel(
             BackupAction.ReviewPolicy,
             BackupAction.OpenProvider,
             BackupAction.FindFile,
+            BackupAction.OpenLocalCopies,
             -> Unit
         }
     }

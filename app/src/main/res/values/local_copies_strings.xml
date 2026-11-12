@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Copias locales: exportar una copia completa. Textos de la guía de redacción. -->
+    <string name="offsite_intro">A full backup outside the cloud protects the business if that account is lost.</string>
+    <string name="offsite_export_title">Export a full backup</string>
+    <string name="offsite_export_body">A file with all the data, to keep on the phone, a card or a USB drive, and restore later.</string>
+    <string name="offsite_export_plain_warning">This file is not encrypted and contains the whole business</string>
+    <string name="offsite_export_encrypted_info">This file is encrypted</string>
+    <string name="offsite_save_file_action">Save to a file</string>
+    <string name="offsite_exporting">Creating the backup</string>
+    <string name="offsite_saved">Backup saved to the file</string>
+    <string name="offsite_error_export">The backup could not be created. The data did not change.</string>
+    <string name="offsite_error_space">There is no space at the destination. Choose another place.</string>
+    <string name="backup_export_copy_action">Export backup</string>
+    <string name="offsite_saved_not_restorable">Backup saved, but %1$s could not restore it. Export the data and ask for help.</string>
+    <string name="offsite_error_damaged">The data on this phone is damaged, so the backup was not created. The data did not change. Ask for help.</string>
+</resources>

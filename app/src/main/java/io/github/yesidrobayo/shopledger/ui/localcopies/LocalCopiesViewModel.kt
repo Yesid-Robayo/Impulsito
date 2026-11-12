@@ -1,0 +1,102 @@
+package io.github.yesidrobayo.shopledger.ui.localcopies
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
+import io.github.yesidrobayo.shopledger.domain.model.backup.ExportFileName
+import io.github.yesidrobayo.shopledger.domain.model.backup.FullCopyExport
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Instant
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/**
+ * `Copias locales`: exportar una copia completa a un archivo que elige la persona.
+ *
+ * Exportar solo lee la base: mientras tanto se puede seguir vendiendo, y ningún resultado cambia el
+ * estado del respaldo. Una exportación a la vez: el botón no atiende toques mientras trabaja.
+ *
+ * @param export escribe la copia en el documento elegido.
+ * @param encrypted si la copia sale cifrada, para su aviso; nulo si no se pudo leer.
+ * @param zone la zona del negocio, para el nombre sugerido; nula si no se sabe.
+ * @param now la hora del nombre sugerido.
+ * @param computation el hilo donde se exporta, fuera del principal.
+ */
+class LocalCopiesViewModel(
+    private val export: suspend (String) -> FullCopyExport,
+    private val encrypted: suspend () -> Boolean?,
+    private val zone: suspend () -> BusinessTimeZone?,
+    private val now: () -> Instant,
+    private val computation: CoroutineDispatcher,
+) : ViewModel() {
+    private val state = MutableStateFlow(LocalCopiesUiState())
+    val uiState: StateFlow<LocalCopiesUiState> = state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val value = safely { encrypted() }
+            // Sin saber, se avisa como en claro: es la advertencia que más protege.
+            val businessZone = safely { zone() }
+            state.update { it.copy(encrypted = value ?: false, zone = businessZone) }
+        }
+    }
+
+    fun onAction(action: LocalCopiesAction) {
+        when (action) {
+            is LocalCopiesAction.FileCreated -> exportTo(action.uri)
+
+            LocalCopiesAction.DismissResult ->
+                state.update {
+                    if (it.export is ExportUi.Working) it else it.copy(export = ExportUi.Idle)
+                }
+
+            LocalCopiesAction.MessageShown -> state.update { it.copy(message = null) }
+
+            // Lo resuelve la navegación.
+            LocalCopiesAction.Back, LocalCopiesAction.SaveToFile -> Unit
+        }
+    }
+
+    /** El nombre que se sugiere al crear el archivo, con la hora del negocio de ahora. */
+    fun suggestedName(): String = ExportFileName.of(now(), state.value.zone)
+
+    private fun exportTo(uri: String) {
+        if (state.value.export is ExportUi.Working) return
+        state.update { it.copy(export = ExportUi.Working) }
+        viewModelScope.launch {
+            val result = safely { export(uri) } ?: FullCopyExport.Failed
+            state.update {
+                when (result) {
+                    is FullCopyExport.Saved ->
+                        if (result.restorable) {
+                            it.copy(export = ExportUi.Idle, message = LocalCopiesMessage.SAVED)
+                        } else {
+                            it.copy(export = ExportUi.SavedNotRestorable)
+                        }
+
+                    FullCopyExport.NoSpace ->
+                        it.copy(export = ExportUi.Failed(ExportFailure.NO_SPACE))
+
+                    FullCopyExport.Damaged ->
+                        it.copy(export = ExportUi.Failed(ExportFailure.DAMAGED))
+
+                    FullCopyExport.Failed -> it.copy(export = ExportUi.Failed(ExportFailure.OTHER))
+                }
+            }
+        }
+    }
+
+    /** Lo leído, o nulo si falló: una falla nunca cierra la pantalla. */
+    private suspend fun <T> safely(block: suspend () -> T): T? = try {
+        withContext(computation) { block() }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Exception) {
+        null
+    }
+}

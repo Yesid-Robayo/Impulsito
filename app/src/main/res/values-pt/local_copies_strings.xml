@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Copias locales: exportar una copia completa. Textos de la guía de redacción. -->
+    <string name="offsite_intro">Uma cópia completa fora da nuvem protege o negócio se essa conta for perdida.</string>
+    <string name="offsite_export_title">Exportar uma cópia completa</string>
+    <string name="offsite_export_body">Um arquivo com todos os dados, para guardar no telefone, em um cartão ou em um pen drive, e restaurar depois.</string>
+    <string name="offsite_export_plain_warning">Este arquivo sai sem criptografia e contém todo o negócio</string>
+    <string name="offsite_export_encrypted_info">Este arquivo sai criptografado</string>
+    <string name="offsite_save_file_action">Salvar em um arquivo</string>
+    <string name="offsite_exporting">Criando a cópia</string>
+    <string name="offsite_saved">Cópia salva no arquivo</string>
+    <string name="offsite_error_export">Não foi possível criar a cópia. Os dados não mudaram.</string>
+    <string name="offsite_error_space">Não há espaço no destino. É possível escolher outro local.</string>
+    <string name="backup_export_copy_action">Exportar cópia de segurança</string>
+    <string name="offsite_saved_not_restorable">Cópia salva, mas o %1$s não conseguiria restaurá-la. Convém exportar os dados e pedir ajuda.</string>
+    <string name="offsite_error_damaged">Os dados deste telefone estão danificados, então a cópia não foi criada. Os dados não mudaram. Convém pedir ajuda.</string>
+</resources>

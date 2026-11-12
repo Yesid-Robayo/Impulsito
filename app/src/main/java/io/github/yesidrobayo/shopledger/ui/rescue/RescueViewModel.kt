@@ -134,6 +134,7 @@ class RescueViewModel(
             is BackupAction.ReleaseCopy,
             BackupAction.ConfirmRelease,
             BackupAction.CloseRelease,
+            BackupAction.OpenLocalCopies,
             -> Unit
         }
     }

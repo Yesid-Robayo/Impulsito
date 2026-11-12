@@ -45,6 +45,7 @@ import io.github.yesidrobayo.shopledger.ui.expense.ExpensesRoute
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
 import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.localcopies.LocalCopiesRoute
 import io.github.yesidrobayo.shopledger.ui.onboarding.OnboardingRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodFormRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodsRoute
@@ -207,6 +208,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.Onboarding -> OnboardingRoute(navigator)
 
         AppNavKey.Backup -> BackupRoute(navigator)
+
+        AppNavKey.LocalCopies -> LocalCopiesRoute(navigator)
 
         // Toda entrada que conecta un destino pasa antes por la política y los términos.
         is AppNavKey.BackupDestinationChoice ->

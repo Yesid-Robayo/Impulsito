@@ -143,6 +143,8 @@ fun BackupRoute(navigator: AppNavigator) {
 
                         BackupAction.ReviewPolicy -> policy.review()
 
+                        BackupAction.OpenLocalCopies -> navigator.open(AppNavKey.LocalCopies)
+
                         BackupAction.FindFile -> {
                             viewModel.onAction(BackupAction.CloseRestore)
                             picker.launch(arrayOf(ANY_FILE))

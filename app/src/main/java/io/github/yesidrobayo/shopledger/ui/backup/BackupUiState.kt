@@ -149,4 +149,7 @@ sealed interface BackupAction {
 
     /** Cierra la pregunta sin liberar nada. */
     data object CloseRelease : BackupAction
+
+    /** `Exportar copia`: lo resuelve la navegación, con `Copias locales`. */
+    data object OpenLocalCopies : BackupAction
 }

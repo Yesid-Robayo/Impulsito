@@ -627,6 +627,17 @@ private fun LazyListScope.copies(uiState: BackupUiState, onAction: (BackupAction
             }
         }
     }
+    // Sin destino también: una copia exportada es la protección de quien no eligió dónde guardar.
+    if (uiState.wording != null) {
+        item(key = EXPORT_COPY) {
+            Column(Modifier.padding(horizontal = AppTheme.spacing.s8)) {
+                InlineTextButton(
+                    stringResource(R.string.backup_export_copy_action),
+                    { onAction(BackupAction.OpenLocalCopies) },
+                )
+            }
+        }
+    }
     val wording = uiState.wording
     if (connected && wording != null) {
         item(key = PROTECTION) { Protection(wording, uiState.copiesEncrypted) }
@@ -815,3 +826,4 @@ private const val COPIES_STATE = "copiesState"
 private const val RESTORE_NOTICE = "restoreNotice"
 private const val FIND_FILE = "findFile"
 private const val PROTECTION = "protection"
+private const val EXPORT_COPY = "exportCopy"
