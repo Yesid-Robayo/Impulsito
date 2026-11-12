@@ -33,6 +33,12 @@ sealed interface BackupNotification {
     data object Stale : BackupNotification
 
     /**
+     * Con el cifrado activo, toca escribir el código de recuperación para comprobar que sigue a mano.
+     * No lleva el código ni nada del negocio.
+     */
+    data object RecoveryCheckDue : BackupNotification
+
+    /**
      * Con la nube del teléfono, toca revisar en esa nube que la copia aparezca. Sale con cualquier
      * estado, también con un fallo: entregada no es subida, y solo la persona puede comprobarlo.
      *

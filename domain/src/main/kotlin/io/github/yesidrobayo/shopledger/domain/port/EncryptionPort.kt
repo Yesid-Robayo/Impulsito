@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
@@ -42,4 +43,10 @@ interface EncryptionPort {
      * y sigue disponible con el cifrado apagado, porque las copias cifradas que quedan lo necesitan.
      */
     suspend fun viewCode(): RecoveryCodeView
+
+    /**
+     * Compara lo escrito con el código guardado en este teléfono. Si coincide, anota la fecha de la
+     * prueba; si no, no escribe nada. No tiene límite de intentos.
+     */
+    suspend fun checkCode(typed: String): CodeCheckOutcome
 }

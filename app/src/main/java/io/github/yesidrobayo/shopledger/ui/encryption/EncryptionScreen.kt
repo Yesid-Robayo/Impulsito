@@ -35,6 +35,7 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.lock.rejectObscuredTouches
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
+import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CheckboxRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
@@ -53,6 +54,7 @@ import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.StatusTone
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
+import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -82,7 +84,7 @@ fun EncryptionScreen(
             CodeViewScreen(view, onAction, modifier)
             return
         }
-        StatusScreen(uiState.status, onAction, modifier)
+        StatusScreen(uiState.status, onAction, modifier, uiState.checkDates)
         if (uiState.confirmChange) {
             ConfirmDialog(
                 title = stringResource(R.string.encryption_change_confirm_title),
@@ -95,6 +97,7 @@ fun EncryptionScreen(
             )
         }
         if (uiState.confirmViewWithoutScreenLock) ViewWithoutScreenLockDialog(onAction)
+        uiState.codeCheck?.let { CodeCheckSheet(it, onAction) }
         return
     }
     // Los pasos dan su color de contenido: sin él, el texto sale con el de la ventana y en oscuro
@@ -120,6 +123,7 @@ private fun StatusScreen(
     status: EncryptionStatusUi,
     onAction: (EncryptionAction) -> Unit,
     modifier: Modifier,
+    checkDates: CheckDatesUi? = null,
 ) {
     val spacing = AppTheme.spacing
     Surface(
@@ -159,7 +163,8 @@ private fun StatusScreen(
                         }
 
                         EncryptionStatusUi.On -> {
-                            item(key = ON) { OnBlock() }
+                            item(key = ON) { OnBlock(checkDates) }
+                            item(key = TEST_CODE) { TestCodeButton(onAction) }
                             // El orden de la pantalla: ver el código antes de cambiarlo.
                             item(key = VIEW_CODE) { ViewCodeRow(onAction) }
                             item(key = CHANGE) {
@@ -283,10 +288,14 @@ private fun TextBlock(title: String, body: String) {
     }
 }
 
-/** `Las copias salen cifradas`, sobre el contenedor del estado bueno del respaldo. */
+/**
+ * `Las copias salen cifradas`, sobre el contenedor del estado bueno del respaldo. Con [dates], dice
+ * cuándo se comprobó el código por última vez y cuándo toca la próxima prueba.
+ */
 @Composable
-private fun OnBlock() {
+private fun OnBlock(dates: CheckDatesUi? = null) {
     val colors = AppTheme.colors
+    val formats = LocalAppFormats.current
     Row(
         Modifier
             .fillMaxWidth()
@@ -311,6 +320,20 @@ private fun OnBlock() {
                 style = MaterialTheme.typography.titleLarge,
                 color = colors.onBackupOkContainer,
             )
+            dates?.lastCheck?.let {
+                Text(
+                    stringResource(R.string.encryption_code_checked, formats.date.longDate(it)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onBackupOkContainer,
+                )
+            }
+            dates?.nextCheck?.let {
+                Text(
+                    stringResource(R.string.encryption_next_check, formats.date.longDate(it)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onBackupOkContainer,
+                )
+            }
         }
     }
 }
@@ -658,6 +681,69 @@ private fun DoneStep(changed: Boolean, onAction: (EncryptionAction) -> Unit, mod
     }
 }
 
+/**
+ * La hoja `Comprobar el código`: a los 7 y 30 días de activar o cambiar el código, luego cada 90, o
+ * con `Probar el código`. Nunca bloquea nada y no tiene límite de intentos. Cerrarla es `Más tarde`.
+ * Quien la muestra pone `FLAG_SECURE` mientras se ve, porque lleva el código escrito.
+ */
+@Composable
+private fun CodeCheckSheet(check: CodeCheckUi, onAction: (EncryptionAction) -> Unit) {
+    AppBottomSheet(
+        onDismissRequest = { onAction(EncryptionAction.LaterCheck) },
+        title = stringResource(R.string.recovery_check_title),
+        action = {
+            PrimaryActionButton(
+                text = stringResource(R.string.recovery_check_action),
+                onClick = { onAction(EncryptionAction.SubmitCheck) },
+                variant = ActionVariant.PRIMARY,
+                state = if (check.working) ActionState.WORKING else ActionState.IDLE,
+                modifier = Modifier.fillMaxWidth().keepsMessagesAbove(),
+            )
+        },
+    ) {
+        Text(
+            stringResource(R.string.recovery_check_body),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        if (check.problem == CodeCheckProblem.UNAVAILABLE) {
+            NoticeCard(
+                stringResource(R.string.encryption_key_unavailable_body),
+                NoticeVariant.ERROR,
+            )
+        }
+        RecoveryCodeField(
+            groups = check.typed,
+            onGroupsChange = { onAction(EncryptionAction.TypedCheck(it)) },
+            label = stringResource(R.string.recovery_field_label),
+            error =
+                if (check.problem == CodeCheckProblem.MISMATCH) {
+                    stringResource(R.string.recovery_check_mismatch)
+                } else {
+                    null
+                },
+        )
+        InlineTextButton(
+            text = stringResource(R.string.recovery_lost_action),
+            onClick = { onAction(EncryptionAction.LostCode) },
+        )
+        InlineTextButton(
+            text = stringResource(R.string.recovery_later_action),
+            onClick = { onAction(EncryptionAction.LaterCheck) },
+        )
+    }
+}
+
+/** `Probar el código`: la misma prueba que la periódica, cuando la persona quiera. */
+@Composable
+private fun TestCodeButton(onAction: (EncryptionAction) -> Unit) {
+    PrimaryActionButton(
+        text = stringResource(R.string.encryption_test_action),
+        onClick = { onAction(EncryptionAction.TestCode) },
+        variant = ActionVariant.TONAL,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
 /** `Ver mi código`: abre el código vigente tras la verificación del teléfono. */
 @Composable
 private fun ViewCodeRow(onAction: (EncryptionAction) -> Unit) {
@@ -800,3 +886,4 @@ private const val NOT_PROTECTS = "not_protects"
 private const val RISK = "risk"
 private const val REACTIVATE = "reactivate"
 private const val VIEW_CODE = "view_code"
+private const val TEST_CODE = "test_code"

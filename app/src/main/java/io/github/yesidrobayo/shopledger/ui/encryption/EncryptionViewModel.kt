@@ -4,14 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryKitFileName
 import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
+import io.github.yesidrobayo.shopledger.domain.rule.backup.RecoveryCodeCheckRule
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.EncryptionUseCase
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +40,9 @@ import kotlinx.coroutines.withContext
  *   `true` si quedó escrito.
  * @param today la fecha de hoy en la zona del negocio, para el kit y su nombre.
  * @param computation el hilo de la prueba y del kit, fuera del principal.
+ * @param now el instante actual, para el calendario de la prueba periódica del código.
+ * @param dateOf la fecha del negocio de un instante, para mostrar las fechas de la prueba.
+ * @param snooze hasta cuándo la persona pidió `Más tarde`, solo en memoria del proceso.
  */
 class EncryptionViewModel(
     private val port: EncryptionUseCase,
@@ -46,6 +53,9 @@ class EncryptionViewModel(
     ) -> Boolean,
     private val today: suspend () -> BusinessDate,
     private val computation: CoroutineDispatcher,
+    private val now: () -> Instant = { Clock.System.now() },
+    private val dateOf: suspend (Instant) -> BusinessDate? = { null },
+    private val snooze: RecoveryCheckSnooze = RecoveryCheckSnooze.Process,
 ) : ViewModel() {
     private val state = MutableStateFlow(EncryptionUiState())
     val uiState: StateFlow<EncryptionUiState> = state.asStateFlow()
@@ -54,6 +64,10 @@ class EncryptionViewModel(
     private var draft: RecoveryCodeDraft? = null
     private var running: Job? = null
     private var viewing: Job? = null
+    private var checking: Job? = null
+
+    /** Si esta pantalla ya ofreció la prueba vencida: se ofrece una vez al abrirla. */
+    private var checkOffered = false
 
     /** Si la activación en curso es un cambio de código. */
     private var changing = false
@@ -153,6 +167,30 @@ class EncryptionViewModel(
                 viewing?.cancel()
                 state.update { it.copy(codeView = null) }
             }
+
+            EncryptionAction.TestCode -> openCheck()
+
+            is EncryptionAction.TypedCheck ->
+                state.update { current ->
+                    val check = current.codeCheck
+                    if (check == null || check.working) {
+                        current
+                    } else {
+                        current.copy(codeCheck = check.copy(typed = action.groups, problem = null))
+                    }
+                }
+
+            EncryptionAction.SubmitCheck -> submitCheck()
+
+            // La pantalla pide la verificación del teléfono y abre `Ver mi código`.
+            EncryptionAction.LostCode -> closeCheck()
+
+            EncryptionAction.LaterCheck -> {
+                snooze.until = RecoveryCodeCheckRule.snoozedUntil(now())
+                closeCheck()
+            }
+
+            EncryptionAction.CheckPassedShown -> state.update { it.copy(codeCheckPassed = false) }
         }
     }
 
@@ -310,6 +348,90 @@ class EncryptionViewModel(
             }
     }
 
+    /** Abre la hoja de la prueba, solo con el cifrado activo y sin otra cosa a la vista. */
+    private fun openCheck() {
+        state.update { current ->
+            val free = current.step == null && current.codeView == null && current.codeCheck == null
+            if (current.status == EncryptionStatusUi.On && free) {
+                current.copy(codeCheck = CodeCheckUi())
+            } else {
+                current
+            }
+        }
+    }
+
+    private fun closeCheck() {
+        checking?.cancel()
+        state.update { it.copy(codeCheck = null) }
+    }
+
+    /**
+     * Compara lo escrito con el código guardado. Si coincide, la capa de datos anota la fecha; si
+     * no, no se escribe nada ni se cuenta el intento.
+     */
+    private fun submitCheck() {
+        val check = state.value.codeCheck ?: return
+        if (check.working) return
+        state.update { it.copy(codeCheck = check.copy(working = true, problem = null)) }
+        checking =
+            viewModelScope.launch {
+                val outcome =
+                    safely { port.checkCode(check.typed.joinToString("")) }
+                        ?: CodeCheckOutcome.UNAVAILABLE
+                when (outcome) {
+                    CodeCheckOutcome.CORRECT -> {
+                        state.update { it.copy(codeCheck = null, codeCheckPassed = true) }
+                        refresh()
+                    }
+
+                    CodeCheckOutcome.MISMATCH -> failCheck(CodeCheckProblem.MISMATCH)
+
+                    CodeCheckOutcome.UNAVAILABLE -> failCheck(CodeCheckProblem.UNAVAILABLE)
+                }
+            }
+    }
+
+    private fun failCheck(problem: CodeCheckProblem) {
+        state.update { current ->
+            val check = current.codeCheck ?: return@update current
+            current.copy(codeCheck = check.copy(working = false, problem = problem))
+        }
+    }
+
+    /**
+     * Las fechas de la prueba y, si ya toca y nadie pidió `Más tarde` hoy, la hoja de la prueba,
+     * una vez por pantalla. Nunca bloquea nada: se cierra con `Más tarde`.
+     */
+    private suspend fun updateSchedule(on: EncryptionStatus.On?) {
+        if (on == null) {
+            state.update { it.copy(checkDates = null) }
+            return
+        }
+        val enabledAt = on.enabledAtUtcMillis?.let(Instant::fromEpochMilliseconds)
+        val lastCheck = on.lastCodeCheckAtUtcMillis?.let(Instant::fromEpochMilliseconds)
+        val next = enabledAt?.let { RecoveryCodeCheckRule.nextDueAt(it, lastCheck) }
+        val dates =
+            CheckDatesUi(
+                lastCheck = lastCheck?.let { safely { dateOf(it) } },
+                nextCheck = next?.let { safely { dateOf(it) } },
+            )
+        state.update { it.copy(checkDates = dates) }
+        // Sin fecha de activación, un dato raro, la prueba se pide: nunca se esconde.
+        val due =
+            enabledAt == null ||
+                RecoveryCodeCheckRule.isDue(
+                    encryptionEnabled = true,
+                    enabledAt = enabledAt,
+                    lastCorrectCheckAt = lastCheck,
+                    now = now(),
+                    snoozedUntil = snooze.until,
+                )
+        if (due && !checkOffered) {
+            checkOffered = true
+            openCheck()
+        }
+    }
+
     private fun leaveActivation() {
         // La prueba ya en curso termina sola: cortarla a mitad del sello no deshace nada.
         if (state.value.step is ActivationStepUi.Testing && running?.isActive == true) return
@@ -322,14 +444,16 @@ class EncryptionViewModel(
 
     private fun refresh() {
         viewModelScope.launch {
+            val read = safely { port.status() }
             val status =
-                when (val read = safely { port.status() }) {
+                when (read) {
                     is EncryptionStatus.Off -> EncryptionStatusUi.Off(read.wasOn)
                     is EncryptionStatus.On -> EncryptionStatusUi.On
                     EncryptionStatus.KeyUnavailable -> EncryptionStatusUi.KeyUnavailable
                     EncryptionStatus.Unknown, null -> EncryptionStatusUi.Unknown
                 }
             state.update { it.copy(status = status) }
+            updateSchedule(read as? EncryptionStatus.On)
         }
     }
 

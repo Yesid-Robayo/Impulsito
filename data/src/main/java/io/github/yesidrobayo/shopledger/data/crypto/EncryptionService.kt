@@ -1,12 +1,14 @@
 package io.github.yesidrobayo.shopledger.data.crypto
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
 import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
+import java.io.IOException
 
 /**
  * La pantalla del cifrado sobre la custodia y la activación. Traduce entre el código impreso, que
@@ -25,10 +27,12 @@ internal class EncryptionService(
             )
         }
         return when (custody.keys.open()) {
-            is RecoveryKeyRead.Available -> EncryptionStatus.On(state.enabledAtUtcMillis)
+            is RecoveryKeyRead.Available ->
+                EncryptionStatus.On(state.enabledAtUtcMillis, state.lastCodeCheckAtUtcMillis)
 
             // Un fallo pasajero no detiene nada: el respaldo reintenta.
-            is RecoveryKeyRead.RetryLater -> EncryptionStatus.On(state.enabledAtUtcMillis)
+            is RecoveryKeyRead.RetryLater ->
+                EncryptionStatus.On(state.enabledAtUtcMillis, state.lastCodeCheckAtUtcMillis)
 
             RecoveryKeyRead.Absent,
             is RecoveryKeyRead.Unavailable,
@@ -95,6 +99,28 @@ internal class EncryptionService(
         is RecoveryKeyRead.RetryLater,
         -> RecoveryCodeView.Unavailable
     }
+
+    override suspend fun checkCode(typed: String): CodeCheckOutcome =
+        when (val read = custody.keys.open()) {
+            is RecoveryKeyRead.Available ->
+                if (checkTyped(draftOf(read.code), typed) == TypedCodeCheck.Matches) {
+                    // El código es correcto aunque el disco no deje anotar la fecha: la prueba se
+                    // volverá a pedir, y nada más cambia.
+                    try {
+                        custody.recordCodeCheck(read.key.keyIdHex)
+                    } catch (_: IOException) {
+                        false
+                    }
+                    CodeCheckOutcome.CORRECT
+                } else {
+                    CodeCheckOutcome.MISMATCH
+                }
+
+            RecoveryKeyRead.Absent,
+            is RecoveryKeyRead.Unavailable,
+            is RecoveryKeyRead.RetryLater,
+            -> CodeCheckOutcome.UNAVAILABLE
+        }
 
     private fun draftOf(code: RecoveryCode): RecoveryCodeDraft =
         RecoveryCodeDraft(RecoveryCodec.printable(code).split('-'))

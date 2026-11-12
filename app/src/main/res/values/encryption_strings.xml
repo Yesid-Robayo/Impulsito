@@ -62,4 +62,12 @@
     <string name="encryption_view_code_action">View my code</string>
     <string name="recovery_view_title">View my code</string>
     <string name="recovery_view_no_screen_lock">This phone has no screen lock: anyone holding it can see the code. Turn one on in the phone settings.</string>
+    <string name="encryption_code_checked">Code checked on %1$s</string>
+    <string name="encryption_next_check">Next check: %1$s</string>
+    <string name="encryption_test_action">Test the code</string>
+    <string name="recovery_check_title">Check the code</string>
+    <string name="recovery_check_body">Typing the recovery code confirms it is still at hand. Nothing is blocked and there is no limit on attempts.</string>
+    <string name="recovery_check_ok">Code is correct</string>
+    <string name="recovery_lost_action">Code lost</string>
+    <string name="recovery_later_action">Later</string>
 </resources>

@@ -120,6 +120,14 @@ private fun BackupNotification.content(): BackupNotificationContent = when (this
             body = R.string.notif_backup_stale_body,
         )
 
+    // Sin el código ni nada del negocio: solo pide comprobarlo.
+    BackupNotification.RecoveryCheckDue ->
+        BackupNotificationContent(
+            id = 3,
+            title = R.string.notif_recovery_check_title,
+            body = R.string.notif_recovery_check_body,
+        )
+
     is BackupNotification.CheckDue ->
         BackupNotificationContent(
             id = 2,

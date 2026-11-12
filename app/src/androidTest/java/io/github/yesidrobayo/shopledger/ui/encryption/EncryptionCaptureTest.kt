@@ -11,11 +11,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
 import java.io.File
+import kotlinx.datetime.LocalDate
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -86,6 +88,21 @@ class EncryptionCaptureTest {
                     EncryptionUiState(EncryptionStatusUi.On, codeView = CodeViewUi.Unavailable),
                 "view-code-no-lock" to
                     EncryptionUiState(EncryptionStatusUi.On, confirmViewWithoutScreenLock = true),
+                "on-dates" to
+                    EncryptionUiState(
+                        EncryptionStatusUi.On,
+                        checkDates =
+                            CheckDatesUi(
+                                BusinessDate(LocalDate(2026, 11, 8)),
+                                BusinessDate(LocalDate(2026, 12, 1)),
+                            ),
+                    ),
+                "check" to EncryptionUiState(EncryptionStatusUi.On, codeCheck = CodeCheckUi()),
+                "check-mismatch" to
+                    EncryptionUiState(
+                        EncryptionStatusUi.On,
+                        codeCheck = CodeCheckUi(groups, CodeCheckProblem.MISMATCH),
+                    ),
             )
         for (dark in listOf(false, true)) {
             for ((name, state) in states) {

@@ -54,7 +54,11 @@ object DataHealthRule {
                 count = pinned?.takeIf { webDav },
             ),
             HealthRow(HealthSignal.OFFSITE, availableState(facts.offsiteAvailable)),
-            HealthRow(HealthSignal.CODE, availableState(facts.codeAvailable)),
+            HealthRow(
+                HealthSignal.CODE,
+                dueState(facts.codeAvailable, facts.codeCheckDue),
+                facts.lastCodeCheckAt?.takeIf { facts.codeAvailable },
+            ),
             HealthRow(
                 HealthSignal.DEVICE_LOCK,
                 if (facts.deviceLocked) HealthState.OK else HealthState.PENDING,

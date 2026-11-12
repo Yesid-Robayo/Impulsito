@@ -36,6 +36,20 @@ internal class RecoveryStateStore(
     }
 
     /**
+     * Lee, cambia y escribe el estado bajo el mismo cerrojo, para que nada se cuele entre la lectura
+     * y la escritura. Solo escribe si [change] cambió algo. Devuelve el estado resultante, y lanza
+     * `IOException` si el disco falla al escribir.
+     */
+    suspend fun update(change: (RecoveryState) -> RecoveryState): RecoveryState = mutex.withLock {
+        withContext(ioContext) {
+            val current = readNow()
+            val changed = change(current)
+            if (changed != current) writeNow(changed)
+            changed
+        }
+    }
+
+    /**
      * Alinea el estado con el sobre, al arrancar: el sobre manda, porque se escribe antes que el
      * estado al activar o cambiar el código. Si [sealedKeyIdHex] es el `key_id` que se apagó a
      * propósito, el cifrado sigue apagado: reiniciar nunca lo vuelve a encender. Devuelve el estado

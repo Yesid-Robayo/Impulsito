@@ -44,6 +44,9 @@ import kotlinx.coroutines.withContext
  * 5. **Avisa la revisión pendiente** con la nube del teléfono, una vez en cada mantenimiento, sea
  *    cual sea el estado: entregada no es subida, y solo la persona puede comprobar que la copia
  *    aparece. Una nueva reemplaza a la de ayer.
+ * 6. **Pide la prueba del código** con el cifrado activo, cuando toca: a los 7 y 30 días de activar
+ *    o cambiar el código, y luego cada 90 desde la última prueba correcta. Sale una vez en cada
+ *    mantenimiento mientras toque, sin anotar nada, y nunca bloquea.
  *
  * Los dos primeros pasos van bajo el cerrojo del respaldo, sin esperarlo: con una copia en curso,
  * esa copia ya corre la misma revisión sobre lo que sube, y con una restauración en curso la base y
@@ -59,6 +62,7 @@ import kotlinx.coroutines.withContext
  * @param reconcile encola lo que quedó pendiente.
  * @param notifier lanza las notificaciones del respaldo.
  * @param cleanUp borra lo local vencido en el instante que recibe.
+ * @param recoveryCheckDue si toca la prueba periódica del código. Solo lee `recovery/state.json`.
  */
 internal class DailyMaintenance(
     private val clock: Clock,
@@ -69,6 +73,7 @@ internal class DailyMaintenance(
     private val reconcile: suspend () -> Unit,
     private val notifier: () -> BackupNotifier,
     private val cleanUp: suspend (Instant) -> Unit,
+    private val recoveryCheckDue: suspend () -> Boolean = { false },
 ) {
     /** Corre el mantenimiento de hoy. */
     suspend fun run(): MaintenanceRun {
@@ -100,6 +105,9 @@ internal class DailyMaintenance(
             val report = database.report(now)
             noticeStale(database, report.status, now)
             if (BackupNotice.HUMAN_CHECK_DUE in report.notices) noticeCheckDue(database)
+        }
+        log.contain(MaintenanceEvent.NOTICE_FAILED) {
+            if (recoveryCheckDue()) noticeRecoveryCheck()
         }
         return MaintenanceRun.DONE
     }
@@ -144,6 +152,15 @@ internal class DailyMaintenance(
         val provider = database.providerLabel() ?: return
         if (notifier().show(BackupNotification.CheckDue(provider))) {
             log.info(MaintenanceEvent.CHECK_DUE_NOTIFIED)
+        } else {
+            log.info(MaintenanceEvent.NOTIFICATION_BLOCKED)
+        }
+    }
+
+    /** La prueba del código pendiente: el mismo aviso hasta que la persona lo escriba bien. */
+    private fun noticeRecoveryCheck() {
+        if (notifier().show(BackupNotification.RecoveryCheckDue)) {
+            log.info(MaintenanceEvent.RECOVERY_CHECK_NOTIFIED)
         } else {
             log.info(MaintenanceEvent.NOTIFICATION_BLOCKED)
         }
@@ -269,6 +286,7 @@ internal enum class MaintenanceEvent(override val text: String) : LogEvent {
     ),
     STALE_NOTIFIED("Notificación de un día sin copia lanzada"),
     CHECK_DUE_NOTIFIED("Notificación de revisar la copia en la nube lanzada"),
+    RECOVERY_CHECK_NOTIFIED("Notificación de comprobar el código de recuperación lanzada"),
     NOTIFICATION_BLOCKED("La notificación del respaldo no puede salir"),
     NOTICE_FAILED("Falla no prevista al avisar un día sin copia"),
     WORKER_FAILED("Falla no prevista del mantenimiento diario"),

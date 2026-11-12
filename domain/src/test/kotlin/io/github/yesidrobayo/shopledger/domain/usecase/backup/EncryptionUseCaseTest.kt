@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
@@ -42,6 +43,9 @@ class EncryptionUseCaseTest {
 
             override suspend fun viewCode(): RecoveryCodeView =
                 RecoveryCodeView.Unavailable.also { calls += "view" }
+
+            override suspend fun checkCode(typed: String): CodeCheckOutcome =
+                CodeCheckOutcome.MISMATCH.also { calls += "test:$typed" }
         }
     private val useCase = EncryptionUseCase(port)
 
@@ -54,8 +58,9 @@ class EncryptionUseCaseTest {
         assertEquals(ActivationOutcome.SAVE_FAILED, useCase.activate(draft))
         assertEquals(ResealOutcome.OTHER_CODE, useCase.reseal("Y"))
         assertEquals(RecoveryCodeView.Unavailable, useCase.viewCode())
+        assertEquals(CodeCheckOutcome.MISMATCH, useCase.checkCode("Z"))
         assertEquals(
-            listOf("status", "new", "check:X", "trip", "activate", "reseal:Y", "view"),
+            listOf("status", "new", "check:X", "trip", "activate", "reseal:Y", "view", "test:Z"),
             calls,
         )
     }

@@ -681,6 +681,7 @@ class DataGraph internal constructor(
                 context.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
             },
             serviceSpaceKnown = { lastProbeStore().load()?.serviceSpace != null },
+            recoveryCheck = { recoveryCustody.checkFacts() },
         )
     }
 
@@ -861,6 +862,7 @@ class DataGraph internal constructor(
                 val restoreFiles = withContext(ioContext) { RestoreFiles(files()) }
                 cleanUpExpiredLocalCopies(restoreFiles, clock, log, ioContext, now)
             },
+            recoveryCheckDue = { recoveryCustody.checkFacts().due },
         )
     }
 

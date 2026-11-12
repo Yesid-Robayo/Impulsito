@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +47,9 @@ import kotlinx.datetime.toLocalDateTime
  *   el bloqueo de la app esté apagado. Sin bloqueo de pantalla no hay con qué pedirla: la pantalla
  *   avisa y deja seguir, porque un código que no se puede volver a ver deja las copias cifradas sin
  *   salida. Mientras se ve, la pantalla entera es sensible, y atrás lo cierra.
+ * - La hoja `Comprobar el código` también hace sensible la pantalla, porque lleva el código escrito.
+ *   `Código perdido` lleva a `Ver mi código`, con la misma verificación, y una prueba correcta lo
+ *   dice con un aviso.
  */
 @Composable
 fun EncryptionRoute(navigator: AppNavigator) {
@@ -70,6 +74,14 @@ fun EncryptionRoute(navigator: AppNavigator) {
                         ?: BusinessDate(now.toLocalDateTime(TimeZone.UTC).date)
                 },
                 computation = container.dispatchers.io,
+                now = { container.clock.now() },
+                dateOf = { instant ->
+                    val calendar = BusinessCalendarSource(dependencies.ports.settings).current()
+                    val zone = (calendar as? BusinessCalendarResult.Ready)?.calendar?.zone
+                    // Sin zona del negocio, la fecha va en UTC: solo orienta.
+                    zone?.let { BusinessDate.of(instant, it) }
+                        ?: BusinessDate(instant.toLocalDateTime(TimeZone.UTC).date)
+                },
             )
         }
     when (model) {
@@ -107,12 +119,47 @@ fun EncryptionRoute(navigator: AppNavigator) {
                 }
                 BackHandler { viewModel.onAction(EncryptionAction.Exit) }
             }
-            if (uiState.codeView != null) {
+            if (uiState.codeView != null || uiState.codeCheck != null) {
                 SensitiveScreen {
                     viewModel.onAction(EncryptionAction.ObscuredTouch)
                     messages.show(AppSnackbarVisuals(obscured, SnackbarVariant.INFO))
                 }
-                BackHandler { viewModel.onAction(EncryptionAction.CloseCode) }
+                BackHandler {
+                    if (uiState.codeView != null) {
+                        viewModel.onAction(EncryptionAction.CloseCode)
+                    } else {
+                        viewModel.onAction(EncryptionAction.LaterCheck)
+                    }
+                }
+            }
+            val checkOk = stringResource(R.string.recovery_check_ok)
+            LaunchedEffect(uiState.codeCheckPassed) {
+                if (uiState.codeCheckPassed) {
+                    messages.show(AppSnackbarVisuals(checkOk, SnackbarVariant.SUCCESS))
+                    viewModel.onAction(EncryptionAction.CheckPassedShown)
+                }
+            }
+            // `Ver mi código` pide la verificación del teléfono siempre que tenga bloqueo de pantalla.
+            val viewCode: () -> Unit = {
+                scope.launch {
+                    val outcome =
+                        authenticator.authenticate(AuthPurpose.SENSITIVE, viewTitle, null)
+                    when (outcome) {
+                        AuthOutcome.Success ->
+                            viewModel.onAction(EncryptionAction.ViewCodeAuthorized)
+
+                        AuthOutcome.NoDeviceCredential ->
+                            viewModel.onAction(EncryptionAction.ViewCodeWithoutScreenLock)
+
+                        AuthOutcome.Canceled -> Unit
+
+                        // El texto del sistema se muestra tal cual y nunca se registra.
+                        is AuthOutcome.Failed ->
+                            messages.show(
+                                AppSnackbarVisuals(outcome.systemMessage, SnackbarVariant.INFO),
+                            )
+                    }
+                }
             }
             EncryptionScreen(uiState, onAction = { action ->
                 when (action) {
@@ -160,29 +207,12 @@ fun EncryptionRoute(navigator: AppNavigator) {
                             }
                         }
 
-                    EncryptionAction.ViewCode ->
-                        scope.launch {
-                            val outcome =
-                                authenticator.authenticate(AuthPurpose.SENSITIVE, viewTitle, null)
-                            when (outcome) {
-                                AuthOutcome.Success ->
-                                    viewModel.onAction(EncryptionAction.ViewCodeAuthorized)
+                    EncryptionAction.ViewCode -> viewCode()
 
-                                AuthOutcome.NoDeviceCredential ->
-                                    viewModel.onAction(EncryptionAction.ViewCodeWithoutScreenLock)
-
-                                AuthOutcome.Canceled -> Unit
-
-                                // El texto del sistema se muestra tal cual y nunca se registra.
-                                is AuthOutcome.Failed ->
-                                    messages.show(
-                                        AppSnackbarVisuals(
-                                            outcome.systemMessage,
-                                            SnackbarVariant.INFO,
-                                        ),
-                                    )
-                            }
-                        }
+                    EncryptionAction.LostCode -> {
+                        viewModel.onAction(EncryptionAction.LostCode)
+                        viewCode()
+                    }
 
                     is EncryptionAction.Accept,
                     EncryptionAction.ContinueRisk,
@@ -203,6 +233,11 @@ fun EncryptionRoute(navigator: AppNavigator) {
                     EncryptionAction.ViewCodeWithoutScreenLock,
                     EncryptionAction.DismissViewWithoutScreenLock,
                     EncryptionAction.CloseCode,
+                    EncryptionAction.TestCode,
+                    is EncryptionAction.TypedCheck,
+                    EncryptionAction.SubmitCheck,
+                    EncryptionAction.LaterCheck,
+                    EncryptionAction.CheckPassedShown,
                     -> viewModel.onAction(action)
                 }
             })

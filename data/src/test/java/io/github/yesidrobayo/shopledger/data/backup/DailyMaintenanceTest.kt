@@ -227,6 +227,52 @@ class DailyMaintenanceTest {
         assertEquals(listOf(BackupNotification.Stale), shown)
     }
 
+    @Test
+    fun aDueCodeCheckIsAskedEveryDayUntilItIsDoneAndNeverOtherwise() = runBlocking {
+        var due = true
+        var throws = false
+        val withCode =
+            DailyMaintenance(
+                clock = Clock { now },
+                log = log,
+                mutex = mutex,
+                restorePending = { false },
+                open = { access },
+                reconcile = { },
+                notifier = { notifier },
+                cleanUp = { },
+                recoveryCheckDue = {
+                    if (throws) throw IOException("estado")
+                    due
+                },
+            )
+
+        withCode.run()
+        withCode.run()
+        assertEquals(List(2) { BackupNotification.RecoveryCheckDue }, shown)
+
+        due = false
+        withCode.run()
+        assertEquals(2, shown.size)
+
+        // Sin permiso de avisos no sale, y queda dicho en el registro, sin el código ni datos.
+        due = true
+        notificationsAllowed = false
+        withCode.run()
+        assertEquals(2, shown.size)
+
+        // Un estado que no se lee no detiene el mantenimiento ni deja su mensaje en el registro.
+        throws = true
+        assertEquals(MaintenanceRun.DONE, withCode.run())
+        assertTrue(log.lines.none { "estado" in it })
+    }
+
+    @Test
+    fun withoutTheCodeCheckWiredNothingIsAsked() = runBlocking {
+        maintenance.run()
+        assertTrue(shown.none { it == BackupNotification.RecoveryCheckDue })
+    }
+
     private class FakeMaintenanceDatabase : MaintenanceDatabase {
         var invariants: ActiveInvariants = ActiveInvariants.Checked(repairCases = 0)
         var checks = 0

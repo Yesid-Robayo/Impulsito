@@ -26,4 +26,6 @@
     </plurals>
     <string name="notif_stock_many_body">Tocar para ver.</string>
     <string name="notif_stock_public">Un producto está por agotarse</string>
+    <string name="notif_recovery_check_title">Comprobar el código de recuperación</string>
+    <string name="notif_recovery_check_body">Una comprobación rápida ayuda a no perder el acceso a las copias cifradas.</string>
 </resources>

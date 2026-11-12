@@ -56,6 +56,8 @@ enum class HealthSignal {
  * @property offsiteAvailable si existe el segundo destino local. Mientras no exista, esa señal no
  *   aplica.
  * @property codeAvailable si existe el cifrado con código. Mientras no exista, esa señal no aplica.
+ * @property codeCheckDue con el cifrado activo, si toca la prueba periódica del código.
+ * @property lastCodeCheckAt la última vez que la persona escribió bien el código vigente.
  */
 data class HealthFacts(
     val lastHumanCheckAt: Instant?,
@@ -66,6 +68,8 @@ data class HealthFacts(
     val serviceSpaceKnown: Boolean,
     val offsiteAvailable: Boolean = false,
     val codeAvailable: Boolean = false,
+    val codeCheckDue: Boolean = false,
+    val lastCodeCheckAt: Instant? = null,
 )
 
 /**

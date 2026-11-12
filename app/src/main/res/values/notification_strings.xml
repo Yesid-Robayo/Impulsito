@@ -31,4 +31,6 @@
     <string name="notif_stock_many_body">Tap to view.</string>
     <!-- Lo único que se ve con el teléfono bloqueado, y todo lo que se ve con el modo discreto: sin nombre ni cantidad. -->
     <string name="notif_stock_public">A product is running low</string>
+    <string name="notif_recovery_check_title">Check the recovery code</string>
+    <string name="notif_recovery_check_body">A quick check helps avoid losing access to encrypted backups.</string>
 </resources>

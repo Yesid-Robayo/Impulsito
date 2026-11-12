@@ -196,7 +196,7 @@ class DataHealthRuleTest {
     }
 
     @Test
-    fun `the local copy and the code are pending once they exist`() {
+    fun `the local copy is pending once it exists, and the code once its check is due`() {
         val available =
             HealthFacts(
                 lastHumanCheckAt = null,
@@ -211,6 +211,21 @@ class DataHealthRuleTest {
         val states = states(overview(), available)
 
         assertEquals(HealthState.PENDING, states[HealthSignal.OFFSITE])
-        assertEquals(HealthState.PENDING, states[HealthSignal.CODE])
+        assertEquals(HealthState.OK, states[HealthSignal.CODE])
+
+        val checkedAt = Instant.parse("2026-11-01T10:00:00Z")
+        val due = available.copy(codeCheckDue = true, lastCodeCheckAt = checkedAt)
+        val codeRow = DataHealthRule.rows(overview(), due, pinned = null).single {
+            it.signal == HealthSignal.CODE
+        }
+        assertEquals(HealthState.PENDING, codeRow.state)
+        assertEquals(checkedAt, codeRow.at)
+
+        val off = due.copy(codeAvailable = false)
+        val offRow = DataHealthRule.rows(overview(), off, pinned = null).single {
+            it.signal == HealthSignal.CODE
+        }
+        assertEquals(HealthState.NOT_APPLICABLE, offRow.state)
+        assertEquals(null, offRow.at)
     }
 }

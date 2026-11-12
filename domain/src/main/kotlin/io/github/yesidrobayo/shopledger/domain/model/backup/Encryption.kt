@@ -30,8 +30,12 @@ sealed interface EncryptionStatus {
      */
     data class Off(val wasOn: Boolean) : EncryptionStatus
 
-    /** Las copias salen cifradas, con el código activado en [enabledAtUtcMillis]. */
-    data class On(val enabledAtUtcMillis: Long?) : EncryptionStatus
+    /**
+     * Las copias salen cifradas, con el código activado en [enabledAtUtcMillis]. La última vez que
+     * la persona lo escribió bien, si ya lo hizo, es [lastCodeCheckAtUtcMillis].
+     */
+    data class On(val enabledAtUtcMillis: Long?, val lastCodeCheckAtUtcMillis: Long? = null) :
+        EncryptionStatus
 
     /**
      * Activo, pero el código sellado ya no abre: las copias están detenidas y nunca salen en claro.
@@ -100,4 +104,20 @@ sealed interface RecoveryCodeView {
 
     /** El código sellado no está o ya no abre en este teléfono: no hay nada que mostrar. */
     data object Unavailable : RecoveryCodeView
+}
+
+/**
+ * Lo que dio comprobar el código escrito contra el que está guardado en este teléfono, en la prueba
+ * periódica o en `Probar el código`. Ningún resultado borra ni bloquea nada, y no hay límite de
+ * intentos.
+ */
+enum class CodeCheckOutcome {
+    /** Es el código vigente: queda anotada la fecha de la prueba. */
+    CORRECT,
+
+    /** No es el código vigente, o tiene un error de escritura. No se anota nada. */
+    MISMATCH,
+
+    /** El código guardado no abre en este teléfono: no hay con qué comparar. No se anota nada. */
+    UNAVAILABLE,
 }

@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.encryption
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
+import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.EncryptionStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeDraft
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeView
@@ -9,6 +10,8 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.ResealOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.TypedCodeCheck
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.EncryptionUseCase
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -18,6 +21,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,6 +42,12 @@ class EncryptionViewModelTest {
     private val groups = listOf("G7K2", "M9PQ", "R4ST", "V6WX", "Y8Z3", "ABCD", "EF51")
     private val port = FakePort()
     private val kits = mutableListOf<Pair<String, BusinessDate>>()
+
+    /** Un reloj fijo: con `On(2L)`, activado a los 2 ms de 1970, la prueba todavía no toca. */
+    private var clockNow = Instant.fromEpochMilliseconds(5)
+    private val snooze = RecoveryCheckSnooze()
+
+    private fun dateOf(instant: Instant) = BusinessDate(instant.toLocalDateTime(TimeZone.UTC).date)
     private var kitWritten = true
 
     @Before
@@ -56,6 +67,9 @@ class EncryptionViewModelTest {
                 },
                 today = { BusinessDate(LocalDate(2026, 11, 12)) },
                 computation = dispatcher,
+                now = { clockNow },
+                dateOf = { dateOf(it) },
+                snooze = snooze,
             )
         advanceUntilIdle()
         return model
@@ -340,6 +354,24 @@ class EncryptionViewModelTest {
             if (failView) error("Falla inventada")
             return view
         }
+
+        var checkOutcome = CodeCheckOutcome.MISMATCH
+        var failCheck = false
+        var checks = 0
+        val typedChecks = mutableListOf<String>()
+        var onCorrect: () -> Unit = {}
+
+        override suspend fun checkCode(typed: String): CodeCheckOutcome {
+            checks++
+            if (failCheck) error("Falla inventada")
+            val outcome =
+                if (typed == groups.joinToString("")) CodeCheckOutcome.CORRECT else checkOutcome
+            if (outcome == CodeCheckOutcome.CORRECT) {
+                typedChecks += typed
+                onCorrect()
+            }
+            return outcome
+        }
     }
 
     @Test
@@ -416,5 +448,168 @@ class EncryptionViewModelTest {
         advanceUntilIdle()
         assertNull(model.uiState.value.codeView)
         assertEquals(0, port.views)
+    }
+
+    /** Activado en este instante, para el calendario de la prueba. */
+    private val activatedAt = Instant.parse("2026-11-01T10:00:00Z")
+
+    private fun onSince(lastCheck: Instant? = null) = EncryptionStatus.On(
+        activatedAt.toEpochMilliseconds(),
+        lastCheck?.toEpochMilliseconds(),
+    )
+
+    @Test
+    fun `before the seventh day the check is not asked and the dates are shown`() =
+        runTest(dispatcher) {
+            port.status = onSince()
+            clockNow = activatedAt + 6.days
+            val model = viewModel()
+
+            assertNull(model.uiState.value.codeCheck)
+            assertEquals(
+                CheckDatesUi(null, dateOf(activatedAt + 7.days)),
+                model.uiState.value.checkDates,
+            )
+        }
+
+    @Test
+    fun `on the seventh day the check opens once by itself`() = runTest(dispatcher) {
+        port.status = onSince()
+        clockNow = activatedAt + 7.days
+        val model = viewModel()
+
+        assertTrue(model.uiState.value.codeCheck != null)
+        model.onAction(EncryptionAction.LaterCheck)
+        assertNull(model.uiState.value.codeCheck)
+        // `Más tarde` dura hasta el comienzo del día UTC siguiente.
+        assertEquals(Instant.parse("2026-11-09T00:00:00Z"), snooze.until)
+
+        val again = viewModel()
+        assertNull(again.uiState.value.codeCheck)
+        clockNow = Instant.parse("2026-11-09T00:00:00Z")
+        val tomorrow = viewModel()
+        assertTrue(tomorrow.uiState.value.codeCheck != null)
+    }
+
+    @Test
+    fun `ten wrong attempts change nothing and the check stays open`() = runTest(dispatcher) {
+        port.status = onSince(lastCheck = activatedAt + 8.days)
+        clockNow = activatedAt + 9.days
+        val model = viewModel()
+        model.onAction(EncryptionAction.TestCode)
+
+        repeat(10) {
+            model.onAction(EncryptionAction.TypedCheck(groups.map { "ZZZZ" }))
+            model.onAction(EncryptionAction.SubmitCheck)
+            advanceUntilIdle()
+            val check = requireNotNull(model.uiState.value.codeCheck)
+            assertEquals(CodeCheckProblem.MISMATCH, check.problem)
+            assertFalse(check.working)
+        }
+
+        assertEquals(10, port.checks)
+        assertEquals(0, port.activations)
+        assertEquals(0, port.codesCreated)
+        assertEquals(EncryptionStatusUi.On, model.uiState.value.status)
+        assertFalse(model.uiState.value.codeCheckPassed)
+        // Escribir de nuevo quita el mensaje: no hay contador ni bloqueo.
+        model.onAction(EncryptionAction.TypedCheck(groups))
+        assertNull(model.uiState.value.codeCheck?.problem)
+    }
+
+    @Test
+    fun `the right code closes the check, says so and updates the dates`() = runTest(dispatcher) {
+        port.status = onSince()
+        clockNow = activatedAt + 7.days
+        val model = viewModel()
+        model.onAction(EncryptionAction.TypedCheck(groups))
+        port.onCorrect = { port.status = onSince(lastCheck = clockNow) }
+
+        model.onAction(EncryptionAction.SubmitCheck)
+        advanceUntilIdle()
+
+        assertNull(model.uiState.value.codeCheck)
+        assertTrue(model.uiState.value.codeCheckPassed)
+        assertEquals(listOf(groups.joinToString("")), port.typedChecks)
+        assertEquals(
+            CheckDatesUi(dateOf(activatedAt + 7.days), dateOf(activatedAt + 30.days)),
+            model.uiState.value.checkDates,
+        )
+        model.onAction(EncryptionAction.CheckPassedShown)
+        assertFalse(model.uiState.value.codeCheckPassed)
+    }
+
+    @Test
+    fun `a code that does not open or a failure says so without closing`() = runTest(dispatcher) {
+        port.status = onSince(lastCheck = activatedAt + 8.days)
+        clockNow = activatedAt + 9.days
+        val model = viewModel()
+        model.onAction(EncryptionAction.TestCode)
+
+        port.checkOutcome = CodeCheckOutcome.UNAVAILABLE
+        model.onAction(EncryptionAction.SubmitCheck)
+        advanceUntilIdle()
+        assertEquals(CodeCheckProblem.UNAVAILABLE, model.uiState.value.codeCheck?.problem)
+
+        port.failCheck = true
+        model.onAction(EncryptionAction.SubmitCheck)
+        advanceUntilIdle()
+        assertEquals(CodeCheckProblem.UNAVAILABLE, model.uiState.value.codeCheck?.problem)
+    }
+
+    @Test
+    fun `a lost code closes the check so the code can be viewed`() = runTest(dispatcher) {
+        port.status = onSince()
+        clockNow = activatedAt + 30.days
+        val model = viewModel()
+        assertTrue(model.uiState.value.codeCheck != null)
+
+        model.onAction(EncryptionAction.LostCode)
+
+        assertNull(model.uiState.value.codeCheck)
+        assertEquals(0, port.checks)
+        model.onAction(EncryptionAction.ViewCodeAuthorized)
+        advanceUntilIdle()
+        assertTrue(model.uiState.value.codeView is CodeViewUi.Shown)
+    }
+
+    @Test
+    fun `there is no check with encryption off or stopped`() = runTest(dispatcher) {
+        clockNow = activatedAt + 400.days
+        for (status in listOf(
+            EncryptionStatus.Off(wasOn = true),
+            EncryptionStatus.KeyUnavailable,
+        )) {
+            port.status = status
+            val model = viewModel()
+            model.onAction(EncryptionAction.TestCode)
+            assertNull(model.uiState.value.codeCheck)
+            assertNull(model.uiState.value.checkDates)
+        }
+    }
+
+    @Test
+    fun `a status without an activation date asks for the check`() = runTest(dispatcher) {
+        port.status = EncryptionStatus.On(null)
+        clockNow = activatedAt
+        val model = viewModel()
+
+        assertTrue(model.uiState.value.codeCheck != null)
+        assertEquals(CheckDatesUi(null, null), model.uiState.value.checkDates)
+    }
+
+    @Test
+    fun `typing or submitting without the check open does nothing`() = runTest(dispatcher) {
+        port.status = onSince(lastCheck = activatedAt + 8.days)
+        clockNow = activatedAt + 9.days
+        val model = viewModel()
+
+        model.onAction(EncryptionAction.TypedCheck(groups))
+        model.onAction(EncryptionAction.SubmitCheck)
+        advanceUntilIdle()
+
+        assertNull(model.uiState.value.codeCheck)
+        assertEquals(0, port.checks)
+        assertFalse(model.uiState.value.codeCheck.toString().contains("G7K2"))
     }
 }

@@ -57,4 +57,12 @@
     <string name="encryption_view_code_action">Ver meu código</string>
     <string name="recovery_view_title">Ver meu código</string>
     <string name="recovery_view_no_screen_lock">Este telefone não tem bloqueio de tela: quem estiver com ele pode ver o código. O ideal é ativar um nos ajustes do telefone.</string>
+    <string name="encryption_code_checked">Código verificado em %1$s</string>
+    <string name="encryption_next_check">Próxima verificação: %1$s</string>
+    <string name="encryption_test_action">Testar o código</string>
+    <string name="recovery_check_title">Verificar o código</string>
+    <string name="recovery_check_body">Digitar o código de recuperação confirma que ele continua à mão. Nada é bloqueado e não há limite de tentativas.</string>
+    <string name="recovery_check_ok">Código correto</string>
+    <string name="recovery_lost_action">Código perdido</string>
+    <string name="recovery_later_action">Mais tarde</string>
 </resources>

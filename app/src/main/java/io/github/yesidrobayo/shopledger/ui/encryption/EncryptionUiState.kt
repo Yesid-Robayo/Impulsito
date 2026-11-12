@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.encryption
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.ui.components.RECOVERY_CODE_GROUPS
 
 /**
@@ -16,7 +17,43 @@ data class EncryptionUiState(
     val confirmChange: Boolean = false,
     val codeView: CodeViewUi? = null,
     val confirmViewWithoutScreenLock: Boolean = false,
+    val checkDates: CheckDatesUi? = null,
+    val codeCheck: CodeCheckUi? = null,
+    val codeCheckPassed: Boolean = false,
 )
+
+/**
+ * Las fechas de la prueba del código, en la fecha del negocio: la última correcta, si hubo, y la
+ * próxima. Una fecha que no se pudo calcular no se muestra.
+ */
+data class CheckDatesUi(val lastCheck: BusinessDate?, val nextCheck: BusinessDate?)
+
+/**
+ * La hoja `Comprobar el código`. Lo escrito vive solo aquí, en memoria, y se descarta al cerrar.
+ * No hay contador de intentos: un error solo deja el mensaje.
+ */
+class CodeCheckUi(
+    val typed: List<String> = List(RECOVERY_CODE_GROUPS) { "" },
+    val problem: CodeCheckProblem? = null,
+    val working: Boolean = false,
+) {
+    fun copy(
+        typed: List<String> = this.typed,
+        problem: CodeCheckProblem? = this.problem,
+        working: Boolean = this.working,
+    ) = CodeCheckUi(typed, problem, working)
+
+    override fun toString(): String = "CodeCheckUi(problem=$problem, working=$working)"
+}
+
+/** Por qué la prueba no salió bien. Ninguno borra ni bloquea nada. */
+enum class CodeCheckProblem {
+    /** No coincide con el código guardado. */
+    MISMATCH,
+
+    /** El código guardado no abre en este teléfono: no hay con qué comparar. */
+    UNAVAILABLE,
+}
 
 /**
  * `Ver mi código`, ya con la verificación del teléfono pasada. El código vive solo en memoria
@@ -194,4 +231,21 @@ sealed interface EncryptionAction {
 
     /** Cerrar `Ver mi código`: el código se descarta. */
     data object CloseCode : EncryptionAction
+
+    /** `Probar el código`: abre la hoja de la prueba. */
+    data object TestCode : EncryptionAction
+
+    class TypedCheck(val groups: List<String>) : EncryptionAction
+
+    /** `Comprobar código` en la hoja de la prueba. */
+    data object SubmitCheck : EncryptionAction
+
+    /** `Código perdido`: cierra la prueba y lleva a `Ver mi código`. */
+    data object LostCode : EncryptionAction
+
+    /** `Más tarde`, o cerrar la hoja: se vuelve a pedir al día siguiente. */
+    data object LaterCheck : EncryptionAction
+
+    /** El aviso `Código correcto` ya se mostró. */
+    data object CheckPassedShown : EncryptionAction
 }
