@@ -7,9 +7,11 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.report.PeriodVariation
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.stock.previewInventoryItems
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -69,6 +71,19 @@ internal fun previewHomeProfit(): HomeProfit = HomeProfit(
     weekProfit = Money(1_902_300L),
     month = ReportPeriod.Month(YearMonth(2026, 11)),
     monthProfit = Money(-1_234_567_890L),
+    weekChange =
+        ComparedPeriod(
+            ReportPeriod.Range(
+                BusinessDate(LocalDate(2026, 10, 26)),
+                BusinessDate(LocalDate(2026, 10, 27)),
+            ),
+            PeriodVariation(
+                netSales = null,
+                grossProfit = null,
+                netProfit = BasisPoints(1_250),
+                grossMargin = null,
+            ),
+        ),
 )
 
 /** La tarjeta por agotarse de muestra: el stock negativo, el agotado y el bajo del inventario. */

@@ -6,12 +6,15 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitTotals
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
+import io.github.yesidrobayo.shopledger.domain.model.report.PeriodNoticeCounts
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodTotals
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.report.DailySeries
 import io.github.yesidrobayo.shopledger.domain.rule.report.PeriodMetricsCalculator
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
+import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodBreakdown
 import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodReport
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ReportCalendar
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.TaxEstimateState
@@ -21,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -70,7 +74,16 @@ class StatisticsViewModelTest {
     @After
     fun resetTestMain() = Dispatchers.resetMain()
 
-    private fun TestScope.viewModel(): StatisticsViewModel {
+    private fun TestScope.viewModel(
+        comparison: (
+            ReportPeriod,
+            BusinessDate,
+        ) -> Flow<ComparedPeriod?> = { _, _ -> flowOf(null) },
+        breakdown: (
+            ReportPeriod,
+            BusinessCalendar,
+        ) -> Flow<PeriodBreakdown?> = { _, _ -> flowOf(null) },
+    ): StatisticsViewModel {
         val model =
             StatisticsViewModel(
                 calendar = { checks -> combine(checks, calendars) { _, it -> it } },
@@ -85,6 +98,8 @@ class StatisticsViewModelTest {
                     seriesAsked += period
                     totals.map { DailySeries.of(period, emptyList()).valueOrNull() }
                 },
+                comparison = comparison,
+                breakdown = breakdown,
                 tax = { _ ->
                     taxed.map {
                         if (it) {
@@ -264,6 +279,73 @@ class StatisticsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(ReportPeriod.Month(YearMonth(2026, 12)), model.content().period)
+    }
+
+    @Test
+    fun `a range of its own shows its figures without arrows, chart or comparison`() =
+        runTest(dispatcher) {
+            val asked = mutableListOf<ReportPeriod>()
+            val model =
+                viewModel(comparison = { period, _ ->
+                    asked += period
+                    flowOf(null)
+                })
+
+            model.onAction(StatisticsAction.ChooseRange)
+            advanceUntilIdle()
+            assertTrue(model.content().choosingRange)
+            // Las fechas al revés se ordenan solas.
+            model.onAction(StatisticsAction.ShowRange(date("2026-10-31"), date("2026-08-01")))
+            advanceUntilIdle()
+
+            val range = ReportPeriod.Range(date("2026-08-01"), date("2026-10-31"))
+            val content = model.content()
+            assertEquals(range, content.period)
+            assertNull(content.kind)
+            assertFalse(content.canGoPrevious)
+            assertFalse(content.canGoNext)
+            assertNull(content.series)
+            assertFalse(content.choosingRange)
+            assertEquals(range, asked.last())
+
+            // Las flechas no lo mueven, y elegir un mes vuelve a los períodos.
+            model.onAction(StatisticsAction.Previous)
+            advanceUntilIdle()
+            assertEquals(range, model.content().period)
+            model.onAction(StatisticsAction.SelectKind(PeriodKind.MONTH))
+            advanceUntilIdle()
+            assertEquals(ReportPeriod.Month(YearMonth(2026, 8)), model.content().period)
+        }
+
+    @Test
+    fun `closing the range picker changes nothing`() = runTest(dispatcher) {
+        val model = viewModel()
+
+        model.onAction(StatisticsAction.ChooseRange)
+        model.onAction(StatisticsAction.DismissRange)
+        advanceUntilIdle()
+
+        assertFalse(model.content().choosingRange)
+        assertEquals(ReportPeriod.Month(YearMonth(2026, 11)), model.content().period)
+    }
+
+    @Test
+    fun `the ranking changes and the breakdown and units arrive`() = runTest(dispatcher) {
+        val breakdown =
+            PeriodBreakdown(
+                top = null,
+                methods = emptyList(),
+                expenses = null,
+                notices = PeriodNoticeCounts.NONE,
+            )
+        val model = viewModel(breakdown = { _, _ -> flowOf(breakdown) })
+
+        model.onAction(StatisticsAction.SelectRanking(RankingKind.QUANTITY))
+        advanceUntilIdle()
+
+        assertEquals(RankingKind.QUANTITY, model.content().ranking)
+        assertEquals(breakdown, model.content().breakdown)
+        assertEquals(DayOfWeek.MONDAY, model.content().weekStartDay)
     }
 
     private fun totals(net: Long = 0, count: Long = 0) = PeriodTotals(

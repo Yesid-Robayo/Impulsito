@@ -1,7 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.stats
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -10,15 +9,12 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
-import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
-import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -78,39 +74,66 @@ class StatisticsScreenTest {
         compose.onNodeWithContentDescription(summaryStart, substring = true).assertIsDisplayed()
         scrollTo(text(R.string.term_final_profit))
         compose.onNodeWithText(text(R.string.term_margin)).assertExists()
-        compose.onNodeWithText(text(R.string.stats_row_fees)).assertExists()
+        assertTrue(
+            compose.onAllNodesWithText(
+                text(R.string.stats_row_fees),
+            ).fetchSemanticsNodes().isNotEmpty(),
+        )
         compose.onNodeWithText(text(R.string.stats_tool_estimated_tax)).assertExists()
         compose.onNodeWithText(text(R.string.tax_estimate_notice)).assertExists()
     }
 
     @Test
-    fun tappingABarReportsItsDayAndTappingAgainReleasesIt() {
-        // La guía de Vico avisa la x tocada: así el valor se escribe bajo la gráfica.
-        val content = previewStatisticsContent()
-        val points = requireNotNull(content.series)
-        val tapped = mutableListOf<BusinessDate?>()
-        compose.setContent {
-            PreviewTheme {
-                DailyBarChart(
-                    points = points,
-                    metric = ChartMetric.SALES,
-                    selectedDay = null,
-                    onSelectDay = { tapped += it },
-                    summary = SUMMARY,
-                    height = AppTheme.sizes.chartArea,
-                )
-            }
-        }
-        compose.waitForIdle()
+    fun theComparisonNoticesRankingsAndBreakdownsAreShown() {
+        show(previewStatisticsContent())
 
-        compose.onNodeWithContentDescription(SUMMARY).performTouchInput { click(center) }
-        compose.waitForIdle()
-        val day = tapped.firstOrNull()
-        assertTrue("Sin día tocado: $tapped", day != null && day in content.period)
+        // +8,0 % frente a los primeros días del mes anterior.
+        compose.onNodeWithText(
+            resources.getQuantityString(R.plurals.notice_sales_no_cost, 3, 3),
+        ).assertExists()
+        compose.onNodeWithText(
+            resources.getQuantityString(R.plurals.notice_period_voided, 1, 1),
+        ).assertExists()
+        scrollTo(text(R.string.stats_by_expense_category))
+        compose.onNodeWithText(text(R.string.stats_top_sold)).assertExists()
+        compose.onNodeWithText(text(R.string.stats_by_payment)).assertExists()
+        // La cascada y el desglose de gastos los nombran a los dos.
+        assertEquals(
+            2,
+            compose.onAllNodesWithText(text(R.string.term_damage_loss)).fetchSemanticsNodes().size,
+        )
+    }
 
-        compose.onNodeWithContentDescription(SUMMARY).performTouchInput { click(center) }
-        compose.waitForIdle()
-        assertEquals(null, tapped.last())
+    @Test
+    fun theRankingChipsAndTheDatesMenuReportTheirAction() {
+        show(previewStatisticsContent())
+
+        compose.onNodeWithContentDescription(text(R.string.a11y_more_options)).performClick()
+        compose.onNodeWithText(text(R.string.stats_choose_dates)).performClick()
+        scrollTo(text(R.string.stats_by_quantity))
+        compose.onNodeWithText(text(R.string.stats_by_quantity)).performClick()
+
+        assertEquals(
+            listOf(
+                StatisticsAction.ChooseRange,
+                StatisticsAction.SelectRanking(RankingKind.QUANTITY),
+            ),
+            actions,
+        )
+    }
+
+    @Test
+    fun aRangeHasNoArrowsAndThePickerShowsTheTwoDates() {
+        show(previewRange().copy(choosingRange = true))
+
+        compose.onNodeWithContentDescription(
+            text(R.string.a11y_period_previous),
+        ).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.stats_range_from)).assertExists()
+        compose.onNodeWithText(text(R.string.stats_range_to)).assertExists()
+        compose.onNodeWithText(text(R.string.stats_range_show)).performClick()
+
+        assertTrue(actions.single() is StatisticsAction.ShowRange)
     }
 
     @Test
@@ -169,10 +192,6 @@ class StatisticsScreenTest {
         compose.onNodeWithText(text(R.string.stats_zone_unknown_action)).performClick()
 
         assertEquals(listOf<StatisticsAction>(StatisticsAction.ChooseZone), actions)
-    }
-
-    private companion object {
-        const val SUMMARY = "Resumen inventado"
     }
 
     private fun scrollTo(label: String) {

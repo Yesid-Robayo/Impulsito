@@ -192,30 +192,7 @@ private fun ChartContent(
             ),
         )
     val select = rememberUpdatedState(onSelectDay)
-    val listener =
-        remember(points) {
-            object : CartesianMarkerVisibilityListener {
-                override fun onShown(
-                    marker: CartesianMarker,
-                    targets: List<CartesianMarker.Target>,
-                ) {
-                    targets.firstOrNull()?.let {
-                        select.value(points.getOrNull(it.x.toInt())?.date)
-                    }
-                }
-
-                override fun onUpdated(
-                    marker: CartesianMarker,
-                    targets: List<CartesianMarker.Target>,
-                ) {
-                    onShown(marker, targets)
-                }
-
-                override fun onHidden(marker: CartesianMarker) {
-                    select.value(null)
-                }
-            }
-        }
+    val listener = remember(points) { daySelection(points) { select.value(it) } }
 
     val chart =
         rememberCartesianChart(
@@ -303,4 +280,25 @@ private class DayColumns(
     }
 
     override fun getWidestSeriesColumn(seriesIndex: Int, extraStore: ExtraStore): LineComponent = up
+}
+
+/**
+ * Lo que avisa la guía de Vico, traducido a días: al mostrarse o moverse, el día de la barra bajo
+ * la guía; al ocultarse, ninguno. La `x` de cada barra es su posición en [points].
+ */
+internal fun daySelection(
+    points: List<DayPoint>,
+    select: (BusinessDate?) -> Unit,
+): CartesianMarkerVisibilityListener = object : CartesianMarkerVisibilityListener {
+    override fun onShown(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
+        targets.firstOrNull()?.let { select(points.getOrNull(it.x.toInt())?.date) }
+    }
+
+    override fun onUpdated(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
+        onShown(marker, targets)
+    }
+
+    override fun onHidden(marker: CartesianMarker) {
+        select(null)
+    }
 }

@@ -1,18 +1,32 @@
 package io.github.yesidrobayo.shopledger.ui.stats
 
 import androidx.compose.runtime.Composable
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitTotals
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
+import io.github.yesidrobayo.shopledger.domain.model.report.ExpenseCategoryTotal
+import io.github.yesidrobayo.shopledger.domain.model.report.PaymentMethodTotal
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
+import io.github.yesidrobayo.shopledger.domain.model.report.PeriodNoticeCounts
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodTotals
+import io.github.yesidrobayo.shopledger.domain.model.report.PeriodVariation
+import io.github.yesidrobayo.shopledger.domain.model.report.ProductSales
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
+import io.github.yesidrobayo.shopledger.domain.rule.report.ExpenseRow
 import io.github.yesidrobayo.shopledger.domain.rule.report.PeriodMetricsCalculator
+import io.github.yesidrobayo.shopledger.domain.rule.report.PeriodRankings
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
+import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodBreakdown
+import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.YearMonth
 
@@ -77,7 +91,84 @@ internal fun previewStatisticsContent(
     selectedDay = PREVIEW_TODAY,
     showList = showList,
     tax = TaxEstimate(collected = Money(807_500), paid = Money(516_800)),
+    comparison =
+        ComparedPeriod(
+            comparedTo =
+                ReportPeriod.Range(
+                    BusinessDate(LocalDate(2026, 10, 1)),
+                    BusinessDate(LocalDate(2026, 10, 14)),
+                ),
+            variation = PeriodVariation(
+                BasisPoints(800),
+                BasisPoints(-150),
+                null,
+                BasisPoints(-40),
+            ),
+        ),
+    breakdown = previewBreakdown(),
+    units = emptyMap(),
+    weekStartDay = DayOfWeek.MONDAY,
 )
+
+/** Los destacados, los métodos, los gastos y los avisos del mes de muestra. */
+private fun previewBreakdown(): PeriodBreakdown {
+    val s = PreviewSamples
+    val products =
+        listOf(
+            ProductSales(
+                1L,
+                s.SHORT_NAME,
+                1L,
+                QuantityMilli(412_000),
+                Money(1_204_000),
+                Money(802_000),
+            ),
+            ProductSales(
+                2L,
+                s.SECOND_NAME,
+                1L,
+                QuantityMilli(160_000),
+                Money(812_000),
+                Money(590_000),
+            ),
+            ProductSales(
+                3L,
+                s.LONG_NAME,
+                1L,
+                QuantityMilli(31_000),
+                Money(398_000),
+                Money(120_000),
+            ),
+        )
+    return PeriodBreakdown(
+        top = PeriodRankings.top(products).valueOrNull(),
+        methods =
+            listOf(
+                PaymentMethodTotal(
+                    s.METHOD_CASH,
+                    PaymentMethodKind.CASH,
+                    240,
+                    Money(3_210_000),
+                    Money.ZERO,
+                ),
+                PaymentMethodTotal(
+                    s.METHOD_CARD,
+                    PaymentMethodKind.CARD,
+                    72,
+                    Money(1_855_500),
+                    Money(60_000),
+                ),
+            ),
+        expenses =
+            listOf(
+                ExpenseRow.Category(ExpenseCategoryTotal(1L, null, "RENT", Money(600_000))),
+                ExpenseRow.Category(ExpenseCategoryTotal(2L, null, "UTILITIES", Money(40_000))),
+                ExpenseRow.Shrinkage(Money(25_000)),
+                ExpenseRow.Fees(Money(60_000)),
+            ),
+        notices = PeriodNoticeCounts(3, 0, 1, 0, 2),
+    )
+}
 
 /** Un mes sin movimientos: cifras en cero, sin margen ni venta promedio. */
 internal fun previewEmptyPeriod(): StatisticsUiState.Content = previewStatisticsContent().copy(
@@ -140,4 +231,24 @@ private fun StatisticsDiscreetPreview() {
 @Composable
 private fun StatisticsNoDataPreview() {
     PreviewTheme { StatisticsScreen(StatisticsUiState.NoData, onAction = {}) }
+}
+
+/** Un rango propio de tres meses: sin flechas, sin comparación y sin gráfica. */
+internal fun previewRange(): StatisticsUiState.Content = previewStatisticsContent().copy(
+    kind = null,
+    period = ReportPeriod.Range(
+        BusinessDate(LocalDate(2026, 8, 1)),
+        BusinessDate(LocalDate(2026, 10, 31)),
+    ),
+    canGoPrevious = false,
+    canGoNext = false,
+    series = null,
+    selectedDay = null,
+    comparison = null,
+)
+
+@ThemePreviews
+@Composable
+private fun StatisticsRangePreview() {
+    PreviewTheme { StatisticsScreen(previewRange(), onAction = {}) }
 }

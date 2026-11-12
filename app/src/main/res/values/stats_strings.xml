@@ -17,4 +17,28 @@
     <string name="stats_chart_summary_profit">Sales profit chart, %1$s. Total %2$s. Highest: %3$s, %4$s. Lowest: %5$s, %6$s.</string>
     <string name="stats_zone_unknown_title">This phone does not know the business time zone. Choose it to see the numbers.</string>
     <string name="stats_zone_unknown_action">Choose zone</string>
+    <string name="stats_choose_dates">Choose dates</string>
+    <string name="stats_top_sold">Top sellers</string>
+    <string name="stats_by_sales">By sales</string>
+    <string name="stats_by_profit">By profit</string>
+    <string name="stats_by_quantity">By quantity</string>
+    <string name="stats_by_payment">By payment method</string>
+    <string name="stats_by_expense_category">Expenses by category</string>
+    <string name="stats_voided_count">Voided in this period: %1$s</string>
+    <string name="stats_method_detail">Fee %1$s · Net %2$s</string>
+    <string name="stats_range_from">From</string>
+    <string name="stats_range_to">To</string>
+    <string name="stats_range_show">View range</string>
+    <plurals name="notice_sales_no_cost">
+        <item quantity="one">%1$d sale has products without a cost: the profit may be inflated</item>
+        <item quantity="other">%1$d sales have products without a cost: the profit may be inflated</item>
+    </plurals>
+    <plurals name="notice_period_voided">
+        <item quantity="one">This period changed: %1$d document was voided after it ended</item>
+        <item quantity="other">This period changed: %1$d documents were voided after it ended</item>
+    </plurals>
+    <plurals name="notice_period_late">
+        <item quantity="one">This period changed: %1$d backdated record was added</item>
+        <item quantity="other">This period changed: %1$d backdated records were added</item>
+    </plurals>
 </resources>

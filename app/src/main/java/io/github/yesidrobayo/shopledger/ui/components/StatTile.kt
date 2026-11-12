@@ -139,7 +139,7 @@ private fun ColumnScope.StatTileContent(
             }
         }
         when {
-            change != null -> ChangeLine(change, hero)
+            change != null -> StatChangeLine(change, hero)
 
             caption != null -> Text(
                 caption,
@@ -152,7 +152,7 @@ private fun ColumnScope.StatTileContent(
 
 /** La línea de variación: icono de subida o bajada, el porcentaje con signo y el período. */
 @Composable
-private fun ChangeLine(change: StatChange, hero: Boolean) {
+internal fun StatChangeLine(change: StatChange, hero: Boolean) {
     val app = AppTheme.colors
     val percent = LocalAppFormats.current.percent
     val up = change.change >= BasisPoints.ZERO

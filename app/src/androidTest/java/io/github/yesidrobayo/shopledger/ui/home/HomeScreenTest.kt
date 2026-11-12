@@ -128,10 +128,26 @@ class HomeScreenTest {
     }
 
     @Test
-    fun theWeekAndMonthShowTheirFinalProfitAndTheExpenseShortcut() {
+    fun theWeekShowsItsChangeAndTheMonthWithoutOneKeepsTheCaption() {
         compose.setContent {
             PreviewTheme {
                 HomeScreen(previewHomeContent(), { actions += it }, profit = previewHomeProfit())
+            }
+        }
+
+        // La semana sube 12,5 % frente a los mismos días de la anterior; el mes no tiene con qué
+        // compararse y sigue diciendo que es después de gastos.
+        compose.onNodeWithText("+12,5", substring = true, useUnmergedTree = true).assertExists()
+        compose.onNodeWithText(text(R.string.home_after_expenses)).assertExists()
+    }
+
+    @Test
+    fun theWeekAndMonthShowTheirFinalProfitAndTheExpenseShortcut() {
+        compose.setContent {
+            PreviewTheme {
+                HomeScreen(previewHomeContent(), {
+                    actions += it
+                }, profit = previewHomeProfit().copy(weekChange = null))
             }
         }
 

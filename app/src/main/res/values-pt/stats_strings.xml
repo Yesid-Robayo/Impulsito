@@ -17,4 +17,31 @@
     <string name="stats_chart_summary_profit">Gráfico de lucro nas vendas, %1$s. Total %2$s. Maior: %3$s, %4$s. Menor: %5$s, %6$s.</string>
     <string name="stats_zone_unknown_title">Este telefone não conhece o fuso horário do negócio. Ao escolhê-lo, os números aparecem.</string>
     <string name="stats_zone_unknown_action">Escolher fuso</string>
+    <string name="stats_choose_dates">Escolher datas</string>
+    <string name="stats_top_sold">Os mais vendidos</string>
+    <string name="stats_by_sales">Por vendas</string>
+    <string name="stats_by_profit">Por lucro</string>
+    <string name="stats_by_quantity">Por quantidade</string>
+    <string name="stats_by_payment">Por forma de pagamento</string>
+    <string name="stats_by_expense_category">Despesas por categoria</string>
+    <string name="stats_voided_count">Anulados neste período: %1$s</string>
+    <string name="stats_method_detail">Taxa %1$s · Líquido %2$s</string>
+    <string name="stats_range_from">De</string>
+    <string name="stats_range_to">Até</string>
+    <string name="stats_range_show">Ver o intervalo</string>
+    <plurals name="notice_sales_no_cost">
+        <item quantity="one">%1$d venda tem produtos sem custo: o lucro pode estar inflado</item>
+        <item quantity="many">%1$d de vendas têm produtos sem custo: o lucro pode estar inflado</item>
+        <item quantity="other">%1$d vendas têm produtos sem custo: o lucro pode estar inflado</item>
+    </plurals>
+    <plurals name="notice_period_voided">
+        <item quantity="one">Este período mudou: %1$d documento foi anulado depois do fim</item>
+        <item quantity="many">Este período mudou: %1$d de documentos foram anulados depois do fim</item>
+        <item quantity="other">Este período mudou: %1$d documentos foram anulados depois do fim</item>
+    </plurals>
+    <plurals name="notice_period_late">
+        <item quantity="one">Este período mudou: %1$d registro com data atrasada foi adicionado</item>
+        <item quantity="many">Este período mudou: %1$d de registros com data atrasada foram adicionados</item>
+        <item quantity="other">Este período mudou: %1$d registros com data atrasada foram adicionados</item>
+    </plurals>
 </resources>

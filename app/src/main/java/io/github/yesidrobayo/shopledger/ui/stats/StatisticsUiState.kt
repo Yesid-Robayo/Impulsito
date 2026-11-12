@@ -3,10 +3,14 @@ package io.github.yesidrobayo.shopledger.ui.stats
 import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodMetrics
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
+import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodBreakdown
+import kotlinx.datetime.DayOfWeek
 
 /** Lo que muestra `Números`: cargando, un error, sin zona, sin datos o las cifras de un período. */
 sealed interface StatisticsUiState {
@@ -33,10 +37,18 @@ sealed interface StatisticsUiState {
      *   lleva gráfica, o si una cifra no cabe.
      * @param selectedDay el día tocado en la gráfica, cuyo valor se escribe debajo.
      * @param tax el impuesto estimado, o `null` si el negocio no cobra impuesto.
+     * @param kind día, semana o mes, o `null` en un rango propio.
+     * @param comparison la variación frente al período comparable; `null` en un rango propio, que
+     *   no se compara, o mientras llega.
+     * @param breakdown los destacados, los desgloses y los avisos, o `null` mientras llegan.
+     * @param units las unidades por id, para nombrar las cantidades de los más vendidos.
+     * @param ranking qué ranking de los más vendidos se muestra.
+     * @param choosingRange si está abierta la elección de un rango de fechas.
+     * @param weekStartDay el primer día de las semanas del negocio, para el calendario del rango.
      */
     @Immutable
     data class Content(
-        val kind: PeriodKind,
+        val kind: PeriodKind?,
         val period: ReportPeriod,
         val today: BusinessDate,
         val canGoPrevious: Boolean,
@@ -47,6 +59,12 @@ sealed interface StatisticsUiState {
         val selectedDay: BusinessDate?,
         val showList: Boolean,
         val tax: TaxEstimate?,
+        val comparison: ComparedPeriod? = null,
+        val breakdown: PeriodBreakdown? = null,
+        val units: Map<Long, MeasureUnit> = emptyMap(),
+        val ranking: RankingKind = RankingKind.SALES,
+        val choosingRange: Boolean = false,
+        val weekStartDay: DayOfWeek? = null,
     ) : StatisticsUiState
 }
 
@@ -57,6 +75,18 @@ enum class ChartMetric {
 
     /** La ganancia en ventas: un gasto pagado un día no hunde ese día. */
     PROFIT,
+}
+
+/** Por qué se ordena `Lo que más se vendió`. */
+enum class RankingKind {
+    /** Por lo vendido sin impuesto. */
+    SALES,
+
+    /** Por la ganancia en ventas. */
+    PROFIT,
+
+    /** Por cantidad, separada por unidad: nunca se suman kilos con unidades. */
+    QUANTITY,
 }
 
 /** Lo que la persona hace en `Números`. */
@@ -78,6 +108,18 @@ sealed interface StatisticsAction {
 
     /** Muestra u oculta la gráfica como lista. */
     data object ToggleList : StatisticsAction
+
+    /** Elige el orden de los más vendidos. */
+    data class SelectRanking(val ranking: RankingKind) : StatisticsAction
+
+    /** Abre la elección de un rango de fechas. */
+    data object ChooseRange : StatisticsAction
+
+    /** Cierra la elección del rango sin cambiar nada. */
+    data object DismissRange : StatisticsAction
+
+    /** Muestra las cifras del rango entre [from] y [to], las dos incluidas, en cualquier orden. */
+    data class ShowRange(val from: BusinessDate, val to: BusinessDate) : StatisticsAction
 
     /** Vuelve a leer tras un error. */
     data object Retry : StatisticsAction

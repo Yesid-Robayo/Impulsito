@@ -17,4 +17,31 @@
     <string name="stats_chart_summary_profit">Gráfica de ganancia en ventas, %1$s. Total %2$s. Mayor: %3$s, %4$s. Menor: %5$s, %6$s.</string>
     <string name="stats_zone_unknown_title">Este teléfono no conoce la zona horaria del negocio. Al elegirla aparecen los números.</string>
     <string name="stats_zone_unknown_action">Elegir zona</string>
+    <string name="stats_choose_dates">Elegir fechas</string>
+    <string name="stats_top_sold">Lo que más se vendió</string>
+    <string name="stats_by_sales">Por ventas</string>
+    <string name="stats_by_profit">Por ganancia</string>
+    <string name="stats_by_quantity">Por cantidad</string>
+    <string name="stats_by_payment">Por método de pago</string>
+    <string name="stats_by_expense_category">Gastos por categoría</string>
+    <string name="stats_voided_count">Anulados en este período: %1$s</string>
+    <string name="stats_method_detail">Comisión %1$s · Neto %2$s</string>
+    <string name="stats_range_from">Desde</string>
+    <string name="stats_range_to">Hasta</string>
+    <string name="stats_range_show">Ver el rango</string>
+    <plurals name="notice_sales_no_cost">
+        <item quantity="one">%1$d venta tiene productos sin costo: la ganancia puede estar inflada</item>
+        <item quantity="many">%1$d de ventas tienen productos sin costo: la ganancia puede estar inflada</item>
+        <item quantity="other">%1$d ventas tienen productos sin costo: la ganancia puede estar inflada</item>
+    </plurals>
+    <plurals name="notice_period_voided">
+        <item quantity="one">Este período cambió: se anuló %1$d documento después de terminar</item>
+        <item quantity="many">Este período cambió: se anularon %1$d de documentos después de terminar</item>
+        <item quantity="other">Este período cambió: se anularon %1$d documentos después de terminar</item>
+    </plurals>
+    <plurals name="notice_period_late">
+        <item quantity="one">Este período cambió: se agregó %1$d registro con fecha atrasada</item>
+        <item quantity="many">Este período cambió: se agregaron %1$d de registros con fecha atrasada</item>
+        <item quantity="other">Este período cambió: se agregaron %1$d registros con fecha atrasada</item>
+    </plurals>
 </resources>

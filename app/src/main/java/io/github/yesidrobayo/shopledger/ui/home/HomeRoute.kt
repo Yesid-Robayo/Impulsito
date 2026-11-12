@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverv
 import io.github.yesidrobayo.shopledger.domain.usecase.home.ObserveHomeProfitUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.home.ObserveTodaySalesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodComparisonUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodReportUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
@@ -61,6 +62,7 @@ fun HomeRoute(navigator: AppNavigator) {
                         BusinessCalendarSource(ports.settings),
                         ObservePeriodReportUseCase(ports.periodReports),
                         container.clock,
+                        ObservePeriodComparisonUseCase(ports.periodReports),
                     )(checks)
                 },
             )

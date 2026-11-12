@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.home
 
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitTotals
@@ -11,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.testing.FakePeriodReportRepositor
 import io.github.yesidrobayo.shopledger.domain.testing.appSettings
 import io.github.yesidrobayo.shopledger.domain.testing.regionalSettings
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodComparisonUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodReportUseCase
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.first
@@ -34,14 +36,18 @@ class ObserveHomeProfitUseCaseTest {
     /** Miércoles 2026-11-04 a las 10:00 en una zona cinco horas al oeste de UTC. */
     private var now = Instant.parse("2026-11-04T15:00:00Z")
 
-    private fun observe(zone: String = "Etc/GMT+5", weekStart: DayOfWeek = DayOfWeek.MONDAY) =
-        ObserveHomeProfitUseCase(
-            BusinessCalendarSource(
-                FakeAppSettingsRepository(appSettings(regionalSettings(zone, weekStart))),
-            ),
-            ObservePeriodReportUseCase(reports),
-            Clock { now },
-        )
+    private fun observe(
+        zone: String = "Etc/GMT+5",
+        weekStart: DayOfWeek = DayOfWeek.MONDAY,
+        compare: Boolean = false,
+    ) = ObserveHomeProfitUseCase(
+        BusinessCalendarSource(
+            FakeAppSettingsRepository(appSettings(regionalSettings(zone, weekStart))),
+        ),
+        ObservePeriodReportUseCase(reports),
+        Clock { now },
+        if (compare) ObservePeriodComparisonUseCase(reports) else null,
+    )
 
     private fun date(y: Int, m: Int, d: Int) = BusinessDate(LocalDate(y, m, d))
 
@@ -113,6 +119,40 @@ class ObserveHomeProfitUseCaseTest {
             ReportPeriod.Month(YearMonth(2026, 12)),
             observe()(flowOf(Unit)).first()?.month,
         )
+    }
+
+    @Test
+    fun `each figure is compared with the same days of the period before`() = runTest {
+        // Miércoles 4: la semana va del lunes 2 al 4, y se compara con el 26 al 28 de octubre; el
+        // mes va del 1 al 4, y se compara con el 1 al 4 de octubre.
+        reports.totals.value = mapOf(
+            ReportPeriod.Week(date(2026, 11, 2)) to
+                totals(net = 30_000, cost = 18_000, expenses = 0),
+            ReportPeriod.Range(date(2026, 10, 26), date(2026, 10, 28)) to
+                totals(net = 20_000, cost = 12_000, expenses = 0),
+            ReportPeriod.Month(YearMonth(2026, 11)) to
+                totals(net = 30_000, cost = 18_000, expenses = 3_000),
+            ReportPeriod.Range(date(2026, 10, 1), date(2026, 10, 4)) to
+                totals(net = 30_000, cost = 18_000, expenses = 0),
+        )
+
+        val profit = requireNotNull(observe(compare = true)(flowOf(Unit)).first())
+
+        // La semana pasa de 8.000 a 12.000: +50 %. El mes, de 12.000 a 9.000: −25 %.
+        assertEquals(
+            ReportPeriod.Range(date(2026, 10, 26), date(2026, 10, 28)),
+            profit.weekChange?.comparedTo,
+        )
+        assertEquals(BasisPoints(5_000), profit.weekChange?.variation?.netProfit)
+        assertEquals(BasisPoints(-2_500), profit.monthChange?.variation?.netProfit)
+    }
+
+    @Test
+    fun `without comparison the figures come alone`() = runTest {
+        val profit = requireNotNull(observe()(flowOf(Unit)).first())
+
+        assertNull(profit.weekChange)
+        assertNull(profit.monthChange)
     }
 
     @Test

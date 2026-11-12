@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Margin
@@ -50,6 +51,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.backup.backupBannerLook
@@ -74,10 +76,12 @@ import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.ProductRow
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
+import io.github.yesidrobayo.shopledger.ui.components.StatChange
 import io.github.yesidrobayo.shopledger.ui.components.StatTile
 import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.periodLabel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.stock.inventoryRowData
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -386,11 +390,14 @@ private fun ProfitTiles(profit: HomeProfit) {
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
     ) {
         val after = stringResource(R.string.home_after_expenses)
+        // La variación compara con los mismos días del período anterior, como en las estadísticas.
+        // Sin con qué comparar, queda `Después de gastos`.
         StatTile(
             label = stringResource(R.string.home_this_week),
             amount = profit.weekProfit,
             variant = StatTileVariant.CARD,
             modifier = Modifier.weight(1f).widthIn(min = PROFIT_TILE_MIN),
+            change = profitChange(profit.weekChange, profit.month.start),
             sensitive = true,
             caption = after,
         )
@@ -399,10 +406,25 @@ private fun ProfitTiles(profit: HomeProfit) {
             amount = profit.monthProfit,
             variant = StatTileVariant.CARD,
             modifier = Modifier.weight(1f).widthIn(min = PROFIT_TILE_MIN),
+            change = profitChange(profit.monthChange, profit.month.start),
             sensitive = true,
             caption = after,
         )
     }
+}
+
+/**
+ * La variación de la ganancia final frente a [compared], o `null` si no se puede medir. Que suba
+ * es buena noticia. [reference] es un día del mes en curso: el año se nombra solo si cambia.
+ */
+@Composable
+private fun profitChange(compared: ComparedPeriod?, reference: BusinessDate): StatChange? {
+    val change = compared?.variation?.netProfit ?: return null
+    return StatChange(
+        change,
+        favorable = change >= BasisPoints.ZERO,
+        periodLabel(compared.comparedTo, reference),
+    )
 }
 
 /**

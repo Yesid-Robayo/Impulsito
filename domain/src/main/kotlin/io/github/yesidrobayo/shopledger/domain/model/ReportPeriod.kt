@@ -46,4 +46,15 @@ sealed interface ReportPeriod {
         override val start: BusinessDate get() = BusinessDate(yearMonth.firstDay)
         override val end: BusinessDate get() = BusinessDate(yearMonth.lastDay)
     }
+
+    /**
+     * Un rango cualquiera, de [start] a [end], los dos incluidos: el que elige la persona, o los
+     * primeros días de un período para compararlo con el que está en curso.
+     */
+    data class Range(override val start: BusinessDate, override val end: BusinessDate) :
+        ReportPeriod {
+        init {
+            require(start <= end) { "Un rango empieza antes de terminar" }
+        }
+    }
 }

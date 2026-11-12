@@ -32,26 +32,41 @@ object PeriodNavigation {
             PeriodKind.MONTH -> calendar.month(date)
         }
 
-    /** El tipo de [period]. */
-    fun kindOf(period: ReportPeriod): PeriodKind = when (period) {
+    /** El tipo de [period], o `null` en un rango, que no es un día, una semana ni un mes. */
+    fun kindOf(period: ReportPeriod): PeriodKind? = when (period) {
         is ReportPeriod.Day -> PeriodKind.DAY
         is ReportPeriod.Week -> PeriodKind.WEEK
         is ReportPeriod.Month -> PeriodKind.MONTH
+        is ReportPeriod.Range -> null
     }
 
     /** El período del mismo tipo justo antes de [period]. */
     fun previous(period: ReportPeriod): ReportPeriod = when (period) {
         is ReportPeriod.Day -> ReportPeriod.Day(period.date.plusDays(-1))
+
         is ReportPeriod.Week -> ReportPeriod.Week(period.start.plusDays(-DAYS_IN_WEEK))
+
         is ReportPeriod.Month -> ReportPeriod.Month(period.yearMonth.minusMonth())
+
+        is ReportPeriod.Range ->
+            ReportPeriod.Range(period.start.plusDays(-lengthOf(period)), period.start.plusDays(-1))
     }
 
     /** El período del mismo tipo justo después de [period]. */
     fun next(period: ReportPeriod): ReportPeriod = when (period) {
         is ReportPeriod.Day -> ReportPeriod.Day(period.date.plusDays(1))
+
         is ReportPeriod.Week -> ReportPeriod.Week(period.start.plusDays(DAYS_IN_WEEK))
+
         is ReportPeriod.Month -> ReportPeriod.Month(period.yearMonth.plusMonth())
+
+        is ReportPeriod.Range ->
+            ReportPeriod.Range(period.end.plusDays(1), period.end.plusDays(lengthOf(period)))
     }
+
+    /** Cuántos días tiene [period], con sus dos extremos. */
+    fun lengthOf(period: ReportPeriod): Int =
+        (period.end.date.toEpochDays() - period.start.date.toEpochDays()).toInt() + 1
 
     /**
      * Hasta qué fecha se puede avanzar: hoy, o la última fecha con datos si es posterior, porque

@@ -22,6 +22,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
+import io.github.yesidrobayo.shopledger.domain.rule.report.PeriodNavigation
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -49,8 +50,20 @@ fun canGoForward(period: ReportPeriod, latest: BusinessDate): Boolean = latest >
 private fun BusinessCalendar.sameKind(period: ReportPeriod, date: BusinessDate): ReportPeriod =
     when (period) {
         is ReportPeriod.Day -> day(date)
+
         is ReportPeriod.Week -> week(date)
+
         is ReportPeriod.Month -> month(date)
+
+        // Un rango se mueve entero, con su mismo largo.
+        is ReportPeriod.Range ->
+            if (date <
+                period.start
+            ) {
+                PeriodNavigation.previous(period)
+            } else {
+                PeriodNavigation.next(period)
+            }
     }
 
 /**
@@ -122,6 +135,13 @@ fun periodLabel(period: ReportPeriod, today: BusinessDate): String {
             )
 
         is ReportPeriod.Month -> date.monthYear(period.yearMonth)
+
+        is ReportPeriod.Range ->
+            stringResource(
+                R.string.format_date_range,
+                date.shortDate(period.start, today),
+                date.shortDate(period.end, today),
+            )
     }
 }
 

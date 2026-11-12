@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
@@ -62,6 +63,8 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
+import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
+import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
 import io.github.yesidrobayo.shopledger.ui.components.PeriodSelector
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
@@ -112,6 +115,18 @@ fun StatisticsScreen(
                     navigation = TopBarNavigation.NONE,
                     onNavigate = {},
                     navigationLabel = null,
+                    actions = {
+                        // Solo con cifras se elige un rango: sin datos no hay nada que mirar.
+                        if (uiState is StatisticsUiState.Content) {
+                            OverflowMenu(
+                                listOf(
+                                    OverflowAction(stringResource(R.string.stats_choose_dates), {
+                                        onAction(StatisticsAction.ChooseRange)
+                                    }),
+                                ),
+                            )
+                        }
+                    },
                 )
                 val bottom = bottomSpace()
                 val rest = Modifier.weight(1f).fillMaxWidth()
@@ -163,12 +178,25 @@ fun StatisticsScreen(
                             }
                         }
 
-                    is StatisticsUiState.Content ->
+                    is StatisticsUiState.Content -> {
                         if (expanded) {
                             TwoPanes(uiState, onAction, bottom, rest)
                         } else {
                             OnePane(uiState, onAction, bottom, rest)
                         }
+                        val weekStartDay = uiState.weekStartDay
+                        if (uiState.choosingRange && weekStartDay != null) {
+                            RangeSheet(
+                                current = uiState.period,
+                                today = uiState.today,
+                                weekStartDay = weekStartDay,
+                                onShow = { from, to ->
+                                    onAction(StatisticsAction.ShowRange(from, to))
+                                },
+                                onDismiss = { onAction(StatisticsAction.DismissRange) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -212,7 +240,7 @@ private fun OnePane(
                 PaneColumn { Overview(content, onAction, AppTheme.sizes.chartArea) }
             }
             dayList(content)
-            item(key = DETAIL) { Column { Detail(content) } }
+            item(key = DETAIL) { Column { Detail(content, onAction) } }
         }
     }
 }
@@ -245,7 +273,7 @@ private fun TwoPanes(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = bottom),
         ) {
-            Detail(content)
+            Detail(content, onAction)
         }
     }
 }
@@ -271,13 +299,22 @@ private fun Overview(
         selectedIndex = KINDS.indexOf(content.kind),
         onSelect = { onAction(StatisticsAction.SelectKind(KINDS[it])) },
     )
-    PeriodSelector(
-        period = content.period,
-        onPrevious = { if (content.canGoPrevious) onAction(StatisticsAction.Previous) },
-        onNext = { onAction(StatisticsAction.Next) },
-        showNext = content.canGoNext,
-        today = content.today,
-    )
+    if (content.kind == null) {
+        // Un rango propio no se recorre con flechas: su nombre basta, y se cambia desde el menú.
+        Text(
+            periodLabel(content.period, content.today),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.fillMaxWidth().semantics { heading() },
+        )
+    } else {
+        PeriodSelector(
+            period = content.period,
+            onPrevious = { if (content.canGoPrevious) onAction(StatisticsAction.Previous) },
+            onNext = { onAction(StatisticsAction.Next) },
+            showNext = content.canGoNext,
+            today = content.today,
+        )
+    }
     PeriodFigure(content)
     CompactChipRow(
         options = ChartMetric.entries,
@@ -312,6 +349,7 @@ private fun Overview(
             onClick = { onAction(StatisticsAction.ToggleList) },
         )
     }
+    content.breakdown?.let { Notices(it.notices) }
 }
 
 /**
@@ -334,6 +372,7 @@ private fun PeriodFigure(content: StatisticsUiState.Content) {
             tone = if (value != null && value < Money.ZERO) MoneyTone.LOSS else MoneyTone.DEFAULT,
             sensitive = true,
         )
+        VariationLine(content.comparison, content.metric, content.today)
         if (metrics != null) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
                 // Cuántas ventas hubo se ve aun en modo discreto: no es dinero.
@@ -431,7 +470,10 @@ private fun DayRow(point: DayPoint, metric: ChartMetric) {
  * margen; las filas, el de la pantalla.
  */
 @Composable
-private fun ColumnScope.Detail(content: StatisticsUiState.Content) {
+private fun ColumnScope.Detail(
+    content: StatisticsUiState.Content,
+    onAction: (StatisticsAction) -> Unit,
+) {
     val metrics = content.metrics
     val rows = Modifier.padding(horizontal = AppTheme.spacing.s16)
     SectionHeader(stringResource(R.string.stats_how_calculated))
@@ -439,6 +481,21 @@ private fun ColumnScope.Detail(content: StatisticsUiState.Content) {
         Text(NO_VALUE_TEXT, style = MaterialTheme.typography.bodyLarge, modifier = rows)
     } else {
         Cascade(metrics, rows)
+    }
+    val breakdown = content.breakdown
+    if (breakdown != null) {
+        VoidedRow(breakdown.notices, rows)
+        breakdown.top?.let { top ->
+            TopSold(
+                top = top,
+                ranking = content.ranking,
+                units = content.units,
+                onSelect = { onAction(StatisticsAction.SelectRanking(it)) },
+                modifier = rows,
+            )
+        }
+        ByPaymentMethod(breakdown.methods, rows)
+        breakdown.expenses?.let { ByExpenseCategory(it, rows) }
     }
     val tax = content.tax
     if (tax != null) EstimatedTax(tax, rows)
@@ -629,7 +686,7 @@ private fun metricLabel(metric: ChartMetric): String = stringResource(
  * TalkBack, con el nombre de la moneda. En modo discreto, oculto en los dos.
  */
 @Composable
-private fun moneyInText(amount: Money?): Pair<CharSequence, String> {
+internal fun moneyInText(amount: Money?): Pair<CharSequence, String> {
     val discreet = LocalDiscreetMode.current
     val display = amount?.let { rememberMoneyDisplay(it, LocalAppFormats.current.money) }
     return when {

@@ -46,9 +46,15 @@ data class HistoryFilters(
     val periodKind: HistoryPeriodKind?
         get() = when (period) {
             null -> null
+
             is ReportPeriod.Day -> HistoryPeriodKind.DAY
+
             is ReportPeriod.Week -> HistoryPeriodKind.WEEK
+
             is ReportPeriod.Month -> HistoryPeriodKind.MONTH
+
+            // El filtro del historial no arma rangos libres: no tienen tamaño que marcar.
+            is ReportPeriod.Range -> null
         }
 }
 

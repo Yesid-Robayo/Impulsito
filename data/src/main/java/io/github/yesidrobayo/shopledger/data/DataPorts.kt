@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomMediaAssetRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomMovementDocumentSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodBreakdownRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
@@ -57,6 +58,7 @@ import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
 import io.github.yesidrobayo.shopledger.domain.port.MovementDocumentSource
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
+import io.github.yesidrobayo.shopledger.domain.port.PeriodBreakdownRepository
 import io.github.yesidrobayo.shopledger.domain.port.PeriodReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
@@ -204,6 +206,12 @@ class DataPorts internal constructor(
      * ganancia final de Inicio. Solo lee.
      */
     val periodReports: PeriodReportRepository = RoomPeriodReportRepository(database)
+
+    /**
+     * Los destacados, los desgloses por método y por categoría y los avisos de un período, para
+     * las estadísticas. Solo lee.
+     */
+    val periodBreakdowns: PeriodBreakdownRepository = RoomPeriodBreakdownRepository(database)
 
     /** Si el negocio ya tiene algún producto, para orientar el primer uso. Solo lee. */
     val catalogPresence: CatalogPresenceSource = RoomCatalogPresenceSource(database)

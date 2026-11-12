@@ -53,6 +53,8 @@ class StatisticsGalleryTest {
             Triple("noData", StatisticsUiState.NoData, false),
             Triple("unknownZone", StatisticsUiState.UnknownZone, false),
             Triple("error", StatisticsUiState.ReadError, false),
+            Triple("range", previewRange(), false),
+            Triple("rangePicker", previewStatisticsContent().copy(choosingRange = true), false),
         )
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             for (palette in listOf(ColorPalette.INDIGO_MUSTARD, ColorPalette.GARNET_HONEY)) {

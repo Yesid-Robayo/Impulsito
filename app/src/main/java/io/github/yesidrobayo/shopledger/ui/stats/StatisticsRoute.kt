@@ -6,6 +6,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveDailySeriesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodBreakdownUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodComparisonUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodReportUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveReportCalendarUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.ObserveTaxEstimateUseCase
@@ -33,12 +35,18 @@ fun StatisticsRoute(navigator: AppNavigator) {
             val report = ObservePeriodReportUseCase(ports.periodReports)
             val series = ObserveDailySeriesUseCase(ports.periodReports)
             val tax = ObserveTaxEstimateUseCase(ports.taxSettings, ports.taxReports)
+            val comparison = ObservePeriodComparisonUseCase(ports.periodReports)
+            val breakdown =
+                ObservePeriodBreakdownUseCase(ports.periodReports, ports.periodBreakdowns)
             StatisticsViewModel(
                 calendar = { checks -> calendar(checks) },
                 lastActiveDate = ports.periodReports.observeLastActiveDate(),
                 report = { report(it) },
                 series = { series(it) },
                 tax = { tax(it) },
+                comparison = { period, today -> comparison(period, today) },
+                breakdown = { period, calendar -> breakdown(period, calendar) },
+                units = ports.units.observeAll(),
             )
         }
     when (model) {
@@ -63,6 +71,10 @@ fun StatisticsRoute(navigator: AppNavigator) {
                             navigator.open(AppNavKey.RegionalSettings())
 
                         is StatisticsAction.SelectKind,
+                        is StatisticsAction.SelectRanking,
+                        StatisticsAction.ChooseRange,
+                        StatisticsAction.DismissRange,
+                        is StatisticsAction.ShowRange,
                         StatisticsAction.Previous,
                         StatisticsAction.Next,
                         is StatisticsAction.SelectMetric,

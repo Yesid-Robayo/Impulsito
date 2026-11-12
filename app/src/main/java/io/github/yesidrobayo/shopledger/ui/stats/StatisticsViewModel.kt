@@ -4,10 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
+import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.report.PeriodNavigation
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
+import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodBreakdown
 import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodReport
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ReportCalendar
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.TaxEstimateState
@@ -40,6 +44,9 @@ import kotlinx.coroutines.flow.stateIn
  * @param report las métricas de un período.
  * @param series la serie por día de un período, para la gráfica.
  * @param tax el impuesto estimado de un período.
+ * @param comparison la variación de un período frente a su comparable, si lo tiene.
+ * @param breakdown los destacados, los desgloses y los avisos de un período.
+ * @param units las unidades, para nombrar las cantidades de los más vendidos.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class StatisticsViewModel(
@@ -48,7 +55,16 @@ class StatisticsViewModel(
     private val report: (ReportPeriod) -> Flow<PeriodReport>,
     private val series: (ReportPeriod) -> Flow<List<DayPoint>?>,
     private val tax: (ReportPeriod) -> Flow<TaxEstimateState>,
+    private val comparison: (ReportPeriod, BusinessDate) -> Flow<ComparedPeriod?> = { _, _ ->
+        flowOf(null)
+    },
+    private val breakdown: (ReportPeriod, BusinessCalendar) -> Flow<PeriodBreakdown?> = { _, _ ->
+        flowOf(null)
+    },
+    units: Flow<List<MeasureUnit>> = flowOf(emptyList()),
 ) : ViewModel() {
+    private val unitsById = units.map { all -> all.associateBy { it.id } }.distinctUntilChanged()
+
     // Un contador, y no un evento: dos vueltas seguidas sin leer entre ellas valen por una.
     private val dayChecks = MutableStateFlow(0L)
     private val attempts = MutableStateFlow(0)
@@ -75,14 +91,16 @@ class StatisticsViewModel(
                 ReportCalendar.UnknownZone -> null
 
                 is ReportCalendar.Ready -> {
-                    val anchor = chosen.anchor ?: calendar.today
-                    val period =
-                        PeriodNavigation.containing(chosen.kind, anchor, calendar.calendar)
+                    val period = periodOf(chosen, calendar)
+                    // Un rango propio no se recorre con flechas: se elige otro.
+                    val ranged = chosen.range != null
                     Shown(
                         period = period,
                         today = calendar.today,
-                        canGoPrevious = PeriodNavigation.hasPrevious(period),
-                        canGoNext = PeriodNavigation.hasNext(period, calendar.forwardLimit),
+                        calendar = calendar.calendar,
+                        canGoPrevious = !ranged && PeriodNavigation.hasPrevious(period),
+                        canGoNext =
+                            !ranged && PeriodNavigation.hasNext(period, calendar.forwardLimit),
                         hasData = last != null,
                     )
                 }
@@ -109,8 +127,23 @@ class StatisticsViewModel(
 
     private fun figuresOf(shown: Shown): Flow<StatisticsUiState> {
         val period = shown.period
-        val days = if (period is ReportPeriod.Day) flowOf(null) else series(period)
-        return combine(report(period), days, tax(period), choice) { report, points, tax, chosen ->
+        // Un día es una cifra, y un rango largo no cabe en barras por día: ninguno lleva gráfica.
+        val days =
+            when (period) {
+                is ReportPeriod.Week, is ReportPeriod.Month -> series(period)
+                is ReportPeriod.Day, is ReportPeriod.Range -> flowOf(null)
+            }
+        val figures =
+            combine(report(period), days, tax(period)) { report, points, tax ->
+                Figures(report, points, taxOf(tax))
+            }
+        val details =
+            combine(
+                comparison(period, shown.today),
+                breakdown(period, shown.calendar),
+                unitsById,
+            ) { compared, explained, units -> Details(compared, explained, units) }
+        return combine(figures, details, choice) { figures, details, chosen ->
             StatisticsUiState.Content(
                 kind = PeriodNavigation.kindOf(period),
                 period = period,
@@ -118,12 +151,18 @@ class StatisticsViewModel(
                 canGoPrevious = shown.canGoPrevious,
                 canGoNext = shown.canGoNext,
                 metric = chosen.metric,
-                metrics = report.metrics,
-                series = points,
+                metrics = figures.report.metrics,
+                series = figures.points,
                 // Un día tocado solo vale dentro del período que lo muestra.
                 selectedDay = chosen.selectedDay?.takeIf { it in period },
                 showList = chosen.showList,
-                tax = taxOf(tax),
+                tax = figures.tax,
+                comparison = details.compared,
+                breakdown = details.breakdown,
+                units = details.units,
+                ranking = chosen.ranking,
+                choosingRange = chosen.choosingRange,
+                weekStartDay = shown.calendar.weekStartDay,
             )
         }
     }
@@ -136,6 +175,16 @@ class StatisticsViewModel(
     fun onAction(action: StatisticsAction) {
         when (action) {
             is StatisticsAction.SelectKind -> choice.value = choice.value.withKind(action.kind)
+
+            is StatisticsAction.SelectRanking ->
+                choice.value = choice.value.copy(ranking = action.ranking)
+
+            StatisticsAction.ChooseRange -> choice.value = choice.value.copy(choosingRange = true)
+
+            StatisticsAction.DismissRange ->
+                choice.value = choice.value.copy(choosingRange = false)
+
+            is StatisticsAction.ShowRange -> showRange(action.from, action.to)
 
             StatisticsAction.Previous ->
                 move(PeriodNavigation::previous) { period, _ ->
@@ -181,6 +230,7 @@ class StatisticsViewModel(
     ) {
         val calendar = lastCalendar ?: return
         val current = choice.value
+        if (current.range != null) return
         val period = periodOf(current, calendar)
         if (!allowed(period, calendar)) return
         choice.value = current.copy(anchor = step(period).start, selectedDay = null)
@@ -188,14 +238,26 @@ class StatisticsViewModel(
 
     /** Al cambiar de tamaño, el período nuevo contiene el inicio del que se veía, o hoy. */
     private fun Choice.withKind(kind: PeriodKind): Choice {
-        val calendar = lastCalendar ?: return copy(kind = kind, selectedDay = null)
+        val calendar = lastCalendar ?: return copy(kind = kind, range = null, selectedDay = null)
         val period = periodOf(this, calendar)
         val anchor = if (PeriodNavigation.isCurrent(period, calendar.today)) null else period.start
-        return copy(kind = kind, anchor = anchor, selectedDay = null)
+        // Elegir día, semana o mes deja el rango propio y vuelve a los períodos.
+        return copy(kind = kind, anchor = anchor, range = null, selectedDay = null)
+    }
+
+    /** Muestra el rango de las dos fechas, en cualquier orden: va de la primera a la última. */
+    private fun showRange(first: BusinessDate, second: BusinessDate) {
+        val range =
+            if (first <= second) {
+                ReportPeriod.Range(first, second)
+            } else {
+                ReportPeriod.Range(second, first)
+            }
+        choice.value = choice.value.copy(range = range, choosingRange = false, selectedDay = null)
     }
 
     private fun periodOf(chosen: Choice, calendar: ReportCalendar.Ready): ReportPeriod =
-        PeriodNavigation.containing(
+        chosen.range ?: PeriodNavigation.containing(
             chosen.kind,
             chosen.anchor ?: calendar.today,
             calendar.calendar,
@@ -211,11 +273,27 @@ class StatisticsViewModel(
         val metric: ChartMetric = ChartMetric.SALES,
         val selectedDay: BusinessDate? = null,
         val showList: Boolean = false,
+        val ranking: RankingKind = RankingKind.SALES,
+        val range: ReportPeriod.Range? = null,
+        val choosingRange: Boolean = false,
+    )
+
+    private data class Figures(
+        val report: PeriodReport,
+        val points: List<DayPoint>?,
+        val tax: TaxEstimate?,
+    )
+
+    private data class Details(
+        val compared: ComparedPeriod?,
+        val breakdown: PeriodBreakdown?,
+        val units: Map<Long, MeasureUnit>,
     )
 
     private data class Shown(
         val period: ReportPeriod,
         val today: BusinessDate,
+        val calendar: BusinessCalendar,
         val canGoPrevious: Boolean,
         val canGoNext: Boolean,
         val hasData: Boolean,
