@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -59,8 +58,10 @@ fun CustomerPicker(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.s12),
         ) {
+            // Sin `mergeDescendants` propio: la fila tocable junta etiqueta, nombre y saldo en su
+            // nombre accesible. Un nodo fusionado aquí la dejaba sin texto para TalkBack.
             Column(
-                Modifier.weight(1f).semantics(mergeDescendants = true) {},
+                Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(spacing.s2),
             ) {
                 Text(
