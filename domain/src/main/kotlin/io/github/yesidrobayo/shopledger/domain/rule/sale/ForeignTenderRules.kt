@@ -46,4 +46,30 @@ object ForeignTenderRules {
             tender.rateMicro,
         ).valueOrNull()
     }
+
+    /**
+     * El monto que se escribe, antes del recargo o descuento del método, para que un pago que no
+     * es efectivo cubra exactamente [book], lo entregado ya en la moneda del negocio; o `null` si
+     * ningún monto lo logra. [covers] da lo que cubre el pago con un monto escrito, ya con su
+     * recargo y el impuesto que ese recargo provoca, o `null` si la venta no lo admite.
+     *
+     * Lo entregado paga todo lo que se cobra por ese método, recargo incluido: si cubriera solo lo
+     * de antes del recargo, el pago guardado no sería lo que se entregó. Con +5,00 % y sin
+     * impuesto, `79057` cubre 79057 + 3953 = `83010`. Como el recargo se redondea, lo que cubre
+     * puede saltar: `79049` cubre `83001` y `79050` cubre `83003`, así que `83002` no tiene monto.
+     *
+     * Busca por mitades el menor monto que cubre al menos [book], porque lo que cubre crece con lo
+     * escrito, y después confirma que cubre justo eso.
+     */
+    fun writtenFor(book: Money, covers: (written: Money) -> Money?): Money? {
+        var low = 0L
+        var high = Limit.DOCUMENT_TOTAL.max
+        while (low < high) {
+            val middle = low + (high - low) / 2
+            // Lo que la venta no admite queda arriba: es un monto escrito demasiado grande.
+            val covered = covers(Money(middle))
+            if (covered == null || covered >= book) high = middle else low = middle + 1
+        }
+        return Money(low).takeIf { covers(it) == book }
+    }
 }

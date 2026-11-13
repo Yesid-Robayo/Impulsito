@@ -19,6 +19,10 @@ import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
  * escritos suman lo que se cobra antes de esos recargos. [feeAmount] es la comisión escrita en esta
  * venta, o `null` para usar la del método, con [feeRate] y [feeFixed]. [tenderedAmount] es lo
  * recibido en efectivo, si se escribió.
+ *
+ * [foreignBook] es lo entregado en otra moneda, ya en la del negocio, solo en un pago que no es
+ * efectivo: el pago debe cubrir exactamente eso, con su recargo. En efectivo lo entregado es lo
+ * recibido, y no se pasa aquí.
  */
 data class CheckoutPaymentInput(
     val methodId: Long,
@@ -29,12 +33,14 @@ data class CheckoutPaymentInput(
     val feeFixed: Money = Money.ZERO,
     val feeAmount: Money? = null,
     val tenderedAmount: Money? = null,
+    val foreignBook: Money? = null,
 )
 
 /**
  * Un pago con sus cuentas hechas, igual que al confirmar: [surcharge] es el recargo de su método,
  * con signo, [rounding] el redondeo del efectivo, con signo, [amount] lo que termina cubriendo con
  * los dos, y [fee] su comisión. [change] es lo recibido menos [amount], si se escribió lo recibido.
+ * [foreignBook] es lo entregado en otra moneda que este pago debe cubrir, si no es efectivo.
  */
 data class CheckoutPaymentPreview(
     val methodId: Long,
@@ -45,6 +51,7 @@ data class CheckoutPaymentPreview(
     val fee: Money,
     val rounding: Money = Money.ZERO,
     val tendered: Money? = null,
+    val foreignBook: Money? = null,
 ) {
     /** El cambio que se devuelve, o `null` si no se escribió lo recibido. */
     val change: Money? get() = tendered?.let { it - amount }
@@ -57,6 +64,12 @@ data class CheckoutPaymentPreview(
 
     /** Si la comisión pasa del pago: se avisa en la fila, sin impedir el cobro. */
     val feeAboveAmount: Boolean get() = fee > amount
+
+    /**
+     * Si lo entregado en otra moneda no es lo que cubre el pago con su recargo: no se confirma,
+     * porque el pago guardado no sería lo que se entregó.
+     */
+    val foreignMismatch: Boolean get() = foreignBook != null && foreignBook.minor != amount.minor
 }
 
 /** Si lo escrito en los pagos cubre lo que se cobra. */
@@ -96,6 +109,12 @@ sealed interface CheckoutProblem {
 
     /** Lo recibido en el pago número [index] no alcanza para lo que cubre en efectivo. */
     data class TenderedBelowAmount(val index: Int) : CheckoutProblem
+
+    /**
+     * Lo entregado en otra moneda por el pago número [index], que no es efectivo, no es lo que ese
+     * pago cubre con su recargo.
+     */
+    data class ForeignMismatch(val index: Int) : CheckoutProblem
 }
 
 /**
@@ -267,6 +286,7 @@ object SaleCheckout {
                 fee = fee,
                 rounding = rounding,
                 tendered = payment.tenderedAmount,
+                foreignBook = payment.foreignBook,
             )
         }
         // Lo que se cobra es el total con todos los recargos y el redondeo, aunque lo escrito
@@ -277,13 +297,18 @@ object SaleCheckout {
             return withDue.copy(problem = CheckoutProblem.TooLarge)
         }
         val short = previews.indexOfFirst { it.tenderedBelowAmount }
+        val mismatch = previews.indexOfFirst { it.foreignMismatch }
         return withDue.copy(
             taxTotal = charged.tax,
             total = charged.total,
             amountDue = amountDue,
             payments = previews,
             cashRounding = rounding,
-            problem = if (short >= 0) CheckoutProblem.TenderedBelowAmount(short) else null,
+            problem = when {
+                short >= 0 -> CheckoutProblem.TenderedBelowAmount(short)
+                mismatch >= 0 -> CheckoutProblem.ForeignMismatch(mismatch)
+                else -> null
+            },
         )
     }
 

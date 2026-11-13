@@ -21,7 +21,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  *
  * [foreign] es lo recibido en otra moneda, con su cotización. El pago sigue en la moneda del
  * negocio: en efectivo, lo recibido es [foreign] pasado a ella, y el cambio se da en la moneda del
- * negocio; con otro método, [amount] debe ser exactamente [foreign] pasado a ella.
+ * negocio; con otro método, lo que el pago cubre ya con el recargo o descuento de su método debe
+ * ser exactamente [foreign] pasado a ella. [amount] sigue siendo lo de antes del recargo, como en
+ * cualquier pago escrito.
  */
 data class SalePaymentRequest(
     val paymentMethodId: Long,

@@ -108,6 +108,9 @@ data class MethodAdjustment(val method: SaleMethod, val amount: Money)
  *   [change]. Con [tenderedBelow], lo recibido no alcanza para lo que cubre el pago redondeado.
  * - [foreign] es lo que se recibió en otra moneda, si se cobró así: debajo del pago se ve qué y a qué
  *   cotización.
+ * - [foreignMismatch] es lo entregado en otra moneda, ya convertido, cuando un pago que no es
+ *   efectivo ya no cubre justo eso con su recargo, porque cambió otra parte del cobro: no deja
+ *   registrar.
  */
 @Immutable
 data class CheckoutPaymentRow(
@@ -128,6 +131,7 @@ data class CheckoutPaymentRow(
     val change: Money? = null,
     val tenderedBelow: Boolean = false,
     val foreign: ForeignTender? = null,
+    val foreignMismatch: Money? = null,
 )
 
 /** La hoja abierta sobre el cobro. */
@@ -152,6 +156,9 @@ sealed interface CheckoutSheet {
  * pasado a la moneda del negocio, en vivo, o `null` mientras no se pueda calcular.
  *
  * [canRemove] si el pago ya tenía otra moneda: entonces se ofrece `Quitar otra moneda`.
+ *
+ * [noExactAmount] si el método del pago tiene recargo o descuento y ningún monto, con él, cubre
+ * justo lo entregado: la otra moneda no se usa hasta cambiar lo entregado o la cotización.
  */
 @Immutable
 data class ForeignEditor(
@@ -163,6 +170,7 @@ data class ForeignEditor(
     val rateProblem: RateProblem? = null,
     val amountError: SaleFieldError? = null,
     val canRemove: Boolean = false,
+    val noExactAmount: Boolean = false,
 )
 
 /** El cliente de la venta como lo muestra el cobro. */

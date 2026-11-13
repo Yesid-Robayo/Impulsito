@@ -804,14 +804,17 @@ class CheckoutViewModel(
     /** Cambia la hoja abierta y recalcula `Equivale a` con lo que ya se lee. */
     private fun editForeign(change: (ForeignEditor) -> ForeignEditor) = overlay.update { shown ->
         val sheet = shown.sheet as? CheckoutSheet.Foreign ?: return@update shown
-        val edited = change(sheet.editor)
+        val edited = change(sheet.editor).copy(noExactAmount = false)
         val read = readForeign(edited) as? ForeignRead.Valid
         shown.copy(sheet = CheckoutSheet.Foreign(edited.copy(equivalent = read?.book)))
     }
 
     /**
      * `Usar esta moneda`. En efectivo, lo recibido pasa a ser lo entregado ya convertido, y el cambio
-     * sale solo; con otro método, el monto del pago. Lo que no se lee se dice en su campo.
+     * sale solo. Con otro método, lo entregado paga todo lo que se cobra por él, recargo incluido:
+     * el monto del pago pasa a ser el que, con el recargo o descuento del método, cubre justo lo
+     * convertido, y `Se cobra` lo muestra. Si ningún monto lo logra, la hoja lo dice y el pago no
+     * cambia. Lo que no se lee se dice en su campo.
      */
     private fun applyForeign() {
         val catalog = readyCatalog() ?: return
@@ -827,21 +830,28 @@ class CheckoutViewModel(
             }
 
             is ForeignRead.Valid -> {
-                val cash = catalog.payable.firstOrNull { it.id == row.methodId }
-                    ?.details?.kind == PaymentMethodKind.CASH
-                val applied = AppliedForeign(read.tender, read.book, onTendered = cash)
-                val text = moneyText(read.book)
+                val details = catalog.payable.firstOrNull { it.id == row.methodId }?.details
+                val cash = details?.kind == PaymentMethodKind.CASH
+                val fixed = when {
+                    cash -> read.book
+                    details == null || details.priceAdjustment == BasisPoints.ZERO -> read.book
+                    else -> amountCovering(catalog, editor.index, read.book)
+                } ?: return overlay.update {
+                    it.copy(sheet = CheckoutSheet.Foreign(editor.copy(noExactAmount = true)))
+                }
+                val applied = AppliedForeign(read.tender, read.book, cash, fixed)
+                val text = moneyText(fixed)
                 changePayment(editor.index) {
                     if (cash) {
                         it.copy(
-                            tendered = read.book,
+                            tendered = fixed,
                             tenderedText = text,
                             tenderedError = null,
                             foreign = applied,
                         )
                     } else {
                         it.copy(
-                            amount = read.book,
+                            amount = fixed,
                             amountText = text,
                             amountError = null,
                             foreign = applied,
@@ -850,6 +860,24 @@ class CheckoutViewModel(
                 }
                 overlay.update { it.copy(sheet = null) }
             }
+        }
+    }
+
+    /**
+     * El monto escrito con que el pago número [index], que no es efectivo, cubre exactamente
+     * [book] con el recargo o descuento de su método, con todo lo demás del cobro como está; o
+     * `null` si ningún monto lo logra. Prueba con las mismas cuentas que guardan la venta.
+     */
+    private fun amountCovering(catalog: SaleCatalog, index: Int, book: Money): Money? {
+        val current = sale ?: return null
+        val written = editing.value
+        return ForeignTenderRules.writtenFor(book) { candidate ->
+            val tried = written.copy(
+                payments = written.payments.mapIndexed { i, row ->
+                    if (i == index) row.copy(amount = candidate) else row
+                },
+            )
+            previewOf(catalog, current, tried).payments.getOrNull(index)?.amount
         }
     }
 
@@ -1246,6 +1274,7 @@ class CheckoutViewModel(
                 change = computed?.change,
                 tenderedBelow = computed?.tenderedBelowAmount ?: false,
                 foreign = row.foreign?.tender,
+                foreignMismatch = computed?.takeIf { it.foreignMismatch }?.foreignBook,
             )
         }
         val used = written.payments.map { it.methodId }.toSet()
@@ -1419,6 +1448,7 @@ class CheckoutViewModel(
                 feeFixed = details?.feeFixed ?: Money.ZERO,
                 feeAmount = row.fee,
                 tenderedAmount = row.tendered.takeIf { details?.kind == PaymentMethodKind.CASH },
+                foreignBook = row.foreign?.takeIf { !it.onTendered }?.book,
             )
         }
         return SaleCheckout.preview(
@@ -1456,7 +1486,7 @@ class CheckoutViewModel(
     }
 
     /**
-     * Guarda lo escrito: once números por pago, con lo recibido en otra moneda, y el código de esa
+     * Guarda lo escrito: doce números por pago, con lo recibido en otra moneda, y el código de esa
      * moneda aparte. Los textos se rearman al volver.
      */
     private fun save(written: Editing) {
@@ -1479,6 +1509,7 @@ class CheckoutViewModel(
             values[base + 8] = foreign?.tender?.amountMinor ?: 0L
             values[base + 9] = foreign?.tender?.rateMicro ?: 0L
             values[base + 10] = foreign?.book?.minor ?: 0L
+            values[base + 11] = foreign?.fixed?.minor ?: 0L
         }
         savedState[PAYMENTS] = values
         savedState[FOREIGN_CODES] =
@@ -1513,6 +1544,7 @@ class CheckoutViewModel(
                     ),
                     book = Money(values[base + 10]),
                     onTendered = values[base + 6] == FOREIGN_TENDERED,
+                    fixed = Money(values[base + 11]),
                 )
             } else {
                 null
@@ -1602,18 +1634,22 @@ class CheckoutViewModel(
         fun checked(): Written {
             val applied = foreign ?: return this
             val bound = if (applied.onTendered) tendered else amount
-            return if (bound == applied.book) this else copy(foreign = null)
+            return if (bound == applied.fixed) this else copy(foreign = null)
         }
     }
 
     /**
      * Lo recibido en otra moneda por un pago: [tender] tal como se entregó, y [book], lo mismo en la
-     * moneda del negocio. Con [onTendered], [book] es lo recibido en efectivo; si no, el monto.
+     * moneda del negocio. Con [onTendered], [book] es lo recibido en efectivo; si no, lo que el
+     * pago cubre ya con el recargo o descuento de su método. [fixed] es lo que la conversión
+     * escribió en el pago: lo recibido, en efectivo, o el monto de antes del recargo con otro
+     * método.
      */
     private data class AppliedForeign(
         val tender: ForeignTender,
         val book: Money,
         val onTendered: Boolean,
+        val fixed: Money = book,
     )
 
     /** Lo que se leyó de la hoja `Cobrar en otra moneda`. */
@@ -1681,7 +1717,7 @@ class CheckoutViewModel(
         const val CREDIT_DUE = "checkout.creditDue"
         const val POINTS = "checkout.points"
         const val FOREIGN_CODES = "checkout.foreignCodes"
-        const val FIELDS = 11
+        const val FIELDS = 12
         const val FOREIGN_NONE = 0L
         const val FOREIGN_TENDERED = 1L
         const val FOREIGN_AMOUNT = 2L

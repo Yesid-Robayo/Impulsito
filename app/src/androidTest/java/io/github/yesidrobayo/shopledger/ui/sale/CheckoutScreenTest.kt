@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
@@ -50,7 +51,8 @@ import org.junit.runner.RunWith
  * completa, TalkBack lee el total, y la pantalla se acomoda a la letra grande y a una ventana ancha.
  * La venta común sigue confirmando directo, con `Más opciones de cobro` a la vista. Un cliente
  * reciente con saldo a favor lo usa desde el cobro, y el modo discreto oculta lo disponible. Con
- * moneda de referencia, un pago se cobra en otra moneda desde su menú.
+ * moneda de referencia, un pago se cobra en otra moneda desde su menú, y con el recargo de su
+ * método la hoja dice si ningún monto cubre justo lo entregado.
  */
 @RunWith(AndroidJUnit4::class)
 class CheckoutScreenTest {
@@ -208,6 +210,39 @@ class CheckoutScreenTest {
         val xts = CHECKOUT_REFERENCE.currency.code
         assertEquals(ForeignTender(xts, 2, 2_000L, 4_150_500_000L), sent.foreign)
         assertEquals(Money(83_010L), sent.tenderedAmount)
+    }
+
+    @Test
+    fun withASurchargeTheSheetSaysWhenNoAmountCoversWhatWasHandedOver() {
+        // La tarjeta tiene +3,50 %: 14 cubre 14 y 15 cubre 16, así que nada cubre justo 15.
+        show(model(methodId = 2L, reference = CHECKOUT_REFERENCE))
+        awaitText(text(R.string.checkout_complete))
+        compose.onNodeWithContentDescription(text(R.string.a11y_more_options))
+            .performScrollTo()
+            .performClick()
+        compose.onNodeWithText(text(R.string.checkout_other_currency_action)).performClick()
+        val tendered = text(R.string.checkout_fx_tendered, "XTS")
+        awaitText(tendered)
+        compose.onNodeWithText(text(R.string.checkout_fx_rate)).performTextReplacement("1")
+        compose.onNodeWithText(tendered).performScrollTo().performTextInput("15")
+        val apply = text(R.string.checkout_fx_apply_action)
+        compose.onNodeWithText(apply).performClick()
+
+        awaitText(text(R.string.checkout_fx_error_no_exact))
+
+        // Con 16 entregados, el pago escribe 15 y se cobra 16, justo lo entregado.
+        compose.onNodeWithText(tendered).performScrollTo().performTextReplacement("16")
+        compose.onNodeWithText(apply).performClick()
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodesWithText(apply).fetchSemanticsNodes().isEmpty()
+        }
+        compose.onNodeWithText(text(R.string.reference_rate_prefix, "XTS"), substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+        assertTrue(
+            compose.onAllNodesWithText(text(R.string.checkout_fx_error_no_exact))
+                .fetchSemanticsNodes().isEmpty(),
+        )
     }
 
     @Test

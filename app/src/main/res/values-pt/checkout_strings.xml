@@ -65,4 +65,6 @@
     <string name="checkout_fx_equivalent">Equivale a %1$s</string>
     <string name="checkout_fx_apply_action">Usar esta moeda</string>
     <string name="checkout_fx_remove_action">Remover outra moeda</string>
+    <string name="checkout_fx_error_no_exact">Com o acréscimo ou desconto deste método, nenhum valor cobre exatamente o entregue. Alterar o valor entregue ou a taxa de câmbio.</string>
+    <string name="checkout_fx_error_mismatch">O valor entregue equivale a %1$s e já não cobre exatamente este pagamento. Usar a outra moeda de novo.</string>
 </resources>

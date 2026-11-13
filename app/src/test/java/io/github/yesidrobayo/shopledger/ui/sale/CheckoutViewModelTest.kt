@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutBalance
+import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutProblem
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.ui.product.COUNT_UNIT
 import io.github.yesidrobayo.shopledger.ui.product.CREATED
@@ -1060,27 +1061,95 @@ class CheckoutViewModelTest {
     }
 
     @Test
-    fun `another method in another currency takes the conversion as its amount`() = runTest {
+    fun `another method in another currency covers the conversion with its surcharge`() = runTest {
         val model = viewModel(reference = reference)
         model.act(this, CheckoutAction.AddPayment(11L))
         model.act(this, CheckoutAction.OpenForeign(1))
         model.act(this, CheckoutAction.ForeignAmountChange("4"))
         model.act(this, CheckoutAction.ApplyForeign)
 
-        // 400 a 4150,50 son 16602: el pago con tarjeta queda en eso, y el efectivo cubre el resto.
-        assertEquals("16602", model.state.payments[1].amountText)
+        // 400 a 4150,50 son 16602. La tarjeta tiene +5,00 %: 15811 suma 790,55, que da 791,
+        // y se cobra 16602, justo lo entregado. El efectivo cubre el resto de los 25000.
+        val card = model.state.payments[1]
+        assertEquals("15811", card.amountText)
+        assertEquals(Money(16_602L), card.covers)
+        assertNull(card.foreignMismatch)
 
-        model.act(this, CheckoutAction.AmountChange(0, "8398"))
+        model.act(this, CheckoutAction.AmountChange(0, "9189"))
 
         assertEquals(CheckoutBalance.Complete, model.state.balance)
+        assertNull(model.state.problem)
+
+        // Lo que la conversión fijó sobrevive al cierre del proceso.
+        val restored = viewModel(draft = null, reference = reference).state.payments[1]
+        assertEquals("15811", restored.amountText)
+        assertEquals(ForeignTender(xts, 2, 400L, 4_150_500_000L), restored.foreign)
 
         model.act(this, CheckoutAction.Register)
         val sent = requests.single().payments
 
         assertNull(sent[0].foreign)
-        assertEquals(Money(16_602L), sent[1].amount)
+        assertEquals(Money(15_811L), sent[1].amount)
         assertEquals(ForeignTender(xts, 2, 400L, 4_150_500_000L), sent[1].foreign)
     }
+
+    @Test
+    fun `an amount the surcharge jumps over is said in the sheet and changes nothing`() = runTest {
+        val model = viewModel(reference = reference)
+        model.act(this, CheckoutAction.AddPayment(11L))
+        model.act(this, CheckoutAction.OpenForeign(1))
+        model.act(this, CheckoutAction.ForeignRateChange("1"))
+        model.act(this, CheckoutAction.ForeignAmountChange("31"))
+        model.act(this, CheckoutAction.ApplyForeign)
+
+        // A 1, lo entregado son 31. Con +5,00 %, 29 cubre 30 y 30 cubre 32: ninguno da 31.
+        val editor = (model.state.sheet as CheckoutSheet.Foreign).editor
+        assertTrue(editor.noExactAmount)
+        assertNull(model.state.payments[1].foreign)
+
+        // Al cambiar lo entregado, el aviso se va: 32 sí tiene monto, 30.
+        model.act(this, CheckoutAction.ForeignAmountChange("32"))
+        assertFalse((model.state.sheet as CheckoutSheet.Foreign).editor.noExactAmount)
+
+        model.act(this, CheckoutAction.ApplyForeign)
+
+        assertNull(model.state.sheet)
+        assertEquals("30", model.state.payments[1].amountText)
+        assertEquals(Money(32L), model.state.payments[1].covers)
+    }
+
+    @Test
+    fun `a payment that no longer covers what was handed over is said in it and not recorded`() =
+        runTest {
+            catalog.value = catalog.value.copy(tipsEnabled = true)
+            val model = viewModel(reference = reference)
+            model.act(this, CheckoutAction.AddPayment(11L))
+            model.act(this, CheckoutAction.OpenForeign(1))
+            model.act(this, CheckoutAction.ForeignAmountChange("4"))
+            model.act(this, CheckoutAction.ApplyForeign)
+            model.act(this, CheckoutAction.AmountChange(0, "9189"))
+
+            // La propina se reparte entre los pagos, y el recargo de la tarjeta se calcula sin su
+            // parte: la tarjeta deja de cobrar justo 16602.
+            model.act(this, CheckoutAction.TipChange("2000"))
+            model.act(this, CheckoutAction.AmountChange(0, "11189"))
+            val card = model.state.payments[1]
+
+            assertEquals(Money(16_602L), card.foreignMismatch)
+            assertEquals(CheckoutProblem.ForeignMismatch(1), model.state.problem)
+            assertEquals(CheckoutBalance.Complete, model.state.balance)
+
+            model.act(this, CheckoutAction.Register)
+
+            assertTrue(requests.isEmpty())
+
+            // Volver a usar la otra moneda ajusta el monto de la tarjeta y deja registrar.
+            model.act(this, CheckoutAction.OpenForeign(1))
+            model.act(this, CheckoutAction.ApplyForeign)
+
+            assertNull(model.state.payments[1].foreignMismatch)
+            assertEquals(Money(16_602L), model.state.payments[1].covers)
+        }
 
     @Test
     fun `changing by hand what the conversion set takes the other currency away`() = runTest {

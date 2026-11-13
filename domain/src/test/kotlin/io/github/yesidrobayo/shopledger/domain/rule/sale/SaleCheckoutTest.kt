@@ -391,6 +391,38 @@ class SaleCheckoutTest {
     }
 
     @Test
+    fun `a payment in another currency covers what was handed over, surcharge included`() {
+        // 10000 con tarjeta a +5,00 %: el pago escribe 10000 y cubre 10500. Lo entregado en otra
+        // moneda, ya convertido, debe ser 10500, no 10000.
+        val card = pay(10_000L, PaymentMethodKind.CARD, adjustmentBp = 500L)
+        val exact = tenThousand(listOf(card.copy(foreignBook = Money(10_500L))))
+        val beforeSurcharge = tenThousand(listOf(card.copy(foreignBook = Money(10_000L))))
+
+        assertNull(exact.problem)
+        assertTrue(exact.canRegister)
+        assertEquals(Money(10_500L), exact.payments.single().amount)
+        assertFalse(exact.payments.single().foreignMismatch)
+        assertEquals(CheckoutProblem.ForeignMismatch(0), beforeSurcharge.problem)
+        assertTrue(beforeSurcharge.payments.single().foreignMismatch)
+        assertFalse(beforeSurcharge.canRegister)
+        assertFalse(tenThousand(listOf(card)).payments.single().foreignMismatch)
+    }
+
+    @Test
+    fun `cash received short comes before a payment in another currency that misses`() {
+        val preview = tenThousand(
+            listOf(
+                pay(5_000L).copy(tenderedAmount = Money(4_999L)),
+                pay(5_000L, PaymentMethodKind.CARD, adjustmentBp = 500L, methodId = 2L)
+                    .copy(foreignBook = Money(5_000L)),
+            ),
+        )
+
+        assertEquals(CheckoutProblem.TenderedBelowAmount(0), preview.problem)
+        assertTrue(preview.payments[1].foreignMismatch)
+    }
+
+    @Test
     fun `a rounding that passes the document limit is too large`() {
         // 999 und a 10^12 y una de 999999999999: 999999999999999, que con un paso de 6 × 10^11
         // sube a 1667 pasos, sobre el tope.

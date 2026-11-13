@@ -65,4 +65,6 @@
     <string name="checkout_fx_equivalent">Equals %1$s</string>
     <string name="checkout_fx_apply_action">Use this currency</string>
     <string name="checkout_fx_remove_action">Remove other currency</string>
+    <string name="checkout_fx_error_no_exact">With this method’s surcharge or discount, no amount covers exactly what was tendered. Change the tendered amount or the exchange rate.</string>
+    <string name="checkout_fx_error_mismatch">The tendered amount equals %1$s and no longer covers this payment exactly. Use the other currency again.</string>
 </resources>

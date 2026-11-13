@@ -38,6 +38,9 @@ enum class PaymentRejection {
     /** La otra moneda es la del negocio: no hay nada que convertir. */
     FOREIGN_SAME_CURRENCY,
 
-    /** Lo recibido en otra moneda, pasado a la del negocio, no es lo que dice el pago. */
+    /**
+     * Lo recibido en otra moneda, pasado a la del negocio, no es lo que dice el pago: lo recibido
+     * en efectivo, o lo que cubre con su recargo un pago que no es efectivo.
+     */
     FOREIGN_MISMATCH,
 }

@@ -468,20 +468,21 @@ class RegisterSaleUseCase(
                     RegisterSaleResult.PaymentRejected(index, PaymentRejection.TENDER_NOT_CASH),
                 )
             }
-            val tendered = when (val foreign = foreignOf(payment, method, business)) {
+            val received = when (val foreign = foreignOf(payment, method, business)) {
                 is ForeignCheck.Rejected ->
                     return Chosen.Rejected(
                         RegisterSaleResult.PaymentRejected(index, foreign.reason),
                     )
 
-                is ForeignCheck.Tendered -> foreign.tendered
+                is ForeignCheck.Tendered -> foreign
             }
             chosen += ChosenPayment(
                 method,
                 payment.amount.takeIf { written },
                 payment.feeAmount,
-                tendered,
+                received.tendered,
                 payment.foreign,
+                received.book,
             )
         }
         return Chosen.Payments(chosen)
@@ -490,27 +491,29 @@ class RegisterSaleUseCase(
     /**
      * Lo recibido de [payment] si llegó en otra moneda, pasado a la del negocio. En efectivo, eso es
      * lo recibido, y el cambio sale de ahí; si además se escribió lo recibido, debe coincidir. Con
-     * otro método, el monto del pago debe ser exactamente eso. Sin otra moneda, lo recibido que se
-     * escribió, si hay.
+     * otro método, es lo que el pago debe cubrir ya con el recargo o descuento de su método, y se
+     * compara al repartir los recargos. Sin otra moneda, lo recibido que se escribió, si hay.
      */
     private fun foreignOf(
         payment: SalePaymentRequest,
         method: SalePaymentMethod,
         business: BusinessCurrency,
     ): ForeignCheck {
-        val foreign = payment.foreign ?: return ForeignCheck.Tendered(payment.tenderedAmount)
+        val foreign = payment.foreign
+            ?: return ForeignCheck.Tendered(payment.tenderedAmount, book = null)
         if (foreign.currency == business.code) {
             return ForeignCheck.Rejected(PaymentRejection.FOREIGN_SAME_CURRENCY)
         }
         val converted = ForeignTenderRules.toBook(foreign, business.code, business.decimals)
             ?: return ForeignCheck.Rejected(PaymentRejection.INVALID_FOREIGN)
-        val cash = method.kind == PaymentMethodKind.CASH
-        // En efectivo se compara con lo recibido, si se escribió; con otro método, con el monto.
-        val written = if (cash) payment.tenderedAmount ?: converted else payment.amount
-        return when {
-            written != converted -> ForeignCheck.Rejected(PaymentRejection.FOREIGN_MISMATCH)
-            cash -> ForeignCheck.Tendered(converted)
-            else -> ForeignCheck.Tendered(payment.tenderedAmount)
+        if (method.kind != PaymentMethodKind.CASH) {
+            return ForeignCheck.Tendered(payment.tenderedAmount, book = converted)
+        }
+        // En efectivo se compara con lo recibido, si se escribió.
+        return if ((payment.tenderedAmount ?: converted) == converted) {
+            ForeignCheck.Tendered(converted, book = null)
+        } else {
+            ForeignCheck.Rejected(PaymentRejection.FOREIGN_MISMATCH)
         }
     }
 
@@ -1006,6 +1009,13 @@ class RegisterSaleUseCase(
                     ),
                 )
             }
+            // Lo entregado en otra moneda paga todo lo que se cobra por este método, recargo
+            // incluido: el pago guardado tiene que ser exactamente eso.
+            if (payment.book != null && payment.book != amount) {
+                return Settled.Rejected(
+                    RegisterSaleResult.PaymentRejected(index, PaymentRejection.FOREIGN_MISMATCH),
+                )
+            }
             settled += paymentOf(payment.method, amount, payment.fee, businessDate, now)
                 ?.copy(
                     tenderedAmount = tendered,
@@ -1266,7 +1276,9 @@ class RegisterSaleUseCase(
 
     /**
      * El método de un pago; sin [amount], el pago cubre todo lo que se cobra, y sin [fee] la
-     * comisión es la del método. [tendered] es lo recibido en efectivo, si se escribió.
+     * comisión es la del método. [tendered] es lo recibido en efectivo, si se escribió. [book] es
+     * lo entregado en otra moneda, ya en la del negocio, que un pago que no es efectivo debe
+     * cubrir exactamente con su recargo.
      */
     private class ChosenPayment(
         val method: SalePaymentMethod,
@@ -1274,11 +1286,15 @@ class RegisterSaleUseCase(
         val fee: Money?,
         val tendered: Money?,
         val foreign: ForeignTender?,
+        val book: Money?,
     )
 
-    /** Lo recibido de un pago, ya pasado a la moneda del negocio, o por qué no se acepta. */
+    /**
+     * Lo recibido de un pago, ya pasado a la moneda del negocio, o por qué no se acepta. [book] es
+     * lo que debe cubrir un pago en otra moneda que no es efectivo.
+     */
     private sealed interface ForeignCheck {
-        class Tendered(val tendered: Money?) : ForeignCheck
+        class Tendered(val tendered: Money?, val book: Money?) : ForeignCheck
 
         class Rejected(val reason: PaymentRejection) : ForeignCheck
     }

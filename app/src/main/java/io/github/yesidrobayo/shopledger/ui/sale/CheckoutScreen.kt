@@ -666,7 +666,17 @@ private fun PaymentRow(
         settles = row.settlesOn?.let {
             stringResource(R.string.checkout_settles_on, formats.date.longDate(it))
         },
-        rowError = if (row.gone) stringResource(R.string.checkout_error_method_gone) else null,
+        rowError = when {
+            row.gone -> stringResource(R.string.checkout_error_method_gone)
+
+            // Lo entregado ya no cubre justo este pago: se dice aquí, junto a `Se cobra`.
+            row.foreignMismatch != null -> stringResource(
+                R.string.checkout_fx_error_mismatch,
+                rememberMoneyDisplay(row.foreignMismatch, formats.money).text.text,
+            )
+
+            else -> null
+        },
         extra = {
             if (row.isCash) {
                 CashTenderRow(
@@ -925,7 +935,12 @@ private fun ForeignSheet(
                     value = editor.amountText,
                     onValueChange = { onAction(CheckoutAction.ForeignAmountChange(it)) },
                     label = stringResource(R.string.checkout_fx_tendered, code),
-                    error = fieldErrorText(editor.amountError),
+                    // Sin un monto que cubra justo lo entregado, lo que se cambia es lo entregado.
+                    error = fieldErrorText(editor.amountError) ?: if (editor.noExactAmount) {
+                        stringResource(R.string.checkout_fx_error_no_exact)
+                    } else {
+                        null
+                    },
                     imeAction = ImeAction.Done,
                 )
             }
@@ -970,8 +985,10 @@ private fun fieldErrorText(error: SaleFieldError?): String? = when (error) {
 private fun problemText(problem: CheckoutProblem?): String? = when (problem) {
     null -> null
 
-    // Lo recibido que no alcanza se dice en su pago, no arriba.
-    is CheckoutProblem.TenderedBelowAmount -> null
+    // Lo recibido que no alcanza, o lo entregado en otra moneda que no cuadra, se dice en su pago.
+    is CheckoutProblem.TenderedBelowAmount,
+    is CheckoutProblem.ForeignMismatch,
+    -> null
 
     CheckoutProblem.DiscountAboveSale -> stringResource(R.string.checkout_error_discount)
 
