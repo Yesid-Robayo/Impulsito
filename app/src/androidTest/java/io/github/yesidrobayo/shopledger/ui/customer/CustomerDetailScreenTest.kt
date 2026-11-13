@@ -135,6 +135,26 @@ class CustomerDetailScreenTest {
     }
 
     @Test
+    fun theReminderOnlyLeavesThroughAnotherAppByATap() {
+        show(READY.copy(reminder = ReminderSheet(template = "Hola {customer}", details = "Cuenta")))
+
+        compose.onNodeWithText(text(R.string.customer_reminder_note, text(R.string.app_name)))
+            .assertExists()
+        compose.onNodeWithText(text(R.string.customer_reminder_attach_details)).performClick()
+        compose.onNodeWithText(text(R.string.customer_reminder_send_action)).performClick()
+        compose.onNodeWithText(text(R.string.action_share)).performClick()
+
+        assertEquals(
+            listOf(
+                CustomerDetailAction.ReminderDetails(true),
+                CustomerDetailAction.SendReminder(sms = true),
+                CustomerDetailAction.SendReminder(sms = false),
+            ),
+            actions,
+        )
+    }
+
+    @Test
     fun capturesEveryStateInBothModes() {
         val dir = captureDir
         assumeTrue("Sin captureDir no hay capturas", dir != null)
@@ -162,6 +182,12 @@ class CustomerDetailScreenTest {
                 payment = PaymentSheet(
                     amountText = "4000",
                     preview = PaymentPreview.RemainingDebt(Money(3_000)),
+                ),
+            ),
+            "reminder" to READY.copy(
+                reminder = ReminderSheet(
+                    template = "Hola, {customer}. El saldo pendiente es {amount}. Gracias.",
+                    details = "Cuenta de prueba 000-000",
                 ),
             ),
             "loading" to CustomerDetailUiState(),
@@ -192,10 +218,10 @@ class CustomerDetailScreenTest {
                     ) {
                         CustomerDetailScreen(state, { actions += it })
                         state.payment?.let {
-                            PaymentSheetHost(state, it) { action ->
-                                actions +=
-                                    action
-                            }
+                            PaymentSheetHost(state, it) { action -> actions += action }
+                        }
+                        state.reminder?.let {
+                            ReminderSheetHost(it, hasPhone = true) { action -> actions += action }
                         }
                     }
                 }

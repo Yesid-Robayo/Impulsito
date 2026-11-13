@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.rule.customer.ReminderRules
+import io.github.yesidrobayo.shopledger.domain.rule.customer.ReminderValues
 import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -27,6 +29,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
+import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.AppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.rescue.ExportFolder
@@ -65,8 +68,13 @@ fun CustomerDetailPane(
 ) {
     val formats = LocalAppFormats.current
     val numbers = CustomerNumberFormat(formats.money.inputSymbols, formats.money.currencyDecimals)
+    // La plantilla de los recursos y su idioma: la persona edita la del idioma de la interfaz.
+    val reminderTexts = ReminderTexts(
+        languageTag = formats.uiLocale.toLanguageTag(),
+        defaultTemplate = stringResource(R.string.customer_reminder_template),
+    )
     val model = rememberAppViewModel(key = "customer-$customerId") {
-        CustomerDetailViewModel(customerId, CustomerDetailUseCases.of(it), numbers)
+        CustomerDetailViewModel(customerId, CustomerDetailUseCases.of(it), numbers, reminderTexts)
     }
     when (model) {
         ScreenModel.Opening ->
@@ -83,9 +91,15 @@ fun CustomerDetailPane(
             val anonymizeTitle = stringResource(R.string.customer_anonymize_confirm_action)
             ShowMessage(uiState.message, viewModel::onAction)
             ShareStatement(uiState.statement, formats, viewModel::onAction)
+            (uiState.content as? CustomerDetailContent.Ready)?.view?.let { view ->
+                SendReminder(uiState.outgoing, view, formats, viewModel::onAction)
+            }
             val editor by viewModel.editor.editor.collectAsStateWithLifecycle()
             val pickContact = rememberContactPicker(viewModel.editor)
-            BackHandler(enabled = uiState.payment != null || uiState.adjust != null) {
+            BackHandler(
+                enabled = uiState.payment != null || uiState.adjust != null ||
+                    uiState.reminder != null,
+            ) {
                 viewModel.onAction(CustomerDetailAction.DismissSheet)
             }
             BackHandler(enabled = editor != null) {
@@ -133,12 +147,20 @@ fun CustomerDetailPane(
                     CustomerDetailAction.AskArchive, CustomerDetailAction.Reactivate,
                     CustomerDetailAction.AskAnonymize, CustomerDetailAction.DismissDialog,
                     CustomerDetailAction.UpdateCopies, CustomerDetailAction.MessageShown,
+                    CustomerDetailAction.OpenReminder, is CustomerDetailAction.ReminderText,
+                    is CustomerDetailAction.ReminderDetails, CustomerDetailAction.ResetReminder,
+                    is CustomerDetailAction.SendReminder, is CustomerDetailAction.ReminderSent,
                     -> viewModel.onAction(action)
                 }
             }
             CustomerDetailScreen(uiState, onAction, navigation = navigation)
             uiState.payment?.let { PaymentSheetHost(uiState, it, onAction) }
             uiState.adjust?.let { AdjustSheetHost(it, onAction) }
+            uiState.reminder?.let { sheet ->
+                val phone = (uiState.content as? CustomerDetailContent.Ready)
+                    ?.view?.customer?.contact?.phone
+                ReminderSheetHost(sheet, hasPhone = phone != null, onAction = onAction)
+            }
             uiState.dialog?.let { CustomerDetailConfirm(it, onAction) }
             editor?.let {
                 CustomerEditorSheet(it, { action ->
@@ -213,6 +235,7 @@ private fun ShowMessage(message: CustomerDetailMessage?, onAction: (CustomerDeta
                 CustomerDetailMessage.Reactivated -> R.string.customer_reactivated
                 CustomerDetailMessage.Anonymized -> R.string.customer_anonymize_copies_notice
                 CustomerDetailMessage.StatementFailed -> R.string.customer_statement_failed
+                CustomerDetailMessage.ReminderNoApp -> R.string.customer_reminder_no_app
                 is CustomerDetailMessage.Failed -> saveErrorText(it.outOfSpace)
             },
         )
@@ -225,7 +248,9 @@ private fun ShowMessage(message: CustomerDetailMessage?, onAction: (CustomerDeta
         CustomerDetailMessage.Reactivated, CustomerDetailMessage.Anonymized,
         -> SnackbarVariant.SUCCESS
 
-        CustomerDetailMessage.StatementFailed, is CustomerDetailMessage.Failed ->
+        CustomerDetailMessage.StatementFailed, CustomerDetailMessage.ReminderNoApp,
+        is CustomerDetailMessage.Failed,
+        ->
             SnackbarVariant.ERROR
     }
     LaunchedEffect(message) {
@@ -236,6 +261,48 @@ private fun ShowMessage(message: CustomerDetailMessage?, onAction: (CustomerDeta
             }
             onAction(CustomerDetailAction.MessageShown)
         }
+    }
+}
+
+/**
+ * Entrega [outgoing] a otra app, por un toque de la persona: con teléfono, `ACTION_SENDTO` con
+ * `smsto:`; si no, `ACTION_SEND` con el selector del sistema. Sin hosts fijos de terceros: la
+ * persona elige la app y envía desde allí. Los marcadores se llenan aquí, con el formato del
+ * negocio.
+ */
+@Composable
+private fun SendReminder(
+    outgoing: OutgoingReminder?,
+    view: CustomerDetailView,
+    formats: AppFormats,
+    onAction: (CustomerDetailAction) -> Unit,
+) {
+    val context = LocalContext.current
+    val amount = rememberMoneyDisplay(view.customer.balance, formats.money).text.text
+    val dueDate = when (val due = view.due) {
+        is DueStatus.DueOn -> formats.date.dayMonthYear(due.on)
+        is DueStatus.Overdue -> formats.date.dayMonthYear(due.since)
+        DueStatus.Clear, DueStatus.Credit, DueStatus.NoDue -> null
+    }
+    val name = customerName(view)
+    LaunchedEffect(outgoing) {
+        if (outgoing == null) return@LaunchedEffect
+        val values = ReminderValues(name, amount, outgoing.businessName.orEmpty(), dueDate)
+        val text = ReminderRules.fill(outgoing.template, values, outgoing.details)
+        val intent = outgoing.phone?.let { phone ->
+            Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", phone, null))
+                .putExtra(SMS_BODY, text)
+        } ?: Intent.createChooser(
+            Intent(Intent.ACTION_SEND).setType(TEXT_TYPE).putExtra(Intent.EXTRA_TEXT, text),
+            null,
+        )
+        val sent = try {
+            context.startActivity(intent)
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
+        onAction(CustomerDetailAction.ReminderSent(sent))
     }
 }
 
@@ -252,3 +319,8 @@ private fun openDialer(context: Context, phone: String) {
 }
 
 private const val PDF_EXTENSION = ".pdf"
+
+/** El texto que la app de mensajes pone en el cuerpo del SMS. */
+private const val SMS_BODY = "sms_body"
+
+private const val TEXT_TYPE = "text/plain"

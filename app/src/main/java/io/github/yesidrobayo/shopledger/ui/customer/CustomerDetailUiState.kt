@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntr
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.rule.customer.PaymentPreview
+import io.github.yesidrobayo.shopledger.domain.rule.customer.ReminderTemplateIssue
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerStatement
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.PaymentChoices
 import kotlinx.datetime.DayOfWeek
@@ -128,6 +129,34 @@ data class PaymentSheet(
     val working: Boolean = false,
 )
 
+/**
+ * La hoja de `Recordar pago`: la plantilla del idioma activo, editable, y si se agregan los datos de
+ * cobro de un método, cuando alguno los tiene. [error] es por qué la plantilla no sirve.
+ */
+@Immutable
+data class ReminderSheet(
+    val template: String,
+    val details: String? = null,
+    val attachDetails: Boolean = false,
+    val error: ReminderTemplateIssue? = null,
+)
+
+/**
+ * El recordatorio que la pantalla debe entregar a otra app ahora: la plantilla, los datos de cobro
+ * si se pidieron, el nombre del negocio y, para `Enviar por mensaje`, el teléfono. La pantalla llena
+ * los marcadores con el formato del negocio. Nada sale sin este toque.
+ */
+@Immutable
+data class OutgoingReminder(
+    val template: String,
+    val details: String?,
+    val businessName: String?,
+    val phone: String?,
+)
+
+/** Los textos del recordatorio en el idioma activo: su etiqueta y la plantilla de los recursos. */
+data class ReminderTexts(val languageTag: String, val defaultTemplate: String)
+
 /** La hoja de ajustar el saldo a mano: monto con signo y nota obligatoria. */
 @Immutable
 data class AdjustSheet(
@@ -169,6 +198,9 @@ sealed interface CustomerDetailMessage {
 
     data object StatementFailed : CustomerDetailMessage
 
+    /** No hay app que reciba el mensaje. */
+    data object ReminderNoApp : CustomerDetailMessage
+
     data class Failed(val outOfSpace: Boolean) : CustomerDetailMessage
 }
 
@@ -208,6 +240,9 @@ data class CustomerDetailUiState(
     val choices: PaymentChoices = PaymentChoices(),
     val payment: PaymentSheet? = null,
     val adjust: AdjustSheet? = null,
+    val reminder: ReminderSheet? = null,
+    /** El recordatorio que la pantalla debe entregar a otra app; se limpia al entregarlo. */
+    val outgoing: OutgoingReminder? = null,
     val dialog: CustomerDetailDialog? = null,
     val message: CustomerDetailMessage? = null,
     /** El extracto que la pantalla debe compartir ahora; se limpia al compartirlo. */
@@ -261,6 +296,20 @@ sealed interface CustomerDetailAction {
     data class AskVoidPayment(val entryId: Long) : CustomerDetailAction
 
     data object OpenAdjust : CustomerDetailAction
+
+    data object OpenReminder : CustomerDetailAction
+
+    data class ReminderText(val text: String) : CustomerDetailAction
+
+    data class ReminderDetails(val attach: Boolean) : CustomerDetailAction
+
+    data object ResetReminder : CustomerDetailAction
+
+    /** Envía por SMS con [sms], o comparte con el selector del sistema. */
+    data class SendReminder(val sms: Boolean) : CustomerDetailAction
+
+    /** La pantalla ya entregó el recordatorio, o no había app si [ok] es falso. */
+    data class ReminderSent(val ok: Boolean) : CustomerDetailAction
 
     data class AdjustAmount(val text: String) : CustomerDetailAction
 

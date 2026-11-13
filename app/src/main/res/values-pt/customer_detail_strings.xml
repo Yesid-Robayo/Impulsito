@@ -57,4 +57,13 @@
     <string name="customer_archived">Cliente arquivado</string>
     <string name="customer_payment_account_unavailable">Essa conta não pode receber o pagamento. Escolher outra ou nenhuma.</string>
     <string name="customer_sell_action">Vender para este cliente</string>
+    <string name="customer_remind_action">Lembrar pagamento</string>
+    <string name="customer_reminder_title">Lembrete de pagamento</string>
+    <string name="customer_reminder_template">Olá, {customer}. Este é um lembrete de {business}: o saldo pendente é {amount}. Agradecemos desde já.</string>
+    <string name="customer_reminder_attach_details">Adicionar dados de cobrança</string>
+    <string name="customer_reminder_send_action">Enviar por mensagem</string>
+    <string name="customer_reminder_note">A mensagem sai de outro app. %1$s não envia nada sozinho.</string>
+    <string name="customer_reminder_reset_action">Restaurar texto</string>
+    <string name="customer_reminder_no_app">Não há um app disponível para enviar a mensagem.</string>
+    <string name="customer_reminder_error_empty">Escrever a mensagem</string>
 </resources>

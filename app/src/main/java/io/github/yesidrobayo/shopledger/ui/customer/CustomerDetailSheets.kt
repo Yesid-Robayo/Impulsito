@@ -1,6 +1,9 @@
 package io.github.yesidrobayo.shopledger.ui.customer
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,15 +21,19 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.PaymentPreview
+import io.github.yesidrobayo.shopledger.domain.rule.customer.ReminderRules
+import io.github.yesidrobayo.shopledger.domain.rule.customer.ReminderTemplateIssue
 import io.github.yesidrobayo.shopledger.localization.SeedText
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
+import io.github.yesidrobayo.shopledger.ui.components.CheckboxRow
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DateField
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
@@ -176,6 +183,80 @@ private fun PreviewLine(preview: PaymentPreview?) {
         )
     }
     Text(text, style = AppTheme.amounts.small, color = MaterialTheme.colorScheme.onSurface)
+}
+
+/**
+ * La hoja de `Recordar pago`: la plantilla del idioma activo, editable hasta 1000 caracteres, los
+ * datos de cobro si algún método los tiene, y la nota de que el mensaje sale desde otra app. Con
+ * teléfono, `Enviar por mensaje` abre la app de mensajes; `Compartir` abre el selector del sistema.
+ * Nada se envía solo.
+ */
+@Composable
+internal fun ReminderSheetHost(
+    sheet: ReminderSheet,
+    hasPhone: Boolean,
+    onAction: (CustomerDetailAction) -> Unit,
+) {
+    AppBottomSheet(
+        onDismissRequest = { onAction(CustomerDetailAction.DismissSheet) },
+        title = stringResource(R.string.customer_reminder_title),
+        action = {
+            Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+                if (hasPhone) {
+                    PrimaryActionButton(
+                        text = stringResource(R.string.customer_reminder_send_action),
+                        onClick = { onAction(CustomerDetailAction.SendReminder(sms = true)) },
+                        variant = ActionVariant.PRIMARY,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                PrimaryActionButton(
+                    text = stringResource(R.string.action_share),
+                    onClick = { onAction(CustomerDetailAction.SendReminder(sms = false)) },
+                    variant = if (hasPhone) ActionVariant.TONAL else ActionVariant.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+    ) {
+        AppTextField(
+            value = sheet.template,
+            onValueChange = { onAction(CustomerDetailAction.ReminderText(it)) },
+            label = stringResource(R.string.customer_reminder_title),
+            singleLine = false,
+            imeAction = ImeAction.Default,
+            error = when (sheet.error) {
+                null -> null
+
+                ReminderTemplateIssue.EMPTY -> stringResource(
+                    R.string.customer_reminder_error_empty,
+                )
+
+                ReminderTemplateIssue.TOO_LONG -> pluralStringResource(
+                    R.plurals.error_text_long,
+                    ReminderRules.MAX_LENGTH,
+                    ReminderRules.MAX_LENGTH,
+                )
+            },
+        )
+        InlineTextButton(stringResource(R.string.customer_reminder_reset_action), {
+            onAction(CustomerDetailAction.ResetReminder)
+        })
+        if (sheet.details != null) {
+            CheckboxRow(
+                text = stringResource(R.string.customer_reminder_attach_details),
+                checked = sheet.attachDetails,
+                onCheckedChange = { onAction(CustomerDetailAction.ReminderDetails(it)) },
+            )
+        }
+        NoticeCard(
+            text = stringResource(
+                R.string.customer_reminder_note,
+                stringResource(R.string.app_name),
+            ),
+            variant = NoticeVariant.INFO,
+        )
+    }
 }
 
 /** La hoja de `Ajustar saldo`: monto con signo y una nota obligatoria. No mueve dinero. */

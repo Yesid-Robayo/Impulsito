@@ -57,4 +57,13 @@
     <string name="customer_archived">Customer archived</string>
     <string name="customer_payment_account_unavailable">That account cannot receive the payment. Choose another one or none.</string>
     <string name="customer_sell_action">Sell to this customer</string>
+    <string name="customer_remind_action">Send reminder</string>
+    <string name="customer_reminder_title">Payment reminder</string>
+    <string name="customer_reminder_template">Hello {customer}. This is a reminder from {business}: the outstanding balance is {amount}. Thank you.</string>
+    <string name="customer_reminder_attach_details">Add payment details</string>
+    <string name="customer_reminder_send_action">Send by message</string>
+    <string name="customer_reminder_note">The message goes out from another app. %1$s sends nothing on its own.</string>
+    <string name="customer_reminder_reset_action">Reset text</string>
+    <string name="customer_reminder_no_app">No app is available to send the message.</string>
+    <string name="customer_reminder_error_empty">Enter the message</string>
 </resources>

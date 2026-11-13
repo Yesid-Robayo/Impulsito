@@ -22,7 +22,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.ReactivateCustom
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.ReadCustomerSalesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.RecordCustomerPaymentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.RecordCustomerPaymentUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.ReminderTemplateUseCases
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.SaveCustomerResult
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.SaveReminderTemplateResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.VoidCustomerPaymentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.VoidCustomerPaymentUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyLedgerWriter
@@ -70,6 +72,17 @@ interface CustomerDetailOperations {
 
     suspend fun recordPayment(request: CustomerPaymentRequest): RecordCustomerPaymentResult
 
+    /** La plantilla del recordatorio que la persona escribió en [languageTag], o `null`. */
+    suspend fun reminderTemplate(languageTag: String): String?
+
+    suspend fun saveReminderTemplate(
+        languageTag: String,
+        template: String,
+    ): SaveReminderTemplateResult
+
+    /** Vuelve al texto de los recursos; `false` si no pudo escribir. */
+    suspend fun resetReminderTemplate(languageTag: String): Boolean
+
     suspend fun voidPayment(customerId: Long, entryId: Long): VoidCustomerPaymentResult
 
     suspend fun adjust(customerId: Long, amount: Money, note: String): AdjustCustomerBalanceResult
@@ -97,6 +110,7 @@ class CustomerDetailUseCases(
     private val choices: ObservePaymentChoicesUseCase,
     private val sales: ReadCustomerSalesUseCase,
     private val edit: EditCustomerUseCase,
+    private val reminders: ReminderTemplateUseCases,
     private val record: RecordCustomerPaymentUseCase,
     private val void: VoidCustomerPaymentUseCase,
     private val adjustBalance: AdjustCustomerBalanceUseCase,
@@ -140,6 +154,15 @@ class CustomerDetailUseCases(
 
     override suspend fun recordPayment(request: CustomerPaymentRequest) = record(request)
 
+    override suspend fun reminderTemplate(languageTag: String): String? =
+        reminders.read(languageTag)
+
+    override suspend fun saveReminderTemplate(languageTag: String, template: String) =
+        reminders.save(languageTag, template)
+
+    override suspend fun resetReminderTemplate(languageTag: String): Boolean =
+        reminders.reset(languageTag)
+
     override suspend fun voidPayment(customerId: Long, entryId: Long) = void(customerId, entryId)
 
     override suspend fun adjust(customerId: Long, amount: Money, note: String) =
@@ -176,6 +199,7 @@ class CustomerDetailUseCases(
                 ),
                 sales = ReadCustomerSalesUseCase(ports.customerSales, ports.saleHistory),
                 edit = EditCustomerUseCase(tx, ports.customers, clock),
+                reminders = ReminderTemplateUseCases(tx, ports.messageTemplates, clock),
                 record = RecordCustomerPaymentUseCase(
                     transactions = tx,
                     settings = ports.settings,

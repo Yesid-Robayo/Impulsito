@@ -57,4 +57,13 @@
     <string name="customer_archived">Cliente archivado</string>
     <string name="customer_payment_account_unavailable">Esa cuenta no puede recibir el abono. Elegir otra o ninguna.</string>
     <string name="customer_sell_action">Vender a este cliente</string>
+    <string name="customer_remind_action">Recordar pago</string>
+    <string name="customer_reminder_title">Recordar pago</string>
+    <string name="customer_reminder_template">Hola, {customer}. Este es un recordatorio de {business}: el saldo pendiente es {amount}. Gracias.</string>
+    <string name="customer_reminder_attach_details">Agregar datos de cobro</string>
+    <string name="customer_reminder_send_action">Enviar por mensaje</string>
+    <string name="customer_reminder_note">El mensaje sale desde otra app. %1$s no envía nada sola.</string>
+    <string name="customer_reminder_reset_action">Restablecer texto</string>
+    <string name="customer_reminder_no_app">No hay una app disponible para enviar el mensaje.</string>
+    <string name="customer_reminder_error_empty">Escribir el mensaje</string>
 </resources>

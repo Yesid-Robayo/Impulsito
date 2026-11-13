@@ -231,6 +231,19 @@ private fun DetailBody(
             item(key = "status") { StatusRow(view, onAction) }
         }
         item(key = "balance") { BalanceBlock(view) }
+        // Recordar solo tiene sentido con deuda y con alguien a quien escribirle.
+        if (customer.balance > Money.ZERO && !customer.isAnonymized) {
+            item(key = "remind") {
+                PrimaryActionButton(
+                    text = stringResource(R.string.customer_remind_action),
+                    onClick = { onAction(CustomerDetailAction.OpenReminder) },
+                    variant = ActionVariant.TONAL,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = spacing.s16, vertical = spacing.s4),
+                )
+            }
+        }
         // Solo se le vende a un cliente vigente: archivado o anónimo ya no se elige al vender.
         if (!customer.isArchived && !customer.isAnonymized) {
             item(key = "sell") {

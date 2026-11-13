@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerDueRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.PaymentAllocation
 import io.github.yesidrobayo.shopledger.domain.rule.customer.PaymentPreview
+import io.github.yesidrobayo.shopledger.domain.rule.customer.ReminderTemplateIssue
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.AdjustCustomerBalanceResult
@@ -27,6 +28,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerStatemen
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.PaymentChoices
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.RecordCustomerPaymentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.SaveCustomerResult
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.SaveReminderTemplateResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.VoidCustomerPaymentResult
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -292,7 +294,7 @@ class CustomerDetailViewModelTest {
         }
 
     private fun TestScope.open(): CustomerDetailViewModel {
-        val model = CustomerDetailViewModel(CUSTOMER_ID, operations, numbers)
+        val model = CustomerDetailViewModel(CUSTOMER_ID, operations, numbers, REMINDER)
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
         return model
@@ -300,6 +302,71 @@ class CustomerDetailViewModelTest {
 
     private fun ready(model: CustomerDetailViewModel): CustomerDetailView =
         (model.uiState.value.content as CustomerDetailContent.Ready).view
+
+    @Test
+    fun `the reminder opens with the default text and only leaves through another app`() =
+        runTest(dispatcher) {
+            val model = open()
+            model.onAction(CustomerDetailAction.OpenReminder)
+            advanceUntilIdle()
+            assertEquals(REMINDER.defaultTemplate, model.uiState.value.reminder?.template)
+
+            model.onAction(CustomerDetailAction.SendReminder(sms = false))
+            advanceUntilIdle()
+            val outgoing = requireNotNull(model.uiState.value.outgoing)
+            assertEquals(REMINDER.defaultTemplate, outgoing.template)
+            assertNull(outgoing.phone)
+            // El texto de los recursos no se guarda: sigue valiendo el de cada idioma.
+            assertTrue(operations.templateWrites.isEmpty())
+
+            model.onAction(CustomerDetailAction.ReminderSent(ok = true))
+            assertNull(model.uiState.value.reminder)
+            assertNull(model.uiState.value.outgoing)
+        }
+
+    @Test
+    fun `an edited reminder is kept for next time, and resetting goes back to the default`() =
+        runTest(dispatcher) {
+            operations.customer.value = customer().let {
+                it.copy(contact = it.contact?.copy(phone = "300 000 0000"))
+            }
+            val model = open()
+            model.onAction(CustomerDetailAction.OpenReminder)
+            advanceUntilIdle()
+            model.onAction(CustomerDetailAction.ReminderText("Debe {amount}"))
+            model.onAction(CustomerDetailAction.SendReminder(sms = true))
+            advanceUntilIdle()
+
+            assertEquals("300 000 0000", model.uiState.value.outgoing?.phone)
+            assertEquals(listOf<String?>("Debe {amount}"), operations.templateWrites)
+            model.onAction(CustomerDetailAction.ReminderSent(ok = false))
+            assertEquals(CustomerDetailMessage.ReminderNoApp, model.uiState.value.message)
+            assertEquals("Debe {amount}", model.uiState.value.reminder?.template)
+
+            model.onAction(CustomerDetailAction.ResetReminder)
+            advanceUntilIdle()
+            assertEquals(REMINDER.defaultTemplate, model.uiState.value.reminder?.template)
+            assertEquals(listOf<String?>("Debe {amount}", null), operations.templateWrites)
+        }
+
+    @Test
+    fun `an empty reminder is not sent, and a customer without debt gets none`() =
+        runTest(dispatcher) {
+            val model = open()
+            model.onAction(CustomerDetailAction.OpenReminder)
+            advanceUntilIdle()
+            model.onAction(CustomerDetailAction.ReminderText("   "))
+            model.onAction(CustomerDetailAction.SendReminder(sms = false))
+            advanceUntilIdle()
+            assertEquals(ReminderTemplateIssue.EMPTY, model.uiState.value.reminder?.error)
+            assertNull(model.uiState.value.outgoing)
+
+            operations.customer.value = customer(balance = 0)
+            val clear = open()
+            clear.onAction(CustomerDetailAction.OpenReminder)
+            advanceUntilIdle()
+            assertNull(clear.uiState.value.reminder)
+        }
 
     private class FakeDetailOperations : CustomerDetailOperations {
         val customer = MutableStateFlow<Customer?>(customer())
@@ -367,6 +434,26 @@ class CustomerDetailViewModelTest {
             return sales.drop(start).take(limit)
         }
 
+        var savedTemplate: String? = null
+        val templateWrites = mutableListOf<String?>()
+
+        override suspend fun reminderTemplate(languageTag: String): String? = savedTemplate
+
+        override suspend fun saveReminderTemplate(
+            languageTag: String,
+            template: String,
+        ): SaveReminderTemplateResult {
+            templateWrites += template
+            savedTemplate = template
+            return SaveReminderTemplateResult.Saved
+        }
+
+        override suspend fun resetReminderTemplate(languageTag: String): Boolean {
+            templateWrites += null
+            savedTemplate = null
+            return true
+        }
+
         override suspend fun saveCustomer(
             customerId: Long?,
             form: CustomerForm,
@@ -419,6 +506,7 @@ class CustomerDetailViewModelTest {
     private companion object {
         const val CUSTOMER_ID = 5L
         const val NAME = "Cliente de prueba"
+        val REMINDER = ReminderTexts("es", "Hola, {customer}. El saldo es {amount}.")
         val ZONE = requireNotNull(BusinessTimeZone.of("Etc/UTC"))
         val DUE_DATE = requireNotNull(BusinessDate.parse("2026-11-20"))
         val AT = Instant.parse("2026-11-01T12:00:00Z")

@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerEntryIssue
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerPaymentIssue
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerPaymentRules
+import io.github.yesidrobayo.shopledger.domain.rule.customer.ReminderRules
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
@@ -19,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLifecycl
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerPaymentRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerStatement
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.RecordCustomerPaymentResult
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.SaveReminderTemplateResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.VoidCustomerPaymentResult
 import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
 import kotlin.coroutines.cancellation.CancellationException
@@ -53,6 +55,7 @@ class CustomerDetailViewModel(
     private val customerId: Long,
     private val operations: CustomerDetailOperations,
     private val numbers: CustomerNumberFormat,
+    private val reminderTexts: ReminderTexts = ReminderTexts("", ""),
 ) : ViewModel() {
     private val state = MutableStateFlow(CustomerDetailUiState())
     val uiState: StateFlow<CustomerDetailUiState> = state.asStateFlow()
@@ -140,7 +143,7 @@ class CustomerDetailViewModel(
                 if (it.payment?.working == true || it.adjust?.working == true) {
                     it
                 } else {
-                    it.copy(payment = null, adjust = null)
+                    it.copy(payment = null, adjust = null, reminder = null)
                 }
             }
 
@@ -149,6 +152,28 @@ class CustomerDetailViewModel(
             }
 
             CustomerDetailAction.OpenAdjust -> state.update { it.copy(adjust = AdjustSheet()) }
+
+            CustomerDetailAction.OpenReminder -> openReminder()
+
+            is CustomerDetailAction.ReminderText -> editReminder {
+                it.copy(template = action.text, error = null)
+            }
+
+            is CustomerDetailAction.ReminderDetails -> editReminder {
+                it.copy(attachDetails = action.attach)
+            }
+
+            CustomerDetailAction.ResetReminder -> resetReminder()
+
+            is CustomerDetailAction.SendReminder -> sendReminder(action.sms)
+
+            is CustomerDetailAction.ReminderSent -> state.update {
+                it.copy(
+                    outgoing = null,
+                    reminder = if (action.ok) null else it.reminder,
+                    message = CustomerDetailMessage.ReminderNoApp.takeUnless { action.ok },
+                )
+            }
 
             is CustomerDetailAction.AdjustAmount -> editAdjust { it.copy(amountText = action.text) }
 
@@ -425,6 +450,93 @@ class CustomerDetailViewModel(
         errors: Set<CustomerFormError> = emptySet(),
         notice: CustomerFormNotice? = null,
     ) = editSheetStatus { it.copy(errors = errors, notice = notice, working = false) }
+
+    // ------------------------------------------------------------------ recordatorio
+
+    /** La plantilla guardada en este idioma, o `null` si vale la de los recursos. */
+    private var savedReminder: String? = null
+
+    private fun openReminder() {
+        val view = view() ?: return
+        if (view.customer.balance <= Money.ZERO || view.customer.isAnonymized) return
+        // Los datos de cobro son las instrucciones del primer método que las tiene.
+        val details = state.value.choices.methods
+            .firstNotNullOfOrNull { it.details.instructionsText?.takeIf(String::isNotBlank) }
+        viewModelScope.launch {
+            val saved = try {
+                operations.reminderTemplate(reminderTexts.languageTag)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Sin la plantilla guardada vale la de los recursos: el recordatorio no se pierde.
+                null
+            }
+            savedReminder = saved
+            state.update {
+                it.copy(
+                    reminder = ReminderSheet(
+                        template = saved ?: reminderTexts.defaultTemplate,
+                        details = details,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun editReminder(change: (ReminderSheet) -> ReminderSheet) {
+        state.update { current ->
+            current.reminder?.let { current.copy(reminder = change(it)) } ?: current
+        }
+    }
+
+    private fun resetReminder() {
+        editReminder { it.copy(template = reminderTexts.defaultTemplate, error = null) }
+        if (savedReminder == null) return
+        viewModelScope.launch {
+            if (operations.resetReminderTemplate(reminderTexts.languageTag)) savedReminder = null
+        }
+    }
+
+    /**
+     * Guarda la plantilla si cambió, y deja el recordatorio listo para que la pantalla lo entregue a
+     * otra app. Un fallo al guardar no impide enviar: el mensaje es de ahora, la plantilla es para
+     * la próxima vez.
+     */
+    private fun sendReminder(sms: Boolean) {
+        val sheet = state.value.reminder ?: return
+        val view = view() ?: return
+        ReminderRules.check(sheet.template)?.let { issue ->
+            editReminder { it.copy(error = issue) }
+            return
+        }
+        val phone = view.customer.contact?.phone?.takeIf { sms }
+        if (sms && phone == null) return
+        viewModelScope.launch {
+            val current = savedReminder ?: reminderTexts.defaultTemplate
+            if (sheet.template != current) {
+                val ok = if (sheet.template == reminderTexts.defaultTemplate) {
+                    operations.resetReminderTemplate(reminderTexts.languageTag)
+                } else {
+                    operations.saveReminderTemplate(reminderTexts.languageTag, sheet.template) ==
+                        SaveReminderTemplateResult.Saved
+                }
+                if (ok) {
+                    savedReminder =
+                        sheet.template.takeUnless { it == reminderTexts.defaultTemplate }
+                }
+            }
+            state.update {
+                it.copy(
+                    outgoing = OutgoingReminder(
+                        template = sheet.template,
+                        details = sheet.details?.takeIf { sheet.attachDetails },
+                        businessName = businessName,
+                        phone = phone,
+                    ),
+                )
+            }
+        }
+    }
 
     // ------------------------------------------------------------------ ajuste
 
