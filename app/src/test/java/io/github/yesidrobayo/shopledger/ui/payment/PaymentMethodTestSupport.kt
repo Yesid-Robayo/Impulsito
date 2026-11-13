@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.AppSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettingsInput
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -240,6 +241,11 @@ internal object NoSettings : AppSettingsRepository {
 
     override suspend fun updateTipsEnabled(enabled: Boolean, updatedAt: Instant) =
         error("Solo lectura")
+
+    override suspend fun updateReferenceCurrency(
+        reference: ReferenceCurrency?,
+        updatedAt: Instant,
+    ) = error("Solo lectura")
 
     override suspend fun updatePreference(change: PreferenceChange, updatedAt: Instant) =
         error("Solo lectura")

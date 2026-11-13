@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.AppSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettingsInput
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -58,6 +59,12 @@ interface AppSettingsRepository {
      * del negocio y cuenta como cambio.
      */
     suspend fun updateTipsEnabled(enabled: Boolean, updatedAt: Instant)
+
+    /**
+     * Elige la moneda de referencia, o la quita con `null`. Solo dentro de
+     * [TransactionRunner.write]: es un dato del negocio y cuenta como cambio.
+     */
+    suspend fun updateReferenceCurrency(reference: ReferenceCurrency?, updatedAt: Instant)
 
     /**
      * Guarda el programa de puntos tal como se validó: si está activo y sus dos montos. Es un dato

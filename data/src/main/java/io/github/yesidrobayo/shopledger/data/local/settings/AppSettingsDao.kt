@@ -129,6 +129,16 @@ internal interface AppSettingsDao {
     suspend fun updateTipsEnabled(enabled: Long, updatedAt: Long): Int
 
     /**
+     * La moneda de referencia y sus decimales, o las dos en nulo para quitarla. Las cotizaciones
+     * de cada moneda se conservan en su libro.
+     */
+    @Query(
+        "UPDATE app_settings SET reference_currency_code = :code, " +
+            "reference_currency_decimals = :decimals, updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateReferenceCurrency(code: String?, decimals: Long?, updatedAt: Long): Int
+
+    /**
      * Guarda el programa de puntos: si está activo y sus dos montos, que se conservan al apagarlo.
      * Es un dato del negocio: va dentro de la transacción del caso de uso y cuenta como cambio.
      */

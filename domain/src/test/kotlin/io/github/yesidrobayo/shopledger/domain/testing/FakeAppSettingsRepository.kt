@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolic
 import io.github.yesidrobayo.shopledger.domain.model.settings.NoticeSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.model.settings.ReceiptSettings
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettingsInput
 import io.github.yesidrobayo.shopledger.domain.model.settings.SaleSettings
@@ -168,6 +169,17 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
 
     override suspend fun updateLoyalty(loyalty: LoyaltySettings, updatedAt: Instant) {
         settings.value = settings.value.copy(updatedAt = updatedAt, loyalty = loyalty)
+    }
+
+    override suspend fun updateReferenceCurrency(
+        reference: ReferenceCurrency?,
+        updatedAt: Instant,
+    ) {
+        val current = settings.value
+        settings.value = current.copy(
+            updatedAt = updatedAt,
+            regional = current.regional.copy(referenceCurrency = reference),
+        )
     }
 
     override suspend fun updateTipsEnabled(enabled: Boolean, updatedAt: Instant) {

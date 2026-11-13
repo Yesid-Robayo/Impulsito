@@ -82,6 +82,21 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
         }
     }
 
+    override suspend fun updateReferenceCurrency(
+        reference: ReferenceCurrency?,
+        updatedAt: Instant,
+    ) {
+        writes.inTransaction {
+            requireOneRow(
+                settings.updateReferenceCurrency(
+                    code = reference?.code?.code,
+                    decimals = reference?.decimals?.toLong(),
+                    updatedAt = updatedAt.toStoredMillis(),
+                ),
+            )
+        }
+    }
+
     override suspend fun updateLoyalty(loyalty: LoyaltySettings, updatedAt: Instant) {
         writes.inTransaction {
             requireOneRow(

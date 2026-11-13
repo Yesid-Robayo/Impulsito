@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerLedgerReposi
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomFxRateRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomHeldSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLowStockAlertRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLoyaltyLedgerRepository
@@ -73,6 +74,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerSalesSource
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
+import io.github.yesidrobayo.shopledger.domain.port.FxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.HumanCheckRecorder
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
@@ -297,6 +299,9 @@ class DataPorts internal constructor(
      * al stock. Va aparte de la ganancia en ventas, para que no la toque. Solo lee.
      */
     val replacementReports: ReplacementReportRepository = RoomReplacementReportRepository(database)
+
+    /** Las cotizaciones manuales de la moneda de referencia: solo se agregan, nunca se descargan. */
+    val fxRates: FxRateRepository = RoomFxRateRepository(database)
 
     /** Si el negocio ya tiene algún producto, para orientar el primer uso. Solo lee. */
     val catalogPresence: CatalogPresenceSource = RoomCatalogPresenceSource(database)
