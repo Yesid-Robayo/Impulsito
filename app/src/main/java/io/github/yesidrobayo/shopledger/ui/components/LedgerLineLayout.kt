@@ -15,7 +15,8 @@ import kotlin.math.max
  * nunca se corta.
  *
  * Decide con lo que mide de verdad cada parte, no con la escala de la letra, que crece de forma
- * distinta en cada tamaño.
+ * distinta en cada tamaño. Las cifras se componen una sola vez cuando quedan al lado, que es lo
+ * común; solo debajo del texto se componen de nuevo, alineadas a la izquierda.
  *
  * @param trailing recibe la alineación que le toca: `End` al lado del texto, `Start` debajo.
  * @param trailingWraps si la parte derecha es una frase que puede pasar a dos líneas, como
@@ -63,10 +64,10 @@ fun LedgerLineLayout(
                 trailingWidth * SIDE_BY_SIDE_PARTS <= width * TRAILING_SHARE
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
         if (sideBySide) {
-            val trailingPlaceables =
-                subcompose(Slot.TRAILING) { trailing(Alignment.End) }.map {
-                    it.measure(loose.copy(maxWidth = trailingWidth))
-                }
+            // Al lado, las cifras son las mismas que ya se compusieron para medirlas, con la misma
+            // alineación: se miden esas. Componerlas otra vez duplicaría el trabajo de cada fila
+            // de una lista larga, y se notaría al desplazarla.
+            val trailingPlaceables = probe.map { it.measure(loose.copy(maxWidth = trailingWidth)) }
             val shownTrailing = trailingPlaceables.maxOfOrNull { it.width } ?: 0
             val leadingMax =
                 if (width ==
