@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.CreateCustomerUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.FindPaymentImagesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveTipsEnabledUseCase
@@ -25,6 +26,9 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
+import io.github.yesidrobayo.shopledger.ui.customer.CustomerEditorAction
+import io.github.yesidrobayo.shopledger.ui.customer.CustomerEditorSheet
+import io.github.yesidrobayo.shopledger.ui.customer.rememberContactPicker
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 
 /**
@@ -80,8 +84,12 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     heldSales = ports.heldSales,
                     productUnits = ports.productUnits,
                     alerts = ports.lowStockAlerts,
+                    customers = ports.customers,
+                    customerLedger = ports.customerLedger,
                 )
             val images = FindPaymentImagesUseCase(ports.transactions, ports.mediaAssets)
+            val createCustomer =
+                CreateCustomerUseCase(ports.transactions, ports.customers, container.clock)
             CheckoutViewModel(
                 catalogSource = { observe() },
                 registerSale = { register(it) },
@@ -90,6 +98,8 @@ fun CheckoutRoute(navigator: AppNavigator) {
                 numbers = numbers,
                 offered = { handoff.take() },
                 computation = container.dispatchers.default,
+                customersSource = { ports.customers.observeSelectable() },
+                createCustomer = { form, allowSameName -> createCustomer(form, allowSameName) },
             )
         }
     when (model) {
@@ -101,6 +111,8 @@ fun CheckoutRoute(navigator: AppNavigator) {
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val customerEditor by viewModel.customerEditor.editor.collectAsStateWithLifecycle()
+            val pickContact = rememberContactPicker(viewModel.customerEditor)
             val messages = LocalAppMessages.current
             val haptics = LocalHapticFeedback.current
             val registered = uiState.registered
@@ -141,6 +153,15 @@ fun CheckoutRoute(navigator: AppNavigator) {
                 },
                 onBack = { navigator.back() },
             )
+            BackHandler(enabled = customerEditor != null) {
+                viewModel.customerEditor.onAction(CustomerEditorAction.Dismiss)
+            }
+            customerEditor?.let { editor ->
+                CustomerEditorSheet(editor, { action ->
+                    viewModel.customerEditor.onAction(action)
+                    if (action == CustomerEditorAction.PickContact) pickContact()
+                })
+            }
         }
     }
 }

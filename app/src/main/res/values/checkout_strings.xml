@@ -38,4 +38,11 @@
     <string name="a11y_checkout_discreet_fee">Fee hidden</string>
     <string name="checkout_payment_amount">Amount</string>
     <string name="checkout_covers">Charged: %1$s</string>
+    <string name="checkout_customer">Customer</string>
+    <string name="checkout_due_date">Due date</string>
+    <string name="checkout_no_due_date">No due date</string>
+    <string name="checkout_balance_after">Balance after this sale</string>
+    <string name="checkout_error_no_customer">A payment on credit needs a customer</string>
+    <string name="checkout_customer_removed_notice">The customer was removed, along with the redemption, credit balance and payments on credit.</string>
+    <string name="checkout_error_due_before_sale">The due date cannot be before the sale</string>
 </resources>

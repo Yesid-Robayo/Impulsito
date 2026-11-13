@@ -5,6 +5,8 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodDetails
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
@@ -116,6 +118,7 @@ class CheckoutViewModelTest {
         qrOnly: Boolean = false,
         state: SavedStateHandle = savedState,
         format: SaleNumberFormat = numbers,
+        customers: List<Customer> = emptyList(),
     ): CheckoutViewModel {
         val model = CheckoutViewModel(
             catalogSource = { catalog },
@@ -128,6 +131,7 @@ class CheckoutViewModelTest {
             numbers = format,
             offered = { draft?.let { CheckoutHandoff.Offered(it, qrOnly) } },
             computation = dispatcher,
+            customersSource = { MutableStateFlow(customers) },
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -541,5 +545,98 @@ class CheckoutViewModelTest {
 
         assertEquals("2000", second.state.tipText)
         assertEquals(Money(27_000L), second.state.summary.amountDue)
+    }
+
+    // ------------------------------------------------------------------ a crédito
+
+    private val credit = method(13L, PaymentMethodKind.ON_ACCOUNT)
+    private val ana = customer(30L, "Ana", balance = 4_000L)
+
+    private fun customer(id: Long, name: String, balance: Long = 0L) = Customer(
+        id = id,
+        contact = CustomerContact(name, name.lowercase(), null, null, null),
+        priceListId = null,
+        balance = Money(balance),
+        pointsBalance = 0L,
+        anonymizedAt = null,
+        archivedAt = null,
+        createdAt = CREATED,
+        updatedAt = CREATED,
+    )
+
+    @Test
+    fun `a credit payment without a customer asks for one and registers nothing`() = runTest {
+        catalog.value = catalog.value.copy(creditMethods = listOf(credit))
+        val model = viewModel(customers = listOf(ana))
+        assertTrue(model.state.addable.any { it.id == 13L })
+        model.act(this, CheckoutAction.AmountChange(0, "5000"))
+
+        model.act(this, CheckoutAction.AddPayment(13L))
+        assertEquals(CheckoutSheet.Customers, model.state.sheet)
+        assertEquals(listOf(30L), model.state.customerChoices.map { it.id })
+        model.act(this, CheckoutAction.CloseSheet)
+
+        model.act(this, CheckoutAction.Register)
+        assertTrue(requests.isEmpty())
+        assertEquals(CheckoutCustomer.Missing, model.state.customer)
+        assertEquals(CheckoutSheet.Customers, model.state.sheet)
+    }
+
+    @Test
+    fun `with a customer the sale carries it, the due date and the balance it leaves`() = runTest {
+        catalog.value = catalog.value.copy(creditMethods = listOf(credit))
+        val model = viewModel(customers = listOf(ana))
+        model.act(this, CheckoutAction.AmountChange(0, "5000"))
+        model.act(this, CheckoutAction.AddPayment(13L))
+        model.act(this, CheckoutAction.PickCustomer(30L))
+        val due = BusinessDate(LocalDate(2026, 11, 30))
+        model.act(this, CheckoutAction.CreditDueChange(due))
+
+        assertEquals(CheckoutCustomer.Chosen(30L, "Ana", Money(4_000L)), model.state.customer)
+        assertEquals(Money(24_000L), model.state.credit?.balanceAfter)
+        model.act(this, CheckoutAction.Register)
+
+        val request = requests.single()
+        assertEquals(30L, request.customerId)
+        assertEquals(due, request.creditDueDate)
+    }
+
+    @Test
+    fun `a due date before the sale is not taken`() = runTest {
+        catalog.value = catalog.value.copy(creditMethods = listOf(credit))
+        val model = viewModel(customers = listOf(ana))
+        model.act(this, CheckoutAction.PickCustomer(30L))
+        model.act(this, CheckoutAction.AddPayment(13L))
+
+        model.act(this, CheckoutAction.CreditDueChange(BusinessDate(LocalDate(2026, 11, 1))))
+
+        assertTrue(model.state.credit?.dueError == true)
+        assertNull(model.state.credit?.due)
+    }
+
+    @Test
+    fun `removing the customer takes the credit payments away and says so`() = runTest {
+        catalog.value = catalog.value.copy(creditMethods = listOf(credit))
+        val model = viewModel(customers = listOf(ana))
+        model.act(this, CheckoutAction.AmountChange(0, "5000"))
+        model.act(this, CheckoutAction.AddPayment(13L))
+        model.act(this, CheckoutAction.PickCustomer(30L))
+
+        model.act(this, CheckoutAction.RemoveCustomer)
+
+        assertEquals(listOf(10L), model.state.payments.map { it.method.id })
+        assertNull(model.state.customer)
+        assertNull(model.state.credit)
+        assertTrue(model.state.customerRemoved)
+    }
+
+    @Test
+    fun `a cash sale with a customer carries the customer and no due date`() = runTest {
+        val model = viewModel(customers = listOf(ana))
+        model.act(this, CheckoutAction.PickCustomer(30L))
+        model.act(this, CheckoutAction.Register)
+
+        assertEquals(30L, requests.single().customerId)
+        assertNull(requests.single().creditDueDate)
     }
 }

@@ -594,6 +594,8 @@ class NewSaleViewModel(
                 RegisterSaleResult.PaymentMethodNotFound,
                 RegisterSaleResult.PaymentMethodArchived,
                 RegisterSaleResult.PaymentNeedsCustomer,
+                RegisterSaleResult.CustomerUnavailable,
+                RegisterSaleResult.CreditDueBeforeSale,
                 is RegisterSaleResult.LineRejected,
                 RegisterSaleResult.SaleTotalTooLarge,
                 is RegisterSaleResult.StorageFailed,

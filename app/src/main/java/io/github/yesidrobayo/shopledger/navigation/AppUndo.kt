@@ -36,6 +36,7 @@ fun rememberSaleUndo(): SaleUndo {
                             ledger = ports.stockLedger,
                             clock = container.clock,
                             alerts = ports.lowStockAlerts,
+                            customerLedger = ports.customerLedger,
                         )
                     UndoSaleUseCase(void)(saleId)
                 }

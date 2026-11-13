@@ -35,8 +35,8 @@ import kotlinx.coroutines.flow.map
  *   muestra el problema al confirmar.
  * - El modo de impuesto y las tasas van con el catálogo: la venta muestra el total que cobrará.
  * - Las conversiones de venta de cada producto van con el catálogo: la línea elige su unidad.
- * - Un método a crédito no se ofrece: vender a crédito exige un cliente, y la venta todavía no lo
- *   lleva. Los archivados no se leen.
+ * - Un método a crédito no se ofrece en la venta nueva, porque exige un cliente: va aparte, en
+ *   `creditMethods`, para la pantalla de cobro, que elige el cliente. Los archivados no se leen.
  * - El paso del redondeo del efectivo va con el catálogo, de [cashRounding]: la venta muestra lo
  *   que cobra en efectivo ya redondeado. Sin él, no se redondea.
  * - Si el cobro ofrece propina, de [tipsEnabled]. Sin él, no la ofrece.
@@ -76,6 +76,8 @@ class ObserveSaleCatalogUseCase(
                 archived = archived,
                 units = allUnits.associateBy { it.id },
                 methods = allMethods.filter { it.details.kind != PaymentMethodKind.ON_ACCOUNT },
+                creditMethods =
+                    allMethods.filter { it.details.kind == PaymentMethodKind.ON_ACCOUNT },
                 taxes = NO_TAXES,
                 taxRates = emptyMap(),
                 today = today,

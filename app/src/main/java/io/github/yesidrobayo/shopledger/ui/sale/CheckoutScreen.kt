@@ -30,6 +30,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
@@ -43,6 +44,9 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CashTenderRow
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
+import io.github.yesidrobayo.shopledger.ui.components.CustomerPicker
+import io.github.yesidrobayo.shopledger.ui.components.CustomerPickerSheet
+import io.github.yesidrobayo.shopledger.ui.components.DateField
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
@@ -69,6 +73,7 @@ import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.payment.rememberStoredPhoto
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
+import kotlinx.datetime.DayOfWeek
 
 /**
  * El cobro: resuelve la venta que no es común, con varios pagos, la comisión y el neto de cada uno,
@@ -168,8 +173,10 @@ private fun NarrowCheckout(uiState: CheckoutUiState, onAction: (CheckoutAction) 
             verticalArrangement = Arrangement.spacedBy(spacing.s8),
         ) {
             TotalBlock(uiState.summary)
+            CustomerSection(uiState, onAction)
             AdjustmentRow(uiState, onAction)
             Payments(uiState, onAction)
+            CreditSection(uiState, onAction)
             TipSection(uiState, onAction)
         }
     }
@@ -191,6 +198,7 @@ private fun WideCheckout(uiState: CheckoutUiState, onAction: (CheckoutAction) ->
             verticalArrangement = Arrangement.spacedBy(spacing.s8),
         ) {
             TotalBlock(uiState.summary)
+            CustomerSection(uiState, onAction)
             AdjustmentRow(uiState, onAction)
             TipSection(uiState, onAction)
         }
@@ -201,6 +209,7 @@ private fun WideCheckout(uiState: CheckoutUiState, onAction: (CheckoutAction) ->
                 .padding(vertical = spacing.s8),
         ) {
             Payments(uiState, onAction)
+            CreditSection(uiState, onAction)
         }
     }
 }
@@ -333,6 +342,83 @@ private fun TipSection(uiState: CheckoutUiState, onAction: (CheckoutAction) -> U
             text = stringResource(R.string.checkout_no_tip),
             onClick = { onAction(CheckoutAction.NoTip) },
         )
+    }
+}
+
+/**
+ * El cliente de la venta: se ofrece siempre, y es obligatorio solo con un pago a crédito. Si se
+ * quitó con pagos a crédito, avisa que esos pagos se retiraron.
+ */
+@Composable
+private fun CustomerSection(uiState: CheckoutUiState, onAction: (CheckoutAction) -> Unit) {
+    val chosen = uiState.customer as? CheckoutCustomer.Chosen
+    CustomerPicker(
+        label = stringResource(R.string.checkout_customer),
+        name = chosen?.name,
+        balance = chosen?.balance ?: Money.ZERO,
+        onOpen = { onAction(CheckoutAction.OpenCustomers) },
+        onRemove = { onAction(CheckoutAction.RemoveCustomer) },
+        error =
+            if (uiState.customer == CheckoutCustomer.Missing) {
+                stringResource(R.string.checkout_error_no_customer)
+            } else {
+                null
+            },
+    )
+    if (uiState.customerRemoved) {
+        NoticeCard(
+            text = stringResource(R.string.checkout_customer_removed_notice),
+            variant = NoticeVariant.INFO,
+            icon = R.drawable.ic_error,
+            actionLabel = stringResource(R.string.action_close),
+            onAction = { onAction(CheckoutAction.CustomerNoticeShown) },
+        )
+    }
+}
+
+/**
+ * Lo que agrega un pago a crédito: el vencimiento, sin vencimiento por defecto, y el saldo que le
+ * queda al cliente tras esta venta, que es sensible.
+ */
+@Composable
+private fun CreditSection(uiState: CheckoutUiState, onAction: (CheckoutAction) -> Unit) {
+    val credit = uiState.credit ?: return
+    val today = credit.saleDate ?: return
+    DateField(
+        label = stringResource(R.string.checkout_due_date),
+        date = credit.due,
+        onDateChange = { onAction(CheckoutAction.CreditDueChange(it)) },
+        today = today,
+        weekStartDay = credit.weekStartDay ?: DayOfWeek.MONDAY,
+        latest = null,
+        error =
+            if (credit.dueError) stringResource(R.string.checkout_error_due_before_sale) else null,
+    )
+    if (credit.due == null) {
+        Text(
+            stringResource(R.string.checkout_no_due_date),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    } else {
+        InlineTextButton(
+            text = stringResource(R.string.checkout_no_due_date),
+            onClick = { onAction(CheckoutAction.CreditDueChange(null)) },
+        )
+    }
+    credit.balanceAfter?.let {
+        Row(
+            Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.checkout_balance_after),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            MoneyText(it, MoneySize.ROW, sensitive = true)
+        }
     }
 }
 
@@ -546,6 +632,15 @@ private fun CheckoutSheets(uiState: CheckoutUiState, onAction: (CheckoutAction) 
         }
 
         is CheckoutSheet.Adjustment -> AdjustmentSheet(sheet.editor, onAction, close)
+
+        CheckoutSheet.Customers -> CustomerPickerSheet(
+            customers = uiState.customerChoices,
+            query = uiState.customerQuery,
+            onQueryChange = { onAction(CheckoutAction.CustomerQueryChange(it)) },
+            onPick = { onAction(CheckoutAction.PickCustomer(it)) },
+            onCreate = { onAction(CheckoutAction.NewCustomer(it)) },
+            onDismiss = close,
+        )
     }
 }
 

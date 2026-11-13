@@ -47,4 +47,7 @@
         <item quantity="one">%1$s point</item>
         <item quantity="other">%1$s points</item>
     </plurals>
+    <string name="customer_picker_title">Choose customer</string>
+    <string name="customer_picker_none">No customer</string>
+    <string name="a11y_remove_customer">Remove customer</string>
 </resources>

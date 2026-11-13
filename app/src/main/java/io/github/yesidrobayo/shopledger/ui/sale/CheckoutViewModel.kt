@@ -4,10 +4,13 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
+import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerForm
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
@@ -15,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerSearch
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPricing
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutBalance
@@ -23,7 +27,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutPreview
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentFees
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCheckout
 import io.github.yesidrobayo.shopledger.domain.rule.timesRate
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.SaveCustomerResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
+import io.github.yesidrobayo.shopledger.ui.customer.CustomerEditorModel
 import io.github.yesidrobayo.shopledger.ui.payment.plainNumberText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,6 +40,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
@@ -56,6 +63,11 @@ import kotlinx.coroutines.launch
  *
  * @param offered la venta que dejó la venta nueva, que se toma una sola vez al abrir.
  * @param findImage la imagen de cobro de un método, o `null` si no tiene o no se pudo leer.
+ * @param customersSource los clientes que se pueden elegir: ni archivados ni anonimizados.
+ * @param createCustomer crea un cliente desde el cobro, sin salir de la venta.
+ *
+ * El cliente se ofrece siempre y es obligatorio solo con un pago a crédito: elegir `A crédito` sin
+ * cliente abre la lista de clientes, y quitar el cliente retira los pagos a crédito, con un aviso.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CheckoutViewModel(
@@ -66,6 +78,9 @@ class CheckoutViewModel(
     private val numbers: SaleNumberFormat,
     offered: () -> CheckoutHandoff.Offered?,
     computation: CoroutineDispatcher,
+    customersSource: () -> Flow<List<Customer>> = { flowOf(emptyList()) },
+    private val createCustomer: suspend (CustomerForm, Boolean) -> SaveCustomerResult =
+        { _, _ -> SaveCustomerResult.NotFound },
 ) : ViewModel() {
     private val sale: SaleDraft?
     private val qrOnly: Boolean
@@ -107,12 +122,26 @@ class CheckoutViewModel(
         .flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.Eagerly, CatalogLoad.Loading)
 
-    val uiState: StateFlow<CheckoutUiState> = combine(catalog, editing, overlay) {
+    /** Los clientes que se pueden elegir. Una falla de lectura deja la lista vacía, no el cobro. */
+    private val customers: StateFlow<List<Customer>> = customersSource()
+        .catch { emit(emptyList()) }
+        .flowOn(computation)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** La hoja de crear un cliente desde el cobro: al guardarlo, queda elegido. */
+    val customerEditor = CustomerEditorModel(
+        scope = viewModelScope,
+        save = { _, form, allowSameName -> createCustomer(form, allowSameName) },
+        onSaved = ::pickCustomer,
+    )
+
+    val uiState: StateFlow<CheckoutUiState> = combine(catalog, editing, overlay, customers) {
             load,
             written,
             shown,
+            choices,
         ->
-        build(load, written, shown)
+        build(load, written, shown, choices)
     }.flowOn(computation)
         .stateIn(
             viewModelScope,
@@ -182,7 +211,79 @@ class CheckoutViewModel(
             CheckoutAction.DismissDialog -> overlay.update { it.copy(zeroDialog = false) }
 
             CheckoutAction.RegisteredShown -> overlay.update { it.copy(registered = null) }
+
+            CheckoutAction.OpenCustomers -> overlay.update {
+                it.copy(sheet = CheckoutSheet.Customers, customerQuery = "")
+            }
+
+            is CheckoutAction.CustomerQueryChange -> overlay.update {
+                it.copy(customerQuery = action.query)
+            }
+
+            is CheckoutAction.PickCustomer -> pickCustomer(action.customerId)
+
+            is CheckoutAction.NewCustomer -> {
+                overlay.update { it.copy(sheet = null) }
+                customerEditor.openNew(action.name.trim())
+            }
+
+            CheckoutAction.RemoveCustomer -> removeCustomer()
+
+            is CheckoutAction.CreditDueChange -> creditDue(action.date)
+
+            CheckoutAction.CustomerNoticeShown -> overlay.update {
+                it.copy(customerRemoved = false)
+            }
         }
+    }
+
+    // ------------------------------------------------------------------ cliente
+
+    private fun pickCustomer(customerId: Long) {
+        change { it.copy(customerId = customerId) }
+        overlay.update {
+            it.copy(sheet = null, customerQuery = "", customerMissing = false)
+        }
+    }
+
+    /**
+     * Quita el cliente, y con él los pagos a crédito, que no pueden quedar sin cliente. Si había
+     * alguno, lo avisa: los demás pagos siguen.
+     */
+    private fun removeCustomer() {
+        val catalog = readyCatalog()
+        val credit = catalog?.creditMethods?.map { it.id }?.toSet().orEmpty()
+        val written = editing.value
+        val kept = written.payments.filter { it.methodId !in credit }
+        change {
+            it.copy(
+                customerId = null,
+                creditDue = null,
+                payments = kept,
+                active = if (kept.size == it.payments.size) it.active else 0,
+            )
+        }
+        overlay.update {
+            it.copy(customerRemoved = kept.size != written.payments.size, dueError = false)
+        }
+    }
+
+    /** El vencimiento del cargo a crédito: nunca antes de la fecha de la venta. */
+    private fun creditDue(date: BusinessDate?) {
+        val catalog = readyCatalog() ?: return
+        val saleDate = sale?.date ?: catalog.today
+        if (date != null && saleDate != null && date < saleDate) {
+            overlay.update { it.copy(dueError = true) }
+            return
+        }
+        change { it.copy(creditDue = date) }
+        overlay.update { it.copy(dueError = false) }
+    }
+
+    /** Si algún pago escrito es a crédito. */
+    private fun hasCredit(catalog: SaleCatalog, written: Editing): Boolean {
+        val credit = catalog.creditMethods.map { it.id }.toSet()
+        return written.payments.any { it.methodId in credit }
     }
 
     // ------------------------------------------------------------------ pagos
@@ -309,7 +410,15 @@ class CheckoutViewModel(
                 active = it.payments.size,
             )
         }
-        overlay.update { it.copy(sheet = null, balanceError = false) }
+        val needsCustomer = written.customerId == null &&
+            catalog.creditMethods.any { it.id == methodId }
+        overlay.update {
+            it.copy(
+                sheet = if (needsCustomer) CheckoutSheet.Customers else null,
+                customerQuery = "",
+                balanceError = false,
+            )
+        }
     }
 
     /** `Usar {amount}`: completa el pago activo con lo que falta, o le quita lo que sobra. */
@@ -487,7 +596,7 @@ class CheckoutViewModel(
     private fun showQr(index: Int) {
         val catalog = readyCatalog() ?: return
         val row = editing.value.payments.getOrNull(index) ?: return
-        val record = catalog.methods.firstOrNull { it.id == row.methodId } ?: return
+        val record = catalog.payable.firstOrNull { it.id == row.methodId } ?: return
         overlay.update { it.copy(qrIndex = index, qrImage = null) }
         if (record.details.instructionsMediaId == null) return
         viewModelScope.launch {
@@ -503,8 +612,16 @@ class CheckoutViewModel(
         val catalog = readyCatalog() ?: return
         val current = sale ?: return
         val written = editing.value
-        if (written.payments.any { row -> catalog.methods.none { it.id == row.methodId } }) return
+        if (written.payments.any { row -> catalog.payable.none { it.id == row.methodId } }) return
         if (written.payments.any { it.hasError } || written.tipError != null) return
+        val credit = hasCredit(catalog, written)
+        val customerId = written.customerId?.takeIf { id -> customers.value.any { it.id == id } }
+        if (credit && customerId == null) {
+            overlay.update {
+                it.copy(customerMissing = true, sheet = CheckoutSheet.Customers, customerQuery = "")
+            }
+            return
+        }
         val preview = previewOf(catalog, current, written)
         if (preview.problem != null) return
         if (preview.balance != CheckoutBalance.Complete) {
@@ -530,6 +647,8 @@ class CheckoutViewModel(
                 // Una venta retomada de la espera sale de ella al confirmarse, también desde aquí.
                 heldSaleId = current.heldSaleId,
                 tipAmount = tipOf(catalog, written),
+                customerId = customerId,
+                creditDueDate = written.creditDue.takeIf { credit },
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> overlay.update {
@@ -552,6 +671,8 @@ class CheckoutViewModel(
                 RegisterSaleResult.PaymentMethodNotFound,
                 RegisterSaleResult.PaymentMethodArchived,
                 RegisterSaleResult.PaymentNeedsCustomer,
+                RegisterSaleResult.CustomerUnavailable,
+                RegisterSaleResult.CreditDueBeforeSale,
                 is RegisterSaleResult.LineRejected,
                 RegisterSaleResult.SaleTotalTooLarge,
                 is RegisterSaleResult.StorageFailed,
@@ -565,14 +686,19 @@ class CheckoutViewModel(
 
     // ------------------------------------------------------------------ estado
 
-    private fun build(load: CatalogLoad, written: Editing, shown: Overlay): CheckoutUiState {
+    private fun build(
+        load: CatalogLoad,
+        written: Editing,
+        shown: Overlay,
+        choices: List<Customer>,
+    ): CheckoutUiState {
         val current = sale ?: return CheckoutUiState(content = CheckoutContent.Unavailable)
         val catalog = when (load) {
             CatalogLoad.Loading -> return CheckoutUiState()
             CatalogLoad.Failed -> return CheckoutUiState(content = CheckoutContent.ReadFailed)
             is CatalogLoad.Ready -> load.catalog
         }
-        val methods = catalog.methods.associateBy { it.id }
+        val methods = catalog.payable.associateBy { it.id }
         methods.values.forEach { knownMethods[it.id] = saleMethodOf(it) }
         val preview = previewOf(catalog, current, written)
         val date = current.date ?: catalog.today
@@ -640,7 +766,7 @@ class CheckoutViewModel(
             summary = summary,
             adjustment = written.adjustment,
             payments = rows,
-            addable = catalog.methods.filter { it.id !in used }.map(::saleMethodOf),
+            addable = catalog.payable.filter { it.id !in used }.map(::saleMethodOf),
             balance = preview.balance,
             due = preview.due,
             balanceError = shown.balanceError,
@@ -653,6 +779,66 @@ class CheckoutViewModel(
             tipsEnabled = catalog.tipsEnabled,
             tipText = written.tipText,
             tipError = written.tipError,
+            customer = customerOf(choices, written, shown),
+            customerChoices =
+                if (shown.sheet == CheckoutSheet.Customers) {
+                    CustomerSearch.filter(choices, shown.customerQuery)
+                } else {
+                    emptyList()
+                },
+            customerQuery = shown.customerQuery,
+            customerRemoved = shown.customerRemoved,
+            credit = creditOf(catalog, current, written, shown, choices, preview),
+        )
+    }
+
+    /** El cliente elegido, si sigue entre los que se pueden elegir, o si falta uno a crédito. */
+    private fun customerOf(
+        choices: List<Customer>,
+        written: Editing,
+        shown: Overlay,
+    ): CheckoutCustomer? {
+        val chosen = choices.firstOrNull { it.id == written.customerId }
+        return when {
+            chosen != null -> CheckoutCustomer.Chosen(
+                chosen.id,
+                chosen.contact?.name.orEmpty(),
+                chosen.balance,
+            )
+
+            shown.customerMissing -> CheckoutCustomer.Missing
+
+            else -> null
+        }
+    }
+
+    /**
+     * El crédito de la venta, si algún pago es a crédito: el vencimiento y el saldo que dejará al
+     * cliente elegido.
+     */
+    private fun creditOf(
+        catalog: SaleCatalog,
+        current: SaleDraft,
+        written: Editing,
+        shown: Overlay,
+        choices: List<Customer>,
+        preview: CheckoutPreview,
+    ): CheckoutCredit? {
+        if (!hasCredit(catalog, written)) return null
+        val credit = catalog.creditMethods.map { it.id }.toSet()
+        val onAccount = written.payments.mapIndexedNotNull { index, row ->
+            preview.payments.getOrNull(index)?.amount?.takeIf { row.methodId in credit }
+        }
+        val customer = choices.firstOrNull { it.id == written.customerId }
+        val after = customer?.let {
+            runCatching { onAccount.fold(it.balance) { sum, amount -> sum + amount } }.getOrNull()
+        }
+        return CheckoutCredit(
+            due = written.creditDue,
+            dueError = shown.dueError,
+            balanceAfter = after,
+            saleDate = current.date ?: catalog.today,
+            weekStartDay = catalog.weekStartDay,
         )
     }
 
@@ -662,7 +848,7 @@ class CheckoutViewModel(
         current: SaleDraft,
         written: Editing,
     ): CheckoutPreview {
-        val methods = catalog.methods.associateBy { it.id }
+        val methods = catalog.payable.associateBy { it.id }
         val pricing = CartPricing(
             taxMode = catalog.taxes.mode,
             rates = catalog.taxRates,
@@ -727,6 +913,8 @@ class CheckoutViewModel(
         savedState[PAYMENTS] = values
         savedState[ADJUSTMENT] = written.adjustment.minor
         savedState[TIP] = written.tip.minor
+        savedState[CUSTOMER] = written.customerId
+        savedState[CREDIT_DUE] = written.creditDue?.toString()
     }
 
     private fun restore(): Editing {
@@ -754,6 +942,8 @@ class CheckoutViewModel(
             started = payments.isNotEmpty(),
             tip = tip,
             tipText = if (tip == Money.ZERO) "" else moneyText(tip),
+            customerId = savedState.get<Long>(CUSTOMER),
+            creditDue = savedState.get<String>(CREDIT_DUE)?.let(BusinessDate::parse),
         )
     }
 
@@ -821,6 +1011,8 @@ class CheckoutViewModel(
         val tip: Money = Money.ZERO,
         val tipText: String = "",
         val tipError: SaleFieldError? = null,
+        val customerId: Long? = null,
+        val creditDue: BusinessDate? = null,
     )
 
     /** Lo que está abierto encima del cobro, y lo que pasa una sola vez. */
@@ -832,6 +1024,10 @@ class CheckoutViewModel(
         val balanceError: Boolean = false,
         val status: RegisterStatus = RegisterStatus.IDLE,
         val registered: RegisteredSale? = null,
+        val customerQuery: String = "",
+        val customerMissing: Boolean = false,
+        val customerRemoved: Boolean = false,
+        val dueError: Boolean = false,
     )
 
     private companion object {
@@ -840,6 +1036,8 @@ class CheckoutViewModel(
         const val PAYMENTS = "checkout.payments"
         const val ADJUSTMENT = "checkout.adjustment"
         const val TIP = "checkout.tip"
+        const val CUSTOMER = "checkout.customer"
+        const val CREDIT_DUE = "checkout.creditDue"
         const val FIELDS = 6
 
         /** Lo que sigue viva la lectura al rotar la pantalla, para no releer el catálogo. */

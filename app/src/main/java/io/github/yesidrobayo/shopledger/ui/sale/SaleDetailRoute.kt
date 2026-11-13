@@ -50,6 +50,7 @@ fun SaleDetailRoute(
                 ledger = ports.stockLedger,
                 clock = clock,
                 alerts = ports.lowStockAlerts,
+                customerLedger = ports.customerLedger,
             )
             SaleDetailViewModel(
                 saleId = key.saleId,

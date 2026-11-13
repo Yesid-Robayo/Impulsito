@@ -1,5 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.sale
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+
 /** Lo que la persona hace en el cobro. La navegación la resuelve la ruta. */
 sealed interface CheckoutAction {
     /** Vuelve a leer el catálogo tras una falla de lectura. */
@@ -61,4 +63,22 @@ sealed interface CheckoutAction {
     data object DismissDialog : CheckoutAction
 
     data object RegisteredShown : CheckoutAction
+
+    /** Abre la lista de clientes para elegir el de la venta. */
+    data object OpenCustomers : CheckoutAction
+
+    data class CustomerQueryChange(val query: String) : CheckoutAction
+
+    data class PickCustomer(val customerId: Long) : CheckoutAction
+
+    /** Abre la hoja de un cliente nuevo, con [name] ya escrito si se buscó y no estaba. */
+    data class NewCustomer(val name: String = "") : CheckoutAction
+
+    /** Quita el cliente, y con él los pagos a crédito. */
+    data object RemoveCustomer : CheckoutAction
+
+    /** El vencimiento del cargo a crédito, o `null` para dejarlo sin vencimiento. */
+    data class CreditDueChange(val date: BusinessDate?) : CheckoutAction
+
+    data object CustomerNoticeShown : CheckoutAction
 }

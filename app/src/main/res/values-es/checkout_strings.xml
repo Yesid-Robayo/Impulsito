@@ -38,4 +38,11 @@
     <string name="a11y_checkout_discreet_fee">Comisión oculta</string>
     <string name="checkout_payment_amount">Monto</string>
     <string name="checkout_covers">Se cobra %1$s</string>
+    <string name="checkout_customer">Cliente</string>
+    <string name="checkout_due_date">Vencimiento</string>
+    <string name="checkout_no_due_date">Sin vencimiento</string>
+    <string name="checkout_balance_after">Saldo tras esta venta</string>
+    <string name="checkout_error_no_customer">El pago a crédito necesita un cliente</string>
+    <string name="checkout_customer_removed_notice">Se quitó el cliente: también se retiraron el canje, el saldo a favor y los pagos a crédito.</string>
+    <string name="checkout_error_due_before_sale">El vencimiento no puede ser antes de la venta</string>
 </resources>

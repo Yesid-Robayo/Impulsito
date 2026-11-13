@@ -4,8 +4,10 @@ import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
+import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutBalance
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutProblem
+import kotlinx.datetime.DayOfWeek
 
 /**
  * El estado del cobro: el bloque del total, los pagos, lo que falta o sobra y lo que está abierto
@@ -33,6 +35,11 @@ data class CheckoutUiState(
     val tipsEnabled: Boolean = false,
     val tipText: String = "",
     val tipError: SaleFieldError? = null,
+    val customer: CheckoutCustomer? = null,
+    val customerChoices: List<Customer> = emptyList(),
+    val customerQuery: String = "",
+    val customerRemoved: Boolean = false,
+    val credit: CheckoutCredit? = null,
 ) {
     /** Si algún pago usa un método que ya no se ofrece: hay que quitarlo o cambiarlo. */
     val hasGoneMethod: Boolean get() = payments.any { it.gone }
@@ -115,7 +122,34 @@ sealed interface CheckoutSheet {
 
     /** Elegir el método de un pago nuevo. */
     data object AddPayment : CheckoutSheet
+
+    /** Elegir el cliente de la venta. */
+    data object Customers : CheckoutSheet
 }
+
+/** El cliente de la venta como lo muestra el cobro. */
+@Immutable
+sealed interface CheckoutCustomer {
+    /** El cliente elegido, con su saldo de antes de la venta. */
+    data class Chosen(val id: Long, val name: String, val balance: Money) : CheckoutCustomer
+
+    /** Hay un pago a crédito y ningún cliente: el cobro lo pide antes de registrar. */
+    data object Missing : CheckoutCustomer
+}
+
+/**
+ * Lo que agrega un pago a crédito: el vencimiento, [due], o ninguno, y el saldo que le queda al
+ * cliente tras esta venta, [balanceAfter], si ya hay cliente. [dueError] marca un vencimiento
+ * anterior a la venta, [saleDate].
+ */
+@Immutable
+data class CheckoutCredit(
+    val due: BusinessDate?,
+    val dueError: Boolean,
+    val balanceAfter: Money?,
+    val saleDate: BusinessDate?,
+    val weekStartDay: DayOfWeek?,
+)
 
 /** Si el ajuste de la venta baja o sube el total. */
 enum class AdjustmentKind {

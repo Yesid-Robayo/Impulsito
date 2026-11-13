@@ -42,4 +42,11 @@ data class SaleCatalog(
     val cashRounding: Money = Money.ZERO,
     val conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
     val tipsEnabled: Boolean = false,
-)
+    val creditMethods: List<PaymentMethodRecord> = emptyList(),
+) {
+    /**
+     * Los métodos con que se cobra en la pantalla de cobro: los de la venta y, aparte, los métodos
+     * a crédito, que exigen un cliente y por eso no se ofrecen en la venta nueva.
+     */
+    val payable: List<PaymentMethodRecord> get() = methods + creditMethods
+}

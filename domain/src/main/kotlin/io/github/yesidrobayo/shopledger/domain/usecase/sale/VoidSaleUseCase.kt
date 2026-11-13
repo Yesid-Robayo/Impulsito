@@ -4,12 +4,14 @@ import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.VoidableDocument
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
+import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
@@ -23,6 +25,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockCompensation
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOutcome
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
 import kotlin.time.Instant
 
@@ -41,6 +45,10 @@ import kotlin.time.Instant
  * - **El stock vuelve hoy.** Los compensatorios llevan la fecha de la anulación, porque el libro es
  *   cronológico. La venta, en cambio, deja de contar en su propia fecha.
  *
+ * - **El crédito se compensa.** Cada cargo `CREDIT_SALE` de la venta recibe su `ENTRY_VOID` en el
+ *   libro del cliente, que no lleva la venta: apunta al cargo que compensa. Lo ya abonado queda
+ *   como saldo a favor.
+ *
  * Una venta con una devolución activa no se anula: lo que falta se devuelve. Un producto archivado
  * no impide anular: su stock vuelve igual.
  *
@@ -55,6 +63,7 @@ class VoidSaleUseCase(
     ledger: StockLedgerRepository,
     private val clock: Clock,
     private val alerts: LowStockAlertRepository? = null,
+    private val customerLedger: CustomerLedgerRepository? = null,
 ) {
     private val ledger = StockChangeRecorder(ledger)
 
@@ -99,6 +108,9 @@ class VoidSaleUseCase(
         for ((productId, rows) in saleRows.groupBy { it.movement.key.productId }) {
             val compensated = compensate(productId, rows, now, calendar)
             if (!compensated) return TxResult.Rollback(VoidSaleResult.LedgerDamaged)
+        }
+        if (!reverseCredit(saleId, calendar.stamp(now))) {
+            return TxResult.Rollback(VoidSaleResult.LedgerDamaged)
         }
         alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
         return TxResult.Commit(VoidSaleResult.Voided)
@@ -177,6 +189,29 @@ class VoidSaleUseCase(
                 ),
             )
             book += provisional.copy(id = id)
+        }
+        return true
+    }
+
+    /**
+     * Compensa cada cargo a crédito de la venta en el libro de su cliente, una sola vez. Devuelve
+     * `false` si el saldo del cliente desbordaría: la transacción se deshace y no se anula nada.
+     */
+    private suspend fun reverseCredit(saleId: Long, time: RecordTime): Boolean {
+        val book = customerLedger ?: return true
+        val writer = CustomerLedgerWriter(book)
+        for (charge in book.findBySale(saleId)) {
+            when (writer.reverse(charge.customerId, charge.id, note = null, time = time)) {
+                is CustomerEntryOutcome.Appended -> Unit
+
+                // Ya se compensó: anular de nuevo lo devolvería dos veces.
+                CustomerEntryOutcome.AlreadyCompensated -> Unit
+
+                is CustomerEntryOutcome.Rejected -> return false
+
+                CustomerEntryOutcome.EntryNotFound, CustomerEntryOutcome.NotReversible ->
+                    error("Un cargo de la venta siempre existe y se puede compensar")
+            }
         }
         return true
     }

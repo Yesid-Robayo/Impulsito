@@ -26,6 +26,10 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  *
  * [tipAmount] es la propina, que solo existe con las propinas encendidas. Los pagos la cubren junto
  * con la venta, pero no entra en ninguna ganancia ni paga el recargo de un método.
+ *
+ * [customerId] es el cliente de la venta, si la persona eligió uno. Es obligatorio con un pago a
+ * crédito, que carga lo pagado así en su libro, con el vencimiento [creditDueDate] si la persona
+ * eligió uno.
  */
 data class SaleRequest(
     val lines: List<SaleLineRequest>,
@@ -36,4 +40,6 @@ data class SaleRequest(
     val orderAdjustment: Money = Money.ZERO,
     val heldSaleId: Long? = null,
     val tipAmount: Money = Money.ZERO,
+    val customerId: Long? = null,
+    val creditDueDate: BusinessDate? = null,
 )

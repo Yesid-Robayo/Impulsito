@@ -19,6 +19,14 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerDetails
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntry
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
+import io.github.yesidrobayo.shopledger.domain.model.customer.NewCustomerLedgerEntry
+import io.github.yesidrobayo.shopledger.domain.model.customer.PointsSummary
 import io.github.yesidrobayo.shopledger.domain.model.payable.NewSupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntryType
@@ -47,6 +55,8 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRate
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
+import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
@@ -96,6 +106,8 @@ internal data class SaleTables(
     val purchaseLines: Map<Long, PurchaseLine> = emptyMap(),
     val suppliers: Map<Long, Supplier> = emptyMap(),
     val supplierEntries: Map<Long, SupplierLedgerEntry> = emptyMap(),
+    val customers: Map<Long, Customer> = emptyMap(),
+    val customerEntries: Map<Long, CustomerLedgerEntry> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
     val alerts: Map<Long, LowStockAlert> = emptyMap(),
@@ -641,6 +653,117 @@ internal class SaleWorld(
         }
     }
 
+    /** El libro de los clientes, con las reglas de su guarda: saldo encadenado y una compensación. */
+    val customerLedger: CustomerLedgerRepository = object : CustomerLedgerRepository {
+        override fun observeByCustomer(customerId: Long): Flow<List<CustomerLedgerEntry>> = unused()
+
+        override suspend fun findByCustomer(customerId: Long): List<CustomerLedgerEntry> =
+            customerEntriesOf(read(), customerId)
+
+        override suspend fun findById(id: Long): CustomerLedgerEntry? = read().customerEntries[id]
+
+        override suspend fun lastBalanceAfter(customerId: Long): Money? =
+            customerEntriesOf(read(), customerId).lastOrNull()?.balanceAfter
+
+        override suspend fun findBySale(saleId: Long): List<CustomerLedgerEntry> =
+            read().customerEntries.values
+                .filter { (it.source as? CustomerEntrySource.Sale)?.saleId == saleId }
+                .sortedBy { it.id }
+
+        override suspend fun isCompensated(entryId: Long): Boolean =
+            read().customerEntries.values.any {
+                (it.source as? CustomerEntrySource.Reverses)?.entryId == entryId
+            }
+
+        override suspend fun append(entry: NewCustomerLedgerEntry): Long {
+            val draft = entry.draft
+            val customer = read().customers[draft.customerId] ?: brokenRule()
+            val previous = lastBalanceAfter(draft.customerId) ?: Money.ZERO
+            if (previous + draft.amount != entry.balanceAfter) brokenRule()
+            val source = draft.source
+            if (source is CustomerEntrySource.Sale && read().sales[source.saleId] == null) {
+                brokenRule()
+            }
+            if (source is CustomerEntrySource.Reverses) {
+                val original = read().customerEntries[source.entryId] ?: brokenRule()
+                val matches = original.customerId == draft.customerId &&
+                    original.amount == -draft.amount &&
+                    original.type != CustomerLedgerEntryType.ENTRY_VOID
+                if (!matches || isCompensated(source.entryId)) brokenRule()
+            }
+            val id = nextId("customer_ledger_entries")
+            val saved = CustomerLedgerEntry(
+                id = id,
+                customerId = draft.customerId,
+                type = draft.type,
+                amount = draft.amount,
+                balanceAfter = entry.balanceAfter,
+                source = draft.source,
+                dueDate = draft.dueDate,
+                note = draft.note,
+                occurredAt = entry.occurredAt,
+                businessDate = entry.businessDate,
+            )
+            write { it.copy(customerEntries = it.customerEntries + (id to saved)) }
+            write { tables ->
+                val updated = customer.copy(balance = entry.balanceAfter)
+                tables.copy(customers = tables.customers + (customer.id to updated))
+            }
+            return id
+        }
+    }
+
+    /** Los clientes, que la venta solo lee. */
+    val customerRepository: CustomerRepository = object : CustomerRepository {
+        override fun observe(filter: ArchiveFilter): Flow<List<Customer>> = unused()
+
+        override fun observeSelectable(): Flow<List<Customer>> = unused()
+
+        override fun observePointsSummary(): Flow<PointsSummary> = unused()
+
+        override fun observeById(id: Long): Flow<Customer?> = committed.map { it.customers[id] }
+
+        override suspend fun findById(id: Long): Customer? = read().customers[id]
+
+        override suspend fun findActiveByNormalizedName(normalizedName: String): List<Customer> =
+            unused()
+
+        override suspend fun hasHistory(id: Long): Boolean = unused()
+
+        override suspend fun insert(details: CustomerDetails, createdAt: Instant): Long = unused()
+
+        override suspend fun update(id: Long, details: CustomerDetails, updatedAt: Instant) =
+            unused()
+
+        override suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant) =
+            unused()
+
+        override suspend fun anonymize(id: Long, anonymizedAt: Instant) = unused()
+
+        override suspend fun delete(id: Long) = unused()
+    }
+
+    /** Agrega un cliente sin saldo, vigente salvo que se pida otra cosa. */
+    fun addCustomer(id: Long, archived: Boolean = false, anonymized: Boolean = false) = arrange {
+        val name = "Customer $id"
+        val customer = Customer(
+            id = id,
+            contact = CustomerContact(name, name.lowercase(), null, null, null)
+                .takeIf { !anonymized },
+            priceListId = null,
+            balance = Money.ZERO,
+            pointsBalance = 0L,
+            anonymizedAt = if (anonymized) EPOCH else null,
+            archivedAt = if (archived) EPOCH else null,
+            createdAt = EPOCH,
+            updatedAt = EPOCH,
+        )
+        it.copy(customers = it.customers + (id to customer))
+    }
+
+    private fun customerEntriesOf(tables: SaleTables, customerId: Long): List<CustomerLedgerEntry> =
+        tables.customerEntries.values.filter { it.customerId == customerId }.sortedBy { it.id }
+
     /** Los proveedores, que la compra solo lee. */
     val supplierRepository: SupplierRepository = object : SupplierRepository {
         override fun observe(filter: ArchiveFilter): Flow<List<Supplier>> = unused()
@@ -721,6 +844,8 @@ internal class SaleWorld(
         heldSales = heldSaleRepository,
         productUnits = productUnitRepository,
         alerts = alertRepository.takeIf { withAlerts },
+        customers = customerRepository,
+        customerLedger = customerLedger,
     )
 
     fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(
@@ -731,6 +856,7 @@ internal class SaleWorld(
         ledger = ledger,
         clock = clock,
         alerts = alertRepository.takeIf { withAlerts },
+        customerLedger = customerLedger,
     )
 
     /** Agrega un producto ya guardado, con el estado de stock que se le dé. */

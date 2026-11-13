@@ -38,4 +38,11 @@
     <string name="a11y_checkout_discreet_fee">Taxa oculta</string>
     <string name="checkout_payment_amount">Valor</string>
     <string name="checkout_covers">Cobrado: %1$s</string>
+    <string name="checkout_customer">Cliente</string>
+    <string name="checkout_due_date">Vencimento</string>
+    <string name="checkout_no_due_date">Sem vencimento</string>
+    <string name="checkout_balance_after">Saldo após esta venda</string>
+    <string name="checkout_error_no_customer">O pagamento a prazo exige um cliente</string>
+    <string name="checkout_customer_removed_notice">O cliente foi removido, junto com o resgate, o saldo a favor e os pagamentos a prazo.</string>
+    <string name="checkout_error_due_before_sale">O vencimento não pode ser antes da venda</string>
 </resources>

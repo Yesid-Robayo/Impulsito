@@ -21,11 +21,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
+import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
@@ -50,8 +53,16 @@ class CheckoutScreenTest {
 
     private fun text(id: Int, vararg args: Any) = resources.getString(id, *args)
 
-    private fun model(methodId: Long = 1L, qrOnly: Boolean = false) = CheckoutViewModel(
-        catalogSource = { MutableStateFlow(checkoutCatalog()) },
+    private fun model(
+        methodId: Long = 1L,
+        qrOnly: Boolean = false,
+        customers: List<Customer> = emptyList(),
+    ) = CheckoutViewModel(
+        catalogSource = {
+            MutableStateFlow(
+                checkoutCatalog().copy(creditMethods = listOf(saleMethod(CREDIT, "ON_ACCOUNT"))),
+            )
+        },
         registerSale = {
             requests += it
             RegisterSaleResult.Registered(1_204L)
@@ -61,6 +72,7 @@ class CheckoutScreenTest {
         numbers = SaleNumberFormat(SYMBOLS, 0, SYMBOLS, SYMBOLS),
         offered = { CheckoutHandoff.Offered(SaleDraft(CHECKOUT_LINES, methodId), qrOnly) },
         computation = Dispatchers.Default,
+        customersSource = { MutableStateFlow(customers) },
     )
 
     private fun show(model: CheckoutViewModel, fontScale: Float? = null, width: Int? = null) {
@@ -191,7 +203,43 @@ class CheckoutScreenTest {
         assertTrue(requests.single().payments.isEmpty())
     }
 
+    @Test
+    fun aCreditPaymentAsksForTheCustomerAndRegistersWithIt() {
+        show(model(customers = listOf(CLIENT)))
+        awaitText(text(R.string.checkout_complete))
+
+        compose.onNodeWithText(
+            text(R.string.customer_picker_none),
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.checkout_customer)).performClick()
+        awaitText(CLIENT_NAME)
+        compose.onNodeWithText(CLIENT_NAME).performClick()
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodesWithText(text(R.string.customer_picker_none))
+                .fetchSemanticsNodes().isEmpty()
+        }
+        compose.onNodeWithContentDescription(text(R.string.a11y_remove_customer)).assertExists()
+        register()
+        compose.waitUntil(TIMEOUT_MS) { requests.isNotEmpty() }
+
+        assertEquals(CLIENT.id, requests.single().customerId)
+    }
+
     private companion object {
+        const val CREDIT = 9L
+        val CREATED: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000L)
+        const val CLIENT_NAME = "Cliente inventado"
+        val CLIENT = Customer(
+            id = 40L,
+            contact = CustomerContact(CLIENT_NAME, "cliente inventado", null, null, null),
+            priceListId = null,
+            balance = Money(4_000L),
+            pointsBalance = 0L,
+            anonymizedAt = null,
+            archivedAt = null,
+            createdAt = CREATED,
+            updatedAt = CREATED,
+        )
         const val TIMEOUT_MS = 5_000L
         const val LARGE_FONT = 2f
         const val WIDE_WIDTH = 900

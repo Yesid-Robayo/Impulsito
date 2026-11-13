@@ -9,6 +9,9 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntryDraft
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
@@ -25,9 +28,12 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
+import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
@@ -51,6 +57,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockPlan
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockSubject
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
+import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerEntryIssue
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.AdjustmentSplit
@@ -65,6 +72,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnit
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SurchargeSettlement
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOutcome
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
@@ -120,7 +129,12 @@ import kotlin.time.Instant
  *   entre los pagos en proporción a lo que cubre cada uno. Solo se acepta con las propinas
  *   encendidas.
  *
- * Por ahora no vende combos ni productos con lotes, ni a crédito: los rechaza con su motivo.
+ * - **A crédito** se vende con un cliente: los pagos a crédito, sumados, entran como un solo cargo
+ *   `CREDIT_SALE` en su libro, con el vencimiento elegido y ligado a la venta, en esta misma
+ *   transacción. Sin cliente, un pago a crédito se rechaza. El cliente debe estar vigente: uno
+ *   archivado o anonimizado ya no se ofrece al vender.
+ *
+ * Por ahora no vende combos ni productos con lotes: los rechaza con su motivo.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
@@ -140,9 +154,12 @@ class RegisterSaleUseCase(
     private val heldSales: HeldSaleRepository? = null,
     private val productUnits: ProductUnitRepository? = null,
     private val alerts: LowStockAlertRepository? = null,
+    private val customers: CustomerRepository? = null,
+    customerLedger: CustomerLedgerRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
+    private val customerLedger = customerLedger?.let(::CustomerLedgerWriter)
 
     suspend operator fun invoke(request: SaleRequest): RegisterSaleResult = try {
         transactions.write { register(request) }
@@ -169,6 +186,7 @@ class RegisterSaleUseCase(
         val now = clock.now()
         val time = recordTime(calendar, request.date, now)
             ?: return TxResult.Rollback(RegisterSaleResult.FutureDate)
+        customerRejection(request, time)?.let { return TxResult.Rollback(it) }
 
         val chosen = when (val result = choosePayments(request)) {
             is Chosen.Payments -> result.payments
@@ -207,7 +225,10 @@ class RegisterSaleUseCase(
             CurrencyLockResult.Unconfirmed ->
                 return TxResult.Rollback(RegisterSaleResult.CurrencyNotConfirmed)
         }
-        val saleId = write(settled, note, time, now)
+        val saleId = write(settled, request.customerId, note, time, now)
+        chargeOnAccount(saleId, request, settled.payments, time)?.let {
+            return TxResult.Rollback(it)
+        }
         request.heldSaleId?.let { held ->
             // Si ya no existe, alguien la descartó en el intermedio: la venta igual se confirma.
             requireNotNull(heldSales) { "Una venta de la espera necesita sus ventas en espera" }
@@ -260,6 +281,7 @@ class RegisterSaleUseCase(
      * cobra.
      */
     private suspend fun choosePayments(request: SaleRequest): Chosen {
+        val hasCustomer = request.customerId != null
         val written = request.payments.isNotEmpty()
         val requested = request.payments.ifEmpty {
             listOf(SalePaymentRequest(request.paymentMethodId, Money.ZERO))
@@ -268,7 +290,7 @@ class RegisterSaleUseCase(
         for ((index, payment) in requested.withIndex()) {
             val method = payments.findMethod(payment.paymentMethodId)
                 ?: return Chosen.Rejected(RegisterSaleResult.PaymentMethodNotFound)
-            methodRejection(method)?.let { return Chosen.Rejected(it) }
+            methodRejection(method, hasCustomer)?.let { return Chosen.Rejected(it) }
             if (payment.tenderedAmount != null && method.kind != PaymentMethodKind.CASH) {
                 return Chosen.Rejected(
                     RegisterSaleResult.PaymentRejected(index, PaymentRejection.TENDER_NOT_CASH),
@@ -284,10 +306,80 @@ class RegisterSaleUseCase(
         return Chosen.Payments(chosen)
     }
 
-    private fun methodRejection(method: SalePaymentMethod): RegisterSaleResult? = when {
+    private fun methodRejection(
+        method: SalePaymentMethod,
+        hasCustomer: Boolean,
+    ): RegisterSaleResult? = when {
         method.isArchived -> RegisterSaleResult.PaymentMethodArchived
-        method.kind == PaymentMethodKind.ON_ACCOUNT -> RegisterSaleResult.PaymentNeedsCustomer
+
+        method.kind == PaymentMethodKind.ON_ACCOUNT && !hasCustomer ->
+            RegisterSaleResult.PaymentNeedsCustomer
+
         else -> null
+    }
+
+    /**
+     * Por qué el cliente o el vencimiento de la venta no sirven, leído dentro de la transacción: un
+     * cliente que se archivó o se anonimizó mientras se vendía ya no se usa.
+     */
+    private suspend fun customerRejection(
+        request: SaleRequest,
+        time: RecordTime,
+    ): RegisterSaleResult? {
+        val customerId = request.customerId ?: return null
+        val customer = checkNotNull(customers) { "Una venta con cliente necesita los clientes" }
+            .findById(customerId)
+        if (customer == null || customer.isArchived || customer.isAnonymized) {
+            return RegisterSaleResult.CustomerUnavailable
+        }
+        val due = request.creditDueDate ?: return null
+        return if (due < time.businessDate) RegisterSaleResult.CreditDueBeforeSale else null
+    }
+
+    /**
+     * Carga en el libro del cliente lo que se pagó a crédito, como un solo `CREDIT_SALE` ligado a la
+     * venta. Así los cargos de la venta suman siempre lo pagado a crédito. Devuelve el rechazo que
+     * deshace la venta, o `null` si quedó escrito o no había nada a crédito.
+     */
+    private suspend fun chargeOnAccount(
+        saleId: Long,
+        request: SaleRequest,
+        salePayments: List<NewSalePayment>,
+        time: RecordTime,
+    ): RegisterSaleResult? {
+        val onAccount = salePayments.filter { it.methodKind == PaymentMethodKind.ON_ACCOUNT }
+            .map { it.amount }
+            .sumOrNull() ?: return RegisterSaleResult.SaleTotalTooLarge
+        if (onAccount <= Money.ZERO) return null
+        val customerId = checkNotNull(request.customerId) { "El pago a crédito ya exigió cliente" }
+        val writer =
+            checkNotNull(customerLedger) { "Una venta a crédito necesita el libro del cliente" }
+        val draft = CustomerEntryDraft(
+            customerId = customerId,
+            type = CustomerLedgerEntryType.CREDIT_SALE,
+            amount = onAccount,
+            source = CustomerEntrySource.Sale(saleId),
+            dueDate = request.creditDueDate,
+            note = null,
+        )
+        return when (val outcome = writer.append(draft, time)) {
+            is CustomerEntryOutcome.Appended -> null
+
+            is CustomerEntryOutcome.Rejected -> when (outcome.issue) {
+                CustomerEntryIssue.BALANCE_OVERFLOW -> RegisterSaleResult.SaleTotalTooLarge
+
+                // El cargo se arma aquí con su tipo, su signo y su venta: otro rechazo es un error
+                // de programación, no algo que la persona pueda corregir.
+                CustomerEntryIssue.ZERO_AMOUNT, CustomerEntryIssue.WRONG_SIGN,
+                CustomerEntryIssue.WRONG_SOURCE, CustomerEntryIssue.NOTE_REQUIRED,
+                CustomerEntryIssue.NOTE_TOO_LONG,
+                -> error("Cargo a crédito mal armado: " + outcome.issue)
+            }
+
+            CustomerEntryOutcome.EntryNotFound, CustomerEntryOutcome.AlreadyCompensated,
+            CustomerEntryOutcome.NotReversible,
+            -> error("Agregar un cargo no compensa ninguna fila")
+        }
     }
 
     /**
@@ -651,6 +743,7 @@ class RegisterSaleUseCase(
     /** Escribe la venta ya calculada y devuelve su id. Lo único que hace aquí es guardar. */
     private suspend fun write(
         settled: Settled.Payments,
+        customerId: Long?,
         note: String?,
         time: RecordTime,
         now: Instant,
@@ -671,7 +764,7 @@ class RegisterSaleUseCase(
                 tipAmount = settled.tip,
                 cashRoundingAmount = settled.cashRounding,
                 amountDue = settled.amountDue,
-                customerId = null,
+                customerId = customerId,
                 priceListId = priceListId,
                 locationId = locationId,
                 cashSessionId = null,

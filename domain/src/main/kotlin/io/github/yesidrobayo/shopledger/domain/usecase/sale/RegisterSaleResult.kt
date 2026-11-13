@@ -48,6 +48,15 @@ sealed interface RegisterSaleResult {
     /** El método es a crédito, y vender a crédito exige un cliente, que esta venta no tiene. */
     data object PaymentNeedsCustomer : RegisterSaleResult
 
+    /**
+     * El cliente elegido ya no se puede usar: no existe, se archivó o se anonimizó mientras se
+     * vendía. La persona elige otro o vende sin cliente.
+     */
+    data object CustomerUnavailable : RegisterSaleResult
+
+    /** El vencimiento del pago a crédito es anterior a la fecha de la venta. */
+    data object CreditDueBeforeSale : RegisterSaleResult
+
     /** La línea número [index], contada desde cero, no se puede vender, por [reason]. */
     data class LineRejected(val index: Int, val reason: LineRejection) : RegisterSaleResult
 
