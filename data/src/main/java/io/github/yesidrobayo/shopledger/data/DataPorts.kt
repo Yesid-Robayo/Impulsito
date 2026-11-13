@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomHeldSaleRepository
@@ -51,6 +52,7 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
 import io.github.yesidrobayo.shopledger.domain.port.CatalogPresenceSource
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
@@ -140,6 +142,9 @@ class DataPorts internal constructor(
 
     /** Las compras y los productos habituales de cada proveedor. Solo lee. */
     val supplierActivity: SupplierActivitySource = RoomSupplierActivitySource(database)
+
+    /** Los clientes, con sus datos mínimos. Sus saldos los mueven sus libros. */
+    val customers: CustomerRepository = RoomCustomerRepository(database)
 
     val products: ProductRepository = RoomProductRepository(database)
 

@@ -22,8 +22,52 @@ internal interface CustomerDao {
     )
     fun observeActive(): Flow<List<CustomerEntity>>
 
+    /**
+     * Los sin archivar, también los anonimizados, que van al final porque ya no tienen nombre. Es la
+     * lista de clientes: un anonimizado sigue ahí, como cliente anónimo, con su saldo.
+     */
+    @Query(
+        "SELECT * FROM customers WHERE archived_at IS NULL " +
+            "ORDER BY normalized_name IS NULL, normalized_name, id",
+    )
+    fun observeUnarchived(): Flow<List<CustomerEntity>>
+
+    /** Los archivados, con los anonimizados al final. */
+    @Query(
+        "SELECT * FROM customers WHERE archived_at IS NOT NULL " +
+            "ORDER BY normalized_name IS NULL, normalized_name, id",
+    )
+    fun observeArchived(): Flow<List<CustomerEntity>>
+
     @Query("SELECT * FROM customers WHERE id = :id")
     suspend fun findById(id: Long): CustomerEntity?
+
+    @Query("SELECT * FROM customers WHERE id = :id")
+    fun observeById(id: Long): Flow<CustomerEntity?>
+
+    /**
+     * Los sin archivar con ese nombre, por `id`. El nombre no es único: sirve para avisar de un
+     * posible duplicado. Un anonimizado no tiene nombre, así que nunca aparece.
+     */
+    @Query(
+        "SELECT * FROM customers WHERE normalized_name = :normalizedName " +
+            "AND archived_at IS NULL ORDER BY id",
+    )
+    suspend fun findActiveByNormalizedName(normalizedName: String): List<CustomerEntity>
+
+    /**
+     * Si el cliente tiene historia: alguna venta, pedido, cotización o fila de sus libros, aunque
+     * esté anulada. Con historia ya no se borra: solo se archiva. Una venta en espera no cuenta: es
+     * un borrador, y al borrar al cliente queda sin él.
+     */
+    @Query(
+        "SELECT EXISTS (SELECT 1 FROM sales WHERE customer_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM orders WHERE customer_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM quotes WHERE customer_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM customer_ledger_entries WHERE customer_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM loyalty_ledger_entries WHERE customer_id = :id)",
+    )
+    suspend fun hasHistory(id: Long): Boolean
 
     /** Devuelve el id nuevo. Los saldos iniciales los pone el repositorio, en cero. */
     @Insert
