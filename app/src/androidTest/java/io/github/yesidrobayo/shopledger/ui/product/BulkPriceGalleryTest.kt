@@ -82,6 +82,7 @@ class BulkPriceGalleryTest {
         "high" to BulkPriceSamples.ready("80", 8_000L),
         "needsinput" to BulkPriceSamples.needsInput,
         "undo" to BulkPriceSamples.confirmingUndo(),
+        "lists" to BulkPriceSamples.lists(),
         "noprices" to BulkPriceUiState(content = BulkPreviewContent.NoPrices),
         "loading" to BulkPriceUiState(),
     )

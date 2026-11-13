@@ -2,13 +2,21 @@ package io.github.yesidrobayo.shopledger.ui.product
 
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceAdjustment
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceContext
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceRequest
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoRevert
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
@@ -44,12 +52,88 @@ class BulkPriceViewModelTest {
     @After
     fun resetTestMain() = Dispatchers.resetMain()
 
-    private fun TestScope.model(): BulkPriceViewModel {
-        val model = BulkPriceViewModel(operations, NUMBERS, dispatcher)
+    private fun TestScope.model(initialList: Long? = null): BulkPriceViewModel {
+        val model = BulkPriceViewModel(operations, NUMBERS, dispatcher, initialList)
         backgroundScope.launch(dispatcher) { model.uiState.collect {} }
         advanceUntilIdle()
         return model
     }
+
+    @Test
+    fun `an amount and a target margin are modes of their own`() = runTest(dispatcher) {
+        // El margen objetivo parte del costo que da el contexto de precios, como en la app.
+        operations.choices.value = BulkListChoices(
+            pricing = PricingContext(
+                defaultTargetMargin = BasisPoints(3_000L),
+                categoryTargets = emptyMap(),
+                taxMode = TaxMode.NONE,
+                defaultTaxRateId = null,
+                taxRates = emptyMap(),
+                roundingStep = Money.ZERO,
+            ),
+        )
+        val model = model()
+
+        model.onAction(BulkPriceAction.SelectMode(BulkPriceMode.AMOUNT))
+        model.onAction(BulkPriceAction.AmountText("-150"))
+        advanceUntilIdle()
+        // Sin decimales: 12350 − 150 = 12200 y 10000 − 150 = 9850.
+        val amount = (model.uiState.value.content as BulkPreviewContent.Ready).preview
+        assertEquals(
+            listOf(Money(12_200L), Money(9_850L)),
+            amount.changes.map {
+                it.change.newPrice
+            },
+        )
+        assertFalse(model.uiState.value.highPercent)
+
+        model.onAction(BulkPriceAction.SelectMode(BulkPriceMode.TARGET_MARGIN))
+        model.onAction(BulkPriceAction.MarginText("120"))
+        advanceUntilIdle()
+        assertEquals(BulkPreviewContent.NeedsInput, model.uiState.value.content)
+
+        model.onAction(BulkPriceAction.MarginText("30"))
+        advanceUntilIdle()
+        model.onAction(BulkPriceAction.Apply)
+        advanceUntilIdle()
+        assertEquals(
+            BulkPriceAdjustment.TargetMargin(BasisPoints(3_000L)),
+            operations.requests.single().adjustment,
+        )
+    }
+
+    @Test
+    fun `with two lists each row says its list, and the chosen ones go with the request`() =
+        runTest(dispatcher) {
+            val general = PriceList(1L, "DEFAULT", null, PriceListPricing.Fixed, null)
+            val wholesale = PriceList(2L, null, "Mayorista", PriceListPricing.Fixed, null)
+            val special =
+                PriceList(
+                    3L,
+                    null,
+                    "Especial",
+                    PriceListPricing.Relative(1L, BasisPoints(0L)),
+                    null,
+                )
+            operations.choices.value = BulkListChoices(listOf(general, wholesale, special))
+            val model = model(initialList = wholesale.id)
+
+            // Una relativa se calcula: no se ofrece.
+            assertEquals(listOf(general, wholesale), model.uiState.value.offeredLists)
+            model.onAction(BulkPriceAction.ToggleList(general.id))
+            model.onAction(BulkPriceAction.PercentText("8"))
+            advanceUntilIdle()
+            val preview = (model.uiState.value.content as BulkPreviewContent.Ready).preview
+            assertEquals(4, preview.changes.size)
+            assertEquals(setOf(1L, 2L), preview.changes.map { it.priceListId }.toSet())
+
+            model.onAction(BulkPriceAction.Apply)
+            advanceUntilIdle()
+            assertEquals(setOf(1L, 2L), operations.requests.single().priceListIds)
+            model.onAction(BulkPriceAction.ToggleList(general.id))
+            advanceUntilIdle()
+            assertEquals(setOf(2L), model.uiState.value.input.listIds)
+        }
 
     @Test
     fun `without a percentage the preview asks for one`() = runTest(dispatcher) {
@@ -253,12 +337,18 @@ private class FakeBulkOperations : BulkPriceOperations {
 
     override fun defaultStep(): Flow<Money> = MutableStateFlow(Money(100L))
 
+    val requests = mutableListOf<BulkPriceRequest>()
+    val choices = MutableStateFlow(BulkListChoices())
+
+    override fun listChoices(): Flow<BulkListChoices> = choices
+
     override suspend fun apply(
         productIds: Collection<Long>,
-        percent: BasisPoints,
-        step: Money,
+        request: BulkPriceRequest,
+        context: BulkPriceContext,
     ): ApplyBulkPriceResult {
         applied += productIds.toList()
+        requests += request
         return result
     }
 

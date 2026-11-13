@@ -63,7 +63,9 @@ fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = 
                         is ProductListAction.CreateProduct ->
                             navigator.open(AppNavKey.ProductEdit(prefillName = action.name))
 
-                        ProductListAction.UpdatePrices -> navigator.open(AppNavKey.BulkPriceUpdate)
+                        ProductListAction.UpdatePrices -> navigator.open(
+                            AppNavKey.BulkPriceUpdate(),
+                        )
 
                         is ProductListAction.QueryChange, ProductListAction.Retry,
                         ProductListAction.OpenFilters, ProductListAction.CloseFilters,

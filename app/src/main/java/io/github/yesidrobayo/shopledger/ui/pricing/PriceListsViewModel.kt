@@ -225,6 +225,9 @@ class PriceListsViewModel(
             PriceListsAction.DismissDialog -> state.update { it.copy(dialog = null) }
 
             PriceListsAction.MessageShown -> state.update { it.copy(message = null) }
+
+            // La resuelve la navegación.
+            is PriceListsAction.UpdatePrices -> Unit
         }
     }
 

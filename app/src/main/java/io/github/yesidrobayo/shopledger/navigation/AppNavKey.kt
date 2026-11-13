@@ -58,8 +58,9 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data class ProductDetail(val productId: Long, val openCostSheet: Boolean = false) : AppNavKey
 
+    /** La actualización masiva; con [priceListId], abre con esa lista elegida. */
     @Serializable
-    data object BulkPriceUpdate : AppNavKey
+    data class BulkPriceUpdate(val priceListId: Long? = null) : AppNavKey
 
     @Serializable
     data class Inventory(val filter: InventoryFilter = InventoryFilter.LOW_STOCK) : AppNavKey

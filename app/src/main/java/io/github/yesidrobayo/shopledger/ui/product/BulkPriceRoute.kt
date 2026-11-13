@@ -10,6 +10,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceContext
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceRequest
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
@@ -18,8 +20,10 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceRes
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveBulkPriceChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveBulkUndoUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceListsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.navigation.AppMessages
@@ -34,13 +38,14 @@ import io.github.yesidrobayo.shopledger.navigation.rememberBulkPriceUndo
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 
 /**
  * La actualización masiva en la navegación. Al aplicar vuelve atrás con su aviso, que sobrevive a
  * la pantalla; un fallo se avisa sin salir, con lo elegido intacto.
  */
 @Composable
-fun BulkPriceRoute(navigator: AppNavigator) {
+fun BulkPriceRoute(key: AppNavKey.BulkPriceUpdate, navigator: AppNavigator) {
     val formats = LocalAppFormats.current
     val numbers =
         BulkNumberFormat(
@@ -54,12 +59,13 @@ fun BulkPriceRoute(navigator: AppNavigator) {
                 BulkPriceUseCases.of(dependencies),
                 numbers,
                 dependencies.container.dispatchers.default,
+                initialListId = key.priceListId,
             )
         }
     when (model) {
         ScreenModel.Opening -> BulkPriceScreen(BulkPriceUiState(), {})
 
-        ScreenModel.Unavailable -> PlaceholderRoute(AppNavKey.BulkPriceUpdate, navigator)
+        ScreenModel.Unavailable -> PlaceholderRoute(key, navigator)
 
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
@@ -108,6 +114,8 @@ class BulkPriceUseCases(
     private val applyUseCase: ApplyBulkPriceUseCase,
     private val undoOfferUseCase: ObserveBulkUndoUseCase,
     private val undoUseCase: UndoBulkPriceUseCase,
+    private val lists: ObservePriceListsUseCase,
+    private val pricing: ObservePricingContextUseCase,
 ) : BulkPriceOperations {
     override fun catalog(): Flow<List<Product>> = choices.catalog()
 
@@ -119,9 +127,30 @@ class BulkPriceUseCases(
 
     override suspend fun apply(
         productIds: Collection<Long>,
-        percent: BasisPoints,
-        step: Money,
-    ): ApplyBulkPriceResult = applyUseCase(productIds, percent, step)
+        request: BulkPriceRequest,
+        context: BulkPriceContext,
+    ): ApplyBulkPriceResult = applyUseCase(productIds, request, context)
+
+    override fun listChoices(): Flow<BulkListChoices> = combine(
+        lists(),
+        lists.ownPrices(),
+        pricing(),
+    ) { overview, byList, context ->
+        val byProduct = mutableMapOf<Long, MutableMap<Long, Money>>()
+        byList.forEach { (list, prices) ->
+            prices.forEach { (product, price) ->
+                byProduct.getOrPut(product) { mutableMapOf() }[list] =
+                    price
+            }
+        }
+        BulkListChoices(
+            (overview.active + overview.archived).sortedBy {
+                it.id
+            },
+            byProduct,
+            context,
+        )
+    }
 
     override fun undoOffer(): Flow<BulkUndoPlan?> = undoOfferUseCase()
 
@@ -145,8 +174,15 @@ class BulkPriceUseCases(
                     BusinessCalendarSource(ports.settings),
                     CurrencyLock(ports.settings),
                     dependencies.container.clock,
+                    priceLists = ports.priceLists,
+                    productPrices = ports.productPrices,
                 ),
-                undoOfferUseCase = ObserveBulkUndoUseCase(ports.priceHistory, ports.products),
+                undoOfferUseCase = ObserveBulkUndoUseCase(
+                    ports.priceHistory,
+                    ports.products,
+                    ports.productPrices,
+                    ports.systemRows,
+                ),
                 undoUseCase = UndoBulkPriceUseCase(
                     ports.transactions,
                     ports.products,
@@ -154,6 +190,13 @@ class BulkPriceUseCases(
                     ports.priceHistory,
                     BusinessCalendarSource(ports.settings),
                     dependencies.container.clock,
+                    productPrices = ports.productPrices,
+                ),
+                lists = ObservePriceListsUseCase(ports.priceLists, ports.productPrices),
+                pricing = ObservePricingContextUseCase(
+                    ports.settings,
+                    ports.categories,
+                    ports.taxRates,
                 ),
             )
         }

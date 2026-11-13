@@ -273,7 +273,7 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         is AppNavKey.ProductDetail -> ProductDetailRoute(key, navigator)
 
-        AppNavKey.BulkPriceUpdate -> BulkPriceRoute(navigator)
+        is AppNavKey.BulkPriceUpdate -> BulkPriceRoute(key, navigator)
 
         AppNavKey.LanguageSettings ->
             LanguageSettingsRoute(

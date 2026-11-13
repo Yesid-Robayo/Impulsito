@@ -70,6 +70,7 @@ fun rememberBulkPriceUndo(): BulkPriceUndo {
                         priceHistory = ports.priceHistory,
                         calendar = BusinessCalendarSource(ports.settings),
                         clock = container.clock,
+                        productPrices = ports.productPrices,
                     )(batchId)
                 }
 

@@ -90,12 +90,13 @@ fun PriceListsRoute(navigator: AppNavigator) {
             PriceListsScreen(
                 uiState = uiState,
                 onAction = { action ->
-                    if (action ==
-                        PriceListsAction.Back
-                    ) {
-                        navigator.back()
-                    } else {
-                        viewModel.onAction(action)
+                    when (action) {
+                        PriceListsAction.Back -> navigator.back()
+
+                        is PriceListsAction.UpdatePrices ->
+                            navigator.open(AppNavKey.BulkPriceUpdate(action.listId))
+
+                        else -> viewModel.onAction(action)
                     }
                 },
                 listEditor = listEditor,

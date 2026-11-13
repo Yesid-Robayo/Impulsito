@@ -81,7 +81,7 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     is AppNavKey.ProductDetail -> detail(R.string.nav_products, products)
 
-    AppNavKey.BulkPriceUpdate -> detail(R.string.bulk_title, products)
+    is AppNavKey.BulkPriceUpdate -> detail(R.string.bulk_title, products)
 
     is AppNavKey.Inventory -> detail(R.string.term_inventory, products)
 

@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
+import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
@@ -47,6 +48,7 @@ import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
 import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
+import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.ProductRow
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowData
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
@@ -311,6 +313,7 @@ private fun Detail(
         )
         Column(
             Modifier
+                .weight(1f)
                 .align(Alignment.CenterHorizontally)
                 .widthIn(max = AppTheme.sizes.maxContentWidth)
                 .fillMaxWidth(),
@@ -349,6 +352,23 @@ private fun Detail(
                     uiState,
                     list.isArchived || list.pricing is PriceListPricing.Relative,
                     onAction,
+                )
+            }
+        }
+        // Una relativa se calcula y una archivada no se ofrece: solo las demás se actualizan.
+        if (!list.isArchived && list.pricing !is PriceListPricing.Relative) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .keepsMessagesAbove()
+                    .navigationBarsPadding()
+                    .padding(AppTheme.spacing.s16),
+            ) {
+                PrimaryActionButton(
+                    text = stringResource(R.string.price_list_update_action),
+                    onClick = { onAction(PriceListsAction.UpdatePrices(list.id)) },
+                    variant = ActionVariant.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }

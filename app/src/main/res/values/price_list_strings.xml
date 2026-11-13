@@ -35,6 +35,12 @@
     <string name="price_list_error_adjustment_range">Enter an adjustment between %1$s and %2$s</string>
     <string name="price_list_error_has_own_prices">This list has its own prices. Remove them before making it relative</string>
     <string name="price_list_price_saved">Price saved</string>
+    <string name="bulk_mode_label">How</string>
+    <string name="price_list_bulk_mode_percent">Percent</string>
+    <string name="price_list_bulk_mode_amount">Amount</string>
+    <string name="price_list_bulk_mode_target_margin">Target margin</string>
+    <string name="price_list_bulk_mode_reference_rate">By exchange rate</string>
+    <string name="price_list_update_action">Update prices in this list</string>
     <plurals name="price_list_own_prices_count">
         <item quantity="one">%1$d product with its own price</item>
         <item quantity="other">%1$d products with their own price</item>

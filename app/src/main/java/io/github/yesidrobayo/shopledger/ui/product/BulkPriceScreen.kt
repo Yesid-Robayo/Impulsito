@@ -25,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -36,12 +37,15 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceLine
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPricePreview
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPriceOutcome
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPriceRules
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
+import io.github.yesidrobayo.shopledger.localization.SeedText
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
@@ -92,6 +96,11 @@ fun BulkPriceScreen(
     modifier: Modifier = Modifier,
 ) {
     val spacing = AppTheme.spacing
+    // Los nombres visibles de las listas, para la etiqueta de cada fila de la vista previa.
+    val resources = LocalResources.current
+    val names = uiState.lists.associate {
+        it.id to SeedText.displayName(resources, SeedTable.PRICE_LISTS, it.systemKey, it.name)
+    }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         AppTopBar(
             title = stringResource(R.string.bulk_title),
@@ -162,8 +171,12 @@ fun BulkPriceScreen(
                 is BulkPreviewContent.Ready -> {
                     val preview = content.preview
                     item(key = "summary") { Summary(preview, uiState) }
-                    items(preview.changes, key = { "row-${it.productId}" }) { line ->
-                        PreviewRow(line, onAction)
+                    // Con varias listas, cada fila dice cuál cambia.
+                    val many = uiState.input.listIds.size > 1
+                    items(preview.changes, key = {
+                        "row-${it.productId}-${it.priceListId}"
+                    }) { line ->
+                        PreviewRow(line, names[line.priceListId].takeIf { many }, onAction)
                     }
                 }
             }
@@ -235,22 +248,65 @@ private fun Options(uiState: BulkPriceUiState, onAction: (BulkPriceAction) -> Un
             onToggle = { onAction(BulkPriceAction.SelectScope(it)) },
             multiple = false,
         )
-        SectionLabel(R.string.bulk_how_much)
-        PercentField(
-            value = input.percentText,
-            onValueChange = { onAction(BulkPriceAction.PercentText(it)) },
-            label = stringResource(R.string.bulk_percent_label),
-            allowNegative = true,
-            imeAction = ImeAction.Done,
-        )
-        val formats = LocalAppFormats.current
+        if (uiState.offeredLists.isNotEmpty()) {
+            SectionLabel(R.string.price_list_title)
+            val resources = LocalResources.current
+            CompactChipRow(
+                options = uiState.offeredLists,
+                label = {
+                    SeedText.displayName(resources, SeedTable.PRICE_LISTS, it.systemKey, it.name)
+                },
+                selected = uiState.offeredLists.filter { it.id in input.listIds }.toSet(),
+                onToggle = { onAction(BulkPriceAction.ToggleList(it.id)) },
+                multiple = true,
+            )
+        }
+        SectionLabel(R.string.bulk_mode_label)
         CompactChipRow(
-            options = SHORTCUTS,
-            label = { formats.percent.formatChange(it) },
-            selected = emptySet(),
-            onToggle = { onAction(BulkPriceAction.PercentShortcut(it)) },
+            options = OFFERED_MODES,
+            label = { stringResource(modeLabel(it)) },
+            selected = setOf(input.mode),
+            onToggle = { onAction(BulkPriceAction.SelectMode(it)) },
             multiple = false,
         )
+        SectionLabel(R.string.bulk_how_much)
+        val formats = LocalAppFormats.current
+        when (input.mode) {
+            BulkPriceMode.PERCENT -> {
+                PercentField(
+                    value = input.percentText,
+                    onValueChange = { onAction(BulkPriceAction.PercentText(it)) },
+                    label = stringResource(R.string.bulk_percent_label),
+                    allowNegative = true,
+                    imeAction = ImeAction.Done,
+                )
+                CompactChipRow(
+                    options = SHORTCUTS,
+                    label = { formats.percent.formatChange(it) },
+                    selected = emptySet(),
+                    onToggle = { onAction(BulkPriceAction.PercentShortcut(it)) },
+                    multiple = false,
+                )
+            }
+
+            BulkPriceMode.AMOUNT -> MoneyField(
+                value = input.amountText,
+                onValueChange = { onAction(BulkPriceAction.AmountText(it)) },
+                label = stringResource(R.string.price_list_bulk_mode_amount),
+                imeAction = ImeAction.Done,
+                allowNegative = true,
+            )
+
+            BulkPriceMode.TARGET_MARGIN -> PercentField(
+                value = input.marginText,
+                onValueChange = { onAction(BulkPriceAction.MarginText(it)) },
+                label = stringResource(R.string.price_list_bulk_mode_target_margin),
+                imeAction = ImeAction.Done,
+            )
+
+            // No se ofrece todavía: llega con la moneda de referencia.
+            BulkPriceMode.REFERENCE_RATE -> Unit
+        }
         if (uiState.highPercent) HighPercentNotice(uiState)
         SectionLabel(R.string.bulk_round)
         val savedStep = uiState.savedStep
@@ -358,7 +414,11 @@ private fun Summary(preview: BulkPricePreview, uiState: BulkPriceUiState) {
  * Con margen negativo o con un redondeo que se aparta de lo pedido, su etiqueta. Se puede quitar.
  */
 @Composable
-private fun PreviewRow(line: BulkPriceLine, onAction: (BulkPriceAction) -> Unit) {
+private fun PreviewRow(
+    line: BulkPriceLine,
+    listName: String?,
+    onAction: (BulkPriceAction) -> Unit,
+) {
     val spacing = AppTheme.spacing
     val change = line.change
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -383,6 +443,7 @@ private fun PreviewRow(line: BulkPriceLine, onAction: (BulkPriceAction) -> Unit)
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                listName?.let { StatusTag(it) }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(spacing.s8),
@@ -569,4 +630,15 @@ private fun BulkPriceNoPricesPreview() {
 @Composable
 private fun BulkPriceUndoPreview() {
     PreviewTheme { BulkPriceScreen(BulkPriceSamples.confirmingUndo(), {}) }
+}
+
+/** Los modos que se ofrecen hoy: la cotización llega con la moneda de referencia. */
+private val OFFERED_MODES =
+    listOf(BulkPriceMode.PERCENT, BulkPriceMode.AMOUNT, BulkPriceMode.TARGET_MARGIN)
+
+private fun modeLabel(mode: BulkPriceMode): Int = when (mode) {
+    BulkPriceMode.PERCENT -> R.string.price_list_bulk_mode_percent
+    BulkPriceMode.AMOUNT -> R.string.price_list_bulk_mode_amount
+    BulkPriceMode.TARGET_MARGIN -> R.string.price_list_bulk_mode_target_margin
+    BulkPriceMode.REFERENCE_RATE -> R.string.price_list_bulk_mode_reference_rate
 }

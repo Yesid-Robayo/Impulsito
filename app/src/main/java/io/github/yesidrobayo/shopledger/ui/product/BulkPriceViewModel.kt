@@ -6,13 +6,19 @@ import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceAdjustment
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceContext
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPricePreview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceRequest
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceScope
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPricePreviewer
@@ -33,6 +39,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -57,16 +64,43 @@ interface BulkPriceOperations {
     /** El paso de redondeo guardado en los ajustes: cero es sin redondeo. */
     fun defaultStep(): Flow<Money>
 
+    /**
+     * Aplica [request] a [productIds], con lo que fija el negocio para el margen objetivo en
+     * [context]. Las listas y los precios propios se vuelven a leer al aplicar.
+     */
     suspend fun apply(
         productIds: Collection<Long>,
-        percent: BasisPoints,
-        step: Money,
+        request: BulkPriceRequest,
+        context: BulkPriceContext,
     ): ApplyBulkPriceResult
+
+    /** Las listas, los precios propios y lo del margen objetivo, para la vista previa. */
+    fun listChoices(): Flow<BulkListChoices> = flowOf(BulkListChoices())
 
     /** Lo que haría deshacer la última actualización masiva, o `null` si no hay ninguna. */
     fun undoOffer(): Flow<BulkUndoPlan?>
 
     suspend fun undo(batchId: Uuid): UndoBulkPriceResult
+}
+
+/**
+ * Lo que la masiva lee además del catálogo: todas las listas, también las archivadas que una
+ * relativa puede tener de base; los precios propios por producto y lista; y lo que fija el negocio
+ * para el margen objetivo, o `null` mientras no llega.
+ */
+@Immutable
+data class BulkListChoices(
+    val lists: List<PriceList> = emptyList(),
+    val ownPrices: Map<Long, Map<Long, Money>> = emptyMap(),
+    val pricing: PricingContext? = null,
+) {
+    /** Las que se pueden actualizar: vigentes y no relativas, que se calculan. */
+    val writable: List<PriceList>
+        get() = lists.filter { !it.isArchived && it.pricing !is PriceListPricing.Relative }
+
+    /** Lo que la vista previa y el aplicar necesitan. */
+    val context: BulkPriceContext
+        get() = BulkPriceContext(pricing, lists.associateBy { it.id }, ownPrices)
 }
 
 /** Qué productos: los chips de `Qué productos`. */
@@ -140,8 +174,9 @@ sealed interface BulkMessage {
 }
 
 /**
- * Lo que la persona eligió y escribió. [percentText] y [stepText] van como texto, para no perder lo
- * escrito; [percentProblem] dice por qué el porcentaje no se puede usar.
+ * Lo que la persona eligió y escribió. [percentText], [amountText], [marginText] y [stepText] van
+ * como texto, para no perder lo escrito; [percentProblem] dice por qué el porcentaje no se puede
+ * usar. [mode] es el cálculo, y [listIds] las listas que cambian: vacío es solo el precio de venta.
  */
 @Immutable
 data class BulkPriceInput(
@@ -154,6 +189,10 @@ data class BulkPriceInput(
     val rounding: BulkRounding = BulkRounding.NONE,
     val stepText: String = "",
     val removed: Set<Long> = emptySet(),
+    val mode: BulkPriceMode = BulkPriceMode.PERCENT,
+    val amountText: String = "",
+    val marginText: String = "",
+    val listIds: Set<Long> = emptySet(),
 )
 
 /** El estado de la pantalla de actualización masiva. */
@@ -172,7 +211,11 @@ data class BulkPriceUiState(
     val undo: BulkUndoPlan? = null,
     val confirmingUndo: Boolean = false,
     val undoing: Boolean = false,
+    val lists: List<PriceList> = emptyList(),
 ) {
+    /** Las listas que se ofrecen: con una sola no hay nada que elegir. */
+    val offeredLists: List<PriceList> get() = lists.takeIf { it.size > 1 }.orEmpty()
+
     /** Si se ofrece `Deshacer la última`: hay un lote y al menos un precio que volvería. */
     val canUndo: Boolean get() = undo?.canUndo == true
 
@@ -180,7 +223,9 @@ data class BulkPriceUiState(
     val changing: Int get() = (content as? BulkPreviewContent.Ready)?.preview?.changes?.size ?: 0
 
     /** Si el porcentaje pasa del 50 %: protege de escribir `80` por `8`. */
-    val highPercent: Boolean get() = percent?.let { it.bp > HIGH_PERCENT_BP } == true
+    val highPercent: Boolean
+        get() = input.mode == BulkPriceMode.PERCENT &&
+            percent?.let { it.bp > HIGH_PERCENT_BP } == true
 
     private companion object {
         const val HIGH_PERCENT_BP = 5_000L
@@ -210,6 +255,17 @@ sealed interface BulkPriceAction {
 
     data class StepText(val text: String) : BulkPriceAction
 
+    data class SelectMode(val mode: BulkPriceMode) : BulkPriceAction
+
+    /** El monto con signo que se suma a cada precio. */
+    data class AmountText(val text: String) : BulkPriceAction
+
+    /** El margen objetivo, en porcentaje. */
+    data class MarginText(val text: String) : BulkPriceAction
+
+    /** Agrega o quita una lista de las que cambian. */
+    data class ToggleList(val listId: Long) : BulkPriceAction
+
     data class RemoveRow(val productId: Long) : BulkPriceAction
 
     data object Apply : BulkPriceAction
@@ -234,8 +290,8 @@ data class BulkNumberFormat(
 )
 
 /**
- * La actualización masiva de precios por porcentaje: elegir qué productos, cuánto y cómo redondear,
- * ver el resultado y aplicarlo todo de una vez.
+ * La actualización masiva de precios: elegir qué productos y qué listas, el cálculo y cuánto, cómo
+ * redondear, ver el resultado y aplicarlo todo de una vez.
  *
  * La vista previa se rearma fuera del hilo principal con cada cambio, tras una pausa breve al
  * escribir, y nunca bloquea lo que se escribe. Quitar una fila la deja fuera al aplicar. Aplicar
@@ -246,12 +302,18 @@ class BulkPriceViewModel(
     private val operations: BulkPriceOperations,
     private val numbers: BulkNumberFormat,
     computation: CoroutineDispatcher,
+    initialListId: Long? = null,
 ) : ViewModel() {
-    private val input = MutableStateFlow(BulkPriceInput())
+    private val input = MutableStateFlow(BulkPriceInput(listIds = setOfNotNull(initialListId)))
     private val extra = MutableStateFlow(Extra())
     private val attempts = MutableStateFlow(0)
     private var lastRequest: BulkPriceRequest? = null
     private var lastPreview: BulkPricePreview? = null
+    private var lastContext = BulkPriceContext()
+
+    /** Las listas y los precios propios: sin ellas, solo el precio de venta. */
+    private val choices: Flow<BulkListChoices> =
+        operations.listChoices().catch { emit(BulkListChoices()) }
 
     /** El catálogo, o `null` mientras no llega. Reintentar vuelve a leerlo. */
     private val catalog: Flow<List<Product>?> = attempts.flatMapLatest {
@@ -263,9 +325,11 @@ class BulkPriceViewModel(
             catalog,
             input.debounce(TYPING_PAUSE_MILLIS),
             operations.defaultStep(),
-        ) { products, typed, saved ->
+            choices,
+        ) { products, typed, saved, lists ->
             val request = requestOf(typed, saved)
             lastRequest = request
+            lastContext = lists.context
             when {
                 products == null -> BulkPreviewContent.Loading
 
@@ -275,7 +339,9 @@ class BulkPriceViewModel(
                 request == null -> BulkPreviewContent.NeedsInput
 
                 else ->
-                    BulkPreviewContent.Ready(BulkPricePreviewer.preview(products, request))
+                    BulkPreviewContent.Ready(
+                        BulkPricePreviewer.preview(products, request, lists.context),
+                    )
             }
         }
             .flowOn(computation)
@@ -298,10 +364,16 @@ class BulkPriceViewModel(
             ) { categories, suppliers, products, step ->
                 Lists(categories, suppliers, products, step)
             },
-            combine(extra, operations.undoOffer().catch { emit(null) }) { more, offer ->
-                more to offer
+            combine(
+                extra,
+                operations.undoOffer().catch {
+                    emit(null)
+                },
+                choices,
+            ) { more, offer, listed ->
+                Triple(more, offer, listed)
             },
-        ) { typed, shown, lists, (more, offer) ->
+        ) { typed, shown, lists, (more, offer, listed) ->
             BulkPriceUiState(
                 input = typed,
                 content = shown,
@@ -316,6 +388,7 @@ class BulkPriceViewModel(
                 undo = offer,
                 confirmingUndo = more.confirmingUndo && offer?.canUndo == true,
                 undoing = more.undoing,
+                lists = listed.writable,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -373,6 +446,22 @@ class BulkPriceViewModel(
 
             is BulkPriceAction.StepText -> input.update { it.copy(stepText = action.text) }
 
+            is BulkPriceAction.SelectMode -> input.update { it.copy(mode = action.mode) }
+
+            is BulkPriceAction.AmountText -> input.update { it.copy(amountText = action.text) }
+
+            is BulkPriceAction.MarginText -> input.update { it.copy(marginText = action.text) }
+
+            is BulkPriceAction.ToggleList ->
+                input.update {
+                    val ids = if (action.listId in it.listIds) {
+                        it.listIds - action.listId
+                    } else {
+                        it.listIds + action.listId
+                    }
+                    it.copy(listIds = ids, removed = emptySet())
+                }
+
             is BulkPriceAction.RemoveRow ->
                 input.update { it.copy(removed = it.removed + action.productId) }
 
@@ -402,9 +491,7 @@ class BulkPriceViewModel(
         val ids = preview.changes.map { it.productId }
         extra.update { it.copy(applying = true) }
         viewModelScope.launch {
-            val message = when (
-                val result = operations.apply(ids, request.percent, request.roundingStep)
-            ) {
+            val message = when (val result = operations.apply(ids, request, lastContext)) {
                 is ApplyBulkPriceResult.Applied -> BulkMessage.Applied(
                     result.batchId,
                     result.changed,
@@ -420,7 +507,14 @@ class BulkPriceViewModel(
                     BulkMessage.Failed(result.failure.isOutOfSpace)
             }
             if (message is BulkMessage.Applied) {
-                input.update { it.copy(percentText = "", removed = emptySet()) }
+                input.update {
+                    it.copy(
+                        percentText = "",
+                        amountText = "",
+                        marginText = "",
+                        removed = emptySet(),
+                    )
+                }
             }
             extra.update { it.copy(applying = false, message = message) }
         }
@@ -439,7 +533,7 @@ class BulkPriceViewModel(
 
     /** La solicitud que pide lo escrito, o `null` si falta algo o no se puede leer. */
     private fun requestOf(typed: BulkPriceInput, saved: Money): BulkPriceRequest? {
-        val percent = percentOf(typed) ?: return null
+        val adjustment = adjustmentOf(typed) ?: return null
         val scope = when (typed.scope) {
             BulkScopeKind.ALL -> BulkPriceScope.All
 
@@ -455,8 +549,41 @@ class BulkPriceViewModel(
             BulkRounding.SAVED_STEP -> saved
             BulkRounding.OTHER -> stepOf(typed.stepText) ?: return null
         }
-        return BulkPriceRequest(scope, percent, step, typed.removed)
+        return BulkPriceRequest(scope, adjustment, step, typed.removed, typed.listIds)
     }
+
+    /** El cálculo escrito para el modo elegido, si se puede usar. */
+    private fun adjustmentOf(typed: BulkPriceInput): BulkPriceAdjustment? {
+        val adjustment = when (typed.mode) {
+            BulkPriceMode.PERCENT -> percentOf(typed)?.let { BulkPriceAdjustment.Percent(it) }
+
+            BulkPriceMode.AMOUNT -> signedMoneyOf(typed.amountText)?.let {
+                BulkPriceAdjustment.Amount(it)
+            }
+
+            BulkPriceMode.TARGET_MARGIN -> (
+                NumberInputParser.percent(
+                    typed.marginText,
+                    numbers.percentSymbols,
+                    BasisPoints.MAX_TARGET_MARGIN,
+                ) as? NumberInput.Value
+                )?.value?.let { BulkPriceAdjustment.TargetMargin(it) }
+
+            // La cotización llega con la moneda de referencia: aquí no se ofrece todavía.
+            BulkPriceMode.REFERENCE_RATE -> null
+        }
+        return adjustment?.takeIf { BulkPriceRules.isValid(it) }
+    }
+
+    /** Un monto con signo, distinto de cero y dentro del tope por unidad. */
+    private fun signedMoneyOf(text: String): Money? = (
+        NumberInputParser.money(
+            text,
+            numbers.moneySymbols,
+            numbers.currencyDecimals,
+            Limit.UNIT_MONEY,
+        ) as? NumberInput.Value
+        )?.value?.takeIf { it != Money.ZERO }
 
     /** El porcentaje escrito, si es válido: con signo, distinto de cero y dentro de los topes. */
     private fun percentOf(typed: BulkPriceInput): BasisPoints? {

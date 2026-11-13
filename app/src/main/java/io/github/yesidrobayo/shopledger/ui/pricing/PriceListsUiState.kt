@@ -104,6 +104,9 @@ sealed interface PriceListsAction {
 
     data class EditPrice(val productId: Long) : PriceListsAction
 
+    /** Abre la actualización masiva con la lista [listId] elegida: lo resuelve la navegación. */
+    data class UpdatePrices(val listId: Long) : PriceListsAction
+
     data object ConfirmDialog : PriceListsAction
 
     data object DismissDialog : PriceListsAction

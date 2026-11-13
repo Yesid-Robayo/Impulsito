@@ -35,6 +35,12 @@
     <string name="price_list_error_adjustment_range">Escrever um ajuste entre %1$s e %2$s</string>
     <string name="price_list_error_has_own_prices">Esta tabela tem preços próprios. Removê-los antes de torná-la relativa</string>
     <string name="price_list_price_saved">Preço salvo</string>
+    <string name="bulk_mode_label">Como</string>
+    <string name="price_list_bulk_mode_percent">Porcentagem</string>
+    <string name="price_list_bulk_mode_amount">Valor</string>
+    <string name="price_list_bulk_mode_target_margin">Margem-alvo</string>
+    <string name="price_list_bulk_mode_reference_rate">Por cotação</string>
+    <string name="price_list_update_action">Atualizar preços desta tabela</string>
     <plurals name="price_list_own_prices_count">
         <item quantity="one">%1$d produto com preço próprio</item>
         <item quantity="many">%1$d de produtos com preço próprio</item>
