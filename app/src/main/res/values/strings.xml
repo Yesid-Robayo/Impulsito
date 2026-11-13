@@ -186,4 +186,5 @@
         <item quantity="one">Maximum %1$d character</item>
         <item quantity="other">Maximum %1$d characters</item>
     </plurals>
+    <string name="product_prices_by_list">Prices by list</string>
 </resources>

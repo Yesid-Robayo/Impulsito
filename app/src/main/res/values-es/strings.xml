@@ -183,4 +183,5 @@
         <item quantity="many">Máximo %1$d de caracteres</item>
         <item quantity="other">Máximo %1$d caracteres</item>
     </plurals>
+    <string name="product_prices_by_list">Precios por lista</string>
 </resources>

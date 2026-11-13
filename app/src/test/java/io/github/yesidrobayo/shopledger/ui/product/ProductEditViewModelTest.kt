@@ -19,14 +19,21 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitResult
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.SetListPriceResult
+import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorAction
 import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorAction
 import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorAction
 import io.github.yesidrobayo.shopledger.ui.unit.UnitNames
@@ -324,6 +331,65 @@ class ProductEditViewModelTest {
             assertEquals(5L, id)
             assertEquals(Money(450_050L), form.salePrice)
             assertEquals(Money(300_000L), form.cost)
+        }
+
+    @Test
+    fun `the other lists show their price, and a fixed one opens its sheet`() =
+        runTest(dispatcher) {
+            operations.editing = ProductForEdit(
+                product = product(5L, "Arroz", salePrice = 420_000L, averageCost = 300_000L),
+                lockedFields = emptySet(),
+                costLocked = false,
+            )
+            val wholesale = PriceList(2L, null, "Mayorista", PriceListPricing.Fixed, null)
+            val special =
+                PriceList(
+                    3L,
+                    null,
+                    "Especial",
+                    PriceListPricing.Relative(1L, BasisPoints(-1_000L)),
+                    null,
+                )
+            val prices = listOf(
+                ProductListPrice(
+                    wholesale,
+                    ListPriceResult.Priced(Money(400_000L), ListPriceOrigin.OWN),
+                ),
+                ProductListPrice(
+                    special,
+                    ListPriceResult.Priced(Money(378_000L), ListPriceOrigin.CALCULATED),
+                ),
+            )
+            val sent = mutableListOf<Triple<Long, Long, Money?>>()
+            val model =
+                ProductEditViewModel(
+                    operations,
+                    numbers,
+                    productId = 5L,
+                    prefillName = null,
+                    unitNames = NAMES,
+                    listPrices = { MutableStateFlow(prices) },
+                    setListPrice = { list, product, price ->
+                        sent += Triple(list, product, price)
+                        SetListPriceResult.Changed(1L)
+                    },
+                )
+            advanceUntilIdle()
+            assertEquals(prices, model.uiState.value.listPrices)
+
+            // Una relativa se calcula: no abre nada.
+            model.onAction(ProductEditAction.EditListPrice(special.id))
+            assertNull(model.listPriceEditor.editor.value)
+
+            model.onAction(ProductEditAction.EditListPrice(wholesale.id))
+            val editor = requireNotNull(model.listPriceEditor.editor.value)
+            assertEquals("4000", editor.priceText)
+            assertTrue(editor.hasOwnPrice)
+            model.listPriceEditor.onAction(ListPriceEditorAction.Price("4100"))
+            model.listPriceEditor.onAction(ListPriceEditorAction.Save)
+            advanceUntilIdle()
+            assertEquals(Triple(wholesale.id, 5L, Money(410_000L)), sent.single())
+            assertNull(model.listPriceEditor.editor.value)
         }
 
     @Test

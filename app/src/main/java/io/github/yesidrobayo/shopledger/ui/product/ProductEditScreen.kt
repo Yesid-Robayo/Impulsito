@@ -40,7 +40,10 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionEntry
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceResult
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.localization.SeedText
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
@@ -61,6 +64,9 @@ import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PickerField
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.ProductRow
+import io.github.yesidrobayo.shopledger.ui.components.ProductRowData
+import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 import io.github.yesidrobayo.shopledger.ui.components.QuantityField
 import io.github.yesidrobayo.shopledger.ui.components.SelectionSheet
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
@@ -76,6 +82,9 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditor
+import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorAction
+import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorSheet
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -107,6 +116,8 @@ fun ProductEditScreen(
     onUnitEditorAction: (UnitEditorAction) -> Unit = {},
     conversionEditor: ConversionEditor? = null,
     onConversionEditorAction: (ConversionEditorAction) -> Unit = {},
+    listPriceEditor: ListPriceEditor? = null,
+    onListPriceEditorAction: (ListPriceEditorAction) -> Unit = {},
 ) {
     val spacing = AppTheme.spacing
     Column(
@@ -172,6 +183,7 @@ fun ProductEditScreen(
             onAction = onConversionEditorAction,
         )
     }
+    listPriceEditor?.let { ListPriceEditorSheet(it, onListPriceEditorAction) }
     if (uiState.confirmingDiscard) {
         ConfirmDialog(
             title = stringResource(R.string.dialog_discard_title),
@@ -322,6 +334,71 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
     }
     if (uiState.tracksStock) ReplacementCostField(uiState, onAction)
     if (!uiState.isNew) ProductConversions(uiState, onAction)
+    if (!uiState.isNew && uiState.listPrices.isNotEmpty()) ProductListPrices(uiState, onAction)
+}
+
+/**
+ * El precio del producto en cada lista vigente distinta de la inicial: el propio, el general o el
+ * calculado, con su etiqueta. Tocar una fija abre la hoja de su precio; una relativa se calcula y no
+ * se toca. El precio de la inicial es el `Precio de venta` de arriba.
+ */
+@Composable
+private fun ProductListPrices(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
+    val resources = LocalResources.current
+    Text(
+        stringResource(R.string.product_prices_by_list),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = AppTheme.spacing.s16).semantics { heading() },
+    )
+    Column {
+        for (entry in uiState.listPrices) {
+            key(entry.list.id) {
+                val priced = entry.result as? ListPriceResult.Priced
+                val tag =
+                    when (priced?.origin) {
+                        null -> null
+
+                        ListPriceOrigin.SALE_PRICE -> stringResource(
+                            R.string.price_list_tag_general,
+                        )
+
+                        ListPriceOrigin.OWN -> stringResource(R.string.price_list_tag_own)
+
+                        ListPriceOrigin.CALCULATED -> stringResource(
+                            R.string.price_list_tag_calculated,
+                        )
+                    }
+                val calculated = entry.list.pricing is PriceListPricing.Relative
+                ProductRow(
+                    data = ProductRowData(
+                        name = SeedText.displayName(
+                            resources,
+                            SeedTable.PRICE_LISTS,
+                            entry.list.systemKey,
+                            entry.list.name,
+                        ),
+                        stock = null,
+                        trailing = ProductRowTrailing.Catalog(
+                            price = priced?.price?.takeIf { it.minor > 0L },
+                            margin = Margin.NoData,
+                            hasCost = true,
+                        ),
+                        tag = tag,
+                    ),
+                    onClick = if (calculated) {
+                        null
+                    } else {
+                        (
+                            {
+                                onAction(ProductEditAction.EditListPrice(entry.list.id))
+                            }
+                            )
+                    },
+                )
+            }
+        }
+    }
 }
 
 /**

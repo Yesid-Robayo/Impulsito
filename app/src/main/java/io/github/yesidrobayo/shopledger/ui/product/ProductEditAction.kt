@@ -35,6 +35,9 @@ sealed interface ProductEditAction {
     /** Abrió una conversión del producto para editarla. */
     data class EditConversion(val conversionId: Long) : ProductEditAction
 
+    /** Abre la hoja del precio del producto en la lista [listId]. */
+    data class EditListPrice(val listId: Long) : ProductEditAction
+
     data class SalePriceChange(val text: String) : ProductEditAction
 
     data class CostChange(val text: String) : ProductEditAction

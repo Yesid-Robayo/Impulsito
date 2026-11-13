@@ -17,6 +17,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingCon
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductConversionsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObserveProductListPricesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.SetListPriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -52,6 +54,26 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                 key.productId,
                 key.prefillName,
                 ResourceUnitNames(resources),
+                listPrices = { id ->
+                    ObserveProductListPricesUseCase(
+                        dependencies.ports.priceLists,
+                        dependencies.ports.productPrices,
+                        dependencies.ports.products,
+                    )(id)
+                },
+                setListPrice = { listId, id, price ->
+                    val ports = dependencies.ports
+                    SetListPriceUseCase(
+                        ports.transactions,
+                        ports.priceLists,
+                        ports.productPrices,
+                        ports.products,
+                        ports.priceHistory,
+                        BusinessCalendarSource(ports.settings),
+                        CurrencyLock(ports.settings),
+                        dependencies.container.clock,
+                    )(listId, id, price)
+                },
             )
         }
     when (model) {
@@ -65,6 +87,7 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val unitEditor by viewModel.unitEditor.editor.collectAsStateWithLifecycle()
             val conversionEditor by viewModel.conversionEditor.editor.collectAsStateWithLifecycle()
+            val listPriceEditor by viewModel.listPriceEditor.editor.collectAsStateWithLifecycle()
             val notificationPermission = LocalNotificationPermission.current
             LaunchedEffect(uiState.savedProductId, uiState.closed) {
                 // Con el primer producto se entiende para qué sirven los avisos de stock.
@@ -91,6 +114,8 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                 onUnitEditorAction = viewModel.unitEditor::onAction,
                 conversionEditor = conversionEditor,
                 onConversionEditorAction = viewModel.conversionEditor::onAction,
+                listPriceEditor = listPriceEditor,
+                onListPriceEditorAction = viewModel.listPriceEditor::onAction,
             )
         }
     }

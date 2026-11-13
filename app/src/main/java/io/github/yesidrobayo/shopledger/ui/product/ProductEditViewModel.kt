@@ -4,29 +4,41 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.ExactUnitCost
 import io.github.yesidrobayo.shopledger.domain.model.Limit
+import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogName
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogText
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceResult
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.SetListPriceResult
 import io.github.yesidrobayo.shopledger.ui.ReadOutcome
 import io.github.yesidrobayo.shopledger.ui.ScreenReads
+import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
+import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorModel
+import io.github.yesidrobayo.shopledger.ui.pricing.ListProductRow
+import io.github.yesidrobayo.shopledger.ui.pricing.PriceListNumberFormat
 import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorModel
 import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorModel
 import io.github.yesidrobayo.shopledger.ui.unit.UnitNames
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -42,6 +54,9 @@ import kotlinx.coroutines.launch
  * @param prefillName el nombre con que empieza un producto nuevo, el de una búsqueda sin resultados.
  * @param unitNames los nombres de las unidades en el idioma de la interfaz, para no crear una con el
  *   nombre de otra.
+ * @param listPrices los precios del producto en las demás listas, que se editan aquí con la hoja de
+ *   la pantalla de listas, cada uno en su propia transacción.
+ * @param setListPrice deja o quita el precio propio del producto en una lista.
  */
 class ProductEditViewModel(
     private val useCases: ProductEditOperations,
@@ -49,6 +64,10 @@ class ProductEditViewModel(
     private val productId: Long?,
     prefillName: String?,
     unitNames: UnitNames,
+    private val listPrices: (Long) -> Flow<List<ProductListPrice>> = { flowOf(emptyList()) },
+    setListPrice: suspend (Long, Long, Money?) -> SetListPriceResult = { _, _, _ ->
+        SetListPriceResult.ListNotFound
+    },
 ) : ViewModel() {
     private val state =
         MutableStateFlow(
@@ -77,6 +96,23 @@ class ProductEditViewModel(
             numbers = numbers,
             save = useCases::saveConversion,
             delete = useCases::deleteConversion,
+            // La lista del producto ya muestra el cambio.
+            onSaved = {},
+        )
+
+    /** La hoja del precio del producto en otra lista. */
+    val listPriceEditor =
+        ListPriceEditorModel(
+            scope = viewModelScope,
+            numbers = PriceListNumberFormat(
+                numbers.percentSymbols,
+                numbers.moneySymbols,
+                numbers.currencyDecimals,
+            ),
+            formatPrice = {
+                fixedPointInputText(it.minor, numbers.currencyDecimals, numbers.moneySymbols)
+            },
+            set = setListPrice,
             // La lista del producto ya muestra el cambio.
             onSaved = {},
         )
@@ -111,6 +147,11 @@ class ProductEditViewModel(
             viewModelScope.launch {
                 reads.guard { useCases.conversions(productId) }.collect { list ->
                     state.update { it.copy(conversions = list) }
+                }
+            }
+            viewModelScope.launch {
+                reads.guard { listPrices(productId) }.collect { list ->
+                    state.update { it.copy(listPrices = list) }
                 }
             }
         }
@@ -166,6 +207,8 @@ class ProductEditViewModel(
                     ?.let(conversionEditor::openEdit)
 
             ProductEditAction.NewConversion -> productId?.let(conversionEditor::openNew)
+
+            is ProductEditAction.EditListPrice -> openListPrice(action.listId)
 
             // La pantalla abre la de unidades; aquí no cambia nada.
             ProductEditAction.ManageUnits -> Unit
@@ -227,6 +270,30 @@ class ProductEditViewModel(
 
             ProductEditAction.DismissSuggestion -> state.update { it.copy(suggestion = null) }
         }
+    }
+
+    /**
+     * Abre la hoja del precio en [listId], solo en una fija vigente: una relativa se calcula. Sin el
+     * producto guardado o sin lo que mide el margen, no abre nada.
+     */
+    private fun openListPrice(listId: Long) {
+        val current = state.value
+        val entry = current.listPrices.firstOrNull { it.list.id == listId } ?: return
+        if (entry.list.pricing is PriceListPricing.Relative) return
+        val product = current.product ?: return
+        val context = current.pricing ?: return
+        val priced = entry.result as? ListPriceResult.Priced
+        val pricing = ProductPricing.of(product, context)
+        val row = ListProductRow(
+            productId = product.id,
+            name = product.details.name,
+            salePrice = product.salePrice,
+            price = priced?.price,
+            origin = priced?.origin,
+            margin = priced?.price?.let(pricing::marginOf) ?: Margin.NoData,
+            hasCost = pricing.cost != null,
+        )
+        listPriceEditor.open(listId, row, priced?.origin == ListPriceOrigin.OWN, pricing)
     }
 
     /** Pone el precio sugerido como precio de venta, como si se hubiera escrito, y cierra la hoja. */

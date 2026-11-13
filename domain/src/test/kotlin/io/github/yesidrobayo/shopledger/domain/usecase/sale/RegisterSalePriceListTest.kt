@@ -25,6 +25,8 @@ import org.junit.Test
  * la regla, y la venta y sus líneas guardan la lista. Montos inventados.
  */
 class RegisterSalePriceListTest {
+    private val prices = Prices()
+
     private val world = SaleWorld().apply {
         units =
             units + mapOf(BOX to measureUnit(BOX, "BOX", UnitKind.COUNT, allowsFraction = false))
@@ -39,7 +41,7 @@ class RegisterSalePriceListTest {
             ),
         )
         priceListRepository = Lists
-        productPriceRepository = Prices
+        productPriceRepository = prices
     }
 
     private suspend fun sell(listId: Long?, vararg lines: SaleLineRequest) =
@@ -83,6 +85,17 @@ class RegisterSalePriceListTest {
                 it.priceListId
             },
         )
+    }
+
+    @Test
+    fun changingTheListLaterLeavesPastSalesAsTheyWere() = runTest {
+        sell(FIXED, SaleLineRequest(1, QuantityMilli(1_000)))
+        prices.own = Money(9_500L)
+        sell(FIXED, SaleLineRequest(1, QuantityMilli(1_000)))
+
+        // La primera venta conserva el precio que congeló; solo la nueva toma el de ahora.
+        assertEquals(listOf(Money(9_000L), Money(9_500L)), storedLines().map { it.unitPrice })
+        assertEquals(listOf(FIXED, FIXED), storedLines().map { it.priceListId })
     }
 
     @Test
@@ -180,9 +193,9 @@ class RegisterSalePriceListTest {
     }
 
     /** Solo lo que lee la venta: los precios propios de un producto. */
-    private object Prices : ProductPriceRepository {
+    private class Prices(var own: Money = Money(9_000L)) : ProductPriceRepository {
         override suspend fun findByProduct(productId: Long): Map<Long, Money> =
-            if (productId == 1L) mapOf(FIXED to Money(9_000L)) else emptyMap()
+            if (productId == 1L) mapOf(FIXED to own) else emptyMap()
 
         override fun observeAll(): Flow<Map<Long, Map<Long, Money>>> = unused()
 

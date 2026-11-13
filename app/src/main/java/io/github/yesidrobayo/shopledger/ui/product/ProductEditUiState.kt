@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
 
 /** Los campos del formulario de un producto que pueden llevar un error. */
 enum class ProductEditField {
@@ -133,6 +134,7 @@ data class ProductEditUiState(
     val pricing: PricingContext? = null,
     val suggestTarget: BasisPoints? = null,
     val suggestion: PriceSuggestionDraft? = null,
+    val listPrices: List<ProductListPrice> = emptyList(),
 ) {
     /** La categoría elegida, o `null` si es sin categoría. */
     val category: Category? get() = categories.firstOrNull { it.id == form.categoryId }
