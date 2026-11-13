@@ -29,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockCompensation
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.appendChained
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
 import kotlin.time.Instant
@@ -56,12 +57,16 @@ import kotlin.time.Instant
  *   Los pagos posteriores siguen vigentes: si ya se pagó algo, el saldo puede quedar negativo, y es
  *   crédito con el proveedor.
  *
- * Un producto archivado no impide anular: su stock sale igual. Por ahora ninguna compra tiene
- * movimientos de dinero, así que no hay nada más que compensar.
+ * - **El dinero vuelve a su cuenta.** Si lo pagado salió de una cuenta, su `PURCHASE_PAYMENT`
+ *   recibe un `MOVEMENT_VOID` con la fecha de la anulación. Los pagos posteriores al proveedor
+ *   siguen vigentes: se anulan aparte.
+ *
+ * Un producto archivado no impide anular: su stock sale igual.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
- * [supplierLedger] solo hace falta para anular una compra a plazo.
+ * [supplierLedger] solo hace falta para anular una compra a plazo, y [money] para una pagada desde una
+ * cuenta.
  */
 class VoidPurchaseUseCase(
     private val transactions: TransactionRunner,
@@ -72,6 +77,7 @@ class VoidPurchaseUseCase(
     private val clock: Clock,
     private val alerts: LowStockAlertRepository? = null,
     private val supplierLedger: SupplierLedgerRepository? = null,
+    private val money: DocumentMoney? = null,
 ) {
     private val ledger = StockChangeRecorder(ledger)
 
@@ -119,6 +125,13 @@ class VoidPurchaseUseCase(
         }
         if (!compensateSupplier(purchase, now, calendar)) {
             return TxResult.Rollback(VoidPurchaseResult.LedgerDamaged)
+        }
+        if (purchase.content.moneyAccountId != null) {
+            val documentMoney =
+                checkNotNull(money) { "Anular el pago de una compra pide sus cuentas" }
+            if (!documentMoney.reversePurchase(purchaseId, calendar.stamp(now), now)) {
+                return TxResult.Rollback(VoidPurchaseResult.LedgerDamaged)
+            }
         }
         alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
         return TxResult.Commit(VoidPurchaseResult.Voided)

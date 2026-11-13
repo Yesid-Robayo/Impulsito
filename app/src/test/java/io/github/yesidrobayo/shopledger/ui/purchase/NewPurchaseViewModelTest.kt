@@ -11,6 +11,10 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCostChange
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineAmount
@@ -18,12 +22,14 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineReject
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrection
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrectionLine
+import io.github.yesidrobayo.shopledger.domain.usecase.money.AccountIssue
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import io.github.yesidrobayo.shopledger.ui.product.COUNT_UNIT
 import io.github.yesidrobayo.shopledger.ui.product.CREATED
@@ -114,6 +120,66 @@ class NewPurchaseViewModelTest {
         updatedAt = CREATED,
     )
 
+    private val payingAccounts = MutableStateFlow<List<MoneyAccount>>(emptyList())
+
+    private fun account(id: Long) = MoneyAccount(
+        id = id,
+        systemKey = null,
+        details = MoneyAccountDetails("Account $id", "account $id", MoneyAccountKind.BANK),
+        currency = AccountCurrency(requireNotNull(CurrencyCode.of("XTS")), 0),
+        balance = Money.ZERO,
+        archivedAt = null,
+        createdAt = CREATED,
+        updatedAt = CREATED,
+    )
+
+    @Test
+    fun `the chosen account pays the purchase, and one no longer offered is left out`() =
+        runTest(dispatcher) {
+            payingAccounts.value = listOf(account(8L))
+            val model = viewModel()
+            model.act(this, NewPurchaseAction.AddProduct(1L))
+            val key = model.line().key
+            model.act(this, NewPurchaseAction.QuantityChange(key, "10"))
+            model.act(this, NewPurchaseAction.AmountChange(key, "1000"))
+            assertEquals(listOf(8L), model.state.payment.accounts.map { it.id })
+
+            model.act(this, NewPurchaseAction.AccountChange(8L))
+            assertEquals(8L, model.state.payment.accountId)
+            model.act(this, NewPurchaseAction.Register)
+            assertEquals(8L, requests.last().moneyAccountId)
+        }
+
+    @Test
+    fun `without accounts in use the purchase asks for none`() = runTest(dispatcher) {
+        val model = viewModel()
+        model.act(this, NewPurchaseAction.AddProduct(1L))
+        val key = model.line().key
+        model.act(this, NewPurchaseAction.QuantityChange(key, "10"))
+        model.act(this, NewPurchaseAction.AmountChange(key, "1000"))
+        model.act(this, NewPurchaseAction.AccountChange(8L))
+
+        assertTrue(model.state.payment.accounts.isEmpty())
+        model.act(this, NewPurchaseAction.Register)
+        assertNull(requests.single().moneyAccountId)
+    }
+
+    @Test
+    fun `an account that cannot pay keeps the purchase and says so`() = runTest(dispatcher) {
+        payingAccounts.value = listOf(account(8L))
+        result = RegisterPurchaseResult.AccountUnavailable(AccountIssue.ARCHIVED)
+        val model = viewModel()
+        model.act(this, NewPurchaseAction.AddProduct(1L))
+        val key = model.line().key
+        model.act(this, NewPurchaseAction.QuantityChange(key, "10"))
+        model.act(this, NewPurchaseAction.AmountChange(key, "1000"))
+        model.act(this, NewPurchaseAction.AccountChange(8L))
+        model.act(this, NewPurchaseAction.Register)
+
+        assertEquals(PurchaseNotice.AccountUnavailable, model.state.notice)
+        assertEquals(1, model.state.lines.size)
+    }
+
     private fun TestScope.viewModel(
         source: () -> Flow<PurchaseCatalog> = { catalog },
         state: SavedStateHandle = savedState,
@@ -135,6 +201,7 @@ class NewPurchaseViewModelTest {
             prefillSupplierId = prefillSupplier,
             prefillFromPurchaseId = correction?.let { 318L },
             loadCorrection = { correction },
+            payingAccounts = payingAccounts,
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()

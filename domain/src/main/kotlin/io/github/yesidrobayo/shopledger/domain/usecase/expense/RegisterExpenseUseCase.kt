@@ -4,6 +4,9 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
 import io.github.yesidrobayo.shopledger.domain.model.expense.NewExpense
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementDraft
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -17,6 +20,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseRules
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.storageSafe
+import io.github.yesidrobayo.shopledger.domain.usecase.money.AccountIssue
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
+import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyAppendResult
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
 import kotlin.time.Instant
@@ -47,6 +53,12 @@ sealed interface RegisterExpenseResult {
     /** La moneda sigue sin confirmar: ningún monto se guarda antes. Lo escrito se conserva. */
     data object CurrencyNotConfirmed : RegisterExpenseResult
 
+    /** La cuenta elegida no puede pagar el gasto, por [issue]. La persona elige otra o ninguna. */
+    data class AccountUnavailable(val issue: AccountIssue) : RegisterExpenseResult
+
+    /** El saldo de la cuenta no cabría en un entero de 64 bits con este gasto. */
+    data object AccountOverflow : RegisterExpenseResult
+
     /** La base no pudo escribir, por [failure]. No quedó nada guardado. */
     data class StorageFailed(val failure: StorageFailure) : RegisterExpenseResult
 }
@@ -63,8 +75,11 @@ sealed interface RegisterExpenseResult {
  *   gastos nuevos.
  * - **El primer gasto bloquea la moneda**, en su misma transacción, igual que una venta o una compra.
  *
- * Por ahora el gasto no sale de ninguna cuenta de dinero ni nace de un gasto recurrente: los dos
- * llegan con su módulo, que agregará su movimiento en esta misma transacción.
+ * - **La cuenta es opcional.** Con una cuenta, el dinero sale de ella como un `EXPENSE_PAYMENT`, en
+ *   esta misma transacción y con la fecha del gasto. La cuenta tiene que estar vigente y llevar la
+ *   moneda del negocio. Sin cuenta no se escribe ningún movimiento ni se lee ninguna cuenta.
+ *
+ * Por ahora el gasto no nace de un gasto recurrente: llega con su módulo.
  */
 class RegisterExpenseUseCase(
     private val transactions: TransactionRunner,
@@ -72,6 +87,7 @@ class RegisterExpenseUseCase(
     private val expenses: ExpenseRepository,
     private val categories: ExpenseCategoryRepository,
     private val clock: Clock,
+    private val money: DocumentMoney? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
 
@@ -100,25 +116,50 @@ class RegisterExpenseUseCase(
 
         // Justo antes de escribir: el primer registro con dinero bloquea la moneda en esta misma
         // transacción, y si el gasto se deshace, el bloqueo también.
-        when (currencyLock.lockForMoneyRecord(now)) {
-            is CurrencyLockResult.Locked -> Unit
+        val currency = when (val lock = currencyLock.lockForMoneyRecord(now)) {
+            is CurrencyLockResult.Locked -> lock.currency
 
             CurrencyLockResult.Unconfirmed -> return reject(
                 RegisterExpenseResult.CurrencyNotConfirmed,
             )
+        }
+        val accountId = request.moneyAccountId
+        val payer = accountId?.let {
+            val documentMoney = checkNotNull(money) { "Un gasto con cuenta necesita el dinero" }
+            documentMoney.issueOf(it, currency)?.let { issue ->
+                return reject(RegisterExpenseResult.AccountUnavailable(issue))
+            }
+            documentMoney
         }
         val id = expenses.insert(
             NewExpense(
                 expenseCategoryId = category.id,
                 amount = valid.amount,
                 description = valid.description,
-                moneyAccountId = null,
+                moneyAccountId = accountId,
                 recurringExpenseId = null,
                 occurredAt = time.occurredAt,
                 businessDate = time.businessDate,
                 createdAt = now,
             ),
         )
+        if (payer != null) {
+            val draft = MoneyMovementDraft(
+                accountId = accountId,
+                type = MoneyMovementType.EXPENSE_PAYMENT,
+                amount = -valid.amount,
+                origin = MoneyOrigin.Expense(id),
+            )
+            when (payer.append(draft, time, now)) {
+                is MoneyAppendResult.Appended -> Unit
+
+                // Se revisó en esta misma transacción: no puede haber desaparecido.
+                MoneyAppendResult.AccountNotFound ->
+                    return reject(RegisterExpenseResult.AccountUnavailable(AccountIssue.NOT_FOUND))
+
+                MoneyAppendResult.Overflow -> return reject(RegisterExpenseResult.AccountOverflow)
+            }
+        }
         return TxResult.Commit(RegisterExpenseResult.Registered(id))
     }
 

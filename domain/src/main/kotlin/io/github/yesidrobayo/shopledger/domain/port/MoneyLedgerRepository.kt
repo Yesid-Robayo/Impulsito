@@ -40,6 +40,18 @@ interface MoneyLedgerRepository {
      */
     suspend fun findBySalePayment(salePaymentId: Long): List<MoneyMovement>
 
+    /**
+     * Los movimientos del gasto [expenseId], en el orden del libro: su `EXPENSE_PAYMENT`, si salió de
+     * una cuenta.
+     */
+    suspend fun findByExpense(expenseId: Long): List<MoneyMovement>
+
+    /**
+     * Los movimientos de la compra [purchaseId], en el orden del libro: su `PURCHASE_PAYMENT`, si se
+     * pagó algo al confirmarla desde una cuenta.
+     */
+    suspend fun findByPurchase(purchaseId: Long): List<MoneyMovement>
+
     /** Los movimientos del abono [customerLedgerEntryId] del libro del cliente, en el orden del libro. */
     suspend fun findByCustomerLedgerEntry(customerLedgerEntryId: Long): List<MoneyMovement>
 

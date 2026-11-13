@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCostChange
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRejection
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.usecase.money.AccountIssue
 
 /**
  * Resultado de [RegisterPurchaseUseCase]. Salvo [Registered], no se escribió nada: la compra que la
@@ -65,6 +66,12 @@ sealed interface RegisterPurchaseResult {
 
     /** La moneda del negocio sigue sin confirmar: sin ella, un monto no tiene unidad. */
     data object CurrencyNotConfirmed : RegisterPurchaseResult
+
+    /** La cuenta elegida no puede pagar la compra, por [issue]. La persona elige otra o ninguna. */
+    data class AccountUnavailable(val issue: AccountIssue) : RegisterPurchaseResult
+
+    /** El saldo de la cuenta no cabría en un entero de 64 bits con este pago. */
+    data object AccountOverflow : RegisterPurchaseResult
 
     /** La base no pudo escribir, por [failure]. No quedó nada guardado. */
     data class StorageFailed(val failure: StorageFailure) : RegisterPurchaseResult

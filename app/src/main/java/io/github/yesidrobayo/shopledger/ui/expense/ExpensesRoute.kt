@@ -14,6 +14,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.expense.ObserveExpenseMon
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.SaveExpenseCategoryUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
+import io.github.yesidrobayo.shopledger.domain.usecase.money.ObservePayingAccountsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -52,8 +54,17 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                 expenses = ports.expenses,
                 categories = ports.expenseCategories,
                 clock = clock,
+                money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
             )
-            val void = VoidExpenseUseCase(ports.transactions, ports.expenses, clock)
+            val void = VoidExpenseUseCase(
+                transactions = ports.transactions,
+                expenses = ports.expenses,
+                clock = clock,
+                settings = ports.settings,
+                money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
+            )
+            val payingAccounts =
+                ObservePayingAccountsUseCase(ports.moduleUsage, ports.settings, ports.moneyAccounts)
             val saveCategory =
                 SaveExpenseCategoryUseCase(ports.transactions, ports.expenseCategories, clock)
             ExpensesViewModel(
@@ -73,6 +84,7 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                         )
                     }
                 },
+                payingAccounts = payingAccounts(),
             )
         }
     when (model) {
@@ -159,6 +171,7 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                         is ExpensesAction.FormCategoryChange,
                         is ExpensesAction.DescriptionChange,
                         is ExpensesAction.DateChange,
+                        is ExpensesAction.AccountChange,
                         ExpensesAction.Save,
                         ExpensesAction.CloseForm,
                         ExpensesAction.MessageShown,

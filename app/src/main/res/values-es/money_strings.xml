@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="money_other_income_help">Dinero que no viene de ventas. Se muestra aparte y no entra en la ganancia final.</string>
+    <string name="document_money_account">Cuenta de dinero</string>
+    <string name="document_account_unavailable">Esa cuenta no puede pagar. Elegir otra o ninguna.</string>
 </resources>

@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierFilter
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.ObserveOpenCreditPurchasesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.ObservePurchaseBalanceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.ObservePurchaseDetailUseCase
@@ -137,6 +138,7 @@ fun PurchaseDetailRoute(
                 clock = dependencies.container.clock,
                 alerts = ports.lowStockAlerts,
                 supplierLedger = ports.supplierLedger,
+                money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
             )
             val balance = ObservePurchaseBalanceUseCase(ports.supplierLedger)
             PurchaseDetailViewModel(

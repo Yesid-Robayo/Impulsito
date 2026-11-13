@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineAmount
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRejection
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -89,6 +91,7 @@ class NewPurchaseViewModel(
     private val prefillSupplierId: Long? = null,
     private val prefillFromPurchaseId: Long? = null,
     private val loadCorrection: suspend (Long) -> PurchaseCorrection? = { null },
+    payingAccounts: Flow<List<MoneyAccount>> = flowOf(emptyList()),
 ) : ViewModel() {
     private val draft = MutableStateFlow(PurchaseDraftStore.read(savedState))
     private val overlay = MutableStateFlow(Overlay())
@@ -112,6 +115,12 @@ class NewPurchaseViewModel(
         )
 
     init {
+        viewModelScope.launch {
+            // Sin cuentas legibles, la compra no ofrece ninguna: se guarda sin dinero.
+            payingAccounts.catch { emit(emptyList()) }.collect { accounts ->
+                overlay.update { it.copy(accounts = accounts) }
+            }
+        }
         viewModelScope.launch {
             catalog.collect { load ->
                 if (load is PurchaseCatalogLoad.Ready) onCatalog(load.catalog)
@@ -153,6 +162,9 @@ class NewPurchaseViewModel(
             is NewPurchaseAction.DueDateChange -> changeDraft { it.copy(dueDate = action.date) }
 
             is NewPurchaseAction.PaidNowChange -> changeDraft { it.copy(paidNowText = action.text) }
+
+            is NewPurchaseAction.AccountChange ->
+                changeDraft { it.copy(accountId = action.accountId) }
 
             is NewPurchaseAction.QuantityChange -> editLine(action.key) {
                 it.copy(quantityText = action.text)
@@ -369,6 +381,7 @@ class NewPurchaseViewModel(
             PurchaseNotice.TotalTooLarge,
             PurchaseNotice.TooManyLines,
             PurchaseNotice.SupplierUnavailable,
+            PurchaseNotice.AccountUnavailable,
             is PurchaseNotice.CorrectionLeftOut,
             -> attempts.update { it + 1 }
         }
@@ -381,7 +394,7 @@ class NewPurchaseViewModel(
         val requests = current.lines.map { lineRequest(catalog, it) }
         val reference = current.reference.trim()
         val complete = requests.all { it != null } && current.lines.isNotEmpty()
-        val payment = paymentOf(catalog, current, uiState.value.total)
+        val payment = paymentOf(catalog, current, uiState.value.total, overlay.value.accounts)
         if (!complete || reference.length > MAX_REFERENCE_LENGTH || payment.errors.isNotEmpty()) {
             overlay.update { it.copy(showMissing = true) }
             return
@@ -394,6 +407,8 @@ class NewPurchaseViewModel(
             // Pagada completa no lleva monto ni vencimiento: el caso de uso la toma como pagada.
             amountPaid = if (current.onCredit) paidNow(current) ?: Money.ZERO else null,
             dueDate = if (current.onCredit) payment.dueDate else null,
+            // Una cuenta que dejó de ofrecerse mientras tanto no se usa.
+            moneyAccountId = payment.accountId,
         )
         overlay.update { it.copy(registering = true, notice = null) }
         viewModelScope.launch {
@@ -456,6 +471,14 @@ class NewPurchaseViewModel(
             RegisterPurchaseResult.SupplierBalanceTooLarge,
             -> notice(PurchaseNotice.RegisterFailed(outOfSpace = false))
 
+            is RegisterPurchaseResult.AccountUnavailable -> notice(
+                PurchaseNotice.AccountUnavailable,
+            )
+
+            // Un saldo que no cabe en la cuenta no se corrige escribiendo: se reintenta.
+            RegisterPurchaseResult.AccountOverflow ->
+                notice(PurchaseNotice.RegisterFailed(outOfSpace = false))
+
             is RegisterPurchaseResult.StorageFailed -> notice(
                 PurchaseNotice.RegisterFailed(result.failure.isOutOfSpace),
             )
@@ -497,7 +520,7 @@ class NewPurchaseViewModel(
             registering = shown.registering,
             registered = shown.registered,
             closed = shown.closed,
-            payment = paymentOf(catalog, current, lines.total),
+            payment = paymentOf(catalog, current, lines.total, shown.accounts),
         )
     }
 
@@ -510,9 +533,17 @@ class NewPurchaseViewModel(
         catalog: PurchaseCatalog,
         current: PurchaseDraft,
         total: Money?,
+        accounts: List<MoneyAccount>,
     ): PurchasePaymentUi {
         val purchaseDate = current.date ?: catalog.today
-        if (!current.onCredit) return PurchasePaymentUi(purchaseDate = purchaseDate)
+        val accountId = current.accountId?.takeIf { id -> accounts.any { it.id == id } }
+        if (!current.onCredit) {
+            return PurchasePaymentUi(
+                purchaseDate = purchaseDate,
+                accounts = accounts,
+                accountId = accountId,
+            )
+        }
         val supplier = current.supplierId?.let { id ->
             catalog.suppliers.firstOrNull { it.id == id }
         }
@@ -545,6 +576,8 @@ class NewPurchaseViewModel(
             purchaseDate = purchaseDate,
             paidNowText = current.paidNowText,
             errors = errors,
+            accounts = accounts,
+            accountId = accountId,
         )
     }
 
@@ -841,6 +874,7 @@ class NewPurchaseViewModel(
         val showMissing: Boolean = false,
         val rejected: Pair<Int, PurchaseLineRejection>? = null,
         val closed: Boolean = false,
+        val accounts: List<MoneyAccount> = emptyList(),
     )
 
     private class BuiltLines(

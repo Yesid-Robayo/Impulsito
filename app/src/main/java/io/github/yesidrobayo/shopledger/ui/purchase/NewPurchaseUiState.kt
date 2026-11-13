@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.purchase
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import kotlinx.datetime.DayOfWeek
 
@@ -94,6 +95,8 @@ data class PurchaseLineUi(
  * @param purchaseDate la fecha de la compra, desde la que puede vencer.
  * @param paidNowText lo que se paga al registrar, tal como se escribió.
  * @param errors lo que impide registrar la compra a plazo, cada uno junto a su campo.
+ * @param accounts las cuentas de las que se puede pagar; vacía si la persona no lleva cuentas.
+ * @param accountId la cuenta elegida, o `null` para ninguna.
  */
 data class PurchasePaymentUi(
     val onCredit: Boolean = false,
@@ -102,6 +105,8 @@ data class PurchasePaymentUi(
     val purchaseDate: BusinessDate? = null,
     val paidNowText: String = "",
     val errors: Set<PurchasePaymentError> = emptySet(),
+    val accounts: List<MoneyAccount> = emptyList(),
+    val accountId: Long? = null,
 )
 
 /** Lo que impide registrar una compra a plazo. La pantalla elige el texto. */
@@ -184,6 +189,9 @@ sealed interface PurchaseNotice {
     /** El proveedor elegido se archivó o se eliminó mientras se escribía la compra. */
     data object SupplierUnavailable : PurchaseNotice
 
+    /** La cuenta elegida ya no puede pagar la compra: se elige otra o ninguna. */
+    data object AccountUnavailable : PurchaseNotice
+
     /**
      * Al corregir una compra, [lines] líneas no se trajeron porque su producto está archivado, y con
      * [supplier] tampoco el proveedor, que está archivado.
@@ -234,6 +242,9 @@ sealed interface NewPurchaseAction {
     data class DueDateChange(val date: BusinessDate?) : NewPurchaseAction
 
     data class PaidNowChange(val text: String) : NewPurchaseAction
+
+    /** Elige la cuenta de la que sale lo pagado, o ninguna con `null`. */
+    data class AccountChange(val accountId: Long?) : NewPurchaseAction
 
     data class QuantityChange(val key: Long, val text: String) : NewPurchaseAction
 

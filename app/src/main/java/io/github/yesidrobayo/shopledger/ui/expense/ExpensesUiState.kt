@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListDay
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListRow
@@ -33,6 +34,7 @@ data class ExpensesUiState(
     val selectedExpenseId: Long? = null,
     val message: ExpenseMessage? = null,
     val newCategory: NewExpenseCategory? = null,
+    val accounts: List<MoneyAccount> = emptyList(),
 ) {
     /** Las categorías que se ofrecen en un gasto nuevo: solo las vigentes. */
     val activeCategories: List<ExpenseCategory> get() = categories.filter { !it.isArchived }
@@ -120,6 +122,7 @@ data class ExpenseForm(
     val status: ExpenseSheetStatus = ExpenseSheetStatus.IDLE,
     val notice: ExpenseFormNotice? = null,
     val proposeCategory: Boolean = true,
+    val accountId: Long? = null,
 ) {
     val descriptionTooLong: Boolean
         get() = description.trim().codePointLength() > MAX_DESCRIPTION_LENGTH
@@ -164,6 +167,9 @@ sealed interface ExpenseFormNotice {
 
     /** Al corregir, la categoría original está archivada y no se trajo: hay que elegir otra. */
     data object CategoryLeftOut : ExpenseFormNotice
+
+    /** La cuenta elegida ya no puede pagar el gasto: se elige otra o ninguna. */
+    data object AccountUnavailable : ExpenseFormNotice
 }
 
 /**
@@ -243,6 +249,9 @@ sealed interface ExpensesAction {
     data class DescriptionChange(val text: String) : ExpensesAction
 
     data class DateChange(val date: BusinessDate) : ExpensesAction
+
+    /** Elige la cuenta de la que sale el gasto, o ninguna con `null`. */
+    data class AccountChange(val accountId: Long?) : ExpensesAction
 
     data object Save : ExpensesAction
 

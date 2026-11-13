@@ -82,6 +82,7 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.money.PayingAccountChips
 import io.github.yesidrobayo.shopledger.ui.purchase.EXPENSES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.PURCHASES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.RecordsSegments
@@ -641,7 +642,8 @@ private fun SaveButton(form: ExpenseForm, onAction: (ExpensesAction) -> Unit) {
 
 /**
  * Los campos del gasto nuevo, en el orden de la pantalla: valor con foco, categoría con `Otros` por
- * defecto, descripción, fecha y la ayuda de que la mercancía va como compra.
+ * defecto, descripción, fecha, la cuenta de dinero si la persona lleva cuentas, y la ayuda de que
+ * la mercancía va como compra.
  */
 @Composable
 private fun ColumnScope.ExpenseFormFields(
@@ -703,6 +705,9 @@ private fun ColumnScope.ExpenseFormFields(
                 .takeIf { ExpenseFormError.DATE_FUTURE in errors },
         )
     }
+    PayingAccountChips(uiState.accounts, form.accountId) {
+        onAction(ExpensesAction.AccountChange(it))
+    }
     form.notice?.let { FormNotice(it, onAction) }
     NoticeCard(stringResource(R.string.notice_purchase_as_expense), NoticeVariant.INFO)
 }
@@ -731,6 +736,11 @@ private fun FormNotice(notice: ExpenseFormNotice, onAction: (ExpensesAction) -> 
 
         ExpenseFormNotice.CategoryLeftOut -> NoticeCard(
             text = stringResource(R.string.notice_fix_archived_category),
+            variant = NoticeVariant.WARNING,
+        )
+
+        ExpenseFormNotice.AccountUnavailable -> NoticeCard(
+            text = stringResource(R.string.document_account_unavailable),
             variant = NoticeVariant.WARNING,
         )
     }

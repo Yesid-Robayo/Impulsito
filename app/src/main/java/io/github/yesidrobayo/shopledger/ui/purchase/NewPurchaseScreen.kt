@@ -55,6 +55,7 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.money.PayingAccountChips
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -257,6 +258,10 @@ private fun PaymentSection(uiState: NewPurchaseUiState, onAction: (NewPurchaseAc
             onToggle = { onAction(NewPurchaseAction.PaymentModeChange(it)) },
             multiple = false,
         )
+        // La cuenta paga lo que se paga ahora: todo en `Pagada`, y en `A plazo` lo pagado ahora.
+        PayingAccountChips(payment.accounts, payment.accountId) {
+            onAction(NewPurchaseAction.AccountChange(it))
+        }
         if (!payment.onCredit) return@Column
         if (PurchasePaymentError.SUPPLIER_REQUIRED in payment.errors) {
             NoticeCard(
@@ -504,6 +509,11 @@ private fun PurchaseNoticeCard(notice: PurchaseNotice, onAction: (NewPurchaseAct
                 )
             }
         }
+
+        PurchaseNotice.AccountUnavailable -> NoticeCard(
+            text = stringResource(R.string.document_account_unavailable),
+            variant = NoticeVariant.WARNING,
+        )
 
         PurchaseNotice.SupplierUnavailable -> NoticeCard(
             text = stringResource(R.string.purchase_supplier_unavailable),

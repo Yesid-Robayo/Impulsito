@@ -44,6 +44,20 @@ internal interface MoneyMovementDao {
     @Query("SELECT * FROM money_movements WHERE sale_payment_id = :salePaymentId ORDER BY id")
     suspend fun findBySalePayment(salePaymentId: Long): List<MoneyMovementEntity>
 
+    /**
+     * Los movimientos de un gasto: su `EXPENSE_PAYMENT`. Solo se lee al anular un gasto que salió de
+     * una cuenta, poco frecuente: por eso la columna no lleva índice propio.
+     */
+    @Query("SELECT * FROM money_movements WHERE expense_id = :expenseId ORDER BY id")
+    suspend fun findByExpense(expenseId: Long): List<MoneyMovementEntity>
+
+    /**
+     * Los movimientos de una compra: su `PURCHASE_PAYMENT`. Solo se lee al anular una compra que se
+     * pagó desde una cuenta, poco frecuente: por eso la columna no lleva índice propio.
+     */
+    @Query("SELECT * FROM money_movements WHERE purchase_id = :purchaseId ORDER BY id")
+    suspend fun findByPurchase(purchaseId: Long): List<MoneyMovementEntity>
+
     /** Los movimientos de un pago a proveedor: su `SUPPLIER_PAYMENT`, si se pagó desde una cuenta. */
     @Query(
         "SELECT * FROM money_movements WHERE supplier_ledger_entry_id = :entryId ORDER BY id",

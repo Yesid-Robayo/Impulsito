@@ -12,6 +12,8 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
+import io.github.yesidrobayo.shopledger.domain.usecase.money.ObservePayingAccountsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.ObservePurchaseCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.ObservePurchaseDetailUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
@@ -79,6 +81,7 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                     alerts = ports.lowStockAlerts,
                     categories = ports.categories,
                     supplierLedger = ports.supplierLedger,
+                    money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
                 )
             val reactivate =
                 ReactivateProductUseCase(
@@ -116,6 +119,11 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                         )
                     }
                 },
+                payingAccounts = ObservePayingAccountsUseCase(
+                    ports.moduleUsage,
+                    ports.settings,
+                    ports.moneyAccounts,
+                )(),
             )
         }
     when (model) {

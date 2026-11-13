@@ -5,12 +5,15 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.testing.FakeAppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeExpenseRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeMoneyAccountRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeMoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeTransactionRunner
 import io.github.yesidrobayo.shopledger.domain.testing.FixedClock
 import io.github.yesidrobayo.shopledger.domain.testing.InMemoryDatabase
 import io.github.yesidrobayo.shopledger.domain.testing.appSettings
 import io.github.yesidrobayo.shopledger.domain.testing.regionalSettings
 import io.github.yesidrobayo.shopledger.domain.testing.seedExpenseCategories
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import kotlin.time.Instant
 import kotlinx.datetime.DayOfWeek
 
@@ -51,11 +54,26 @@ internal class ExpenseWorld(
     /** El id de cada categoría inicial, por su clave. */
     val seeded: Map<String, Long> = database.seedExpenseCategories(SEEDED_AT)
 
-    fun register() = RegisterExpenseUseCase(transactions, settings, expenses, categories, clock)
+    val moneyAccounts = FakeMoneyAccountRepository(database)
+    val moneyLedger = FakeMoneyLedgerRepository(database)
+
+    fun register() = RegisterExpenseUseCase(
+        transactions,
+        settings,
+        expenses,
+        categories,
+        clock,
+        DocumentMoney(moneyAccounts, moneyLedger),
+    )
 
     /** Anula con el reloj del negocio, o con [at] si la anulación es otro día. */
-    fun void(at: Instant? = null) =
-        VoidExpenseUseCase(transactions, expenses, at?.let(::FixedClock) ?: clock)
+    fun void(at: Instant? = null) = VoidExpenseUseCase(
+        transactions,
+        expenses,
+        at?.let(::FixedClock) ?: clock,
+        settings,
+        DocumentMoney(moneyAccounts, moneyLedger),
+    )
 
     fun save() = SaveExpenseCategoryUseCase(transactions, categories, clock)
 

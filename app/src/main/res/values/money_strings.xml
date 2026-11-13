@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="money_other_income_help">Money that does not come from sales. It is shown separately and is not part of final profit.</string>
+    <string name="document_money_account">Money account</string>
+    <string name="document_account_unavailable">That account cannot pay. Choose another one or none.</string>
 </resources>

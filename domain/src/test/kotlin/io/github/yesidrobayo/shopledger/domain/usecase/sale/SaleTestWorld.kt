@@ -96,6 +96,7 @@ import io.github.yesidrobayo.shopledger.domain.testing.FixedClock
 import io.github.yesidrobayo.shopledger.domain.testing.appSettings
 import io.github.yesidrobayo.shopledger.domain.testing.lastCostsOf
 import io.github.yesidrobayo.shopledger.domain.testing.regionalSettings
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseCase
 import kotlin.time.Instant
@@ -899,6 +900,7 @@ internal class SaleWorld(
         productUnits = productUnitRepository,
         alerts = alertRepository.takeIf { withAlerts },
         supplierLedger = supplierLedger,
+        money = DocumentMoney(moneyAccountRepository, moneyLedger),
     )
 
     fun voidPurchase(): VoidPurchaseUseCase = VoidPurchaseUseCase(
@@ -910,6 +912,7 @@ internal class SaleWorld(
         clock = clock,
         alerts = alertRepository.takeIf { withAlerts },
         supplierLedger = supplierLedger,
+        money = DocumentMoney(moneyAccountRepository, moneyLedger),
     )
 
     /** Agrega un proveedor con nombre inventado, archivado o no, y con plazo habitual o sin él. */
@@ -981,6 +984,13 @@ internal class SaleWorld(
         override suspend fun findBySalePayment(salePaymentId: Long): List<MoneyMovement> =
             read().moneyMovements.values
                 .filter { it.draft.origin == MoneyOrigin.SalePayment(salePaymentId) }
+                .sortedBy { it.id }
+
+        override suspend fun findByExpense(expenseId: Long): List<MoneyMovement> = unused()
+
+        override suspend fun findByPurchase(purchaseId: Long): List<MoneyMovement> =
+            read().moneyMovements.values
+                .filter { it.draft.origin == MoneyOrigin.Purchase(purchaseId) }
                 .sortedBy { it.id }
 
         override suspend fun findByCustomerLedgerEntry(

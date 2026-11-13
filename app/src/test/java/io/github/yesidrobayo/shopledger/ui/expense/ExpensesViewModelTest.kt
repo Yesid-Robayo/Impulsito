@@ -9,8 +9,13 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryDeta
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
 import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrection
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
@@ -21,6 +26,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseMonth
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.SaveExpenseCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseResult
+import io.github.yesidrobayo.shopledger.domain.usecase.money.AccountIssue
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -135,6 +141,19 @@ class ExpensesViewModelTest {
     private var categoryResult: SaveExpenseCategoryResult = SaveExpenseCategoryResult.Saved(30)
     private var correction: ExpenseCorrection? = null
 
+    private val payingAccounts = MutableStateFlow<List<MoneyAccount>>(emptyList())
+
+    private fun account(id: Long) = MoneyAccount(
+        id = id,
+        systemKey = null,
+        details = MoneyAccountDetails("Account $id", "account $id", MoneyAccountKind.BANK),
+        currency = AccountCurrency(requireNotNull(CurrencyCode.of("XTS")), 2),
+        balance = Money.ZERO,
+        archivedAt = null,
+        createdAt = now,
+        updatedAt = now,
+    )
+
     private fun TestScope.viewModel(
         calendarResult: BusinessCalendarResult = BusinessCalendarResult.Ready(calendar),
     ): ExpensesViewModel {
@@ -156,9 +175,101 @@ class ExpensesViewModelTest {
                 categoryResult
             },
             loadCorrection = { correction },
+            payingAccounts = payingAccounts,
         )
         advanceUntilIdle()
         return model
+    }
+
+    @Test
+    fun `without accounts in use the expense asks for none and saves without one`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            model.onAction(ExpensesAction.NewExpense)
+            model.onAction(ExpensesAction.AmountChange("5"))
+            model.onAction(ExpensesAction.Save)
+            advanceUntilIdle()
+
+            assertTrue(model.uiState.value.accounts.isEmpty())
+            assertNull(requests.single().moneyAccountId)
+        }
+
+    @Test
+    fun `the chosen account goes with the expense, and choosing none clears it`() =
+        runTest(dispatcher) {
+            payingAccounts.value = listOf(account(3), account(4))
+            val model = viewModel()
+            model.onAction(ExpensesAction.NewExpense)
+            model.onAction(ExpensesAction.AmountChange("5"))
+            model.onAction(ExpensesAction.AccountChange(4))
+            model.onAction(ExpensesAction.Save)
+            advanceUntilIdle()
+            assertEquals(4L, requests.last().moneyAccountId)
+
+            model.onAction(ExpensesAction.NewExpense)
+            model.onAction(ExpensesAction.AmountChange("5"))
+            model.onAction(ExpensesAction.AccountChange(4))
+            model.onAction(ExpensesAction.AccountChange(null))
+            model.onAction(ExpensesAction.Save)
+            advanceUntilIdle()
+            assertNull(requests.last().moneyAccountId)
+        }
+
+    @Test
+    fun `an account that stopped being offered is not used`() = runTest(dispatcher) {
+        payingAccounts.value = listOf(account(3))
+        val model = viewModel()
+        model.onAction(ExpensesAction.NewExpense)
+        model.onAction(ExpensesAction.AmountChange("5"))
+        model.onAction(ExpensesAction.AccountChange(3))
+        payingAccounts.value = emptyList()
+        advanceUntilIdle()
+        model.onAction(ExpensesAction.Save)
+        advanceUntilIdle()
+
+        assertNull(requests.single().moneyAccountId)
+    }
+
+    @Test
+    fun `an account that cannot pay keeps what was written and says so`() = runTest(dispatcher) {
+        payingAccounts.value = listOf(account(3))
+        val model = viewModel()
+        model.onAction(ExpensesAction.NewExpense)
+        model.onAction(ExpensesAction.AmountChange("5"))
+        model.onAction(ExpensesAction.AccountChange(3))
+        val cases = listOf(
+            RegisterExpenseResult.AccountUnavailable(AccountIssue.ARCHIVED) to
+                ExpenseFormNotice.AccountUnavailable,
+            RegisterExpenseResult.AccountOverflow to
+                ExpenseFormNotice.SaveFailed(outOfSpace = false),
+        )
+        for ((result, notice) in cases) {
+            registerResult = result
+            model.onAction(ExpensesAction.Save)
+            advanceUntilIdle()
+            val form = requireNotNull(model.uiState.value.form)
+            assertEquals("5", form.amountText)
+            assertEquals(3L, form.accountId)
+            assertEquals(notice, form.notice)
+        }
+    }
+
+    @Test
+    fun `a void that cannot give the money back keeps the expense open`() = runTest(dispatcher) {
+        months.data.value = mapOf(november to listOf(row(7, 500)))
+        val model = viewModel()
+        for (result in listOf(
+            VoidExpenseResult.AccountOverflow,
+            VoidExpenseResult.UnknownTimeZone("Nowhere/Unknown"),
+        )) {
+            voidResult = result
+            model.onAction(ExpensesAction.OpenExpense(7))
+            model.onAction(ExpensesAction.StartVoid)
+            model.onAction(ExpensesAction.ConfirmVoid)
+            advanceUntilIdle()
+            assertEquals(ExpenseSheetStatus.FAILED, model.uiState.value.detail?.status)
+            model.onAction(ExpensesAction.CloseDetail)
+        }
     }
 
     @Test

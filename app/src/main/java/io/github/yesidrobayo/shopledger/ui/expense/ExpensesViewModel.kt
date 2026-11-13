@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryDraf
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrection
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -72,6 +74,7 @@ class ExpensesViewModel(
         SaveExpenseCategoryResult.NotFound
     },
     private val loadCorrection: suspend (Long) -> ExpenseCorrection? = { null },
+    payingAccounts: Flow<List<MoneyAccount>> = flowOf(emptyList()),
 ) : ViewModel() {
     private val state = MutableStateFlow(ExpensesUiState())
     val uiState: StateFlow<ExpensesUiState> = state.asStateFlow()
@@ -97,6 +100,12 @@ class ExpensesViewModel(
                 } else if (query.value == null) {
                     query.value = Query(today.date.yearMonth, categoryId = null, attempt = 0)
                 }
+            }
+        }
+        viewModelScope.launch {
+            // Sin cuentas legibles, el gasto no ofrece ninguna: se guarda sin dinero.
+            payingAccounts.catch { emit(emptyList()) }.collect { accounts ->
+                state.update { it.copy(accounts = accounts) }
             }
         }
         viewModelScope.launch {
@@ -169,6 +178,8 @@ class ExpensesViewModel(
             is ExpensesAction.DescriptionChange -> editForm { it.copy(description = action.text) }
 
             is ExpensesAction.DateChange -> editForm { it.copy(date = action.date) }
+
+            is ExpensesAction.AccountChange -> editForm { it.copy(accountId = action.accountId) }
 
             ExpensesAction.Save -> save()
 
@@ -290,6 +301,8 @@ class ExpensesViewModel(
                 VoidExpenseResult.ExpenseNotFound,
                 VoidExpenseResult.ReasonNotAllowed,
                 VoidExpenseResult.NoteTooLong,
+                is VoidExpenseResult.UnknownTimeZone,
+                VoidExpenseResult.AccountOverflow,
                 is VoidExpenseResult.StorageFailed,
                 -> editDetail { it.copy(status = ExpenseSheetStatus.FAILED) }
             }
@@ -314,6 +327,8 @@ class ExpensesViewModel(
                 VoidExpenseResult.ExpenseNotFound,
                 VoidExpenseResult.ReasonNotAllowed,
                 VoidExpenseResult.NoteTooLong,
+                is VoidExpenseResult.UnknownTimeZone,
+                VoidExpenseResult.AccountOverflow,
                 is VoidExpenseResult.StorageFailed,
                 -> false
             }
@@ -380,6 +395,8 @@ class ExpensesViewModel(
             categoryId = categoryId,
             description = form.description.trim().ifEmpty { null },
             date = form.date,
+            // Una cuenta que dejó de ofrecerse mientras tanto no se usa.
+            moneyAccountId = form.accountId?.takeIf { id -> current.accounts.any { it.id == id } },
         )
         viewModelScope.launch {
             val result = register(request)
@@ -411,6 +428,13 @@ class ExpensesViewModel(
 
                 is RegisterExpenseResult.StorageFailed ->
                     fail(notice = ExpenseFormNotice.SaveFailed(result.failure.isOutOfSpace))
+
+                is RegisterExpenseResult.AccountUnavailable ->
+                    fail(notice = ExpenseFormNotice.AccountUnavailable)
+
+                // Un saldo que no cabe en la cuenta no se corrige escribiendo: se reintenta.
+                RegisterExpenseResult.AccountOverflow ->
+                    fail(notice = ExpenseFormNotice.SaveFailed(outOfSpace = false))
             }
         }
     }

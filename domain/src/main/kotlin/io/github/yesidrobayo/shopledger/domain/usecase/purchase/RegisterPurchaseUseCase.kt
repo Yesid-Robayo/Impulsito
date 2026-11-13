@@ -8,6 +8,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementDraft
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.payable.NewSupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntryType
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
@@ -52,6 +55,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseTotals
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseUnit
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
+import io.github.yesidrobayo.shopledger.domain.usecase.money.AccountIssue
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
+import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyAppendResult
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.appendChained
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
@@ -97,6 +103,11 @@ import kotlin.time.Instant
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
  * [supplierLedger] solo hace falta para comprar a plazo.
+ *
+ * Con una cuenta elegida, lo pagado al confirmar sale de ella como un `PURCHASE_PAYMENT`, en esta
+ * misma transacción y con la fecha de la compra. La cuenta tiene que estar vigente y llevar la
+ * moneda del negocio. Sin cuenta, o sin nada pagado, no se escribe dinero ni se lee ninguna cuenta.
+ * [money] solo hace falta para pagar desde una cuenta.
  */
 class RegisterPurchaseUseCase(
     private val transactions: TransactionRunner,
@@ -113,6 +124,7 @@ class RegisterPurchaseUseCase(
     private val alerts: LowStockAlertRepository? = null,
     private val categories: CategoryRepository? = null,
     private val supplierLedger: SupplierLedgerRepository? = null,
+    private val money: DocumentMoney? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -164,14 +176,47 @@ class RegisterPurchaseUseCase(
 
         // Justo antes de escribir: la primera compra bloquea la moneda en esta misma transacción,
         // y si la compra se deshace, el bloqueo también.
-        when (currencyLock.lockForMoneyRecord(now)) {
-            is CurrencyLockResult.Locked -> Unit
+        val currency = when (val lock = currencyLock.lockForMoneyRecord(now)) {
+            is CurrencyLockResult.Locked -> lock.currency
 
             CurrencyLockResult.Unconfirmed ->
                 return reject(RegisterPurchaseResult.CurrencyNotConfirmed)
         }
-        val purchaseId =
-            write(request.supplierId, reference, priced.lines, priced.totals, settlement, time, now)
+        // Sin nada pagado, la cuenta no mueve nada: la compra no la guarda.
+        val accountId = request.moneyAccountId?.takeIf { settlement.amountPaid > Money.ZERO }
+        val payer = accountId?.let {
+            val documentMoney = checkNotNull(money) { "Pagar desde una cuenta necesita el dinero" }
+            documentMoney.issueOf(it, currency)?.let { issue ->
+                return reject(RegisterPurchaseResult.AccountUnavailable(issue))
+            }
+            documentMoney
+        }
+        val purchaseId = write(
+            request.supplierId,
+            reference,
+            priced.lines,
+            priced.totals,
+            settlement.copy(moneyAccountId = accountId),
+            time,
+            now,
+        )
+        if (payer != null) {
+            val draft = MoneyMovementDraft(
+                accountId = accountId,
+                type = MoneyMovementType.PURCHASE_PAYMENT,
+                amount = -settlement.amountPaid,
+                origin = MoneyOrigin.Purchase(purchaseId),
+            )
+            when (payer.append(draft, time, now)) {
+                is MoneyAppendResult.Appended -> Unit
+
+                // Se revisó en esta misma transacción: no puede haber desaparecido.
+                MoneyAppendResult.AccountNotFound ->
+                    return reject(RegisterPurchaseResult.AccountUnavailable(AccountIssue.NOT_FOUND))
+
+                MoneyAppendResult.Overflow -> return reject(RegisterPurchaseResult.AccountOverflow)
+            }
+        }
         if (settlement.credit != null && supplier != null) {
             val charged = charge(supplier.id, purchaseId, settlement.credit, settlement, time, now)
             if (!charged) return reject(RegisterPurchaseResult.SupplierBalanceTooLarge)
@@ -399,7 +444,7 @@ class RegisterPurchaseUseCase(
                 total = totals.total,
                 costTotal = totals.cost,
                 amountPaid = settlement.amountPaid,
-                moneyAccountId = null,
+                moneyAccountId = settlement.moneyAccountId,
                 dueDate = settlement.dueDate,
                 locationId = location,
                 foreignCurrency = null,
@@ -460,12 +505,14 @@ class RegisterPurchaseUseCase(
 
     /**
      * Cómo se paga la compra: [amountPaid] al confirmar, [credit] lo que queda debiendo, o `null` si
-     * se pagó completa, y [dueDate] el vencimiento de esa deuda, si tiene.
+     * se pagó completa, y [dueDate] el vencimiento de esa deuda, si tiene. [moneyAccountId] es la
+     * cuenta de la que sale lo pagado, si la hay.
      */
     private data class Settlement(
         val amountPaid: Money,
         val credit: Money?,
         val dueDate: BusinessDate?,
+        val moneyAccountId: Long? = null,
     )
 
     private sealed interface SettlementResult {

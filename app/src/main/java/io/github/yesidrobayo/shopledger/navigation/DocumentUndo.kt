@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.UndoExpenseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.UndoPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseCase
@@ -80,6 +81,8 @@ internal fun undoneExpense(result: VoidExpenseResult?): Boolean = when (result) 
     VoidExpenseResult.ExpenseNotFound,
     VoidExpenseResult.ReasonNotAllowed,
     VoidExpenseResult.NoteTooLong,
+    is VoidExpenseResult.UnknownTimeZone,
+    VoidExpenseResult.AccountOverflow,
     is VoidExpenseResult.StorageFailed,
     -> false
 }
@@ -111,7 +114,13 @@ fun rememberExpenseUndo(): DocumentUndo {
                 is DataAccess.Ready -> {
                     val ports = access.ports
                     val void =
-                        VoidExpenseUseCase(ports.transactions, ports.expenses, container.clock)
+                        VoidExpenseUseCase(
+                            transactions = ports.transactions,
+                            expenses = ports.expenses,
+                            clock = container.clock,
+                            settings = ports.settings,
+                            money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
+                        )
                     UndoExpenseUseCase(void)(expenseId)
                 }
 
@@ -143,6 +152,7 @@ fun rememberPurchaseUndo(): DocumentUndo {
                         clock = container.clock,
                         alerts = ports.lowStockAlerts,
                         supplierLedger = ports.supplierLedger,
+                        money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
                     )
                     UndoPurchaseUseCase(void)(purchaseId)
                 }

@@ -14,6 +14,9 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  * [amountPaid] es lo pagado al confirmar, de cero al total, o `null` si se paga completa. Pagar menos
  * deja la compra a plazo: exige proveedor, y lo que falta va a su libro. [dueDate] es el vencimiento
  * de esa deuda, o `null` para proponerlo con el plazo habitual del proveedor. Sin deuda no se usa.
+ *
+ * [moneyAccountId] es la cuenta de la que sale lo pagado al confirmar, o `null` si la persona no usa
+ * cuentas. Sin nada pagado no se usa.
  */
 data class PurchaseRequest(
     val lines: List<PurchaseLineRequest>,
@@ -22,6 +25,7 @@ data class PurchaseRequest(
     val date: BusinessDate? = null,
     val amountPaid: Money? = null,
     val dueDate: BusinessDate? = null,
+    val moneyAccountId: Long? = null,
 )
 
 /**
