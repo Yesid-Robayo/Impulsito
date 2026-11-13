@@ -333,7 +333,7 @@ private fun ContactText(label: String, value: String) {
 
 /**
  * Lo que se le debe, o el saldo a favor, con su insignia y su vencimiento, y el acceso a cuentas por
- * pagar. Se ve con el modo discreto: es la deuda con quien se atiende.
+ * pagar. Con el modo discreto, la cifra se oculta y la insignia dice solo la palabra.
  */
 @Composable
 private fun PayableCard(balance: Money, due: PayableDue?, onOpen: () -> Unit) {
@@ -353,6 +353,7 @@ private fun PayableCard(balance: Money, due: PayableDue?, onOpen: () -> Unit) {
                 if (balance < Money.ZERO) -balance else balance,
                 MoneySize.TITLE,
                 modifier = Modifier.weight(1f, fill = false),
+                sensitive = true,
             )
             CompositionLocalProvider(LocalDiscreetMode provides true) {
                 BalanceBadge(

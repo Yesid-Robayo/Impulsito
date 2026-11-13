@@ -51,6 +51,7 @@ import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DateField
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
+import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.LedgerRow
@@ -77,8 +78,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * antiguo. La acción fija es `Registrar pago`.
  *
  * Tocar un cargo de compra abre esa compra, y tocar un pago vigente ofrece anularlo, con
- * confirmación: nada se borra. El saldo se ve aunque el modo discreto esté activo: es la deuda con
- * quien se atiende, igual que en la ficha del proveedor.
+ * confirmación: nada se borra. Con el modo discreto, toda cifra de la pantalla se oculta: lo que se
+ * debe, cada fila del libro y lo que dejaría el pago; la insignia dice solo la palabra.
  *
  * @param navigation `BACK` cuando ocupa la pantalla; `NONE` cuando va como panel junto a la lista.
  */
@@ -249,6 +250,7 @@ private fun BalanceBlock(view: PayableDetailView) {
                 amount = if (balance < Money.ZERO) -balance else balance,
                 size = MoneySize.LARGE,
                 modifier = Modifier.weight(1f, fill = false),
+                sensitive = true,
             )
             // El monto ya está al lado, en grande: la insignia dice solo la palabra.
             CompositionLocalProvider(LocalDiscreetMode provides true) {
@@ -343,6 +345,7 @@ private fun PayableLedgerRow(line: PayableLine, onAction: (PayableDetailAction) 
         balanceAfter = content.balanceAfter,
         balanceText = R.string.customer_ledger_balance_after,
         voided = line.voided,
+        sensitive = true,
         onClick = onClick,
         onClickLabel = clickLabel,
     )
@@ -471,7 +474,10 @@ private fun PreviewLine(preview: PayablePreview?) {
             rememberMoneyDisplay(preview.credit, money).text.text,
         )
     }
-    Text(text, style = AppTheme.amounts.small, color = MaterialTheme.colorScheme.onSurface)
+    // Dice lo que se debe: con el modo discreto se oculta, aunque el monto escrito siga a la vista.
+    DiscreetValue(style = AppTheme.amounts.small) {
+        Text(text, style = AppTheme.amounts.small, color = MaterialTheme.colorScheme.onSurface)
+    }
 }
 
 @Composable
