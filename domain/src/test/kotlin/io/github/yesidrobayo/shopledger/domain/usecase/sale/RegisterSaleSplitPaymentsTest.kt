@@ -22,6 +22,8 @@ import org.junit.Test
  */
 class RegisterSaleSplitPaymentsTest {
     private val world = SaleWorld().apply {
+        // La cuenta de la tarjeta, en la moneda del negocio.
+        addMoneyAccount(4)
         addMethod(method())
         addMethod(
             method(

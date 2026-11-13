@@ -15,6 +15,7 @@
     <string name="empty_sale_body">With its cost, the profit on each sale is shown.</string>
     <string name="empty_sale_action">Create product</string>
     <string name="confirm_sale_registered">Sale recorded: %1$s</string>
+    <string name="confirm_sale_registered_account_skipped">Sale recorded: %1$s. The method\'s account did not move: it is archived or in another currency.</string>
     <string name="error_sale_register">The sale could not be recorded. Everything is still here.</string>
     <string name="error_quantity_zero">The quantity must be greater than 0</string>
     <string name="error_max_lines">This sale reached the limit of %1$d products. Record it and continue with another.</string>

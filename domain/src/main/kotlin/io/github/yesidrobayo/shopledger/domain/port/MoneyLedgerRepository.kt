@@ -33,6 +33,13 @@ interface MoneyLedgerRepository {
      */
     suspend fun findBySupplierLedgerEntry(supplierLedgerEntryId: Long): List<MoneyMovement>
 
+    /**
+     * Los movimientos que salieron del pago de venta [salePaymentId], en el orden del libro: su
+     * `SALE_RECEIPT` y su `FEE`, si el pago entró en una cuenta. La anulación no lleva el pago, solo
+     * el movimiento que compensa.
+     */
+    suspend fun findBySalePayment(salePaymentId: Long): List<MoneyMovement>
+
     /** Los movimientos del abono [customerLedgerEntryId] del libro del cliente, en el orden del libro. */
     suspend fun findByCustomerLedgerEntry(customerLedgerEntryId: Long): List<MoneyMovement>
 

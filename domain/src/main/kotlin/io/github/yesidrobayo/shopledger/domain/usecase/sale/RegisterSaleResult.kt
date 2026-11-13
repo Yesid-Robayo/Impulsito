@@ -15,8 +15,16 @@ sealed interface RegisterSaleResult {
     /**
      * La venta quedó guardada con [saleId], que también es su número visible. [pointsEarned] son
      * los puntos que ganó su cliente, cero si no ganó ninguno.
+     *
+     * [moneyAccountSkipped] avisa que algún pago no entró en la cuenta de su método, porque está
+     * archivada o lleva otra moneda que el negocio: la venta vale igual, pero esa cuenta no se movió
+     * y la pantalla lo dice.
      */
-    data class Registered(val saleId: Long, val pointsEarned: Long = 0L) : RegisterSaleResult
+    data class Registered(
+        val saleId: Long,
+        val pointsEarned: Long = 0L,
+        val moneyAccountSkipped: Boolean = false,
+    ) : RegisterSaleResult
 
     /** La venta no tiene líneas. */
     data object EmptySale : RegisterSaleResult

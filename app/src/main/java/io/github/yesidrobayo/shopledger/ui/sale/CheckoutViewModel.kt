@@ -802,7 +802,12 @@ class CheckoutViewModel(
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> overlay.update {
                     Overlay(
-                        registered = RegisteredSale(result.saleId, charged, result.pointsEarned),
+                        registered = RegisteredSale(
+                            result.saleId,
+                            charged,
+                            result.pointsEarned,
+                            result.moneyAccountSkipped,
+                        ),
                     )
                 }
 

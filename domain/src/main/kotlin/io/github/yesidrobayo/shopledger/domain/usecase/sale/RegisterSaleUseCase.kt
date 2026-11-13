@@ -15,6 +15,10 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntr
 import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyEntryDraft
 import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyEntrySource
 import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyEntryType
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementDraft
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
@@ -25,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
@@ -41,6 +46,8 @@ import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
+import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -84,6 +91,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOut
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.LoyaltyEntryOutcome
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.LoyaltyLedgerWriter
+import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyAppendResult
+import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
@@ -106,8 +115,7 @@ import kotlin.time.Instant
  * - **Un pago por método**, al menos uno, también con total cero. La venta común tiene un solo
  *   pago que cubre todo lo que se cobra; cobrada con varios métodos, sus pagos deben sumar
  *   exactamente lo que se cobra, o no se confirma. Cada pago lleva la comisión y la acreditación
- *   que la persona escribió en su método, y copia el nombre y el tipo del método, y su cuenta, sin
- *   mover dinero todavía.
+ *   que la persona escribió en su método, y copia el nombre y el tipo del método, y su cuenta.
  * - **El ajuste de toda la venta** es el descuento o recargo que escribe la persona, con signo.
  *   Se reparte entre las líneas en proporción a lo que cada una cobra tras su descuento, y un
  *   descuento mayor que eso se rechaza. Los pagos escritos cubren lo que se cobra con él.
@@ -151,6 +159,13 @@ import kotlin.time.Instant
  *   nunca como un pago: se reparte entre las líneas junto con el ajuste escrito. Se escribe como un
  *   `REDEEM`, antes del `EARN`. Lo que pasaría del tope de puntos no se gana: ganar nunca deshace
  *   una venta.
+ * - **El dinero entra en su cuenta** si el método del pago tiene una: un `SALE_RECEIPT` por lo
+ *   cobrado y un `FEE` por la comisión, ligados al pago, disponibles en su fecha de acreditación y
+ *   en esta misma transacción. Sin cuenta no se escribe nada, ni se lee ninguna cuenta: quien no
+ *   usa cuentas no paga nada por ellas. Una cuenta archivada o en otra moneda no recibe el pago:
+ *   mezclar monedas daría un saldo sin sentido, y bloquear la venta por eso sería peor. La venta se
+ *   guarda igual, el pago queda sin cuenta y el resultado lo avisa. Con una caja abierta en la
+ *   cuenta, la venta queda en esa sesión.
  *
  * Por ahora no vende combos ni productos con lotes: los rechaza con su motivo.
  *
@@ -175,11 +190,16 @@ class RegisterSaleUseCase(
     private val customers: CustomerRepository? = null,
     customerLedger: CustomerLedgerRepository? = null,
     loyaltyLedger: LoyaltyLedgerRepository? = null,
+    private val moneyAccounts: MoneyAccountRepository? = null,
+    moneyLedger: MoneyLedgerRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
     private val customerLedger = customerLedger?.let(::CustomerLedgerWriter)
     private val loyaltyLedger = loyaltyLedger?.let(::LoyaltyLedgerWriter)
+    private val money = moneyAccounts?.let { accounts ->
+        moneyLedger?.let { book -> MoneyLedgerWriter(accounts, book) }
+    }
 
     suspend operator fun invoke(request: SaleRequest): RegisterSaleResult = try {
         transactions.write { register(request) }
@@ -245,13 +265,15 @@ class RegisterSaleUseCase(
 
         // Justo antes de escribir: la primera venta bloquea la moneda en esta misma transacción, y
         // si la venta se deshace, el bloqueo también.
-        when (currencyLock.lockForMoneyRecord(now)) {
-            is CurrencyLockResult.Locked -> Unit
+        val currency = when (val lock = currencyLock.lockForMoneyRecord(now)) {
+            is CurrencyLockResult.Locked -> lock.currency
 
             CurrencyLockResult.Unconfirmed ->
                 return TxResult.Rollback(RegisterSaleResult.CurrencyNotConfirmed)
         }
-        val saleId = write(settled, request.customerId, note, time, now)
+        val plan = moneyPlanOf(settled.payments, currency)
+        val written = write(settled, plan, request.customerId, note, time, now)
+        val saleId = written.saleId
         chargeOnAccount(saleId, request, settled.payments, time)?.let {
             return TxResult.Rollback(it)
         }
@@ -263,13 +285,111 @@ class RegisterSaleUseCase(
             current.loyalty,
             time,
         )
+        moveMoney(written.paymentIds, plan.payments, time, now)?.let {
+            return TxResult.Rollback(it)
+        }
         request.heldSaleId?.let { held ->
             // Si ya no existe, alguien la descartó en el intermedio: la venta igual se confirma.
             requireNotNull(heldSales) { "Una venta de la espera necesita sus ventas en espera" }
                 .delete(held)
         }
         alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
-        return TxResult.Commit(RegisterSaleResult.Registered(saleId, earned))
+        return TxResult.Commit(
+            RegisterSaleResult.Registered(saleId, earned, moneyAccountSkipped = plan.skipped),
+        )
+    }
+
+    /**
+     * Qué pagos mueven su cuenta, leído dentro de la transacción. Sin ningún pago con cuenta no lee
+     * nada. Un pago cuya cuenta está archivada o lleva otra moneda que el negocio, con otro código o
+     * con otros decimales, se guarda sin cuenta: así ningún pago dice haber entrado en una cuenta
+     * que no se movió. La venta queda en la caja abierta de la primera cuenta que la tenga.
+     */
+    private suspend fun moneyPlanOf(
+        salePayments: List<NewSalePayment>,
+        currency: BusinessCurrency,
+    ): MoneyPlan {
+        if (salePayments.all { it.moneyAccountId == null }) return MoneyPlan(salePayments)
+        val accounts =
+            checkNotNull(moneyAccounts) { "Un pago con cuenta necesita las cuentas de dinero" }
+        val business = AccountCurrency.of(currency)
+        var cashSessionId: Long? = null
+        var skipped = false
+        val planned = salePayments.map { payment ->
+            val accountId = payment.moneyAccountId ?: return@map payment
+            // La cuenta de un método siempre existe: su llave no deja borrarla.
+            val account = accounts.findById(accountId) ?: damaged()
+            if (account.isArchived || account.currency != business) {
+                // Un pago en cero no iba a mover nada: no hay nada que avisar.
+                skipped = skipped || payment.amount > Money.ZERO
+                payment.copy(moneyAccountId = null)
+            } else {
+                if (cashSessionId == null) cashSessionId = accounts.openCashSessionId(accountId)
+                payment
+            }
+        }
+        return MoneyPlan(planned, cashSessionId, skipped)
+    }
+
+    /**
+     * Agrega al libro de dinero lo que mueve cada pago con cuenta: lo cobrado y, si la hay, la
+     * comisión, los dos con la fecha de acreditación del pago. [paymentIds] son los ids de
+     * [salePayments], en el mismo orden. Devuelve el rechazo que deshace la venta, o `null`.
+     */
+    private suspend fun moveMoney(
+        paymentIds: List<Long>,
+        salePayments: List<NewSalePayment>,
+        time: RecordTime,
+        now: Instant,
+    ): RegisterSaleResult? {
+        for ((paymentId, payment) in paymentIds.zip(salePayments)) {
+            val accountId = payment.moneyAccountId ?: continue
+            val writer = checkNotNull(money) { "Un pago con cuenta necesita el libro de dinero" }
+            for (draft in movementsOf(accountId, paymentId, payment)) {
+                when (writer.append(draft, time, now)) {
+                    is MoneyAppendResult.Appended -> Unit
+
+                    // Se leyó en esta misma transacción: no puede haber desaparecido.
+                    MoneyAppendResult.AccountNotFound -> damaged()
+
+                    // Un saldo que no cabe en Long es, como un total que no cabe, una venta que no
+                    // se puede guardar.
+                    MoneyAppendResult.Overflow -> return RegisterSaleResult.SaleTotalTooLarge
+                }
+            }
+        }
+        return null
+    }
+
+    /**
+     * Lo que el pago [paymentId] mueve en la cuenta [accountId]: lo cobrado, si es más que cero, y
+     * la comisión, si la hay. Un pago en cero no mueve nada.
+     */
+    private fun movementsOf(
+        accountId: Long,
+        paymentId: Long,
+        payment: NewSalePayment,
+    ): List<MoneyMovementDraft> {
+        val origin = MoneyOrigin.SalePayment(paymentId)
+        val receipt = payment.amount.takeIf { it > Money.ZERO }?.let {
+            MoneyMovementDraft(
+                accountId = accountId,
+                type = MoneyMovementType.SALE_RECEIPT,
+                amount = it,
+                origin = origin,
+                availableDate = payment.settlementDate,
+            )
+        }
+        val fee = payment.feeAmount.takeIf { it > Money.ZERO }?.let {
+            MoneyMovementDraft(
+                accountId = accountId,
+                type = MoneyMovementType.FEE,
+                amount = -it,
+                origin = origin,
+                availableDate = payment.settlementDate,
+            )
+        }
+        return listOfNotNull(receipt, fee)
     }
 
     /** Lo que se rechaza sin leer la base: la forma de la venta. */
@@ -873,16 +993,20 @@ class RegisterSaleUseCase(
         )
     }
 
-    /** Escribe la venta ya calculada y devuelve su id. Lo único que hace aquí es guardar. */
+    /**
+     * Escribe la venta ya calculada, con los pagos de [plan], y devuelve su id y los de sus pagos.
+     * Lo único que hace aquí es guardar.
+     */
     private suspend fun write(
         settled: Settled.Payments,
+        plan: MoneyPlan,
         customerId: Long?,
         note: String?,
         time: RecordTime,
         now: Instant,
-    ): Long {
+    ): Written {
         val priced = settled.priced
-        val salePayments = settled.payments
+        val salePayments = plan.payments
         val locationId = systemRows.findId(SystemRow.MAIN_LOCATION) ?: damaged()
         val priceListId = systemRows.findId(SystemRow.DEFAULT_PRICE_LIST) ?: damaged()
         val totals = priced.totals
@@ -900,7 +1024,7 @@ class RegisterSaleUseCase(
                 customerId = customerId,
                 priceListId = priceListId,
                 locationId = locationId,
-                cashSessionId = null,
+                cashSessionId = plan.cashSessionId,
                 quoteId = null,
                 orderId = null,
                 note = note,
@@ -936,9 +1060,22 @@ class RegisterSaleUseCase(
                 )
             }
         }
-        for (payment in salePayments) payments.insert(saleId, payment)
-        return saleId
+        val paymentIds = salePayments.map { payments.insert(saleId, it) }
+        return Written(saleId, paymentIds)
     }
+
+    /** La venta guardada y los ids de sus pagos, en el orden en que se guardaron. */
+    private class Written(val saleId: Long, val paymentIds: List<Long>)
+
+    /**
+     * Los pagos tal como se guardan, con la cuenta solo si su dinero entra en ella; la caja abierta
+     * en que queda la venta, si hay una; y si algún pago con algo cobrado se quedó sin su cuenta.
+     */
+    private class MoneyPlan(
+        val payments: List<NewSalePayment>,
+        val cashSessionId: Long? = null,
+        val skipped: Boolean = false,
+    )
 
     private fun PricedLine.toNewLine(priceListId: Long) = NewSaleLine(
         productId = product.id,

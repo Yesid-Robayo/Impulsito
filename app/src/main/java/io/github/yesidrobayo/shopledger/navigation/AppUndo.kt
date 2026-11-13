@@ -38,6 +38,9 @@ fun rememberSaleUndo(): SaleUndo {
                             alerts = ports.lowStockAlerts,
                             customerLedger = ports.customerLedger,
                             loyaltyLedger = ports.loyaltyLedger,
+                            payments = ports.salePayments,
+                            moneyAccounts = ports.moneyAccounts,
+                            moneyLedger = ports.moneyLedger,
                         )
                     UndoSaleUseCase(void)(saleId)
                 }

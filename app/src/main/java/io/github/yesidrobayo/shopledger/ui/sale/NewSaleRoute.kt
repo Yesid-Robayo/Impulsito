@@ -93,6 +93,8 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     customers = ports.customers,
                     customerLedger = ports.customerLedger,
                     loyaltyLedger = ports.loyaltyLedger,
+                    moneyAccounts = ports.moneyAccounts,
+                    moneyLedger = ports.moneyLedger,
                 )
             val hold =
                 HoldSaleUseCase(
@@ -156,7 +158,11 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
             val registeredText =
                 registered?.let {
                     stringResource(
-                        R.string.confirm_sale_registered,
+                        if (it.moneyAccountSkipped) {
+                            R.string.confirm_sale_registered_account_skipped
+                        } else {
+                            R.string.confirm_sale_registered
+                        },
                         rememberMoneyDisplay(it.total, formats.money).text.text,
                     )
                 }

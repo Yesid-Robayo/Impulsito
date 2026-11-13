@@ -37,6 +37,13 @@ internal interface MoneyMovementDao {
     )
     suspend fun lastBalanceAfter(accountId: Long): Long?
 
+    /**
+     * Los movimientos de un pago de venta: su `SALE_RECEIPT` y su `FEE`. Usa el índice de
+     * `sale_payment_id`, que la anulación de la venta lee una vez por pago con cuenta.
+     */
+    @Query("SELECT * FROM money_movements WHERE sale_payment_id = :salePaymentId ORDER BY id")
+    suspend fun findBySalePayment(salePaymentId: Long): List<MoneyMovementEntity>
+
     /** Los movimientos de un pago a proveedor: su `SUPPLIER_PAYMENT`, si se pagó desde una cuenta. */
     @Query(
         "SELECT * FROM money_movements WHERE supplier_ledger_entry_id = :entryId ORDER BY id",

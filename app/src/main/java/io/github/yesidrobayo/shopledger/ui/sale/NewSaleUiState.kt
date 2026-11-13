@@ -314,7 +314,14 @@ sealed interface HeldNotice {
 
 /**
  * La venta recién guardada: su número y su total, para el mensaje de Inicio, y los puntos que ganó
- * su cliente, que el mensaje nombra si son más que cero.
+ * su cliente, que el mensaje nombra si son más que cero. [moneyAccountSkipped] dice que algún pago
+ * no entró en la cuenta de su método, archivada o en otra moneda: el aviso lo cuenta, para que nadie
+ * crea que la cuenta se movió.
  */
 @Immutable
-data class RegisteredSale(val saleId: Long, val total: Money, val pointsEarned: Long = 0L)
+data class RegisteredSale(
+    val saleId: Long,
+    val total: Money,
+    val pointsEarned: Long = 0L,
+    val moneyAccountSkipped: Boolean = false,
+)

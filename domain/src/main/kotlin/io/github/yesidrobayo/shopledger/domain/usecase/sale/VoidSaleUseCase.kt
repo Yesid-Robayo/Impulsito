@@ -14,7 +14,10 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
+import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
@@ -30,6 +33,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOut
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.LoyaltyEntryOutcome
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.LoyaltyLedgerWriter
+import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyAppendResult
+import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
 import kotlin.time.Instant
 
@@ -51,6 +56,9 @@ import kotlin.time.Instant
  * - **El crédito se compensa.** Cada cargo `CREDIT_SALE` de la venta recibe su `ENTRY_VOID` en el
  *   libro del cliente, que no lleva la venta: apunta al cargo que compensa. Lo ya abonado queda
  *   como saldo a favor.
+ * - **El dinero se compensa.** Cada `SALE_RECEIPT` y cada `FEE` de los pagos de la venta recibe su
+ *   `MOVEMENT_VOID` en su cuenta, con el monto opuesto y la fecha de la anulación, una sola vez. Un
+ *   pago sin cuenta no movió dinero y no se lee nada más por él.
  *
  * - **Los puntos se revierten.** Lo que la venta ganó y lo que canjeó recibe su `ENTRY_VOID` en el
  *   libro de puntos, que tampoco lleva la venta. El saldo de puntos puede quedar negativo si lo
@@ -72,8 +80,14 @@ class VoidSaleUseCase(
     private val alerts: LowStockAlertRepository? = null,
     private val customerLedger: CustomerLedgerRepository? = null,
     private val loyaltyLedger: LoyaltyLedgerRepository? = null,
+    private val payments: SalePaymentRepository? = null,
+    moneyAccounts: MoneyAccountRepository? = null,
+    private val moneyLedger: MoneyLedgerRepository? = null,
 ) {
     private val ledger = StockChangeRecorder(ledger)
+    private val money = moneyAccounts?.let { accounts ->
+        moneyLedger?.let { book -> MoneyLedgerWriter(accounts, book) }
+    }
 
     suspend operator fun invoke(saleId: Long, reason: VoidReason, note: String?): VoidSaleResult =
         try {
@@ -121,6 +135,9 @@ class VoidSaleUseCase(
             return TxResult.Rollback(VoidSaleResult.LedgerDamaged)
         }
         if (!reversePoints(saleId, calendar.stamp(now))) {
+            return TxResult.Rollback(VoidSaleResult.LedgerDamaged)
+        }
+        if (!reverseMoney(saleId, calendar.stamp(now), now)) {
             return TxResult.Rollback(VoidSaleResult.LedgerDamaged)
         }
         alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
@@ -246,6 +263,33 @@ class VoidSaleUseCase(
 
                 LoyaltyEntryOutcome.EntryNotFound, LoyaltyEntryOutcome.NotReversible ->
                     error("Una fila de puntos de la venta siempre existe y se puede compensar")
+            }
+        }
+        return true
+    }
+
+    /**
+     * Compensa en su cuenta cada movimiento que dejaron los pagos de la venta, una sola vez. Devuelve
+     * `false` si el saldo de una cuenta desbordaría: la transacción se deshace y no se anula nada.
+     */
+    private suspend fun reverseMoney(saleId: Long, time: RecordTime, now: Instant): Boolean {
+        val salePayments = payments ?: return true
+        val book = moneyLedger ?: return true
+        val writer = checkNotNull(money) { "Anular el dinero de una venta necesita sus cuentas" }
+        for (payment in salePayments.findBySale(saleId)) {
+            // Un pago sin cuenta no movió dinero: no hay nada que leer por él.
+            if (payment.content.moneyAccountId == null) continue
+            for (movement in book.findBySalePayment(payment.id)) {
+                // Ya se compensó: anular de nuevo lo devolvería dos veces.
+                if (book.isCompensated(movement.id)) continue
+                when (writer.void(movement, time, now)) {
+                    is MoneyAppendResult.Appended -> Unit
+
+                    MoneyAppendResult.Overflow -> return false
+
+                    MoneyAppendResult.AccountNotFound ->
+                        error("La cuenta de un movimiento siempre existe")
+                }
             }
         }
         return true

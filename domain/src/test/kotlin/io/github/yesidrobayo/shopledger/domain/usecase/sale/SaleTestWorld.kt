@@ -31,6 +31,15 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.NewCustomerLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.NewLoyaltyLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.PointsSummary
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
+import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyAccount
+import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.payable.NewSupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntryType
@@ -64,6 +73,8 @@ import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
+import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -117,6 +128,9 @@ internal data class SaleTables(
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
     val alerts: Map<Long, LowStockAlert> = emptyMap(),
+    val moneyAccounts: Map<Long, MoneyAccount> = emptyMap(),
+    val moneyMovements: Map<Long, MoneyMovement> = emptyMap(),
+    val openCashSessions: Map<Long, Long> = emptyMap(),
 )
 
 /** Una falla inyectada a propósito en una escritura. */
@@ -912,6 +926,142 @@ internal class SaleWorld(
         it.copy(suppliers = it.suppliers + (id to supplier))
     }
 
+    /**
+     * Las cuentas de dinero, que la venta lee. [openCashSessionId] sale de las sesiones abiertas que
+     * prepara cada prueba, una por cuenta como mucho.
+     */
+    val moneyAccountRepository: MoneyAccountRepository = object : MoneyAccountRepository {
+        override fun observe(filter: ArchiveFilter): Flow<List<MoneyAccount>> = unused()
+
+        override suspend fun findById(id: Long): MoneyAccount? {
+            moneyAccountReads++
+            return read().moneyAccounts[id]
+        }
+
+        override suspend fun findActiveByNormalizedName(normalizedName: String): MoneyAccount? =
+            unused()
+
+        override suspend fun insert(account: NewMoneyAccount): Long = unused()
+
+        override suspend fun update(id: Long, details: MoneyAccountDetails, updatedAt: Instant) =
+            unused()
+
+        override suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant) =
+            unused()
+
+        override suspend fun openCashSessionId(accountId: Long): Long? {
+            moneyAccountReads++
+            return read().openCashSessions[accountId]
+        }
+    }
+
+    /** Cuántas veces se leyó una cuenta o su caja: quien no usa cuentas no debe leer ninguna. */
+    var moneyAccountReads: Int = 0
+        private set
+
+    /**
+     * El libro de dinero, con las reglas de su guarda y su repositorio: la moneda bloqueada, el saldo
+     * encadenado, el signo y el origen de cada tipo, y una sola compensación por movimiento, en la
+     * misma cuenta y con el monto opuesto. Deja la cuenta con el saldo del movimiento.
+     */
+    val moneyLedger: MoneyLedgerRepository = object : MoneyLedgerRepository {
+        override fun observeByAccount(accountId: Long): Flow<List<MoneyMovement>> = unused()
+
+        override suspend fun findById(id: Long): MoneyMovement? = read().moneyMovements[id]
+
+        override suspend fun findByAccount(accountId: Long): List<MoneyMovement> =
+            read().moneyMovements.values.filter { it.accountId == accountId }.sortedBy { it.id }
+
+        override suspend fun findByTransferGroup(groupId: String): List<MoneyMovement> = unused()
+
+        override suspend fun findBySupplierLedgerEntry(
+            supplierLedgerEntryId: Long,
+        ): List<MoneyMovement> = unused()
+
+        override suspend fun findBySalePayment(salePaymentId: Long): List<MoneyMovement> =
+            read().moneyMovements.values
+                .filter { it.draft.origin == MoneyOrigin.SalePayment(salePaymentId) }
+                .sortedBy { it.id }
+
+        override suspend fun findByCustomerLedgerEntry(
+            customerLedgerEntryId: Long,
+        ): List<MoneyMovement> = unused()
+
+        override fun observeOtherIncome(
+            period: ReportPeriod,
+            currency: AccountCurrency,
+        ): Flow<Money> = unused()
+
+        override suspend fun isCompensated(movementId: Long): Boolean =
+            read().moneyMovements.values.any {
+                (it.draft.origin as? MoneyOrigin.Void)?.reversesMovementId == movementId
+            }
+
+        override suspend fun append(movement: NewMoneyMovement): Long {
+            if (settings.settings.value.regional.currency.lockedAt == null) brokenRule()
+            val draft = movement.draft
+            val account = read().moneyAccounts[draft.accountId] ?: brokenRule()
+            if (account.balance + draft.amount != movement.balanceAfter) brokenRule()
+            val origin = draft.origin
+            if (origin is MoneyOrigin.SalePayment &&
+                read().payments[origin.salePaymentId] == null
+            ) {
+                brokenRule()
+            }
+            if (origin is MoneyOrigin.Void) {
+                val original = read().moneyMovements[origin.reversesMovementId] ?: brokenRule()
+                val matches = original.accountId == draft.accountId &&
+                    original.amount == -draft.amount &&
+                    original.type != MoneyMovementType.MOVEMENT_VOID
+                if (!matches || isCompensated(original.id)) brokenRule()
+            }
+            val id = nextId("money_movements")
+            val saved = MoneyMovement(
+                id = id,
+                draft = draft,
+                balanceAfter = movement.balanceAfter,
+                time = movement.time,
+                createdAt = movement.createdAt,
+            )
+            write { it.copy(moneyMovements = it.moneyMovements + (id to saved)) }
+            write { tables ->
+                val updated = account.copy(balance = movement.balanceAfter)
+                tables.copy(moneyAccounts = tables.moneyAccounts + (account.id to updated))
+            }
+            return id
+        }
+    }
+
+    /**
+     * Agrega una cuenta de dinero con el saldo [balance], vigente salvo que se pida otra cosa, en la
+     * moneda del negocio (`XTS` con 0 decimales) o en [currency].
+     */
+    fun addMoneyAccount(
+        id: Long,
+        currency: AccountCurrency = AccountCurrency(requireNotNull(CurrencyCode.of("XTS")), 0),
+        archived: Boolean = false,
+        kind: MoneyAccountKind = MoneyAccountKind.BANK,
+        balance: Long = 0L,
+    ) = arrange {
+        val name = "Account $id"
+        val account = MoneyAccount(
+            id = id,
+            systemKey = null,
+            details = MoneyAccountDetails(name, name.lowercase(), kind),
+            currency = currency,
+            balance = Money(balance),
+            archivedAt = if (archived) EPOCH else null,
+            createdAt = EPOCH,
+            updatedAt = EPOCH,
+        )
+        it.copy(moneyAccounts = it.moneyAccounts + (id to account))
+    }
+
+    /** Deja abierta la sesión de caja [sessionId] en la cuenta [accountId]. */
+    fun openCashSession(accountId: Long, sessionId: Long) = arrange {
+        it.copy(openCashSessions = it.openCashSessions + (accountId to sessionId))
+    }
+
     fun registerSale(): RegisterSaleUseCase = RegisterSaleUseCase(
         transactions = transactions,
         settings = settings,
@@ -930,6 +1080,8 @@ internal class SaleWorld(
         customers = customerRepository,
         customerLedger = customerLedger,
         loyaltyLedger = loyaltyLedger,
+        moneyAccounts = moneyAccountRepository,
+        moneyLedger = moneyLedger,
     )
 
     fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(
@@ -942,6 +1094,9 @@ internal class SaleWorld(
         alerts = alertRepository.takeIf { withAlerts },
         customerLedger = customerLedger,
         loyaltyLedger = loyaltyLedger,
+        payments = payments,
+        moneyAccounts = moneyAccountRepository,
+        moneyLedger = moneyLedger,
     )
 
     /** Agrega un producto ya guardado, con el estado de stock que se le dé. */

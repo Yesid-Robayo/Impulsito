@@ -52,6 +52,9 @@ fun SaleDetailRoute(
                 alerts = ports.lowStockAlerts,
                 customerLedger = ports.customerLedger,
                 loyaltyLedger = ports.loyaltyLedger,
+                payments = ports.salePayments,
+                moneyAccounts = ports.moneyAccounts,
+                moneyLedger = ports.moneyLedger,
             )
             SaleDetailViewModel(
                 saleId = key.saleId,

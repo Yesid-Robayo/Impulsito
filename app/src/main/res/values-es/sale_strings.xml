@@ -15,6 +15,7 @@
     <string name="empty_sale_body">Con su costo se muestra la ganancia de cada venta.</string>
     <string name="empty_sale_action">Crear producto</string>
     <string name="confirm_sale_registered">Venta registrada: %1$s</string>
+    <string name="confirm_sale_registered_account_skipped">Venta registrada: %1$s. La cuenta del método no se movió: está archivada o en otra moneda.</string>
     <string name="error_sale_register">No se pudo registrar la venta. Los datos siguen aquí, sin ninguna pérdida.</string>
     <string name="error_quantity_zero">La cantidad debe ser mayor que 0</string>
     <string name="error_max_lines">Esta venta llegó al máximo de %1$d productos. Se puede registrar y seguir con otra.</string>

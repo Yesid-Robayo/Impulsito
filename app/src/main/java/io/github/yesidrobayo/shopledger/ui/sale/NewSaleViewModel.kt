@@ -587,7 +587,13 @@ class NewSaleViewModel(
                 is RegisterSaleResult.Registered -> {
                     changeDraft { SaleDraft(prefilled = true) }
                     overlay.update {
-                        Overlay(registered = RegisteredSale(result.saleId, charged))
+                        Overlay(
+                            registered = RegisteredSale(
+                                result.saleId,
+                                charged,
+                                moneyAccountSkipped = result.moneyAccountSkipped,
+                            ),
+                        )
                     }
                 }
 

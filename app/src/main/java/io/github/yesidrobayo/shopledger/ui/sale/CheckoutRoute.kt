@@ -89,6 +89,8 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     customers = ports.customers,
                     customerLedger = ports.customerLedger,
                     loyaltyLedger = ports.loyaltyLedger,
+                    moneyAccounts = ports.moneyAccounts,
+                    moneyLedger = ports.moneyLedger,
                 )
             val images = FindPaymentImagesUseCase(ports.transactions, ports.mediaAssets)
             val createCustomer =
@@ -123,14 +125,20 @@ fun CheckoutRoute(navigator: AppNavigator) {
             val registeredText =
                 registered?.let {
                     val total = rememberMoneyDisplay(it.total, formats.money).text.text
-                    if (it.pointsEarned > 0L) {
-                        stringResource(
+                    when {
+                        // La cuenta que no se movió se avisa antes que los puntos: es dinero.
+                        it.moneyAccountSkipped -> stringResource(
+                            R.string.confirm_sale_registered_account_skipped,
+                            total,
+                        )
+
+                        it.pointsEarned > 0L -> stringResource(
                             R.string.checkout_registered_points,
                             total,
                             formats.quantity.formatCount(it.pointsEarned),
                         )
-                    } else {
-                        stringResource(R.string.confirm_sale_registered, total)
+
+                        else -> stringResource(R.string.confirm_sale_registered, total)
                     }
                 }
             val viewLabel = stringResource(R.string.action_view)

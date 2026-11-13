@@ -215,6 +215,7 @@ class RegisterSaleUseCaseTest {
 
     @Test
     fun theSaleWritesItsSinglePaymentWithTheFrozenMethod() = runTest {
+        world.addMoneyAccount(4)
         world.addMethod(
             method(
                 id = 7,
