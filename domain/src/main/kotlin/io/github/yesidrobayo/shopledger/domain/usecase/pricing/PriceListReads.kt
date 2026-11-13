@@ -3,9 +3,9 @@ package io.github.yesidrobayo.shopledger.domain.usecase.pricing
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListsOverview
-import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceResult
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceRules
 import kotlinx.coroutines.flow.Flow
@@ -75,7 +75,9 @@ class ObserveProductListPricesUseCase(
     ) { active, archived, own, product ->
         if (product == null || active.size < 2) return@combine emptyList()
         val all = (active + archived).associateBy { it.id }
-        val mine = own.mapNotNull { (list, prices) -> prices[productId]?.let { list to it } }.toMap()
+        val mine = own.mapNotNull { (list, prices) ->
+            prices[productId]?.let { list to it }
+        }.toMap()
         active.filterNot { it.isDefault }.map { list ->
             ProductListPrice(list, ListPriceRules.resolve(list.id, all, product.salePrice, mine))
         }

@@ -3,8 +3,16 @@ package io.github.yesidrobayo.shopledger.domain.model.catalog
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import kotlin.uuid.Uuid
 
-/** Un precio que vuelve a su valor anterior al deshacer: de [from], el de ahora, a [to]. */
-data class BulkUndoRevert(val productId: Long, val from: Money, val to: Money)
+/**
+ * Un precio que vuelve a su valor anterior al deshacer: de [from], el de ahora, a [to]. [priceListId]
+ * es la lista fija cuyo precio propio vuelve, o `null` para el precio de venta.
+ */
+data class BulkUndoRevert(
+    val productId: Long,
+    val from: Money,
+    val to: Money,
+    val priceListId: Long? = null,
+)
 
 /**
  * Lo que haría deshacer el lote [batchId]: los precios que vuelven ([reverts]) y cuántos se dejan

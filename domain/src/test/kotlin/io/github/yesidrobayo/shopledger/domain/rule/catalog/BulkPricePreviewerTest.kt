@@ -3,10 +3,13 @@ package io.github.yesidrobayo.shopledger.domain.rule.catalog
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceRequest
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceScope
+import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture
 import kotlin.time.Instant
 import org.junit.Assert.assertEquals
@@ -56,6 +59,52 @@ class BulkPricePreviewerTest {
 
         assertEquals(1, preview.unchanged)
         assertTrue(preview.changes.isEmpty())
+    }
+
+    @Test
+    fun `the subject reads the own price of the list and the tax inside the price`() {
+        val soap = product(1L, price = 1_000L)
+        val context = BulkPriceContext(
+            pricing = PricingContext(
+                defaultTargetMargin = BasisPoints(3_000L),
+                categoryTargets = emptyMap(),
+                taxMode = TaxMode.INCLUDED,
+                defaultTaxRateId = 9L,
+                taxRates = mapOf(9L to BasisPoints(2_100L)),
+                roundingStep = Money.ZERO,
+            ),
+            ownPrices = mapOf(1L to mapOf(4L to Money(800L))),
+        )
+
+        val own = BulkPricePreviewer.subjectOf(soap, BulkTarget.OwnPrice(4L), context)
+        val missing = BulkPricePreviewer.subjectOf(soap, BulkTarget.OwnPrice(5L), context)
+        val excluded = context.copy(pricing = context.pricing?.copy(taxMode = TaxMode.ADDED))
+        val outside = BulkPricePreviewer.subjectOf(soap, BulkTarget.SalePrice(null), excluded)
+        val bare = BulkPricePreviewer.subjectOf(
+            soap,
+            BulkTarget.SalePrice(null),
+            BulkPriceContext(),
+        )
+
+        assertEquals(Money(800L), own.price)
+        assertEquals(BasisPoints(2_100L), own.includedTaxRate)
+        // Sin precio propio en esa lista, la lista fija vende al precio de venta.
+        assertEquals(Money(1_000L), missing.price)
+        val withoutOwn = product(2L, price = 700L)
+        assertEquals(
+            Money(700L),
+            BulkPricePreviewer.subjectOf(withoutOwn, BulkTarget.OwnPrice(4L), context).price,
+        )
+        assertEquals(BasisPoints.ZERO, outside.includedTaxRate)
+        assertEquals(BulkSubject(Money(1_000L), bare.cost), bare)
+    }
+
+    @Test
+    fun `a tag takes only the products that carry it`() {
+        val tagged = BulkPriceScope.Tag(tagId = 3L, productIds = setOf(1L))
+
+        assertTrue(BulkPricePreviewer.inScope(product(1L, price = 1_000L), tagged))
+        assertTrue(!BulkPricePreviewer.inScope(product(2L, price = 1_000L), tagged))
     }
 
     @Test

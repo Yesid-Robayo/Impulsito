@@ -81,6 +81,29 @@ class BulkUndoRulesTest {
     }
 
     @Test
+    fun `a list row reads the own price of that list, or the sale price without one`() {
+        val rows = listOf(1L, 2L, 3L).map { id ->
+            val row = bulkRow(id, id, old = 900L, new = 1_000L)
+            row.copy(content = row.content.copy(priceListId = WHOLESALE))
+        }
+        val own =
+            mapOf(1L to mapOf(WHOLESALE to Money(1_000L)), 2L to mapOf(OTHER to Money(1_000L)))
+
+        val plan = BulkUndoRules.plan(
+            batch,
+            rows,
+            listOf(product(1L, 5L), product(2L, 1_000L), product(3L, 7L)),
+            defaultListId = 1L,
+            ownPrices = own,
+        )
+
+        // El 1 con su precio propio y el 2 con el de venta siguen como los dejó el lote; el 3 no.
+        assertEquals(listOf(1L, 2L), plan.reverts.map { it.productId })
+        assertEquals(listOf(WHOLESALE, WHOLESALE), plan.reverts.map { it.priceListId })
+        assertEquals(1, plan.kept)
+    }
+
+    @Test
     fun `a row without a previous price is left as it is`() {
         val initial = PriceChange(
             id = 1L,
@@ -96,5 +119,10 @@ class BulkUndoRulesTest {
 
         assertEquals(1, plan.kept)
         assertFalse(plan.canUndo)
+    }
+
+    private companion object {
+        const val WHOLESALE = 2L
+        const val OTHER = 3L
     }
 }

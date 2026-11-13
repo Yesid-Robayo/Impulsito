@@ -1,12 +1,15 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.catalog
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoRevert
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewPriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
@@ -14,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkUndoRules
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -52,6 +56,8 @@ class UndoBulkPriceUseCase(
     private val priceHistory: PriceHistoryRepository,
     private val calendar: BusinessCalendarSource,
     private val clock: Clock,
+    private val productPrices: ProductPriceRepository? = null,
+    // Al final, para que el lote de una prueba se pueda dar como lambda.
     private val newBatchId: () -> Uuid = { Uuid.random() },
 ) {
     suspend operator fun invoke(batchId: Uuid): UndoBulkPriceResult =
@@ -64,21 +70,26 @@ class UndoBulkPriceUseCase(
             return TxResult.Rollback(UndoBulkPriceResult.NotUndoable)
         }
         val rows = priceHistory.findByBatch(batchId)
-        val current = products
-            .findByIds(rows.map { it.content.productId }.toSet())
-            .filterNot { it.isArchived }
-        val plan = BulkUndoRules.plan(batchId, rows, current)
+        val ids = rows.map { it.content.productId }.toSet()
+        val current = products.findByIds(ids).filterNot { it.isArchived }
+        val defaultList = systemRows.requireId(SystemRow.DEFAULT_PRICE_LIST)
+        val own = productPrices?.let { prices -> ids.associateWith { prices.findByProduct(it) } }
+        val plan = BulkUndoRules.plan(batchId, rows, current, defaultList, own.orEmpty())
         if (!plan.canUndo) return TxResult.Rollback(UndoBulkPriceResult.NothingToRevert(plan.kept))
         val time = calendar.stamp(clock.now())
             ?: return TxResult.Rollback(UndoBulkPriceResult.UnknownTimeZone)
         val undoBatch = newBatchId()
-        val priceList = systemRows.requireId(SystemRow.DEFAULT_PRICE_LIST)
         for (revert in plan.reverts) {
-            products.updateSalePrice(revert.productId, revert.to, time.occurredAt)
+            val listId = revert.priceListId
+            if (listId == null) {
+                products.updateSalePrice(revert.productId, revert.to, time.occurredAt)
+            } else {
+                writeOwnPrice(listId, revert, own.orEmpty(), time.occurredAt)
+            }
             priceHistory.append(
                 NewPriceChange(
                     productId = revert.productId,
-                    priceListId = priceList,
+                    priceListId = listId ?: defaultList,
                     oldPrice = revert.from,
                     newPrice = revert.to,
                     source = PriceChangeSource.BULK_UNDO,
@@ -91,6 +102,24 @@ class UndoBulkPriceUseCase(
         }
         return TxResult.Commit(UndoBulkPriceResult.Undone(plan.reverts.size, plan.kept))
     }
+
+    /**
+     * Devuelve el precio propio de una lista fija. Si el lote lo creó, porque el producto tomaba el
+     * de venta, queda con el precio de antes como propio: el precio que se ve es el mismo.
+     */
+    private suspend fun writeOwnPrice(
+        listId: Long,
+        revert: BulkUndoRevert,
+        own: Map<Long, Map<Long, Money>>,
+        at: Instant,
+    ) {
+        val prices = requireNotNull(productPrices) { "Una lista fija necesita sus precios" }
+        if (own[revert.productId]?.containsKey(listId) == true) {
+            prices.update(listId, revert.productId, revert.to, at)
+        } else {
+            prices.insert(listId, revert.productId, revert.to, at)
+        }
+    }
 }
 
 /**
@@ -101,6 +130,8 @@ class UndoBulkPriceUseCase(
 class ObserveBulkUndoUseCase(
     private val priceHistory: PriceHistoryRepository,
     private val products: ProductRepository,
+    private val productPrices: ProductPriceRepository? = null,
+    private val systemRows: SystemRowRepository? = null,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(): Flow<BulkUndoPlan?> = priceHistory
@@ -112,8 +143,24 @@ class ObserveBulkUndoUseCase(
                 combine(
                     flow { emit(priceHistory.findByBatch(batchId)) },
                     products.observe(ArchiveFilter.ACTIVE),
-                ) { rows, active -> BulkUndoRules.plan(batchId, rows, active) }
+                    productPrices?.observeAll() ?: flowOf(emptyMap()),
+                    flow { emit(systemRows?.findId(SystemRow.DEFAULT_PRICE_LIST)) },
+                ) { rows, active, byList, defaultList ->
+                    BulkUndoRules.plan(batchId, rows, active, defaultList, byProduct(byList))
+                }
             }
         }
         .distinctUntilChanged()
+}
+
+/** Los precios propios por lista y producto, dados vuelta: por producto y lista. */
+private fun byProduct(byList: Map<Long, Map<Long, Money>>): Map<Long, Map<Long, Money>> {
+    val result = mutableMapOf<Long, MutableMap<Long, Money>>()
+    byList.forEach { (list, prices) ->
+        prices.forEach { (product, price) ->
+            result.getOrPut(product) { mutableMapOf() }[list] =
+                price
+        }
+    }
+    return result
 }
