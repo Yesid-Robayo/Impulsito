@@ -48,6 +48,12 @@ val HUB_ENTRIES: List<HubEntry> =
             AppNavKey.Payables,
         ),
         HubEntry(
+            BusinessTool.CASH_REGISTER,
+            R.string.hub_tool_cash,
+            R.string.hub_tool_cash_desc,
+            AppNavKey.CashRegister,
+        ),
+        HubEntry(
             BusinessTool.HELD_SALES,
             R.string.hub_tool_drafts,
             R.string.hub_tool_drafts_desc,
