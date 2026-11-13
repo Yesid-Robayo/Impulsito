@@ -79,6 +79,21 @@ internal class DataWorkerFactory(
 }
 
 /**
+ * Una fábrica que arma la verdadera con [create] la primera vez que se le pide un trabajo, no al
+ * entregarse a la biblioteca de trabajos. La biblioteca la recibe en el hilo principal y crea cada
+ * trabajo en el suyo: así lo pesado de armar las dependencias nunca corre en el principal.
+ */
+internal class DeferredWorkerFactory(create: () -> WorkerFactory) : WorkerFactory() {
+    private val delegate by lazy(create)
+
+    override fun createWorker(
+        appContext: Context,
+        workerClassName: String,
+        workerParameters: WorkerParameters,
+    ): ListenableWorker? = delegate.createWorker(appContext, workerClassName, workerParameters)
+}
+
+/**
  * Si la red activa es medida, o si no hay ninguna. Una red cuenta como no medida si no se cobra
  * por datos, o si por ahora no se cobra, como algunas redes móviles rápidas desde Android 11.
  *

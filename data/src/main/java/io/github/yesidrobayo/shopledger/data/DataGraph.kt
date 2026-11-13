@@ -113,6 +113,7 @@ import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
 import io.github.yesidrobayo.shopledger.data.work.DataWorkerFactory
+import io.github.yesidrobayo.shopledger.data.work.DeferredWorkerFactory
 import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
 import io.github.yesidrobayo.shopledger.data.work.backupNetworkOf
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
@@ -873,16 +874,22 @@ class DataGraph internal constructor(
     /**
      * Crea los trabajos en segundo plano de esta capa con sus dependencias. La app la entrega a la
      * biblioteca de trabajos al configurarla, y crearla no toca el disco.
+     *
+     * La biblioteca la pide en el hilo principal, al arrancar. Las dependencias se arman recién al
+     * crear el primer trabajo, en su hilo: el cliente de red del motor de respaldo prepara su
+     * cifrado, y eso demoraba el primer cuadro de la app.
      */
     val workerFactory: WorkerFactory by lazy {
-        DataWorkerFactory(
-            backupEngine,
-            log,
-            backupScheduler,
-            dailyMaintenance,
-            headProbe to headDeepCheck,
-            secondDestinationJob,
-        )
+        DeferredWorkerFactory {
+            DataWorkerFactory(
+                backupEngine,
+                log,
+                backupScheduler,
+                dailyMaintenance,
+                headProbe to headDeepCheck,
+                secondDestinationJob,
+            )
+        }
     }
 
     /**
