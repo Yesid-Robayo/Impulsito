@@ -22,6 +22,7 @@ import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
@@ -93,6 +94,12 @@ internal data class Tables(
     val cashDenominations: Map<Long, CashDenomination> = emptyMap(),
     /** Los conteos por denominación, por sesión y fase, en el orden en que se guardaron. */
     val cashCounts: Map<Pair<Long, CashCountPhase>, List<DenominationCount>> = emptyMap(),
+    /** Las listas de precios, por id. */
+    val priceLists: Map<Long, PriceList> = emptyMap(),
+    /** Los precios propios, por lista y producto. */
+    val productPrices: Map<Pair<Long, Long>, Money> = emptyMap(),
+    /** Las listas que usa alguna venta, línea o venta en espera, tablas que estas pruebas no modelan. */
+    val priceListsUsedBySales: Set<Long> = emptySet(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

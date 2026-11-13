@@ -30,6 +30,42 @@ internal interface PriceListDao {
     @Query("SELECT * FROM price_lists WHERE id = :id")
     suspend fun findById(id: Long): PriceListEntity?
 
+    /** Todas, vigentes y archivadas: una relativa puede partir de una archivada. */
+    @Query("SELECT * FROM price_lists ORDER BY id")
+    suspend fun findAll(): List<PriceListEntity>
+
+    /**
+     * Si la usa una venta o una de sus líneas, una venta en espera, un cliente, otra lista como base,
+     * un precio propio o el historial de precios. Con uso ya no se borra: solo se archiva. Un cliente
+     * o una venta en espera la soltarían al borrarla, sin aviso: también cuentan.
+     */
+    @Query(
+        "SELECT EXISTS (SELECT 1 FROM sales WHERE price_list_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM sale_lines WHERE price_list_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM sale_drafts WHERE price_list_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM customers WHERE price_list_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM price_lists WHERE base_price_list_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM product_prices WHERE price_list_id = :id) " +
+            "OR EXISTS (SELECT 1 FROM product_price_history WHERE price_list_id = :id)",
+    )
+    suspend fun isInUse(id: Long): Boolean
+
+    /**
+     * Los ids de las listas con uso, con la misma definición que [isInUse]. Room vuelve a emitir con
+     * cualquier cambio de esas tablas.
+     */
+    @Query(
+        "SELECT price_list_id FROM sales " +
+            "UNION SELECT price_list_id FROM sale_lines " +
+            "UNION SELECT price_list_id FROM sale_drafts WHERE price_list_id IS NOT NULL " +
+            "UNION SELECT price_list_id FROM customers WHERE price_list_id IS NOT NULL " +
+            "UNION SELECT base_price_list_id FROM price_lists " +
+            "WHERE base_price_list_id IS NOT NULL " +
+            "UNION SELECT price_list_id FROM product_prices " +
+            "UNION SELECT price_list_id FROM product_price_history",
+    )
+    fun observeInUseIds(): Flow<List<Long>>
+
     /** La lista inicial de esa clave, como `DEFAULT`, aunque la persona la haya renombrado. */
     @Query("SELECT * FROM price_lists WHERE system_key = :systemKey")
     suspend fun findBySystemKey(systemKey: String): PriceListEntity?

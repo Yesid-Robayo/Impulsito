@@ -34,6 +34,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodReposit
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodBreakdownRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomPriceListRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductUnitRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseHistorySource
@@ -86,6 +87,8 @@ import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PeriodBreakdownRepository
 import io.github.yesidrobayo.shopledger.domain.port.PeriodReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
+import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseHistorySource
@@ -187,6 +190,14 @@ class DataPorts internal constructor(
     val products: ProductRepository = RoomProductRepository(database)
 
     val priceHistory: PriceHistoryRepository = RoomPriceHistoryRepository(database)
+
+    private val priceListRepository = RoomPriceListRepository(database)
+
+    /** Las listas de precios: la inicial, del precio de venta, y las fijas o relativas. */
+    val priceLists: PriceListRepository = priceListRepository
+
+    /** Los precios propios de cada producto en las listas fijas. */
+    val productPrices: ProductPriceRepository = priceListRepository
 
     private val unitRepository = RoomUnitRepository(database)
 

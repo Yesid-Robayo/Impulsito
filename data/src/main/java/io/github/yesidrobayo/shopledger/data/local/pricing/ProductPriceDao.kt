@@ -29,6 +29,10 @@ internal interface ProductPriceDao {
     )
     suspend fun find(priceListId: Long, productId: Long): ProductPriceEntity?
 
+    /** Si la lista tiene algún precio propio: una fija con precios no pasa a relativa. */
+    @Query("SELECT EXISTS (SELECT 1 FROM product_prices WHERE price_list_id = :priceListId)")
+    suspend fun hasAny(priceListId: Long): Boolean
+
     /** Devuelve el id nuevo. Falla si el producto ya tiene precio en esa lista. */
     @Insert
     suspend fun insert(price: ProductPriceEntity): Long
