@@ -6,6 +6,10 @@ import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerDetails
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
@@ -59,6 +63,8 @@ internal class SaleReturnOnDatabaseTest : RepositoryTest() {
     private val returns by lazy { RoomSaleReturnRepository(database) }
     private val accounts by lazy { RoomMoneyAccountRepository(database) }
     private val money by lazy { RoomMoneyLedgerRepository(database) }
+    private val customers by lazy { RoomCustomerRepository(database) }
+    private val customerLedger by lazy { RoomCustomerLedgerRepository(database) }
 
     /** La escritura número N falla; `null` no falla nunca. */
     private var failAt: Int? = null
@@ -132,6 +138,8 @@ internal class SaleReturnOnDatabaseTest : RepositoryTest() {
             clock = Clock { AT },
             moneyAccounts = accounts,
             moneyLedger = countedMoney,
+            customers = customers,
+            customerLedger = customerLedger,
         )
     }
 
@@ -247,6 +255,41 @@ internal class SaleReturnOnDatabaseTest : RepositoryTest() {
         val refunded = count("SELECT SUM(total_refund) FROM sale_returns WHERE sale_id = $saleId")
         assertEquals(10_500L, refunded)
         assertEquals(QuantityMilli(10_000), checkNotNull(products.findById(soapId)).onHand)
+        assertInvariantsHold()
+    }
+
+    @Test
+    fun aStoreCreditLowersTheBalanceOfTheChosenCustomer() = runBlocking {
+        val customerId = commit {
+            customers.insert(
+                CustomerDetails(
+                    CustomerContact("Cliente inventado", "cliente inventado", null, null, null),
+                    null,
+                ),
+                AT,
+            )
+        }
+        val saleId = threeSoaps()
+        val lineId = lineOf(saleId)
+
+        val result = giveBack(
+            SaleReturnRequest(
+                saleId,
+                listOf(ReturnLineRequest(lineId, QuantityMilli(1_000))),
+                ReturnSettlement.StoreCredit(customerId),
+            ),
+        )
+
+        val returnId = (result as RegisterSaleReturnResult.Registered).saleReturnId
+        val entry = customerLedger.findByCustomer(customerId).single()
+        assertEquals(CustomerLedgerEntryType.RETURN_CREDIT, entry.type)
+        assertEquals(Money(-3_500), entry.amount)
+        assertEquals(CustomerEntrySource.SaleReturn(returnId), entry.source)
+        assertEquals(Money(-3_500), checkNotNull(customers.findById(customerId)).balance)
+        assertEquals(
+            ReturnResolution.STORE_CREDIT,
+            checkNotNull(returns.findById(returnId)).content.resolution,
+        )
         assertInvariantsHold()
     }
 

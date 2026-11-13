@@ -20,6 +20,13 @@ sealed interface ReturnSettlement {
      * por fuera de las cuentas y no se escribe ningún movimiento.
      */
     data class Refund(val moneyAccountId: Long?) : ReturnSettlement
+
+    /**
+     * Deja lo devuelto como saldo a favor de un cliente. Si la venta tiene cliente, es el suyo, y
+     * [customerId] puede ir vacío; si no lo tiene, la persona elige uno, porque un saldo a favor
+     * siempre es de alguien.
+     */
+    data class StoreCredit(val customerId: Long?) : ReturnSettlement
 }
 
 /**

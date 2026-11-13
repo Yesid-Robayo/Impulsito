@@ -1224,6 +1224,8 @@ internal class SaleWorld(
         alerts = alertRepository.takeIf { withAlerts },
         moneyAccounts = moneyAccountRepository,
         moneyLedger = moneyLedger,
+        customers = customerRepository,
+        customerLedger = customerLedger,
     )
 
     fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(

@@ -61,6 +61,15 @@ sealed interface RegisterSaleReturnResult {
     data class AboveRemaining(val index: Int, val remaining: QuantityMilli) :
         RegisterSaleReturnResult
 
+    /** Un saldo a favor sin cliente: la venta no tiene, y no se eligió ninguno. */
+    data object CustomerRequired : RegisterSaleReturnResult
+
+    /** El cliente no existe, está archivado o se anonimizó: ya no recibe saldo nuevo. */
+    data object CustomerUnavailable : RegisterSaleReturnResult
+
+    /** Se eligió un cliente distinto del de la venta: el saldo a favor es de quien compró. */
+    data object CustomerNotOfSale : RegisterSaleReturnResult
+
     /** La cuenta elegida para devolver el dinero no sirve, por [issue]. */
     data class AccountUnavailable(val issue: AccountIssue) : RegisterSaleReturnResult
 

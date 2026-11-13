@@ -5,6 +5,9 @@ import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntryDraft
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
@@ -27,6 +30,8 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
@@ -42,11 +47,14 @@ import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
 import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
+import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerEntryIssue
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.returns.ReturnShare
 import io.github.yesidrobayo.shopledger.domain.rule.returns.ReturnShareCheck
 import io.github.yesidrobayo.shopledger.domain.rule.returns.ReturnShares
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOutcome
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyAppendResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
@@ -70,6 +78,10 @@ import kotlin.time.Instant
  *   la moneda del negocio y en la caja abierta de esa cuenta si la hay. La cuenta tiene que existir,
  *   estar vigente y llevar la moneda del negocio: si no, no se registra nada, porque la persona la
  *   eligió y puede elegir otra. Sin cuenta, el dinero se entrega por fuera y no se escribe nada.
+ * - **O queda a favor del cliente.** Con saldo a favor, un `RETURN_CREDIT` por el total en el libro
+ *   del cliente de la venta, o del que se elija si la venta no tiene: su saldo baja, y lo consume
+ *   una venta a crédito. Sin cliente no hay saldo a favor, y uno archivado o anonimizado ya no lo
+ *   recibe. Una venta a crédito devuelta así reduce su deuda.
  * - **Los puntos no cambian**: una devolución no recalcula lo ganado ni lo canjeado en la venta.
  * - **Cuenta hoy.** La devolución es un hecho nuevo y lleva la fecha en que se registra, no la de la
  *   venta: el mes de la venta conserva sus cifras.
@@ -91,7 +103,10 @@ class RegisterSaleReturnUseCase(
     private val alerts: LowStockAlertRepository? = null,
     moneyAccounts: MoneyAccountRepository? = null,
     moneyLedger: MoneyLedgerRepository? = null,
+    private val customers: CustomerRepository? = null,
+    customerLedger: CustomerLedgerRepository? = null,
 ) {
+    private val customerLedger = customerLedger?.let(::CustomerLedgerWriter)
     private val ledger = StockChangeRecorder(ledger)
     private val money = moneyAccounts?.let { accounts ->
         moneyLedger?.let { book -> DocumentMoney(accounts, book) }
@@ -128,6 +143,19 @@ class RegisterSaleReturnUseCase(
         val accountId = when (settlement) {
             is ReturnSettlement.Refund ->
                 settlement.moneyAccountId.takeIf { totals.total > Money.ZERO }
+
+            is ReturnSettlement.StoreCredit -> null
+        }
+        val creditCustomerId = when (settlement) {
+            is ReturnSettlement.Refund -> null
+
+            is ReturnSettlement.StoreCredit -> {
+                val chosen = creditCustomerOf(sale, settlement)
+                when (chosen) {
+                    is CreditCustomer.Chosen -> chosen.customerId
+                    is CreditCustomer.Rejected -> return TxResult.Rollback(chosen.rejection)
+                }
+            }
         }
         if (accountId != null) {
             val issue = checkNotNull(money) { "Devolver desde una cuenta necesita las cuentas" }
@@ -142,7 +170,10 @@ class RegisterSaleReturnUseCase(
         val returnId = returns.insert(
             NewSaleReturn(
                 saleId = sale.id,
-                resolution = ReturnResolution.REFUND,
+                resolution = when (settlement) {
+                    is ReturnSettlement.Refund -> ReturnResolution.REFUND
+                    is ReturnSettlement.StoreCredit -> ReturnResolution.STORE_CREDIT
+                },
                 netRefund = totals.net,
                 taxRefund = totals.tax,
                 totalRefund = totals.total,
@@ -164,6 +195,11 @@ class RegisterSaleReturnUseCase(
             }
         }
         if (accountId != null && !refund(accountId, returnId, totals.total, time, now)) {
+            return TxResult.Rollback(RegisterSaleReturnResult.LedgerDamaged)
+        }
+        if (creditCustomerId != null && totals.total > Money.ZERO &&
+            !credit(creditCustomerId, returnId, totals.total, time)
+        ) {
             return TxResult.Rollback(RegisterSaleReturnResult.LedgerDamaged)
         }
         alerts?.let { ledger.applyAlerts(it, products, time) }
@@ -323,6 +359,70 @@ class RegisterSaleReturnUseCase(
     }
 
     /**
+     * El cliente que recibe el saldo a favor: el de la venta, o el elegido si la venta no tiene.
+     * Leído dentro de la transacción: uno que se archivó o se anonimizó mientras tanto no recibe
+     * saldo nuevo.
+     */
+    private suspend fun creditCustomerOf(
+        sale: Sale,
+        settlement: ReturnSettlement.StoreCredit,
+    ): CreditCustomer {
+        val ofSale = sale.content.customerId
+        val chosen = settlement.customerId
+        if (ofSale != null && chosen != null && chosen != ofSale) {
+            return CreditCustomer.Rejected(RegisterSaleReturnResult.CustomerNotOfSale)
+        }
+        val customerId = ofSale ?: chosen
+            ?: return CreditCustomer.Rejected(RegisterSaleReturnResult.CustomerRequired)
+        val customer = checkNotNull(customers) { "Un saldo a favor necesita los clientes" }
+            .findById(customerId)
+        if (customer == null || customer.isArchived || customer.isAnonymized) {
+            return CreditCustomer.Rejected(RegisterSaleReturnResult.CustomerUnavailable)
+        }
+        return CreditCustomer.Chosen(customerId)
+    }
+
+    /**
+     * Deja [total] a favor de [customerId] con un `RETURN_CREDIT` ligado a la devolución: su saldo
+     * baja, y lo consume una venta a crédito. Devuelve `false` si el saldo no cabría.
+     */
+    private suspend fun credit(
+        customerId: Long,
+        returnId: Long,
+        total: Money,
+        time: RecordTime,
+    ): Boolean {
+        val writer =
+            checkNotNull(customerLedger) { "Un saldo a favor necesita el libro del cliente" }
+        val draft = CustomerEntryDraft(
+            customerId = customerId,
+            type = CustomerLedgerEntryType.RETURN_CREDIT,
+            amount = -total,
+            source = CustomerEntrySource.SaleReturn(returnId),
+            dueDate = null,
+            note = null,
+        )
+        return when (val outcome = writer.append(draft, time)) {
+            is CustomerEntryOutcome.Appended -> true
+
+            is CustomerEntryOutcome.Rejected -> when (outcome.issue) {
+                CustomerEntryIssue.BALANCE_OVERFLOW -> false
+
+                // La fila se arma aquí con su tipo, su signo y su devolución: otro rechazo es un
+                // error de programación, no algo que la persona pueda corregir.
+                CustomerEntryIssue.ZERO_AMOUNT, CustomerEntryIssue.WRONG_SIGN,
+                CustomerEntryIssue.WRONG_SOURCE, CustomerEntryIssue.NOTE_REQUIRED,
+                CustomerEntryIssue.NOTE_TOO_LONG,
+                -> error("Saldo a favor mal armado: " + outcome.issue)
+            }
+
+            CustomerEntryOutcome.EntryNotFound, CustomerEntryOutcome.AlreadyCompensated,
+            CustomerEntryOutcome.NotReversible,
+            -> error("Agregar un saldo a favor no compensa ninguna fila")
+        }
+    }
+
+    /**
      * Una fila que la base siempre tiene y no está: la base está dañada, y la devolución no se
      * escribe. Sale como cualquier falla de la base, sin texto.
      */
@@ -348,6 +448,13 @@ class RegisterSaleReturnUseCase(
             lineCost = share.cost,
             restock = request.restock,
         )
+    }
+
+    /** El cliente del saldo a favor, o por qué no hay uno. */
+    private sealed interface CreditCustomer {
+        class Chosen(val customerId: Long) : CreditCustomer
+
+        class Rejected(val rejection: RegisterSaleReturnResult) : CreditCustomer
     }
 
     private sealed interface Shared {
