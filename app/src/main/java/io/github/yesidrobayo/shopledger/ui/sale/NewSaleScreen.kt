@@ -52,10 +52,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Limit
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartLineIssue
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
@@ -157,6 +159,7 @@ fun NewSaleScreen(
                     navigationLabel = stringResource(R.string.a11y_close),
                     actions = { HeldSaleActions(uiState, onAction) },
                 )
+                uiState.exchange?.let { ExchangeBanner(it) }
                 if (twoPane) {
                     TwoPaneSale(uiState, onAction, wide)
                 } else {
@@ -324,7 +327,12 @@ private fun SalePanel(
                 if (!cart.isEmpty) {
                     PaymentChoice(uiState.payment, onAction, compact)
                     SaleSummary(cart, onAction, opensCart)
-                    CheckoutActions(uiState, onAction)
+                    val exchange = uiState.exchange
+                    if (exchange == null) {
+                        CheckoutActions(uiState, onAction)
+                    } else {
+                        exchange.difference?.let { ExchangeDifferenceText(it) }
+                    }
                     if (uiState.status == RegisterStatus.FAILED) {
                         NoticeCard(
                             text = stringResource(R.string.error_sale_register),
@@ -334,7 +342,13 @@ private fun SalePanel(
                         )
                     }
                     PrimaryActionButton(
-                        text = stringResource(R.string.sale_register),
+                        text = stringResource(
+                            if (uiState.exchange == null) {
+                                R.string.sale_register
+                            } else {
+                                R.string.sale_return_exchange_register_action
+                            },
+                        ),
                         onClick = { onAction(NewSaleAction.Register) },
                         variant = ActionVariant.PRIMARY,
                         enabled = cart.canRegister,
@@ -476,6 +490,54 @@ private fun CheckoutActions(uiState: NewSaleUiState, onAction: (NewSaleAction) -
             )
         }
     }
+}
+
+/**
+ * La banda fija de un cambio, bajo la barra: de qué venta viene y el crédito de lo devuelto, que
+ * paga la venta nueva.
+ */
+@Composable
+private fun ExchangeBanner(band: ExchangeBand) {
+    val formats = LocalAppFormats.current
+    val number = formats.quantity.format(QuantityMilli.ofUnits(band.saleId), allowsFraction = false)
+    NoticeCard(
+        text = stringResource(
+            R.string.sale_return_exchange_banner,
+            number,
+            rememberMoneyDisplay(band.credit, formats.money).text.text,
+        ),
+        variant = NoticeVariant.INFO,
+        modifier = Modifier.padding(
+            start = AppTheme.spacing.s16,
+            end = AppTheme.spacing.s16,
+            bottom = AppTheme.spacing.s8,
+        ),
+    )
+}
+
+/** Lo que queda del cambio: `Por cobrar`, `Por devolver` o `Sin diferencia`. */
+@Composable
+private fun ExchangeDifferenceText(difference: ExchangeDifference) {
+    val money = LocalAppFormats.current.money
+    val text = when (difference) {
+        is ExchangeDifference.ToCollect -> stringResource(
+            R.string.sale_return_exchange_to_collect,
+            rememberMoneyDisplay(difference.amount, money).text.text,
+        )
+
+        is ExchangeDifference.ToRefund -> stringResource(
+            R.string.sale_return_exchange_to_refund,
+            rememberMoneyDisplay(difference.amount, money).text.text,
+        )
+
+        ExchangeDifference.None -> stringResource(R.string.sale_return_exchange_no_difference)
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.End,
+    )
 }
 
 /** Por qué la venta no se puede confirmar todavía, o `null` si nada lo impide. */
@@ -772,6 +834,8 @@ private const val ARCHIVED = "archived"
  */
 @Composable
 private fun HeldSaleActions(uiState: NewSaleUiState, onAction: (NewSaleAction) -> Unit) {
+    // Un cambio no se pone en espera: su devolución vive en la pantalla de debajo.
+    if (uiState.exchange != null) return
     if (uiState.heldCount > 0) {
         InlineTextButton(
             text = stringResource(R.string.draft_badge, uiState.heldCount),

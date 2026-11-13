@@ -16,6 +16,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProduct
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveTipsEnabledUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeSaleUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSaleReturnUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveHeldSalesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleCatalogUseCase
@@ -31,8 +33,11 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.TopLevelDestination
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
 import io.github.yesidrobayo.shopledger.navigation.rememberSaleUndo
+import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
+import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.returns.rememberExchangeNoteHandoff
 import kotlinx.coroutines.flow.first
 
 /**
@@ -43,6 +48,10 @@ import kotlinx.coroutines.flow.first
  * con productos pregunta antes de descartarlos. Crear un producto que la búsqueda no encontró abre
  * su formulario con lo escrito, y al volver el producto ya está en la venta. Si la base va al
  * rescate, la pantalla no lee nada.
+ *
+ * La venta nueva de un cambio registra la venta y su devolución juntas, y vuelve al detalle de la
+ * venta de origen con `Cambio registrado`, sin `Deshacer`: un cambio se corrige anulando su
+ * devolución. Salir sin registrarlo vuelve a la devolución, con lo elegido intacto.
  */
 @Composable
 fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
@@ -55,6 +64,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
             percentSymbols = formats.percent.inputSymbols,
         )
     val handoff = rememberCheckoutHandoff()
+    val exchangeNotes = rememberExchangeNoteHandoff()
     val model =
         rememberAppViewModelWithState { dependencies, savedState ->
             val ports = dependencies.ports
@@ -127,6 +137,23 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     calendar,
                     container.clock,
                 )
+            val registerReturn =
+                RegisterSaleReturnUseCase(
+                    transactions = ports.transactions,
+                    settings = ports.settings,
+                    products = ports.products,
+                    sales = ports.sales,
+                    returns = ports.saleReturns,
+                    units = ports.units,
+                    ledger = ports.stockLedger,
+                    clock = container.clock,
+                    alerts = ports.lowStockAlerts,
+                    moneyAccounts = ports.moneyAccounts,
+                    moneyLedger = ports.moneyLedger,
+                    customers = ports.customers,
+                    customerLedger = ports.customerLedger,
+                )
+            val exchangeSale = ExchangeSaleUseCase(ports.transactions, register, registerReturn)
             NewSaleViewModel(
                 catalogSource = { observe() },
                 registerSale = { register(it) },
@@ -150,6 +177,9 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                         .first()
                         ?.let(SaleCorrections::of)
                 },
+                exchange = key.exchange,
+                exchangeSale = { exchangeSale(it) },
+                exchangeNote = { key.exchange?.let { exchangeNotes.noteFor(it.saleId) } },
             )
         }
     when (model) {
@@ -182,8 +212,18 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     retry = stringResource(R.string.action_retry),
                 )
             val undo = rememberSaleUndo()
+            val exchangedText = stringResource(R.string.sale_return_exchange_success)
             LaunchedEffect(registered) {
                 if (registered == null || registeredText == null) return@LaunchedEffect
+                if (registered.exchanged) {
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    viewModel.onAction(NewSaleAction.RegisteredShown)
+                    messages.show(AppSnackbarVisuals(exchangedText, SnackbarVariant.SUCCESS))
+                    // La devolución que abrió el cambio ya se registró con él: se cierra también.
+                    navigator.back()
+                    if (navigator.current is AppNavKey.SaleReturn) navigator.back()
+                    return@LaunchedEffect
+                }
                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 viewModel.onAction(NewSaleAction.RegisteredShown)
                 // El mensaje vive en la navegación: sigue a la vista después de cerrar la venta.
@@ -208,8 +248,10 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
             LaunchedEffect(uiState.closed) {
                 if (uiState.closed) navigator.back()
             }
-            // Con productos, atrás pregunta antes de descartarlos; sin ellos, sale sin más.
-            BackHandler(enabled = !uiState.cart.isEmpty) { viewModel.onAction(NewSaleAction.Close) }
+            // Con productos, o en un cambio, atrás pregunta antes de descartarlos; sin ellos, sale.
+            BackHandler(enabled = !uiState.cart.isEmpty || uiState.exchange != null) {
+                viewModel.onAction(NewSaleAction.Close)
+            }
             NewSaleScreen(
                 uiState = uiState,
                 onAction = { action ->

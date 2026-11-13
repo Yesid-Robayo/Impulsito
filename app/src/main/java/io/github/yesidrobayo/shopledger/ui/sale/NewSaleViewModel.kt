@@ -11,10 +11,12 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
+import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
@@ -26,10 +28,13 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPricing
 import io.github.yesidrobayo.shopledger.domain.rule.sale.HeldSaleRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCart
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrection
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeRequest
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.HoldSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ResumeHeldSaleResult
+import io.github.yesidrobayo.shopledger.navigation.SaleExchange
 import io.github.yesidrobayo.shopledger.ui.ReadOutcome
 import io.github.yesidrobayo.shopledger.ui.payment.plainNumberText
 import io.github.yesidrobayo.shopledger.ui.readOrNull
@@ -109,6 +114,12 @@ class NewSaleViewModel(
     private val loadCorrection: suspend (Long) -> SaleCorrection? = { null },
     prefillCustomerId: Long? = null,
     private val customerPriceList: suspend (Long) -> Long? = { null },
+    private val exchange: SaleExchange? = null,
+    // Sin cambio conectado, como en una vista previa, registrar un cambio no guarda nada.
+    private val exchangeSale: suspend (ExchangeRequest) -> ExchangeResult = {
+        ExchangeResult.SaleRejected(RegisterSaleResult.EmptySale)
+    },
+    private val exchangeNote: () -> String? = { null },
 ) : ViewModel() {
     private val draft = MutableStateFlow(SaleDraftStore.read(savedState))
 
@@ -335,6 +346,11 @@ class NewSaleViewModel(
     }
 
     private fun close() {
+        // Salir de un cambio siempre pregunta: la devolución elegida tampoco se registra.
+        if (exchange != null) {
+            overlay.update { it.copy(dialog = SaleDialog.LeaveExchange) }
+            return
+        }
         if (draft.value.lines.isEmpty()) {
             leave()
             return
@@ -582,6 +598,10 @@ class NewSaleViewModel(
             }
             return
         }
+        if (exchange != null) {
+            registerExchange(exchange, catalog, current, total)
+            return
+        }
         if (total == Money.ZERO && !zeroConfirmed) {
             overlay.update { it.copy(dialog = SaleDialog.ZeroTotal) }
             return
@@ -650,6 +670,99 @@ class NewSaleViewModel(
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }
+    }
+
+    /**
+     * Registra el cambio: la venta nueva y la devolución que la paga, juntas o ninguna.
+     *
+     * El crédito paga primero con el método con que se cobró la venta de origen, cuyo dinero entra en
+     * la misma cuenta de la que sale el reembolso: así en la cuenta queda solo la diferencia. Lo que
+     * falta se cobra con el método elegido; si sobra crédito, la cuenta devuelve la diferencia. Sin
+     * ese método a la mano, el crédito paga con el elegido. En un cambio el total no lleva recargo de
+     * método ni redondeo del efectivo: es el que muestra la banda.
+     */
+    private fun registerExchange(
+        exchange: SaleExchange,
+        catalog: SaleCatalog,
+        current: SaleDraft,
+        total: Money,
+    ) {
+        val chosenId = selectedMethodId(catalog, current)
+        if (chosenId == null) {
+            overlay.update { it.copy(dialog = null, status = RegisterStatus.FAILED) }
+            return
+        }
+        val creditMethod = exchange.creditMethodId
+            ?.let { id -> catalog.methods.firstOrNull { it.id == id } }
+            ?: catalog.methods.first { it.id == chosenId }
+        val creditPart = minOf(Money(exchange.credit), total)
+        val rest = total - creditPart
+        val payments = if (creditMethod.id == chosenId || rest == Money.ZERO) {
+            listOf(SalePaymentRequest(creditMethod.id, total))
+        } else {
+            listOf(
+                SalePaymentRequest(creditMethod.id, creditPart),
+                SalePaymentRequest(chosenId, rest),
+            )
+        }
+        overlay.update { it.copy(dialog = null, status = RegisterStatus.WORKING) }
+        viewModelScope.launch {
+            val request = ExchangeRequest(
+                saleId = exchange.saleId,
+                lines = exchange.lines.map {
+                    ReturnLineRequest(it.saleLineId, QuantityMilli(it.quantityMilli), it.restock)
+                },
+                replacement = SaleRequest(
+                    lines = current.lines,
+                    paymentMethodId = chosenId,
+                    note = current.note.takeIf { it.isNotBlank() },
+                    payments = payments,
+                    priceListId = catalog.salePriceList(current.priceListId)?.listId,
+                ),
+                refundAccountId = creditMethod.details.moneyAccountId,
+                note = exchangeNote(),
+            )
+            when (val result = exchangeSale(request)) {
+                is ExchangeResult.Exchanged -> {
+                    changeDraft { SaleDraft(prefilled = true) }
+                    overlay.update {
+                        Overlay(
+                            registered = RegisteredSale(
+                                result.replacementSaleId,
+                                total,
+                                exchanged = true,
+                            ),
+                        )
+                    }
+                }
+
+                is ExchangeResult.SaleRejected -> overlay.update {
+                    if (result.rejection == RegisterSaleResult.CurrencyNotConfirmed) {
+                        it.copy(status = RegisterStatus.IDLE, sheet = SaleSheet.CurrencyRequired)
+                    } else {
+                        it.copy(status = RegisterStatus.FAILED)
+                    }
+                }
+
+                // La devolución ya no cabe, la cuenta no sirve o la base falló: nada se guardó, y la
+                // venta sigue armada para reintentar.
+                is ExchangeResult.ReturnRejected, is ExchangeResult.StorageFailed ->
+                    overlay.update { it.copy(status = RegisterStatus.FAILED) }
+            }
+        }
+    }
+
+    /** La banda del cambio: el crédito y lo que queda con [total], el de la venta nueva. */
+    private fun bandOf(exchange: SaleExchange, total: Money?, hasLines: Boolean): ExchangeBand {
+        val credit = Money(exchange.credit)
+        val difference = total?.takeIf { hasLines }?.let {
+            when {
+                it > credit -> ExchangeDifference.ToCollect(it - credit)
+                it < credit -> ExchangeDifference.ToRefund(credit - it)
+                else -> ExchangeDifference.None
+            }
+        }
+        return ExchangeBand(exchange.saleId, credit, difference)
     }
 
     // ------------------------------------------------------------------ ventas en espera
@@ -884,6 +997,7 @@ class NewSaleViewModel(
             closed = shown.closed,
             heldSaleId = current.heldSaleId,
             heldNotice = shown.heldNotice,
+            exchange = exchange?.let { bandOf(it, cart.total, !cart.isEmpty) },
         )
     }
 
@@ -907,7 +1021,8 @@ class NewSaleViewModel(
      * que se ve es el que se guarda al confirmar.
      */
     private fun previewOf(catalog: SaleCatalog, current: SaleDraft): CartPreview {
-        val methodId = selectedMethodId(catalog, current)
+        // Un cambio paga con dos métodos a la vez: su total va sin recargo ni redondeo de ninguno.
+        val methodId = selectedMethodId(catalog, current).takeIf { exchange == null }
         val method = catalog.methods.firstOrNull { it.id == methodId }
         val pricing = CartPricing(
             taxMode = catalog.taxes.mode,

@@ -2,11 +2,15 @@ package io.github.yesidrobayo.shopledger.ui.sale
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturnLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleDetail
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleReceipt
+import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleResults
@@ -20,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -45,6 +50,7 @@ import kotlinx.coroutines.launch
  *
  * @param voidSale anula la venta con el motivo y la nota.
  * @param observeBusinessName el nombre del negocio, que encabeza el comprobante si existe.
+ * @param loadReturnLines las líneas de una devolución, para su hoja.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SaleDetailViewModel(
@@ -55,6 +61,7 @@ class SaleDetailViewModel(
     private val voidSale: suspend (Long, VoidReason, String?) -> VoidSaleResult,
     computation: CoroutineDispatcher,
     private val observeBusinessName: () -> Flow<String?> = { flowOf(null) },
+    private val loadReturnLines: suspend (Long) -> List<SaleReturnLine> = { emptyList() },
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val overlay = MutableStateFlow(Overlay())
@@ -92,6 +99,11 @@ class SaleDetailViewModel(
                 correcting = shown.correcting && found.view.canVoid,
                 corrected = shown.corrected,
                 correctFailed = shown.correctFailed,
+                returnSheet = shown.returnId?.let { id ->
+                    found.view.returns.firstOrNull { it.returnId == id }?.let { row ->
+                        SaleReturnSheet(row, shown.returnLines?.let { linesOf(found.view, it) })
+                    }
+                },
             )
         }
     }.stateIn(
@@ -137,6 +149,47 @@ class SaleDetailViewModel(
 
             // Volver lo resuelve la navegación.
             SaleDetailAction.Back -> Unit
+
+            // Abrir la devolución es navegación: la resuelve la ruta.
+            SaleDetailAction.OpenReturn -> Unit
+
+            is SaleDetailAction.OpenReturnDetail -> openReturn(action.returnId)
+
+            SaleDetailAction.CloseReturnDetail ->
+                overlay.update { it.copy(returnId = null, returnLines = null) }
+        }
+    }
+
+    /** Abre la hoja de la devolución y lee sus líneas, que nunca cambian. */
+    private fun openReturn(returnId: Long) {
+        overlay.update { it.copy(returnId = returnId, returnLines = null) }
+        viewModelScope.launch {
+            // Sin poder leer las líneas, la hoja muestra igual la cabecera.
+            flow { emit(loadReturnLines(returnId)) }
+                .catch { emit(emptyList()) }
+                .collect { lines ->
+                    overlay.update {
+                        if (it.returnId == returnId) it.copy(returnLines = lines) else it
+                    }
+                }
+        }
+    }
+
+    /** Las líneas de una devolución con el nombre y la unidad de su línea vendida. */
+    private fun linesOf(
+        view: SaleDetailView,
+        lines: List<SaleReturnLine>,
+    ): List<SaleReturnSheetLine> {
+        val sold = view.lines.associateBy { it.lineId }
+        return lines.mapNotNull { line ->
+            val row = sold[line.content.saleLineId] ?: return@mapNotNull null
+            SaleReturnSheetLine(
+                name = row.name,
+                quantity = inLineUnit(line.content.quantity, row.factor),
+                unit = row.unit,
+                total = line.content.lineTotal,
+                restock = line.content.restock,
+            )
         }
     }
 
@@ -197,8 +250,21 @@ class SaleDetailViewModel(
                 SaleVoidView(it.reason, calendar?.businessDateOf(it.voidedAt), it.note)
             },
             hasActiveReturns = detail.hasActiveReturns,
+            canReturn = detail.canBeReturned,
+            returns = detail.returns.map { saleReturn ->
+                val header = saleReturn.content
+                SaleReturnRow(
+                    returnId = saleReturn.id,
+                    date = header.businessDate,
+                    resolution = header.resolution,
+                    total = header.totalRefund,
+                    voided = saleReturn.voiding != null,
+                    note = header.note,
+                )
+            },
             lines = detail.lines.map { line ->
                 val row = line.content
+                val returned = detail.returned[line.id]?.quantity ?: QuantityMilli.ZERO
                 SaleDetailLine(
                     lineId = line.id,
                     name = row.productNameSnapshot,
@@ -208,6 +274,9 @@ class SaleDetailViewModel(
                     discount = row.lineDiscount,
                     total = row.lineTotal,
                     archived = row.productId in detail.archivedProductIds,
+                    returned = inLineUnit(returned, row.unitFactor),
+                    left = inLineUnit(detail.remainingOf(line), row.unitFactor),
+                    factor = row.unitFactor,
                 )
             },
             payments = detail.payments.map { payment ->
@@ -247,6 +316,16 @@ class SaleDetailViewModel(
             SaleDetailTax(name, lines.fold(Money.ZERO) { sum, line -> sum + line.taxAmount })
         }
 
+    /**
+     * [quantity], que va en la unidad base, en la unidad en que se vendió la línea: [factor] unidades
+     * base por cada una. Una cifra que no cabría se muestra en la base.
+     */
+    private fun inLineUnit(quantity: QuantityMilli, factor: QuantityMilli): QuantityMilli {
+        if (factor == QuantityMilli(MILLI_PER_UNIT)) return quantity
+        val scaled = mulDivRound(quantity.milli, MILLI_PER_UNIT, factor.milli)
+        return (scaled as? Checked.Value)?.value?.let(::QuantityMilli) ?: quantity
+    }
+
     private sealed interface Content {
         data object Missing : Content
 
@@ -262,9 +341,14 @@ class SaleDetailViewModel(
         val correcting: Boolean = false,
         val corrected: Long? = null,
         val correctFailed: Boolean = false,
+        val returnId: Long? = null,
+        val returnLines: List<SaleReturnLine>? = null,
     )
 
     private companion object {
+        /** Milésimas en una unidad entera. */
+        const val MILLI_PER_UNIT = 1_000L
+
         /** Lo que sigue viva la lectura al rotar la pantalla. */
         const val STOP_TIMEOUT_MILLIS = 5_000L
     }

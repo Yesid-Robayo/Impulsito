@@ -18,6 +18,9 @@ import kotlinx.datetime.DayOfWeek
  *
  * [heldCount] cuenta las ventas en espera, sin la que se edita. [heldSaleId] es la venta en espera
  * de la que se retomó esta, si se retomó: al confirmar, sale de la espera.
+ *
+ * Con [exchange], es la venta nueva de un cambio: lo devuelto la paga, y la banda dice el crédito y
+ * la diferencia.
  */
 @Immutable
 data class NewSaleUiState(
@@ -35,7 +38,27 @@ data class NewSaleUiState(
     val heldCount: Int = 0,
     val heldSaleId: Long? = null,
     val heldNotice: HeldNotice? = null,
+    val exchange: ExchangeBand? = null,
 )
+
+/**
+ * La banda del cambio: la venta de origen [saleId], el crédito de lo devuelto y la diferencia con la
+ * venta nueva, o `null` mientras la venta nueva no tenga un total que confirmar.
+ */
+@Immutable
+data class ExchangeBand(val saleId: Long, val credit: Money, val difference: ExchangeDifference?)
+
+/** Lo que queda entre la venta nueva y el crédito del cambio. */
+sealed interface ExchangeDifference {
+    /** La venta nueva cuesta más: se cobra [amount] con el método elegido. */
+    data class ToCollect(val amount: Money) : ExchangeDifference
+
+    /** La venta nueva cuesta menos: se devuelve [amount]. */
+    data class ToRefund(val amount: Money) : ExchangeDifference
+
+    /** Mismo valor. */
+    data object None : ExchangeDifference
+}
 
 /** Lo que muestra la cuadrícula de productos. */
 sealed interface SaleContent {
@@ -267,6 +290,9 @@ sealed interface SaleDialog {
 
     /** Una venta en cero: el único caso que pide confirmar. */
     data object ZeroTotal : SaleDialog
+
+    /** Salir de un cambio sin registrarlo: nada quedó escrito. */
+    data object LeaveExchange : SaleDialog
 }
 
 /** En qué va la confirmación de la venta. */
@@ -320,7 +346,8 @@ sealed interface HeldNotice {
  * La venta recién guardada: su número y su total, para el mensaje de Inicio, y los puntos que ganó
  * su cliente, que el mensaje nombra si son más que cero. [moneyAccountSkipped] dice que algún pago
  * no entró en la cuenta de su método, archivada o en otra moneda: el aviso lo cuenta, para que nadie
- * crea que la cuenta se movió.
+ * crea que la cuenta se movió. [exchanged] dice que fue la venta nueva de un cambio, que no se
+ * deshace desde el mensaje: se anula su devolución.
  */
 @Immutable
 data class RegisteredSale(
@@ -328,4 +355,5 @@ data class RegisteredSale(
     val total: Money,
     val pointsEarned: Long = 0L,
     val moneyAccountSkipped: Boolean = false,
+    val exchanged: Boolean = false,
 )

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Devolución de venta y cambio de productos. -->
+    <string name="sale_return_action">Return products</string>
+    <string name="sale_return_rest_action">Return the rest</string>
+    <string name="sale_return_subtitle">Sale %1$s · %2$s</string>
+    <string name="sale_return_what_title">What is returned</string>
+    <string name="sale_return_sold_only">Sold: %1$s</string>
+    <string name="sale_return_sold_and_returned">Sold: %1$s · Already returned: %2$s</string>
+    <string name="sale_return_restock">Return to inventory</string>
+    <string name="sale_return_no_restock_help">Not returned to inventory: this stock counts as lost</string>
+    <string name="sale_return_how_title">How it is settled</string>
+    <string name="sale_return_resolution_refund">Refund money</string>
+    <string name="sale_return_resolution_store_credit">Credit balance</string>
+    <string name="sale_return_resolution_exchange">Exchange for another</string>
+    <string name="sale_return_refund_from">Paid from</string>
+    <string name="sale_return_no_account">No account</string>
+    <string name="sale_return_balance_after">Balance after: %1$s</string>
+    <string name="sale_return_note_label">Note</string>
+    <string name="sale_return_note_hint">Optional</string>
+    <plurals name="sale_return_summary">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+    <string name="sale_return_total_label">Total to refund</string>
+    <string name="sale_return_net_label">Amount before tax</string>
+    <string name="sale_return_tax_label">Tax</string>
+    <string name="sale_return_register_action">Record return</string>
+    <string name="sale_return_continue_exchange_action">Continue with the exchange</string>
+    <string name="sale_return_exchange_banner">Exchange for sale %1$s: credit %2$s</string>
+    <string name="sale_return_exchange_register_action">Record exchange</string>
+    <string name="sale_return_exchange_to_collect">Receivable: %1$s</string>
+    <string name="sale_return_exchange_to_refund">To refund: %1$s</string>
+    <string name="sale_return_exchange_no_difference">No difference</string>
+    <string name="sale_return_exchange_exit_confirm_title">Leave without recording the exchange?</string>
+    <string name="sale_return_exchange_exit_confirm_body">Nothing has been recorded yet.</string>
+    <string name="sale_return_exchange_exit_confirm_action">Leave without recording</string>
+    <string name="sale_return_exchange_exit_keep_action">Stay on the exchange</string>
+    <string name="sale_return_list_title">Returns</string>
+    <string name="sale_return_detail_title">Return %1$s</string>
+    <string name="sale_return_empty_title">Everything has already been returned</string>
+    <string name="sale_return_error_none_selected">Choose at least one product</string>
+    <string name="sale_return_error_max">Maximum %1$s</string>
+    <string name="sale_return_error_no_customer">Choose the customer to keep the credit balance</string>
+    <string name="sale_return_credit_debt_help">Reduces what %1$s owes</string>
+    <string name="sale_return_other_month_notice">The return counts on %1$s. That month\'s figures do not change</string>
+    <string name="sale_return_points_notice">The points from this sale do not change</string>
+    <string name="sale_return_error_register">Could not record the return. The selection is kept.</string>
+    <string name="sale_return_success">Return recorded: %1$s</string>
+    <string name="a11y_sale_return_line">%1$s, sold %2$s, already returned %3$s, to return %4$s</string>
+    <string name="a11y_sale_return_total">Total to refund: %1$s</string>
+    <string name="sale_return_returned_and_left">Already returned: %1$s · Left: %2$s</string>
+    <string name="sale_return_exchange_success">Exchange recorded</string>
+</resources>

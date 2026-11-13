@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.sale
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,11 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
+import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnResolution
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
@@ -63,6 +66,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlinx.datetime.YearMonth
@@ -156,6 +160,7 @@ fun SaleDetailScreen(
         }
     }
     if (ready?.sheet != null) VoidSheetContent(ready, onAction)
+    ready?.returnSheet?.let { ReturnSheetContent(it, onAction) }
     if (ready?.correcting == true) {
         ConfirmDialog(
             title = stringResource(R.string.dialog_correct_title),
@@ -218,22 +223,44 @@ private fun DetailBody(sale: SaleDetailView, onAction: (SaleDetailAction) -> Uni
                 }
             }
         }
-        if (sale.canVoid) {
+        if (sale.returns.isNotEmpty()) {
+            item(key = RETURNS) { SectionHeader(stringResource(R.string.sale_return_list_title)) }
+            items(sale.returns, key = { "return-${it.returnId}" }) { row ->
+                ReturnRow(row, onAction)
+            }
+        }
+        if (sale.canVoid || sale.canReturn) {
             item(key = ACTIONS) {
                 Column(
                     Modifier.padding(horizontal = spacing.s16, vertical = spacing.s16),
                     verticalArrangement = Arrangement.spacedBy(spacing.s12),
                 ) {
-                    PrimaryActionButton(
-                        text = stringResource(R.string.dialog_correct_action),
-                        onClick = { onAction(SaleDetailAction.OpenCorrect) },
-                        variant = ActionVariant.OUTLINED,
-                    )
-                    PrimaryActionButton(
-                        text = stringResource(R.string.dialog_void_sale_action),
-                        onClick = { onAction(SaleDetailAction.OpenVoid) },
-                        variant = ActionVariant.OUTLINED,
-                    )
+                    // Con una devolución activa no se anula: lo que falta se devuelve.
+                    if (sale.canReturn) {
+                        PrimaryActionButton(
+                            text = stringResource(
+                                if (sale.hasActiveReturns) {
+                                    R.string.sale_return_rest_action
+                                } else {
+                                    R.string.sale_return_action
+                                },
+                            ),
+                            onClick = { onAction(SaleDetailAction.OpenReturn) },
+                            variant = ActionVariant.OUTLINED,
+                        )
+                    }
+                    if (sale.canVoid) {
+                        PrimaryActionButton(
+                            text = stringResource(R.string.dialog_correct_action),
+                            onClick = { onAction(SaleDetailAction.OpenCorrect) },
+                            variant = ActionVariant.OUTLINED,
+                        )
+                        PrimaryActionButton(
+                            text = stringResource(R.string.dialog_void_sale_action),
+                            onClick = { onAction(SaleDetailAction.OpenVoid) },
+                            variant = ActionVariant.OUTLINED,
+                        )
+                    }
                 }
             }
         }
@@ -405,10 +432,14 @@ private fun DetailSubRow(label: String, last: Boolean = false, value: @Composabl
     }
 }
 
-/** Una línea vendida, con `cantidad × precio`, su total y el descuento si lo tuvo. */
+/**
+ * Una línea vendida, con `cantidad × precio`, su total y el descuento si lo tuvo. Con devoluciones
+ * activas, debajo va lo ya devuelto y lo que queda.
+ */
 @Composable
 private fun LineRow(line: SaleDetailLine) {
     val unit = unitLabelOf(line.unit)
+    val returned = line.returned > QuantityMilli.ZERO
     Column {
         ProductRow(
             data = ProductRowData(
@@ -422,8 +453,32 @@ private fun LineRow(line: SaleDetailLine) {
                 ),
                 archived = line.archived,
             ),
-            divider = line.discount == Money.ZERO,
+            divider = line.discount == Money.ZERO && !returned,
         )
+        if (returned) {
+            val label = unit
+            Text(
+                text = stringResource(
+                    R.string.sale_return_returned_and_left,
+                    quantityText(line.returned, label),
+                    quantityText(line.left, label),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    start = AppTheme.spacing.s16,
+                    end = AppTheme.spacing.s16,
+                    bottom = AppTheme.spacing.s8,
+                ),
+            )
+            if (line.discount == Money.ZERO) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = AppTheme.spacing.s16),
+                    thickness = AppTheme.sizes.hairline,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+            }
+        }
         if (line.discount > Money.ZERO) {
             Row(
                 Modifier
@@ -571,6 +626,126 @@ private fun VoidSheetContent(ready: SaleDetailUiState.Ready, onAction: (SaleDeta
     }
 }
 
+/**
+ * Una devolución en la lista: su número, el día en que cuenta y cómo se resolvió, y lo devuelto.
+ * Anulada, el monto va tachado. Tocarla abre su hoja.
+ */
+@Composable
+private fun ReturnRow(row: SaleReturnRow, onAction: (SaleDetailAction) -> Unit) {
+    val spacing = AppTheme.spacing
+    Column {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = AppTheme.sizes.listRow)
+                .clickable(role = Role.Button) {
+                    onAction(SaleDetailAction.OpenReturnDetail(row.returnId))
+                }
+                .padding(horizontal = spacing.s16, vertical = spacing.s8),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
+                Text(returnTitle(row), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = stringResource(
+                        R.string.sale_voided_on,
+                        LocalAppFormats.current.date.longDate(row.date),
+                        stringResource(resolutionLabel(row.resolution)),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            MoneyText(row.total, MoneySize.ROW, voided = row.voided)
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = spacing.s16),
+            thickness = AppTheme.sizes.hairline,
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+    }
+}
+
+/**
+ * La hoja de una devolución: el día, cómo se resolvió, sus líneas con lo devuelto y si volvió al
+ * inventario, el total y la nota. Anularla llega con su propio paso.
+ */
+@Composable
+private fun ReturnSheetContent(sheet: SaleReturnSheet, onAction: (SaleDetailAction) -> Unit) {
+    val row = sheet.row
+    val spacing = AppTheme.spacing
+    AppBottomSheet(
+        onDismissRequest = { onAction(SaleDetailAction.CloseReturnDetail) },
+        title = returnTitle(row),
+    ) {
+        Text(
+            text = stringResource(
+                R.string.sale_voided_on,
+                LocalAppFormats.current.date.longDate(row.date),
+                stringResource(resolutionLabel(row.resolution)),
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val lines = sheet.lines
+        if (lines == null) {
+            SkeletonBlock(Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.listRow))
+        } else {
+            for (line in lines) {
+                val unit = unitLabelOf(line.unit)
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.touchTarget),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(line.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = quantityText(line.quantity, unit),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (!line.restock) {
+                            Text(
+                                text = stringResource(R.string.sale_return_no_restock_help),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    MoneyText(line.total, MoneySize.ROW)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.sale_return_total_label),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            MoneyText(row.total, MoneySize.TITLE, voided = row.voided)
+        }
+        row.note?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+    }
+}
+
+@Composable
+private fun returnTitle(row: SaleReturnRow): String = stringResource(
+    R.string.sale_return_detail_title,
+    LocalAppFormats.current.quantity.format(
+        QuantityMilli.ofUnits(row.returnId),
+        allowsFraction = false,
+    ),
+)
+
+/** El nombre de cómo se resolvió una devolución. */
+internal fun resolutionLabel(resolution: ReturnResolution): Int = when (resolution) {
+    ReturnResolution.REFUND -> R.string.sale_return_resolution_refund
+    ReturnResolution.STORE_CREDIT -> R.string.sale_return_resolution_store_credit
+    ReturnResolution.EXCHANGE -> R.string.sale_return_resolution_exchange
+}
+
 /** El nombre de un motivo de anulación, como lo eligió la persona. */
 internal fun reasonLabel(reason: VoidReason): Int = when (reason) {
     VoidReason.ENTRY_ERROR -> R.string.void_reason_entry_error
@@ -618,3 +793,4 @@ private const val LINES = "lines"
 private const val RESULTS = "results"
 private const val NOTE = "note"
 private const val ACTIONS = "actions"
+private const val RETURNS = "returns"

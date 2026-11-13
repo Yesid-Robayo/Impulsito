@@ -491,6 +491,16 @@ internal fun SaleDialogs(uiState: NewSaleUiState, onAction: (NewSaleAction) -> U
             )
         }
 
+        SaleDialog.LeaveExchange -> ConfirmDialog(
+            title = stringResource(R.string.sale_return_exchange_exit_confirm_title),
+            body = stringResource(R.string.sale_return_exchange_exit_confirm_body),
+            confirmLabel = stringResource(R.string.sale_return_exchange_exit_confirm_action),
+            onConfirm = { onAction(NewSaleAction.ConfirmLeave) },
+            onDismiss = dismiss,
+            variant = ConfirmVariant.DESTRUCTIVE,
+            dismissLabel = stringResource(R.string.sale_return_exchange_exit_keep_action),
+        )
+
         is SaleDialog.Clear -> {
             val count = dialog.itemCount.toInt()
             ConfirmDialog(

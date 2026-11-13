@@ -9,9 +9,12 @@ import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
+import io.github.yesidrobayo.shopledger.domain.model.returns.LineAmounts
 import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturn
+import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturnLine
 import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnResolution
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturn
+import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturnLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
@@ -142,6 +145,8 @@ class SaleDetailViewModelTest {
         return SaleDetail(sale, listOf(line), listOf(payment), archivedProductIds = setOf(3L))
     }
 
+    private val returnLines = mutableListOf<SaleReturnLine>()
+
     private fun TestScope.viewModel(
         failRead: Boolean = false,
         businessName: String? = null,
@@ -160,6 +165,7 @@ class SaleDetailViewModelTest {
             },
             computation = dispatcher,
             observeBusinessName = { MutableStateFlow(businessName) },
+            loadReturnLines = { id -> returnLines.filter { it.saleReturnId == id } },
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -343,6 +349,83 @@ class SaleDetailViewModelTest {
         )
         advanceUntilIdle()
         assertTrue(model.ready.sale.canVoid)
+    }
+
+    @Test
+    fun `the detail shows what was returned, what is left and each return`() = runTest(dispatcher) {
+        val base = detailOf(voiding = null)
+        val line = base.lines.single()
+        // Tres unidades vendidas, una ya devuelta: queda dos, y se ofrece devolver el resto.
+        val sold = line.copy(
+            content = line.content.copy(
+                enteredQuantity = QuantityMilli(3_000L),
+                quantity = QuantityMilli(3_000L),
+            ),
+        )
+        val header = SaleReturn(
+            id = 41L,
+            content = NewSaleReturn(
+                saleId = 7L,
+                resolution = ReturnResolution.STORE_CREDIT,
+                netRefund = Money(6_000L),
+                taxRefund = Money.ZERO,
+                totalRefund = Money(6_000L),
+                costReturned = Money(3_704L),
+                moneyAccountId = null,
+                replacementSaleId = null,
+                note = "Talla equivocada",
+                occurredAt = at,
+                businessDate = date,
+                createdAt = at,
+            ),
+            voiding = null,
+        )
+        returnLines += SaleReturnLine(
+            id = 410L,
+            saleReturnId = 41L,
+            content = NewSaleReturnLine(
+                saleLineId = 70L,
+                quantity = QuantityMilli(1_000L),
+                netAmount = Money(6_000L),
+                taxAmount = Money.ZERO,
+                lineTotal = Money(6_000L),
+                lineCost = Money(3_704L),
+                restock = false,
+            ),
+        )
+        detail.value = base.copy(
+            lines = listOf(sold),
+            returns = listOf(header),
+            returned = mapOf(
+                70L to LineAmounts(
+                    QuantityMilli(1_000L),
+                    Money(6_000L),
+                    Money.ZERO,
+                    Money(3_704L),
+                ),
+            ),
+        )
+        val model = viewModel()
+
+        val shown = model.ready.sale
+        assertEquals(QuantityMilli(1_000L), shown.lines.single().returned)
+        assertEquals(QuantityMilli(2_000L), shown.lines.single().left)
+        assertTrue(shown.canReturn)
+        val row = shown.returns.single()
+        assertEquals(Money(6_000L), row.total)
+        assertEquals(ReturnResolution.STORE_CREDIT, row.resolution)
+        assertFalse(row.voided)
+
+        model.act(this, SaleDetailAction.OpenReturnDetail(41L))
+        val sheet = requireNotNull(model.ready.returnSheet)
+        assertEquals("Talla equivocada", sheet.row.note)
+        val returnedLine = requireNotNull(sheet.lines).single()
+        assertEquals("Crema", returnedLine.name)
+        assertEquals(QuantityMilli(1_000L), returnedLine.quantity)
+        assertFalse(returnedLine.restock)
+
+        model.act(this, SaleDetailAction.CloseReturnDetail)
+        assertNull(model.ready.returnSheet)
     }
 
     @Test

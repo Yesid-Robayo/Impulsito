@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Devolución de venta y cambio de productos. -->
+    <string name="sale_return_action">Devolver productos</string>
+    <string name="sale_return_rest_action">Devolver el resto</string>
+    <string name="sale_return_subtitle">Venta %1$s · %2$s</string>
+    <string name="sale_return_what_title">Qué se devuelve</string>
+    <string name="sale_return_sold_only">Vendido: %1$s</string>
+    <string name="sale_return_sold_and_returned">Vendido: %1$s · Ya devuelto: %2$s</string>
+    <string name="sale_return_restock">Devolver al inventario</string>
+    <string name="sale_return_no_restock_help">No vuelve al inventario: esta mercancía cuenta como perdida</string>
+    <string name="sale_return_how_title">Cómo se resuelve</string>
+    <string name="sale_return_resolution_refund">Devolver dinero</string>
+    <string name="sale_return_resolution_store_credit">Saldo a favor</string>
+    <string name="sale_return_resolution_exchange">Cambiar por otro</string>
+    <string name="sale_return_refund_from">Sale de</string>
+    <string name="sale_return_no_account">Sin cuenta</string>
+    <string name="sale_return_balance_after">Saldo que quedará: %1$s</string>
+    <string name="sale_return_note_label">Nota</string>
+    <string name="sale_return_note_hint">Opcional</string>
+    <plurals name="sale_return_summary">
+        <item quantity="one">%1$d producto</item>
+        <item quantity="many">%1$d de productos</item>
+        <item quantity="other">%1$d productos</item>
+    </plurals>
+    <string name="sale_return_total_label">Total a devolver</string>
+    <string name="sale_return_net_label">Base sin impuesto</string>
+    <string name="sale_return_tax_label">Impuesto</string>
+    <string name="sale_return_register_action">Registrar devolución</string>
+    <string name="sale_return_continue_exchange_action">Continuar con el cambio</string>
+    <string name="sale_return_exchange_banner">Cambio de la venta %1$s: crédito %2$s</string>
+    <string name="sale_return_exchange_register_action">Registrar cambio</string>
+    <string name="sale_return_exchange_to_collect">Por cobrar: %1$s</string>
+    <string name="sale_return_exchange_to_refund">Por devolver: %1$s</string>
+    <string name="sale_return_exchange_no_difference">Sin diferencia</string>
+    <string name="sale_return_exchange_exit_confirm_title">¿Salir sin registrar el cambio?</string>
+    <string name="sale_return_exchange_exit_confirm_body">Todavía no se registró nada.</string>
+    <string name="sale_return_exchange_exit_confirm_action">Salir sin registrar</string>
+    <string name="sale_return_exchange_exit_keep_action">Seguir con el cambio</string>
+    <string name="sale_return_list_title">Devoluciones</string>
+    <string name="sale_return_detail_title">Devolución %1$s</string>
+    <string name="sale_return_empty_title">Todo ya se devolvió</string>
+    <string name="sale_return_error_none_selected">Elegir al menos un producto</string>
+    <string name="sale_return_error_max">Máximo %1$s</string>
+    <string name="sale_return_error_no_customer">Elegir el cliente para dejar el saldo a favor</string>
+    <string name="sale_return_credit_debt_help">Reduce la deuda de %1$s</string>
+    <string name="sale_return_other_month_notice">La devolución cuenta el %1$s. Las cifras de ese mes no cambian</string>
+    <string name="sale_return_points_notice">Los puntos de esta venta no cambian</string>
+    <string name="sale_return_error_register">No se pudo registrar la devolución. Lo elegido se conserva.</string>
+    <string name="sale_return_success">Devolución registrada: %1$s</string>
+    <string name="a11y_sale_return_line">%1$s, vendido %2$s, ya devuelto %3$s, a devolver %4$s</string>
+    <string name="a11y_sale_return_total">Total a devolver: %1$s</string>
+    <string name="sale_return_returned_and_left">Ya devuelto: %1$s · Queda: %2$s</string>
+    <string name="sale_return_exchange_success">Cambio registrado</string>
+</resources>

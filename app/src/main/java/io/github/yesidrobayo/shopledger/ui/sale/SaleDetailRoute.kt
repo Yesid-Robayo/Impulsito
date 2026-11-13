@@ -71,6 +71,7 @@ fun SaleDetailRoute(
                 observeBusinessName = {
                     ports.settings.observe().map { it.profile.businessName }.distinctUntilChanged()
                 },
+                loadReturnLines = { ports.saleReturns.findLines(it) },
             )
         }
     when (model) {
@@ -95,6 +96,10 @@ fun SaleDetailRoute(
                 onAction = { action ->
                     when (action) {
                         SaleDetailAction.Back -> onBack()
+
+                        SaleDetailAction.OpenReturn -> navigator.open(
+                            AppNavKey.SaleReturn(key.saleId),
+                        )
 
                         SaleDetailAction.Share -> {
                             val sale = (uiState as? SaleDetailUiState.Ready)?.sale

@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnResolution
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleReceipt
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleResults
 import kotlin.time.Instant
@@ -37,6 +38,7 @@ sealed interface SaleDetailUiState {
         val correcting: Boolean = false,
         val corrected: Long? = null,
         val correctFailed: Boolean = false,
+        val returnSheet: SaleReturnSheet? = null,
     ) : SaleDetailUiState
 }
 
@@ -46,7 +48,9 @@ sealed interface SaleDetailUiState {
  * [results] son el costo, la ganancia, el margen, las comisiones y el neto: se ocultan en modo
  * discreto. [charges] es lo que explica el total además de las líneas. [receipt] es el comprobante
  * que se comparte, solo de una venta activa, y [units] las unidades con que se escriben sus
- * cantidades. [hasActiveReturns] dice si alguna devolución sigue activa.
+ * cantidades. [hasActiveReturns] dice si alguna devolución sigue activa. [canReturn] dice si queda
+ * algo por devolver, y [returns] son sus devoluciones, activas y anuladas, en el orden en que se
+ * registraron.
  */
 @Immutable
 data class SaleDetailView(
@@ -64,6 +68,8 @@ data class SaleDetailView(
     val receipt: SaleReceipt? = null,
     val units: Map<Long, MeasureUnit> = emptyMap(),
     val hasActiveReturns: Boolean = false,
+    val canReturn: Boolean = false,
+    val returns: List<SaleReturnRow> = emptyList(),
 ) {
     /**
      * Solo una venta activa se anula, una sola vez, y nunca con una devolución activa: lo que falta
@@ -78,7 +84,8 @@ data class SaleVoidView(val reason: VoidReason, val date: BusinessDate?, val not
 
 /**
  * Una línea vendida, con el nombre que tenía al venderse. [archived] si el producto hoy está
- * archivado: se muestra igual, marcado.
+ * archivado: se muestra igual, marcado. [returned] es lo que ya devolvieron sus devoluciones activas
+ * y [left] lo que falta por devolver, los dos en la unidad de la línea.
  */
 @Immutable
 data class SaleDetailLine(
@@ -90,6 +97,40 @@ data class SaleDetailLine(
     val discount: Money,
     val total: Money,
     val archived: Boolean,
+    val returned: QuantityMilli = QuantityMilli.ZERO,
+    val left: QuantityMilli = quantity,
+    val factor: QuantityMilli = QuantityMilli(1_000L),
+)
+
+/**
+ * Una devolución de la venta en su lista: su número, que es su id, el día en que cuenta, cómo se
+ * resolvió, lo que devolvió y su nota. [voided] si se anuló: sigue en la lista, sin contar.
+ */
+@Immutable
+data class SaleReturnRow(
+    val returnId: Long,
+    val date: BusinessDate,
+    val resolution: ReturnResolution,
+    val total: Money,
+    val voided: Boolean,
+    val note: String? = null,
+)
+
+/**
+ * La hoja de una devolución: la fila de la lista y sus líneas con el nombre congelado en la venta y
+ * lo devuelto. [lines] falta mientras se leen.
+ */
+@Immutable
+data class SaleReturnSheet(val row: SaleReturnRow, val lines: List<SaleReturnSheetLine>? = null)
+
+/** Una línea de una devolución: el producto, lo devuelto en la unidad de la línea y su total. */
+@Immutable
+data class SaleReturnSheetLine(
+    val name: String,
+    val quantity: QuantityMilli,
+    val unit: MeasureUnit?,
+    val total: Money,
+    val restock: Boolean,
 )
 
 /**
@@ -186,4 +227,12 @@ sealed interface SaleDetailAction {
     data object Share : SaleDetailAction
 
     data object Back : SaleDetailAction
+
+    /** Abre la devolución de la venta. */
+    data object OpenReturn : SaleDetailAction
+
+    /** Abre la hoja de la devolución [returnId]. */
+    data class OpenReturnDetail(val returnId: Long) : SaleDetailAction
+
+    data object CloseReturnDetail : SaleDetailAction
 }

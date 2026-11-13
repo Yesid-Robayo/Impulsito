@@ -26,13 +26,15 @@ sealed interface AppNavKey : NavKey {
 
     /**
      * Nueva venta. Es una acción que se abre encima, no un destino. [prefillCustomerId] es el cliente
-     * con que abre, como desde el detalle de un cliente.
+     * con que abre, como desde el detalle de un cliente. Con [exchange], es la venta nueva de un
+     * cambio: lo devuelto la paga, y nada se escribe hasta registrar el cambio.
      */
     @Serializable
     data class NewSale(
         val prefillFromSaleId: Long? = null,
         val prefillProductId: Long? = null,
         val prefillCustomerId: Long? = null,
+        val exchange: SaleExchange? = null,
     ) : AppNavKey
 
     @Serializable
@@ -325,3 +327,21 @@ enum class ScanPurpose {
     /** Cuenta el producto en un conteo físico. */
     STOCK_COUNT,
 }
+
+/**
+ * Lo que la devolución deja elegido para un cambio: la venta [saleId], cada línea con lo que se
+ * devuelve en milésimas de su unidad base y si vuelve al inventario, el crédito [credit] en la unidad
+ * menor de la moneda del negocio y el método [creditMethodId] con que se cobró la venta, que paga la
+ * parte que alcanza. Solo números y banderas: la nota viaja aparte, fuera de la pila guardada.
+ */
+@Serializable
+data class SaleExchange(
+    val saleId: Long,
+    val lines: List<SaleExchangeLine>,
+    val credit: Long,
+    val creditMethodId: Long?,
+)
+
+/** Una línea devuelta en un cambio. */
+@Serializable
+data class SaleExchangeLine(val saleLineId: Long, val quantityMilli: Long, val restock: Boolean)
