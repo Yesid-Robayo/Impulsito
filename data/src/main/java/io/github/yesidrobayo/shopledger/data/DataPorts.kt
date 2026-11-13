@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
@@ -53,6 +54,7 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
 import io.github.yesidrobayo.shopledger.domain.port.CatalogPresenceSource
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
@@ -150,6 +152,9 @@ class DataPorts internal constructor(
 
     /** El libro de cada proveedor: lo que se le debe, que mueven las compras a plazo y los pagos. */
     val supplierLedger: SupplierLedgerRepository = RoomSupplierLedgerRepository(database)
+
+    /** El libro de los clientes: solo agrega, y deja a cada cliente con su saldo. */
+    val customerLedger: CustomerLedgerRepository = RoomCustomerLedgerRepository(database)
 
     val products: ProductRepository = RoomProductRepository(database)
 
