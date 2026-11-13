@@ -1,4 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="customer_picker_view_all">View customers</string>
+    <string name="customer_receivable">Receivable</string>
+    <string name="customer_search_hint">Search customers</string>
+    <string name="customer_filter_all">All</string>
+    <string name="customer_filter_receivable">Receivable</string>
+    <string name="customer_filter_credit">Credit balance</string>
+    <string name="customer_filter_archived">Archived</string>
+    <string name="customer_new_action">New customer</string>
+    <string name="customer_edit_title">Edit customer</string>
+    <string name="customer_pick_contact_action">Choose from contacts</string>
+    <string name="customer_name">Name</string>
+    <string name="customer_phone">Phone</string>
+    <string name="customer_email">Email</string>
+    <string name="customer_notes">Notes</string>
+    <string name="customer_minimal_data_help">Only the name is required. Note down only what is needed.</string>
+    <string name="customer_notes_help">Do not write sensitive data in the notes.</string>
+    <string name="customer_save_action">Save customer</string>
+    <string name="customer_saved">Customer saved</string>
+    <string name="customer_balance_owes">Owes %1$s</string>
+    <string name="customer_balance_credit">Credit %1$s</string>
+    <string name="customer_balance_clear">Up to date</string>
+    <string name="customer_balance_owes_short">Owes</string>
+    <string name="customer_balance_credit_short">Credit</string>
+    <string name="customer_empty_title">No customers yet</string>
+    <string name="customer_empty_body">Useful for selling on credit, tracking balances and seeing who buys most.</string>
+    <string name="customer_empty_action">Create the first customer</string>
+    <string name="customer_search_no_results">No results for \"%1$s\"</string>
+    <string name="customer_create_action">Create customer</string>
+    <string name="customer_filter_empty">No customers with this filter</string>
+    <string name="customer_error_name_empty">Enter the customer name</string>
+    <string name="customer_error_name_long">Use 80 characters at most</string>
+    <string name="customer_duplicate_warning">A customer with that name already exists. It can be saved anyway.</string>
+    <string name="customer_no_contacts_app">No contacts app is available.</string>
+    <string name="customer_anonymous">Anonymous customer</string>
+    <string name="customer_anonymized_tag">Anonymized</string>
+    <string name="customer_archived_tag">Archived</string>
+    <string name="hub_tool_customers">Customers</string>
+    <string name="hub_tool_customers_desc">Details, sales on credit and payments on account</string>
+    <string name="customer_balance_overdue">Overdue %1$s</string>
+    <string name="customer_balance_overdue_short">Overdue</string>
+    <string name="payable_balance_owed">Owed %1$s</string>
+    <string name="payable_balance_owed_short">Owed</string>
+    <string name="customer_reactivated">Customer reactivated</string>
+    <plurals name="customer_points_count">
+        <item quantity="one">%1$s point</item>
+        <item quantity="other">%1$s points</item>
+    </plurals>
 </resources>

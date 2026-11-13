@@ -30,6 +30,12 @@ data class HubEntry(
 val HUB_ENTRIES: List<HubEntry> =
     listOf(
         HubEntry(
+            BusinessTool.CUSTOMERS,
+            R.string.hub_tool_customers,
+            R.string.hub_tool_customers_desc,
+            AppNavKey.Customers(),
+        ),
+        HubEntry(
             BusinessTool.LOYALTY,
             R.string.hub_tool_loyalty,
             R.string.hub_tool_loyalty_desc,

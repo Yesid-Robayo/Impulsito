@@ -1,4 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="customer_picker_view_all">Ver clientes</string>
+    <string name="customer_receivable">Por cobrar</string>
+    <string name="customer_search_hint">Buscar cliente</string>
+    <string name="customer_filter_all">Todos</string>
+    <string name="customer_filter_receivable">Por cobrar</string>
+    <string name="customer_filter_credit">Saldo a favor</string>
+    <string name="customer_filter_archived">Archivados</string>
+    <string name="customer_new_action">Nuevo cliente</string>
+    <string name="customer_edit_title">Editar cliente</string>
+    <string name="customer_pick_contact_action">Elegir de contactos</string>
+    <string name="customer_name">Nombre</string>
+    <string name="customer_phone">Teléfono</string>
+    <string name="customer_email">Correo</string>
+    <string name="customer_notes">Notas</string>
+    <string name="customer_minimal_data_help">Datos opcionales salvo el nombre. Anotar solo lo necesario.</string>
+    <string name="customer_notes_help">No escribir datos sensibles en las notas.</string>
+    <string name="customer_save_action">Guardar cliente</string>
+    <string name="customer_saved">Cliente guardado</string>
+    <string name="customer_balance_owes">Debe %1$s</string>
+    <string name="customer_balance_credit">A favor %1$s</string>
+    <string name="customer_balance_clear">Al día</string>
+    <string name="customer_balance_owes_short">Debe</string>
+    <string name="customer_balance_credit_short">A favor</string>
+    <string name="customer_empty_title">Sin clientes todavía</string>
+    <string name="customer_empty_body">Sirve para vender a crédito, llevar saldos y saber quién compra más.</string>
+    <string name="customer_empty_action">Crear el primer cliente</string>
+    <string name="customer_search_no_results">Sin resultados para \"%1$s\"</string>
+    <string name="customer_create_action">Crear cliente</string>
+    <string name="customer_filter_empty">Sin clientes con este filtro</string>
+    <string name="customer_error_name_empty">Escribir el nombre del cliente</string>
+    <string name="customer_error_name_long">Usar máximo 80 caracteres</string>
+    <string name="customer_duplicate_warning">Ya existe un cliente con ese nombre. Se puede guardar igual.</string>
+    <string name="customer_no_contacts_app">No hay una app de contactos disponible.</string>
+    <string name="customer_anonymous">Cliente anónimo</string>
+    <string name="customer_anonymized_tag">Anonimizado</string>
+    <string name="customer_archived_tag">Archivado</string>
+    <string name="hub_tool_customers">Clientes</string>
+    <string name="hub_tool_customers_desc">Datos, ventas a crédito y abonos</string>
+    <string name="customer_balance_overdue">Vencido %1$s</string>
+    <string name="customer_balance_overdue_short">Vencido</string>
+    <string name="payable_balance_owed">Se debe %1$s</string>
+    <string name="payable_balance_owed_short">Se debe</string>
+    <string name="customer_reactivated">Cliente reactivado</string>
+    <plurals name="customer_points_count">
+        <item quantity="one">%1$s punto</item>
+        <item quantity="many">%1$s de puntos</item>
+        <item quantity="other">%1$s puntos</item>
+    </plurals>
 </resources>
