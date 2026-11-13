@@ -24,6 +24,10 @@ internal interface SupplierDao {
     @Query("SELECT * FROM suppliers WHERE id = :id")
     suspend fun findById(id: Long): SupplierEntity?
 
+    /** Los proveedores con saldo distinto de cero, también archivados, por nombre y luego `id`. */
+    @Query("SELECT * FROM suppliers WHERE balance <> 0 ORDER BY normalized_name, id")
+    fun observeWithBalance(): Flow<List<SupplierEntity>>
+
     @Query("SELECT * FROM suppliers WHERE id = :id")
     fun observeById(id: Long): Flow<SupplierEntity?>
 

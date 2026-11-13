@@ -20,6 +20,16 @@ internal interface SupplierLedgerEntryDao {
     @Query("SELECT * FROM supplier_ledger_entries WHERE supplier_id = :supplierId ORDER BY id")
     fun observeBySupplier(supplierId: Long): Flow<List<SupplierLedgerEntryEntity>>
 
+    /**
+     * Las filas de los proveedores con saldo distinto de cero, en el orden del libro: lo que
+     * necesita la lista de cuentas por pagar. Un proveedor en cero no tiene nada abierto.
+     */
+    @Query(
+        "SELECT e.* FROM supplier_ledger_entries e JOIN suppliers s ON s.id = e.supplier_id " +
+            "WHERE s.balance <> 0 ORDER BY e.id",
+    )
+    fun observeOfOpenSuppliers(): Flow<List<SupplierLedgerEntryEntity>>
+
     @Query("SELECT * FROM supplier_ledger_entries WHERE id = :id")
     suspend fun findById(id: Long): SupplierLedgerEntryEntity?
 

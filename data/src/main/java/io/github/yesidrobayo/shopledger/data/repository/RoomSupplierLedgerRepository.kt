@@ -36,17 +36,17 @@ internal class RoomSupplierLedgerRepository(
 
     override fun observeBySupplier(supplierId: Long): Flow<List<SupplierLedgerEntry>> = entries
         .observeBySupplier(supplierId)
-        .map { rows -> rows.map(::toEntry) }
+        .map { rows -> rows.map(::toSupplierLedgerEntry) }
         .distinctUntilChanged()
 
     override suspend fun findById(id: Long): SupplierLedgerEntry? =
-        entries.findById(id)?.let(::toEntry)
+        entries.findById(id)?.let(::toSupplierLedgerEntry)
 
     override suspend fun lastBalanceAfter(supplierId: Long): Money? =
         entries.lastBalanceAfter(supplierId)?.let(::Money)
 
     override suspend fun findByPurchase(purchaseId: Long): List<SupplierLedgerEntry> =
-        entries.findByPurchase(purchaseId).map(::toEntry)
+        entries.findByPurchase(purchaseId).map(::toSupplierLedgerEntry)
 
     override suspend fun isCompensated(entryId: Long): Boolean = entries.isCompensated(entryId)
 
@@ -97,22 +97,23 @@ internal class RoomSupplierLedgerRepository(
         businessDate = entry.businessDate.toStored(),
         createdAt = entry.createdAt.toStoredMillis(),
     )
-
-    private fun toEntry(row: SupplierLedgerEntryEntity) = SupplierLedgerEntry(
-        id = row.id,
-        content = NewSupplierLedgerEntry(
-            supplierId = row.supplierId,
-            type = storedEnum<SupplierLedgerEntryType>(row.type),
-            amount = Money(row.amount),
-            balanceAfter = Money(row.balanceAfter),
-            purchaseId = row.purchaseId,
-            purchaseReturnId = row.purchaseReturnId,
-            reversesEntryId = row.reversesEntryId,
-            dueDate = row.dueDate?.let(::storedDate),
-            note = row.note,
-            occurredAt = row.occurredAt.toInstant(),
-            businessDate = storedDate(row.businessDate),
-            createdAt = row.createdAt.toInstant(),
-        ),
-    )
 }
+
+/** Una fila del libro de un proveedor, tal como la lee el dominio. */
+internal fun toSupplierLedgerEntry(row: SupplierLedgerEntryEntity) = SupplierLedgerEntry(
+    id = row.id,
+    content = NewSupplierLedgerEntry(
+        supplierId = row.supplierId,
+        type = storedEnum<SupplierLedgerEntryType>(row.type),
+        amount = Money(row.amount),
+        balanceAfter = Money(row.balanceAfter),
+        purchaseId = row.purchaseId,
+        purchaseReturnId = row.purchaseReturnId,
+        reversesEntryId = row.reversesEntryId,
+        dueDate = row.dueDate?.let(::storedDate),
+        note = row.note,
+        occurredAt = row.occurredAt.toInstant(),
+        businessDate = storedDate(row.businessDate),
+        createdAt = row.createdAt.toInstant(),
+    ),
+)

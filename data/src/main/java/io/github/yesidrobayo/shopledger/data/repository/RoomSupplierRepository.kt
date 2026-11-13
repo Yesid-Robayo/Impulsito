@@ -94,20 +94,21 @@ internal class RoomSupplierRepository(database: AppDatabase) : SupplierRepositor
     override suspend fun delete(id: Long) {
         writes.inTransaction { requireOneRow(suppliers.delete(id)) }
     }
-
-    private fun toSupplier(row: SupplierEntity): Supplier = Supplier(
-        id = row.id,
-        details = SupplierDetails(
-            name = row.name,
-            normalizedName = row.normalizedName,
-            phone = row.phone,
-            email = row.email,
-            notes = row.notes,
-            paymentTermsDays = row.paymentTermsDays?.toStoredInt(),
-        ),
-        balance = Money(row.balance),
-        archivedAt = row.archivedAt?.toInstant(),
-        createdAt = row.createdAt.toInstant(),
-        updatedAt = row.updatedAt.toInstant(),
-    )
 }
+
+/** Un proveedor guardado, tal como lo lee el dominio. */
+internal fun toSupplier(row: SupplierEntity): Supplier = Supplier(
+    id = row.id,
+    details = SupplierDetails(
+        name = row.name,
+        normalizedName = row.normalizedName,
+        phone = row.phone,
+        email = row.email,
+        notes = row.notes,
+        paymentTermsDays = row.paymentTermsDays?.toStoredInt(),
+    ),
+    balance = Money(row.balance),
+    archivedAt = row.archivedAt?.toInstant(),
+    createdAt = row.createdAt.toInstant(),
+    updatedAt = row.updatedAt.toInstant(),
+)
