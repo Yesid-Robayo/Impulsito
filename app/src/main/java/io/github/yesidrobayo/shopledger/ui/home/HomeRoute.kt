@@ -65,6 +65,8 @@ fun HomeRoute(navigator: AppNavigator) {
                         ObservePeriodComparisonUseCase(ports.periodReports),
                     )(checks)
                 },
+                noticeStore = container.noDestinationNotice,
+                now = container.clock::now,
             )
         }
     when (model) {
@@ -78,6 +80,7 @@ fun HomeRoute(navigator: AppNavigator) {
             val backup by viewModel.backup.collectAsStateWithLifecycle()
             val lowStock by viewModel.lowStock.collectAsStateWithLifecycle()
             val profit by viewModel.profit.collectAsStateWithLifecycle()
+            val noDestinationNotice by viewModel.noDestinationNotice.collectAsStateWithLifecycle()
             val policy = LocalPolicyPrompt.current
             LifecycleResumeEffect(viewModel) {
                 viewModel.onReturnToForeground()
@@ -87,6 +90,7 @@ fun HomeRoute(navigator: AppNavigator) {
                 backup = backup,
                 lowStock = lowStock,
                 profit = profit,
+                noDestinationNotice = noDestinationNotice,
                 uiState = uiState,
                 onAction = { action ->
                     when (action) {
@@ -128,7 +132,9 @@ fun HomeRoute(navigator: AppNavigator) {
                         is HomeAction.OpenProduct ->
                             navigator.open(AppNavKey.ProductDetail(action.productId))
 
-                        HomeAction.Retry -> viewModel.onAction(action)
+                        HomeAction.Retry,
+                        HomeAction.AcknowledgeNoDestination,
+                        -> viewModel.onAction(action)
                     }
                 },
             )

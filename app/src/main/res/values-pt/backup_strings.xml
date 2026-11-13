@@ -57,6 +57,8 @@
     <string name="backup_state_conflict">Revisar a cópia na nuvem</string>
     <string name="backup_conflict_detail">As cópias estão paradas para nada ser sobrescrito. Falta escolher com quais dados seguir.</string>
     <string name="backup_action_choose_destination">Escolher onde salvar</string>
+    <string name="backup_action_understood">Entendi</string>
+    <string name="backup_not_connected_compact">Os dados estão só neste telefone.</string>
     <string name="backup_action_change_destination">Mudar onde salvar</string>
     <string name="backup_action_review">Revisar</string>
     <string name="backup_action_review_policy">Revisar a política</string>

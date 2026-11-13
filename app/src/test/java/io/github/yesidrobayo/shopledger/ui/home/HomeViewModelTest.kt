@@ -17,9 +17,14 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
+import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationAcknowledgement
+import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationNotice
 import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
 import io.github.yesidrobayo.shopledger.domain.usecase.home.TodaySales
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
+import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
+import java.io.IOException
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -60,8 +65,8 @@ class HomeViewModelTest {
     private val hasProducts = MutableStateFlow(true)
     private val history = FakeHistory()
 
-    private fun backupOverview(kind: BackupDestinationKind, status: BackupStatus) = BackupOverview(
-        report = BackupStatusReport(status, pendingChanges = 0, savingSoon = false),
+    private fun backupOverview(kind: BackupDestinationKind?, state: BackupStatus) = BackupOverview(
+        report = BackupStatusReport(state, pendingChanges = 0, savingSoon = false),
         destinationKind = kind,
         lastSuccessAt = now,
         failureCode = null,
@@ -141,6 +146,28 @@ class HomeViewModelTest {
     private val profits = MutableStateFlow<HomeProfit?>(null)
     private var profitChecks = 0
 
+    /** La aceptación del aviso sin destino en memoria, en lugar del archivo. */
+    private class FakeNoticeStore : NoDestinationNoticeStore {
+        var saved: NoDestinationAcknowledgement? = null
+        var clears = 0
+        var failWrites = false
+
+        override fun read(): NoDestinationAcknowledgement? = saved
+
+        override fun write(acknowledgement: NoDestinationAcknowledgement) {
+            if (failWrites) throw IOException("Disco inventado lleno")
+            saved = acknowledgement
+        }
+
+        override fun clear() {
+            clears += 1
+            saved = null
+        }
+    }
+
+    private val notices = FakeNoticeStore()
+    private var clockNow = now
+
     private fun TestScope.viewModel(): HomeViewModel {
         val model = HomeViewModel(
             todaySales = { checks ->
@@ -159,11 +186,14 @@ class HomeViewModelTest {
             homeProfit = { checks ->
                 combine(checks.map { profitChecks += 1 }, profits) { _, it -> it }
             },
+            noticeStore = notices,
+            now = { clockNow },
         )
         // La pantalla recoge el estado mientras se ve.
         backgroundScope.launch { model.uiState.collect {} }
         backgroundScope.launch { model.backup.collect {} }
         backgroundScope.launch { model.profit.collect {} }
+        backgroundScope.launch { model.noDestinationNotice.collect {} }
         advanceUntilIdle()
         return model
     }
@@ -323,4 +353,77 @@ class HomeViewModelTest {
         advanceUntilIdle()
         assertEquals(checksAtStart + 1, profitChecks)
     }
+
+    @Test
+    fun `the no destination notice shrinks on acceptance and comes back after seven days`() =
+        runTest(dispatcher) {
+            backupOverviews.value = backupOverview(null, BackupStatus.NOT_CONNECTED)
+            history.rows = listOf(row(120L, minutesAgo = 5))
+            val model = viewModel()
+            assertEquals(NoDestinationNotice.FULL, model.noDestinationNotice.value)
+
+            model.onAction(HomeAction.AcknowledgeNoDestination)
+            advanceUntilIdle()
+            assertEquals(NoDestinationNotice.COMPACT, model.noDestinationNotice.value)
+            assertEquals(NoDestinationAcknowledgement(now, 120L), notices.saved)
+
+            // A los 7 días, al volver a primer plano, vuelve entero.
+            clockNow = now + 7.days
+            model.onReturnToForeground()
+            advanceUntilIdle()
+            assertEquals(NoDestinationNotice.FULL, model.noDestinationNotice.value)
+        }
+
+    @Test
+    fun `fifty new sales bring the notice back and a saved acceptance is read on opening`() =
+        runTest(dispatcher) {
+            backupOverviews.value = backupOverview(null, BackupStatus.NOT_CONNECTED)
+            notices.saved = NoDestinationAcknowledgement(now, 120L)
+            history.rows = listOf(row(169L, minutesAgo = 1))
+            val model = viewModel()
+            assertEquals(NoDestinationNotice.COMPACT, model.noDestinationNotice.value)
+
+            history.rows = listOf(row(170L, minutesAgo = 0))
+            history.mark.value = "170"
+            advanceUntilIdle()
+            assertEquals(NoDestinationNotice.FULL, model.noDestinationNotice.value)
+        }
+
+    @Test
+    fun `choosing a destination forgets the acceptance`() = runTest(dispatcher) {
+        backupOverviews.value = backupOverview(null, BackupStatus.NOT_CONNECTED)
+        notices.saved = NoDestinationAcknowledgement(now, 0L)
+        val model = viewModel()
+        assertEquals(NoDestinationNotice.COMPACT, model.noDestinationNotice.value)
+
+        backupOverviews.value =
+            backupOverview(BackupDestinationKind.WEBDAV, BackupStatus.UP_TO_DATE)
+        advanceUntilIdle()
+        assertEquals(null, notices.saved)
+        assertEquals(1, notices.clears)
+
+        // Si se quita el destino después, el aviso vuelve entero.
+        backupOverviews.value = backupOverview(null, BackupStatus.NOT_CONNECTED)
+        advanceUntilIdle()
+        assertEquals(NoDestinationNotice.FULL, model.noDestinationNotice.value)
+        // Ya se borró una vez: con el destino otra vez, no se repite.
+        backupOverviews.value =
+            backupOverview(BackupDestinationKind.WEBDAV, BackupStatus.UP_TO_DATE)
+        advanceUntilIdle()
+        assertEquals(1, notices.clears)
+    }
+
+    @Test
+    fun `an acceptance that cannot be saved still shrinks the notice for this screen`() =
+        runTest(dispatcher) {
+            backupOverviews.value = backupOverview(null, BackupStatus.NOT_CONNECTED)
+            notices.failWrites = true
+            val model = viewModel()
+
+            model.onAction(HomeAction.AcknowledgeNoDestination)
+            advanceUntilIdle()
+
+            assertEquals(NoDestinationNotice.COMPACT, model.noDestinationNotice.value)
+            assertEquals(null, notices.saved)
+        }
 }

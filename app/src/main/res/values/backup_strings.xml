@@ -53,6 +53,8 @@
     <string name="backup_state_conflict">Review the cloud backup</string>
     <string name="backup_conflict_detail">Backups are stopped so nothing gets overwritten. Choose which data to continue with.</string>
     <string name="backup_action_choose_destination">Choose where to save</string>
+    <string name="backup_action_understood">Got it</string>
+    <string name="backup_not_connected_compact">The data is only on this phone.</string>
     <string name="backup_action_change_destination">Change where to save</string>
     <string name="backup_action_review">Review</string>
     <string name="backup_action_review_policy">Review the policy</string>

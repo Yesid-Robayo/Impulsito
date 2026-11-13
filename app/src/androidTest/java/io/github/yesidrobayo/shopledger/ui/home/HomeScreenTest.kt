@@ -1,5 +1,8 @@
 package io.github.yesidrobayo.shopledger.ui.home
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -10,6 +13,10 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
+import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationNotice
+import io.github.yesidrobayo.shopledger.ui.backup.previewBackupState
+import io.github.yesidrobayo.shopledger.ui.backup.previewOverview
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import org.junit.Assert.assertEquals
@@ -20,8 +27,8 @@ import org.junit.runner.RunWith
 
 /**
  * Inicio en el teléfono: cada acceso avisa su acción, el primer uso lleva a crear un producto, el
- * día sin ventas lo dice, el modo discreto oculta el dinero y deja el número de ventas, y el error
- * deja reintentar. Datos inventados.
+ * día sin ventas lo dice, el modo discreto oculta el dinero y deja el número de ventas, el error
+ * deja reintentar, y el aviso sin destino se acepta y se reduce a una línea. Datos inventados.
  */
 @RunWith(AndroidJUnit4::class)
 class HomeScreenTest {
@@ -161,5 +168,47 @@ class HomeScreenTest {
         compose.onNodeWithText(text(R.string.home_shortcut_expense)).performClick()
 
         assertEquals(listOf<HomeAction>(HomeAction.OpenExpense), actions)
+    }
+
+    @Test
+    fun withoutADestinationTheNoticeCanBeAcceptedAndShrinksToALine() {
+        val noDestination =
+            previewBackupState(previewOverview(BackupStatus.NOT_CONNECTED, kind = null)).wording
+        var notice by mutableStateOf<NoDestinationNotice?>(NoDestinationNotice.FULL)
+        compose.setContent {
+            PreviewTheme {
+                HomeScreen(
+                    previewHomeContent(),
+                    { actions += it },
+                    backup = noDestination,
+                    noDestinationNotice = notice,
+                )
+            }
+        }
+        val detail = text(R.string.backup_state_not_connected_detail)
+        compose.onNodeWithText(detail).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.backup_action_understood)).performClick()
+        compose.onNodeWithText(text(R.string.backup_action_choose_destination)).performClick()
+        assertEquals(
+            listOf(HomeAction.AcknowledgeNoDestination, HomeAction.ChooseDestination),
+            actions,
+        )
+
+        // Reducido: una línea que también lleva a elegir dónde guardar, sin la frase entera.
+        notice = NoDestinationNotice.COMPACT
+        compose.waitForIdle()
+        assertEquals(0, compose.onAllNodesWithText(detail).fetchSemanticsNodes().size)
+        compose.onNodeWithText(text(R.string.backup_not_connected_compact)).performClick()
+        assertEquals(HomeAction.ChooseDestination, actions.last())
+
+        // Mientras se lee si se aceptó, no va ninguno de los dos.
+        notice = null
+        compose.waitForIdle()
+        assertEquals(0, compose.onAllNodesWithText(detail).fetchSemanticsNodes().size)
+        val line = text(R.string.backup_not_connected_compact)
+        assertEquals(0, compose.onAllNodesWithText(line).fetchSemanticsNodes().size)
+        // El chip sigue diciendo que no hay respaldo: su texto vive dentro de su lectura única.
+        compose.onNodeWithText(text(R.string.backup_state_not_connected), useUnmergedTree = true)
+            .assertExists()
     }
 }

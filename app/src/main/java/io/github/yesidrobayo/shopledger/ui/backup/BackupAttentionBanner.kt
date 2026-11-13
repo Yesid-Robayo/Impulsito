@@ -47,21 +47,30 @@ enum class BackupBannerAction {
 
     /** Copias en pausa: revisar la política que cambió. */
     REVIEW_POLICY,
+
+    /** `Entendido` en el aviso sin destino de Inicio: se reduce a una línea. */
+    ACKNOWLEDGE,
 }
 
 /**
  * El banner del respaldo bajo la barra de una raíz: solo si el estado pide atención, con su frase y
  * su acción. Las esperas normales y lo que está bien no lo muestran, también `Todo guardado`. Es el
  * mismo en Inicio y en las demás raíces, y nunca va en la venta, en un detalle ni en un formulario.
+ *
+ * Sin destino es distinto: el aviso solo va en Inicio, con [home], donde lleva además
+ * `Entendido`. En las demás raíces no aparece, porque la persona ya lo ve en Inicio y el chip lo
+ * sigue diciendo; repetirlo en cada pestaña lo volvía ruido.
  */
 @Composable
 fun BackupAttentionBanner(
     backup: BackupWording,
     onAction: (BackupBannerAction) -> Unit,
     modifier: Modifier = Modifier,
+    home: Boolean = false,
 ) {
     val status = backup.overview.report.status
     if (!status.needsBanner()) return
+    if (status == BackupStatus.NOT_CONNECTED && !home) return
     val (label, action) =
         when (status) {
             BackupStatus.NOT_CONNECTED ->
@@ -88,11 +97,20 @@ fun BackupAttentionBanner(
             BackupStatus.PENDING,
             -> R.string.backup_action_review to BackupBannerAction.OPEN_BACKUP
         }
+    val understood = home && status == BackupStatus.NOT_CONNECTED
     BackupStatusBanner(
         backupBannerLook(backup),
         modifier = modifier,
         actionLabel = stringResource(label),
         onAction = { onAction(action) },
+        secondaryLabel = if (understood) {
+            stringResource(
+                R.string.backup_action_understood,
+            )
+        } else {
+            null
+        },
+        onSecondary = { onAction(BackupBannerAction.ACKNOWLEDGE) },
     )
 }
 
@@ -200,6 +218,9 @@ fun RootBackupBanner(onOpen: (AppNavKey) -> Unit, modifier: Modifier = Modifier)
                         onOpen(AppNavKey.BackupDestinationChoice())
 
                     BackupBannerAction.REVIEW_POLICY -> policy.review()
+
+                    // Solo Inicio ofrece `Entendido`: aquí no llega.
+                    BackupBannerAction.ACKNOWLEDGE -> Unit
                 }
             },
             modifier = modifier.rootBannerSpacing(),

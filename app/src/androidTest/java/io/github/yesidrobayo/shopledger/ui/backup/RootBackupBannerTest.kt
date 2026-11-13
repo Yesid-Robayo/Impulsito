@@ -52,7 +52,7 @@ import org.junit.runner.RunWith
 /**
  * En el teléfono: el banner del respaldo bajo la barra de cada raíz que no es Inicio. Con un estado
  * que pide atención aparece con su acción, y con `Todo guardado`, que solo existe con WebDAV,
- * desaparece. Sin destino, la acción lleva a elegir dónde guardar.
+ * desaparece. Sin destino no aparece: ese aviso solo va en Inicio.
  *
  * Con el argumento `captureDir` guarda además la galería de las cinco raíces con el respaldo fallido,
  * en claro y en oscuro, con la paleta predeterminada y otra.
@@ -134,10 +134,13 @@ class RootBackupBannerTest {
         compose.waitForIdle()
         assertEquals(0, compose.onAllNodesWithText(review).fetchSemanticsNodes().size)
 
+        // Sin destino, el aviso solo va en Inicio: las demás raíces no lo muestran.
         backup = wording(BackupStatus.NOT_CONNECTED, kind = null)
-        compose.onNodeWithText(resources.getString(R.string.backup_action_choose_destination))
-            .performClick()
-        assertEquals(BackupBannerAction.CHOOSE_DESTINATION, actions.last())
+        compose.waitForIdle()
+        val choose = resources.getString(R.string.backup_action_choose_destination)
+        assertEquals(0, compose.onAllNodesWithText(choose).fetchSemanticsNodes().size)
+        val detail = resources.getString(R.string.backup_state_not_connected_detail)
+        assertEquals(0, compose.onAllNodesWithText(detail).fetchSemanticsNodes().size)
 
         // Las esperas normales tampoco lo muestran.
         backup = wording(BackupStatus.PENDING)

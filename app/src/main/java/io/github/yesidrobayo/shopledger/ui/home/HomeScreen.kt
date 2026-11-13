@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -50,6 +51,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
+import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationNotice
 import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
@@ -62,6 +64,7 @@ import io.github.yesidrobayo.shopledger.ui.backup.needsBanner
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.BackupNoticeLine
 import io.github.yesidrobayo.shopledger.ui.components.BackupStatusChip
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetModeButton
@@ -100,7 +103,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * - Las últimas cinco ventas, con `Ver todas` hacia el historial.
  * - En una ventana ancha, el héroe y los atajos a la izquierda, y las ventas a la derecha.
  *
- * - El estado del respaldo: el chip bajo la barra, y el banner y los avisos sobre el héroe.
+ * - El estado del respaldo: el chip bajo la barra, y el banner y los avisos sobre el héroe. Sin
+ *   destino, el aviso lleva `Entendido` y, aceptado, se reduce a una línea, según
+ *   [noDestinationNotice].
  *
  * - Bajo el héroe, la ganancia final de la semana y del mes, después de gastos: la misma cifra que
  *   las estadísticas. Es ganancia, así que el modo discreto la oculta.
@@ -115,6 +120,7 @@ fun HomeScreen(
     backup: BackupWording? = null,
     lowStock: HomeLowStock? = null,
     profit: HomeProfit? = null,
+    noDestinationNotice: NoDestinationNotice? = NoDestinationNotice.FULL,
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -176,7 +182,7 @@ fun HomeScreen(
                         if (expanded) {
                             TwoPanes(
                                 uiState,
-                                backup,
+                                HomeBackup(backup, noDestinationNotice),
                                 lowStock,
                                 profit,
                                 onAction,
@@ -186,7 +192,7 @@ fun HomeScreen(
                         } else {
                             OnePane(
                                 uiState,
-                                backup,
+                                HomeBackup(backup, noDestinationNotice),
                                 lowStock,
                                 profit,
                                 onAction,
@@ -215,7 +221,7 @@ private fun bottomSpace(): Dp {
 @Composable
 private fun OnePane(
     content: HomeUiState.Content,
-    backup: BackupWording?,
+    backup: HomeBackup,
     lowStock: HomeLowStock?,
     profit: HomeProfit?,
     onAction: (HomeAction) -> Unit,
@@ -244,7 +250,7 @@ private fun OnePane(
 @Composable
 private fun TwoPanes(
     content: HomeUiState.Content,
-    backup: BackupWording?,
+    backup: HomeBackup,
     lowStock: HomeLowStock?,
     profit: HomeProfit?,
     onAction: (HomeAction) -> Unit,
@@ -281,12 +287,12 @@ private fun TwoPanes(
 @Composable
 private fun ColumnScope.Overview(
     content: HomeUiState.Content,
-    backup: BackupWording?,
+    backup: HomeBackup,
     lowStock: HomeLowStock?,
     profit: HomeProfit?,
     onAction: (HomeAction) -> Unit,
 ) {
-    backup?.let { BackupSummary(it, onAction) }
+    backup.wording?.let { BackupSummary(it, backup.notice, onAction) }
     TodayHeroBlock(content.hero, Modifier.padding(top = AppTheme.spacing.s8))
     profit?.let { ProfitTiles(it) }
     if (content.firstUse) {
@@ -309,25 +315,52 @@ private fun ColumnScope.Overview(
     lowStock?.let { LowStockCard(it, onAction) }
 }
 
+/** El estado del respaldo de Inicio y cómo va el aviso sin destino. */
+@Immutable
+private data class HomeBackup(val wording: BackupWording?, val notice: NoDestinationNotice?)
+
 /**
  * El respaldo en Inicio: el chip, siempre visible, en su propia línea bajo la barra; el banner
  * sobre el héroe solo si el estado pide atención; y los avisos que ningún estado oculta. Todo abre
  * la pantalla del respaldo, salvo sin destino, que lleva a elegir dónde guardar.
+ *
+ * Sin destino, el aviso va entero con `Entendido`; aceptado, es una línea pequeña que también
+ * lleva a elegir dónde guardar. Mientras no se sabe cuál toca, [notice] es `null` y no va
+ * ninguno, para que el aviso no aparezca entero y se reduzca enseguida.
  */
 @Composable
-private fun BackupSummary(backup: BackupWording, onAction: (HomeAction) -> Unit) {
+private fun BackupSummary(
+    backup: BackupWording,
+    notice: NoDestinationNotice?,
+    onAction: (HomeAction) -> Unit,
+) {
     val report = backup.overview.report
     val status = report.status
     BackupStatusChip(backupChipLook(backup), onClick = { onAction(HomeAction.OpenBackup) })
-    BackupAttentionBanner(backup, onAction = { action ->
-        onAction(
-            when (action) {
-                BackupBannerAction.OPEN_BACKUP -> HomeAction.OpenBackup
-                BackupBannerAction.CHOOSE_DESTINATION -> HomeAction.ChooseDestination
-                BackupBannerAction.REVIEW_POLICY -> HomeAction.ReviewPolicy
-            },
-        )
-    })
+    val noDestination = status == BackupStatus.NOT_CONNECTED
+    when {
+        !noDestination || notice == NoDestinationNotice.FULL ->
+            BackupAttentionBanner(backup, home = true, onAction = { action ->
+                onAction(
+                    when (action) {
+                        BackupBannerAction.OPEN_BACKUP -> HomeAction.OpenBackup
+                        BackupBannerAction.CHOOSE_DESTINATION -> HomeAction.ChooseDestination
+                        BackupBannerAction.REVIEW_POLICY -> HomeAction.ReviewPolicy
+                        BackupBannerAction.ACKNOWLEDGE -> HomeAction.AcknowledgeNoDestination
+                    },
+                )
+            })
+
+        notice == NoDestinationNotice.COMPACT ->
+            BackupNoticeLine(
+                text = stringResource(R.string.backup_not_connected_compact),
+                actionLabel = stringResource(R.string.backup_action_choose_destination),
+                onClick = { onAction(HomeAction.ChooseDestination) },
+            )
+
+        // Todavía no se sabe si se aceptó: ni entero ni reducido.
+        else -> Unit
+    }
     val provider = backup.providerLabel ?: NO_VALUE_TEXT
     val app = stringResource(R.string.app_name)
     if (BackupNotice.HUMAN_CHECK_DUE in report.notices && status != BackupStatus.CHECK_DUE) {

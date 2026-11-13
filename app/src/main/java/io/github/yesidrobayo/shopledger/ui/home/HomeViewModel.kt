@@ -9,13 +9,19 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
+import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationAcknowledgement
+import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationNotice
+import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationNoticeRule
 import io.github.yesidrobayo.shopledger.domain.usecase.home.HomeProfit
 import io.github.yesidrobayo.shopledger.domain.usecase.home.TodaySales
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWordings
+import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
 import io.github.yesidrobayo.shopledger.ui.stock.inventoryItemOf
+import java.io.IOException
+import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -30,8 +36,10 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -53,6 +61,8 @@ import kotlinx.coroutines.withContext
  * negadas.
  * @param homeProfit la ganancia final de la semana y del mes; recibe las veces que se vuelve a
  *   mirar la fecha.
+ * @param noticeStore dónde se guarda cuándo se aceptó el aviso sin destino, fuera de la base.
+ * @param now el reloj, para contar los días desde que se aceptó ese aviso.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
@@ -65,11 +75,16 @@ class HomeViewModel(
     zones: Flow<BusinessTimeZone?> = flowOf(null),
     inventory: Flow<InventoryOverview> = emptyFlow(),
     homeProfit: (Flow<Unit>) -> Flow<HomeProfit?> = { flowOf(null) },
+    private val noticeStore: NoDestinationNoticeStore? = null,
+    private val now: () -> Instant = { kotlin.time.Clock.System.now() },
 ) : ViewModel() {
     // La primera mirada a la fecha es al abrir; las demás, al volver a primer plano. Un contador,
     // y no un evento, porque dos vueltas seguidas sin leer entre ellas valen por una.
     private val dayChecks = MutableStateFlow(0L)
     private val attempts = MutableStateFlow(0)
+
+    // La aceptación del aviso sin destino, leída del archivo una vez al abrir.
+    private val acknowledgement = MutableStateFlow<Acknowledgement>(Acknowledgement.Unknown)
 
     private val recentSales: Flow<List<SaleHistoryRow>> = history.changes().map {
         withContext(computation) { history.page(SaleHistoryFilter(), after = null, RECENT_SALES) }
@@ -94,6 +109,8 @@ class HomeViewModel(
     val backup: StateFlow<BackupWording?> =
         BackupWordings(providerLabel, computation)
             .of(backupOverview(dayChecks.map {}), zones)
+            // Con un destino elegido, el ciclo del aviso sin destino termina.
+            .onEach { if (it.overview.destinationKind != null) forgetAcknowledgement() }
             .map<BackupWording, BackupWording?> { it }
             .catch { emit(null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
@@ -128,9 +145,40 @@ class HomeViewModel(
             .catch { emit(null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
 
+    /**
+     * Cómo va el aviso sin destino: entero, reducido a una línea, o `null` mientras se lee si se
+     * aceptó. Se vuelve a mirar al volver a primer plano, para contar los días.
+     */
+    val noDestinationNotice: StateFlow<NoDestinationNotice?> =
+        combine(acknowledgement, uiState, dayChecks) { read, ui, _ ->
+            when (read) {
+                Acknowledgement.Unknown -> null
+
+                is Acknowledgement.Known ->
+                    NoDestinationNoticeRule.noticeOf(read.value, now(), lastSaleIdOf(ui))
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
+
+    init {
+        viewModelScope.launch {
+            val read = withContext(computation) {
+                try {
+                    noticeStore?.read()
+                } catch (_: IOException) {
+                    // Un archivo que no se lee vale como ninguna aceptación: el aviso va entero.
+                    null
+                }
+            }
+            // Si ya se aceptó o se eligió destino mientras se leía, eso manda.
+            acknowledgement.compareAndSet(Acknowledgement.Unknown, Acknowledgement.Known(read))
+        }
+    }
+
     fun onAction(action: HomeAction) {
         when (action) {
             HomeAction.Retry -> attempts.value += 1
+
+            HomeAction.AcknowledgeNoDestination -> acknowledge()
 
             // Lo demás lo resuelve la navegación.
             HomeAction.OpenSettings,
@@ -146,6 +194,40 @@ class HomeViewModel(
             is HomeAction.OpenLowStock,
             is HomeAction.OpenProduct,
             -> Unit
+        }
+    }
+
+    /**
+     * `Entendido`: se guarda el momento y la venta más reciente. Si no se puede guardar, el aviso
+     * queda reducido solo mientras dure esta pantalla, y la próxima vez vuelve entero.
+     */
+    private fun acknowledge() {
+        val accepted = NoDestinationAcknowledgement(now(), lastSaleIdOf(uiState.value))
+        acknowledgement.value = Acknowledgement.Known(accepted)
+        viewModelScope.launch {
+            withContext(computation) {
+                try {
+                    noticeStore?.write(accepted)
+                } catch (_: IOException) {
+                    // Sin archivo, la próxima apertura lo muestra entero: el lado seguro.
+                }
+            }
+        }
+    }
+
+    /** Ya hay destino: se borra la aceptación, y un destino quitado después avisa entero. */
+    private fun forgetAcknowledgement() {
+        val current = acknowledgement.value
+        if (current is Acknowledgement.Known && current.value == null) return
+        acknowledgement.value = Acknowledgement.Known(null)
+        viewModelScope.launch {
+            withContext(computation) {
+                try {
+                    noticeStore?.clear()
+                } catch (_: IOException) {
+                    // Quedó el archivo: al quitar el destino, la regla decide con su fecha.
+                }
+            }
         }
     }
 
@@ -176,6 +258,11 @@ class HomeViewModel(
         )
     }
 
+    // Las ventas solo crecen de número y ninguna se borra: la mayor de las últimas es la más
+    // reciente.
+    private fun lastSaleIdOf(ui: HomeUiState): Long =
+        (ui as? HomeUiState.Content)?.recentSales?.maxOfOrNull { it.id } ?: 0L
+
     private fun heroOf(summary: SalesSummary?): TodayHero = when {
         summary == null -> TodayHero.Unavailable
 
@@ -185,6 +272,15 @@ class HomeViewModel(
             summary.grossProfit == Money.ZERO -> TodayHero.NoSalesYet
 
         else -> TodayHero.Sales(summary)
+    }
+
+    /** Lo que se sabe de la aceptación del aviso sin destino. */
+    private sealed interface Acknowledgement {
+        /** Todavía se está leyendo el archivo. */
+        data object Unknown : Acknowledgement
+
+        /** Ya se sabe: [value] es la aceptación, o `null` si no hay. */
+        data class Known(val value: NoDestinationAcknowledgement?) : Acknowledgement
     }
 
     companion object {

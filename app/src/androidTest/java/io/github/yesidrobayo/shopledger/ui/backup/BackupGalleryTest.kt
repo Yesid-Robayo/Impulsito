@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationNotice
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.home.HomeScreen
@@ -80,6 +81,25 @@ class BackupGalleryTest {
                 BackupScreen(
                     previewBackupState(previewOverview(BackupStatus.NOT_CONNECTED, kind = null)),
                     {},
+                )
+            },
+            "homeNoDestination" to {
+                HomeScreen(
+                    previewHomeContent(),
+                    {},
+                    backup = previewBackupState(
+                        previewOverview(BackupStatus.NOT_CONNECTED, kind = null),
+                    ).wording,
+                )
+            },
+            "homeNoDestinationCompact" to {
+                HomeScreen(
+                    previewHomeContent(),
+                    {},
+                    backup = previewBackupState(
+                        previewOverview(BackupStatus.NOT_CONNECTED, kind = null),
+                    ).wording,
+                    noDestinationNotice = NoDestinationNotice.COMPACT,
                 )
             },
             "homeStale" to {

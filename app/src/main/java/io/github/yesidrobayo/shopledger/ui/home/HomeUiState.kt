@@ -76,6 +76,9 @@ sealed interface HomeAction {
     /** Copias en pausa por la política: la muestra para aceptarla. */
     data object ReviewPolicy : HomeAction
 
+    /** `Entendido` en el aviso sin destino: se reduce a una línea hasta que toque volver. */
+    data object AcknowledgeNoDestination : HomeAction
+
     /** El atajo `Compra`: abre una compra nueva. */
     data object OpenPurchase : HomeAction
 

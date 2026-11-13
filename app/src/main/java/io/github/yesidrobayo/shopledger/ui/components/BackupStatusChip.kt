@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -146,6 +147,9 @@ fun BackupStatusChip(look: BackupStatusLook, onClick: () -> Unit, modifier: Modi
  * Un estado del respaldo que pide atención, bajo la barra: su icono, una frase y una acción. Con
  * tono de advertencia usa el contenedor de advertencia, y con error el de error del respaldo. Nunca
  * aparece en la venta.
+ *
+ * @param secondaryLabel una segunda acción de texto, antes de la principal, como `Entendido` en el
+ *   aviso sin destino de Inicio. Con letra grande, las dos se reparten en líneas, al final.
  */
 @Composable
 fun BackupStatusBanner(
@@ -153,6 +157,8 @@ fun BackupStatusBanner(
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     onAction: () -> Unit = {},
+    secondaryLabel: String? = null,
+    onSecondary: () -> Unit = {},
 ) {
     val (container, content) = backupToneContainer(look.tone)
     Column(
@@ -174,7 +180,17 @@ fun BackupStatusBanner(
             )
             Text(look.text, style = MaterialTheme.typography.bodyMedium, color = content)
         }
-        if (actionLabel != null) {
+        if (secondaryLabel != null) {
+            FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8, Alignment.End),
+            ) {
+                InlineTextButton(text = secondaryLabel, onClick = onSecondary, color = content)
+                if (actionLabel != null) {
+                    InlineTextButton(text = actionLabel, onClick = onAction, color = content)
+                }
+            }
+        } else if (actionLabel != null) {
             InlineTextButton(
                 text = actionLabel,
                 onClick = onAction,
@@ -182,6 +198,48 @@ fun BackupStatusBanner(
                 modifier = Modifier.align(Alignment.End),
             )
         }
+    }
+}
+
+/**
+ * El aviso sin destino ya leído: una línea pequeña bajo el chip del respaldo, con el icono
+ * `cloud_off` en advertencia, la frase y una flecha. Toda la línea es un botón de 48 dp que lleva
+ * a elegir dónde guardar; con letra grande la frase se parte, nunca se corta.
+ */
+@Composable
+fun BackupNoticeLine(
+    text: String,
+    actionLabel: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = AppTheme.sizes.touchTarget)
+            .clickable(role = Role.Button, onClickLabel = actionLabel, onClick = onClick),
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_cloud_off),
+            contentDescription = null,
+            tint = AppTheme.colors.warning,
+            modifier = Modifier.size(AppTheme.sizes.iconTag),
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            painter = painterResource(R.drawable.ic_chevron_right),
+            contentDescription = null,
+            tint = muted,
+            modifier = Modifier.size(AppTheme.sizes.iconInline),
+        )
     }
 }
 
@@ -224,6 +282,20 @@ private fun BackupStatusPreview() {
                     R.drawable.ic_error,
                 ),
                 actionLabel = stringResource(R.string.backup_action_review),
+            )
+            BackupStatusBanner(
+                BackupStatusLook(
+                    stringResource(R.string.backup_state_not_connected_detail),
+                    BackupTone.WARNING,
+                    R.drawable.ic_cloud_off,
+                ),
+                actionLabel = stringResource(R.string.backup_action_choose_destination),
+                secondaryLabel = stringResource(R.string.backup_action_understood),
+            )
+            BackupNoticeLine(
+                text = stringResource(R.string.backup_not_connected_compact),
+                actionLabel = stringResource(R.string.backup_action_choose_destination),
+                onClick = {},
             )
         }
     }

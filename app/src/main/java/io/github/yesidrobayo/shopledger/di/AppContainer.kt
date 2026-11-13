@@ -26,6 +26,8 @@ import io.github.yesidrobayo.shopledger.notification.AndroidBackupNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidLowStockNotifier
 import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
+import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeFile
+import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -81,6 +83,13 @@ class AppContainer(application: Application) {
             mainContext = dispatchers.main,
             afterChoice = { localizedSurfaces.refreshLocalizedSurfaces() },
         )
+
+    /**
+     * Cuándo se aceptó el aviso sin destino de Inicio, guardado fuera de la base: es de este
+     * teléfono, no viaja en una copia y restaurar no lo cambia. Crearlo no toca el disco.
+     */
+    val noDestinationNotice: NoDestinationNoticeStore =
+        NoDestinationNoticeFile({ application.noBackupFilesDir })
 
     /** El contexto en el idioma de la interfaz para lo que corre fuera de una actividad. */
     val localizedContext: LocalizedContextProvider =
