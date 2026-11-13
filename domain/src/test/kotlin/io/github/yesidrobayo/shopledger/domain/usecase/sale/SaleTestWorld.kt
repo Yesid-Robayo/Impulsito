@@ -109,6 +109,7 @@ import io.github.yesidrobayo.shopledger.domain.testing.regionalSettings
 import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSaleReturnUseCase
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -1227,6 +1228,9 @@ internal class SaleWorld(
         customers = customerRepository,
         customerLedger = customerLedger,
     )
+
+    fun exchangeSale(): ExchangeSaleUseCase =
+        ExchangeSaleUseCase(transactions, registerSale(), registerSaleReturn())
 
     fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(
         transactions = transactions,

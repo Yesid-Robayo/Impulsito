@@ -33,6 +33,9 @@ import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeRequest
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeResult
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSaleReturnResult
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSaleReturnUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
@@ -290,6 +293,35 @@ internal class SaleReturnOnDatabaseTest : RepositoryTest() {
             ReturnResolution.STORE_CREDIT,
             checkNotNull(returns.findById(returnId)).content.resolution,
         )
+        assertInvariantsHold()
+    }
+
+    @Test
+    fun anExchangeKeepsTheNewSaleAndItsReturnTogether() = runBlocking {
+        val saleId = threeSoaps()
+        val cash = count("SELECT id FROM payment_methods WHERE system_key = 'CASH'")
+        val exchange = ExchangeSaleUseCase(runner, registerSale, giveBack)
+
+        val result = exchange(
+            ExchangeRequest(
+                saleId = saleId,
+                lines = listOf(ReturnLineRequest(lineOf(saleId), QuantityMilli(1_000))),
+                replacement = SaleRequest(
+                    listOf(SaleLineRequest(soapId, QuantityMilli(2_000))),
+                    cash,
+                ),
+                refundAccountId = cashId,
+            ),
+        )
+
+        val exchanged = result as ExchangeResult.Exchanged
+        val header = checkNotNull(returns.findById(exchanged.saleReturnId)).content
+        assertEquals(ReturnResolution.EXCHANGE, header.resolution)
+        assertEquals(exchanged.replacementSaleId, header.replacementSaleId)
+        val replacement = checkNotNull(sales.findById(exchanged.replacementSaleId))
+        assertEquals(Money(7_000), replacement.content.total)
+        // Diez de inicio, tres vendidos, uno devuelto y dos en la venta nueva.
+        assertEquals(QuantityMilli(6_000), checkNotNull(products.findById(soapId)).onHand)
         assertInvariantsHold()
     }
 

@@ -118,7 +118,20 @@ class RegisterSaleReturnUseCase(
         RegisterSaleReturnResult.StorageFailed(failure.failure)
     }
 
-    private suspend fun register(request: SaleReturnRequest): TxResult<RegisterSaleReturnResult> {
+    /**
+     * Registra [request] dentro de una transacción que ya abrió quien llama: el cambio, que guarda
+     * antes la venta nueva [replacementSaleId]. La devolución queda como cambio, con su venta nueva,
+     * y devuelve el dinero como un reembolso. Un rechazo llega como [TxResult.Rollback].
+     */
+    internal suspend fun registerWithin(
+        request: SaleReturnRequest,
+        replacementSaleId: Long,
+    ): TxResult<RegisterSaleReturnResult> = register(request, replacementSaleId)
+
+    private suspend fun register(
+        request: SaleReturnRequest,
+        replacementSaleId: Long? = null,
+    ): TxResult<RegisterSaleReturnResult> {
         ledger.start()
         shapeRejection(request)?.let { return TxResult.Rollback(it) }
         val current = settings.get()
@@ -171,7 +184,12 @@ class RegisterSaleReturnUseCase(
             NewSaleReturn(
                 saleId = sale.id,
                 resolution = when (settlement) {
-                    is ReturnSettlement.Refund -> ReturnResolution.REFUND
+                    // Un cambio devuelve el dinero como un reembolso, y la venta nueva lo cobra.
+                    is ReturnSettlement.Refund -> replacementSaleId?.let {
+                        ReturnResolution.EXCHANGE
+                    }
+                        ?: ReturnResolution.REFUND
+
                     is ReturnSettlement.StoreCredit -> ReturnResolution.STORE_CREDIT
                 },
                 netRefund = totals.net,
@@ -179,7 +197,7 @@ class RegisterSaleReturnUseCase(
                 totalRefund = totals.total,
                 costReturned = totals.costReturned,
                 moneyAccountId = accountId,
-                replacementSaleId = null,
+                replacementSaleId = replacementSaleId,
                 note = request.note?.takeIf { it.isNotBlank() },
                 occurredAt = time.occurredAt,
                 businessDate = time.businessDate,

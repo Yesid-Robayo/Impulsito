@@ -213,6 +213,14 @@ class RegisterSaleUseCase(
         RegisterSaleResult.StorageFailed(failure.failure)
     }
 
+    /**
+     * Registra [request] dentro de una transacción que ya abrió quien llama, como el cambio de una
+     * devolución, que guarda la venta nueva junto con lo devuelto. Un rechazo llega como
+     * [TxResult.Rollback], y quien llama deshace todo.
+     */
+    internal suspend fun registerWithin(request: SaleRequest): TxResult<RegisterSaleResult> =
+        register(request)
+
     private suspend fun register(request: SaleRequest): TxResult<RegisterSaleResult> {
         ledger.start()
         shapeRejection(request)?.let { return TxResult.Rollback(it) }
