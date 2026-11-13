@@ -288,6 +288,7 @@ class SaleDetailViewModel(
                     settlesOn = row.settlementDate.takeIf { it > content.businessDate },
                     fee = row.feeAmount,
                     netReceived = row.netReceived,
+                    foreign = row.foreignTender,
                 )
             },
             results = SaleResults.of(sale, detail.payments),

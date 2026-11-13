@@ -35,7 +35,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnResolution
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
@@ -68,6 +70,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.money.ProvideAccountCurrency
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlinx.datetime.YearMonth
 
@@ -324,6 +327,9 @@ private fun TotalBlock(sale: SaleDetailView, modifier: Modifier = Modifier) {
  * Un pago: el método a la izquierda y el monto a la derecha, y cuándo se acredita si tarda. Con
  * comisión, debajo van la comisión y lo que llega de verdad, como el descuento de una línea, y se
  * ocultan en modo discreto: el monto cobrado lo conoce quien compra, la comisión no.
+ *
+ * Si se cobró en otra moneda, debajo van lo entregado, en esa moneda y con su símbolo, y la
+ * cotización que se escribió. El monto de arriba sigue en la moneda del negocio.
  */
 @Composable
 private fun PaymentRow(payment: SaleDetailPayment) {
@@ -350,6 +356,7 @@ private fun PaymentRow(payment: SaleDetailPayment) {
             }
             MoneyText(payment.amount, MoneySize.ROW)
         }
+        payment.foreign?.let { ForeignRows(it, last = !payment.hasFee) }
         if (payment.hasFee) {
             DetailSubRow(stringResource(R.string.term_fee)) {
                 MoneyText(-payment.fee, MoneySize.CAPTION, tone = MoneyTone.MUTED, sensitive = true)
@@ -362,7 +369,7 @@ private fun PaymentRow(payment: SaleDetailPayment) {
                     sensitive = true,
                 )
             }
-        } else {
+        } else if (payment.foreign == null) {
             // Sin comisión, la línea igual separa este pago del siguiente o de los cargos.
             HorizontalDivider(
                 modifier = Modifier.padding(start = spacing.s16),
@@ -398,6 +405,30 @@ private fun ChargeRows(charges: SaleDetailCharges) {
                 MoneyText(amount, MoneySize.CAPTION, tone = MoneyTone.MUTED)
             }
         }
+    }
+}
+
+/** Lo entregado en otra moneda y la cotización, como filas menores del pago. */
+@Composable
+private fun ForeignRows(foreign: ForeignTender, last: Boolean) {
+    val formats = LocalAppFormats.current
+    DetailSubRow(stringResource(R.string.checkout_fx_tendered, foreign.currency.code)) {
+        ProvideAccountCurrency(AccountCurrency(foreign.currency, foreign.decimals)) {
+            MoneyText(Money(foreign.amountMinor), MoneySize.CAPTION, tone = MoneyTone.MUTED)
+        }
+    }
+    DetailSubRow(stringResource(R.string.checkout_fx_rate), last = last) {
+        Text(
+            stringResource(
+                R.string.reference_rate_current,
+                foreign.currency.code,
+                formats.quantity.formatMicro(foreign.rateMicro),
+            ),
+            style = AppTheme.amounts.caption,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 

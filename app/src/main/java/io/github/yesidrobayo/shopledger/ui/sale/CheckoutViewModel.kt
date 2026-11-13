@@ -14,9 +14,12 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerForm
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.sum
 import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
@@ -24,12 +27,14 @@ import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerSearch
 import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyProgramRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.RedemptionCheck
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.ReferenceRateRules
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPricing
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutBalance
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutPaymentInput
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutPreview
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutProblem
+import io.github.yesidrobayo.shopledger.domain.rule.sale.ForeignTenderRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentFees
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCheckout
 import io.github.yesidrobayo.shopledger.domain.rule.timesRate
@@ -37,6 +42,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.SaveCustomerResu
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.ui.customer.CustomerEditorModel
 import io.github.yesidrobayo.shopledger.ui.payment.plainNumberText
+import io.github.yesidrobayo.shopledger.ui.reference.RateProblem
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -83,6 +89,14 @@ import kotlinx.coroutines.launch
  * vencimiento: el cargo de la venta lo consume en el libro del cliente, en la misma transacción.
  *
  * @param recentCustomersSource los clientes de las últimas ventas, para `Recientes` en la lista.
+ *
+ * Con una moneda de referencia elegida, cada pago ofrece `Cobrar en otra moneda`: lo entregado en
+ * esa moneda, con la cotización escrita a mano, se pasa a la del negocio. En efectivo eso es lo
+ * recibido, y el cambio sale de ahí; con otro método, es el monto del pago. El pago sigue en la
+ * moneda del negocio. Si después se cambia a mano lo que la conversión fijó, la otra moneda se
+ * quita: lo guardado tiene que coincidir con lo que se ve.
+ *
+ * @param referenceSource la moneda de referencia con su cotización vigente, o `null` sin ella.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CheckoutViewModel(
@@ -97,6 +111,7 @@ class CheckoutViewModel(
     private val createCustomer: suspend (CustomerForm, Boolean) -> SaveCustomerResult =
         { _, _ -> SaveCustomerResult.NotFound },
     recentCustomersSource: () -> Flow<List<Customer>> = { flowOf(emptyList()) },
+    referenceSource: () -> Flow<CheckoutReference?> = { flowOf(null) },
 ) : ViewModel() {
     private val sale: SaleDraft?
     private val qrOnly: Boolean
@@ -153,6 +168,12 @@ class CheckoutViewModel(
         .flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** La otra moneda que se ofrece. Una falla de lectura solo quita la opción, no el cobro. */
+    private val reference: StateFlow<CheckoutReference?> = referenceSource()
+        .catch { emit(null) }
+        .flowOn(computation)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     /** La hoja de crear un cliente desde el cobro: al guardarlo, queda elegido. */
     val customerEditor = CustomerEditorModel(
         scope = viewModelScope,
@@ -164,16 +185,16 @@ class CheckoutViewModel(
         catalog,
         editing,
         overlay,
-        customers,
-        recent,
+        combine(customers, recent, ::Pair),
+        reference,
     ) {
             load,
             written,
             shown,
-            choices,
-            lately,
+            people,
+            foreign,
         ->
-        build(load, written, shown, choices, lately)
+        build(load, written, shown, people.first, people.second, foreign)
     }.flowOn(computation)
         .stateIn(
             viewModelScope,
@@ -279,6 +300,20 @@ class CheckoutViewModel(
             CheckoutAction.ViewAllCustomers -> overlay.update {
                 it.copy(sheet = null, customerQuery = "")
             }
+
+            is CheckoutAction.OpenForeign -> openForeign(action.index)
+
+            is CheckoutAction.ForeignRateChange -> editForeign {
+                it.copy(rateText = action.text, rateProblem = null)
+            }
+
+            is CheckoutAction.ForeignAmountChange -> editForeign {
+                it.copy(amountText = action.text, amountError = null)
+            }
+
+            CheckoutAction.ApplyForeign -> applyForeign()
+
+            CheckoutAction.RemoveForeign -> removeForeign()
         }
     }
 
@@ -732,6 +767,172 @@ class CheckoutViewModel(
         if (changed) clearBalanceError()
     }
 
+    // ------------------------------------------------------------------ otra moneda
+
+    /**
+     * Abre `Cobrar en otra moneda` para el pago número [index]. Si ya tenía otra moneda, la hoja
+     * trae lo que se escribió; si no, la moneda de referencia con su cotización vigente.
+     */
+    private fun openForeign(index: Int) {
+        val row = editing.value.payments.getOrNull(index) ?: return
+        val applied = row.foreign
+        val editor = if (applied != null) {
+            val tender = applied.tender
+            ForeignEditor(
+                index = index,
+                currency = ReferenceCurrency(tender.currency, tender.decimals),
+                rateText = rateText(tender.rateMicro),
+                amountText = plainNumberText(
+                    tender.amountMinor,
+                    tender.decimals,
+                    numbers.moneySymbols,
+                ),
+                equivalent = applied.book,
+                canRemove = true,
+            )
+        } else {
+            val offered = reference.value ?: return
+            ForeignEditor(
+                index = index,
+                currency = offered.currency,
+                rateText = offered.rateMicro?.let(::rateText).orEmpty(),
+            )
+        }
+        overlay.update { it.copy(sheet = CheckoutSheet.Foreign(editor)) }
+    }
+
+    /** Cambia la hoja abierta y recalcula `Equivale a` con lo que ya se lee. */
+    private fun editForeign(change: (ForeignEditor) -> ForeignEditor) = overlay.update { shown ->
+        val sheet = shown.sheet as? CheckoutSheet.Foreign ?: return@update shown
+        val edited = change(sheet.editor)
+        val read = readForeign(edited) as? ForeignRead.Valid
+        shown.copy(sheet = CheckoutSheet.Foreign(edited.copy(equivalent = read?.book)))
+    }
+
+    /**
+     * `Usar esta moneda`. En efectivo, lo recibido pasa a ser lo entregado ya convertido, y el cambio
+     * sale solo; con otro método, el monto del pago. Lo que no se lee se dice en su campo.
+     */
+    private fun applyForeign() {
+        val catalog = readyCatalog() ?: return
+        val editor = (overlay.value.sheet as? CheckoutSheet.Foreign)?.editor ?: return
+        val row = editing.value.payments.getOrNull(editor.index) ?: return
+        when (val read = readForeign(editor)) {
+            is ForeignRead.Invalid -> overlay.update {
+                it.copy(
+                    sheet = CheckoutSheet.Foreign(
+                        editor.copy(rateProblem = read.rate, amountError = read.amount),
+                    ),
+                )
+            }
+
+            is ForeignRead.Valid -> {
+                val cash = catalog.payable.firstOrNull { it.id == row.methodId }
+                    ?.details?.kind == PaymentMethodKind.CASH
+                val applied = AppliedForeign(read.tender, read.book, onTendered = cash)
+                val text = moneyText(read.book)
+                changePayment(editor.index) {
+                    if (cash) {
+                        it.copy(
+                            tendered = read.book,
+                            tenderedText = text,
+                            tenderedError = null,
+                            foreign = applied,
+                        )
+                    } else {
+                        it.copy(
+                            amount = read.book,
+                            amountText = text,
+                            amountError = null,
+                            foreign = applied,
+                        )
+                    }
+                }
+                overlay.update { it.copy(sheet = null) }
+            }
+        }
+    }
+
+    /** `Quitar otra moneda`: el pago conserva lo escrito, ya en la moneda del negocio. */
+    private fun removeForeign() {
+        val editor = (overlay.value.sheet as? CheckoutSheet.Foreign)?.editor ?: return
+        changePayment(editor.index) { it.copy(foreign = null) }
+        overlay.update { it.copy(sheet = null) }
+    }
+
+    /**
+     * Lee la hoja: la cotización en millonésimas y lo entregado en la unidad menor de la otra
+     * moneda, y lo pasa a la del negocio con la misma cuenta que guarda la venta.
+     */
+    private fun readForeign(editor: ForeignEditor): ForeignRead {
+        val rate = readRate(editor.rateText)
+        val amount = readForeignAmount(editor.amountText, editor.currency.decimals)
+        val rateMicro = (rate as? Read.Valid)?.value
+        val amountMinor = (amount as? Read.Valid)?.value
+        val business = reference.value?.business
+        if (rateMicro == null || amountMinor == null || business == null) {
+            return ForeignRead.Invalid(
+                rate = (rate as? Read.Problem)?.problem,
+                amount = (amount as? Read.Error)?.error,
+            )
+        }
+        val tender = ForeignTender(
+            editor.currency.code,
+            editor.currency.decimals,
+            amountMinor,
+            rateMicro,
+        )
+        val book = tender.takeIf { ForeignTenderRules.shapeRejection(it) == null }
+            ?.let { ForeignTenderRules.toBook(it, business, numbers.currencyDecimals) }
+            ?: return ForeignRead.Invalid(rate = null, amount = SaleFieldError.TOO_HIGH)
+        return ForeignRead.Valid(tender, book)
+    }
+
+    private fun readRate(text: String): Read = when (
+        val read = NumberInputParser.rateMicro(text, numbers.quantitySymbols, Limit.DOCUMENT_TOTAL)
+    ) {
+        is NumberInput.Value -> when {
+            read.value <= 0L -> Read.Problem(RateProblem.NOT_POSITIVE)
+            ReferenceRateRules.isValidRate(read.value) -> Read.Valid(read.value)
+            else -> Read.Problem(RateProblem.TOO_HIGH)
+        }
+
+        NumberInput.Blank -> Read.Problem(RateProblem.NOT_POSITIVE)
+
+        NumberInput.Malformed, is NumberInput.TooManyDecimals ->
+            Read.Problem(RateProblem.NOT_A_NUMBER)
+
+        is NumberInput.TooLarge -> Read.Problem(RateProblem.TOO_HIGH)
+    }
+
+    /** Lo entregado: mayor que cero, con los decimales de la otra moneda. */
+    private fun readForeignAmount(text: String, decimals: Int): Read = when (
+        val read = NumberInputParser.money(
+            text,
+            numbers.moneySymbols,
+            decimals,
+            Limit.DOCUMENT_TOTAL,
+        )
+    ) {
+        is NumberInput.Value ->
+            if (read.value > Money.ZERO) {
+                Read.Valid(read.value.minor)
+            } else {
+                Read.Error(SaleFieldError.NOT_A_NUMBER)
+            }
+
+        is NumberInput.TooLarge -> Read.Error(SaleFieldError.TOO_HIGH)
+
+        NumberInput.Blank,
+        NumberInput.Malformed,
+        is NumberInput.TooManyDecimals,
+        -> Read.Error(SaleFieldError.NOT_A_NUMBER)
+    }
+
+    /** Una cotización en millonésimas como se escribe, sin separadores de grupo ni ceros de más. */
+    private fun rateText(rateMicro: Long): String =
+        plainNumberText(rateMicro, RATE_DECIMALS, numbers.quantitySymbols)
+
     // ------------------------------------------------------------------ ajuste de la venta
 
     private fun openAdjustment() {
@@ -916,7 +1117,13 @@ class CheckoutViewModel(
                 date = current.date,
                 note = current.note.takeIf { it.isNotBlank() },
                 payments = written.payments.map {
-                    SalePaymentRequest(it.methodId, it.amount, it.fee, it.tendered)
+                    SalePaymentRequest(
+                        it.methodId,
+                        it.amount,
+                        it.fee,
+                        it.tendered,
+                        foreign = it.foreign?.tender,
+                    )
                 },
                 orderAdjustment = written.adjustment,
                 // Una venta retomada de la espera sale de ella al confirmarse, también desde aquí.
@@ -994,6 +1201,7 @@ class CheckoutViewModel(
         shown: Overlay,
         choices: List<Customer>,
         lately: List<Customer>,
+        foreign: CheckoutReference?,
     ): CheckoutUiState {
         val current = sale ?: return CheckoutUiState(content = CheckoutContent.Unavailable)
         val catalog = when (load) {
@@ -1037,6 +1245,7 @@ class CheckoutViewModel(
                 tenderedError = row.tenderedError,
                 change = computed?.change,
                 tenderedBelow = computed?.tenderedBelowAmount ?: false,
+                foreign = row.foreign?.tender,
             )
         }
         val used = written.payments.map { it.methodId }.toSet()
@@ -1096,6 +1305,7 @@ class CheckoutViewModel(
             points = pointsOf(catalog, written, choices),
             customerRecents = recentOf(shown, choices, lately),
             creditBalance = creditBalanceOf(catalog, written, choices, preview),
+            foreignOffered = foreign != null,
         )
     }
 
@@ -1239,11 +1449,16 @@ class CheckoutViewModel(
     }
 
     private fun change(update: (Editing) -> Editing) {
-        editing.update(update)
+        editing.update { written ->
+            update(written).let { it.copy(payments = it.payments.map(Written::checked)) }
+        }
         save(editing.value)
     }
 
-    /** Guarda lo escrito: seis números por pago y el ajuste. Los textos se rearman al volver. */
+    /**
+     * Guarda lo escrito: once números por pago, con lo recibido en otra moneda, y el código de esa
+     * moneda aparte. Los textos se rearman al volver.
+     */
     private fun save(written: Editing) {
         val values = LongArray(written.payments.size * FIELDS)
         written.payments.forEachIndexed { index, row ->
@@ -1254,8 +1469,20 @@ class CheckoutViewModel(
             values[base + 3] = row.fee?.minor ?: 0L
             values[base + 4] = if (row.tendered == null) 0L else 1L
             values[base + 5] = row.tendered?.minor ?: 0L
+            val foreign = row.foreign
+            values[base + 6] = when {
+                foreign == null -> FOREIGN_NONE
+                foreign.onTendered -> FOREIGN_TENDERED
+                else -> FOREIGN_AMOUNT
+            }
+            values[base + 7] = foreign?.tender?.decimals?.toLong() ?: 0L
+            values[base + 8] = foreign?.tender?.amountMinor ?: 0L
+            values[base + 9] = foreign?.tender?.rateMicro ?: 0L
+            values[base + 10] = foreign?.book?.minor ?: 0L
         }
         savedState[PAYMENTS] = values
+        savedState[FOREIGN_CODES] =
+            ArrayList(written.payments.map { it.foreign?.tender?.currency?.code.orEmpty() })
         savedState[ADJUSTMENT] = written.adjustment.minor
         savedState[TIP] = written.tip.minor
         savedState[CUSTOMER] = written.customerId
@@ -1269,11 +1496,27 @@ class CheckoutViewModel(
             ?: return Editing(priceListId = savedState.get<Long>(PRICE_LIST) ?: sale?.priceListId)
         val tip = Money(savedState.get<Long>(TIP) ?: 0L)
         val redeemed = savedState.get<Long>(POINTS) ?: 0L
+        val codes = savedState.get<ArrayList<String>>(FOREIGN_CODES).orEmpty()
         val payments = (0 until values.size / FIELDS).map { index ->
             val base = index * FIELDS
             val amount = Money(values[base + 1])
             val fee = if (values[base + 2] == 1L) Money(values[base + 3]) else null
             val tendered = if (values[base + 4] == 1L) Money(values[base + 5]) else null
+            val code = codes.getOrNull(index)?.let(CurrencyCode::of)
+            val foreign = if (values[base + 6] != FOREIGN_NONE && code != null) {
+                AppliedForeign(
+                    tender = ForeignTender(
+                        code,
+                        values[base + 7].toInt(),
+                        values[base + 8],
+                        values[base + 9],
+                    ),
+                    book = Money(values[base + 10]),
+                    onTendered = values[base + 6] == FOREIGN_TENDERED,
+                )
+            } else {
+                null
+            }
             Written(
                 values[base],
                 amount,
@@ -1282,6 +1525,7 @@ class CheckoutViewModel(
                 feeText = fee?.let(::moneyText),
                 tendered = tendered,
                 tenderedText = tendered?.let(::moneyText).orEmpty(),
+                foreign = foreign,
             )
         }
         return Editing(
@@ -1345,10 +1589,47 @@ class CheckoutViewModel(
         val tendered: Money? = null,
         val tenderedText: String = "",
         val tenderedError: SaleFieldError? = null,
+        val foreign: AppliedForeign? = null,
     ) {
         /** Si algún campo del pago no se pudo leer: el cobro no se registra así. */
         val hasError: Boolean
             get() = amountError != null || feeError != null || tenderedError != null
+
+        /**
+         * El mismo pago, sin otra moneda si lo que ella fijó cambió: lo recibido en efectivo, o el
+         * monto con otro método. Así nunca se guarda una conversión que no es la que se ve.
+         */
+        fun checked(): Written {
+            val applied = foreign ?: return this
+            val bound = if (applied.onTendered) tendered else amount
+            return if (bound == applied.book) this else copy(foreign = null)
+        }
+    }
+
+    /**
+     * Lo recibido en otra moneda por un pago: [tender] tal como se entregó, y [book], lo mismo en la
+     * moneda del negocio. Con [onTendered], [book] es lo recibido en efectivo; si no, el monto.
+     */
+    private data class AppliedForeign(
+        val tender: ForeignTender,
+        val book: Money,
+        val onTendered: Boolean,
+    )
+
+    /** Lo que se leyó de la hoja `Cobrar en otra moneda`. */
+    private sealed interface ForeignRead {
+        class Valid(val tender: ForeignTender, val book: Money) : ForeignRead
+
+        class Invalid(val rate: RateProblem?, val amount: SaleFieldError?) : ForeignRead
+    }
+
+    /** Un campo de la hoja de otra moneda, leído. */
+    private sealed interface Read {
+        class Valid(val value: Long) : Read
+
+        class Problem(val problem: RateProblem) : Read
+
+        class Error(val error: SaleFieldError) : Read
     }
 
     /**
@@ -1399,7 +1680,14 @@ class CheckoutViewModel(
         const val PRICE_LIST = "checkout.priceList"
         const val CREDIT_DUE = "checkout.creditDue"
         const val POINTS = "checkout.points"
-        const val FIELDS = 6
+        const val FOREIGN_CODES = "checkout.foreignCodes"
+        const val FIELDS = 11
+        const val FOREIGN_NONE = 0L
+        const val FOREIGN_TENDERED = 1L
+        const val FOREIGN_AMOUNT = 2L
+
+        /** Decimales de una cotización en millonésimas. */
+        const val RATE_DECIMALS = 6
 
         /** Lo que sigue viva la lectura al rotar la pantalla, para no releer el catálogo. */
         const val STOP_TIMEOUT_MILLIS = 5_000L
@@ -1426,3 +1714,13 @@ private fun absoluteRate(rate: BasisPoints): BasisPoints = if (rate.bp <
 } else {
     rate
 }
+
+/**
+ * La otra moneda que ofrece el cobro: la de referencia, [currency], con su cotización vigente,
+ * [rateMicro], si ya hay una, y la moneda del negocio, [business], a la que se pasa lo entregado.
+ */
+data class CheckoutReference(
+    val currency: ReferenceCurrency,
+    val rateMicro: Long?,
+    val business: CurrencyCode,
+)

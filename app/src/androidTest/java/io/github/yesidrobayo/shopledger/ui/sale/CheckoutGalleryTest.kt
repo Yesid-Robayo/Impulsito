@@ -25,7 +25,9 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -67,6 +69,7 @@ class CheckoutGalleryTest {
         val qrOnly: Boolean = false,
         val actions: List<CheckoutAction> = emptyList(),
         val recent: List<Customer> = emptyList(),
+        val reference: CheckoutReference? = null,
     )
 
     @Test
@@ -135,6 +138,7 @@ class CheckoutGalleryTest {
                 computation = Dispatchers.Default,
                 customersSource = { flowOf(scene.customers) },
                 recentCustomersSource = { flowOf(scene.recent) },
+                referenceSource = { flowOf(scene.reference) },
             )
         }
         return model
@@ -254,6 +258,25 @@ class CheckoutGalleryTest {
                 result = RegisterSaleResult.StorageFailed(StorageFailure.DISK_FULL),
                 actions = listOf(CheckoutAction.Register),
             ),
+            // La hoja de otra moneda con lo entregado escrito y `Equivale a` en vivo.
+            Scene(
+                "foreign-sheet",
+                reference = CHECKOUT_REFERENCE,
+                actions = listOf(
+                    CheckoutAction.OpenForeign(0),
+                    CheckoutAction.ForeignAmountChange("20"),
+                ),
+            ),
+            // El pago en efectivo cobrado en otra moneda: lo entregado y la cotización debajo.
+            Scene(
+                "foreign-applied",
+                reference = CHECKOUT_REFERENCE,
+                actions = listOf(
+                    CheckoutAction.OpenForeign(0),
+                    CheckoutAction.ForeignAmountChange("20"),
+                    CheckoutAction.ApplyForeign,
+                ),
+            ),
         )
     }
 
@@ -328,3 +351,10 @@ internal fun checkoutCatalog(withCard: Boolean = true): SaleCatalog {
     }
     return base.copy(methods = if (withCard) methods else methods.filter { it.id != 2L })
 }
+
+/** Una moneda de referencia inventada, de dos decimales a 4150,50, para un negocio sin decimales. */
+internal val CHECKOUT_REFERENCE = CheckoutReference(
+    currency = ReferenceCurrency(requireNotNull(CurrencyCode.of("XTS")), 2),
+    rateMicro = 4_150_500_000L,
+    business = requireNotNull(CurrencyCode.of("XXX")),
+)

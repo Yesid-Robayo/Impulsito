@@ -5,8 +5,11 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutBalance
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutProblem
+import io.github.yesidrobayo.shopledger.ui.reference.RateProblem
 import kotlinx.datetime.DayOfWeek
 
 /**
@@ -15,6 +18,9 @@ import kotlinx.datetime.DayOfWeek
  *
  * [registered] llega una sola vez, al confirmar: la pantalla vuelve a Inicio con el mensaje. Con
  * [tipsEnabled], el cobro ofrece la propina, escrita en [tipText].
+ *
+ * [foreignOffered] es si cada pago ofrece `Cobrar en otra moneda`: solo cuando la persona eligió una
+ * moneda de referencia, porque esa es la otra moneda que se cobra. Sin ella, el cobro no cambia.
  */
 @Immutable
 data class CheckoutUiState(
@@ -43,6 +49,7 @@ data class CheckoutUiState(
     val points: CheckoutPoints? = null,
     val customerRecents: List<Customer> = emptyList(),
     val creditBalance: CheckoutCreditBalance? = null,
+    val foreignOffered: Boolean = false,
 ) {
     /** Si algún pago usa un método que ya no se ofrece: hay que quitarlo o cambiarlo. */
     val hasGoneMethod: Boolean get() = payments.any { it.gone }
@@ -99,6 +106,8 @@ data class MethodAdjustment(val method: SaleMethod, val amount: Money)
  * - [gone] si el método se archivó mientras tanto: el pago no se puede guardar así.
  * - [isCash] si el método es de efectivo: entonces ofrece lo recibido, en [tenderedText], y el
  *   [change]. Con [tenderedBelow], lo recibido no alcanza para lo que cubre el pago redondeado.
+ * - [foreign] es lo que se recibió en otra moneda, si se cobró así: debajo del pago se ve qué y a qué
+ *   cotización.
  */
 @Immutable
 data class CheckoutPaymentRow(
@@ -118,6 +127,7 @@ data class CheckoutPaymentRow(
     val tenderedError: SaleFieldError? = null,
     val change: Money? = null,
     val tenderedBelow: Boolean = false,
+    val foreign: ForeignTender? = null,
 )
 
 /** La hoja abierta sobre el cobro. */
@@ -130,7 +140,30 @@ sealed interface CheckoutSheet {
 
     /** Elegir el cliente de la venta. */
     data object Customers : CheckoutSheet
+
+    /** Lo recibido en otra moneda por un pago. */
+    data class Foreign(val editor: ForeignEditor) : CheckoutSheet
 }
+
+/**
+ * La hoja `Cobrar en otra moneda` del pago número [index]. La moneda es [currency], la de
+ * referencia, y no se elige aquí. [rateText] empieza con la cotización vigente, si hay, y se puede
+ * cambiar solo para este cobro: no se guarda como cotización nueva. [equivalent] es lo entregado
+ * pasado a la moneda del negocio, en vivo, o `null` mientras no se pueda calcular.
+ *
+ * [canRemove] si el pago ya tenía otra moneda: entonces se ofrece `Quitar otra moneda`.
+ */
+@Immutable
+data class ForeignEditor(
+    val index: Int,
+    val currency: ReferenceCurrency,
+    val rateText: String = "",
+    val amountText: String = "",
+    val equivalent: Money? = null,
+    val rateProblem: RateProblem? = null,
+    val amountError: SaleFieldError? = null,
+    val canRemove: Boolean = false,
+)
 
 /** El cliente de la venta como lo muestra el cobro. */
 @Immutable

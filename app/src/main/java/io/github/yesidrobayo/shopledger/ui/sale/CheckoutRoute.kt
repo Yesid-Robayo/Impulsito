@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.ObserveLoyaltySe
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.FindPaymentImagesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveTipsEnabledUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObserveReferenceRateUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
@@ -31,6 +32,7 @@ import io.github.yesidrobayo.shopledger.ui.customer.CustomerEditorAction
 import io.github.yesidrobayo.shopledger.ui.customer.CustomerEditorSheet
 import io.github.yesidrobayo.shopledger.ui.customer.rememberContactPicker
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import kotlinx.coroutines.flow.map
 
 /**
  * El cobro en la navegación: arma su ViewModel con la venta que dejó la venta nueva y resuelve
@@ -110,6 +112,18 @@ fun CheckoutRoute(navigator: AppNavigator) {
                 customersSource = { ports.customers.observeSelectable() },
                 createCustomer = { form, allowSameName -> createCustomer(form, allowSameName) },
                 recentCustomersSource = { ports.customers.observeRecent(RECENT_CUSTOMERS) },
+                // La otra moneda del cobro es la de referencia, con su última cotización escrita.
+                referenceSource = {
+                    ObserveReferenceRateUseCase(ports.settings, ports.fxRates)().map { view ->
+                        view.reference?.let {
+                            CheckoutReference(
+                                currency = it,
+                                rateMicro = view.latest?.content?.rateMicro,
+                                business = formats.money.currencyCode,
+                            )
+                        }
+                    }
+                },
             )
         }
     when (model) {

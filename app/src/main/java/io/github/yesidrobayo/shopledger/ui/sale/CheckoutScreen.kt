@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutBalance
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutProblem
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
@@ -66,6 +67,7 @@ import io.github.yesidrobayo.shopledger.ui.components.PaymentSplitRow
 import io.github.yesidrobayo.shopledger.ui.components.PercentField
 import io.github.yesidrobayo.shopledger.ui.components.PhotoState
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.RateField
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
@@ -74,7 +76,9 @@ import io.github.yesidrobayo.shopledger.ui.components.WholeNumberField
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.money.ProvideAccountCurrency
 import io.github.yesidrobayo.shopledger.ui.payment.rememberStoredPhoto
+import io.github.yesidrobayo.shopledger.ui.reference.rateProblemText
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlinx.datetime.DayOfWeek
 
@@ -601,7 +605,7 @@ private fun Payments(uiState: CheckoutUiState, onAction: (CheckoutAction) -> Uni
     ) {
         val count = uiState.payments.size
         uiState.payments.forEachIndexed { index, row ->
-            PaymentRow(index, count, row, onAction)
+            PaymentRow(index, count, row, uiState.foreignOffered, onAction)
         }
     }
 }
@@ -611,17 +615,24 @@ private fun PaymentRow(
     index: Int,
     count: Int,
     row: CheckoutPaymentRow,
+    foreignOffered: Boolean,
     onAction: (CheckoutAction) -> Unit,
 ) {
     val formats = LocalAppFormats.current
     val name = methodName(row.method)
     val remove = stringResource(R.string.checkout_remove_payment_action)
     val qr = stringResource(R.string.checkout_show_qr_action)
+    val otherCurrency = stringResource(R.string.checkout_other_currency_action)
     val menu = buildList {
         if (row.method.hasQr &&
             !row.gone
         ) {
             add(OverflowAction(qr, { onAction(CheckoutAction.ShowQr(index)) }))
+        }
+        // Solo con moneda de referencia, o si el pago ya trae otra moneda, para cambiarla o
+        // quitarla: la venta habitual no ve esta opción.
+        if ((foreignOffered || row.foreign != null) && !row.gone) {
+            add(OverflowAction(otherCurrency, { onAction(CheckoutAction.OpenForeign(index)) }))
         }
         if (count >
             1
@@ -669,6 +680,7 @@ private fun PaymentRow(
                     },
                 )
             }
+            row.foreign?.let { ForeignTenderLines(it) }
         },
     )
 }
@@ -761,6 +773,8 @@ private fun CheckoutSheets(uiState: CheckoutUiState, onAction: (CheckoutAction) 
 
         is CheckoutSheet.Adjustment -> AdjustmentSheet(sheet.editor, onAction, close)
 
+        is CheckoutSheet.Foreign -> ForeignSheet(sheet.editor, onAction, close)
+
         CheckoutSheet.Customers -> CustomerPickerSheet(
             customers = uiState.customerChoices,
             query = uiState.customerQuery,
@@ -848,6 +862,82 @@ private fun AdjustmentSheet(
                     onValueChange = { onAction(CheckoutAction.AdjustmentTextChange(it)) },
                     label = label,
                     error = error,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * `Cobrar en otra moneda`: la moneda, que es la de referencia y no se elige aquí; la cotización,
+ * escrita a mano y nunca descargada; lo entregado en esa moneda, con sus decimales; y `Equivale a`,
+ * en la moneda del negocio, en vivo. Los montos de la otra moneda van con su propio símbolo.
+ */
+@Composable
+private fun ForeignSheet(
+    editor: ForeignEditor,
+    onAction: (CheckoutAction) -> Unit,
+    close: () -> Unit,
+) {
+    val spacing = AppTheme.spacing
+    val code = editor.currency.code.code
+    AppBottomSheet(
+        onDismissRequest = close,
+        title = stringResource(R.string.checkout_fx_title),
+        action = {
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+                PrimaryActionButton(
+                    text = stringResource(R.string.checkout_fx_apply_action),
+                    onClick = { onAction(CheckoutAction.ApplyForeign) },
+                    variant = ActionVariant.PRIMARY,
+                )
+                if (editor.canRemove) {
+                    InlineTextButton(
+                        text = stringResource(R.string.checkout_fx_remove_action),
+                        onClick = { onAction(CheckoutAction.RemoveForeign) },
+                    )
+                }
+            }
+        },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+            SettingsRow(
+                title = stringResource(R.string.checkout_fx_currency),
+                action = SettingsRowAction.Value {
+                    Text(
+                        code,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                },
+            )
+            RateField(
+                value = editor.rateText,
+                onValueChange = { onAction(CheckoutAction.ForeignRateChange(it)) },
+                label = stringResource(R.string.checkout_fx_rate),
+                prefix = stringResource(R.string.reference_rate_prefix, code),
+                error = editor.rateProblem?.let { rateProblemText(it) },
+            )
+            ProvideAccountCurrency(
+                AccountCurrency(editor.currency.code, editor.currency.decimals),
+            ) {
+                MoneyField(
+                    value = editor.amountText,
+                    onValueChange = { onAction(CheckoutAction.ForeignAmountChange(it)) },
+                    label = stringResource(R.string.checkout_fx_tendered, code),
+                    error = fieldErrorText(editor.amountError),
+                    imeAction = ImeAction.Done,
+                )
+            }
+            editor.equivalent?.let { equivalent ->
+                val money = LocalAppFormats.current.money
+                Text(
+                    stringResource(
+                        R.string.checkout_fx_equivalent,
+                        rememberMoneyDisplay(equivalent, money).text.text,
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }

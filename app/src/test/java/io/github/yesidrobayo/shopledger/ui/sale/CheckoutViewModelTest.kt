@@ -11,11 +11,14 @@ import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodDetail
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
@@ -24,6 +27,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.ui.product.COUNT_UNIT
 import io.github.yesidrobayo.shopledger.ui.product.CREATED
 import io.github.yesidrobayo.shopledger.ui.product.product
+import io.github.yesidrobayo.shopledger.ui.reference.RateProblem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -121,6 +125,7 @@ class CheckoutViewModelTest {
         format: SaleNumberFormat = numbers,
         customers: List<Customer> = emptyList(),
         recent: List<Customer> = emptyList(),
+        reference: CheckoutReference? = null,
     ): CheckoutViewModel {
         val model = CheckoutViewModel(
             catalogSource = { catalog },
@@ -135,6 +140,7 @@ class CheckoutViewModelTest {
             computation = dispatcher,
             customersSource = { MutableStateFlow(customers) },
             recentCustomersSource = { MutableStateFlow(recent) },
+            referenceSource = { MutableStateFlow(reference) },
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -999,5 +1005,168 @@ class CheckoutViewModelTest {
         assertEquals(100L, second.state.points?.redeemed)
         assertEquals("100", second.state.points?.text)
         assertEquals(Money(24_500L), second.state.summary.amountDue)
+    }
+
+    // ------------------------------------------------------------------ otra moneda
+
+    private val xts = requireNotNull(CurrencyCode.of("XTS"))
+
+    /** Una moneda de referencia de dos decimales, a 4150,50, y un negocio de cero decimales. */
+    private val reference = CheckoutReference(
+        currency = ReferenceCurrency(xts, 2),
+        rateMicro = 4_150_500_000L,
+        business = requireNotNull(CurrencyCode.of("XXX")),
+    )
+
+    @Test
+    fun `another currency is offered only with a reference currency`() = runTest {
+        assertFalse(viewModel().state.foreignOffered)
+        assertTrue(viewModel(reference = reference).state.foreignOffered)
+    }
+
+    @Test
+    fun `cash in another currency is what was received, and the change comes from it`() = runTest {
+        val model = viewModel(reference = reference)
+        model.act(this, CheckoutAction.OpenForeign(0))
+        val opened = model.state.sheet as CheckoutSheet.Foreign
+
+        // La cotización vigente ya viene escrita, sin ceros de más.
+        assertEquals("4150,5", opened.editor.rateText)
+        assertEquals(xts, opened.editor.currency.code)
+
+        model.act(this, CheckoutAction.ForeignAmountChange("20"))
+
+        // 2000 de una moneda de dos decimales a 4150,50 son 83010 en un libro sin decimales.
+        assertEquals(
+            Money(83_010L),
+            (model.state.sheet as CheckoutSheet.Foreign).editor.equivalent,
+        )
+
+        model.act(this, CheckoutAction.ApplyForeign)
+        val row = model.state.payments.single()
+
+        assertNull(model.state.sheet)
+        assertEquals("25000", row.amountText)
+        assertEquals("83010", row.tenderedText)
+        assertEquals(Money(58_010L), row.change)
+        assertEquals(ForeignTender(xts, 2, 2_000L, 4_150_500_000L), row.foreign)
+
+        model.act(this, CheckoutAction.Register)
+        val sent = requests.single().payments.single()
+
+        assertEquals(Money(25_000L), sent.amount)
+        assertEquals(Money(83_010L), sent.tenderedAmount)
+        assertEquals(ForeignTender(xts, 2, 2_000L, 4_150_500_000L), sent.foreign)
+    }
+
+    @Test
+    fun `another method in another currency takes the conversion as its amount`() = runTest {
+        val model = viewModel(reference = reference)
+        model.act(this, CheckoutAction.AddPayment(11L))
+        model.act(this, CheckoutAction.OpenForeign(1))
+        model.act(this, CheckoutAction.ForeignAmountChange("4"))
+        model.act(this, CheckoutAction.ApplyForeign)
+
+        // 400 a 4150,50 son 16602: el pago con tarjeta queda en eso, y el efectivo cubre el resto.
+        assertEquals("16602", model.state.payments[1].amountText)
+
+        model.act(this, CheckoutAction.AmountChange(0, "8398"))
+
+        assertEquals(CheckoutBalance.Complete, model.state.balance)
+
+        model.act(this, CheckoutAction.Register)
+        val sent = requests.single().payments
+
+        assertNull(sent[0].foreign)
+        assertEquals(Money(16_602L), sent[1].amount)
+        assertEquals(ForeignTender(xts, 2, 400L, 4_150_500_000L), sent[1].foreign)
+    }
+
+    @Test
+    fun `changing by hand what the conversion set takes the other currency away`() = runTest {
+        val model = viewModel(reference = reference)
+        model.act(this, CheckoutAction.OpenForeign(0))
+        model.act(this, CheckoutAction.ForeignAmountChange("20"))
+        model.act(this, CheckoutAction.ApplyForeign)
+        model.act(this, CheckoutAction.TenderedChange(0, "30000"))
+
+        // Lo recibido ya no es la conversión: guardarla diría algo que no pasó.
+        assertNull(model.state.payments.single().foreign)
+
+        model.act(this, CheckoutAction.Register)
+
+        assertNull(requests.single().payments.single().foreign)
+    }
+
+    @Test
+    fun `remove other currency keeps what was written in the business currency`() = runTest {
+        val model = viewModel(reference = reference)
+        model.act(this, CheckoutAction.OpenForeign(0))
+        model.act(this, CheckoutAction.ForeignAmountChange("20"))
+        model.act(this, CheckoutAction.ApplyForeign)
+        model.act(this, CheckoutAction.OpenForeign(0))
+        val reopened = (model.state.sheet as CheckoutSheet.Foreign).editor
+
+        assertTrue(reopened.canRemove)
+        assertEquals("20", reopened.amountText)
+
+        model.act(this, CheckoutAction.RemoveForeign)
+
+        assertNull(model.state.sheet)
+        assertNull(model.state.payments.single().foreign)
+        assertEquals("83010", model.state.payments.single().tenderedText)
+    }
+
+    @Test
+    fun `a rate or an amount that cannot be used is marked and changes nothing`() = runTest {
+        val model = viewModel(reference = reference)
+        model.act(this, CheckoutAction.OpenForeign(0))
+        model.act(this, CheckoutAction.ForeignRateChange("0"))
+        model.act(this, CheckoutAction.ApplyForeign)
+        var editor = (model.state.sheet as CheckoutSheet.Foreign).editor
+
+        assertEquals(RateProblem.NOT_POSITIVE, editor.rateProblem)
+        assertEquals(SaleFieldError.NOT_A_NUMBER, editor.amountError)
+        assertNull(editor.equivalent)
+
+        model.act(this, CheckoutAction.ForeignRateChange("4150,1234567"))
+        model.act(this, CheckoutAction.ForeignAmountChange("1,234"))
+        model.act(this, CheckoutAction.ApplyForeign)
+        editor = (model.state.sheet as CheckoutSheet.Foreign).editor
+
+        // Siete decimales en la cotización y tres en una moneda de dos no se leen.
+        assertEquals(RateProblem.NOT_A_NUMBER, editor.rateProblem)
+        assertEquals(SaleFieldError.NOT_A_NUMBER, editor.amountError)
+        assertNull(model.state.payments.single().foreign)
+        assertEquals("", model.state.payments.single().tenderedText)
+    }
+
+    @Test
+    fun `without a rate written yet the sheet opens empty`() = runTest {
+        val model = viewModel(reference = reference.copy(rateMicro = null))
+        model.act(this, CheckoutAction.OpenForeign(0))
+
+        assertEquals("", (model.state.sheet as CheckoutSheet.Foreign).editor.rateText)
+    }
+
+    @Test
+    fun `the other currency survives the process being closed`() = runTest {
+        val first = viewModel(reference = reference)
+        first.act(this, CheckoutAction.OpenForeign(0))
+        first.act(this, CheckoutAction.ForeignAmountChange("20"))
+        first.act(this, CheckoutAction.ApplyForeign)
+
+        val second = viewModel(draft = null, reference = reference)
+        val row = second.state.payments.single()
+
+        assertEquals(ForeignTender(xts, 2, 2_000L, 4_150_500_000L), row.foreign)
+        assertEquals("83010", row.tenderedText)
+
+        second.act(this, CheckoutAction.Register)
+
+        assertEquals(
+            ForeignTender(xts, 2, 2_000L, 4_150_500_000L),
+            requests.single().payments.single().foreign,
+        )
     }
 }

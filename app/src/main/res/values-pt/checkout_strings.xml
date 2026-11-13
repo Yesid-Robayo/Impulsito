@@ -57,4 +57,12 @@
     <string name="checkout_error_points">Pontos insuficientes. Disponíveis: %1$s</string>
     <string name="checkout_error_points_exceed">O desconto supera o total da venda</string>
     <string name="checkout_registered_points">Venda registrada: %1$s. Pontos ganhos: %2$s.</string>
+    <string name="checkout_other_currency_action">Cobrar em outra moeda</string>
+    <string name="checkout_fx_title">Cobrar em outra moeda</string>
+    <string name="checkout_fx_currency">Moeda</string>
+    <string name="checkout_fx_rate">Taxa de câmbio</string>
+    <string name="checkout_fx_tendered">Entregue em %1$s</string>
+    <string name="checkout_fx_equivalent">Equivale a %1$s</string>
+    <string name="checkout_fx_apply_action">Usar esta moeda</string>
+    <string name="checkout_fx_remove_action">Remover outra moeda</string>
 </resources>

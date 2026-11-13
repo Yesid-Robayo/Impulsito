@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnResolution
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleReceipt
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleResults
 import kotlin.time.Instant
@@ -137,6 +138,7 @@ data class SaleReturnSheetLine(
  * Un pago, con el nombre del método que tenía al cobrar. [fee] es su comisión y [netReceived] lo que
  * llega de verdad por él: los dos se ocultan en modo discreto, y sin comisión no se muestran.
  * [settlesOn] es la fecha en que se acredita, solo si es posterior al día de la venta.
+ * [foreign] es lo que se recibió en otra moneda, si se cobró así: moneda, monto y cotización.
  */
 @Immutable
 data class SaleDetailPayment(
@@ -146,6 +148,7 @@ data class SaleDetailPayment(
     val settlesOn: BusinessDate?,
     val fee: Money = Money.ZERO,
     val netReceived: Money = amount,
+    val foreign: ForeignTender? = null,
 ) {
     val hasFee: Boolean get() = fee > Money.ZERO
 }

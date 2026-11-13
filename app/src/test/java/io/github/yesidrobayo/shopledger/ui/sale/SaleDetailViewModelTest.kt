@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturnLine
 import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnResolution
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturn
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturnLine
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
@@ -23,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.Sale
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleDetail
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePayment
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
@@ -258,6 +260,33 @@ class SaleDetailViewModelTest {
             assertEquals(Money(-100L), sale.charges.cashRounding)
             assertFalse(sale.charges.isEmpty)
         }
+
+    @Test
+    fun `a payment received in another currency shows the currency, the amount and the rate`() =
+        runTest(dispatcher) {
+            val base = detailOf(voiding = null)
+            val card = base.payments.single()
+            val tender = ForeignTender(
+                currency = requireNotNull(CurrencyCode.of("XTS")),
+                decimals = 2,
+                amountMinor = 2_000L,
+                rateMicro = 4_150_500_000L,
+            )
+            detail.value = base.copy(
+                payments = listOf(card.copy(content = card.content.copy(foreignTender = tender))),
+            )
+
+            val payment = viewModel().ready.sale.payments.single()
+
+            // El monto sigue en la moneda del negocio; lo entregado va aparte.
+            assertEquals(Money(31_000L), payment.amount)
+            assertEquals(tender, payment.foreign)
+        }
+
+    @Test
+    fun `a payment in the business currency has no other currency`() = runTest(dispatcher) {
+        assertNull(viewModel().ready.sale.payments.single().foreign)
+    }
 
     @Test
     fun `a sale without tax, adjustment, tip or rounding has no charges`() = runTest(dispatcher) {

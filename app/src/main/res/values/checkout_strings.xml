@@ -57,4 +57,12 @@
     <string name="checkout_error_points">Not enough points. Available: %1$s</string>
     <string name="checkout_error_points_exceed">The discount exceeds the sale total</string>
     <string name="checkout_registered_points">Sale recorded: %1$s. Points earned: %2$s.</string>
+    <string name="checkout_other_currency_action">Charge in another currency</string>
+    <string name="checkout_fx_title">Charge in another currency</string>
+    <string name="checkout_fx_currency">Currency</string>
+    <string name="checkout_fx_rate">Exchange rate</string>
+    <string name="checkout_fx_tendered">Tendered in %1$s</string>
+    <string name="checkout_fx_equivalent">Equals %1$s</string>
+    <string name="checkout_fx_apply_action">Use this currency</string>
+    <string name="checkout_fx_remove_action">Remove other currency</string>
 </resources>

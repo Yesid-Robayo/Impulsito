@@ -93,4 +93,17 @@ sealed interface CheckoutAction {
 
     /** `Ver clientes`: cierra la lista y abre la pantalla de clientes para elegir desde ahí. */
     data object ViewAllCustomers : CheckoutAction
+
+    /** `Cobrar en otra moneda` en el menú del pago número [index]. */
+    data class OpenForeign(val index: Int) : CheckoutAction
+
+    data class ForeignRateChange(val text: String) : CheckoutAction
+
+    data class ForeignAmountChange(val text: String) : CheckoutAction
+
+    /** `Usar esta moneda`: el pago pasa a cubrir lo entregado, pasado a la moneda del negocio. */
+    data object ApplyForeign : CheckoutAction
+
+    /** `Quitar otra moneda`: el pago vuelve a ser solo en la moneda del negocio. */
+    data object RemoveForeign : CheckoutAction
 }

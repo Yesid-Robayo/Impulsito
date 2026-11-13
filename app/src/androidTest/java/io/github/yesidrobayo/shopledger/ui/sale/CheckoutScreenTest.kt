@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -27,6 +28,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
@@ -47,7 +49,8 @@ import org.junit.runner.RunWith
  * los pagos que no suman se dicen y se completan con `Usar`, la imagen de cobro va a pantalla
  * completa, TalkBack lee el total, y la pantalla se acomoda a la letra grande y a una ventana ancha.
  * La venta común sigue confirmando directo, con `Más opciones de cobro` a la vista. Un cliente
- * reciente con saldo a favor lo usa desde el cobro, y el modo discreto oculta lo disponible.
+ * reciente con saldo a favor lo usa desde el cobro, y el modo discreto oculta lo disponible. Con
+ * moneda de referencia, un pago se cobra en otra moneda desde su menú.
  */
 @RunWith(AndroidJUnit4::class)
 class CheckoutScreenTest {
@@ -65,6 +68,7 @@ class CheckoutScreenTest {
         customers: List<Customer> = emptyList(),
         loyalty: LoyaltySettings = LoyaltySettings.OFF,
         recent: List<Customer> = emptyList(),
+        reference: CheckoutReference? = null,
     ) = CheckoutViewModel(
         catalogSource = {
             MutableStateFlow(
@@ -85,6 +89,7 @@ class CheckoutScreenTest {
         computation = Dispatchers.Default,
         customersSource = { MutableStateFlow(customers) },
         recentCustomersSource = { MutableStateFlow(recent) },
+        referenceSource = { MutableStateFlow(reference) },
     )
 
     private fun show(
@@ -157,6 +162,52 @@ class CheckoutScreenTest {
         compose.onNodeWithText(use, substring = true).performScrollTo().performClick()
         register()
         compose.waitUntil(TIMEOUT_MS) { requests.isNotEmpty() }
+    }
+
+    @Test
+    fun withoutAReferenceCurrencyAPaymentOffersNoOtherCurrency() {
+        show(model())
+        awaitText(text(R.string.checkout_complete))
+
+        // Un solo pago en efectivo y sin imagen de cobro: su menú no tiene nada que ofrecer.
+        assertTrue(
+            compose.onAllNodesWithContentDescription(text(R.string.a11y_more_options))
+                .fetchSemanticsNodes().isEmpty(),
+        )
+    }
+
+    @Test
+    fun anotherCurrencyIsChargedFromThePaymentMenuAlsoWithLargeText() {
+        show(model(reference = CHECKOUT_REFERENCE), fontScale = LARGE_FONT)
+        awaitText(text(R.string.checkout_complete))
+        compose.onNodeWithContentDescription(text(R.string.a11y_more_options))
+            .performScrollTo()
+            .performClick()
+        compose.onNodeWithText(text(R.string.checkout_other_currency_action)).performClick()
+
+        val tendered = text(R.string.checkout_fx_tendered, "XTS")
+        awaitText(tendered)
+        // La cotización vigente ya viene escrita; solo falta lo entregado.
+        compose.onNodeWithText(tendered).performScrollTo().performTextInput("20")
+        awaitText(text(R.string.checkout_fx_equivalent, "").trim())
+        val apply = text(R.string.checkout_fx_apply_action)
+        compose.onNodeWithText(apply).performClick()
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodesWithText(apply).fetchSemanticsNodes().isEmpty()
+        }
+
+        // Debajo del pago quedan lo entregado y la cotización, y el cobro sigue cuadrando.
+        compose.onNodeWithText(text(R.string.reference_rate_prefix, "XTS"), substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+        awaitText(text(R.string.checkout_complete))
+        register()
+        compose.waitUntil(TIMEOUT_MS) { requests.isNotEmpty() }
+
+        val sent = requests.single().payments.single()
+        val xts = CHECKOUT_REFERENCE.currency.code
+        assertEquals(ForeignTender(xts, 2, 2_000L, 4_150_500_000L), sent.foreign)
+        assertEquals(Money(83_010L), sent.tenderedAmount)
     }
 
     @Test

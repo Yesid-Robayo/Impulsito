@@ -480,7 +480,7 @@ private fun RateSheetHost(
             onValueChange = { onAction(ReferenceCurrencyAction.RateText(it)) },
             label = stringResource(R.string.reference_rate_label),
             prefix = stringResource(R.string.reference_rate_prefix, reference.code.code),
-            error = sheet.problem?.let { problemText(it) },
+            error = sheet.problem?.let { rateProblemText(it) },
         )
         val calendar = state.calendar
         if (calendar != null) {
@@ -553,8 +553,12 @@ private fun ColumnScope.Previous(latest: RateRow?, sheet: RateSheet, reference: 
     }
 }
 
+/**
+ * Lo que dice un campo de cotización con [problem]. Lo usan esta pantalla y el cobro en otra
+ * moneda.
+ */
 @Composable
-private fun problemText(problem: RateProblem): String = stringResource(
+internal fun rateProblemText(problem: RateProblem): String = stringResource(
     when (problem) {
         RateProblem.NOT_POSITIVE -> R.string.reference_error_zero
         RateProblem.NOT_A_NUMBER -> R.string.field_error_number
