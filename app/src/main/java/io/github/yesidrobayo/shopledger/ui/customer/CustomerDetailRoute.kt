@@ -74,7 +74,13 @@ fun CustomerDetailPane(
         defaultTemplate = stringResource(R.string.customer_reminder_template),
     )
     val model = rememberAppViewModel(key = "customer-$customerId") {
-        CustomerDetailViewModel(customerId, CustomerDetailUseCases.of(it), numbers, reminderTexts)
+        CustomerDetailViewModel(
+            customerId,
+            CustomerDetailUseCases.of(it),
+            numbers,
+            reminderTexts,
+            priceLists = { it.ports.priceLists.observeActive() },
+        )
     }
     when (model) {
         ScreenModel.Opening ->
@@ -172,6 +178,7 @@ fun CustomerDetailPane(
 
                         is CustomerEditorAction.Name, is CustomerEditorAction.Phone,
                         is CustomerEditorAction.Email, is CustomerEditorAction.Notes,
+                        is CustomerEditorAction.ChoosePriceList,
                         CustomerEditorAction.Save, CustomerEditorAction.Dismiss,
                         -> viewModel.editor.onAction(action)
                     }

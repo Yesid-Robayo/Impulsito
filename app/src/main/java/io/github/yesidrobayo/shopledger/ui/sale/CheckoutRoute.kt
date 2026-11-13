@@ -69,6 +69,8 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     productUnits = ports.productUnits,
                     tipsEnabled = { ObserveTipsEnabledUseCase(ports.settings)() },
                     loyalty = { ObserveLoyaltySettingsUseCase(ports.settings)() },
+                    priceLists = ports.priceLists,
+                    productPrices = ports.productPrices,
                 )
             val register =
                 RegisterSaleUseCase(
@@ -91,6 +93,8 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     loyaltyLedger = ports.loyaltyLedger,
                     moneyAccounts = ports.moneyAccounts,
                     moneyLedger = ports.moneyLedger,
+                    priceLists = ports.priceLists,
+                    productPrices = ports.productPrices,
                 )
             val images = FindPaymentImagesUseCase(ports.transactions, ports.mediaAssets)
             val createCustomer =

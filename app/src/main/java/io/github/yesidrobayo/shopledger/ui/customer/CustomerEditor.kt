@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerForm
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerFormIssue
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.SaveCustomerResult
 import io.github.yesidrobayo.shopledger.ui.unit.SaveFailure
 import kotlinx.coroutines.CoroutineScope
@@ -16,8 +17,9 @@ import kotlinx.coroutines.launch
 /**
  * La hoja de un cliente mientras se escribe.
  *
- * [editingId] nulo es un cliente nuevo. [priceListId] no se escribe en la hoja mientras no haya más
- * de una lista: se conserva la que tenía para no perderla al editar. [issues] son los problemas del
+ * [editingId] nulo es un cliente nuevo. [priceListId] es su lista de precios, o `null` para la
+ * inicial; [priceLists] son las vigentes que se ofrecen, solo si hay más de una. Sin ellas, la hoja no
+ * la muestra y se conserva la que tenía para no perderla al editar. [issues] son los problemas del
  * último intento de guardar, que se borran del campo que la persona vuelve a tocar.
  * [sameNameWarned] dice que ya se avisó de un nombre repetido: el siguiente `Guardar` crea igual,
  * porque dos personas pueden llamarse igual. [noContactsApp] avisa que no hay app de contactos, sin
@@ -31,6 +33,7 @@ data class CustomerEditor(
     val email: String = "",
     val notes: String = "",
     val priceListId: Long? = null,
+    val priceLists: List<PriceList> = emptyList(),
     val issues: Set<CustomerFormIssue> = emptySet(),
     val sameNameWarned: Boolean = false,
     val noContactsApp: Boolean = false,
@@ -51,6 +54,9 @@ sealed interface CustomerEditorAction {
 
     data class Notes(val text: String) : CustomerEditorAction
 
+    /** Elige la lista de precios del cliente; la inicial lo deja sin lista propia. */
+    data class ChoosePriceList(val listId: Long) : CustomerEditorAction
+
     /** Abre el selector de contactos del sistema: lo resuelve la navegación. */
     data object PickContact : CustomerEditorAction
 
@@ -67,18 +73,23 @@ sealed interface CustomerEditorAction {
  * sola vez a la vez.
  *
  * @param onSaved recibe el id del cliente guardado, con la hoja ya cerrada.
+ * @param priceLists las listas de precios vigentes en este momento.
  */
 class CustomerEditorModel(
     private val scope: CoroutineScope,
     private val save: suspend (Long?, CustomerForm, Boolean) -> SaveCustomerResult,
     private val onSaved: (Long) -> Unit,
+    private val priceLists: () -> List<PriceList> = { emptyList() },
 ) {
+    /** Las listas que se ofrecen: con una sola no hay nada que elegir. */
+    private fun offered(): List<PriceList> = priceLists().takeIf { it.size > 1 }.orEmpty()
+
     private val state = MutableStateFlow<CustomerEditor?>(null)
     val editor: StateFlow<CustomerEditor?> = state.asStateFlow()
 
     /** Abre la hoja vacía, con [name] ya escrito si viene de una búsqueda sin resultados. */
     fun openNew(name: String = "") {
-        state.value = CustomerEditor(editingId = null, name = name)
+        state.value = CustomerEditor(editingId = null, name = name, priceLists = offered())
     }
 
     /**
@@ -96,6 +107,7 @@ class CustomerEditorModel(
                 email = contact.email.orEmpty(),
                 notes = contact.notes.orEmpty(),
                 priceListId = details.priceListId,
+                priceLists = offered(),
             )
     }
 
@@ -149,6 +161,17 @@ class CustomerEditorModel(
                     copy(
                         notes = action.text,
                         issues = issues - CustomerFormIssue.NOTES_TOO_LONG,
+                        saveFailed = null,
+                    )
+                }
+
+            is CustomerEditorAction.ChoosePriceList ->
+                change {
+                    val chosen = priceLists.firstOrNull { it.id == action.listId }
+                    copy(
+                        priceListId = chosen?.id?.takeUnless {
+                            chosen.isDefault
+                        },
                         saveFailed = null,
                     )
                 }

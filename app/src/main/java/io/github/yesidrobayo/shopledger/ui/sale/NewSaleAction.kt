@@ -52,6 +52,9 @@ sealed interface NewSaleAction {
 
     data class NoteChange(val note: String) : NewSaleAction
 
+    /** Elige la lista de precios de la venta: las líneas sin precio escrito toman el de ella. */
+    data class SelectPriceList(val listId: Long) : NewSaleAction
+
     data object ClearSale : NewSaleAction
 
     data object ConfirmClear : NewSaleAction

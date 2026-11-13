@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.UnitConversion
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.UnitConversionResult
 import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.LinePriceList
 
 /**
  * La unidad en que se vende una línea: su id, cuántas milésimas de la unidad base trae una unidad
@@ -42,31 +43,36 @@ sealed interface SaleUnitResult {
  *   cercano. Una caja de 24 de un producto de 500 cuesta 12000.
  * - La cantidad del libro sale de la escrita con el factor, también redondeada: 3 cajas de 24 son
  *   72 unidades, y 250 gramos de un producto en kilogramos son 0,250 kg.
+ * - Con una lista de precios distinta de la inicial, el precio de partida es el del producto en esa
+ *   lista: en la unidad base tal cual, y en otra unidad llevado con el factor, sin el precio propio
+ *   de la conversión, que es de la inicial.
  */
 object SaleUnits {
     /**
      * La unidad de [line] para [product], con [conversions] de ese producto por id de unidad: solo
-     * las que se ofrecen al vender.
+     * las que se ofrecen al vender. [list] es el precio del producto en la lista de la venta, en la
+     * unidad base; por defecto, el precio de venta en la inicial.
      */
     fun of(
         line: SaleLineRequest,
         product: Product,
         conversions: Map<Long, ConversionDetails>,
+        list: LinePriceList = LinePriceList.default(product),
     ): SaleUnitResult {
         val unitId = line.unitId ?: product.details.baseUnitId
         if (unitId == product.details.baseUnitId) {
             return SaleUnitResult.Resolved(
-                SaleUnit(unitId, UnitConversion.BASE_UNIT_FACTOR_MILLI, product.salePrice),
+                SaleUnit(unitId, UnitConversion.BASE_UNIT_FACTOR_MILLI, list.price),
             )
         }
         val conversion = conversions[unitId]?.takeIf { it.forSale }
             ?: return SaleUnitResult.Unavailable
-        val price = conversion.salePrice ?: mulDivRound(
-            product.salePrice.minor,
-            conversion.factorMilli,
-            Scale.MILLI,
-            Limit.UNIT_MONEY,
-        ).valueOrNull()?.let(::Money)
+        val own = conversion.salePrice?.takeIf { list.isDefault }
+        val price = own ?: list.price?.let { base ->
+            mulDivRound(base.minor, conversion.factorMilli, Scale.MILLI, Limit.UNIT_MONEY)
+                .valueOrNull()
+                ?.let(::Money)
+        }
         return SaleUnitResult.Resolved(SaleUnit(unitId, conversion.factorMilli, price))
     }
 

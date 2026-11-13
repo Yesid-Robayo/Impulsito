@@ -7,8 +7,10 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.SalePriceList
 import kotlinx.datetime.DayOfWeek
 
 /**
@@ -30,6 +32,9 @@ import kotlinx.datetime.DayOfWeek
  *   redondeo.
  * - [tipsEnabled]: si el cobro ofrece propina. Apagadas, no aparece.
  * - [loyalty]: el programa de puntos. Apagado, el cobro no menciona puntos.
+ * - [priceLists]: todas las listas de precios, también las archivadas, que una relativa puede tener
+ *   de base; y [ownPrices], los precios propios de cada producto, por producto y lista. Con ellos la
+ *   venta muestra el precio de la lista elegida, el mismo que guarda al confirmar.
  */
 data class SaleCatalog(
     val products: List<Product>,
@@ -46,7 +51,22 @@ data class SaleCatalog(
     val tipsEnabled: Boolean = false,
     val creditMethods: List<PaymentMethodRecord> = emptyList(),
     val loyalty: LoyaltySettings = LoyaltySettings.OFF,
+    val priceLists: List<PriceList> = emptyList(),
+    val ownPrices: Map<Long, Map<Long, Money>> = emptyMap(),
 ) {
+    /** Las listas que se ofrecen al vender: las vigentes, la inicial primero. */
+    val activePriceLists: List<PriceList> get() = priceLists.filterNot { it.isArchived }
+
+    /**
+     * Con qué se resuelven los precios de la lista [listId], o `null` con la inicial, con ninguna o
+     * con una que ya no se ofrece: entonces vale el precio de venta.
+     */
+    fun salePriceList(listId: Long?): SalePriceList? {
+        val list = priceLists.firstOrNull { it.id == listId }
+        if (list == null || list.isDefault || list.isArchived) return null
+        return SalePriceList(list.id, priceLists.associateBy { it.id }, ownPrices)
+    }
+
     /**
      * Los métodos con que se cobra en la pantalla de cobro: los de la venta y, aparte, los métodos
      * a crédito, que exigen un cliente y por eso no se ofrecen en la venta nueva.

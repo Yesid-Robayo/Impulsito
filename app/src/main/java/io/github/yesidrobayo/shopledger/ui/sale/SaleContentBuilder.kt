@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductSearch
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.SalePriceList
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPreview
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCart
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
@@ -24,7 +25,12 @@ internal object SaleContentBuilder {
      * Las tarjetas: los más vendidos sin búsqueda, o lo que coincide con [query] entre todos los
      * productos vigentes, con los archivados que también coinciden.
      */
-    fun content(catalog: SaleCatalog, lines: List<SaleLineRequest>, query: String): SaleContent {
+    fun content(
+        catalog: SaleCatalog,
+        lines: List<SaleLineRequest>,
+        query: String,
+        priceList: SalePriceList? = null,
+    ): SaleContent {
         if (catalog.products.isEmpty() &&
             catalog.archived.isEmpty()
         ) {
@@ -33,7 +39,7 @@ internal object SaleContentBuilder {
         if (query.isBlank()) {
             if (catalog.products.isEmpty()) return SaleContent.EmptyCatalog
             return SaleContent.Products(
-                tiles = catalog.frequent.map { tileOf(it, catalog, lines) },
+                tiles = catalog.frequent.map { tileOf(it, catalog, lines, priceList) },
                 searching = false,
             )
         }
@@ -43,7 +49,7 @@ internal object SaleContentBuilder {
         val matches = ProductSearch.filter(catalog.products, query)
         if (matches.isEmpty()) return SaleContent.NoResults(trimmed, archived)
         return SaleContent.Products(
-            matches.map { tileOf(it, catalog, lines) },
+            matches.map { tileOf(it, catalog, lines, priceList) },
             searching = true,
             archived = archived,
             query = trimmed,
@@ -84,6 +90,10 @@ internal object SaleContentBuilder {
             weekStartDay = catalog.weekStartDay,
             note = draft.note,
             full = draft.lines.size.toLong() >= Limit.DOCUMENT_LINES.max,
+            // Con una sola lista no hay nada que elegir: el chip no aparece.
+            priceLists = catalog.activePriceLists.takeIf { it.size > 1 }.orEmpty(),
+            priceListId = catalog.salePriceList(draft.priceListId)?.listId
+                ?: catalog.activePriceLists.firstOrNull { it.isDefault }?.id,
         )
     }
 
@@ -95,6 +105,7 @@ internal object SaleContentBuilder {
         product: Product,
         catalog: SaleCatalog,
         lines: List<SaleLineRequest>,
+        priceList: SalePriceList?,
     ): SaleTile {
         val quantity = SaleCart.quantityOf(lines, product.id)
         val request = lines.firstOrNull { it.productId == product.id }
@@ -117,7 +128,9 @@ internal object SaleContentBuilder {
         return SaleTile(
             productId = product.id,
             name = product.details.name,
-            price = product.salePrice.takeIf { it > Money.ZERO },
+            // El precio de la lista elegida, el mismo que tomará la línea.
+            price = (if (priceList == null) product.salePrice else priceList.priceOf(product).price)
+                ?.takeIf { it > Money.ZERO },
             stock = stockOf(product),
             unit = catalog.units[product.details.baseUnitId],
             line = line,

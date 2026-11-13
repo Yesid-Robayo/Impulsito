@@ -65,4 +65,5 @@
         <item quantity="one">%1$d added product is lost.</item>
         <item quantity="other">%1$d added products are lost.</item>
     </plurals>
+    <string name="sale_price_list_chip">List</string>
 </resources>

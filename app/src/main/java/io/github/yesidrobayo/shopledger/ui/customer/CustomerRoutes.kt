@@ -40,7 +40,11 @@ import kotlinx.coroutines.withContext
 @Composable
 fun CustomerListRoute(key: AppNavKey.Customers, navigator: AppNavigator) {
     val model = rememberAppViewModel(key = if (key.pickForSale) "customers-pick" else "customers") {
-        CustomerListViewModel(CustomerUseCases.of(it), pickForSale = key.pickForSale)
+        CustomerListViewModel(
+            CustomerUseCases.of(it),
+            pickForSale = key.pickForSale,
+            priceLists = { it.ports.priceLists.observeActive() },
+        )
     }
     when (model) {
         ScreenModel.Opening -> CustomerListScreen(CustomerListUiState(), {})
@@ -93,6 +97,7 @@ fun CustomerListRoute(key: AppNavKey.Customers, navigator: AppNavigator) {
 
                         is CustomerEditorAction.Name, is CustomerEditorAction.Phone,
                         is CustomerEditorAction.Email, is CustomerEditorAction.Notes,
+                        is CustomerEditorAction.ChoosePriceList,
                         CustomerEditorAction.Save, CustomerEditorAction.Dismiss,
                         -> viewModel.editor.onAction(action)
                     }

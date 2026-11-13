@@ -34,6 +34,10 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  * [pointsRedeemed] son los puntos del cliente que se canjean en esta venta. Los puntos no son
  * dinero: su descuento entra en el ajuste de toda la venta, junto con [orderAdjustment], y nunca
  * como un pago. Exige cliente y el programa de puntos activo; cero es sin canje.
+ *
+ * [priceListId] es la lista de precios de la venta: la del cliente o la que eligió la persona. Nula
+ * es la inicial. El precio de cada línea sin precio escrito sale de esa lista, y la venta y cada
+ * línea la guardan, así que cambiar la lista después no toca la venta.
  */
 data class SaleRequest(
     val lines: List<SaleLineRequest>,
@@ -47,4 +51,5 @@ data class SaleRequest(
     val customerId: Long? = null,
     val creditDueDate: BusinessDate? = null,
     val pointsRedeemed: Long = 0L,
+    val priceListId: Long? = null,
 )

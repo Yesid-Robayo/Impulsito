@@ -85,6 +85,8 @@ internal sealed interface CatalogLoad {
  * @param prefillFromSaleId la venta anulada que esta corrige: la venta nueva abre con sus datos.
  * @param loadCorrection lee lo que trae la corrección de una venta, o `null` si ya no existe.
  * @param prefillCustomerId el cliente con que se abrió la venta, que el cobro trae elegido.
+ * @param customerPriceList la lista de precios propia de un cliente, o `null` si no tiene: la venta
+ *   abierta desde un cliente toma su lista.
  */
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class NewSaleViewModel(
@@ -106,6 +108,7 @@ class NewSaleViewModel(
     private val prefillFromSaleId: Long? = null,
     private val loadCorrection: suspend (Long) -> SaleCorrection? = { null },
     prefillCustomerId: Long? = null,
+    private val customerPriceList: suspend (Long) -> Long? = { null },
 ) : ViewModel() {
     private val draft = MutableStateFlow(SaleDraftStore.read(savedState))
 
@@ -116,6 +119,11 @@ class NewSaleViewModel(
             savedState[CUSTOMER_PREFILLED] = true
             draft.value = draft.value.copy(customerId = prefillCustomerId)
             SaleDraftStore.write(savedState, draft.value)
+            viewModelScope.launch {
+                // La lista del cliente, si tiene: la persona la puede cambiar en la venta.
+                val listId = customerPriceList(prefillCustomerId) ?: return@launch
+                changeDraft { if (it.priceListId == null) it.copy(priceListId = listId) else it }
+            }
         }
     }
     private val query = MutableStateFlow("")
@@ -203,6 +211,9 @@ class NewSaleViewModel(
 
             is NewSaleAction.NoteChange -> changeDraft { it.copy(note = action.note) }
 
+            is NewSaleAction.SelectPriceList ->
+                changeDraft { it.copy(priceListId = action.listId) }
+
             NewSaleAction.ClearSale -> askClear()
 
             NewSaleAction.ConfirmClear -> clear()
@@ -271,7 +282,15 @@ class NewSaleViewModel(
             return
         }
         val first = SaleCart.quantityOf(draft.value.lines, productId) == QuantityMilli.ZERO
-        if (add(productId, SaleCart.STEP) && first && product.salePrice == Money.ZERO) {
+        val list = catalog.salePriceList(draft.value.priceListId)
+        val listed = if (list ==
+            null
+        ) {
+            product.salePrice
+        } else {
+            list.priceOf(product).price ?: Money.ZERO
+        }
+        if (add(productId, SaleCart.STEP) && first && listed == Money.ZERO) {
             // Sin precio, la línea se abre con el precio enfocado; dejarlo en cero también vale.
             openLine(productId, focusPrice = true)
         }
@@ -582,6 +601,8 @@ class NewSaleViewModel(
                 date = current.date,
                 note = current.note.takeIf { it.isNotBlank() },
                 heldSaleId = current.heldSaleId,
+                // La misma lista con que se calcularon los precios que se ven.
+                priceListId = catalog.salePriceList(current.priceListId)?.listId,
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> {
@@ -625,6 +646,7 @@ class NewSaleViewModel(
                 RegisterSaleResult.PointsNotAvailable,
                 is RegisterSaleResult.NotEnoughPoints,
                 RegisterSaleResult.PointsAboveSale,
+                RegisterSaleResult.PriceListUnavailable,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }
@@ -824,7 +846,12 @@ class NewSaleViewModel(
 
             is CatalogLoad.Ready -> {
                 val catalog = load.catalog
-                content = SaleContentBuilder.content(catalog, current.lines, searched)
+                content = SaleContentBuilder.content(
+                    catalog,
+                    current.lines,
+                    searched,
+                    catalog.salePriceList(current.priceListId),
+                )
                 cart = SaleContentBuilder.cart(catalog, current, previewOf(catalog, current))
                     .copy(noteTooLong = current.note.length > MAX_NOTE_LENGTH)
                 payment = SalePaymentState(
@@ -887,6 +914,7 @@ class NewSaleViewModel(
             methodAdjustment = method?.details?.priceAdjustment ?: BasisPoints.ZERO,
             cashMethod = method?.details?.kind == PaymentMethodKind.CASH,
             cashStep = catalog.cashRounding,
+            priceList = catalog.salePriceList(current.priceListId),
         )
         return SaleCart.preview(
             current.lines,

@@ -78,6 +78,8 @@ import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
+import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
@@ -1114,7 +1116,13 @@ internal class SaleWorld(
         loyaltyLedger = loyaltyLedger,
         moneyAccounts = moneyAccountRepository,
         moneyLedger = moneyLedger,
+        priceLists = priceListRepository,
+        productPrices = productPriceRepository,
     )
+
+    /** Las listas de precios de la venta, si la prueba las usa; sin ellas, solo la inicial. */
+    var priceListRepository: PriceListRepository? = null
+    var productPriceRepository: ProductPriceRepository? = null
 
     fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(
         transactions = transactions,

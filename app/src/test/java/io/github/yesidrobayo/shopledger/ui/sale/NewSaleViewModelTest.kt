@@ -11,6 +11,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodDetails
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
@@ -122,6 +124,7 @@ class NewSaleViewModelTest {
         correctsSale: Long? = null,
         correction: SaleCorrection? = null,
         customer: Long? = null,
+        customerList: Long? = null,
     ): NewSaleViewModel {
         val model = NewSaleViewModel(
             catalogSource = source,
@@ -140,6 +143,7 @@ class NewSaleViewModelTest {
                 correction
             },
             prefillCustomerId = customer,
+            customerPriceList = { customerList },
         )
         // El estado se arma mientras alguien lo mira, como en la pantalla.
         backgroundScope.launch { model.uiState.collect {} }
@@ -188,6 +192,48 @@ class NewSaleViewModelTest {
             assertEquals(11L, request.paymentMethodId)
             assertEquals(past, request.date)
             assertEquals("Mesa 4", request.note)
+        }
+
+    @Test
+    fun `a chosen price list prices the lines and goes with the sale`() = runTest(dispatcher) {
+        catalog.value = catalog.value.copy(priceLists = PRICE_LISTS)
+        val model = viewModel()
+        assertEquals(PRICE_LISTS.map { it.id }, model.state.cart.priceLists.map { it.id })
+        assertEquals(DEFAULT_LIST, model.state.cart.priceListId)
+
+        model.act(this, NewSaleAction.SelectPriceList(SPECIAL_LIST))
+        model.act(this, NewSaleAction.AddProduct(rice.id))
+
+        // 4200 con −10 % son 3780.
+        assertEquals(Money(3_780L), model.state.cart.lines.single().unitPrice)
+        assertEquals(SPECIAL_LIST, model.state.cart.priceListId)
+        model.act(this, NewSaleAction.Register)
+        assertEquals(SPECIAL_LIST, requests.single().priceListId)
+    }
+
+    @Test
+    fun `a sale opened from a customer takes the customer's list`() = runTest(dispatcher) {
+        catalog.value = catalog.value.copy(priceLists = PRICE_LISTS)
+        val model = viewModel(customer = 5L, customerList = SPECIAL_LIST)
+
+        model.act(this, NewSaleAction.AddProduct(rice.id))
+
+        assertEquals(Money(3_780L), model.state.cart.lines.single().unitPrice)
+        model.act(this, NewSaleAction.Register)
+        assertEquals(SPECIAL_LIST, requests.single().priceListId)
+    }
+
+    @Test
+    fun `with only the initial list there is no list to choose and the sale says none`() =
+        runTest(dispatcher) {
+            catalog.value = catalog.value.copy(priceLists = PRICE_LISTS.take(1))
+            val model = viewModel()
+
+            model.act(this, NewSaleAction.AddProduct(rice.id))
+            model.act(this, NewSaleAction.Register)
+
+            assertTrue(model.state.cart.priceLists.isEmpty())
+            assertNull(requests.single().priceListId)
         }
 
     @Test
@@ -638,3 +684,16 @@ class NewSaleViewModelTest {
         assertEquals(null, recreated.checkoutDraft()?.customerId)
     }
 }
+
+private const val DEFAULT_LIST = 1L
+private const val SPECIAL_LIST = 2L
+private val PRICE_LISTS = listOf(
+    PriceList(DEFAULT_LIST, "DEFAULT", null, PriceListPricing.Fixed, null),
+    PriceList(
+        SPECIAL_LIST,
+        null,
+        "Especial",
+        PriceListPricing.Relative(DEFAULT_LIST, BasisPoints(-1_000L)),
+        null,
+    ),
+)

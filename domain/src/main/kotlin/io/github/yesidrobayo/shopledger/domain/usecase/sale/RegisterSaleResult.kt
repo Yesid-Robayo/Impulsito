@@ -72,6 +72,12 @@ sealed interface RegisterSaleResult {
     data class LineRejected(val index: Int, val reason: LineRejection) : RegisterSaleResult
 
     /**
+     * La lista de precios elegida ya no existe o se archivó mientras se vendía: los precios que se
+     * ven no serían los que se guardan. Hay que elegir otra.
+     */
+    data object PriceListUnavailable : RegisterSaleResult
+
+    /**
      * El total, el costo o la reposición de la venta, la comisión de un pago o la suma de los
      * pagos pasan del tope.
      */

@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -26,8 +27,10 @@ import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartLineIssue
 import io.github.yesidrobayo.shopledger.domain.rule.sale.HeldSaleRules
+import io.github.yesidrobayo.shopledger.localization.SeedText
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
@@ -148,6 +151,23 @@ internal fun CartContent(cart: SaleCartState, onAction: (NewSaleAction) -> Unit)
                 )
                 MoneyText(cart.cashRounding, MoneySize.ROW)
             }
+        }
+        if (cart.priceLists.isNotEmpty()) {
+            val resources = LocalResources.current
+            Text(
+                stringResource(R.string.sale_price_list_chip),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            CompactChipRow(
+                options = cart.priceLists,
+                label = {
+                    SeedText.displayName(resources, SeedTable.PRICE_LISTS, it.systemKey, it.name)
+                },
+                selected = cart.priceLists.filter { it.id == cart.priceListId }.toSet(),
+                onToggle = { onAction(NewSaleAction.SelectPriceList(it.id)) },
+                multiple = false,
+            )
         }
         val today = cart.today
         val weekStart = cart.weekStartDay

@@ -3,12 +3,15 @@ package io.github.yesidrobayo.shopledger.domain.usecase.sale
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
+import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
@@ -43,6 +46,8 @@ import kotlinx.coroutines.flow.map
  * - Si el cobro ofrece propina, de [tipsEnabled]. Sin él, no la ofrece.
  * - El programa de puntos, de [loyalty]: el cobro ofrece el canje con un cliente. Sin él, el
  *   programa va apagado y no se mencionan puntos.
+ * - Las listas de precios y los precios propios, de [priceLists] y [productPrices]: la venta muestra
+ *   el precio de la lista elegida. Sin ellos, solo existe el precio de venta.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObserveSaleCatalogUseCase(
@@ -58,6 +63,8 @@ class ObserveSaleCatalogUseCase(
     private val productUnits: ProductUnitRepository? = null,
     private val tipsEnabled: () -> Flow<Boolean> = { flowOf(false) },
     private val loyalty: () -> Flow<LoyaltySettings> = { flowOf(LoyaltySettings.OFF) },
+    private val priceLists: PriceListRepository? = null,
+    private val productPrices: ProductPriceRepository? = null,
 ) {
     operator fun invoke(): Flow<SaleCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = result as? BusinessCalendarResult.Ready
@@ -109,6 +116,28 @@ class ObserveSaleCatalogUseCase(
             sale.copy(taxes = taxes, taxRates = byId, cashRounding = step, conversions = byProduct)
         }.combine(tipsEnabled()) { sale, tips -> sale.copy(tipsEnabled = tips) }
             .combine(loyalty()) { sale, program -> sale.copy(loyalty = program) }
+            .combine(pricesOf()) { sale, (lists, own) ->
+                sale.copy(priceLists = lists, ownPrices = own)
+            }
+    }
+
+    /** Las listas, vigentes y archivadas, y los precios propios por producto y lista. */
+    private fun pricesOf(): Flow<Pair<List<PriceList>, Map<Long, Map<Long, Money>>>> {
+        val lists = priceLists ?: return flowOf(emptyList<PriceList>() to emptyMap())
+        val own = productPrices?.observeAll() ?: flowOf(emptyMap())
+        return combine(lists.observeActive(), lists.observeArchived(), own) {
+                active,
+                archived,
+                byList,
+            ->
+            val byProduct = mutableMapOf<Long, MutableMap<Long, Money>>()
+            byList.forEach { (list, prices) ->
+                prices.forEach { (product, price) ->
+                    byProduct.getOrPut(product) { mutableMapOf() }[list] = price
+                }
+            }
+            (active + archived).sortedBy { it.id } to byProduct
+        }
     }
 }
 

@@ -317,7 +317,14 @@ object SaleCheckout {
         conversions: Map<Long, ConversionDetails>,
     ): Base? {
         val product = products[line.productId] ?: return null
-        val unit = when (val result = SaleUnits.of(line, product, conversions)) {
+        val unit = when (
+            val result = SaleUnits.of(
+                line,
+                product,
+                conversions,
+                pricing.listOf(product),
+            )
+        ) {
             is SaleUnitResult.Resolved -> result.unit
             SaleUnitResult.Unavailable -> return null
         }

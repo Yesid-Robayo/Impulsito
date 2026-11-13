@@ -4,6 +4,8 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerForm
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerFormIssue
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLifecycleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomersOverview
@@ -217,6 +219,42 @@ class CustomerListViewModelTest {
         assertNull(editor.editor.value)
         assertEquals(CustomerMessage.Saved, model.uiState.value.message)
         assertEquals(CustomerForm("Eva", phone = "300"), operations.saved.last().second)
+    }
+
+    @Test
+    fun `with more than one list the sheet offers them, and the initial one means none`() =
+        runTest(dispatcher) {
+            val lists = listOf(
+                PriceList(1L, "DEFAULT", null, PriceListPricing.Fixed, null),
+                PriceList(2L, null, "Mayorista", PriceListPricing.Fixed, null),
+            )
+            val model = CustomerListViewModel(operations, priceLists = { MutableStateFlow(lists) })
+            observe(model.uiState)
+            advanceUntilIdle()
+            model.onAction(CustomerListAction.NewCustomer("Eva"))
+            val editor = model.editor
+            assertEquals(lists, editor.editor.value?.priceLists)
+
+            editor.onAction(CustomerEditorAction.ChoosePriceList(2L))
+            assertEquals(2L, editor.editor.value?.priceListId)
+            editor.onAction(CustomerEditorAction.ChoosePriceList(1L))
+            assertNull(editor.editor.value?.priceListId)
+            editor.onAction(CustomerEditorAction.ChoosePriceList(2L))
+            operations.saveResult = SaveCustomerResult.Saved(9L)
+            editor.onAction(CustomerEditorAction.Save)
+            advanceUntilIdle()
+            assertEquals(2L, operations.saved.last().second.priceListId)
+        }
+
+    @Test
+    fun `with a single list the sheet does not offer it`() = runTest(dispatcher) {
+        val single = listOf(PriceList(1L, "DEFAULT", null, PriceListPricing.Fixed, null))
+        val model = CustomerListViewModel(operations, priceLists = { MutableStateFlow(single) })
+        observe(model.uiState)
+        advanceUntilIdle()
+        model.onAction(CustomerListAction.NewCustomer())
+
+        assertTrue(model.editor.editor.value?.priceLists.orEmpty().isEmpty())
     }
 
     @Test

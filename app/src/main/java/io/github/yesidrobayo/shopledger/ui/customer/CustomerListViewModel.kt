@@ -5,15 +5,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerSearch
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomersOverview
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -115,7 +118,12 @@ sealed interface CustomerListAction {
 class CustomerListViewModel(
     private val operations: CustomerOperations,
     private val pickForSale: Boolean = false,
+    priceLists: () -> Flow<List<PriceList>> = { flowOf(emptyList()) },
 ) : ViewModel() {
+    /** Las listas de precios vigentes, que la hoja ofrece si hay más de una. */
+    private val activeLists = priceLists().catch { emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private val query = MutableStateFlow("")
     private val filter = MutableStateFlow(CustomerFilter.ALL)
     private val attempts = MutableStateFlow(0)
@@ -130,6 +138,7 @@ class CustomerListViewModel(
             onSaved = { id ->
                 if (pickForSale) picked.value = id else message.value = CustomerMessage.Saved
             },
+            priceLists = { activeLists.value },
         )
 
     private val overview = attempts.flatMapLatest {

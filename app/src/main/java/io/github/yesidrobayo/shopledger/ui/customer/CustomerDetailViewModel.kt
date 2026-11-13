@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerEntryIssue
@@ -25,14 +26,18 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.VoidCustomerPaym
 import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -56,7 +61,12 @@ class CustomerDetailViewModel(
     private val operations: CustomerDetailOperations,
     private val numbers: CustomerNumberFormat,
     private val reminderTexts: ReminderTexts = ReminderTexts("", ""),
+    priceLists: () -> Flow<List<PriceList>> = { flowOf(emptyList()) },
 ) : ViewModel() {
+    /** Las listas de precios vigentes, que la hoja ofrece si hay más de una. */
+    private val activeLists = priceLists().catch { emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private val state = MutableStateFlow(CustomerDetailUiState())
     val uiState: StateFlow<CustomerDetailUiState> = state.asStateFlow()
 
@@ -69,6 +79,7 @@ class CustomerDetailViewModel(
         scope = viewModelScope,
         save = operations::saveCustomer,
         onSaved = { showMessage(CustomerDetailMessage.Saved) },
+        priceLists = { activeLists.value },
     )
 
     init {

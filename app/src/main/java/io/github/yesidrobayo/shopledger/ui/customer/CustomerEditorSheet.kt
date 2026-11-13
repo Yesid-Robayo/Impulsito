@@ -7,17 +7,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerFormIssue
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerFormRules
+import io.github.yesidrobayo.shopledger.localization.SeedText
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
+import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
@@ -111,6 +115,26 @@ fun CustomerEditorSheet(
             capitalization = KeyboardCapitalization.None,
             autoCorrect = false,
         )
+        if (editor.priceLists.isNotEmpty()) {
+            val resources = LocalResources.current
+            Text(
+                stringResource(R.string.customer_price_list),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val selected = editor.priceLists.filter {
+                it.id == editor.priceListId || (editor.priceListId == null && it.isDefault)
+            }
+            CompactChipRow(
+                options = editor.priceLists,
+                label = {
+                    SeedText.displayName(resources, SeedTable.PRICE_LISTS, it.systemKey, it.name)
+                },
+                selected = selected.toSet(),
+                onToggle = { onAction(CustomerEditorAction.ChoosePriceList(it.id)) },
+                multiple = false,
+            )
+        }
         AppTextField(
             value = editor.notes,
             onValueChange = { onAction(CustomerEditorAction.Notes(it)) },

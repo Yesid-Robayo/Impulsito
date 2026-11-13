@@ -73,6 +73,8 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     cashRounding = { ObserveCashRoundingUseCase(ports.settings)() },
                     productUnits = ports.productUnits,
                     tipsEnabled = { ObserveTipsEnabledUseCase(ports.settings)() },
+                    priceLists = ports.priceLists,
+                    productPrices = ports.productPrices,
                 )
             val register =
                 RegisterSaleUseCase(
@@ -95,6 +97,8 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     loyaltyLedger = ports.loyaltyLedger,
                     moneyAccounts = ports.moneyAccounts,
                     moneyLedger = ports.moneyLedger,
+                    priceLists = ports.priceLists,
+                    productPrices = ports.productPrices,
                 )
             val hold =
                 HoldSaleUseCase(
@@ -133,6 +137,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                 resumeHeldSale = { resume(it) },
                 prefillFromSaleId = key.prefillFromSaleId,
                 prefillCustomerId = key.prefillCustomerId,
+                customerPriceList = { id -> ports.customers.findById(id)?.priceListId },
                 loadCorrection = { saleId ->
                     ObserveSaleDetailUseCase(
                         ports.sales,

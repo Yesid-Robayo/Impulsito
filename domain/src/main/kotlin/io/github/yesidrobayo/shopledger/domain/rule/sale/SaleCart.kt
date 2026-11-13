@@ -13,6 +13,8 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.rule.CashRounding
 import io.github.yesidrobayo.shopledger.domain.rule.LineTax
 import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.LinePriceList
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.SalePriceList
 
 /** Lo que resulta de agregar un producto o de cambiar la cantidad de una línea. */
 sealed interface CartChange {
@@ -87,6 +89,7 @@ data class CartPreview(
  *
  * [rates] son las tasas por id. Sin impuesto en el negocio, ninguna línea lleva impuesto. Con
  * [cashMethod], el método elegido es de efectivo, y lo que se cobra se redondea a [cashStep].
+ * [priceList] es la lista de precios elegida para la venta; sin ella, la inicial.
  */
 data class CartPricing(
     val taxMode: TaxMode = TaxMode.NONE,
@@ -95,7 +98,14 @@ data class CartPricing(
     val methodAdjustment: BasisPoints = BasisPoints.ZERO,
     val cashMethod: Boolean = false,
     val cashStep: Money = Money.ZERO,
+    val priceList: SalePriceList? = null,
 ) {
+    /** El precio de [product] en la lista de la venta, en su unidad base. */
+    fun listOf(product: Product): LinePriceList {
+        val list = priceList ?: return LinePriceList.default(product)
+        return list.priceOf(product)
+    }
+
     /** La tasa con que paga impuesto [product]: la suya, la por defecto o ninguna. */
     fun rateOf(product: Product): BasisPoints {
         if (taxMode == TaxMode.NONE) return BasisPoints.ZERO
@@ -278,7 +288,14 @@ object SaleCart {
             )
         }
         val rate = pricing.rateOf(product)
-        val unit = when (val result = SaleUnits.of(line, product, conversions)) {
+        val unit = when (
+            val result = SaleUnits.of(
+                line,
+                product,
+                conversions,
+                pricing.listOf(product),
+            )
+        ) {
             is SaleUnitResult.Resolved -> result.unit
 
             SaleUnitResult.Unavailable -> return LineBase(

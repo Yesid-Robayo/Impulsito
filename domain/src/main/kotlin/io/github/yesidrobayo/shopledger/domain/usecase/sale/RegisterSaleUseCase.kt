@@ -49,6 +49,8 @@ import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
+import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
@@ -73,6 +75,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerEntryIssue
 import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyProgramRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.RedemptionCheck
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.LinePriceList
+import io.github.yesidrobayo.shopledger.domain.rule.pricing.SalePriceList
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.AdjustmentSplit
@@ -192,6 +196,8 @@ class RegisterSaleUseCase(
     loyaltyLedger: LoyaltyLedgerRepository? = null,
     private val moneyAccounts: MoneyAccountRepository? = null,
     moneyLedger: MoneyLedgerRepository? = null,
+    private val priceLists: PriceListRepository? = null,
+    private val productPrices: ProductPriceRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -237,7 +243,9 @@ class RegisterSaleUseCase(
             is Chosen.Rejected -> return TxResult.Rollback(result.rejection)
         }
 
-        val priced = when (val result = priceLines(request.lines, current.taxes)) {
+        val choice = priceListOf(request)
+            ?: return TxResult.Rollback(RegisterSaleResult.PriceListUnavailable)
+        val priced = when (val result = priceLines(request.lines, current.taxes, choice.prices)) {
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
         }
@@ -272,7 +280,7 @@ class RegisterSaleUseCase(
                 return TxResult.Rollback(RegisterSaleResult.CurrencyNotConfirmed)
         }
         val plan = moneyPlanOf(settled.payments, currency)
-        val written = write(settled, plan, request.customerId, note, time, now)
+        val written = write(settled, plan, request.customerId, choice.listId, note, time, now)
         val saleId = written.saleId
         chargeOnAccount(saleId, request, settled.payments, time)?.let {
             return TxResult.Rollback(it)
@@ -624,11 +632,36 @@ class RegisterSaleUseCase(
     }
 
     /**
+     * La lista de precios de [request], leída dentro de la transacción, o `null` si la elegida ya no
+     * existe o está archivada. La inicial no necesita leer nada más: su precio es el de venta.
+     */
+    private suspend fun priceListOf(request: SaleRequest): ListChoice? {
+        val defaultId = systemRows.findId(SystemRow.DEFAULT_PRICE_LIST) ?: damaged()
+        val wanted = request.priceListId
+        if (wanted == null || wanted == defaultId) return ListChoice(defaultId, prices = null)
+        val lists = priceLists ?: return null
+        val own = productPrices ?: return null
+        val all = lists.findAll().associateBy { it.id }
+        if (all[wanted]?.isArchived != false) return null
+        val ownPrices = request.lines.map { it.productId }.toSet().associateWith {
+            own.findByProduct(it)
+        }
+        return ListChoice(wanted, SalePriceList(wanted, all, ownPrices))
+    }
+
+    /** La lista de la venta, y con qué se resuelven sus precios si no es la inicial. */
+    private class ListChoice(val listId: Long, val prices: SalePriceList?)
+
+    /**
      * Calcula cada línea en orden, con los productos leídos de una vez. Un producto que se repite
      * calcula su segunda línea con el estado de costo que dejó la primera. Cada línea separa su
      * impuesto con la tasa que le toca.
      */
-    private suspend fun priceLines(requests: List<SaleLineRequest>, taxes: TaxSettings): Priced {
+    private suspend fun priceLines(
+        requests: List<SaleLineRequest>,
+        taxes: TaxSettings,
+        priceList: SalePriceList?,
+    ): Priced {
         val byId = products.findByIds(requests.map { it.productId }.toSet()).associateBy { it.id }
         val costStates = HashMap<Long, CostState>()
         val fractionByUnit = HashMap<Long, Boolean>()
@@ -644,7 +677,7 @@ class RegisterSaleUseCase(
                 val unit = units.findById(product.details.baseUnitId) ?: damaged()
                 unit.allowsFraction
             }
-            val unit = when (val result = saleUnitOf(request, product)) {
+            val unit = when (val result = saleUnitOf(request, product, priceList)) {
                 is SaleUnitResult.Resolved -> result.unit
                 SaleUnitResult.Unavailable -> return rejected(index, LineRejection.UNIT_UNAVAILABLE)
             }
@@ -703,7 +736,11 @@ class RegisterSaleUseCase(
      * La unidad en que se vende [request]: la base, o la conversión de venta del producto, leída
      * dentro de la transacción para congelar el factor que hay al confirmar.
      */
-    private suspend fun saleUnitOf(request: SaleLineRequest, product: Product): SaleUnitResult {
+    private suspend fun saleUnitOf(
+        request: SaleLineRequest,
+        product: Product,
+        priceList: SalePriceList?,
+    ): SaleUnitResult {
         val unitId = request.unitId ?: product.details.baseUnitId
         val conversions = if (unitId == product.details.baseUnitId) {
             emptyMap()
@@ -712,7 +749,8 @@ class RegisterSaleUseCase(
                 ?.let { mapOf(unitId to it.details) }
                 .orEmpty()
         }
-        return SaleUnits.of(request, product, conversions)
+        val list = priceList?.priceOf(product) ?: LinePriceList.default(product)
+        return SaleUnits.of(request, product, conversions, list)
     }
 
     private fun productRejection(product: Product): LineRejection? = when {
@@ -1001,6 +1039,7 @@ class RegisterSaleUseCase(
         settled: Settled.Payments,
         plan: MoneyPlan,
         customerId: Long?,
+        priceListId: Long,
         note: String?,
         time: RecordTime,
         now: Instant,
@@ -1008,7 +1047,6 @@ class RegisterSaleUseCase(
         val priced = settled.priced
         val salePayments = plan.payments
         val locationId = systemRows.findId(SystemRow.MAIN_LOCATION) ?: damaged()
-        val priceListId = systemRows.findId(SystemRow.DEFAULT_PRICE_LIST) ?: damaged()
         val totals = priced.totals
         val saleId = sales.insert(
             NewSale(

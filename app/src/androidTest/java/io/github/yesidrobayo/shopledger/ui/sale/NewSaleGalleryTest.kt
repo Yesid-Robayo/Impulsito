@@ -15,8 +15,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
@@ -137,6 +140,27 @@ class NewSaleGalleryTest {
             Scene("frequent"),
             Scene("selling", actions = selling),
             Scene("cart", actions = selling + NewSaleAction.OpenCart),
+            // Con dos listas, el carrito ofrece elegir la lista; la elegida cambia los precios.
+            Scene(
+                "cart-lists",
+                catalog = {
+                    flowOf(
+                        saleCatalog().copy(
+                            priceLists = listOf(
+                                PriceList(1L, "DEFAULT", null, PriceListPricing.Fixed, null),
+                                PriceList(
+                                    2L,
+                                    null,
+                                    "Mayoristas",
+                                    PriceListPricing.Relative(1L, BasisPoints(-1_000L)),
+                                    null,
+                                ),
+                            ),
+                        ),
+                    )
+                },
+                actions = selling + NewSaleAction.SelectPriceList(2L) + NewSaleAction.OpenCart,
+            ),
             Scene(
                 "line",
                 actions = selling + listOf(

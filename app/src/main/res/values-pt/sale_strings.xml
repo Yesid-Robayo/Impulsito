@@ -68,4 +68,5 @@
         <item quantity="many">%1$d de produtos adicionados serão perdidos.</item>
         <item quantity="other">%1$d produtos adicionados serão perdidos.</item>
     </plurals>
+    <string name="sale_price_list_chip">Tabela</string>
 </resources>

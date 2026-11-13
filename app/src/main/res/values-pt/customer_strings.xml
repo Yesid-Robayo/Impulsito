@@ -53,4 +53,5 @@
     <string name="customer_picker_all">Todos os clientes</string>
     <string name="customer_picker_none">Sem cliente</string>
     <string name="a11y_remove_customer">Remover cliente</string>
+    <string name="customer_price_list">Tabela de preços</string>
 </resources>

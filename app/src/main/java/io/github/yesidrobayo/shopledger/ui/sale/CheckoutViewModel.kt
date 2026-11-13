@@ -116,7 +116,9 @@ class CheckoutViewModel(
             sale = taken?.draft?.takeIf { it.lines.isNotEmpty() }
             qrOnly = taken?.qrOnly ?: false
             // La venta abierta desde un cliente llega con él elegido.
-            editing = MutableStateFlow(Editing(customerId = sale?.customerId))
+            editing = MutableStateFlow(
+                Editing(customerId = sale?.customerId, priceListId = sale?.priceListId),
+            )
             if (sale != null) {
                 SaleDraftStore.write(savedState, sale)
                 savedState[QR_ONLY] = qrOnly
@@ -291,7 +293,10 @@ class CheckoutViewModel(
             if (it.customerId == customerId) {
                 it
             } else {
-                it.copy(customerId = customerId).withoutRedemption()
+                // Un cliente con lista propia la trae: los precios de las líneas pasan a los suyos.
+                val list = customers.value.firstOrNull { c -> c.id == customerId }?.priceListId
+                it.copy(customerId = customerId, priceListId = list ?: it.priceListId)
+                    .withoutRedemption()
             }
         }
         overlay.update {
@@ -923,6 +928,8 @@ class CheckoutViewModel(
                     credit && owesAfter(catalog, written, preview) != false
                 },
                 pointsRedeemed = redeemed,
+                // La misma lista con que se calcularon los precios que se ven.
+                priceListId = catalog.salePriceList(written.priceListId)?.listId,
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> overlay.update {
@@ -973,6 +980,7 @@ class CheckoutViewModel(
                 RegisterSaleResult.OrderDiscountTooLarge,
                 RegisterSaleResult.TipNotAccepted,
                 RegisterSaleResult.PointsNotAvailable,
+                RegisterSaleResult.PriceListUnavailable,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }
@@ -1188,6 +1196,7 @@ class CheckoutViewModel(
             taxMode = catalog.taxes.mode,
             rates = catalog.taxRates,
             defaultRateId = catalog.taxes.defaultTaxRateId,
+            priceList = catalog.salePriceList(written.priceListId),
         )
         val inputs = written.payments.map { row ->
             val details = methods[row.methodId]?.details
@@ -1252,11 +1261,12 @@ class CheckoutViewModel(
         savedState[CUSTOMER] = written.customerId
         savedState[CREDIT_DUE] = written.creditDue?.toString()
         savedState[POINTS] = written.redeemed
+        savedState[PRICE_LIST] = written.priceListId
     }
 
     private fun restore(): Editing {
         val values = savedState.get<LongArray>(PAYMENTS)?.takeIf { it.size % FIELDS == 0 }
-            ?: return Editing()
+            ?: return Editing(priceListId = savedState.get<Long>(PRICE_LIST) ?: sale?.priceListId)
         val tip = Money(savedState.get<Long>(TIP) ?: 0L)
         val redeemed = savedState.get<Long>(POINTS) ?: 0L
         val payments = (0 until values.size / FIELDS).map { index ->
@@ -1281,6 +1291,7 @@ class CheckoutViewModel(
             tip = tip,
             tipText = if (tip == Money.ZERO) "" else moneyText(tip),
             customerId = savedState.get<Long>(CUSTOMER),
+            priceListId = savedState.get<Long>(PRICE_LIST) ?: sale?.priceListId,
             creditDue = savedState.get<String>(CREDIT_DUE)?.let(BusinessDate::parse),
             redeemed = redeemed,
             // Sin separadores: el campo los acepta igual, y no depende del formato al volver.
@@ -1353,6 +1364,7 @@ class CheckoutViewModel(
         val tipText: String = "",
         val tipError: SaleFieldError? = null,
         val customerId: Long? = null,
+        val priceListId: Long? = null,
         val creditDue: BusinessDate? = null,
         val redeemed: Long = 0L,
         val pointsText: String = "",
@@ -1384,6 +1396,7 @@ class CheckoutViewModel(
         const val ADJUSTMENT = "checkout.adjustment"
         const val TIP = "checkout.tip"
         const val CUSTOMER = "checkout.customer"
+        const val PRICE_LIST = "checkout.priceList"
         const val CREDIT_DUE = "checkout.creditDue"
         const val POINTS = "checkout.points"
         const val FIELDS = 6
