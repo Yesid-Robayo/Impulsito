@@ -25,7 +25,8 @@ import org.junit.runner.RunWith
 /**
  * Capturas del inventario para la puerta de calidad visual: la lista por agotarse con stock
  * negativo, agotado y bajo, nombre de 80 caracteres y valor de trece cifras; nada por agotarse;
- * los avisos apagados; el modo discreto; abierto desde Inicio con flecha; el catálogo vacío y el error. Con la paleta
+ * los avisos apagados; el modo discreto; abierto desde Inicio con flecha; `Revisar` con la cola
+ * `Costo nuevo sin revisar`, también en modo discreto; el catálogo vacío y el error. Con la paleta
  * predeterminada y otra, en claro y en oscuro. Solo corre con `captureDir`; la letra grande se fija
  * en el emulador antes de correrla. Productos y montos inventados.
  */
@@ -65,6 +66,21 @@ class InventoryGalleryTest {
                     content = previewInventory(items = previewInventoryItems().take(1)),
                 ),
                 navigation = TopBarNavigation.BACK,
+            ),
+            Scene(
+                "review",
+                InventoryUiState(
+                    chip = InventoryChip.REVIEW,
+                    content = previewInventory(reviewItems = previewReviewItems()),
+                ),
+            ),
+            Scene(
+                "reviewDiscreet",
+                InventoryUiState(
+                    chip = InventoryChip.REVIEW,
+                    content = previewInventory(reviewItems = previewReviewItems()),
+                ),
+                discreet = true,
             ),
             Scene("emptyCatalog", InventoryUiState(content = InventoryContent.EmptyCatalog)),
             Scene("error", InventoryUiState(content = InventoryContent.ReadError)),

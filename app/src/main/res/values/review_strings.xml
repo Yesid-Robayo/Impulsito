@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de la cola `Costo nuevo sin revisar` en el inventario y en la masiva, copiados de la guía de redacción. -->
+<resources>
+    <string name="review_filter">Review</string>
+    <string name="review_all_action">Review all</string>
+    <string name="review_new_cost">New cost to review</string>
+</resources>

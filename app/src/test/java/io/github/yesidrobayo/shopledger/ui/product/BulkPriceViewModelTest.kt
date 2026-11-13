@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceAdjustment
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceRequest
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceScope
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoRevert
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
@@ -20,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -57,6 +59,32 @@ class BulkPriceViewModelTest {
         backgroundScope.launch(dispatcher) { model.uiState.collect {} }
         advanceUntilIdle()
         return model
+    }
+
+    @Test
+    fun `from the review queue it opens with the pending ones`() = runTest(dispatcher) {
+        operations.catalog.value = operations.catalog.value.mapIndexed { index, product ->
+            if (index ==
+                0
+            ) {
+                product.copy(priceReviewSince = Instant.fromEpochMilliseconds(1L))
+            } else {
+                product
+            }
+        }
+        val model = BulkPriceViewModel(operations, NUMBERS, dispatcher, pendingReview = true)
+        backgroundScope.launch(dispatcher) { model.uiState.collect {} }
+        advanceUntilIdle()
+        assertEquals(BulkScopeKind.PENDING_REVIEW, model.uiState.value.input.scope)
+
+        model.onAction(BulkPriceAction.PercentText("10"))
+        advanceUntilIdle()
+        val preview = (model.uiState.value.content as BulkPreviewContent.Ready).preview
+        // Solo el que espera revisión.
+        assertEquals(listOf(1L), preview.changes.map { it.productId })
+        model.onAction(BulkPriceAction.Apply)
+        advanceUntilIdle()
+        assertEquals(BulkPriceScope.PendingReview, operations.requests.single().scope)
     }
 
     @Test

@@ -6,8 +6,10 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.DismissPriceReviewResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
 import io.github.yesidrobayo.shopledger.navigation.InventoryFilter
 import kotlin.time.Instant
@@ -15,12 +17,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -130,9 +136,84 @@ class InventoryViewModelTest {
 
     @Test
     fun `every navigation filter opens a chip that exists`() {
-        assertEquals(InventoryChip.LOW_STOCK, chipOf(InventoryFilter.REVIEW))
+        assertEquals(InventoryChip.REVIEW, chipOf(InventoryFilter.REVIEW))
         assertEquals(InventoryChip.LOW_STOCK, chipOf(InventoryFilter.EXPIRING))
         assertEquals(InventoryChip.ALL, chipOf(InventoryFilter.ALL))
+    }
+
+    @Test
+    fun `the review chip lists the queue and falls back when it empties`() = runTest(dispatcher) {
+        products.value = listOf(product(1L, "Arroz", 2_000L))
+        val queue = MutableStateFlow(listOf(product(1L, "Arroz", 2_000L)))
+        val model = InventoryViewModel(
+            observe = { products.toOverview() },
+            computation = dispatcher,
+            initialChip = InventoryChip.REVIEW,
+            reviewQueue = { queue },
+        )
+        model.uiState.test {
+            skipItems(1)
+            val review = awaitItem()
+            assertEquals(InventoryChip.REVIEW, review.chip)
+            val ready = review.content as InventoryContent.Ready
+            assertEquals(listOf(1L), ready.reviewItems.map { it.id })
+            assertEquals(Money(1_000L), ready.reviewItems.single().trailing.price)
+            assertEquals(emptyList<InventoryItem>(), ready.items)
+
+            queue.value = emptyList()
+            // Sin nada que revisar, el chip desaparece y se ve lo que se está acabando.
+            val after = awaitItem()
+            assertEquals(InventoryChip.LOW_STOCK, after.chip)
+            assertEquals(listOf(1L), (after.content as InventoryContent.Ready).items.map { it.id })
+        }
+    }
+
+    @Test
+    fun `a failed dismiss keeps the row and says so`() = runTest(dispatcher) {
+        products.value = listOf(product(1L, "Arroz", 2_000L))
+        val dismissed = mutableListOf<Long>()
+        var result: DismissPriceReviewResult =
+            DismissPriceReviewResult.StorageFailed(StorageFailure.DISK_FULL)
+        val model = InventoryViewModel(
+            observe = { products.toOverview() },
+            computation = dispatcher,
+            initialChip = InventoryChip.REVIEW,
+            reviewQueue = { flowOf(listOf(product(1L, "Arroz", 2_000L))) },
+            dismissReview = {
+                dismissed += it
+                result
+            },
+        )
+        model.uiState.test {
+            skipItems(2)
+            model.onAction(InventoryAction.DismissReview(1L))
+            assertEquals(InventoryMessage.DismissFailed(outOfSpace = true), awaitItem().message)
+            model.onAction(InventoryAction.MessageShown)
+            assertNull(awaitItem().message)
+
+            result = DismissPriceReviewResult.Dismissed
+            model.onAction(InventoryAction.DismissReview(1L))
+            advanceUntilIdle()
+            expectNoEvents()
+        }
+        assertEquals(listOf(1L, 1L), dismissed)
+    }
+
+    @Test
+    fun `a failing queue only hides the review chip`() = runTest(dispatcher) {
+        products.value = listOf(product(1L, "Arroz", 2_000L))
+        val model = InventoryViewModel(
+            observe = { products.toOverview() },
+            computation = dispatcher,
+            initialChip = InventoryChip.REVIEW,
+            reviewQueue = { flow { throw IllegalStateException("lectura") } },
+        )
+        model.uiState.test {
+            skipItems(1)
+            val shown = awaitItem()
+            assertEquals(InventoryChip.LOW_STOCK, shown.chip)
+            assertTrue((shown.content as InventoryContent.Ready).reviewItems.isEmpty())
+        }
     }
 
     private fun MutableStateFlow<List<Product>>.toOverview() = flow {

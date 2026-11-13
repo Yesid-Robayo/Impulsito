@@ -227,8 +227,13 @@ private fun Options(uiState: BulkPriceUiState, onAction: (BulkPriceAction) -> Un
         SectionLabel(R.string.bulk_which)
         val chosenCategory = uiState.categories.firstOrNull { it.id == input.categoryId }
         val chosenSupplier = uiState.suppliers.firstOrNull { it.id == input.supplierId }
+        // `Costo nuevo sin revisar` solo si alguno espera revisión, o si se abrió con él.
+        val pending = uiState.products.any { it.priceReviewSince != null }
+        val scopes = BulkScopeKind.entries.filter {
+            it != BulkScopeKind.PENDING_REVIEW || pending || input.scope == it
+        }
         CompactChipRow(
-            options = BulkScopeKind.entries,
+            options = scopes,
             label = { kind ->
                 when (kind) {
                     BulkScopeKind.ALL -> stringResource(R.string.bulk_scope_all)
@@ -240,6 +245,8 @@ private fun Options(uiState: BulkPriceUiState, onAction: (BulkPriceAction) -> Un
                     BulkScopeKind.SUPPLIER ->
                         chosenSupplier?.details?.name
                             ?: stringResource(R.string.bulk_scope_supplier)
+
+                    BulkScopeKind.PENDING_REVIEW -> stringResource(R.string.review_new_cost)
 
                     BulkScopeKind.PICK -> stringResource(R.string.bulk_scope_pick)
                 }

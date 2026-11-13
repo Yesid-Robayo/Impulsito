@@ -54,13 +54,24 @@ sealed interface AppNavKey : NavKey {
     data class ProductEdit(val productId: Long? = null, val prefillName: String? = null) :
         AppNavKey
 
-    /** El detalle de un producto; con [openCostSheet], abre de una vez la hoja de corregir el costo. */
+    /**
+     * El detalle de un producto; con [openCostSheet], abre de una vez la hoja de corregir el costo, y
+     * con [openPriceSheet], la de cambiar el precio.
+     */
     @Serializable
-    data class ProductDetail(val productId: Long, val openCostSheet: Boolean = false) : AppNavKey
+    data class ProductDetail(
+        val productId: Long,
+        val openCostSheet: Boolean = false,
+        val openPriceSheet: Boolean = false,
+    ) : AppNavKey
 
-    /** La actualización masiva; con [priceListId], abre con esa lista elegida. */
+    /**
+     * La actualización masiva; con [priceListId], abre con esa lista elegida, y con [pendingReview],
+     * con los productos de `Costo nuevo sin revisar`.
+     */
     @Serializable
-    data class BulkPriceUpdate(val priceListId: Long? = null) : AppNavKey
+    data class BulkPriceUpdate(val priceListId: Long? = null, val pendingReview: Boolean = false) :
+        AppNavKey
 
     @Serializable
     data class Inventory(val filter: InventoryFilter = InventoryFilter.LOW_STOCK) : AppNavKey

@@ -188,6 +188,10 @@ class EditProductUseCase(
         if (priceChanged) {
             val at = checkNotNull(time)
             products.updateSalePrice(product.id, form.salePrice, now)
+            // Cambiar el precio es revisarlo: sale de la cola `Costo nuevo sin revisar`.
+            if (product.priceReviewSince != null) {
+                products.setPriceReviewSince(product.id, since = null, updatedAt = now)
+            }
             priceHistory.append(
                 NewPriceChange(
                     productId = product.id,

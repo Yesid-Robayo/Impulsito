@@ -108,6 +108,9 @@ enum class BulkScopeKind {
     ALL,
     CATEGORY,
     SUPPLIER,
+
+    /** `Costo nuevo sin revisar`: solo aparece si hay alguno en la cola. */
+    PENDING_REVIEW,
     PICK,
 }
 
@@ -303,8 +306,14 @@ class BulkPriceViewModel(
     private val numbers: BulkNumberFormat,
     computation: CoroutineDispatcher,
     initialListId: Long? = null,
+    pendingReview: Boolean = false,
 ) : ViewModel() {
-    private val input = MutableStateFlow(BulkPriceInput(listIds = setOfNotNull(initialListId)))
+    private val input = MutableStateFlow(
+        BulkPriceInput(
+            scope = if (pendingReview) BulkScopeKind.PENDING_REVIEW else BulkScopeKind.ALL,
+            listIds = setOfNotNull(initialListId),
+        ),
+    )
     private val extra = MutableStateFlow(Extra())
     private val attempts = MutableStateFlow(0)
     private var lastRequest: BulkPriceRequest? = null
@@ -404,6 +413,7 @@ class BulkPriceViewModel(
                     BulkScopeKind.ALL -> null
                     BulkScopeKind.CATEGORY -> BulkSheet.CATEGORY
                     BulkScopeKind.SUPPLIER -> BulkSheet.SUPPLIER
+                    BulkScopeKind.PENDING_REVIEW -> null
                     BulkScopeKind.PICK -> BulkSheet.PRODUCTS
                 }
                 extra.update { it.copy(sheet = sheet) }
@@ -540,6 +550,8 @@ class BulkPriceViewModel(
             BulkScopeKind.CATEGORY -> BulkPriceScope.Category(typed.categoryId ?: return null)
 
             BulkScopeKind.SUPPLIER -> BulkPriceScope.Supplier(typed.supplierId ?: return null)
+
+            BulkScopeKind.PENDING_REVIEW -> BulkPriceScope.PendingReview
 
             BulkScopeKind.PICK ->
                 if (typed.picked.isEmpty()) return null else BulkPriceScope.Picked(typed.picked)

@@ -9,14 +9,17 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +34,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
+import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.CountTile
@@ -53,6 +57,7 @@ import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
+import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -86,7 +91,45 @@ fun InventoryScreen(
     notificationsBlocked: Boolean = false,
     backupBanner: @Composable () -> Unit = {},
 ) {
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+    val snackbar = remember { SnackbarHostState() }
+    Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        InventoryBody(
+            uiState,
+            onAction,
+            navigation,
+            onNavigate,
+            tabs,
+            notificationsBlocked,
+            backupBanner,
+        )
+        AppSnackbarHost(
+            snackbar,
+            Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = AppTheme.sizes.bottomBar),
+        )
+    }
+    val message = uiState.message?.let { messageText(it) }
+    LaunchedEffect(uiState.message) {
+        if (message != null) {
+            snackbar.showSnackbar(message)
+            onAction(InventoryAction.MessageShown)
+        }
+    }
+}
+
+@Composable
+private fun InventoryBody(
+    uiState: InventoryUiState,
+    onAction: (InventoryAction) -> Unit,
+    navigation: TopBarNavigation,
+    onNavigate: () -> Unit,
+    tabs: @Composable () -> Unit,
+    notificationsBlocked: Boolean,
+    backupBanner: @Composable () -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
         AppTopBar(
             title = stringResource(R.string.nav_products),
             navigation = navigation,
@@ -156,6 +199,7 @@ private fun InventoryList(
         item(key = "chips") {
             val chips = buildList {
                 add(InventoryChip.LOW_STOCK)
+                if (content.reviewItems.isNotEmpty()) add(InventoryChip.REVIEW)
                 if (content.negativeCount > 0) add(InventoryChip.NEGATIVE_STOCK)
                 add(InventoryChip.ALL)
             }
@@ -167,6 +211,20 @@ private fun InventoryList(
                 multiple = false,
                 modifier = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
             )
+        }
+        if (chip == InventoryChip.REVIEW) {
+            item(key = "review-all") {
+                PrimaryActionButton(
+                    stringResource(R.string.review_all_action),
+                    { onAction(InventoryAction.ReviewAll) },
+                    ActionVariant.TONAL,
+                    modifier = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
+                )
+            }
+            items(content.reviewItems, key = { "review-${it.id}" }) { item ->
+                ReviewRow(item, onAction)
+            }
+            return@LazyColumn
         }
         if (content.items.isEmpty()) {
             item(key = "empty") {
@@ -318,6 +376,52 @@ private fun InventoryRow(item: InventoryItem, onAction: (InventoryAction) -> Uni
 }
 
 /**
+ * Una fila de `Revisar`: el producto con el motivo, su precio y su margen, que abre el detalle;
+ * `Cambiar precio` a la derecha, que abre su hoja; y `Descartar` en el menú, que lo saca de la cola
+ * sin cambiar el precio.
+ */
+@Composable
+private fun ReviewRow(item: PriceReviewItem, onAction: (InventoryAction) -> Unit) {
+    val dismiss = stringResource(R.string.dialog_discard_action)
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ProductRow(
+                data = ProductRowData(
+                    name = item.name,
+                    stock = null,
+                    trailing = item.trailing,
+                    tag = stringResource(R.string.review_new_cost),
+                ),
+                modifier = Modifier.weight(1f),
+                onClick = { onAction(InventoryAction.OpenProduct(item.id)) },
+                divider = false,
+            )
+            InlineTextButton(
+                stringResource(R.string.product_change_price),
+                { onAction(InventoryAction.ChangePrice(item.id)) },
+            )
+            OverflowMenu(
+                listOf(
+                    OverflowAction(dismiss, {
+                        onAction(InventoryAction.DismissReview(item.id))
+                    }),
+                ),
+            )
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = AppTheme.spacing.s16),
+            thickness = AppTheme.sizes.hairline,
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+    }
+}
+
+@Composable
+private fun messageText(message: InventoryMessage): String = when (message) {
+    is InventoryMessage.DismissFailed -> stringResource(saveErrorText(message.outOfSpace))
+}
+
+/**
  * Lo que dice la fila de [item]: su nombre, su stock con el icono de su estado, y a la derecha el
  * stock y el mínimo. La usan el inventario y la tarjeta por agotarse de Inicio.
  */
@@ -345,6 +449,7 @@ private fun chipLabel(chip: InventoryChip): String = stringResource(
         InventoryChip.LOW_STOCK -> R.string.term_low_stock
         InventoryChip.NEGATIVE_STOCK -> R.string.stock_filter_negative
         InventoryChip.ALL -> R.string.stock_filter_all
+        InventoryChip.REVIEW -> R.string.review_filter
     },
 )
 

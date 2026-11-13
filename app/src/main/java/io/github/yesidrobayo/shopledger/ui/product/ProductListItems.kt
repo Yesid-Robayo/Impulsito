@@ -120,7 +120,7 @@ object ProductListItems {
      * se calcula con cero y la fila lo marca. Un producto hecho de componentes no tiene costo
      * propio: su margen no se calcula aquí.
      */
-    private fun trailingOf(product: Product): ProductRowTrailing.Catalog {
+    internal fun trailingOf(product: Product): ProductRowTrailing.Catalog {
         val price = product.salePrice.takeIf { it > Money.ZERO }
         val details = product.details
         return when (details.stockMode) {

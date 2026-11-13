@@ -76,6 +76,10 @@ class ChangePriceUseCase(
             return TxResult.Rollback(ChangePriceResult.CurrencyUnconfirmed)
         }
         products.updateSalePrice(product.id, newPrice, time.occurredAt)
+        // Cambiar el precio es revisarlo: sale de la cola `Costo nuevo sin revisar`.
+        if (product.priceReviewSince != null) {
+            products.setPriceReviewSince(product.id, since = null, updatedAt = time.occurredAt)
+        }
         val historyId = priceHistory.append(
             NewPriceChange(
                 productId = product.id,

@@ -62,6 +62,7 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
                 ProductDetailUseCases.of(dependencies),
                 numbers,
                 openCostSheet = key.openCostSheet,
+                openPriceSheet = key.openPriceSheet,
             )
         }
     when (model) {

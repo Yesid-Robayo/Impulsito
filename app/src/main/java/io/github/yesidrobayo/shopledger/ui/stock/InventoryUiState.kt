@@ -7,10 +7,12 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
+import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 
 /**
- * Los chips del inventario que existen hoy. `Revisar` y `Por vencer` aparecen cuando sus módulos
- * estén en uso; mientras tanto, abrir con ellos muestra lo que se está acabando.
+ * Los chips del inventario que existen hoy. `Revisar` aparece si hay algo en la cola
+ * `Costo nuevo sin revisar`; `Por vencer`, cuando su módulo esté en uso, y mientras tanto abrir con
+ * él muestra lo que se está acabando.
  */
 enum class InventoryChip {
     /** Por agotarse, en el orden de lo urgente. El de siempre. */
@@ -21,7 +23,17 @@ enum class InventoryChip {
 
     /** Todo lo que lleva stock, por nombre. */
     ALL,
+
+    /** Lo que pide decidir un precio: hoy, la cola `Costo nuevo sin revisar`. */
+    REVIEW,
 }
+
+/**
+ * Una fila de `Revisar`: el producto cuyo costo subió con una compra y nadie le revisó el precio,
+ * con su precio y su margen de ahora, como en el catálogo.
+ */
+@Immutable
+data class PriceReviewItem(val id: Long, val name: String, val trailing: ProductRowTrailing.Catalog)
 
 /** Una fila del inventario, ya leída. La unidad va como la guardó la base, sin texto. */
 @Immutable
@@ -67,6 +79,7 @@ sealed interface InventoryContent {
         val archivedValue: Money?,
         val hasStockWithoutCost: Boolean,
         val items: List<InventoryItem>,
+        val reviewItems: List<PriceReviewItem> = emptyList(),
     ) : InventoryContent
 
     /** No se pudo leer. Se puede reintentar. */
@@ -77,7 +90,14 @@ sealed interface InventoryContent {
 data class InventoryUiState(
     val chip: InventoryChip = InventoryChip.LOW_STOCK,
     val content: InventoryContent = InventoryContent.Loading,
+    val message: InventoryMessage? = null,
 )
+
+/** Un aviso breve del inventario. */
+sealed interface InventoryMessage {
+    /** No se pudo sacar un producto de `Revisar`; sigue en la cola. */
+    data class DismissFailed(val outOfSpace: Boolean) : InventoryMessage
+}
 
 /** Lo que la persona puede hacer en el inventario. La navegación la resuelve la ruta. */
 sealed interface InventoryAction {
@@ -91,6 +111,17 @@ sealed interface InventoryAction {
 
     /** Eligió `Ajustar stock` en el menú de la fila. */
     data class Adjust(val productId: Long) : InventoryAction
+
+    /** En `Revisar`, tocó `Cambiar precio`: se abre el detalle con la hoja del precio. */
+    data class ChangePrice(val productId: Long) : InventoryAction
+
+    /** En `Revisar`, eligió `Descartar`: sale de la cola sin cambiar el precio. */
+    data class DismissReview(val productId: Long) : InventoryAction
+
+    /** Tocó `Revisar todo`: se abre la actualización masiva con los de la cola. */
+    data object ReviewAll : InventoryAction
+
+    data object MessageShown : InventoryAction
 
     /** Desde el inventario vacío, quiere crear el primer producto. */
     data object CreateProduct : InventoryAction

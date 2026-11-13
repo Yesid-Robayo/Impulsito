@@ -8,6 +8,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.DismissPriceReviewUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceReviewQueueUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -34,12 +36,21 @@ fun InventoryRoute(
     val initialChip = chipOf(filter)
     val model =
         rememberAppViewModel { dependencies ->
-            val observe =
-                ObserveInventoryUseCase(dependencies.ports.products, dependencies.ports.units)
+            val ports = dependencies.ports
+            val observe = ObserveInventoryUseCase(ports.products, ports.units)
+            val queue = ObservePriceReviewQueueUseCase(ports.products)
+            val dismiss =
+                DismissPriceReviewUseCase(
+                    ports.transactions,
+                    ports.products,
+                    dependencies.container.clock,
+                )
             InventoryViewModel(
                 observe = { observe() },
                 computation = dependencies.container.dispatchers.default,
                 initialChip = initialChip,
+                reviewQueue = { queue() },
+                dismissReview = { dismiss(it) },
             )
         }
     val navigation = if (asTab) TopBarNavigation.NONE else TopBarNavigation.BACK
@@ -72,13 +83,22 @@ fun InventoryRoute(
                         is InventoryAction.Adjust ->
                             navigator.open(AppNavKey.StockAdjustment(action.productId))
 
+                        is InventoryAction.ChangePrice ->
+                            navigator.open(
+                                AppNavKey.ProductDetail(action.productId, openPriceSheet = true),
+                            )
+
+                        InventoryAction.ReviewAll ->
+                            navigator.open(AppNavKey.BulkPriceUpdate(pendingReview = true))
+
                         InventoryAction.CreateProduct -> navigator.open(AppNavKey.ProductEdit())
 
                         InventoryAction.OpenNotificationSettings ->
                             NotificationPermissionPrompt.openSettings(context)
 
-                        is InventoryAction.ChipChanged, InventoryAction.Retry ->
-                            viewModel.onAction(action)
+                        is InventoryAction.ChipChanged, InventoryAction.Retry,
+                        is InventoryAction.DismissReview, InventoryAction.MessageShown,
+                        -> viewModel.onAction(action)
                     }
                 },
                 navigation = navigation,
@@ -93,10 +113,8 @@ fun InventoryRoute(
 
 /** El chip con que se abre cada filtro de la navegación. Los que aún no existen, lo urgente. */
 internal fun chipOf(filter: InventoryFilter): InventoryChip = when (filter) {
-    InventoryFilter.LOW_STOCK, InventoryFilter.REVIEW, InventoryFilter.EXPIRING ->
-        InventoryChip.LOW_STOCK
-
+    InventoryFilter.LOW_STOCK, InventoryFilter.EXPIRING -> InventoryChip.LOW_STOCK
+    InventoryFilter.REVIEW -> InventoryChip.REVIEW
     InventoryFilter.NEGATIVE_STOCK -> InventoryChip.NEGATIVE_STOCK
-
     InventoryFilter.ALL -> InventoryChip.ALL
 }

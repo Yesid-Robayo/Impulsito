@@ -108,9 +108,9 @@ class ApplyBulkPriceUseCase(
         val context = readContext(request, ids, given)
             ?: return TxResult.Rollback(ApplyBulkPriceResult.InvalidRequest)
         val targets = BulkPricePreviewer.targetsOf(request, context)
-        val changes = products.findByIds(ids)
-            .sortedBy { it.id }
-            .filterNot { it.isArchived }
+        val current = products.findByIds(ids).sortedBy { it.id }.filterNot { it.isArchived }
+        val reviewed = current.filter { it.priceReviewSince != null }.map { it.id }.toMutableSet()
+        val changes = current
             .flatMap { product ->
                 targets.mapNotNull { target ->
                     val subject = BulkPricePreviewer.subjectOf(product, target, context)
@@ -136,8 +136,13 @@ class ApplyBulkPriceUseCase(
             val change = planned.change
             val listId = planned.target.listId ?: defaultList
             when (val target = planned.target) {
-                is BulkTarget.SalePrice ->
+                is BulkTarget.SalePrice -> {
                     products.updateSalePrice(planned.productId, change.newPrice, time.occurredAt)
+                    // Cambiar el precio de venta es revisarlo: sale de la cola de costo nuevo.
+                    if (reviewed.remove(planned.productId)) {
+                        products.setPriceReviewSince(planned.productId, null, time.occurredAt)
+                    }
+                }
 
                 is BulkTarget.OwnPrice -> {
                     val own =

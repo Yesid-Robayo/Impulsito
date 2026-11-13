@@ -75,6 +75,21 @@ class ProductDetailViewModelTest {
     }
 
     @Test
+    fun `arriving from the review queue opens the price sheet once`() = runTest(dispatcher) {
+        val model = ProductDetailViewModel(1L, operations, NUMBERS, openPriceSheet = true)
+        backgroundScope.launch(dispatcher) { model.uiState.collect {} }
+        advanceUntilIdle()
+        assertEquals("5000", model.uiState.value.priceSheet?.price)
+
+        model.onAction(ProductDetailAction.DismissPriceSheet)
+        advanceUntilIdle()
+        operations.product.value =
+            operations.product.value?.let { it.copy(movements = emptyList()) }
+        advanceUntilIdle()
+        assertNull(model.uiState.value.priceSheet)
+    }
+
+    @Test
     fun `the sheet opens with the current cost and saves what is written`() = runTest(dispatcher) {
         val model = model()
 

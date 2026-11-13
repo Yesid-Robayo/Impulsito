@@ -60,6 +60,7 @@ fun BulkPriceRoute(key: AppNavKey.BulkPriceUpdate, navigator: AppNavigator) {
                 numbers,
                 dependencies.container.dispatchers.default,
                 initialListId = key.priceListId,
+                pendingReview = key.pendingReview,
             )
         }
     when (model) {

@@ -115,8 +115,17 @@ class SetListPriceUseCase(
         time: RecordTime,
     ) {
         when {
-            list.isDefault ->
+            list.isDefault -> {
                 products.updateSalePrice(product.id, requireNotNull(price), time.occurredAt)
+                // Cambiar el precio de venta es revisarlo: sale de la cola de costo nuevo.
+                if (product.priceReviewSince != null) {
+                    products.setPriceReviewSince(
+                        product.id,
+                        since = null,
+                        updatedAt = time.occurredAt,
+                    )
+                }
+            }
 
             price == null -> productPrices.delete(list.id, product.id)
 

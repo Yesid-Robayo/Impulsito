@@ -1,12 +1,15 @@
 package io.github.yesidrobayo.shopledger.ui.stock
 
 import androidx.compose.runtime.Composable
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
+import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 
@@ -45,9 +48,37 @@ internal fun previewInventoryItems(): List<InventoryItem> = listOf(
     item(4L, PreviewSamples.THIRD_NAME, InventoryStatus.LOW, 5_000L, 5_000L),
 )
 
+/** La cola `Costo nuevo sin revisar`: con margen, con pérdida, sin costo y con nombre de 80 caracteres. */
+internal fun previewReviewItems(): List<PriceReviewItem> = listOf(
+    PriceReviewItem(
+        1L,
+        PreviewSamples.SHORT_NAME,
+        ProductRowTrailing.Catalog(PreviewSamples.PRICE, Margin.Defined(BasisPoints(1_200L)), true),
+    ),
+    PriceReviewItem(
+        2L,
+        PreviewSamples.LONG_NAME,
+        ProductRowTrailing.Catalog(
+            PreviewSamples.SECOND_PRICE,
+            Margin.Defined(BasisPoints(-800L)),
+            true,
+        ),
+    ),
+    PriceReviewItem(
+        3L,
+        PreviewSamples.SECOND_NAME,
+        ProductRowTrailing.Catalog(
+            PreviewSamples.OLD_PRICE,
+            Margin.Defined(BasisPoints(10_000L)),
+            false,
+        ),
+    ),
+)
+
 internal fun previewInventory(
     items: List<InventoryItem> = previewInventoryItems(),
     value: Money? = PreviewSamples.LONG_AMOUNT,
+    reviewItems: List<PriceReviewItem> = emptyList(),
 ) = InventoryContent.Ready(
     lowStockCount = items.size,
     negativeCount = items.count { it.status == InventoryStatus.NEGATIVE },
@@ -55,6 +86,7 @@ internal fun previewInventory(
     archivedValue = Money(48_000L),
     hasStockWithoutCost = true,
     items = items,
+    reviewItems = reviewItems,
 )
 
 @ThemePreviews
@@ -98,4 +130,18 @@ private fun InventoryDiscreetPreview() {
 @Composable
 private fun InventoryEmptyAndErrorPreview() {
     PreviewTheme { InventoryScreen(InventoryUiState(content = InventoryContent.EmptyCatalog), {}) }
+}
+
+@ThemePreviews
+@Composable
+private fun InventoryReviewPreview() {
+    PreviewTheme {
+        InventoryScreen(
+            InventoryUiState(
+                chip = InventoryChip.REVIEW,
+                content = previewInventory(reviewItems = previewReviewItems()),
+            ),
+            {},
+        )
+    }
 }

@@ -240,6 +240,7 @@ class ProductDetailViewModel(
     private val operations: ProductDetailOperations,
     private val numbers: ProductNumberFormat,
     openCostSheet: Boolean = false,
+    openPriceSheet: Boolean = false,
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val extra = MutableStateFlow(Extra())
@@ -248,6 +249,9 @@ class ProductDetailViewModel(
 
     /** Si falta abrir la hoja de corregir el costo, pedida al llegar: se abre una sola vez. */
     private var costSheetPending = openCostSheet
+
+    /** Si falta abrir la hoja de cambiar el precio, pedida desde `Revisar`: también una sola vez. */
+    private var priceSheetPending = openPriceSheet
 
     private val content = attempts.flatMapLatest {
         combine(operations.overview(productId), operations.pricing()) { overview, context ->
@@ -268,6 +272,10 @@ class ProductDetailViewModel(
                     // Solo un producto con libro y vigente tiene costo que corregir.
                     val tracked = product.details.stockMode == ProductStockMode.TRACKED
                     if (tracked && !product.isArchived) onAction(ProductDetailAction.OpenCostSheet)
+                }
+                if (priceSheetPending && product != null) {
+                    priceSheetPending = false
+                    if (!product.isArchived) onAction(ProductDetailAction.OpenPriceSheet)
                 }
             }
     }
