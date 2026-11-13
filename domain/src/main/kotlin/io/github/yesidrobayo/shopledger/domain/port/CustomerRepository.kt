@@ -51,6 +51,13 @@ interface CustomerRepository {
     /** Lo archiva con [archivedAt], o lo reactiva con `null`. */
     suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant)
 
+    /**
+     * Borra los datos personales del cliente y fija [anonymizedAt], que no se deshace: nombre,
+     * nombre normalizado, teléfono, correo y notas, y la dirección y la nota de entrega de todos sus
+     * pedidos. No toca sus libros, sus saldos ni sus ventas.
+     */
+    suspend fun anonymize(id: Long, anonymizedAt: Instant)
+
     /** Elimina un cliente sin historia. */
     suspend fun delete(id: Long)
 }

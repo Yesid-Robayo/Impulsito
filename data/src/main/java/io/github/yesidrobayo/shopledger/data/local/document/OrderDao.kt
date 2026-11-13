@@ -72,6 +72,18 @@ internal interface OrderDao {
         updatedAt: Long,
     ): Int
 
+    /**
+     * Vacía la dirección y la nota de entrega de todos los pedidos de un cliente, también los
+     * entregados o cancelados: son datos personales, y anonimizar al cliente los borra. Lo demás del
+     * pedido no cambia. Devuelve cuántos pedidos tenían algo que vaciar.
+     */
+    @Query(
+        "UPDATE orders SET delivery_address = NULL, delivery_note = NULL, " +
+            "updated_at = :updatedAt WHERE customer_id = :customerId " +
+            "AND (delivery_address IS NOT NULL OR delivery_note IS NOT NULL)",
+    )
+    suspend fun clearDeliveryOf(customerId: Long, updatedAt: Long): Int
+
     /** Quita una línea. Solo se llama mientras el pedido no se ha entregado ni cancelado. */
     @Query("DELETE FROM order_lines WHERE id = :lineId")
     suspend fun deleteLine(lineId: Long): Int

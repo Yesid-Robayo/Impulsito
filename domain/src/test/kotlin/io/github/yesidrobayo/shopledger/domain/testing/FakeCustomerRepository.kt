@@ -70,6 +70,11 @@ internal class FakeCustomerRepository(private val database: InMemoryDatabase) : 
     override suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant) =
         change(id) { it.copy(archivedAt = archivedAt, updatedAt = updatedAt) }
 
+    override suspend fun anonymize(id: Long, anonymizedAt: Instant) = change(id) {
+        check(!it.isAnonymized) { "Ya estaba anonimizado" }
+        it.copy(contact = null, anonymizedAt = anonymizedAt, updatedAt = anonymizedAt)
+    }
+
     override suspend fun delete(id: Long) {
         // Como la base: con historia, una llave lo impide.
         check(!hasHistory(id)) { "Una llave impide borrarlo" }

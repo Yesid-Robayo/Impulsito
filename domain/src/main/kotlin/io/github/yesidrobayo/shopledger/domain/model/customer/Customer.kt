@@ -48,6 +48,12 @@ data class Customer(
     /** Si se anonimizó: ya no tiene datos personales, y eso no se deshace. */
     val isAnonymized: Boolean get() = anonymizedAt != null
 
+    /**
+     * Si debe o tiene saldo a favor. Archivarlo o anonimizarlo no cambia ese saldo, y la pantalla
+     * lo avisa antes.
+     */
+    val hasBalance: Boolean get() = balance != Money.ZERO
+
     /** Lo que se puede volver a editar: sus datos y su lista, o `null` si se anonimizó. */
     val details: CustomerDetails? get() = contact?.let { CustomerDetails(it, priceListId) }
 }

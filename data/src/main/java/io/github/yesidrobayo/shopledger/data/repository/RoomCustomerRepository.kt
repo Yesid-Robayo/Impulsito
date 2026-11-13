@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.map
  */
 internal class RoomCustomerRepository(database: AppDatabase) : CustomerRepository {
     private val customers = database.customerDao()
+    private val orders = database.orderDao()
     private val writes = RepositoryWrites(database)
 
     override fun observe(filter: ArchiveFilter): Flow<List<Customer>> {
@@ -94,6 +95,18 @@ internal class RoomCustomerRepository(database: AppDatabase) : CustomerRepositor
                     updatedAt.toStoredMillis(),
                 ),
             )
+        }
+    }
+
+    /**
+     * El cliente y la entrega de sus pedidos, en la misma transacción. Uno ya anonimizado no cambia,
+     * y sale como regla rota: el caso de uso lo pregunta antes.
+     */
+    override suspend fun anonymize(id: Long, anonymizedAt: Instant) {
+        writes.inTransaction {
+            val at = anonymizedAt.toStoredMillis()
+            requireOneRow(customers.anonymize(id, at))
+            orders.clearDeliveryOf(id, at)
         }
     }
 
