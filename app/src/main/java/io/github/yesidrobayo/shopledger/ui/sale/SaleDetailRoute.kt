@@ -41,7 +41,12 @@ fun SaleDetailRoute(
         rememberAppViewModel(key = "sale-${key.saleId}") { dependencies ->
             val ports = dependencies.ports
             val clock = dependencies.container.clock
-            val observe = ObserveSaleDetailUseCase(ports.sales, ports.salePayments, ports.products)
+            val observe = ObserveSaleDetailUseCase(
+                ports.sales,
+                ports.salePayments,
+                ports.products,
+                ports.saleReturns,
+            )
             val void = VoidSaleUseCase(
                 transactions = ports.transactions,
                 settings = ports.settings,

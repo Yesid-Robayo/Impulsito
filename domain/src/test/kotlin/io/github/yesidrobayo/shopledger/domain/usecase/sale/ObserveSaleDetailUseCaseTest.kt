@@ -7,6 +7,9 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnLineRequest
+import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnSettlement
+import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturnRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
@@ -73,5 +76,30 @@ class ObserveSaleDetailUseCaseTest {
     @Test
     fun `a sale that does not exist has no detail`() = runTest {
         assertNull(observe(404L).first())
+    }
+
+    @Test
+    fun `a return shows in the detail, and the sale is no longer offered to void`() = runTest {
+        val saleId = sell()
+        val withReturns =
+            ObserveSaleDetailUseCase(world.sales, world.payments, products, world.saleReturns)
+        val soapLine = world.tables.lines.values.first { it.content.productId == 1L }
+        world.registerSaleReturn()(
+            SaleReturnRequest(
+                saleId,
+                listOf(ReturnLineRequest(soapLine.id, QuantityMilli(1_000L))),
+                ReturnSettlement.Refund(null),
+            ),
+        )
+
+        val detail = requireNotNull(withReturns(saleId).first())
+
+        assertEquals(1, detail.returns.size)
+        assertEquals(QuantityMilli(1_000L), detail.returned.getValue(soapLine.id).quantity)
+        assertEquals(QuantityMilli(1_000L), detail.remainingOf(soapLine))
+        assertEquals(false, detail.canBeVoided)
+        assertEquals(true, detail.canBeReturned)
+        // Sin el libro de devoluciones, el detalle no las ve.
+        assertEquals(emptyList<Any>(), requireNotNull(observe(saleId).first()).returns)
     }
 }

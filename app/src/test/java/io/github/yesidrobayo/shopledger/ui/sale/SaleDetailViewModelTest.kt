@@ -9,6 +9,9 @@ import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
+import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturn
+import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnResolution
+import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturn
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
@@ -305,6 +308,42 @@ class SaleDetailViewModelTest {
             model.act(this, SaleDetailAction.Back)
             assertTrue(model.ready.sale.canVoid)
         }
+
+    @Test
+    fun `a sale with an active return is not offered to void or correct`() = runTest(dispatcher) {
+        val returned = SaleReturn(
+            id = 3L,
+            content = NewSaleReturn(
+                saleId = 7L,
+                resolution = ReturnResolution.REFUND,
+                netRefund = Money(1_000L),
+                taxRefund = Money.ZERO,
+                totalRefund = Money(1_000L),
+                costReturned = Money.ZERO,
+                moneyAccountId = null,
+                replacementSaleId = null,
+                note = null,
+                occurredAt = at,
+                businessDate = date,
+                createdAt = at,
+            ),
+            voiding = null,
+        )
+        detail.value = detailOf(voiding = null).copy(returns = listOf(returned))
+        val model = viewModel()
+
+        assertTrue(model.ready.sale.hasActiveReturns)
+        assertFalse(model.ready.sale.canVoid)
+        model.act(this, SaleDetailAction.OpenVoid)
+        assertNull(model.ready.sheet)
+
+        // Anulada la devolución, se vuelve a ofrecer.
+        detail.value = detailOf(voiding = null).copy(
+            returns = listOf(returned.copy(voiding = Voiding(at, VoidReason.ENTRY_ERROR, null))),
+        )
+        advanceUntilIdle()
+        assertTrue(model.ready.sale.canVoid)
+    }
 
     @Test
     fun `a missing sale and a read failure have their own states`() = runTest(dispatcher) {

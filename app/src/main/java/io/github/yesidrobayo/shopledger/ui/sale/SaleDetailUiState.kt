@@ -46,7 +46,7 @@ sealed interface SaleDetailUiState {
  * [results] son el costo, la ganancia, el margen, las comisiones y el neto: se ocultan en modo
  * discreto. [charges] es lo que explica el total además de las líneas. [receipt] es el comprobante
  * que se comparte, solo de una venta activa, y [units] las unidades con que se escriben sus
- * cantidades.
+ * cantidades. [hasActiveReturns] dice si alguna devolución sigue activa.
  */
 @Immutable
 data class SaleDetailView(
@@ -63,9 +63,13 @@ data class SaleDetailView(
     val note: String?,
     val receipt: SaleReceipt? = null,
     val units: Map<Long, MeasureUnit> = emptyMap(),
+    val hasActiveReturns: Boolean = false,
 ) {
-    /** Solo una venta activa se anula, una sola vez. */
-    val canVoid: Boolean get() = voiding == null
+    /**
+     * Solo una venta activa se anula, una sola vez, y nunca con una devolución activa: lo que falta
+     * se devuelve.
+     */
+    val canVoid: Boolean get() = voiding == null && !hasActiveReturns
 }
 
 /** Cuándo y por qué se anuló la venta. [date] falta sin zona conocida. */

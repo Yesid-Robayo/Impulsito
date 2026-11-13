@@ -224,6 +224,25 @@ class CandidateRepairTest {
                             firstId("sale_payments"),
                     )
                 },
+                "devolución mayor que lo vendido" to {
+                    returnBeyondSold(
+                        firstId(
+                            "sale_lines",
+                            "sale_id IN (SELECT id FROM sales WHERE status = 'ACTIVE')",
+                        ),
+                    )
+                },
+                "venta anulada con su devolución activa" to {
+                    val line = firstId(
+                        "sale_lines",
+                        "sale_id IN (SELECT id FROM sales WHERE status = 'ACTIVE')",
+                    )
+                    returnBeyondSold(line, extraMilli = -1)
+                    execSQL(
+                        "UPDATE sales SET status = 'VOIDED', voided_at = 1, void_reason = 'OTHER' " +
+                            "WHERE id = (SELECT sale_id FROM sale_lines WHERE id = $line)",
+                    )
+                },
                 "venta sin líneas" to {
                     val sale =
                         firstId("sales", "id NOT IN (SELECT sale_id FROM sale_returns)")
@@ -390,6 +409,27 @@ class CandidateRepairTest {
         repairAndAssertClean(case, candidate)
 
         assertEquals(case, before, tablesDigest(candidate, LEDGERS_AND_LINES))
+    }
+
+    /**
+     * Agrega, sin pasar por las guardas, una devolución activa de la línea vendida [saleLineId] con
+     * lo vendido más [extraMilli]: una milésima de más es devolver más de lo vendido.
+     */
+    private fun SQLiteConnection.returnBeyondSold(saleLineId: Long, extraMilli: Long = 1) {
+        execSQL(
+            "INSERT INTO sale_returns (sale_id, resolution, net_refund, tax_refund, total_refund, " +
+                "cost_returned, money_account_id, replacement_sale_id, note, occurred_at, " +
+                "business_date, created_at, status, voided_at, void_reason, void_note) " +
+                "SELECT sale_id, 'REFUND', 0, 0, 0, 0, NULL, NULL, NULL, 1, " +
+                "(SELECT business_date FROM sales WHERE id = sale_id), 1, 'ACTIVE', NULL, NULL, " +
+                "NULL FROM sale_lines WHERE id = $saleLineId",
+        )
+        execSQL(
+            "INSERT INTO sale_return_lines (sale_return_id, sale_line_id, quantity_milli, " +
+                "net_amount, tax_amount, line_total, line_cost, restock) " +
+                "SELECT last_insert_rowid(), id, quantity_milli + $extraMilli, 0, 0, 0, 0, 0 " +
+                "FROM sale_lines WHERE id = $saleLineId",
+        )
     }
 
     private fun assertWarned(

@@ -196,6 +196,7 @@ class SaleDetailViewModel(
             voiding = sale.voiding?.let {
                 SaleVoidView(it.reason, calendar?.businessDateOf(it.voidedAt), it.note)
             },
+            hasActiveReturns = detail.hasActiveReturns,
             lines = detail.lines.map { line ->
                 val row = line.content
                 SaleDetailLine(
