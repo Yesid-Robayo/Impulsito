@@ -151,7 +151,7 @@ class CreateProductUseCase(
             taxRateId = null,
             targetMargin = null,
             referenceCost = null,
-            referencePrice = null,
+            referencePrice = form.referencePrice?.takeIf { it > Money.ZERO },
             expiryNoticeDays = null,
         )
         val productId = products.insert(

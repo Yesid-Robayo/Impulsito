@@ -387,6 +387,7 @@ class StockAdjustmentViewModel(
             ProductFormIssue.STOCK_NOT_APPLICABLE, ProductFormIssue.BARCODE_TOO_LONG,
             ProductFormIssue.REPLACEMENT_COST_OUT_OF_RANGE,
             ProductFormIssue.REPLACEMENT_COST_NOT_APPLICABLE,
+            ProductFormIssue.REFERENCE_PRICE_OUT_OF_RANGE,
             -> null
         }
 

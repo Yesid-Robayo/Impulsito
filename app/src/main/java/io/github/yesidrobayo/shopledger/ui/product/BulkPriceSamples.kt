@@ -1,17 +1,26 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceAdjustment
+import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceRequest
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceScope
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoPlan
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkUndoRevert
+import io.github.yesidrobayo.shopledger.domain.model.pricing.FxRate
+import io.github.yesidrobayo.shopledger.domain.model.pricing.NewFxRate
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPricePreviewer
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ReferenceScale
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
+import kotlinx.datetime.LocalDate
 
 /**
  * Estados inventados de la actualización masiva para las vistas previas y la galería: un producto
@@ -77,6 +86,52 @@ object BulkPriceSamples {
             ),
             savedStep = Money(100L),
             lists = choices.writable,
+        )
+    }
+
+    /**
+     * `Por cotización`: 12,50 de referencia por 4.150,5 da 51.881, y los que no tienen precio de
+     * referencia quedan fuera. Sin [withRate], todavía no hay cotización y se pide registrarla.
+     */
+    fun quote(withRate: Boolean = true): BulkPriceUiState {
+        val reference = ReferenceCurrency(requireNotNull(CurrencyCode.of("XTS")), 2)
+        val rate = FxRate(
+            1L,
+            NewFxRate(
+                reference.code,
+                4_150_500_000L,
+                null,
+                Instant.fromEpochMilliseconds(0L),
+                BusinessDate(LocalDate(2026, 11, 1)),
+                Instant.fromEpochMilliseconds(0L),
+            ),
+        )
+        val referenced = products.mapIndexed { index, product ->
+            if (index != 0) {
+                product
+            } else {
+                product.copy(details = product.details.copy(referencePrice = Money(1_250L)))
+            }
+        }
+        val request = BulkPriceRequest(
+            BulkPriceScope.All,
+            BulkPriceAdjustment.ReferenceRate(rate.content.rateMicro),
+            Money.ZERO,
+        )
+        val context = BulkPriceContext(scale = ReferenceScale(0, reference.decimals))
+        return BulkPriceUiState(
+            input = BulkPriceInput(mode = BulkPriceMode.REFERENCE_RATE),
+            content =
+                if (withRate) {
+                    BulkPreviewContent.Ready(
+                        BulkPricePreviewer.preview(referenced, request, context),
+                    )
+                } else {
+                    BulkPreviewContent.NeedsInput
+                },
+            savedStep = Money(100L),
+            reference = reference,
+            rate = rate.takeIf { withRate },
         )
     }
 

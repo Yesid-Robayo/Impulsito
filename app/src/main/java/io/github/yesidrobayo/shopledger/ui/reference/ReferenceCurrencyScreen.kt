@@ -35,6 +35,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ReferenceRateRules
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObserveReferenceRateUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObserveReferencedProductsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.RecordReferenceRateUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.SetReferenceCurrencyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
@@ -109,6 +110,7 @@ fun ReferenceCurrencyRoute(navigator: AppNavigator) {
             setReference = { set(it) },
             record = { rate, note, date -> record(rate, note, date) },
             symbols = symbols,
+            referencedProducts = { ObserveReferencedProductsUseCase(ports.products)() },
         )
     }
     when (model) {
@@ -133,6 +135,11 @@ fun ReferenceCurrencyRoute(navigator: AppNavigator) {
             ReferenceCurrencyScreen(uiState, currencies) { action ->
                 when (action) {
                     ReferenceCurrencyAction.Back -> navigator.back()
+
+                    // Repreciar solo prepara la vista previa: nada cambia hasta aplicarla.
+                    ReferenceCurrencyAction.Reprice ->
+                        navigator.open(AppNavKey.BulkPriceUpdate(referenceRate = true))
+
                     else -> viewModel.onAction(action)
                 }
             }
@@ -303,6 +310,21 @@ private fun ReferenceBody(
         item(key = "current") { CurrentRate(state.latest, reference, rows) }
         item(key = "notice") {
             NoticeCard(manualNotice(), NoticeVariant.INFO, rows)
+        }
+        if (state.repriceCount > 0) {
+            item(key = "reprice") {
+                NoticeCard(
+                    text = pluralStringResource(
+                        R.plurals.reference_products_notice,
+                        state.repriceCount,
+                        LocalAppFormats.current.quantity.formatCount(state.repriceCount.toLong()),
+                    ),
+                    variant = NoticeVariant.INFO,
+                    modifier = rows,
+                    actionLabel = stringResource(R.string.reference_reprice_action),
+                    onAction = { onAction(ReferenceCurrencyAction.Reprice) },
+                )
+            }
         }
         if (state.history.isNotEmpty()) {
             item(key = "history") {

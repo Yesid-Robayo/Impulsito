@@ -22,6 +22,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
@@ -331,6 +333,69 @@ class ProductEditViewModelTest {
             assertEquals(5L, id)
             assertEquals(Money(450_050L), form.salePrice)
             assertEquals(Money(300_000L), form.cost)
+        }
+
+    @Test
+    fun `the reference price shows in its currency and only a change is sent`() =
+        runTest(dispatcher) {
+            val stored = product(5L, "Arroz", salePrice = 420_000L, averageCost = 300_000L)
+            operations.editing = ProductForEdit(
+                product = stored.copy(
+                    details = stored.details.copy(referencePrice = Money(1_250L)),
+                ),
+                lockedFields = emptySet(),
+                costLocked = false,
+            )
+            val reference = MutableStateFlow<ReferenceCurrency?>(null)
+            val model = ProductEditViewModel(
+                operations,
+                numbers,
+                productId = 5L,
+                prefillName = null,
+                unitNames = NAMES,
+                referenceCurrency = { reference },
+            )
+            advanceUntilIdle()
+            // Sin moneda de referencia no se pide, y el guardado no toca lo que había.
+            assertNull(model.uiState.value.reference)
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertNull(operations.edited.last().second.referencePrice)
+
+            // Con una moneda de 3 decimales, 1250 se lee 1,25, sin ceros de más, como los demás
+            // montos.
+            reference.value = ReferenceCurrency(requireNotNull(CurrencyCode.of("XTS")), 3)
+            advanceUntilIdle()
+            assertEquals("1,25", model.uiState.value.form.referencePrice)
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertNull(operations.edited.last().second.referencePrice)
+
+            model.onAction(ProductEditAction.ReferencePriceChange("2,5"))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertEquals(Money(2_500L), operations.edited.last().second.referencePrice)
+
+            model.onAction(ProductEditAction.ReferencePriceChange("1,23456"))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertEquals(
+                FieldProblem.TooManyDecimals(3),
+                model.uiState.value.errors[ProductEditField.REFERENCE_PRICE],
+            )
+            model.onAction(ProductEditAction.ReferencePriceChange("abc"))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertEquals(
+                FieldProblem.NotANumber,
+                model.uiState.value.errors[ProductEditField.REFERENCE_PRICE],
+            )
+
+            // En blanco es sin dato: se manda cero.
+            model.onAction(ProductEditAction.ReferencePriceChange(""))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertEquals(Money.ZERO, operations.edited.last().second.referencePrice)
         }
 
     @Test

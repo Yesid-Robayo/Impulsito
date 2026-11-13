@@ -46,4 +46,7 @@ enum class ProductFormIssue {
 
     /** Un producto sin stock propio no se compra, así que no lleva costo de reposición. */
     REPLACEMENT_COST_NOT_APPLICABLE,
+
+    /** El precio de referencia es negativo o pasa del tope de precio por unidad. */
+    REFERENCE_PRICE_OUT_OF_RANGE,
 }

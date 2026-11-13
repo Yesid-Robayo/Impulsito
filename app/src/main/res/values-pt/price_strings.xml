@@ -11,4 +11,6 @@
     <string name="settings_group_business">Perfil do negócio</string>
     <string name="settings_business_name">Nome do negócio</string>
     <string name="settings_target_margin">Margem-alvo</string>
+    <string name="product_reference_price">Preço de referência</string>
+    <string name="product_reference_price_help">Preço de venda em %1$s, usado para reajustar com uma cotação.</string>
 </resources>

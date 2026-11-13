@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
 
 /** Los campos del formulario de un producto que pueden llevar un error. */
@@ -21,6 +22,7 @@ enum class ProductEditField {
     MIN_STOCK,
     BARCODE,
     REPLACEMENT_COST,
+    REFERENCE_PRICE,
 }
 
 /** Por qué un campo no se puede guardar así. La pantalla lo dice con su texto. */
@@ -78,6 +80,7 @@ sealed interface ProductEditNotice {
  * Lo que la persona escribe, tal cual, y lo que eligió. [stockMode] empieza con stock propio; sin
  * stock, el costo es el costo fijo de cada unidad vendida y no hay stock que contar ni vigilar.
  * [replacementCost] vacío es sin dato: la pantalla no pone ninguna cifra en su lugar.
+ * [referencePrice] va en la moneda de referencia, con sus decimales; vacío también es sin dato.
  */
 @Immutable
 data class ProductEditForm(
@@ -91,6 +94,7 @@ data class ProductEditForm(
     val minStock: String = "",
     val barcode: String = "",
     val replacementCost: String = "",
+    val referencePrice: String = "",
 )
 
 /**
@@ -107,6 +111,8 @@ data class ProductEditForm(
  * [pricing] es lo que el negocio fija para medir márgenes y sugerir precios, o `null` mientras se
  * lee. [suggestTarget] es el margen objetivo con que la tarjeta ofrece sugerir un precio, o `null`
  * si no hay de dónde sugerirlo, y [suggestion] la hoja de la sugerencia, si está abierta.
+ * [reference] es la moneda de referencia elegida, o `null` sin ella: entonces no se pide precio de
+ * referencia.
  */
 @Immutable
 data class ProductEditUiState(
@@ -135,6 +141,7 @@ data class ProductEditUiState(
     val suggestTarget: BasisPoints? = null,
     val suggestion: PriceSuggestionDraft? = null,
     val listPrices: List<ProductListPrice> = emptyList(),
+    val reference: ReferenceCurrency? = null,
 ) {
     /** La categoría elegida, o `null` si es sin categoría. */
     val category: Category? get() = categories.firstOrNull { it.id == form.categoryId }

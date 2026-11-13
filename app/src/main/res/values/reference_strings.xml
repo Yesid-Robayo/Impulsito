@@ -27,4 +27,9 @@
     <string name="reference_saved">Exchange rate recorded</string>
     <string name="hub_tool_reference_currency">Reference currency</string>
     <string name="hub_tool_reference_currency_desc">Set prices from another currency, with a rate entered by hand</string>
+    <plurals name="reference_products_notice">
+        <item quantity="one">%1$s product has a reference cost or price</item>
+        <item quantity="other">%1$s products have a reference cost or price</item>
+    </plurals>
+    <string name="reference_reprice_action">Reprice with this rate</string>
 </resources>

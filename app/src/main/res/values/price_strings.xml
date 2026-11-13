@@ -11,4 +11,6 @@
     <string name="settings_group_business">Business profile</string>
     <string name="settings_business_name">Business name</string>
     <string name="settings_target_margin">Target margin</string>
+    <string name="product_reference_price">Reference price</string>
+    <string name="product_reference_price_help">Sale price in %1$s, used to reprice with an exchange rate.</string>
 </resources>

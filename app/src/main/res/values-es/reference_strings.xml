@@ -27,4 +27,10 @@
     <string name="reference_saved">Cotización registrada</string>
     <string name="hub_tool_reference_currency">Moneda de referencia</string>
     <string name="hub_tool_reference_currency_desc">Fijar precios desde otra moneda, con cotización escrita a mano</string>
+    <plurals name="reference_products_notice">
+        <item quantity="one">%1$s producto tiene costo o precio de referencia</item>
+        <item quantity="many">%1$s de productos tienen costo o precio de referencia</item>
+        <item quantity="other">%1$s productos tienen costo o precio de referencia</item>
+    </plurals>
+    <string name="reference_reprice_action">Repreciar con esta cotización</string>
 </resources>

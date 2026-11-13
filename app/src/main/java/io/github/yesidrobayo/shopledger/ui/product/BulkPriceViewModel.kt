@@ -17,15 +17,19 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
+import io.github.yesidrobayo.shopledger.domain.model.pricing.FxRate
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPricePreviewer
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.BulkPriceRules
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ReferenceScale
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ReferenceRateView
 import kotlin.math.abs
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineDispatcher
@@ -79,6 +83,12 @@ interface BulkPriceOperations {
 
     /** Los productos de `Revisar` en el inventario: costo nuevo, margen bajo o costo viejo. */
     fun reviewIds(): Flow<Set<Long>> = flowOf(emptySet())
+
+    /**
+     * La moneda de referencia con su cotización vigente, para `Por cotización`. Sin moneda, ese
+     * modo no se ofrece.
+     */
+    fun reference(): Flow<ReferenceRateView> = flowOf(ReferenceRateView(null, null, emptyList()))
 
     /** Lo que haría deshacer la última actualización masiva, o `null` si no hay ninguna. */
     fun undoOffer(): Flow<BulkUndoPlan?>
@@ -225,7 +235,18 @@ data class BulkPriceUiState(
     val undoing: Boolean = false,
     val lists: List<PriceList> = emptyList(),
     val reviewIds: Set<Long> = emptySet(),
+    val reference: ReferenceCurrency? = null,
+    val rate: FxRate? = null,
 ) {
+    /**
+     * Los modos que se ofrecen: `Por cotización` solo con moneda de referencia, o si se abrió con
+     * él para pedir una cotización.
+     */
+    val offeredModes: List<BulkPriceMode>
+        get() = BulkPriceMode.entries.filter {
+            it != BulkPriceMode.REFERENCE_RATE || reference != null || input.mode == it
+        }
+
     /** Las listas que se ofrecen: con una sola no hay nada que elegir. */
     val offeredLists: List<PriceList> get() = lists.takeIf { it.size > 1 }.orEmpty()
 
@@ -248,6 +269,9 @@ data class BulkPriceUiState(
 /** Lo que la persona hace en la pantalla. */
 sealed interface BulkPriceAction {
     data object Back : BulkPriceAction
+
+    /** Sin cotización, quiere registrar una en la moneda de referencia. */
+    data object OpenReference : BulkPriceAction
 
     data class SelectScope(val kind: BulkScopeKind) : BulkPriceAction
 
@@ -318,6 +342,7 @@ class BulkPriceViewModel(
     initialListId: Long? = null,
     pendingReview: Boolean = false,
     review: Boolean = false,
+    referenceRate: Boolean = false,
 ) : ViewModel() {
     private val input = MutableStateFlow(
         BulkPriceInput(
@@ -327,8 +352,16 @@ class BulkPriceViewModel(
                 else -> BulkScopeKind.ALL
             },
             listIds = setOfNotNull(initialListId),
+            mode = if (referenceRate) BulkPriceMode.REFERENCE_RATE else BulkPriceMode.PERCENT,
         ),
     )
+
+    /**
+     * La moneda de referencia y su cotización vigente. Nunca se supone un valor: sin cotización,
+     * `Por cotización` no calcula nada.
+     */
+    private val reference: Flow<ReferenceRateView> = operations.reference()
+        .catch { emit(ReferenceRateView(null, null, emptyList())) }
 
     /** Los de `Revisar`: si no se pueden leer, el chip no aparece y su alcance queda vacío. */
     private val reviewIds: Flow<Set<Long>> = operations.reviewIds().catch { emit(emptySet()) }
@@ -342,6 +375,10 @@ class BulkPriceViewModel(
     private val choices: Flow<BulkListChoices> =
         operations.listChoices().catch { emit(BulkListChoices()) }
 
+    /** Las listas, con la escala de la moneda de referencia que `Por cotización` necesita. */
+    private val listsAndReference: Flow<Pair<BulkListChoices, ReferenceRateView>> =
+        combine(choices, reference) { listed, rate -> listed to rate }
+
     /** El catálogo, o `null` mientras no llega. Reintentar vuelve a leerlo. */
     private val catalog: Flow<List<Product>?> = attempts.flatMapLatest {
         operations.catalog().map<List<Product>, List<Product>?> { it }.onStart { emit(null) }
@@ -352,12 +389,17 @@ class BulkPriceViewModel(
             catalog,
             input.debounce(TYPING_PAUSE_MILLIS),
             operations.defaultStep(),
-            choices,
+            listsAndReference,
             reviewIds,
-        ) { products, typed, saved, lists, reviewed ->
-            val request = requestOf(typed, saved, reviewed)
+        ) { products, typed, saved, (lists, rate), reviewed ->
+            val request = requestOf(typed, saved, reviewed, rate.latest)
             lastRequest = request
-            lastContext = lists.context
+            val context = lists.context.copy(
+                scale = rate.reference?.let {
+                    ReferenceScale(numbers.currencyDecimals, it.decimals)
+                },
+            )
+            lastContext = context
             when {
                 products == null -> BulkPreviewContent.Loading
 
@@ -368,7 +410,7 @@ class BulkPriceViewModel(
 
                 else ->
                     BulkPreviewContent.Ready(
-                        BulkPricePreviewer.preview(products, request, lists.context),
+                        BulkPricePreviewer.preview(products, request, context),
                     )
             }
         }
@@ -398,11 +440,12 @@ class BulkPriceViewModel(
                 operations.undoOffer().catch {
                     emit(null)
                 },
-                choices,
+                listsAndReference,
             ) { more, offer, listed ->
                 Triple(more, offer, listed)
             },
-        ) { typed, shown, lists, (more, offer, listed) ->
+        ) { typed, shown, lists, (more, offer, listedAndRate) ->
+            val (listed, rate) = listedAndRate
             BulkPriceUiState(
                 input = typed,
                 content = shown,
@@ -419,6 +462,8 @@ class BulkPriceViewModel(
                 undoing = more.undoing,
                 lists = listed.writable,
                 reviewIds = lists.reviewIds,
+                reference = rate.reference,
+                rate = rate.latest,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -509,8 +554,8 @@ class BulkPriceViewModel(
 
             BulkPriceAction.ConfirmUndo -> undo()
 
-            // La resuelve la pantalla con la navegación.
-            BulkPriceAction.Back -> Unit
+            // Las resuelve la pantalla con la navegación.
+            BulkPriceAction.Back, BulkPriceAction.OpenReference -> Unit
         }
     }
 
@@ -567,8 +612,9 @@ class BulkPriceViewModel(
         typed: BulkPriceInput,
         saved: Money,
         reviewed: Set<Long>,
+        rate: FxRate?,
     ): BulkPriceRequest? {
-        val adjustment = adjustmentOf(typed) ?: return null
+        val adjustment = adjustmentOf(typed, rate) ?: return null
         val scope = when (typed.scope) {
             BulkScopeKind.ALL -> BulkPriceScope.All
 
@@ -592,7 +638,7 @@ class BulkPriceViewModel(
     }
 
     /** El cálculo escrito para el modo elegido, si se puede usar. */
-    private fun adjustmentOf(typed: BulkPriceInput): BulkPriceAdjustment? {
+    private fun adjustmentOf(typed: BulkPriceInput, rate: FxRate?): BulkPriceAdjustment? {
         val adjustment = when (typed.mode) {
             BulkPriceMode.PERCENT -> percentOf(typed)?.let { BulkPriceAdjustment.Percent(it) }
 
@@ -608,8 +654,9 @@ class BulkPriceViewModel(
                 ) as? NumberInput.Value
                 )?.value?.let { BulkPriceAdjustment.TargetMargin(it) }
 
-            // La cotización llega con la moneda de referencia: aquí no se ofrece todavía.
-            BulkPriceMode.REFERENCE_RATE -> null
+            // La cotización vigente que escribió la persona, tal como se ve: nunca una supuesta.
+            BulkPriceMode.REFERENCE_RATE ->
+                rate?.let { BulkPriceAdjustment.ReferenceRate(it.content.rateMicro) }
         }
         return adjustment?.takeIf { BulkPriceRules.isValid(it) }
     }

@@ -36,6 +36,9 @@ object ProductFormRules {
         if (!isUnitMoney(form.salePrice)) issues += ProductFormIssue.SALE_PRICE_OUT_OF_RANGE
         costIssue(form)?.let { issues += it }
         replacementIssue(form)?.let { issues += it }
+        form.referencePrice?.takeUnless(::isUnitMoney)?.let {
+            issues += ProductFormIssue.REFERENCE_PRICE_OUT_OF_RANGE
+        }
         if (StockModeRules.hasLedger(form.stockMode)) {
             quantityIssue(initialStock, allowsFraction, mustMove = false)?.let { issues += it }
             minStockIssue(form.minStock, allowsFraction)?.let { issues += it }

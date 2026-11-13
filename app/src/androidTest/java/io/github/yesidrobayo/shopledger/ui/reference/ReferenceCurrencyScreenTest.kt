@@ -13,6 +13,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
@@ -123,6 +124,22 @@ class ReferenceCurrencyScreenTest {
     }
 
     @Test
+    fun afterRecordingItOffersToRepriceTheProductsWithAReference() {
+        show(withRates.copy(repriceCount = 3))
+
+        compose.onNodeWithText(text(R.string.reference_reprice_action)).performScrollTo()
+            .performClick()
+        assertEquals(listOf<ReferenceCurrencyAction>(ReferenceCurrencyAction.Reprice), actions)
+    }
+
+    @Test
+    fun withoutProductsToRepriceThereIsNoOffer() {
+        show(withRates)
+
+        compose.onNodeWithText(text(R.string.reference_reprice_action)).assertDoesNotExist()
+    }
+
+    @Test
     fun theSheetWarnsAJumpAndMarksAZeroRate() {
         show(
             withRates.copy(
@@ -148,6 +165,7 @@ class ReferenceCurrencyScreenTest {
             "empty" to ReferenceCurrencyUiState.Ready(null, null, emptyList()),
             "no-rate" to ReferenceCurrencyUiState.Ready(reference, null, emptyList()),
             "rates" to withRates,
+            "reprice" to withRates.copy(repriceCount = 3),
             "sheet" to withRates.copy(
                 sheet = RateSheet(
                     rateText = "41505",

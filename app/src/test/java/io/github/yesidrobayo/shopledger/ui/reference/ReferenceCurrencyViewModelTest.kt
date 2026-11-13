@@ -50,6 +50,7 @@ class ReferenceCurrencyViewModelTest {
     private val recorded = mutableListOf<Triple<Long, String?, BusinessDate?>>()
     private var recordResult: RecordReferenceRateResult = RecordReferenceRateResult.Recorded(9)
     private var failing = false
+    private val referenced = MutableStateFlow(3)
 
     @Before
     fun useTestMain() = Dispatchers.setMain(dispatcher)
@@ -75,6 +76,7 @@ class ReferenceCurrencyViewModelTest {
                 recordResult
             },
             symbols = symbols,
+            referencedProducts = { referenced },
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -174,6 +176,27 @@ class ReferenceCurrencyViewModelTest {
             )
             assertNull(model.ready().sheet)
             assertEquals(ReferenceMessage.RateSaved, model.ready().message)
+        }
+
+    @Test
+    fun `only after recording a rate it offers to reprice the products with a reference`() =
+        runTest(dispatcher) {
+            val latest = rate(1, 4_000_000_000)
+            view.value = ReferenceRateView(other, latest, listOf(latest))
+            val model = model()
+            // Abrir la pantalla no ofrece nada: solo una cotización nueva lleva a repreciar.
+            assertEquals(0, model.ready().repriceCount)
+
+            model.onAction(ReferenceCurrencyAction.StartRate)
+            model.onAction(ReferenceCurrencyAction.RateText("4150,5"))
+            model.onAction(ReferenceCurrencyAction.SaveRate)
+            advanceUntilIdle()
+            assertEquals(3, model.ready().repriceCount)
+
+            // Sin productos con referencia, no hay nada que ofrecer.
+            referenced.value = 0
+            advanceUntilIdle()
+            assertEquals(0, model.ready().repriceCount)
         }
 
     @Test

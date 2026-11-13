@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductCon
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObserveProductListPricesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObserveReferenceRateUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.SetListPriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
@@ -30,6 +31,8 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
 import io.github.yesidrobayo.shopledger.ui.unit.ResourceUnitNames
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /**
  * El formulario de un producto en la navegación. Al guardar, vuelve a donde se abrió, donde el
@@ -73,6 +76,12 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                         CurrencyLock(ports.settings),
                         dependencies.container.clock,
                     )(listId, id, price)
+                },
+                referenceCurrency = {
+                    val ports = dependencies.ports
+                    ObserveReferenceRateUseCase(ports.settings, ports.fxRates)()
+                        .map { it.reference }
+                        .distinctUntilChanged()
                 },
             )
         }

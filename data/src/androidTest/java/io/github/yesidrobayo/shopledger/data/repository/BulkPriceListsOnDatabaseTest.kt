@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ReferenceScale
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
@@ -144,5 +145,41 @@ internal class BulkPriceListsOnDatabaseTest : RepositoryTest() {
 
         val rows = history.findByProduct(id).filter { it.content.bulkRule != null }
         assertEquals(modes, rows.map { it.content.bulkRule?.adjustment })
+    }
+
+    @Test
+    fun aRateRepricesFromTheReferencePriceAndKeepsTheRate() = runBlocking {
+        // El ejemplo de la regla: 12,50 en una moneda de 2 decimales, cotización 4150,50 y un
+        // libro de 0 decimales dan 51881. Los demás productos, sin referencia, no cambian.
+        val (withReference, without) = database.withWriteTransaction {
+            val with = database.productDao()
+                .insert(product("Producto inventado").copy(referencePrice = 1_250L))
+            with to database.productDao().insert(product("Otro producto inventado"))
+        }
+        val before = changeSeq()
+        val request = BulkPriceRequest(
+            BulkPriceScope.All,
+            BulkPriceAdjustment.ReferenceRate(4_150_500_000L),
+            Money.ZERO,
+        )
+        val context = BulkPriceContext(scale = ReferenceScale(currencyDecimals = 0, 2))
+
+        val applied =
+            apply(listOf(withReference, without), request, context) as ApplyBulkPriceResult.Applied
+
+        assertEquals(1, applied.changed)
+        assertEquals(before + 1, changeSeq())
+        assertEquals(
+            listOf(Money(51_881L), Money(2_500L)),
+            products.findByIds(listOf(withReference, without)).map { it.salePrice },
+        )
+        assertEquals(
+            1L,
+            count(
+                "SELECT COUNT(*) FROM product_price_history WHERE source = 'BULK' " +
+                    "AND bulk_mode = 'REFERENCE_RATE' AND fx_rate_micro = 4150500000 " +
+                    "AND new_price = 51881",
+            ),
+        )
     }
 }

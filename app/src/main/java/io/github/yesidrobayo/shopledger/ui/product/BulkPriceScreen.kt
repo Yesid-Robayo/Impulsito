@@ -282,7 +282,7 @@ private fun Options(uiState: BulkPriceUiState, onAction: (BulkPriceAction) -> Un
         }
         SectionLabel(R.string.bulk_mode_label)
         CompactChipRow(
-            options = OFFERED_MODES,
+            options = uiState.offeredModes,
             label = { stringResource(modeLabel(it)) },
             selected = setOf(input.mode),
             onToggle = { onAction(BulkPriceAction.SelectMode(it)) },
@@ -323,8 +323,7 @@ private fun Options(uiState: BulkPriceUiState, onAction: (BulkPriceAction) -> Un
                 imeAction = ImeAction.Done,
             )
 
-            // No se ofrece todavía: llega con la moneda de referencia.
-            BulkPriceMode.REFERENCE_RATE -> Unit
+            BulkPriceMode.REFERENCE_RATE -> QuoteRate(uiState, onAction)
         }
         if (uiState.highPercent) HighPercentNotice(uiState)
         SectionLabel(R.string.bulk_round)
@@ -651,9 +650,44 @@ private fun BulkPriceUndoPreview() {
     PreviewTheme { BulkPriceScreen(BulkPriceSamples.confirmingUndo(), {}) }
 }
 
-/** Los modos que se ofrecen hoy: la cotización llega con la moneda de referencia. */
-private val OFFERED_MODES =
-    listOf(BulkPriceMode.PERCENT, BulkPriceMode.AMOUNT, BulkPriceMode.TARGET_MARGIN)
+/**
+ * `Por cotización`: la cotización vigente de la moneda de referencia, para leer, con su fecha.
+ * Nunca se supone un valor: sin cotización, o sin moneda, un aviso lleva a registrarla.
+ */
+@Composable
+private fun QuoteRate(uiState: BulkPriceUiState, onAction: (BulkPriceAction) -> Unit) {
+    val reference = uiState.reference
+    val rate = uiState.rate
+    if (reference == null || rate == null) {
+        NoticeCard(
+            text = stringResource(R.string.reference_no_rate_title),
+            variant = NoticeVariant.INFO,
+            actionLabel = stringResource(R.string.reference_register_action),
+            onAction = { onAction(BulkPriceAction.OpenReference) },
+        )
+        return
+    }
+    val formats = LocalAppFormats.current
+    Column(Modifier.semantics(mergeDescendants = true) {}) {
+        Text(
+            stringResource(
+                R.string.reference_rate_current,
+                reference.code.code,
+                formats.quantity.formatMicro(rate.content.rateMicro),
+            ),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            stringResource(
+                R.string.reference_rate_since,
+                formats.date.dayMonthYear(rate.content.businessDate),
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
 
 private fun modeLabel(mode: BulkPriceMode): Int = when (mode) {
     BulkPriceMode.PERCENT -> R.string.price_list_bulk_mode_percent

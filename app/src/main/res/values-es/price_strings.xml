@@ -11,4 +11,6 @@
     <string name="settings_group_business">Perfil del negocio</string>
     <string name="settings_business_name">Nombre del negocio</string>
     <string name="settings_target_margin">Margen objetivo</string>
+    <string name="product_reference_price">Precio de referencia</string>
+    <string name="product_reference_price_help">Precio de venta en %1$s, del que parte repreciar con una cotización.</string>
 </resources>

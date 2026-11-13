@@ -25,6 +25,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResu
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceListsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceReviewUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObserveReferenceRateUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ReferenceRateView
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.navigation.AppMessages
@@ -65,6 +67,7 @@ fun BulkPriceRoute(key: AppNavKey.BulkPriceUpdate, navigator: AppNavigator) {
                 initialListId = key.priceListId,
                 pendingReview = key.pendingReview,
                 review = key.review,
+                referenceRate = key.referenceRate,
             )
         }
     when (model) {
@@ -100,10 +103,10 @@ fun BulkPriceRoute(key: AppNavKey.BulkPriceUpdate, navigator: AppNavigator) {
             BulkPriceScreen(
                 uiState = uiState,
                 onAction = { action ->
-                    if (action ==
-                        BulkPriceAction.Back
-                    ) {
+                    if (action == BulkPriceAction.Back) {
                         navigator.back()
+                    } else if (action == BulkPriceAction.OpenReference) {
+                        navigator.open(AppNavKey.ReferenceCurrency)
                     } else {
                         viewModel.onAction(action)
                     }
@@ -122,6 +125,7 @@ class BulkPriceUseCases(
     private val lists: ObservePriceListsUseCase,
     private val pricing: ObservePricingContextUseCase,
     private val review: ObservePriceReviewUseCase? = null,
+    private val referenceRate: ObserveReferenceRateUseCase? = null,
 ) : BulkPriceOperations {
     override fun catalog(): Flow<List<Product>> = choices.catalog()
 
@@ -161,6 +165,9 @@ class BulkPriceUseCases(
     override fun reviewIds(): Flow<Set<Long>> =
         review?.let { reviews -> reviews().map { list -> list.map { it.product.id }.toSet() } }
             ?: flowOf(emptySet())
+
+    override fun reference(): Flow<ReferenceRateView> =
+        referenceRate?.invoke() ?: flowOf(ReferenceRateView(null, null, emptyList()))
 
     override fun undoOffer(): Flow<BulkUndoPlan?> = undoOfferUseCase()
 
@@ -216,6 +223,7 @@ class BulkPriceUseCases(
                     settings = ports.settings,
                     clock = dependencies.container.clock,
                 ),
+                referenceRate = ObserveReferenceRateUseCase(ports.settings, ports.fxRates),
             )
         }
     }

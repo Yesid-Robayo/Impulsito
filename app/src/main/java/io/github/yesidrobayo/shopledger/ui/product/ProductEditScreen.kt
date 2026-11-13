@@ -40,7 +40,9 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionEntry
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceResult
@@ -82,6 +84,7 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.money.ProvideAccountCurrency
 import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditor
 import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorAction
 import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorSheet
@@ -206,7 +209,8 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
     // Se abre sola si el producto ya tiene alguno de los datos de adentro.
     var moreDetails by rememberSaveable {
         mutableStateOf(
-            form.barcode.isNotEmpty() || form.replacementCost.isNotEmpty() || !uiState.tracksStock,
+            form.barcode.isNotEmpty() || form.replacementCost.isNotEmpty() ||
+                form.referencePrice.isNotEmpty() || !uiState.tracksStock,
         )
     }
     LaunchedEffect(uiState.conversions.isNotEmpty()) {
@@ -333,6 +337,7 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
         )
     }
     if (uiState.tracksStock) ReplacementCostField(uiState, onAction)
+    uiState.reference?.let { ReferencePriceField(uiState, it, onAction) }
     if (!uiState.isNew) ProductConversions(uiState, onAction)
     if (!uiState.isNew && uiState.listPrices.isNotEmpty()) ProductListPrices(uiState, onAction)
 }
@@ -397,6 +402,41 @@ private fun ProductListPrices(uiState: ProductEditUiState, onAction: (ProductEdi
                     },
                 )
             }
+        }
+    }
+}
+
+/**
+ * El precio de venta escrito en la moneda de referencia [reference], con su símbolo y sus
+ * decimales. Solo aparece con una moneda de referencia elegida: de él parte repreciar con una
+ * cotización.
+ */
+@Composable
+private fun ReferencePriceField(
+    uiState: ProductEditUiState,
+    reference: ReferenceCurrency,
+    onAction: (ProductEditAction) -> Unit,
+) {
+    Column {
+        ProvideAccountCurrency(AccountCurrency(reference.code, reference.decimals)) {
+            MoneyField(
+                value = uiState.form.referencePrice,
+                onValueChange = { onAction(ProductEditAction.ReferencePriceChange(it)) },
+                label = stringResource(R.string.product_reference_price),
+                modifier = Modifier.fillMaxWidth(),
+                error = fieldError(uiState, ProductEditField.REFERENCE_PRICE),
+            )
+        }
+        if (uiState.errors[ProductEditField.REFERENCE_PRICE] == null) {
+            Text(
+                stringResource(R.string.product_reference_price_help, reference.code.code),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    start = AppTheme.spacing.s16,
+                    top = AppTheme.spacing.s4,
+                ),
+            )
         }
     }
 }

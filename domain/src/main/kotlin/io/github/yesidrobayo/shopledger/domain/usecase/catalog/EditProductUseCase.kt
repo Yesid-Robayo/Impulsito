@@ -110,6 +110,10 @@ class EditProductUseCase(
             },
             minStock = form.minStock,
             barcode = valid.barcode,
+            referencePrice = when (val written = form.referencePrice) {
+                null -> current.referencePrice
+                else -> written.takeIf { it > Money.ZERO }
+            },
         )
         val locked = ProductHistoryLock.lockedChanges(
             current,

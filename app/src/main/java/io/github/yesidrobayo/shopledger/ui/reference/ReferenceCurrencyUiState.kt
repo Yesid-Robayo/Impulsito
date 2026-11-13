@@ -69,6 +69,8 @@ sealed interface ReferenceCurrencyUiState {
      * cotización vigente y [history] todas, de la más reciente a la más vieja. [choosing] abre la
      * lista de monedas, [pendingChange] pide confirmar el cambio de moneda, [sheet] es la hoja de
      * registrar, [calendar] la fecha de hoy o `null` mientras se lee, y [message] lo que se avisa.
+     * [repriceCount] son los productos con referencia que ofrece repreciar tras registrar una
+     * cotización en esta visita; cero no ofrece nada.
      */
     @Immutable
     data class Ready(
@@ -81,6 +83,7 @@ sealed interface ReferenceCurrencyUiState {
         val sheet: RateSheet? = null,
         val calendar: RateCalendar? = null,
         val message: ReferenceMessage? = null,
+        val repriceCount: Int = 0,
     ) : ReferenceCurrencyUiState
 }
 
@@ -116,4 +119,7 @@ sealed interface ReferenceCurrencyAction {
     data object SaveRate : ReferenceCurrencyAction
 
     data object MessageShown : ReferenceCurrencyAction
+
+    /** Tocó `Repreciar con esta cotización`: se abre la masiva en `Por cotización`. */
+    data object Reprice : ReferenceCurrencyAction
 }

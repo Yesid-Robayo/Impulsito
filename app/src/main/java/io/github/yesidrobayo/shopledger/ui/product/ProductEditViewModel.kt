@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogName
@@ -68,6 +69,7 @@ class ProductEditViewModel(
     setListPrice: suspend (Long, Long, Money?) -> SetListPriceResult = { _, _, _ ->
         SetListPriceResult.ListNotFound
     },
+    private val referenceCurrency: () -> Flow<ReferenceCurrency?> = { flowOf(null) },
 ) : ViewModel() {
     private val state =
         MutableStateFlow(
@@ -133,6 +135,26 @@ class ProductEditViewModel(
                         categories = choices.categories,
                         units = choices.units,
                         form = current.form.copy(unitId = unitId),
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            // Sin moneda de referencia, el campo no se muestra y el precio guardado no se toca.
+            reads.guard(referenceCurrency).collect { reference ->
+                state.update { current ->
+                    val product = current.product
+                    val filled = if (product != null && reference != null &&
+                        current.form.referencePrice.isEmpty() &&
+                        current.reference == null
+                    ) {
+                        referenceText(product.details.referencePrice, reference)
+                    } else {
+                        current.form.referencePrice
+                    }
+                    current.copy(
+                        reference = reference,
+                        form = current.form.copy(referencePrice = filled),
                     )
                 }
             }
@@ -228,6 +250,9 @@ class ProductEditViewModel(
 
             is ProductEditAction.BarcodeChange ->
                 edit(ProductEditField.BARCODE) { copy(barcode = action.text) }
+
+            is ProductEditAction.ReferencePriceChange ->
+                edit(ProductEditField.REFERENCE_PRICE) { copy(referencePrice = action.text) }
 
             is ProductEditAction.ReplacementCostChange ->
                 edit(ProductEditField.REPLACEMENT_COST) { copy(replacementCost = action.text) }
@@ -363,6 +388,10 @@ class ProductEditViewModel(
                 minStock = quantityText(details.minStock),
                 barcode = details.barcode.orEmpty(),
                 replacementCost = moneyText(product.replacementCost),
+                referencePrice =
+                    current.reference
+                        ?.let { referenceText(details.referencePrice, it) }
+                        .orEmpty(),
             )
             current.copy(
                 loading = false,
@@ -551,6 +580,7 @@ class ProductEditViewModel(
                     errors[ProductEditField.REPLACEMENT_COST] = it
                 }
             }
+        val reference = referencePriceOf(current, errors)
         val barcode = CatalogText.barcode(text.barcode)
         if (barcode != null && CatalogText.length(barcode) > CatalogText.BARCODE_MAX) {
             errors[ProductEditField.BARCODE] = FieldProblem.TooLong(CatalogText.BARCODE_MAX)
@@ -577,11 +607,61 @@ class ProductEditViewModel(
             minStock = minimum,
             barcode = barcode,
             replacementCost = replacement,
+            referencePrice = reference,
         )
         return ReadForm(form, if (current.isNew) initial else QuantityMilli.ZERO, emptyMap())
     }
 
     private fun initialCostOf(current: ProductEditUiState): Money = money(current.form.cost) {}
+
+    /**
+     * El precio de referencia escrito, en la moneda de referencia: `null` lo deja como está, sin
+     * moneda elegida o sin tocar el campo, y en blanco es cero, sin dato.
+     */
+    private fun referencePriceOf(
+        current: ProductEditUiState,
+        errors: MutableMap<ProductEditField, FieldProblem>,
+    ): Money? {
+        val reference = current.reference ?: return null
+        val text = current.form.referencePrice
+        val saved = current.product?.details?.referencePrice
+        if (current.product != null && text == referenceText(saved, reference)) return null
+        val read = NumberInputParser.money(
+            text,
+            numbers.moneySymbols,
+            reference.decimals,
+            Limit.UNIT_MONEY,
+        )
+        return when (read) {
+            is NumberInput.Value -> read.value
+
+            NumberInput.Blank -> Money.ZERO
+
+            NumberInput.Malformed -> {
+                errors[ProductEditField.REFERENCE_PRICE] = FieldProblem.NotANumber
+                null
+            }
+
+            is NumberInput.TooManyDecimals -> {
+                errors[ProductEditField.REFERENCE_PRICE] =
+                    FieldProblem.TooManyDecimals(reference.decimals)
+                null
+            }
+
+            is NumberInput.TooLarge -> {
+                errors[ProductEditField.REFERENCE_PRICE] = FieldProblem.TooHigh
+                null
+            }
+        }
+    }
+
+    /** [amount] como se escribe en la moneda [reference], o vacío sin dato. */
+    private fun referenceText(amount: Money?, reference: ReferenceCurrency): String =
+        if (amount == null || amount == Money.ZERO) {
+            ""
+        } else {
+            decimalText(amount.minor, reference.decimals, numbers.moneySymbols.decimalSeparator)
+        }
 
     /**
      * La tarjeta de ganancia con lo escrito: la ganancia y el margen sin el impuesto que el precio
@@ -703,6 +783,9 @@ class ProductEditViewModel(
                 ProductFormIssue.REPLACEMENT_COST_NOT_APPLICABLE,
                 ->
                     ProductEditField.REPLACEMENT_COST to FieldProblem.TooHigh
+
+                ProductFormIssue.REFERENCE_PRICE_OUT_OF_RANGE ->
+                    ProductEditField.REFERENCE_PRICE to FieldProblem.TooHigh
             }
         }
 

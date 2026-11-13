@@ -51,6 +51,9 @@ sealed interface ProductEditAction {
     /** Corrigió a mano lo que costaría reponer una unidad. Vacío es sin dato. */
     data class ReplacementCostChange(val text: String) : ProductEditAction
 
+    /** Escribió el precio de referencia, en la moneda de referencia. */
+    data class ReferencePriceChange(val text: String) : ProductEditAction
+
     data object Save : ProductEditAction
 
     /** Quiere cerrar: con cambios sin guardar, primero pregunta. */

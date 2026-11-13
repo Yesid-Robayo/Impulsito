@@ -19,7 +19,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -40,6 +42,7 @@ class ReferenceCurrencyViewModel(
     private val setReference: suspend (ReferenceCurrency?) -> SetReferenceCurrencyResult,
     private val record: suspend (Long, String?, BusinessDate?) -> RecordReferenceRateResult,
     private val symbols: NumberSymbols,
+    referencedProducts: () -> Flow<Int> = { flowOf(0) },
 ) : ViewModel() {
     private val reads = ScreenReads()
     private val local = MutableStateFlow(Local())
@@ -50,12 +53,27 @@ class ReferenceCurrencyViewModel(
     private val today: StateFlow<RateCalendar?> =
         reads.guard(calendar).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** Los productos con referencia: si no se pueden contar, no se ofrece repreciar. */
+    private val referenced: Flow<Int> = referencedProducts().catch { emit(0) }
+
     val uiState: StateFlow<ReferenceCurrencyUiState> =
-        combine(saved, today, local, reads.failed) { view, calendarNow, shown, failed ->
+        combine(saved, today, local, reads.failed, referenced) {
+                view,
+                calendarNow,
+                shown,
+                failed,
+                count,
+            ->
             when {
                 failed -> ReferenceCurrencyUiState.ReadFailed
+
                 view == null -> ReferenceCurrencyUiState.Loading
-                else -> readyOf(view, calendarNow, shown)
+
+                else -> readyOf(view, calendarNow, shown).let { ready ->
+                    // Solo tras registrar una cotización, y nunca sin una vigente.
+                    val offer = shown.recorded && ready.latest != null
+                    ready.copy(repriceCount = if (offer) count else 0)
+                }
             }
         }.stateIn(
             viewModelScope,
@@ -65,8 +83,8 @@ class ReferenceCurrencyViewModel(
 
     fun onAction(action: ReferenceCurrencyAction) {
         when (action) {
-            // Volver lo resuelve la navegación.
-            ReferenceCurrencyAction.Back -> Unit
+            // Volver y repreciar los resuelve la navegación.
+            ReferenceCurrencyAction.Back, ReferenceCurrencyAction.Reprice -> Unit
 
             ReferenceCurrencyAction.Retry -> reads.retry()
 
@@ -164,7 +182,11 @@ class ReferenceCurrencyViewModel(
                 val open = shown.sheet ?: return@update shown
                 when (result) {
                     is RecordReferenceRateResult.Recorded ->
-                        shown.copy(sheet = null, message = ReferenceMessage.RateSaved)
+                        shown.copy(
+                            sheet = null,
+                            message = ReferenceMessage.RateSaved,
+                            recorded = true,
+                        )
 
                     RecordReferenceRateResult.RateOutOfRange ->
                         shown.copy(
@@ -262,6 +284,7 @@ class ReferenceCurrencyViewModel(
         val pendingChange: ReferenceCurrency? = null,
         val sheet: RateSheet? = null,
         val message: ReferenceMessage? = null,
+        val recorded: Boolean = false,
     )
 
     private companion object {

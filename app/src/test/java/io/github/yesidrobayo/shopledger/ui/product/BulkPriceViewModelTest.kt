@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceAdjustment
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceContext
@@ -13,14 +14,19 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
+import io.github.yesidrobayo.shopledger.domain.model.pricing.FxRate
+import io.github.yesidrobayo.shopledger.domain.model.pricing.NewFxRate
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ApplyBulkPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ReferenceRateView
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +40,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -110,6 +117,57 @@ class BulkPriceViewModelTest {
         advanceUntilIdle()
         assertEquals(null, model.uiState.value.sheet)
     }
+
+    @Test
+    fun `by rate is offered only with a reference currency and uses the written rate`() =
+        runTest(dispatcher) {
+            // Sin moneda de referencia, el modo no se ofrece.
+            val plain = model()
+            assertTrue(BulkPriceMode.REFERENCE_RATE !in plain.uiState.value.offeredModes)
+
+            // Abierto desde la cotización, con moneda y todavía sin cotización: nada se calcula.
+            val reference = ReferenceCurrency(requireNotNull(CurrencyCode.of("XTS")), 2)
+            operations.referenceView.value = ReferenceRateView(reference, null, emptyList())
+            operations.catalog.value = operations.catalog.value.mapIndexed { index, product ->
+                if (index != 0) {
+                    product
+                } else {
+                    product.copy(details = product.details.copy(referencePrice = Money(1_250L)))
+                }
+            }
+            val model = BulkPriceViewModel(operations, NUMBERS, dispatcher, referenceRate = true)
+            backgroundScope.launch(dispatcher) { model.uiState.collect {} }
+            advanceUntilIdle()
+            assertEquals(BulkPriceMode.REFERENCE_RATE, model.uiState.value.input.mode)
+            assertEquals(BulkPreviewContent.NeedsInput, model.uiState.value.content)
+
+            // Con la cotización escrita, 12,50 por 4150,50 en un libro sin decimales da 51881. El
+            // que no tiene precio de referencia queda fuera.
+            val rate = FxRate(
+                1L,
+                NewFxRate(
+                    reference.code,
+                    4_150_500_000L,
+                    null,
+                    Instant.fromEpochMilliseconds(1L),
+                    BusinessDate(LocalDate(2026, 11, 1)),
+                    Instant.fromEpochMilliseconds(1L),
+                ),
+            )
+            operations.referenceView.value = ReferenceRateView(reference, rate, listOf(rate))
+            advanceUntilIdle()
+            val preview = (model.uiState.value.content as BulkPreviewContent.Ready).preview
+            assertEquals(listOf(Money(51_881L)), preview.changes.map { it.change.newPrice })
+            assertEquals(1, preview.excluded.size)
+            assertEquals(rate, model.uiState.value.rate)
+
+            model.onAction(BulkPriceAction.Apply)
+            advanceUntilIdle()
+            assertEquals(
+                BulkPriceAdjustment.ReferenceRate(4_150_500_000L),
+                operations.requests.single().adjustment,
+            )
+        }
 
     @Test
     fun `an amount and a target margin are modes of their own`() = runTest(dispatcher) {
@@ -395,6 +453,10 @@ private class FakeBulkOperations : BulkPriceOperations {
     override fun listChoices(): Flow<BulkListChoices> = choices
 
     val reviewed = MutableStateFlow<Set<Long>>(emptySet())
+
+    val referenceView = MutableStateFlow(ReferenceRateView(null, null, emptyList()))
+
+    override fun reference(): Flow<ReferenceRateView> = referenceView
 
     override fun reviewIds(): Flow<Set<Long>> = reviewed
 
