@@ -273,6 +273,34 @@ class NewSaleHeldSaleTest {
     }
 
     @Test
+    fun `the chosen list goes on hold and comes back when resumed`() = runTest(dispatcher) {
+        val model = viewModel()
+        model.act(this, NewSaleAction.SelectPriceList(41L))
+        model.act(this, NewSaleAction.AddProduct(rice.id))
+        model.act(this, NewSaleAction.OpenHold)
+        model.act(this, NewSaleAction.ConfirmHold)
+        assertEquals(41L, holds.single().priceListId)
+        holds.clear()
+        resumeResult = ResumeHeldSaleResult.Resumed(
+            ResumedSale(
+                heldSaleId = 7L,
+                label = null,
+                lines = listOf(SaleLineRequest(oil.id, QuantityMilli(1_000L))),
+                removedProducts = 0,
+                changedPrices = 0,
+                priceListId = 42L,
+            ),
+        )
+
+        model.act(this, NewSaleAction.ResumeHeld(7L))
+        model.act(this, NewSaleAction.OpenHold)
+        model.act(this, NewSaleAction.ConfirmHold)
+
+        // Guardarla otra vez lleva la lista con que se retomó.
+        assertEquals(42L, holds.single().priceListId)
+    }
+
+    @Test
     fun `the count leaves out the sale being edited`() = runTest(dispatcher) {
         held.value = listOf(heldSale(7L), heldSale(8L))
         resumeResult = ResumeHeldSaleResult.Resumed(

@@ -16,14 +16,19 @@ internal class FakeHeldSaleRepository(private val database: InMemoryDatabase) : 
 
     override suspend fun insert(sale: NewHeldSale): Long {
         val id = database.nextId(TABLE)
-        val stored = HeldSale(id, sale.label, sale.lines, sale.at, sale.at)
+        val stored = HeldSale(id, sale.label, sale.lines, sale.at, sale.at, sale.priceListId)
         database.write { it.copy(heldSales = it.heldSales + (id to stored)) }
         return id
     }
 
     override suspend fun replace(id: Long, sale: NewHeldSale): Boolean {
         val current = database.read().heldSales[id] ?: return false
-        val stored = current.copy(label = sale.label, lines = sale.lines, updatedAt = sale.at)
+        val stored = current.copy(
+            label = sale.label,
+            lines = sale.lines,
+            updatedAt = sale.at,
+            priceListId = sale.priceListId,
+        )
         database.write { it.copy(heldSales = it.heldSales + (id to stored)) }
         return true
     }

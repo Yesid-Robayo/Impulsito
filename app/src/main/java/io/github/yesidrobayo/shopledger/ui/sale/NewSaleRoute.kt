@@ -107,6 +107,8 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     ports.products,
                     container.clock,
                     ports.productUnits,
+                    ports.priceLists,
+                    ports.productPrices,
                 )
             val resume =
                 ResumeHeldSaleUseCase(
@@ -114,6 +116,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     ports.heldSales,
                     ports.products,
                     ports.priceHistory,
+                    ports.priceLists,
                 )
             val observeHeld = ObserveHeldSalesUseCase(ports.heldSales)
             val reactivate =

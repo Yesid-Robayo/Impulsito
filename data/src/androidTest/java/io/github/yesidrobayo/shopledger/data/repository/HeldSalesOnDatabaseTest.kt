@@ -6,6 +6,8 @@ import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListDetails
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
@@ -129,6 +131,45 @@ internal class HeldSalesOnDatabaseTest : RepositoryTest() {
         assertEquals(1L, count("SELECT COUNT(*) FROM sale_drafts"))
         val resumed = (resume(id) as ResumeHeldSaleResult.Resumed).sale
         assertEquals(listOf(SaleLineRequest(tea, QuantityMilli(3_000))), resumed.lines)
+    }
+
+    @Test
+    fun theListOfTheWaitIsStoredAndComesBack() = runBlocking {
+        val soap = product("Jabón inventado")
+        val lists = RoomPriceListRepository(database)
+        val wholesale = commit {
+            lists.insert(
+                PriceListDetails(
+                    "Mayorista inventada",
+                    "mayorista inventada",
+                    PriceListPricing.Fixed,
+                ),
+                AT,
+            )
+        }
+        val withLists = ResumeHeldSaleUseCase(
+            runner,
+            heldSales,
+            products,
+            RoomPriceHistoryRepository(database),
+            lists,
+        )
+
+        val id = held(
+            HoldSaleRequest(
+                listOf(SaleLineRequest(soap, QuantityMilli(1_000))),
+                null,
+                null,
+                wholesale,
+            ),
+        )
+
+        assertEquals(wholesale, heldSales.findById(id)?.priceListId)
+        assertTrue(lists.isInUse(wholesale))
+        assertEquals(wholesale, (withLists(id) as ResumeHeldSaleResult.Resumed).sale.priceListId)
+        // Guardarla otra vez con la inicial deja la espera sin lista.
+        held(HoldSaleRequest(listOf(SaleLineRequest(soap, QuantityMilli(2_000))), null, id))
+        assertNull(heldSales.findById(id)?.priceListId)
     }
 
     @Test

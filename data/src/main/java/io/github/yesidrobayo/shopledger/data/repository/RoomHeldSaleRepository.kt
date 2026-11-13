@@ -21,8 +21,8 @@ import kotlinx.coroutines.flow.map
  * Las ventas en espera sobre `sale_drafts` y `sale_draft_lines`.
  *
  * Guardar de nuevo una espera borra sus líneas y escribe las de ahora: una espera no es historia, y
- * así sus líneas quedan en el orden en que se armó la venta. El cliente y la lista de precios de la
- * espera no se tocan aquí: llegan con sus módulos.
+ * así sus líneas quedan en el orden en que se armó la venta. La lista de precios viaja con la
+ * espera; el cliente no se toca aquí: llega con su módulo.
  */
 internal class RoomHeldSaleRepository(private val database: AppDatabase) : HeldSaleRepository {
     private val drafts = database.saleDraftDao()
@@ -53,7 +53,7 @@ internal class RoomHeldSaleRepository(private val database: AppDatabase) : HeldS
             SaleDraftEntity(
                 label = sale.label,
                 customerId = null,
-                priceListId = null,
+                priceListId = sale.priceListId,
                 createdAt = at,
                 updatedAt = at,
             ),
@@ -68,7 +68,7 @@ internal class RoomHeldSaleRepository(private val database: AppDatabase) : HeldS
             id = id,
             label = sale.label,
             customerId = current.customerId,
-            priceListId = current.priceListId,
+            priceListId = sale.priceListId,
             updatedAt = sale.at.toStoredMillis(),
         )
         drafts.deleteLines(id)
@@ -121,5 +121,6 @@ internal class RoomHeldSaleRepository(private val database: AppDatabase) : HeldS
             },
             createdAt = head.createdAt.toInstant(),
             updatedAt = head.updatedAt.toInstant(),
+            priceListId = head.priceListId,
         )
 }

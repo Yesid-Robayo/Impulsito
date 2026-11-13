@@ -693,7 +693,8 @@ class NewSaleViewModel(
     /** Guarda en espera la venta en edición, encima de la suya si venía de la espera. */
     private suspend fun holdCurrent(label: String?): Boolean {
         val current = draft.value
-        val request = HoldSaleRequest(current.lines, label, current.heldSaleId)
+        val request =
+            HoldSaleRequest(current.lines, label, current.heldSaleId, current.priceListId)
         return when (holdSale(request)) {
             is HoldSaleResult.Held -> true
 
@@ -734,6 +735,7 @@ class NewSaleViewModel(
                             prefilled = true,
                             heldSaleId = sale.heldSaleId,
                             heldLabel = sale.label,
+                            priceListId = sale.priceListId,
                         )
                     }
                     val notice = HeldNotice.Resumed(sale.changedPrices, sale.removedProducts)

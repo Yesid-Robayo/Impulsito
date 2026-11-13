@@ -135,6 +135,7 @@ internal class FakePriceListRepository(private val database: InMemoryDatabase) :
 
     private fun inUse(tables: Tables, id: Long): Boolean = id in tables.priceListsUsedBySales ||
         tables.customers.values.any { it.priceListId == id } ||
+        tables.heldSales.values.any { it.priceListId == id } ||
         tables.priceLists.values.any {
             (it.pricing as? PriceListPricing.Relative)?.baseId == id
         } ||

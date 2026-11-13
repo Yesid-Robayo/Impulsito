@@ -11,6 +11,7 @@ import kotlin.time.Instant
  *
  * [label] es el nombre opcional que le puso la persona, de 1 a 40 caracteres. [createdAt] es cuándo
  * se puso en espera por primera vez; [updatedAt], la última vez que se guardó o se renombró.
+ * [priceListId] es la lista de precios con que se armó, o `null` para la inicial.
  */
 data class HeldSale(
     val id: Long,
@@ -18,6 +19,7 @@ data class HeldSale(
     val lines: List<HeldSaleLine>,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val priceListId: Long? = null,
 )
 
 /**
@@ -37,5 +39,13 @@ data class HeldSaleLine(
     val discount: Money,
 )
 
-/** Una venta en espera por guardar: su nombre, sus líneas y el instante en que se guarda. */
-data class NewHeldSale(val label: String?, val lines: List<HeldSaleLine>, val at: Instant)
+/**
+ * Una venta en espera por guardar: su nombre, sus líneas, el instante en que se guarda y la lista de
+ * precios con que se armó, `null` para la inicial.
+ */
+data class NewHeldSale(
+    val label: String?,
+    val lines: List<HeldSaleLine>,
+    val at: Instant,
+    val priceListId: Long? = null,
+)

@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
+import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 
@@ -14,7 +15,8 @@ import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
  *
  * [lines] son las que todavía se pueden vender. [removedProducts] cuenta las que quedaron fuera
  * porque su producto ya no existe o está archivado. [changedPrices] cuenta las que toman el precio
- * vigente y cuyo precio cambió desde que se guardó la espera.
+ * vigente y cuyo precio cambió desde que se guardó la espera. [priceListId] es la lista con que se
+ * sigue, `null` para la inicial.
  */
 data class ResumedSale(
     val heldSaleId: Long,
@@ -22,6 +24,7 @@ data class ResumedSale(
     val lines: List<SaleLineRequest>,
     val removedProducts: Int,
     val changedPrices: Int,
+    val priceListId: Long? = null,
 )
 
 /** Resultado de [ResumeHeldSaleUseCase]. */
@@ -40,12 +43,15 @@ sealed interface ResumeHeldSaleResult {
  *   vigente, y se cuenta cuántas cambiaron desde que se guardó, para decirlo al retomar.
  * - **Productos.** Un producto archivado no se puede vender, así que su línea queda fuera y se
  *   cuenta. Uno eliminado ya se llevó su línea en cascada.
+ * - **Lista de precios.** Sigue la de la espera. Si se archivó desde entonces, la venta sigue con la
+ *   inicial, y cada línea sin precio escrito cuenta como un precio que cambió.
  */
 class ResumeHeldSaleUseCase(
     private val transactions: TransactionRunner,
     private val heldSales: HeldSaleRepository,
     private val products: ProductRepository,
     private val priceHistory: PriceHistoryRepository,
+    private val priceLists: PriceListRepository? = null,
 ) {
     suspend operator fun invoke(heldSaleId: Long): ResumeHeldSaleResult = transactions.read {
         val held = heldSales.findById(heldSaleId)
@@ -61,6 +67,8 @@ class ResumeHeldSaleUseCase(
     private suspend fun resume(held: HeldSale): ResumedSale {
         val byId = products.findByIds(held.lines.map { it.productId }.toSet())
             .associateBy { it.id }
+        val listId = held.priceListId?.takeIf { priceLists?.findById(it)?.isArchived == false }
+        val listDropped = held.priceListId != null && listId == null
         val lines = ArrayList<SaleLineRequest>(held.lines.size)
         var removed = 0
         var changed = 0
@@ -70,7 +78,9 @@ class ResumeHeldSaleUseCase(
                 removed++
                 continue
             }
-            if (line.unitPrice == null && priceChangedSince(product.id, held)) changed++
+            if (line.unitPrice == null && (listDropped || priceChangedSince(product.id, held))) {
+                changed++
+            }
             lines += SaleLineRequest(
                 productId = product.id,
                 quantity = line.quantity,
@@ -84,7 +94,7 @@ class ResumeHeldSaleUseCase(
                 unitId = line.unitId.takeIf { it != product.details.baseUnitId },
             )
         }
-        return ResumedSale(held.id, held.label, lines, removed, changed)
+        return ResumedSale(held.id, held.label, lines, removed, changed, listId)
     }
 
     /** Si el precio de [productId] cambió después de la última vez que se guardó [held]. */
