@@ -8,11 +8,14 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.testing.FakeAppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeCustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeCustomerRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeMoneyAccountRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeMoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeTransactionRunner
 import io.github.yesidrobayo.shopledger.domain.testing.FixedClock
 import io.github.yesidrobayo.shopledger.domain.testing.InMemoryDatabase
 import io.github.yesidrobayo.shopledger.domain.testing.appSettings
 import io.github.yesidrobayo.shopledger.domain.testing.regionalSettings
+import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyLedgerWriter
 import kotlin.time.Instant
 import kotlinx.datetime.DayOfWeek
 
@@ -29,6 +32,9 @@ internal class CustomerLedgerWorld(
     val transactions = FakeTransactionRunner(database)
     val customers = FakeCustomerRepository(database)
     val ledger = FakeCustomerLedgerRepository(database)
+    val accounts = FakeMoneyAccountRepository(database)
+    val moneyLedger = FakeMoneyLedgerRepository(database)
+    val moneyWriter = MoneyLedgerWriter(accounts, moneyLedger)
     val clock = FixedClock(now)
     val settings = FakeAppSettingsRepository(
         appSettings(

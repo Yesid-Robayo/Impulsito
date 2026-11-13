@@ -55,6 +55,11 @@ internal class RoomMoneyLedgerRepository(
     ): List<MoneyMovement> =
         movements.findBySupplierLedgerEntry(supplierLedgerEntryId).map(::toMovement)
 
+    override suspend fun findByCustomerLedgerEntry(
+        customerLedgerEntryId: Long,
+    ): List<MoneyMovement> =
+        movements.findByCustomerLedgerEntry(customerLedgerEntryId).map(::toMovement)
+
     override suspend fun isCompensated(movementId: Long): Boolean =
         movements.isCompensated(movementId)
 

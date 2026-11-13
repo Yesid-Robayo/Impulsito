@@ -48,6 +48,16 @@ internal interface MoneyMovementDao {
     @Query("SELECT * FROM money_movements WHERE transfer_group_id = :groupId ORDER BY id")
     suspend fun findByTransferGroup(groupId: String): List<MoneyMovementEntity>
 
+    /**
+     * El dinero que entró con un abono del libro del cliente. Es una lectura de cada anulación de
+     * abono, poco frecuente: por eso la columna no lleva índice propio.
+     */
+    @Query(
+        "SELECT * FROM money_movements WHERE customer_ledger_entry_id = :customerLedgerEntryId " +
+            "ORDER BY id",
+    )
+    suspend fun findByCustomerLedgerEntry(customerLedgerEntryId: Long): List<MoneyMovementEntity>
+
     /** Si algún movimiento ya anula a [movementId]: uno se anula una sola vez. */
     @Query("SELECT EXISTS (SELECT 1 FROM money_movements WHERE reverses_movement_id = :movementId)")
     suspend fun isCompensated(movementId: Long): Boolean

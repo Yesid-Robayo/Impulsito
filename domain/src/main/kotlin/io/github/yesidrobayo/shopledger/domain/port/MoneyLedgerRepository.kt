@@ -30,6 +30,9 @@ interface MoneyLedgerRepository {
      */
     suspend fun findBySupplierLedgerEntry(supplierLedgerEntryId: Long): List<MoneyMovement>
 
+    /** Los movimientos del abono [customerLedgerEntryId] del libro del cliente, en el orden del libro. */
+    suspend fun findByCustomerLedgerEntry(customerLedgerEntryId: Long): List<MoneyMovement>
+
     /** Si el movimiento [movementId] ya tiene su anulación: uno se anula una sola vez. */
     suspend fun isCompensated(movementId: Long): Boolean
 
