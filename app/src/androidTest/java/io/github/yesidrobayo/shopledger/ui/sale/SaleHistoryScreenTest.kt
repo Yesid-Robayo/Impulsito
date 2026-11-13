@@ -1,5 +1,8 @@
 package io.github.yesidrobayo.shopledger.ui.sale
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -18,8 +21,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * El historial en el teléfono: tocar una venta la abre, los filtros avisan su cambio, y los estados
- * vacío con filtros y de error ofrecen su salida. Ventas y nombres inventados.
+ * El historial en el teléfono: tocar una venta la abre, el período y los filtros abren sus hojas
+ * y avisan su cambio, y los estados vacío con filtros y de error ofrecen su salida. Ventas y
+ * nombres inventados.
  */
 @RunWith(AndroidJUnit4::class)
 class SaleHistoryScreenTest {
@@ -31,15 +35,31 @@ class SaleHistoryScreenTest {
 
     private fun text(id: Int) = resources.getString(id)
 
-    private fun show(content: HistoryContent) {
-        val state = SaleHistoryUiState(
+    private var state by mutableStateOf(SaleHistoryUiState())
+    private var shown = false
+
+    // El contenido se pone una sola vez: los cambios de estado de una misma prueba lo recomponen.
+    private fun show(
+        content: HistoryContent,
+        filters: HistoryFilters = HistoryFilters(),
+        periodSheet: Boolean = false,
+        filterSheet: Boolean = false,
+    ) {
+        state = SaleHistoryUiState(
+            filters = filters,
             content = content,
             today = DETAIL_DATE,
             zone = BusinessTimeZone.of("Etc/GMT+5"),
+            periodSheet = periodSheet,
+            filterSheet = filterSheet,
         )
-        compose.setContent {
-            PreviewTheme { SaleHistoryScreen(state, { actions += it }) }
+        if (!shown) {
+            shown = true
+            compose.setContent {
+                PreviewTheme { SaleHistoryScreen(state, { actions += it }) }
+            }
         }
+        compose.waitForIdle()
     }
 
     private fun row(id: Long, product: String) = SaleHistoryRow(
@@ -75,19 +95,41 @@ class SaleHistoryScreenTest {
     }
 
     @Test
-    fun theFiltersReportTheirChange() {
+    fun thePeriodAndTheFiltersOpenTheirSheets() {
         show(days)
 
-        compose.onNodeWithText(text(R.string.filter_voided)).performClick()
-        compose.onNodeWithText(text(R.string.period_day)).performClick()
+        compose.onNodeWithText(text(R.string.period_all)).performClick()
+        compose.onNodeWithText(text(R.string.filter_more)).performClick()
 
         assertEquals(
-            listOf(
-                SaleHistoryAction.ToggleVoided,
-                SaleHistoryAction.PeriodKindChange(HistoryPeriodKind.DAY),
-            ),
+            listOf(SaleHistoryAction.OpenPeriods, SaleHistoryAction.OpenFilters),
             actions,
         )
+    }
+
+    @Test
+    fun theSheetsReportTheirChoices() {
+        show(days, periodSheet = true)
+        compose.onNodeWithText(text(R.string.period_day)).performClick()
+        assertEquals(
+            listOf<SaleHistoryAction>(SaleHistoryAction.PeriodKindChange(HistoryPeriodKind.DAY)),
+            actions,
+        )
+
+        actions.clear()
+        show(days, filterSheet = true)
+        compose.onNodeWithText(text(R.string.filter_only_voided)).performClick()
+        assertEquals(listOf<SaleHistoryAction>(SaleHistoryAction.ToggleVoided), actions)
+    }
+
+    @Test
+    fun withOneFilterTheButtonSaysWhichAndWithMoreHowMany() {
+        show(days, filters = HistoryFilters(onlyVoided = true))
+        compose.onNodeWithText(text(R.string.filter_voided)).assertIsDisplayed()
+
+        show(days, filters = HistoryFilters(onlyVoided = true, methodId = 1L))
+        compose.onNodeWithText(resources.getString(R.string.filter_more_count, 2))
+            .assertIsDisplayed()
     }
 
     @Test

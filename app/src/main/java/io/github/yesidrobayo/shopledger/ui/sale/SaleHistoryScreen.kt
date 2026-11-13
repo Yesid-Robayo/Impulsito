@@ -42,8 +42,8 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
-import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.CheckboxRow
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
@@ -64,19 +64,11 @@ import io.github.yesidrobayo.shopledger.ui.purchase.RecordsSegments
 import io.github.yesidrobayo.shopledger.ui.purchase.SALES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
-/** Un filtro de la fila de filtros. */
-private sealed interface HistoryChip {
-    data class Period(val kind: HistoryPeriodKind) : HistoryChip
-
-    data object Method : HistoryChip
-
-    data object Voided : HistoryChip
-}
-
 /**
  * El historial de ventas: la raíz de Registros. Encuentra una venta y muestra lo vendido por día.
  *
- * - Filtros arriba: período, método de pago y `Anuladas`. Sin período, el historial no tiene límite.
+ * - Filtros arriba: el período a la izquierda, con sus flechas debajo, y `Filtros` a la derecha,
+ *   con el método de pago y `Solo anuladas` en su hoja. Sin período, el historial no tiene límite.
  * - La lista va por día, con un encabezado fijo con la fecha y lo vendido ese día en ventas activas.
  *   Cada fila dice la hora, el primer producto y cuántos más, el método o `Varios pagos`, y el total.
  *   Una venta anulada va apagada, tachada y con su etiqueta, y no suma en su día.
@@ -150,58 +142,43 @@ fun SaleHistoryScreen(
             }
         }
     }
-    if (uiState.methodSheet) MethodSheet(uiState.filters, onAction)
+    if (uiState.periodSheet) {
+        HistoryPeriodSheet(
+            selected = uiState.filters.periodKind,
+            onSelect = { onAction(SaleHistoryAction.PeriodKindChange(it)) },
+            onDismiss = { onAction(SaleHistoryAction.ClosePeriods) },
+        )
+    }
+    if (uiState.filterSheet) FilterSheet(uiState.filters, onAction)
 }
 
-/** Período, método y anuladas, en una fila de chips que pasa a varias líneas si no cabe. */
+/**
+ * El período y el botón de filtros en una barra, y debajo las flechas del período elegido. Con un
+ * solo filtro puesto, el botón dice cuál: el método o `Anuladas`.
+ */
 @Composable
 private fun Filters(uiState: SaleHistoryUiState, onAction: (SaleHistoryAction) -> Unit) {
     val filters = uiState.filters
-    val spacing = AppTheme.spacing
     val methodName = filters.methods.firstOrNull {
         it.id == filters.methodId
     }?.let { methodName(it) }
-    val chips = listOf(
-        HistoryChip.Period(HistoryPeriodKind.DAY),
-        HistoryChip.Period(HistoryPeriodKind.WEEK),
-        HistoryChip.Period(HistoryPeriodKind.MONTH),
-        HistoryChip.Method,
-        HistoryChip.Voided,
-    )
-    val selected = buildSet {
-        filters.periodKind?.let { add(HistoryChip.Period(it)) }
-        if (filters.methodId != null) add(HistoryChip.Method)
-        if (filters.onlyVoided) add(HistoryChip.Voided)
+    val single = when {
+        filters.sheetFilterCount != 1 -> null
+
+        methodName != null -> methodName
+
+        filters.onlyVoided -> stringResource(R.string.filter_voided)
+
+        // Un método que ya no está en la lista: el botón dice cuántos filtros hay.
+        else -> null
     }
-    Column(Modifier.padding(horizontal = spacing.s16)) {
-        CompactChipRow(
-            options = chips,
-            label = { chip ->
-                when (chip) {
-                    is HistoryChip.Period -> stringResource(periodLabel(chip.kind))
-
-                    HistoryChip.Method ->
-                        methodName
-                            ?: stringResource(R.string.filter_payment_method)
-
-                    HistoryChip.Voided -> stringResource(R.string.filter_voided)
-                }
-            },
-            selected = selected,
-            onToggle = { chip ->
-                when (chip) {
-                    is HistoryChip.Period -> onAction(
-                        SaleHistoryAction.PeriodKindChange(
-                            chip.kind.takeIf { filters.periodKind != it },
-                        ),
-                    )
-
-                    HistoryChip.Method -> onAction(SaleHistoryAction.OpenMethods)
-
-                    HistoryChip.Voided -> onAction(SaleHistoryAction.ToggleVoided)
-                }
-            },
-            multiple = true,
+    Column(Modifier.padding(horizontal = AppTheme.spacing.s16)) {
+        HistoryFilterBar(
+            periodKind = filters.periodKind,
+            onOpenPeriods = { onAction(SaleHistoryAction.OpenPeriods) },
+            sheetFilterCount = filters.sheetFilterCount,
+            singleFilter = single,
+            onOpenFilters = { onAction(SaleHistoryAction.OpenFilters) },
         )
         val period = filters.period
         val today = uiState.today
@@ -215,12 +192,6 @@ private fun Filters(uiState: SaleHistoryUiState, onAction: (SaleHistoryAction) -
             )
         }
     }
-}
-
-private fun periodLabel(kind: HistoryPeriodKind): Int = when (kind) {
-    HistoryPeriodKind.DAY -> R.string.period_day
-    HistoryPeriodKind.WEEK -> R.string.period_week
-    HistoryPeriodKind.MONTH -> R.string.period_month
 }
 
 @Composable
@@ -458,28 +429,40 @@ private fun SaleRow(
     }
 }
 
-/** Elegir el método del filtro, o ninguno para ver todas. */
+/**
+ * La hoja de filtros: el método de pago, donde tocar el elegido lo quita, y `Solo anuladas`. Cada
+ * elección se aplica al tocarla.
+ */
 @Composable
-private fun MethodSheet(filters: HistoryFilters, onAction: (SaleHistoryAction) -> Unit) {
-    AppBottomSheet(
-        onDismissRequest = { onAction(SaleHistoryAction.CloseMethods) },
-        title = stringResource(R.string.filter_payment_method),
+private fun FilterSheet(filters: HistoryFilters, onAction: (SaleHistoryAction) -> Unit) {
+    HistoryFilterSheet(
+        activeCount = filters.sheetFilterCount,
+        onClear = { onAction(SaleHistoryAction.ClearSheetFilters) },
+        onDismiss = { onAction(SaleHistoryAction.CloseFilters) },
     ) {
-        CompactChipRow(
-            options = filters.methods,
-            label = { methodName(it) },
-            selected = filters.methods.filter { it.id == filters.methodId }.toSet(),
-            onToggle = { method ->
-                onAction(
-                    SaleHistoryAction.MethodChange(
-                        method.id.takeIf {
-                            it != filters.methodId
-                        },
-                    ),
+        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+            if (filters.methods.isNotEmpty()) {
+                FilterSheetLabel(stringResource(R.string.filter_payment_method))
+                CompactChipRow(
+                    options = filters.methods,
+                    label = { methodName(it) },
+                    selected = filters.methods.filter { it.id == filters.methodId }.toSet(),
+                    onToggle = { method ->
+                        onAction(
+                            SaleHistoryAction.MethodChange(
+                                method.id.takeIf { it != filters.methodId },
+                            ),
+                        )
+                    },
+                    multiple = false,
                 )
-            },
-            multiple = false,
-        )
+            }
+            CheckboxRow(
+                text = stringResource(R.string.filter_only_voided),
+                checked = filters.onlyVoided,
+                onCheckedChange = { onAction(SaleHistoryAction.ToggleVoided) },
+            )
+        }
     }
 }
 

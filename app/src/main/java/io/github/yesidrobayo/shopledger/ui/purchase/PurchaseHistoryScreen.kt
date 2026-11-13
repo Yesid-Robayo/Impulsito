@@ -44,8 +44,8 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierFilter
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
-import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.CheckboxRow
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
@@ -64,23 +64,18 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
-import io.github.yesidrobayo.shopledger.ui.sale.HistoryPeriodKind
+import io.github.yesidrobayo.shopledger.ui.sale.FilterSheetLabel
+import io.github.yesidrobayo.shopledger.ui.sale.HistoryFilterBar
+import io.github.yesidrobayo.shopledger.ui.sale.HistoryFilterSheet
+import io.github.yesidrobayo.shopledger.ui.sale.HistoryPeriodSheet
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
-
-/** Un filtro de la fila de filtros. */
-private sealed interface PurchaseChip {
-    data class Period(val kind: HistoryPeriodKind) : PurchaseChip
-
-    data object Supplier : PurchaseChip
-
-    data object Voided : PurchaseChip
-}
 
 /**
  * El historial de compras: el segmento `Compras` de Registros. Encuentra una compra y muestra lo
  * comprado por día.
  *
- * - Filtros arriba: período, proveedor y `Anuladas`. Sin período, el historial no tiene límite.
+ * - Filtros arriba: el período a la izquierda, con sus flechas debajo, y `Filtros` a la derecha,
+ *   con el proveedor y `Solo anuladas` en su hoja. Sin período, el historial no tiene límite.
  * - La lista va por día, con un encabezado fijo con la fecha y lo comprado ese día en compras
  *   activas. Cada fila dice el proveedor o `Sin proveedor`, cuántos productos y la referencia del
  *   documento, y el total. Una compra anulada va apagada, y su total tachado lleva la etiqueta
@@ -162,7 +157,14 @@ fun PurchaseHistoryScreen(
             }
         }
     }
-    if (uiState.supplierSheet) SupplierSheet(uiState.filters, onAction)
+    if (uiState.periodSheet) {
+        HistoryPeriodSheet(
+            selected = uiState.filters.periodKind,
+            onSelect = { onAction(PurchaseHistoryAction.PeriodKindChange(it)) },
+            onDismiss = { onAction(PurchaseHistoryAction.ClosePeriods) },
+        )
+    }
+    if (uiState.filterSheet) FilterSheet(uiState.filters, onAction)
 }
 
 /** Los segmentos de Registros: `Ventas`, `Compras` y `Gastos`. */
@@ -180,53 +182,31 @@ internal fun RecordsSegments(selected: Int, onSelect: (Int) -> Unit) {
     )
 }
 
-/** Período, proveedor y anuladas, en una fila de chips que pasa a varias líneas si no cabe. */
+/**
+ * El período y el botón de filtros en una barra, y debajo las flechas del período elegido. Con un
+ * solo filtro puesto, el botón dice cuál: el proveedor, `Sin proveedor` o `Anuladas`. Así, abierta
+ * desde un proveedor, la lista dice desde el principio por quién está filtrada.
+ */
 @Composable
 private fun Filters(uiState: PurchaseHistoryUiState, onAction: (PurchaseHistoryAction) -> Unit) {
     val filters = uiState.filters
-    val chips = listOf(
-        PurchaseChip.Period(HistoryPeriodKind.DAY),
-        PurchaseChip.Period(HistoryPeriodKind.WEEK),
-        PurchaseChip.Period(HistoryPeriodKind.MONTH),
-        PurchaseChip.Supplier,
-        PurchaseChip.Voided,
-    )
-    val selected = buildSet {
-        filters.periodKind?.let { add(PurchaseChip.Period(it)) }
-        if (filters.supplier != SupplierFilter.Any) add(PurchaseChip.Supplier)
-        if (filters.onlyVoided) add(PurchaseChip.Voided)
-    }
-    val noSupplier = stringResource(R.string.purchase_no_supplier)
     val supplierLabel = when (filters.supplier) {
-        SupplierFilter.Any -> stringResource(R.string.filter_supplier)
-        SupplierFilter.None -> noSupplier
-        is SupplierFilter.Of -> filters.supplierName ?: stringResource(R.string.filter_supplier)
+        SupplierFilter.Any -> null
+        SupplierFilter.None -> stringResource(R.string.purchase_no_supplier)
+        is SupplierFilter.Of -> filters.supplierName
+    }
+    val single = when {
+        filters.sheetFilterCount != 1 -> null
+        filters.supplier != SupplierFilter.Any -> supplierLabel
+        else -> stringResource(R.string.filter_voided)
     }
     Column(Modifier.padding(horizontal = AppTheme.spacing.s16)) {
-        CompactChipRow(
-            options = chips,
-            label = { chip ->
-                when (chip) {
-                    is PurchaseChip.Period -> stringResource(periodLabel(chip.kind))
-                    PurchaseChip.Supplier -> supplierLabel
-                    PurchaseChip.Voided -> stringResource(R.string.filter_voided)
-                }
-            },
-            selected = selected,
-            onToggle = { chip ->
-                when (chip) {
-                    is PurchaseChip.Period -> onAction(
-                        PurchaseHistoryAction.PeriodKindChange(
-                            chip.kind.takeIf { filters.periodKind != it },
-                        ),
-                    )
-
-                    PurchaseChip.Supplier -> onAction(PurchaseHistoryAction.OpenSuppliers)
-
-                    PurchaseChip.Voided -> onAction(PurchaseHistoryAction.ToggleVoided)
-                }
-            },
-            multiple = true,
+        HistoryFilterBar(
+            periodKind = filters.periodKind,
+            onOpenPeriods = { onAction(PurchaseHistoryAction.OpenPeriods) },
+            sheetFilterCount = filters.sheetFilterCount,
+            singleFilter = single,
+            onOpenFilters = { onAction(PurchaseHistoryAction.OpenFilters) },
         )
         val period = filters.period
         val today = uiState.today
@@ -240,12 +220,6 @@ private fun Filters(uiState: PurchaseHistoryUiState, onAction: (PurchaseHistoryA
             )
         }
     }
-}
-
-private fun periodLabel(kind: HistoryPeriodKind): Int = when (kind) {
-    HistoryPeriodKind.DAY -> R.string.period_day
-    HistoryPeriodKind.WEEK -> R.string.period_week
-    HistoryPeriodKind.MONTH -> R.string.period_month
 }
 
 @Composable
@@ -497,33 +471,45 @@ private fun CreditStatusTag(tag: CreditTag) {
     }
 }
 
-/** Elegir el proveedor del filtro, `Sin proveedor`, o ninguno para ver todas. */
+/**
+ * La hoja de filtros: el proveedor, `Sin proveedor` o ninguno para ver todas, y `Solo anuladas`.
+ * Tocar el proveedor elegido lo quita. Cada elección se aplica al tocarla.
+ */
 @Composable
-private fun SupplierSheet(filters: PurchaseFilters, onAction: (PurchaseHistoryAction) -> Unit) {
+private fun FilterSheet(filters: PurchaseFilters, onAction: (PurchaseHistoryAction) -> Unit) {
     val options = listOf<SupplierFilter>(SupplierFilter.None) +
         filters.suppliers.map { SupplierFilter.Of(it.id) }
     val names = filters.suppliers.associate { it.id to it.name }
     val noSupplier = stringResource(R.string.purchase_no_supplier)
-    AppBottomSheet(
-        onDismissRequest = { onAction(PurchaseHistoryAction.CloseSuppliers) },
-        title = stringResource(R.string.filter_supplier),
+    HistoryFilterSheet(
+        activeCount = filters.sheetFilterCount,
+        onClear = { onAction(PurchaseHistoryAction.ClearSheetFilters) },
+        onDismiss = { onAction(PurchaseHistoryAction.CloseFilters) },
     ) {
-        CompactChipRow(
-            options = options,
-            label = { option ->
-                when (option) {
-                    SupplierFilter.Any, SupplierFilter.None -> noSupplier
-                    is SupplierFilter.Of -> names[option.supplierId].orEmpty()
-                }
-            },
-            selected = setOf(filters.supplier),
-            onToggle = { option ->
-                // Tocar el elegido lo quita: vuelven todas las compras.
-                val next = if (option == filters.supplier) SupplierFilter.Any else option
-                onAction(PurchaseHistoryAction.SupplierChange(next))
-            },
-            multiple = false,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+            FilterSheetLabel(stringResource(R.string.filter_supplier))
+            CompactChipRow(
+                options = options,
+                label = { option ->
+                    when (option) {
+                        SupplierFilter.Any, SupplierFilter.None -> noSupplier
+                        is SupplierFilter.Of -> names[option.supplierId].orEmpty()
+                    }
+                },
+                selected = setOf(filters.supplier),
+                onToggle = { option ->
+                    // Tocar el elegido lo quita: vuelven todas las compras.
+                    val next = if (option == filters.supplier) SupplierFilter.Any else option
+                    onAction(PurchaseHistoryAction.SupplierChange(next))
+                },
+                multiple = false,
+            )
+            CheckboxRow(
+                text = stringResource(R.string.filter_only_voided),
+                checked = filters.onlyVoided,
+                onCheckedChange = { onAction(PurchaseHistoryAction.ToggleVoided) },
+            )
+        }
     }
 }
 

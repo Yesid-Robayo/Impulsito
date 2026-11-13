@@ -7,6 +7,11 @@
     <string name="period_day">Dia</string>
     <string name="period_week">Semana</string>
     <string name="period_month">Mês</string>
+    <string name="filter_period">Período</string>
+    <string name="period_all">Todas as datas</string>
+    <string name="filter_more">Filtros</string>
+    <string name="filter_more_count">Filtros · %1$d</string>
+    <string name="filter_only_voided">Somente anuladas</string>
     <string name="sale_more_items">+%1$d mais</string>
     <string name="sale_multiple_payments">Vários pagamentos</string>
 </resources>

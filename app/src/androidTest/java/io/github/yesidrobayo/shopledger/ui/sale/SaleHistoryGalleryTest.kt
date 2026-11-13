@@ -119,7 +119,8 @@ class SaleHistoryGalleryTest {
                 content = HistoryContent.EmptyFiltered,
             ),
             "error" to base.copy(content = HistoryContent.ReadError),
-            "methods" to base.copy(methodSheet = true),
+            "methods" to base.copy(filterSheet = true),
+            "periods" to base.copy(periodSheet = true),
             "wide" to base.copy(selectedSaleId = 1_204L),
         )
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->

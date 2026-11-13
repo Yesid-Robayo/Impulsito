@@ -216,18 +216,50 @@ class SaleHistoryViewModelTest {
         source.rows = listOf(row(1L, daysAgo = 0))
         val model = viewModel()
 
-        model.act(this, SaleHistoryAction.OpenMethods)
-        assertTrue(model.uiState.value.methodSheet)
+        model.act(this, SaleHistoryAction.OpenFilters)
+        assertTrue(model.uiState.value.filterSheet)
         model.act(this, SaleHistoryAction.MethodChange(1L))
-        assertFalse(model.uiState.value.methodSheet)
+        // La hoja de filtros sigue abierta: se puede elegir también `Solo anuladas`.
+        assertTrue(model.uiState.value.filterSheet)
         assertEquals(1L, source.pages.last().first.paymentMethodId)
-        model.act(this, SaleHistoryAction.CloseMethods)
+        assertEquals(1, model.uiState.value.filters.sheetFilterCount)
+        model.act(this, SaleHistoryAction.ToggleVoided)
+        assertEquals(2, model.uiState.value.filters.sheetFilterCount)
+        model.act(this, SaleHistoryAction.CloseFilters)
+        assertFalse(model.uiState.value.filterSheet)
         model.act(this, SaleHistoryAction.OpenSale(1L))
         assertEquals(1L, model.uiState.value.selectedSaleId)
         model.act(this, SaleHistoryAction.CloseSale)
         assertNull(model.uiState.value.selectedSaleId)
         model.act(this, SaleHistoryAction.Sell)
     }
+
+    @Test
+    fun `the period sheet closes on a choice and clearing the sheet keeps the period`() =
+        runTest(dispatcher) {
+            source.rows = listOf(row(1L, daysAgo = 0))
+            val model = viewModel()
+
+            model.act(this, SaleHistoryAction.OpenPeriods)
+            assertTrue(model.uiState.value.periodSheet)
+            model.act(this, SaleHistoryAction.ClosePeriods)
+            assertFalse(model.uiState.value.periodSheet)
+            model.act(this, SaleHistoryAction.OpenPeriods)
+            model.act(this, SaleHistoryAction.PeriodKindChange(HistoryPeriodKind.WEEK))
+            assertFalse(model.uiState.value.periodSheet)
+            assertEquals(HistoryPeriodKind.WEEK, model.uiState.value.filters.periodKind)
+
+            model.act(this, SaleHistoryAction.MethodChange(1L))
+            model.act(this, SaleHistoryAction.ToggleVoided)
+            model.act(this, SaleHistoryAction.ClearSheetFilters)
+            val filters = model.uiState.value.filters
+            assertNull(filters.methodId)
+            assertFalse(filters.onlyVoided)
+            assertEquals(0, filters.sheetFilterCount)
+            // El período no es de la hoja: sigue elegido.
+            assertEquals(HistoryPeriodKind.WEEK, filters.periodKind)
+            assertNull(source.pages.last().first.paymentMethodId)
+        }
 
     @Test
     fun `a read failure shows the error and retry reads again`() = runTest(dispatcher) {

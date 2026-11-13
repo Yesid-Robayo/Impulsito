@@ -19,7 +19,10 @@ data class PurchaseHistoryUiState(
     val content: PurchaseHistoryContent = PurchaseHistoryContent.Loading,
     val today: BusinessDate? = null,
     val selectedPurchaseId: Long? = null,
-    val supplierSheet: Boolean = false,
+    /** La hoja de filtros abierta: el proveedor y `Solo anuladas`. */
+    val filterSheet: Boolean = false,
+    /** La hoja del período abierta: todas las fechas, un día, una semana o un mes. */
+    val periodSheet: Boolean = false,
     /** Las compras a plazo que siguen con algo por pagar, o `null` mientras no se sabe. */
     val openCredit: Set<Long>? = null,
 )
@@ -39,6 +42,10 @@ data class PurchaseFilters(
 ) {
     val isFiltered: Boolean
         get() = period != null || supplier != SupplierFilter.Any || onlyVoided
+
+    /** Cuántos filtros de la hoja están puestos: el período va aparte, con su propio chip. */
+    val sheetFilterCount: Int
+        get() = listOf(supplier != SupplierFilter.Any, onlyVoided).count { it }
 
     val periodKind: HistoryPeriodKind?
         get() = when (period) {
@@ -101,11 +108,20 @@ sealed interface PurchaseHistoryAction {
 
     data object NextPeriod : PurchaseHistoryAction
 
-    data object OpenSuppliers : PurchaseHistoryAction
+    /** Abre la hoja del período. Elegir uno la cierra. */
+    data object OpenPeriods : PurchaseHistoryAction
+
+    data object ClosePeriods : PurchaseHistoryAction
+
+    /** Abre la hoja de filtros, que sigue abierta mientras se eligen. */
+    data object OpenFilters : PurchaseHistoryAction
 
     data class SupplierChange(val supplier: SupplierFilter) : PurchaseHistoryAction
 
-    data object CloseSuppliers : PurchaseHistoryAction
+    data object CloseFilters : PurchaseHistoryAction
+
+    /** `Quitar filtros` de la hoja: quita el proveedor y `Solo anuladas`, y deja el período. */
+    data object ClearSheetFilters : PurchaseHistoryAction
 
     data object ToggleVoided : PurchaseHistoryAction
 

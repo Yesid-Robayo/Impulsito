@@ -40,6 +40,7 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -148,12 +149,30 @@ class PurchaseRecordsViewModelTest {
         advanceUntilIdle()
         assertEquals(today, source.filters.last().from)
 
-        model.onAction(PurchaseHistoryAction.OpenSuppliers)
-        assertTrue(model.uiState.value.supplierSheet)
+        model.onAction(PurchaseHistoryAction.OpenPeriods)
+        assertTrue(model.uiState.value.periodSheet)
+        model.onAction(PurchaseHistoryAction.ClosePeriods)
+        assertFalse(model.uiState.value.periodSheet)
+
+        model.onAction(PurchaseHistoryAction.OpenFilters)
+        assertTrue(model.uiState.value.filterSheet)
         model.onAction(PurchaseHistoryAction.SupplierChange(SupplierFilter.None))
         advanceUntilIdle()
         assertEquals(SupplierFilter.None, source.filters.last().supplier)
-        model.onAction(PurchaseHistoryAction.CloseSuppliers)
+        // La hoja sigue abierta, con el proveedor y `Solo anuladas` puestos.
+        assertTrue(model.uiState.value.filterSheet)
+        assertEquals(2, model.uiState.value.filters.sheetFilterCount)
+        model.onAction(PurchaseHistoryAction.ToggleVoided)
+        assertEquals(1, model.uiState.value.filters.sheetFilterCount)
+        model.onAction(PurchaseHistoryAction.ToggleVoided)
+        model.onAction(PurchaseHistoryAction.ClearSheetFilters)
+        advanceUntilIdle()
+        assertEquals(SupplierFilter.Any, source.filters.last().supplier)
+        assertEquals(0, model.uiState.value.filters.sheetFilterCount)
+        // El período no es de la hoja: sigue elegido.
+        assertEquals(today, source.filters.last().from)
+        model.onAction(PurchaseHistoryAction.CloseFilters)
+        assertFalse(model.uiState.value.filterSheet)
 
         model.onAction(PurchaseHistoryAction.ClearFilters)
         advanceUntilIdle()

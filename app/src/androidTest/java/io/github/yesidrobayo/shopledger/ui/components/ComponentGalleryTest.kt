@@ -636,6 +636,37 @@ private fun FieldsPage() {
             PeriodSelector(calendar.month(today), {}, {}, showNext = false, today = today)
         }
     }
+    Group("FilterBar · MenuChip") {
+        Column(side, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+            FilterBar {
+                MenuChip(
+                    stringResource(R.string.period_all),
+                    {},
+                    active = false,
+                    leadingIcon = R.drawable.ic_calendar_month,
+                )
+                MenuChip(filtersLabel(0, null), {}, active = false)
+            }
+            FilterBar {
+                MenuChip(
+                    stringResource(R.string.period_week),
+                    {},
+                    active = true,
+                    leadingIcon = R.drawable.ic_calendar_month,
+                )
+                MenuChip(filtersLabel(1, s.LONG_NAME), {}, active = true)
+            }
+            FilterBar {
+                MenuChip(
+                    stringResource(R.string.period_month),
+                    {},
+                    active = true,
+                    leadingIcon = R.drawable.ic_calendar_month,
+                )
+                MenuChip(filtersLabel(2, null), {}, active = true)
+            }
+        }
+    }
     Group("CompactChipRow · SegmentedTabs") {
         Column(side, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
             CompactChipRow(listOf(s.CATEGORY_A, s.CATEGORY_B, s.CATEGORY_C), {

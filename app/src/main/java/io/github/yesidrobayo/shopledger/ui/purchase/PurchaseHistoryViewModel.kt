@@ -93,22 +93,30 @@ class PurchaseHistoryViewModel(
 
     fun onAction(action: PurchaseHistoryAction) {
         when (action) {
-            is PurchaseHistoryAction.PeriodKindChange -> changeFilters {
-                it.copy(period = periodOf(action.kind))
+            is PurchaseHistoryAction.PeriodKindChange -> {
+                state.update { it.copy(periodSheet = false) }
+                changeFilters { it.copy(period = periodOf(action.kind)) }
             }
 
             PurchaseHistoryAction.PreviousPeriod -> movePeriod(forward = false)
 
             PurchaseHistoryAction.NextPeriod -> movePeriod(forward = true)
 
-            PurchaseHistoryAction.OpenSuppliers -> state.update { it.copy(supplierSheet = true) }
+            PurchaseHistoryAction.OpenPeriods -> state.update { it.copy(periodSheet = true) }
 
-            is PurchaseHistoryAction.SupplierChange -> {
-                state.update { it.copy(supplierSheet = false) }
+            PurchaseHistoryAction.ClosePeriods -> state.update { it.copy(periodSheet = false) }
+
+            PurchaseHistoryAction.OpenFilters -> state.update { it.copy(filterSheet = true) }
+
+            // La hoja sigue abierta: la lista de detrás cambia al instante, y se puede elegir más.
+            is PurchaseHistoryAction.SupplierChange ->
                 changeFilters { it.copy(supplier = action.supplier) }
-            }
 
-            PurchaseHistoryAction.CloseSuppliers -> state.update { it.copy(supplierSheet = false) }
+            PurchaseHistoryAction.CloseFilters -> state.update { it.copy(filterSheet = false) }
+
+            PurchaseHistoryAction.ClearSheetFilters -> changeFilters {
+                it.copy(supplier = SupplierFilter.Any, onlyVoided = false)
+            }
 
             PurchaseHistoryAction.ToggleVoided ->
                 changeFilters { it.copy(onlyVoided = !it.onlyVoided) }

@@ -62,6 +62,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DateField
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.MenuChip
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
@@ -221,13 +222,16 @@ private fun MonthHeader(uiState: ExpensesUiState, onAction: (ExpensesAction) -> 
             loading = uiState.content == ExpensesContent.Loading,
         )
         val chosen = uiState.filterCategory
-        val label = chosen?.let { categoryName(it) } ?: stringResource(R.string.filter_category)
-        CompactChipRow(
-            options = listOf(FILTER_CHIP),
-            label = { label },
-            selected = if (chosen != null) setOf(FILTER_CHIP) else emptySet(),
-            onToggle = { onAction(ExpensesAction.OpenCategories) },
-            multiple = true,
+        val filterName = stringResource(R.string.filter_category)
+        val label = chosen?.let { categoryName(it) } ?: filterName
+        // El mismo chip de menú que el período y los filtros de las ventas y las compras: abre la
+        // hoja de categorías y, con una elegida, dice cuál.
+        MenuChip(
+            label = label,
+            onClick = { onAction(ExpensesAction.OpenCategories) },
+            active = chosen != null,
+            spokenLabel = stringResource(R.string.a11y_label_value, filterName, label)
+                .takeIf { chosen != null },
         )
     }
 }
@@ -829,8 +833,6 @@ private fun ListSkeleton() {
 
 // Desde 840 dp, lista y hoja lado a lado.
 private val EXPANDED_WIDTH = 840.dp
-
-private const val FILTER_CHIP = "category"
 
 /** El chip `Nueva categoría`, al final: ningún id de la base es negativo. */
 private const val NEW_CATEGORY_CHIP = -1L

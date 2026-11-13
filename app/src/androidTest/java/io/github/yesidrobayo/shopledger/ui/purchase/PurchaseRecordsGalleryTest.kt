@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
@@ -28,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseDetail
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseDetailLine
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
+import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierFilter
 import io.github.yesidrobayo.shopledger.domain.model.purchase.VoidStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -163,6 +165,31 @@ class PurchaseRecordsGalleryTest {
         assumeTrue("Sin captureDir no hay capturas", dir != null)
         val scenes: List<Pair<String, @Composable () -> Unit>> = listOf(
             "history" to { PurchaseHistoryScreen(history, onAction = {}) },
+            "history-filtered" to {
+                PurchaseHistoryScreen(
+                    history.copy(
+                        filters = PurchaseFilters(
+                            period = ReportPeriod.Week(today),
+                            supplier = SupplierFilter.Of(1L),
+                            suppliers = listOf(SupplierChoice(1L, "Distribuidora inventada")),
+                        ),
+                    ),
+                    onAction = {},
+                )
+            },
+            "history-filter-sheet" to {
+                PurchaseHistoryScreen(
+                    history.copy(
+                        filters = PurchaseFilters(
+                            supplier = SupplierFilter.None,
+                            onlyVoided = true,
+                            suppliers = listOf(SupplierChoice(1L, "Distribuidora inventada")),
+                        ),
+                        filterSheet = true,
+                    ),
+                    onAction = {},
+                )
+            },
             "history-empty" to {
                 PurchaseHistoryScreen(
                     PurchaseHistoryUiState(content = PurchaseHistoryContent.Empty),

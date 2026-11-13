@@ -19,7 +19,10 @@ data class SaleHistoryUiState(
     val today: BusinessDate? = null,
     val zone: BusinessTimeZone? = null,
     val selectedSaleId: Long? = null,
-    val methodSheet: Boolean = false,
+    /** La hoja de filtros abierta: el método de pago y `Solo anuladas`. */
+    val filterSheet: Boolean = false,
+    /** La hoja del período abierta: todas las fechas, un día, una semana o un mes. */
+    val periodSheet: Boolean = false,
 )
 
 /** El tipo de período del filtro: sin límite, o un día, una semana o un mes del negocio. */
@@ -42,6 +45,9 @@ data class HistoryFilters(
     val weekStartDay: DayOfWeek? = null,
 ) {
     val isFiltered: Boolean get() = period != null || methodId != null || onlyVoided
+
+    /** Cuántos filtros de la hoja están puestos: el período va aparte, con su propio chip. */
+    val sheetFilterCount: Int get() = listOf(methodId != null, onlyVoided).count { it }
 
     val periodKind: HistoryPeriodKind?
         get() = when (period) {
@@ -98,11 +104,20 @@ sealed interface SaleHistoryAction {
 
     data object NextPeriod : SaleHistoryAction
 
-    data object OpenMethods : SaleHistoryAction
+    /** Abre la hoja del período. Elegir uno la cierra. */
+    data object OpenPeriods : SaleHistoryAction
+
+    data object ClosePeriods : SaleHistoryAction
+
+    /** Abre la hoja de filtros, que sigue abierta mientras se eligen. */
+    data object OpenFilters : SaleHistoryAction
 
     data class MethodChange(val methodId: Long?) : SaleHistoryAction
 
-    data object CloseMethods : SaleHistoryAction
+    data object CloseFilters : SaleHistoryAction
+
+    /** `Quitar filtros` de la hoja: quita el método y `Solo anuladas`, y deja el período. */
+    data object ClearSheetFilters : SaleHistoryAction
 
     data object ToggleVoided : SaleHistoryAction
 

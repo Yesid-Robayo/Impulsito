@@ -79,22 +79,30 @@ class SaleHistoryViewModel(
 
     fun onAction(action: SaleHistoryAction) {
         when (action) {
-            is SaleHistoryAction.PeriodKindChange -> changeFilters {
-                it.copy(period = periodOf(action.kind))
+            is SaleHistoryAction.PeriodKindChange -> {
+                state.update { it.copy(periodSheet = false) }
+                changeFilters { it.copy(period = periodOf(action.kind)) }
             }
 
             SaleHistoryAction.PreviousPeriod -> movePeriod(forward = false)
 
             SaleHistoryAction.NextPeriod -> movePeriod(forward = true)
 
-            SaleHistoryAction.OpenMethods -> state.update { it.copy(methodSheet = true) }
+            SaleHistoryAction.OpenPeriods -> state.update { it.copy(periodSheet = true) }
 
-            is SaleHistoryAction.MethodChange -> {
-                state.update { it.copy(methodSheet = false) }
-                changeFilters { it.copy(methodId = action.methodId) }
+            SaleHistoryAction.ClosePeriods -> state.update { it.copy(periodSheet = false) }
+
+            SaleHistoryAction.OpenFilters -> state.update { it.copy(filterSheet = true) }
+
+            // La hoja sigue abierta: la lista de detrás cambia al instante, y se puede elegir más.
+            is SaleHistoryAction.MethodChange -> changeFilters {
+                it.copy(methodId = action.methodId)
             }
 
-            SaleHistoryAction.CloseMethods -> state.update { it.copy(methodSheet = false) }
+            SaleHistoryAction.CloseFilters -> state.update { it.copy(filterSheet = false) }
+
+            SaleHistoryAction.ClearSheetFilters ->
+                changeFilters { it.copy(methodId = null, onlyVoided = false) }
 
             SaleHistoryAction.ToggleVoided -> changeFilters { it.copy(onlyVoided = !it.onlyVoided) }
 
