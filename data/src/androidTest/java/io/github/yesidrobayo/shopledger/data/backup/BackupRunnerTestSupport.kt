@@ -164,7 +164,10 @@ internal class BackupFixture(
 
     fun stagingFiles(): List<String> = stagingDir.list()?.sorted().orEmpty()
 
-    /** El motor sobre esta base, con [destination] y las piezas reales de la copia. */
+    /**
+     * El motor sobre esta base, con [destination] y las piezas reales de la copia. [deviceId] es el
+     * teléfono que la escribe: otro sirve para simular varios teléfonos en el mismo destino.
+     */
     fun runner(
         destination: BackupDestination,
         pruner: CopyPruner = CopyPruner.None,
@@ -177,6 +180,7 @@ internal class BackupFixture(
         policyAccepted: suspend () -> Boolean = { true },
         encryption: suspend () -> LocalEncryption = { LocalEncryption.NONE },
         offHeadKeyId: suspend (String) -> Unit = {},
+        deviceId: String = TEST_DEVICE_ID,
     ): BackupRunner = BackupRunner(
         state = ports.backupState,
         databaseFile = file,
@@ -185,7 +189,7 @@ internal class BackupFixture(
         sealer = SnapshotSealer(Dispatchers.IO),
         packager = packager,
         staging = staging,
-        deviceId = { TEST_DEVICE_ID },
+        deviceId = { deviceId },
         clock = clock,
         log = log,
         ioContext = Dispatchers.IO,
