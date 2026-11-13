@@ -1,8 +1,22 @@
 package io.github.yesidrobayo.shopledger.data.local.returns
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Lo que ya devolvieron las devoluciones activas de una línea vendida: la cantidad en milésimas, lo
+ * neto, el impuesto y el costo. Una devolución anulada no cuenta.
+ */
+internal data class ReturnedLineTotals(
+    @ColumnInfo(name = "sale_line_id") val saleLineId: Long,
+    @ColumnInfo(name = "quantity_milli") val quantityMilli: Long,
+    @ColumnInfo(name = "net_amount") val netAmount: Long,
+    @ColumnInfo(name = "tax_amount") val taxAmount: Long,
+    @ColumnInfo(name = "line_cost") val lineCost: Long,
+)
 
 /**
  * Las líneas de las devoluciones de venta: agregar y leer, nada más.
@@ -28,7 +42,27 @@ internal interface SaleReturnLineDao {
     )
     suspend fun returnedQuantityMilli(saleLineId: Long): Long
 
+    /**
+     * Lo ya devuelto de cada línea de la venta entre sus devoluciones activas, por línea vendida y
+     * en orden de línea. Busca las devoluciones por su venta y las líneas por su devolución, con sus
+     * índices. Una línea sin devoluciones activas no sale.
+     */
+    @Query(TAKEN_BY_SALE)
+    suspend fun takenBySale(saleId: Long): List<ReturnedLineTotals>
+
+    /** Lo mismo que [takenBySale], que vuelve a emitir al cambiar las devoluciones o sus líneas. */
+    @Query(TAKEN_BY_SALE)
+    fun observeTakenBySale(saleId: Long): Flow<List<ReturnedLineTotals>>
+
     /** Agrega la línea y devuelve su id. Solo se llama dentro de la transacción de la devolución. */
     @Insert
     suspend fun insert(line: SaleReturnLineEntity): Long
 }
+
+private const val TAKEN_BY_SALE =
+    "SELECT rl.sale_line_id AS sale_line_id, SUM(rl.quantity_milli) AS quantity_milli, " +
+        "SUM(rl.net_amount) AS net_amount, SUM(rl.tax_amount) AS tax_amount, " +
+        "SUM(rl.line_cost) AS line_cost " +
+        "FROM sale_returns r JOIN sale_return_lines rl ON rl.sale_return_id = r.id " +
+        "WHERE r.sale_id = :saleId AND r.status = 'ACTIVE' " +
+        "GROUP BY rl.sale_line_id ORDER BY rl.sale_line_id"

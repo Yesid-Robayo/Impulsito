@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.data.local.ids
 import io.github.yesidrobayo.shopledger.data.local.purchaseReturn
 import io.github.yesidrobayo.shopledger.data.local.purchaseReturnLine
 import io.github.yesidrobayo.shopledger.data.local.sale
+import io.github.yesidrobayo.shopledger.data.local.saleLine
 import io.github.yesidrobayo.shopledger.data.local.saleReturn
 import io.github.yesidrobayo.shopledger.data.local.saleReturnLine
 import io.github.yesidrobayo.shopledger.data.local.stock.lot
@@ -117,6 +118,49 @@ internal class ReturnDaoTest : LedgerDatabaseTest() {
             // Una devolución anulada sigue en la lista, pero lo suyo ya no cuenta como devuelto.
             saleReturns.markVoided(first, LATER, "UNDO", null)
             assertEquals(700L, saleReturnLines.returnedQuantityMilli(saleLine.id))
+        } finally {
+            emissions.stop()
+        }
+    }
+
+    @Test
+    fun whatASaleAlreadyReturnedAddsUpPerLineWithoutVoidedReturns() = runBlocking {
+        val first = insertSaleWithLine()
+        val second = saleLine(first.saleId, productId, priceListId)
+        val secondId = database.saleLineDao().insert(second)
+        val other = insertSaleWithLine()
+        insertSaleReturnLine(other)
+        assertEquals(emptyList<ReturnedLineTotals>(), saleReturnLines.takenBySale(first.saleId))
+
+        val emissions = Emissions(this, saleReturnLines.observeTakenBySale(first.saleId))
+        try {
+            emissions.awaitValue(emptyList())
+            val one = saleReturns.insert(saleReturn(first.saleId))
+            saleReturnLines.insert(saleReturnLine(one, secondId).copy(quantityMilli = 500))
+            saleReturnLines.insert(saleReturnLine(one, first.id))
+            val two = saleReturns.insert(saleReturn(first.saleId))
+            saleReturnLines.insert(
+                saleReturnLine(two, first.id).copy(
+                    quantityMilli = 250,
+                    netAmount = 1_250,
+                    taxAmount = 238,
+                    lineTotal = 1_488,
+                    lineCost = 750,
+                    restock = 0,
+                ),
+            )
+            val both = listOf(
+                ReturnedLineTotals(first.id, 1_250, 6_250, 1_188, 3_750),
+                ReturnedLineTotals(secondId, 500, 5_000, 950, 3_000),
+            )
+            emissions.awaitValue(both)
+            assertEquals(both, saleReturnLines.takenBySale(first.saleId))
+
+            // Lo que volvió sin reingreso cuenta igual: ya no se puede devolver. Lo anulado, no.
+            saleReturns.markVoided(one, LATER, "ENTRY_ERROR", null)
+            val onlyTwo = listOf(ReturnedLineTotals(first.id, 250, 1_250, 238, 750))
+            emissions.awaitValue(onlyTwo)
+            assertEquals(onlyTwo, saleReturnLines.takenBySale(first.saleId))
         } finally {
             emissions.stop()
         }
@@ -233,7 +277,13 @@ internal class ReturnDaoTest : LedgerDatabaseTest() {
             functionsOf(SaleReturnDao::class.java),
         )
         assertEquals(
-            setOf("findByReturn", "returnedQuantityMilli", "insert"),
+            setOf(
+                "findByReturn",
+                "returnedQuantityMilli",
+                "takenBySale",
+                "observeTakenBySale",
+                "insert",
+            ),
             functionsOf(SaleReturnLineDao::class.java),
         )
         assertEquals(
