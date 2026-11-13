@@ -23,6 +23,13 @@ interface MoneyLedgerRepository {
     /** Las partes de una transferencia, en el orden del libro. */
     suspend fun findByTransferGroup(groupId: String): List<MoneyMovement>
 
+    /**
+     * Los movimientos que salieron del pago a proveedor [supplierLedgerEntryId], en el orden del
+     * libro: su `SUPPLIER_PAYMENT`, si se pagó desde una cuenta. La anulación no lleva el pago, solo
+     * el movimiento que compensa.
+     */
+    suspend fun findBySupplierLedgerEntry(supplierLedgerEntryId: Long): List<MoneyMovement>
+
     /** Si el movimiento [movementId] ya tiene su anulación: uno se anula una sola vez. */
     suspend fun isCompensated(movementId: Long): Boolean
 

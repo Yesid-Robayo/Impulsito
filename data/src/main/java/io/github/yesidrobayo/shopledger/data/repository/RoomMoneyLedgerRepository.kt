@@ -50,6 +50,11 @@ internal class RoomMoneyLedgerRepository(
     override suspend fun findByTransferGroup(groupId: String): List<MoneyMovement> =
         movements.findByTransferGroup(groupId).map(::toMovement)
 
+    override suspend fun findBySupplierLedgerEntry(
+        supplierLedgerEntryId: Long,
+    ): List<MoneyMovement> =
+        movements.findBySupplierLedgerEntry(supplierLedgerEntryId).map(::toMovement)
+
     override suspend fun isCompensated(movementId: Long): Boolean =
         movements.isCompensated(movementId)
 

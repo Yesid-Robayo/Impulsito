@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.Expense
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
+import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
@@ -81,6 +82,8 @@ internal data class Tables(
     val moneyAccounts: Map<Long, MoneyAccount> = emptyMap(),
     /** El libro de dinero, por id: solo crece. */
     val moneyMovements: Map<Long, MoneyMovement> = emptyMap(),
+    /** El libro de los proveedores, por id: solo crece. */
+    val supplierEntries: Map<Long, SupplierLedgerEntry> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

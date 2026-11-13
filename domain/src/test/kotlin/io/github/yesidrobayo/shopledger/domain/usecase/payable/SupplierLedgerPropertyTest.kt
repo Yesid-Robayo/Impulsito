@@ -23,7 +23,8 @@ import org.junit.Test
 /**
  * Prueba de propiedades del libro del proveedor: secuencias al azar, con semilla fija, de compras
  * pagadas completas, a plazo y con lo pagado fuera de rango, sin proveedor, con vencimientos
- * anteriores a la compra, anulaciones también repetidas y fallas inyectadas en cualquier escritura.
+ * anteriores a la compra, pagos parciales y de más, anulaciones de compras y de pagos, también
+ * repetidas, y fallas inyectadas en cualquier escritura.
  *
  * Tras cada operación comprueba, contra un oráculo llevado aquí y no con el código que prueba: que
  * el saldo de cada proveedor es la suma de su libro; que cada fila guarda el saldo de la anterior
@@ -49,6 +50,10 @@ class SupplierLedgerPropertyTest {
             "rechazos por lo pagado" to stats.outOfRange,
             "rechazos por el vencimiento" to stats.dueBefore,
             "fallas inyectadas" to stats.failures,
+            "pagos" to stats.payments,
+            "saldos a favor" to stats.inFavor,
+            "pagos anulados" to stats.voidedPayments,
+            "pagos anulados de nuevo" to stats.repeatedPaymentVoids,
         )
         for ((path, count) in paths) assertTrue("Ningún caso de: $path", count > 0)
     }
@@ -62,21 +67,32 @@ class SupplierLedgerPropertyTest {
         }
         // Lo que debería deber cada compra a plazo vigente, según lo que escribió la prueba.
         val owed = HashMap<Long, Pair<Long, Long>>()
+        // Lo pagado en cada pago vigente, por su fila: proveedor y monto.
+        val payments = HashMap<Long, Pair<Long, Long>>()
         repeat(random.nextInt(MIN_OPERATIONS, MAX_OPERATIONS + 1)) { step ->
             val before = world.tables
             val inject = random.nextInt(100) < FAILURE_PERCENT
             world.failAtWrite = if (inject) random.nextInt(1, MAX_FAILED_WRITE + 1) else null
-            val voids = (random.nextInt(100) < VOID_PERCENT && owed.isNotEmpty()) ||
-                random.nextInt(100) < REPEATED_VOID_PERCENT
-            val changed = if (voids) {
-                voidRandom(world, random, owed, stats)
-            } else {
-                registerRandom(world, random, owed, stats)
+            val choice = random.nextInt(100)
+            val changed = when {
+                choice < PAY_PERCENT -> payRandom(world, random, payments, stats)
+
+                choice < PAY_PERCENT + VOID_PAYMENT_PERCENT ->
+                    voidPaymentRandom(world, random, payments, stats)
+
+                (random.nextInt(100) < VOID_PERCENT && owed.isNotEmpty()) ||
+                    random.nextInt(100) < REPEATED_VOID_PERCENT ->
+                    voidRandom(world, random, owed, stats)
+
+                else -> registerRandom(world, random, owed, stats)
             }
             world.failAtWrite = null
             val where = "semilla $seed, paso $step"
             if (!changed) assertEquals(where, before, world.tables)
-            checkLedger(where, before, world.tables, owed)
+            checkLedger(where, before, world.tables, owed, payments)
+            for (id in SUPPLIERS) {
+                if (world.tables.suppliers.getValue(id).balance < Money.ZERO) stats.inFavor++
+            }
         }
     }
 
@@ -149,6 +165,72 @@ class SupplierLedgerPropertyTest {
         }
     }
 
+    /** Paga a un proveedor al azar, a veces más de lo que se le debe. */
+    private suspend fun payRandom(
+        world: SaleWorld,
+        random: Random,
+        payments: MutableMap<Long, Pair<Long, Long>>,
+        stats: Stats,
+    ): Boolean {
+        val supplier = SUPPLIERS.random(random)
+        val amount = random.nextLong(1, 60_000)
+        val result = try {
+            PaySupplierUseCase(
+                world.transactions,
+                world.settings,
+                world.supplierRepository,
+                world.supplierLedger,
+                world.clock,
+            )(SupplierPaymentRequest(supplier, Money(amount)))
+        } catch (failure: InjectedSaleFailure) {
+            stats.failures++
+            return false
+        }
+        val entryId = (result as PaySupplierResult.Paid).entryId
+        payments[entryId] = supplier to amount
+        stats.payments++
+        return true
+    }
+
+    /** Anula un pago al azar, quizá ya anulado. */
+    private suspend fun voidPaymentRandom(
+        world: SaleWorld,
+        random: Random,
+        payments: MutableMap<Long, Pair<Long, Long>>,
+        stats: Stats,
+    ): Boolean {
+        val ids = world.tables.supplierEntries.values
+            .filter { it.content.type == SupplierLedgerEntryType.PAYMENT }
+            .map { it.id }
+        if (ids.isEmpty()) return false
+        val id = ids.random(random)
+        val result = try {
+            VoidSupplierPaymentUseCase(
+                world.transactions,
+                world.settings,
+                world.supplierLedger,
+                world.clock,
+            )(id)
+        } catch (failure: InjectedSaleFailure) {
+            stats.failures++
+            return false
+        }
+        return when (result) {
+            VoidSupplierPaymentResult.Voided -> {
+                checkNotNull(payments.remove(id))
+                stats.voidedPayments++
+                true
+            }
+
+            VoidSupplierPaymentResult.AlreadyVoided -> {
+                stats.repeatedPaymentVoids++
+                false
+            }
+
+            else -> error("Resultado inesperado: $result")
+        }
+    }
+
     /** Anula una compra al azar, quizá ya anulada. Devuelve si debía cambiar algo. */
     private suspend fun voidRandom(
         world: SaleWorld,
@@ -185,6 +267,7 @@ class SupplierLedgerPropertyTest {
         before: SaleTables,
         after: SaleTables,
         owed: Map<Long, Pair<Long, Long>>,
+        payments: Map<Long, Pair<Long, Long>>,
     ) {
         // El libro solo crece: ninguna fila anterior cambió ni desapareció.
         for ((id, entry) in before.supplierEntries) {
@@ -207,7 +290,8 @@ class SupplierLedgerPropertyTest {
                 running,
                 after.suppliers.getValue(supplierId).balance.minor,
             )
-            val expected = owed.values.filter { it.first == supplierId }.sumOf { it.second }
+            val expected = owed.values.filter { it.first == supplierId }.sumOf { it.second } -
+                payments.values.filter { it.first == supplierId }.sumOf { it.second }
             assertEquals("$where: deuda vigente de $supplierId", expected, running)
         }
         checkCompensations(where, entries)
@@ -237,6 +321,10 @@ class SupplierLedgerPropertyTest {
         var outOfRange = 0
         var dueBefore = 0
         var failures = 0
+        var payments = 0
+        var inFavor = 0
+        var voidedPayments = 0
+        var repeatedPaymentVoids = 0
     }
 
     private companion object {
@@ -248,6 +336,8 @@ class SupplierLedgerPropertyTest {
         const val MAX_FAILED_WRITE = 12
         const val VOID_PERCENT = 30
         const val REPEATED_VOID_PERCENT = 5
+        const val PAY_PERCENT = 20
+        const val VOID_PAYMENT_PERCENT = 8
         val SUPPLIERS = listOf(1L, 2L, 3L)
     }
 }

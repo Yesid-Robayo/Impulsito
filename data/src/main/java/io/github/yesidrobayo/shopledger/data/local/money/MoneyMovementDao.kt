@@ -37,7 +37,14 @@ internal interface MoneyMovementDao {
     )
     suspend fun lastBalanceAfter(accountId: Long): Long?
 
+    /** Los movimientos de un pago a proveedor: su `SUPPLIER_PAYMENT`, si se pagó desde una cuenta. */
+    @Query(
+        "SELECT * FROM money_movements WHERE supplier_ledger_entry_id = :entryId ORDER BY id",
+    )
+    suspend fun findBySupplierLedgerEntry(entryId: Long): List<MoneyMovementEntity>
+
     /** Las dos filas de una transferencia, la que sale y la que entra. */
+
     @Query("SELECT * FROM money_movements WHERE transfer_group_id = :groupId ORDER BY id")
     suspend fun findByTransferGroup(groupId: String): List<MoneyMovementEntity>
 

@@ -104,6 +104,12 @@ internal class FakeMoneyLedgerRepository(private val database: InMemoryDatabase)
             .filter { (it.draft.origin as? MoneyOrigin.Transfer)?.groupId == groupId }
             .sortedBy { it.id }
 
+    override suspend fun findBySupplierLedgerEntry(
+        supplierLedgerEntryId: Long,
+    ): List<MoneyMovement> = database.read().moneyMovements.values
+        .filter { it.draft.origin == MoneyOrigin.SupplierPayment(supplierLedgerEntryId) }
+        .sortedBy { it.id }
+
     override suspend fun isCompensated(movementId: Long): Boolean =
         database.read().moneyMovements.values.any {
             (it.draft.origin as? MoneyOrigin.Void)?.reversesMovementId == movementId
