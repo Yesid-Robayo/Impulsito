@@ -21,6 +21,8 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomHeldSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLowStockAlertRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMediaAssetRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
+import io.github.yesidrobayo.shopledger.data.repository.RoomMoneyAccountRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomMoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMovementDocumentSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodBreakdownRepository
@@ -63,6 +65,8 @@ import io.github.yesidrobayo.shopledger.domain.port.HumanCheckRecorder
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
+import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
+import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MovementDocumentSource
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PeriodBreakdownRepository
@@ -204,6 +208,12 @@ class DataPorts internal constructor(
     val expenses: ExpenseRepository = RoomExpenseRepository(database)
 
     val paymentMethods: PaymentMethodRepository = RoomPaymentMethodRepository(database)
+
+    /** Las cuentas de dinero: efectivo, bancos y billeteras, cada una en su moneda. */
+    val moneyAccounts: MoneyAccountRepository = RoomMoneyAccountRepository(database)
+
+    /** El libro de dinero, que mueve el saldo de cada cuenta en la misma transacción. */
+    val moneyLedger: MoneyLedgerRepository = RoomMoneyLedgerRepository(database)
 
     /** Qué herramientas del centro `Negocio` tienen datos. Solo lee. */
     val moduleUsage: ModuleUsageSource = RoomModuleUsageSource(database)

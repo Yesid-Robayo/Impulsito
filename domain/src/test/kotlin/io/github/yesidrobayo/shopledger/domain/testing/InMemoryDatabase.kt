@@ -14,6 +14,8 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.expense.Expense
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
@@ -76,6 +78,9 @@ internal data class Tables(
     /** Los clientes con ventas, pedidos, cotizaciones o filas en sus libros. */
     val customersWithHistory: Set<Long> = emptySet(),
     val customerLedger: Map<Long, CustomerLedgerEntry> = emptyMap(),
+    val moneyAccounts: Map<Long, MoneyAccount> = emptyMap(),
+    /** El libro de dinero, por id: solo crece. */
+    val moneyMovements: Map<Long, MoneyMovement> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

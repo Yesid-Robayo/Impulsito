@@ -20,6 +20,20 @@ internal interface MoneyAccountDao {
     @Query("SELECT * FROM money_accounts WHERE archived_at IS NULL ORDER BY id")
     fun observeActive(): Flow<List<MoneyAccountEntity>>
 
+    /** Las archivadas: siguen con su libro, pero no reciben dinero nuevo. */
+    @Query("SELECT * FROM money_accounts WHERE archived_at IS NOT NULL ORDER BY id")
+    fun observeArchived(): Flow<List<MoneyAccountEntity>>
+
+    /**
+     * La cuenta vigente con ese nombre normalizado, si la hay: la que chocaría con uno nuevo. Una
+     * archivada no reserva su nombre.
+     */
+    @Query(
+        "SELECT * FROM money_accounts WHERE normalized_name = :normalizedName " +
+            "AND archived_at IS NULL ORDER BY id LIMIT 1",
+    )
+    suspend fun findActiveByNormalizedName(normalizedName: String): MoneyAccountEntity?
+
     @Query("SELECT * FROM money_accounts WHERE id = :id")
     suspend fun findById(id: Long): MoneyAccountEntity?
 
