@@ -250,16 +250,16 @@ private fun ProgramFields(
 
 @Composable
 private fun ExampleCard(example: LoyaltyExample) {
-    val money = LocalAppFormats.current.money
-    val sale = rememberMoneyDisplay(example.saleAmount, money).text.text
-    val discount = rememberMoneyDisplay(example.discount, money).text.text
+    val formats = LocalAppFormats.current
+    val sale = rememberMoneyDisplay(example.saleAmount, formats.money).text.text
+    val discount = rememberMoneyDisplay(example.discount, formats.money).text.text
     AppCard(Modifier.fillMaxWidth()) {
         Text(
             pluralStringResource(
                 R.plurals.loyalty_example_earn,
                 example.earnedPoints.toPluralCount(),
                 sale,
-                example.earnedPoints,
+                formats.quantity.formatCount(example.earnedPoints),
             ),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
@@ -268,7 +268,7 @@ private fun ExampleCard(example: LoyaltyExample) {
             pluralStringResource(
                 R.plurals.loyalty_example_redeem,
                 example.redeemedPoints.toPluralCount(),
-                example.redeemedPoints,
+                formats.quantity.formatCount(example.redeemedPoints),
                 discount,
             ),
             style = MaterialTheme.typography.bodyLarge,
@@ -280,14 +280,18 @@ private fun ExampleCard(example: LoyaltyExample) {
 @Composable
 private fun PointsTotals(points: PointsSummary) {
     if (points.totalPoints <= 0L) return
+    val quantity = LocalAppFormats.current.quantity
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4)) {
         Text(
-            stringResource(R.string.loyalty_total_points, points.totalPoints),
+            stringResource(R.string.loyalty_total_points, quantity.formatCount(points.totalPoints)),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            stringResource(R.string.loyalty_customers_with_points, points.customersWithPoints),
+            stringResource(
+                R.string.loyalty_customers_with_points,
+                quantity.formatCount(points.customersWithPoints.toLong()),
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

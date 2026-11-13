@@ -49,6 +49,18 @@ class QuantityFormatter(val formatLocale: FormatLocale) {
         return IcuTextNormalizer.normalizeNumber(text)
     }
 
+    /**
+     * Un conteo entero, como los puntos de un cliente o cuántos clientes hay, agrupado como lo
+     * agrupa la región: `1.250`, `1,250` o `1,00,000`.
+     *
+     * Un `%d` en un recurso lo escribiría con el idioma de la interfaz y sin separador de miles,
+     * así que todo conteo que se muestra pasa por aquí y entra al texto como `%s`.
+     */
+    fun formatCount(count: Long): String {
+        val text = synchronized(wholeFormat) { wholeFormat.format(count) }
+        return IcuTextNormalizer.normalizeNumber(text)
+    }
+
     private companion object {
         /** Decimales de una cantidad en milésimas. */
         const val MILLI_DIGITS = 3

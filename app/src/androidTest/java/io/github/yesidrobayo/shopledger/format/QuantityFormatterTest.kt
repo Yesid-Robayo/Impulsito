@@ -57,6 +57,17 @@ class QuantityFormatterTest(device: ForeignDevice) {
     }
 
     @Test
+    fun aCountIsGroupedLikeTheRegionDoes() {
+        assertEquals("1.250", quantity("es-AR").formatCount(1_250))
+        assertEquals("1,250", quantity("en-US").formatCount(1_250))
+        assertEquals("1,00,000", quantity("en-IN").formatCount(100_000))
+        assertEquals("1 250", quantity("fr-FR").formatCount(1_250))
+        assertEquals("14", quantity("en-IN").formatCount(14))
+        assertEquals("−3", quantity("es-AR").formatCount(-3))
+        assertEquals("9,223,372,036,854,775,807", quantity("en-US").formatCount(Long.MAX_VALUE))
+    }
+
+    @Test
     fun theExtremesOfLongAreExact() {
         assertEquals(
             "9,223,372,036,854,775.807",

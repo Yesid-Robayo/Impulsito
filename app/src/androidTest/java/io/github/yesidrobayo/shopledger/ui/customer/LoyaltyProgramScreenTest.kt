@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.customer.PointsSummary
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.ui.format.AppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
@@ -67,8 +68,8 @@ class LoyaltyProgramScreenTest {
 
         compose.onNodeWithText(text(R.string.loyalty_enabled)).assertIsOn()
         compose.onNodeWithText(text(R.string.loyalty_amount_per_point)).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.loyalty_total_points, 1_250L)).assertExists()
-        compose.onNodeWithText(text(R.string.loyalty_customers_with_points, 14)).assertExists()
+        compose.onNodeWithText(text(R.string.loyalty_total_points, "1.250")).assertExists()
+        compose.onNodeWithText(text(R.string.loyalty_customers_with_points, "14")).assertExists()
         compose.onNodeWithText(text(R.string.loyalty_save_action)).performClick()
         compose.onNodeWithText(text(R.string.loyalty_enabled)).performClick()
 
@@ -76,6 +77,21 @@ class LoyaltyProgramScreenTest {
             listOf(LoyaltyProgramAction.Save, LoyaltyProgramAction.SetEnabled(false)),
             actions,
         )
+    }
+
+    @Test
+    fun theCountsAreGroupedWithTheRegionalFormatNotTheLanguage() {
+        val many = ACTIVE.copy(
+            example = LoyaltyExample(Money(100_000_000), 100_000, 250_000, Money(1_250_000)),
+            points = PointsSummary(1_234_567, 12_345),
+        )
+        show(many, formats = previewFormats(formatTag = "en-IN"))
+
+        compose.onNodeWithText(text(R.string.loyalty_total_points, "12,34,567")).assertExists()
+        compose.onNodeWithText(text(R.string.loyalty_customers_with_points, "12,345"))
+            .assertExists()
+        compose.onNodeWithText("1,00,000", substring = true).assertExists()
+        compose.onNodeWithText("2,50,000", substring = true).assertExists()
     }
 
     @Test
@@ -121,13 +137,17 @@ class LoyaltyProgramScreenTest {
         }
     }
 
-    private fun show(state: LoyaltyProgramUiState, dark: Boolean = false) {
+    private fun show(
+        state: LoyaltyProgramUiState,
+        dark: Boolean = false,
+        formats: AppFormats = previewFormats(),
+    ) {
         compose.runOnUiThread {
             val bars = SystemBarStyle.auto(TRANSPARENT, TRANSPARENT) { dark }
             compose.activity.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
             compose.activity.setContent {
                 AppTheme(palette = ColorPalette.INDIGO_MUSTARD, darkTheme = dark) {
-                    CompositionLocalProvider(LocalAppFormats provides previewFormats()) {
+                    CompositionLocalProvider(LocalAppFormats provides formats) {
                         LoyaltyProgramScreen(state) { actions += it }
                     }
                 }
