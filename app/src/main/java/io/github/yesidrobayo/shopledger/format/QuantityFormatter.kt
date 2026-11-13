@@ -61,7 +61,26 @@ class QuantityFormatter(val formatLocale: FormatLocale) {
         return IcuTextNormalizer.normalizeNumber(text)
     }
 
+    /**
+     * Un número en millonésimas, como una cotización, con hasta seis decimales y sin ceros de más,
+     * agrupado como lo agrupa la región: 4150500000 es `4.150,5` o `4,150.5`.
+     */
+    fun formatMicro(micro: Long): String {
+        val text = synchronized(microFormat) {
+            microFormat.format(BigDecimal.valueOf(micro, MICRO_DIGITS))
+        }
+        return IcuTextNormalizer.normalizeNumber(text)
+    }
+
+    private val microFormat: DecimalFormat =
+        decimalFormat(formatLocale, fractionDigits = MICRO_DIGITS).apply {
+            minimumFractionDigits = 0
+        }
+
     private companion object {
+        /** Decimales de un número en millonésimas. */
+        const val MICRO_DIGITS = 6
+
         /** Decimales de una cantidad en milésimas. */
         const val MILLI_DIGITS = 3
 

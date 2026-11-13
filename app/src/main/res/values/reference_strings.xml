@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reference_currency_label">Currency</string>
+    <string name="reference_decimals_label">Decimals</string>
+    <string name="reference_search_hint">Search by code or name</string>
+    <string name="reference_rate_current">1 %1$s = %2$s</string>
+    <string name="reference_rate_since">In effect since %1$s</string>
+    <string name="reference_manual_notice">The exchange rate is entered by hand. %1$s does not download it or change prices on its own.</string>
+    <string name="reference_history_title">History</string>
+    <string name="reference_register_action">Record exchange rate</string>
+    <string name="reference_rate_label">Exchange rate</string>
+    <string name="reference_rate_prefix">1 %1$s =</string>
+    <string name="reference_date_label">Date</string>
+    <string name="reference_note_label">Note</string>
+    <string name="reference_note_hint">Where it came from</string>
+    <string name="reference_previous">Previous: %1$s</string>
+    <string name="reference_variation">Change: %1$s</string>
+    <string name="reference_empty_title">No reference currency</string>
+    <string name="reference_empty_action">Choose currency</string>
+    <string name="reference_no_rate_title">No exchange rate yet</string>
+    <string name="reference_error_zero">Enter a rate greater than 0</string>
+    <string name="reference_error_future">The date cannot be later than today</string>
+    <string name="reference_warning_jump">Differs by more than %1$s from the previous rate. Check the value.</string>
+    <string name="reference_change_confirm_title">Change the reference currency?</string>
+    <string name="reference_change_confirm_body">Product references stay in the previous currency until reviewed. The history is kept.</string>
+    <string name="reference_change_confirm_action">Change currency</string>
+    <string name="reference_saved">Exchange rate recorded</string>
+    <string name="hub_tool_reference_currency">Reference currency</string>
+    <string name="hub_tool_reference_currency_desc">Set prices from another currency, with a rate entered by hand</string>
+</resources>

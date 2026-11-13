@@ -176,6 +176,8 @@ fun PercentField(
  * seis decimales y los separadores de cualquier número de la región. Sin símbolo: una cotización no
  * es un monto de ninguna de las dos monedas. Lo lee el dominio con los mismos símbolos, en
  * millonésimas.
+ *
+ * [prefix], si lo hay, dice de qué moneda es la cotización, como `1 XTS =`.
  */
 @Composable
 fun RateField(
@@ -183,6 +185,7 @@ fun RateField(
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    prefix: String? = null,
     error: String? = null,
     imeAction: ImeAction = ImeAction.Next,
 ) {
@@ -196,7 +199,7 @@ fun RateField(
         modifier = modifier,
         error = error,
         imeAction = imeAction,
-        prefix = null,
+        prefix = prefix?.let { AnnotatedString("$it ") },
         suffix = null,
     )
 }

@@ -72,6 +72,12 @@ val HUB_ENTRIES: List<HubEntry> =
             AppNavKey.PriceLists,
         ),
         HubEntry(
+            BusinessTool.REFERENCE_CURRENCY,
+            R.string.hub_tool_reference_currency,
+            R.string.hub_tool_reference_currency_desc,
+            AppNavKey.ReferenceCurrency,
+        ),
+        HubEntry(
             BusinessTool.UNITS,
             R.string.hub_tool_units,
             R.string.hub_tool_units_desc,

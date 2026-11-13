@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reference_currency_label">Moneda</string>
+    <string name="reference_decimals_label">Decimales</string>
+    <string name="reference_search_hint">Buscar por código o nombre</string>
+    <string name="reference_rate_current">1 %1$s = %2$s</string>
+    <string name="reference_rate_since">Vigente desde el %1$s</string>
+    <string name="reference_manual_notice">La cotización se escribe a mano. %1$s no la descarga ni cambia precios sola.</string>
+    <string name="reference_history_title">Historial</string>
+    <string name="reference_register_action">Registrar cotización</string>
+    <string name="reference_rate_label">Cotización</string>
+    <string name="reference_rate_prefix">1 %1$s =</string>
+    <string name="reference_date_label">Fecha</string>
+    <string name="reference_note_label">Nota</string>
+    <string name="reference_note_hint">De dónde salió</string>
+    <string name="reference_previous">Anterior: %1$s</string>
+    <string name="reference_variation">Variación: %1$s</string>
+    <string name="reference_empty_title">Sin moneda de referencia</string>
+    <string name="reference_empty_action">Elegir moneda</string>
+    <string name="reference_no_rate_title">Sin cotización todavía</string>
+    <string name="reference_error_zero">Escribir una cotización mayor que 0</string>
+    <string name="reference_error_future">La fecha no puede ser posterior a hoy</string>
+    <string name="reference_warning_jump">Difiere más de %1$s de la cotización anterior. Conviene revisar el valor.</string>
+    <string name="reference_change_confirm_title">¿Cambiar la moneda de referencia?</string>
+    <string name="reference_change_confirm_body">Las referencias de los productos quedan en la moneda anterior hasta revisarlas. El historial se conserva.</string>
+    <string name="reference_change_confirm_action">Cambiar moneda</string>
+    <string name="reference_saved">Cotización registrada</string>
+    <string name="hub_tool_reference_currency">Moneda de referencia</string>
+    <string name="hub_tool_reference_currency_desc">Fijar precios desde otra moneda, con cotización escrita a mano</string>
+</resources>
