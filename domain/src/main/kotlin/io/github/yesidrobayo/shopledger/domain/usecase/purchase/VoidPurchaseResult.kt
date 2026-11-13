@@ -16,6 +16,12 @@ sealed interface VoidPurchaseResult {
     /** La compra ya estaba anulada: una compra se anula una sola vez, y no se reactiva. */
     data object AlreadyVoided : VoidPurchaseResult
 
+    /**
+     * La compra tiene una devolución al proveedor activa: lo devuelto ya salió del stock y del
+     * costo. Se devuelve el resto, o se anula primero la devolución.
+     */
+    data object HasActiveReturns : VoidPurchaseResult
+
     /** El motivo no vale para una compra, como una devolución de cliente. */
     data object ReasonNotAllowed : VoidPurchaseResult
 

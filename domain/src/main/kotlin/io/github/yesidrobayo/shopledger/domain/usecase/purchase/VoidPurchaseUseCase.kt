@@ -61,6 +61,10 @@ import kotlin.time.Instant
  *   recibe un `MOVEMENT_VOID` con la fecha de la anulación. Los pagos posteriores al proveedor
  *   siguen vigentes: se anulan aparte.
  *
+ * - **Con una devolución al proveedor activa no se anula.** Lo devuelto ya salió del stock con su
+ *   costo, y anular la compra lo sacaría otra vez. Se devuelve el resto, o se anula primero la
+ *   devolución.
+ *
  * Un producto archivado no impide anular: su stock sale igual.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
@@ -113,6 +117,9 @@ class VoidPurchaseUseCase(
             ?: return TxResult.Rollback(VoidPurchaseResult.PurchaseNotFound)
         if (purchase.status == DocumentStatus.VOIDED) {
             return TxResult.Rollback(VoidPurchaseResult.AlreadyVoided)
+        }
+        if (purchases.hasActiveReturns(purchaseId)) {
+            return TxResult.Rollback(VoidPurchaseResult.HasActiveReturns)
         }
 
         val now = clock.now()

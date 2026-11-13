@@ -19,8 +19,22 @@ internal interface PurchaseReturnDao {
     @Query("SELECT * FROM purchase_returns WHERE supplier_id = :supplierId ORDER BY id")
     fun observeBySupplier(supplierId: Long): Flow<List<PurchaseReturnEntity>>
 
+    /** Las devoluciones de una compra, activas y anuladas, en el orden en que se registraron. */
+    @Query("SELECT * FROM purchase_returns WHERE purchase_id = :purchaseId ORDER BY id")
+    fun observeByPurchase(purchaseId: Long): Flow<List<PurchaseReturnEntity>>
+
+    @Query("SELECT * FROM purchase_returns WHERE id = :id")
+    fun observeById(id: Long): Flow<PurchaseReturnEntity?>
+
     @Query("SELECT * FROM purchase_returns WHERE id = :id")
     suspend fun findById(id: Long): PurchaseReturnEntity?
+
+    /** Si la compra tiene una devolución activa: entonces no se anula, se devuelve el resto. */
+    @Query(
+        "SELECT EXISTS (SELECT 1 FROM purchase_returns " +
+            "WHERE purchase_id = :purchaseId AND status = 'ACTIVE')",
+    )
+    suspend fun hasActiveReturn(purchaseId: Long): Boolean
 
     /** Devuelve el id nuevo. El repositorio la guarda activa y sin datos de anulación. */
     @Insert

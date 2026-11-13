@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.map
 internal class RoomPurchaseRepository(database: AppDatabase) : PurchaseRepository {
     private val purchases = database.purchaseDao()
     private val lines = database.purchaseLineDao()
+    private val returns = database.purchaseReturnDao()
     private val writes = RepositoryWrites(database)
 
     override fun observeIn(period: ReportPeriod): Flow<List<Purchase>> = purchases
@@ -127,6 +128,9 @@ internal class RoomPurchaseRepository(database: AppDatabase) : PurchaseRepositor
             )
         }
     }
+
+    override suspend fun hasActiveReturns(purchaseId: Long): Boolean =
+        returns.hasActiveReturn(purchaseId)
 
     private fun toPurchase(row: PurchaseEntity): Purchase = Purchase(
         id = row.id,

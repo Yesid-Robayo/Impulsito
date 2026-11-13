@@ -43,4 +43,10 @@ interface PurchaseRepository {
 
     /** Anula una compra activa. Es lo único que cambia en ella después de confirmarse. */
     suspend fun markVoided(id: Long, voiding: Voiding)
+
+    /**
+     * Si la compra [purchaseId] tiene alguna devolución al proveedor activa. Una compra así no se
+     * anula: lo devuelto ya salió del stock, y anularla lo sacaría otra vez.
+     */
+    suspend fun hasActiveReturns(purchaseId: Long): Boolean
 }

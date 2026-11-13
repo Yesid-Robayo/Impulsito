@@ -93,6 +93,7 @@ internal fun undonePurchase(result: VoidPurchaseResult?): Boolean = when (result
 
     null,
     VoidPurchaseResult.PurchaseNotFound,
+    VoidPurchaseResult.HasActiveReturns,
     VoidPurchaseResult.ReasonNotAllowed,
     VoidPurchaseResult.NoteTooLong,
     is VoidPurchaseResult.UnknownTimeZone,

@@ -40,6 +40,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductUnitRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseHistorySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseReturnRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomReplacementReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFrequencySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleHistorySource
@@ -96,6 +97,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
+import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.ReplacementReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
@@ -224,6 +226,9 @@ class DataPorts internal constructor(
         RoomLowStockAlertRepository(database, restoreLock)
 
     val purchases: PurchaseRepository = RoomPurchaseRepository(database)
+
+    /** Las devoluciones a proveedor y sus líneas. Solo se anulan, nunca se editan. */
+    val purchaseReturns: PurchaseReturnRepository = RoomPurchaseReturnRepository(database)
 
     /** El historial de compras por tramos, sin límite de años. Solo lee. */
     val purchaseHistory: PurchaseHistorySource = RoomPurchaseHistorySource(database)

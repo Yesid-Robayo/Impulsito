@@ -52,8 +52,13 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import io.github.yesidrobayo.shopledger.domain.model.returns.LineAmounts
+import io.github.yesidrobayo.shopledger.domain.model.returns.NewPurchaseReturn
+import io.github.yesidrobayo.shopledger.domain.model.returns.NewPurchaseReturnLine
 import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturn
 import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturnLine
+import io.github.yesidrobayo.shopledger.domain.model.returns.PurchaseReturn
+import io.github.yesidrobayo.shopledger.domain.model.returns.PurchaseReturnLine
+import io.github.yesidrobayo.shopledger.domain.model.returns.PurchaseReturnResolution
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturn
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturnLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
@@ -73,6 +78,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationS
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewLowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRate
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
@@ -88,6 +94,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
+import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
@@ -111,6 +118,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSaleReturnUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSupplierReturnUseCase
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -146,6 +154,8 @@ internal data class SaleTables(
     val openCashSessions: Map<Long, Long> = emptyMap(),
     val saleReturns: Map<Long, SaleReturn> = emptyMap(),
     val saleReturnLines: Map<Long, SaleReturnLine> = emptyMap(),
+    val purchaseReturns: Map<Long, PurchaseReturn> = emptyMap(),
+    val purchaseReturnLines: Map<Long, PurchaseReturnLine> = emptyMap(),
 )
 
 /** Una falla inyectada a propósito en una escritura. */
@@ -724,6 +734,99 @@ internal class SaleWorld(
             if (purchase == null || purchase.status != DocumentStatus.ACTIVE) brokenRule()
             write { it.copy(purchases = it.purchases + (id to purchase.copy(voiding = voiding))) }
         }
+
+        override suspend fun hasActiveReturns(purchaseId: Long): Boolean =
+            read().purchaseReturns.values.any {
+                it.content.purchaseId == purchaseId && it.status == DocumentStatus.ACTIVE
+            }
+    }
+
+    /**
+     * Las devoluciones a proveedor y sus líneas. Repite lo que exigen las guardas: un crédito lleva
+     * proveedor, y una devolución solo cambia al anularse, una sola vez.
+     */
+    val purchaseReturnRepository: PurchaseReturnRepository = object : PurchaseReturnRepository {
+        override fun observeById(id: Long): Flow<PurchaseReturn?> =
+            committed.map { it.purchaseReturns[id] }
+
+        override fun observeLines(purchaseReturnId: Long): Flow<List<PurchaseReturnLine>> =
+            committed.map { tables -> purchaseReturnLinesOf(tables, purchaseReturnId) }
+
+        override fun observeByPurchase(purchaseId: Long): Flow<List<PurchaseReturn>> =
+            committed.map { tables ->
+                tables.purchaseReturns.values
+                    .filter { it.content.purchaseId == purchaseId }
+                    .sortedBy { it.id }
+            }
+
+        override suspend fun findById(id: Long): PurchaseReturn? = read().purchaseReturns[id]
+
+        override suspend fun findLines(purchaseReturnId: Long): List<PurchaseReturnLine> =
+            purchaseReturnLinesOf(read(), purchaseReturnId)
+
+        /** Como la base: el costo de cada línea sale de su fila `PURCHASE_RETURN` del libro. */
+        override suspend fun takenByPurchase(purchaseId: Long): Map<Long, LineAmounts> {
+            val tables = read()
+            val active = tables.purchaseReturns.values.filter {
+                it.content.purchaseId == purchaseId && it.status == DocumentStatus.ACTIVE
+            }.map { it.id }.toSet()
+            return tables.purchaseReturnLines.values
+                .filter { it.purchaseReturnId in active && it.content.purchaseLineId != null }
+                .groupBy { checkNotNull(it.content.purchaseLineId) }
+                .mapValues { (_, lines) ->
+                    lines.fold(LineAmounts.NONE) { sum, line ->
+                        val cost = -tables.movements.values.single {
+                            it.source.purchaseReturnLineId == line.id &&
+                                it.movement.type == StockMovementType.PURCHASE_RETURN
+                        }.totalCost
+                        LineAmounts(
+                            quantity = sum.quantity + line.content.quantity,
+                            net = sum.net + line.content.lineTotal,
+                            tax = Money.ZERO,
+                            cost = sum.cost + cost,
+                        )
+                    }
+                }
+        }
+
+        override suspend fun insert(purchaseReturn: NewPurchaseReturn): Long {
+            val credit = purchaseReturn.resolution == PurchaseReturnResolution.SUPPLIER_CREDIT
+            if (credit && purchaseReturn.supplierId == null) brokenRule()
+            if (purchaseReturn.total < Money.ZERO) brokenRule()
+            val id = nextId("purchase_returns")
+            write {
+                it.copy(
+                    purchaseReturns =
+                        it.purchaseReturns + (id to PurchaseReturn(id, purchaseReturn, null)),
+                )
+            }
+            return id
+        }
+
+        override suspend fun insertLine(
+            purchaseReturnId: Long,
+            line: NewPurchaseReturnLine,
+        ): Long {
+            if (purchaseReturnId !in read().purchaseReturns) brokenRule()
+            val id = nextId("purchase_return_lines")
+            write {
+                it.copy(
+                    purchaseReturnLines = it.purchaseReturnLines +
+                        (id to PurchaseReturnLine(id, purchaseReturnId, line)),
+                )
+            }
+            return id
+        }
+
+        override suspend fun markVoided(id: Long, voiding: Voiding) {
+            val found = read().purchaseReturns[id]
+            if (found == null || found.status != DocumentStatus.ACTIVE) brokenRule()
+            write {
+                it.copy(
+                    purchaseReturns = it.purchaseReturns + (id to found.copy(voiding = voiding)),
+                )
+            }
+        }
     }
 
     /**
@@ -1023,6 +1126,22 @@ internal class SaleWorld(
         money = DocumentMoney(moneyAccountRepository, moneyLedger),
     )
 
+    fun registerSupplierReturn(): RegisterSupplierReturnUseCase = RegisterSupplierReturnUseCase(
+        transactions = transactions,
+        settings = settings,
+        products = products,
+        units = unitRepository,
+        purchases = purchases,
+        purchaseReturns = purchaseReturnRepository,
+        suppliers = supplierRepository,
+        supplierLedger = supplierLedger,
+        systemRows = systemRowRepository,
+        ledger = ledger,
+        clock = clock,
+        money = DocumentMoney(moneyAccountRepository, moneyLedger),
+        alerts = alertRepository.takeIf { withAlerts },
+    )
+
     /** Agrega un proveedor con nombre inventado, archivado o no, y con plazo habitual o sin él. */
     fun addSupplier(id: Long, archived: Boolean = false, termsDays: Int? = null) = arrange {
         val name = "Supplier $id"
@@ -1293,6 +1412,13 @@ internal class SaleWorld(
 
     private fun purchaseLinesOf(tables: SaleTables, purchaseId: Long): List<PurchaseLine> =
         tables.purchaseLines.values.filter { it.purchaseId == purchaseId }.sortedBy { it.id }
+
+    private fun purchaseReturnLinesOf(
+        tables: SaleTables,
+        purchaseReturnId: Long,
+    ): List<PurchaseReturnLine> = tables.purchaseReturnLines.values
+        .filter { it.purchaseReturnId == purchaseReturnId }
+        .sortedBy { it.id }
 
     private fun paymentsOf(tables: SaleTables, saleId: Long): List<SalePayment> =
         tables.payments.values.filter { it.saleId == saleId }.sortedBy { it.id }

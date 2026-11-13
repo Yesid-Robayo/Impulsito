@@ -32,6 +32,7 @@ class DocumentUndoTest {
         for (result in listOf(
             null,
             VoidPurchaseResult.PurchaseNotFound,
+            VoidPurchaseResult.HasActiveReturns,
             VoidPurchaseResult.ReasonNotAllowed,
             VoidPurchaseResult.NoteTooLong,
             VoidPurchaseResult.UnknownTimeZone("Nowhere/Unknown"),

@@ -237,6 +237,7 @@ class PurchaseDetailViewModel(
                         Overlay(justVoided = result == VoidPurchaseResult.Voided)
 
                     VoidPurchaseResult.PurchaseNotFound,
+                    VoidPurchaseResult.HasActiveReturns,
                     VoidPurchaseResult.ReasonNotAllowed,
                     VoidPurchaseResult.NoteTooLong,
                     is VoidPurchaseResult.UnknownTimeZone,
@@ -265,6 +266,7 @@ class PurchaseDetailViewModel(
                         Overlay(correctedId = purchaseId)
 
                     VoidPurchaseResult.PurchaseNotFound,
+                    VoidPurchaseResult.HasActiveReturns,
                     VoidPurchaseResult.ReasonNotAllowed,
                     VoidPurchaseResult.NoteTooLong,
                     is VoidPurchaseResult.UnknownTimeZone,

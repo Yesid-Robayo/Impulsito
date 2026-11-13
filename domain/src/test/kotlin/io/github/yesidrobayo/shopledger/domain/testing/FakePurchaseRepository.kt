@@ -64,6 +64,9 @@ internal class FakePurchaseRepository(private val database: InMemoryDatabase) :
         }
     }
 
+    /** Estas pruebas no modelan devoluciones al proveedor: ninguna compra tiene una. */
+    override suspend fun hasActiveReturns(purchaseId: Long): Boolean = false
+
     private fun linesOf(tables: Tables, purchaseId: Long): List<PurchaseLine> =
         tables.purchaseLines.values.filter { it.purchaseId == purchaseId }.sortedBy { it.id }
 
