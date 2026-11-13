@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,6 +47,7 @@ class PurchaseHistoryViewModel(
     private val calendar: Flow<BusinessCalendarResult>,
     private val computation: CoroutineDispatcher,
     initialSupplier: SupplierFilter = SupplierFilter.Any,
+    private val openCredit: Flow<Set<Long>> = emptyFlow(),
 ) : ViewModel() {
     private val state = MutableStateFlow(
         PurchaseHistoryUiState(filters = PurchaseFilters(supplier = initialSupplier)),
@@ -80,6 +82,10 @@ class PurchaseHistoryViewModel(
                     )
                 }
             }
+        }
+        // Qué compras a plazo siguen abiertas cambia con cada pago: la etiqueta de la fila lo sigue.
+        viewModelScope.launch {
+            openCredit.catch {}.collect { open -> state.update { it.copy(openCredit = open) } }
         }
         // Cada compra nueva o anulada vuelve a leer lo que ya se mostraba.
         viewModelScope.launch { reader.changes().catch {}.collect { reload(keep = rows.size) } }

@@ -16,8 +16,8 @@ import kotlinx.coroutines.launch
 /**
  * La hoja de un proveedor mientras se escribe.
  *
- * [editingId] nulo es un proveedor nuevo. [paymentTermsDays] no se escribe en la hoja: se conserva
- * el que tenía para no perderlo al editar. [issues] y [duplicateName] son los problemas del último
+ * [editingId] nulo es un proveedor nuevo. [paymentTermsText] es el plazo habitual de pago en días,
+ * tal como se escribió: vacío es sin plazo. [issues] y [duplicateName] son los problemas del último
  * intento de guardar, que se borran del campo que la persona vuelve a tocar; [saveFailed] dice si
  * falló la base, y con qué. Lo escrito siempre se conserva.
  */
@@ -28,14 +28,22 @@ data class SupplierEditor(
     val phone: String = "",
     val email: String = "",
     val notes: String = "",
-    val paymentTermsDays: Int? = null,
+    val paymentTermsText: String = "",
     val issues: Set<SupplierFormIssue> = emptySet(),
     val duplicateName: String? = null,
     val saving: Boolean = false,
     val saveFailed: SaveFailure? = null,
 ) {
     /** Lo escrito, como lo valida el dominio. */
-    val form: SupplierForm get() = SupplierForm(name, phone, email, notes, paymentTermsDays)
+    val form: SupplierForm get() = SupplierForm(name, phone, email, notes, paymentTermsDays())
+
+    /**
+     * El plazo escrito, en días, o `null` si está vacío. Un número que no cabe se lleva al máximo
+     * de un entero, para que el dominio lo rechace como fuera de rango en vez de perderlo.
+     */
+    private fun paymentTermsDays(): Int? = paymentTermsText.trim().takeIf {
+        it.isNotEmpty()
+    }?.let { it.toIntOrNull() ?: Int.MAX_VALUE }
 }
 
 /** Lo que la persona hace en la hoja de un proveedor. */
@@ -47,6 +55,9 @@ sealed interface SupplierEditorAction {
     data class Email(val text: String) : SupplierEditorAction
 
     data class Notes(val text: String) : SupplierEditorAction
+
+    /** El plazo habitual de pago, en días, solo con cifras. */
+    data class PaymentTerms(val text: String) : SupplierEditorAction
 
     data object Save : SupplierEditorAction
 
@@ -84,7 +95,7 @@ class SupplierEditorModel(
                 phone = details.phone.orEmpty(),
                 email = details.email.orEmpty(),
                 notes = details.notes.orEmpty(),
-                paymentTermsDays = details.paymentTermsDays,
+                paymentTermsText = details.paymentTermsDays?.toString().orEmpty(),
             )
     }
 
@@ -115,6 +126,15 @@ class SupplierEditorModel(
                     copy(
                         notes = action.text,
                         issues = issues - SupplierFormIssue.NOTES_TOO_LONG,
+                        saveFailed = null,
+                    )
+                }
+
+            is SupplierEditorAction.PaymentTerms ->
+                change {
+                    copy(
+                        paymentTermsText = action.text,
+                        issues = issues - SupplierFormIssue.PAYMENT_TERMS_OUT_OF_RANGE,
                         saveFailed = null,
                     )
                 }

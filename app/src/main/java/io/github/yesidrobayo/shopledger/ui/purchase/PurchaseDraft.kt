@@ -16,6 +16,11 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
  *   salir a crearlo: el primero que aparezca con un id mayor se agrega al volver.
  * @param prefilled si ya se agregó el producto con que se abrió la compra.
  * @param nextKey la identidad que recibe la próxima línea.
+ * @param onCredit si se compra a plazo: lo que no se paga ahora queda en el libro del proveedor.
+ * @param dueDate el vencimiento que eligió la persona, o `null` para proponerlo con el plazo habitual
+ *   del proveedor.
+ * @param paidNowText lo que se paga al registrar una compra a plazo, tal como se escribió; vacío es
+ *   nada.
  */
 data class PurchaseDraft(
     val lines: List<PurchaseLineDraft> = emptyList(),
@@ -26,6 +31,9 @@ data class PurchaseDraft(
     val awaitingProductAfter: Long? = null,
     val prefilled: Boolean = false,
     val nextKey: Long = 1L,
+    val onCredit: Boolean = false,
+    val dueDate: BusinessDate? = null,
+    val paidNowText: String = "",
 )
 
 /**
@@ -56,6 +64,9 @@ internal object PurchaseDraftStore {
     private const val AWAITING = "purchase.awaiting"
     private const val PREFILLED = "purchase.prefilled"
     private const val NEXT_KEY = "purchase.nextKey"
+    private const val ON_CREDIT = "purchase.onCredit"
+    private const val DUE_DATE = "purchase.dueDate"
+    private const val PAID_NOW = "purchase.paidNow"
 
     private const val FIELDS = 4
 
@@ -75,6 +86,9 @@ internal object PurchaseDraftStore {
         awaitingProductAfter = state.get<Long>(AWAITING),
         prefilled = state.get<Boolean>(PREFILLED) ?: false,
         nextKey = state.get<Long>(NEXT_KEY) ?: 1L,
+        onCredit = state.get<Boolean>(ON_CREDIT) ?: false,
+        dueDate = state.get<String>(DUE_DATE)?.let(BusinessDate::parse),
+        paidNowText = state.get<String>(PAID_NOW).orEmpty(),
     )
 
     fun write(state: SavedStateHandle, draft: PurchaseDraft) {
@@ -96,6 +110,9 @@ internal object PurchaseDraftStore {
         state[AWAITING] = draft.awaitingProductAfter
         state[PREFILLED] = draft.prefilled
         state[NEXT_KEY] = draft.nextKey
+        state[ON_CREDIT] = draft.onCredit
+        state[DUE_DATE] = draft.dueDate?.toString()
+        state[PAID_NOW] = draft.paidNowText
     }
 
     /** Lo guardado; si las tres partes no cuadran entre sí, se descarta entero. */

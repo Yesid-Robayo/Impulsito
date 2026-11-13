@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseDetail
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseResult
@@ -13,8 +14,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -43,6 +47,8 @@ sealed interface PurchaseDetailUiState {
         val justVoided: Boolean = false,
         val confirmCorrect: Boolean = false,
         val correctedId: Long? = null,
+        /** Lo que falta pagar de una compra a plazo, o `null` si no fue a plazo o no se sabe. */
+        val creditBalance: Money? = null,
     ) : PurchaseDetailUiState {
         /** Solo una compra activa se anula. */
         val canVoid: Boolean get() = detail.purchase.status == DocumentStatus.ACTIVE
@@ -106,6 +112,9 @@ sealed interface PurchaseDetailAction {
     data object Retry : PurchaseDetailAction
 
     data object Back : PurchaseDetailAction
+
+    /** `Registrar pago` de una compra a plazo: abre el libro del proveedor. */
+    data class OpenPayable(val supplierId: Long) : PurchaseDetailAction
 }
 
 /**
@@ -122,6 +131,7 @@ class PurchaseDetailViewModel(
     private val detailSource: () -> Flow<PurchaseDetail?>,
     private val voidPurchase: suspend (VoidReason, String?) -> VoidPurchaseResult,
     private val purchaseId: Long = 0L,
+    private val purchaseBalance: (supplierId: Long) -> Flow<Money?> = { flowOf(null) },
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val overlay = MutableStateFlow(Overlay())
@@ -132,7 +142,29 @@ class PurchaseDetailViewModel(
             .catch { emit(Loaded.Failed) }
     }
 
-    val uiState: StateFlow<PurchaseDetailUiState> = combine(loaded, overlay) { read, shown ->
+    /** Lo que falta pagar, si fue a plazo: sigue los pagos que entran al libro del proveedor. */
+    private val credit: Flow<Money?> = loaded
+        .map { read ->
+            val content = (read as? Loaded.Read)?.detail?.purchase?.content
+            content?.supplierId?.takeIf { content.amountPaid < content.total }
+        }
+        .distinctUntilChanged()
+        .flatMapLatest { supplierId ->
+            if (supplierId ==
+                null
+            ) {
+                flowOf(null)
+            } else {
+                purchaseBalance(supplierId).catch { emit(null) }
+            }
+        }
+        .onStart { emit(null) }
+
+    val uiState: StateFlow<PurchaseDetailUiState> = combine(loaded, overlay, credit) {
+            read,
+            shown,
+            balance,
+        ->
         when (read) {
             Loaded.Failed -> PurchaseDetailUiState.ReadError
 
@@ -144,6 +176,7 @@ class PurchaseDetailViewModel(
                     shown.justVoided,
                     shown.confirmCorrect,
                     shown.correctedId,
+                    balance,
                 )
             } ?: PurchaseDetailUiState.NotFound
         }
@@ -182,7 +215,7 @@ class PurchaseDetailViewModel(
             PurchaseDetailAction.Retry -> attempts.update { it + 1 }
 
             // Volver lo resuelve la navegación.
-            PurchaseDetailAction.Back -> Unit
+            PurchaseDetailAction.Back, is PurchaseDetailAction.OpenPayable -> Unit
         }
     }
 

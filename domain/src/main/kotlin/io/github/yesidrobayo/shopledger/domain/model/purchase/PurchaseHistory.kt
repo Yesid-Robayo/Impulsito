@@ -41,7 +41,8 @@ data class PurchaseHistoryCursor(val businessDate: BusinessDate, val id: Long)
 /**
  * Una fila del historial: lo justo para encontrar una compra. [supplierName] es el nombre de hoy del
  * proveedor, o `null` sin proveedor. [lineCount] es cuántas líneas tiene, y [invoiceReference] el
- * número del documento del proveedor, si se escribió.
+ * número del documento del proveedor, si se escribió. [onCredit] dice que al registrarla no se pagó
+ * completa, y [dueDate] es el vencimiento de lo que quedó debiendo, si tiene.
  */
 data class PurchaseHistoryRow(
     val id: Long,
@@ -52,6 +53,8 @@ data class PurchaseHistoryRow(
     val supplierName: String?,
     val lineCount: Int,
     val invoiceReference: String?,
+    val onCredit: Boolean = false,
+    val dueDate: BusinessDate? = null,
 ) {
     val cursor: PurchaseHistoryCursor get() = PurchaseHistoryCursor(businessDate, id)
 }

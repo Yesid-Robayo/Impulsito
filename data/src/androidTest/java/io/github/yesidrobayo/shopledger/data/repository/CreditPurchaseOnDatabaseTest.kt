@@ -10,12 +10,14 @@ import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.payable.NewSupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntryType
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineAmount
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
+import io.github.yesidrobayo.shopledger.domain.usecase.payable.ObserveOpenCreditPurchasesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseResult
@@ -78,8 +80,12 @@ internal class CreditPurchaseOnDatabaseTest : RepositoryTest() {
         )
     }
 
-    private suspend fun buy(supplierId: Long?, paid: Long?): RegisterPurchaseResult {
-        val productId = commit { products.insert(newProduct("Harina inventada")) }
+    private suspend fun buy(
+        supplierId: Long?,
+        paid: Long?,
+        name: String = "Harina inventada",
+    ): RegisterPurchaseResult {
+        val productId = commit { products.insert(newProduct(name)) }
         val line = PurchaseLineRequest(
             productId,
             QuantityMilli(1_000),
@@ -111,6 +117,28 @@ internal class CreditPurchaseOnDatabaseTest : RepositoryTest() {
         assertEquals(Money(30_000), requireNotNull(suppliers.findById(supplierId)).balance)
         assertEquals(Money(30_000), supplierLedger.lastBalanceAfter(supplierId))
         assertInvariantsHold()
+    }
+
+    @Test
+    fun theHistorySaysWhichPurchaseIsOnCreditWithItsDueDateAndWhetherItIsStillOpen() = runBlocking {
+        val supplierId = supplier("Molino inventado", termsDays = 30)
+        val onCredit = (buy(supplierId, paid = 20_000) as RegisterPurchaseResult.Registered)
+            .purchaseId
+        val paid = (buy(supplierId, null, "Sal inventada") as RegisterPurchaseResult.Registered)
+            .purchaseId
+
+        val rows = RoomPurchaseHistorySource(database)
+            .page(PurchaseHistoryFilter(), after = null, limit = 10)
+            .associateBy { it.id }
+        val due = requireNotNull(purchases.findById(onCredit)).content.dueDate
+        assertEquals(true, rows.getValue(onCredit).onCredit)
+        assertEquals(due, rows.getValue(onCredit).dueDate)
+        assertEquals(false, rows.getValue(paid).onCredit)
+        assertEquals(null, rows.getValue(paid).dueDate)
+        assertEquals(
+            setOf(onCredit),
+            ObserveOpenCreditPurchasesUseCase(RoomPayablesSource(database))().first(),
+        )
     }
 
     @Test

@@ -151,6 +151,10 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object Payables : AppNavKey
 
+    /** El libro de un proveedor en cuentas por pagar, con sus pagos. */
+    @Serializable
+    data class PayableDetail(val supplierId: Long) : AppNavKey
+
     @Serializable
     data object CashRegister : AppNavKey
 

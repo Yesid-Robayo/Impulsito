@@ -8,6 +8,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierFilter
+import io.github.yesidrobayo.shopledger.domain.usecase.payable.ObserveOpenCreditPurchasesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.payable.ObservePurchaseBalanceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.ObservePurchaseDetailUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.PurchaseHistoryReader
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseCase
@@ -47,6 +49,7 @@ fun PurchaseHistoryRoute(key: AppNavKey.PurchaseHistory, navigator: AppNavigator
                 calendar = BusinessCalendarSource(ports.settings).observe(),
                 computation = dependencies.container.dispatchers.io,
                 initialSupplier = initialSupplierOf(key),
+                openCredit = ObserveOpenCreditPurchasesUseCase(ports.payables)(),
             )
         }
     when (model) {
@@ -135,10 +138,12 @@ fun PurchaseDetailRoute(
                 alerts = ports.lowStockAlerts,
                 supplierLedger = ports.supplierLedger,
             )
+            val balance = ObservePurchaseBalanceUseCase(ports.supplierLedger)
             PurchaseDetailViewModel(
                 detailSource = { observe(key.purchaseId) },
                 voidPurchase = { reason, note -> void(key.purchaseId, reason, note) },
                 purchaseId = key.purchaseId,
+                purchaseBalance = { supplierId -> balance(supplierId, key.purchaseId) },
             )
         }
     when (model) {
@@ -161,6 +166,10 @@ fun PurchaseDetailRoute(
                 onAction = { action ->
                     when (action) {
                         PurchaseDetailAction.Back -> onBack()
+
+                        is PurchaseDetailAction.OpenPayable ->
+                            navigator.open(AppNavKey.PayableDetail(action.supplierId))
+
                         else -> viewModel.onAction(action)
                     }
                 },

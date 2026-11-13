@@ -3,6 +3,8 @@ package io.github.yesidrobayo.shopledger.ui.supplier
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -19,6 +21,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.WholeNumberField
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -27,7 +30,8 @@ import io.github.yesidrobayo.shopledger.ui.unit.EditorContainer
 import io.github.yesidrobayo.shopledger.ui.unit.SaveFailure
 
 /**
- * La hoja de un proveedor: `Nombre`, `Teléfono`, `Correo` y `Notas`, todo opcional salvo el nombre.
+ * La hoja de un proveedor: `Nombre`, `Teléfono`, `Correo`, `Notas` y `Plazo de pago`, en días, todo
+ * opcional salvo el nombre. El plazo propone el vencimiento de las compras a plazo.
  * Invita a anotar solo lo necesario y a no escribir datos sensibles en las notas. Los errores van en
  * su campo, y un guardado fallido se avisa arriba del botón sin borrar nada.
  *
@@ -104,6 +108,20 @@ fun SupplierEditorSheet(
             supportingText = stringResource(R.string.supplier_notes_help),
             singleLine = false,
             imeAction = ImeAction.Default,
+        )
+        WholeNumberField(
+            value = editor.paymentTermsText,
+            onValueChange = { onAction(SupplierEditorAction.PaymentTerms(it)) },
+            label = stringResource(R.string.supplier_payment_terms),
+            suffix = stringResource(R.string.supplier_payment_terms_days),
+            error = stringResource(R.string.error_value_high)
+                .takeIf { SupplierFormIssue.PAYMENT_TERMS_OUT_OF_RANGE in editor.issues },
+            imeAction = ImeAction.Done,
+        )
+        Text(
+            stringResource(R.string.supplier_payment_terms_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierOverview
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SupplierLifecycleResult
+import io.github.yesidrobayo.shopledger.ui.payable.PayableDue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,6 +43,7 @@ data class SupplierDetailUiState(
     val dialog: SupplierDialog? = null,
     val message: SupplierMessage? = null,
     val closed: Boolean = false,
+    val payableDue: PayableDue? = null,
 )
 
 /** Lo que la persona hace en el detalle, fuera de la hoja. */
@@ -71,6 +73,9 @@ sealed interface SupplierDetailAction {
 
     /** Abre una compra nueva con este proveedor: lo resuelve la navegación. */
     data object NewPurchase : SupplierDetailAction
+
+    /** Abre lo que se le debe en cuentas por pagar: lo resuelve la navegación. */
+    data object OpenPayables : SupplierDetailAction
 
     data object Retry : SupplierDetailAction
 
@@ -113,12 +118,15 @@ class SupplierDetailViewModel(
             .onEach { shown -> latest = (shown as? SupplierDetailContent.Ready)?.overview }
     }
 
+    /** El vencimiento de lo que se le debe; si no se puede leer, la ficha sigue sin él. */
+    private val due = operations.payableDue(supplierId).onStart { emit(null) }.catch { emit(null) }
+
     /** Lo último que se mostró, para que editar o archivar usen el nombre que se ve. */
     private var latest: SupplierOverview? = null
 
     val uiState: StateFlow<SupplierDetailUiState> =
-        combine(content, extra) { shown, more ->
-            SupplierDetailUiState(shown, more.dialog, more.message, more.closed)
+        combine(content, extra, due) { shown, more, payable ->
+            SupplierDetailUiState(shown, more.dialog, more.message, more.closed, payable)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -155,7 +163,7 @@ class SupplierDetailViewModel(
             // Las resuelve la pantalla con la navegación o con otra app.
             SupplierDetailAction.Back, is SupplierDetailAction.Dial,
             is SupplierDetailAction.OpenPurchase, is SupplierDetailAction.OpenProduct,
-            SupplierDetailAction.NewPurchase,
+            SupplierDetailAction.NewPurchase, SupplierDetailAction.OpenPayables,
             -> Unit
         }
     }

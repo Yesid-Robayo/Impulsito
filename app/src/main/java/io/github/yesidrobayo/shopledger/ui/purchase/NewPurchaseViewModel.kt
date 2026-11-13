@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductSearch
+import io.github.yesidrobayo.shopledger.domain.rule.payable.SupplierLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PricedPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrection
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricing
@@ -144,6 +145,14 @@ class NewPurchaseViewModel(
             is NewPurchaseAction.DateChange -> changeDraft { it.copy(date = action.date) }
 
             is NewPurchaseAction.ReferenceChange -> changeDraft { it.copy(reference = action.text) }
+
+            is NewPurchaseAction.PaymentModeChange -> changeDraft {
+                it.copy(onCredit = action.onCredit)
+            }
+
+            is NewPurchaseAction.DueDateChange -> changeDraft { it.copy(dueDate = action.date) }
+
+            is NewPurchaseAction.PaidNowChange -> changeDraft { it.copy(paidNowText = action.text) }
 
             is NewPurchaseAction.QuantityChange -> editLine(action.key) {
                 it.copy(quantityText = action.text)
@@ -372,7 +381,8 @@ class NewPurchaseViewModel(
         val requests = current.lines.map { lineRequest(catalog, it) }
         val reference = current.reference.trim()
         val complete = requests.all { it != null } && current.lines.isNotEmpty()
-        if (!complete || reference.length > MAX_REFERENCE_LENGTH) {
+        val payment = paymentOf(catalog, current, uiState.value.total)
+        if (!complete || reference.length > MAX_REFERENCE_LENGTH || payment.errors.isNotEmpty()) {
             overlay.update { it.copy(showMissing = true) }
             return
         }
@@ -381,6 +391,9 @@ class NewPurchaseViewModel(
             supplierId = current.supplierId,
             invoiceReference = reference.ifEmpty { null },
             date = current.date,
+            // Pagada completa no lleva monto ni vencimiento: el caso de uso la toma como pagada.
+            amountPaid = if (current.onCredit) paidNow(current) ?: Money.ZERO else null,
+            dueDate = if (current.onCredit) payment.dueDate else null,
         )
         overlay.update { it.copy(registering = true, notice = null) }
         viewModelScope.launch {
@@ -435,8 +448,8 @@ class NewPurchaseViewModel(
             is RegisterPurchaseResult.UnknownTimeZone,
             -> notice(PurchaseNotice.RegisterFailed(outOfSpace = false))
 
-            // Esta pantalla todavía no ofrece comprar a plazo: siempre paga completo, así que estos
-            // rechazos no salen de ella.
+            // La pantalla ya revisa lo pagado, el proveedor y el vencimiento antes de registrar; si
+            // cambian entre medio, el aviso deja reintentar con lo escrito.
             RegisterPurchaseResult.AmountPaidOutOfRange,
             RegisterPurchaseResult.SupplierRequiredForCredit,
             RegisterPurchaseResult.DueDateBeforePurchase,
@@ -484,8 +497,67 @@ class NewPurchaseViewModel(
             registering = shown.registering,
             registered = shown.registered,
             closed = shown.closed,
+            payment = paymentOf(catalog, current, lines.total),
         )
     }
+
+    /**
+     * Cómo se paga la compra, con lo que impide registrarla a plazo. El vencimiento es el elegido o
+     * el que propone el plazo habitual del proveedor desde la fecha de la compra, igual que el caso
+     * de uso: lo que se ve es lo que se guarda.
+     */
+    private fun paymentOf(
+        catalog: PurchaseCatalog,
+        current: PurchaseDraft,
+        total: Money?,
+    ): PurchasePaymentUi {
+        val purchaseDate = current.date ?: catalog.today
+        if (!current.onCredit) return PurchasePaymentUi(purchaseDate = purchaseDate)
+        val supplier = current.supplierId?.let { id ->
+            catalog.suppliers.firstOrNull { it.id == id }
+        }
+        val terms = supplier?.details?.paymentTermsDays
+        val proposed = purchaseDate?.let { SupplierLedgerRules.proposedDueDate(it, terms) }
+        val due = current.dueDate ?: proposed
+        val paid = paidNowInput(current)
+        val errors = buildSet {
+            if (supplier == null) add(PurchasePaymentError.SUPPLIER_REQUIRED)
+            if (due != null && purchaseDate != null && due < purchaseDate) {
+                add(PurchasePaymentError.DUE_BEFORE_PURCHASE)
+            }
+            when (paid) {
+                is NumberInput.Value -> if (total != null && paid.value > total) {
+                    add(PurchasePaymentError.PAID_OVER_TOTAL)
+                }
+
+                NumberInput.Blank -> Unit
+
+                NumberInput.Malformed, is NumberInput.TooManyDecimals ->
+                    add(PurchasePaymentError.PAID_NOT_A_NUMBER)
+
+                is NumberInput.TooLarge -> add(PurchasePaymentError.PAID_OVER_TOTAL)
+            }
+        }
+        return PurchasePaymentUi(
+            onCredit = true,
+            dueDate = due,
+            canClearDue = current.dueDate != null && proposed == null,
+            purchaseDate = purchaseDate,
+            paidNowText = current.paidNowText,
+            errors = errors,
+        )
+    }
+
+    private fun paidNowInput(current: PurchaseDraft): NumberInput<Money> = NumberInputParser.money(
+        current.paidNowText,
+        numbers.moneySymbols,
+        numbers.currencyDecimals,
+        Limit.DOCUMENT_TOTAL,
+    )
+
+    /** Lo pagado ahora, o `null` si no se escribió nada o no se puede leer. */
+    private fun paidNow(current: PurchaseDraft): Money? =
+        (paidNowInput(current) as? NumberInput.Value)?.value
 
     /**
      * Las líneas con sus cuentas. Las que ya se pueden leer se calculan juntas, en orden, con el

@@ -112,7 +112,10 @@ internal interface PurchaseDao {
     fun observeHistoryMark(): Flow<String>
 }
 
-/** Una fila del historial, con su proveedor de hoy y cuántas líneas tiene. */
+/**
+ * Una fila del historial, con su proveedor de hoy y cuántas líneas tiene, y si quedó a plazo, con
+ * su vencimiento.
+ */
 internal data class PurchaseHistoryRowEntity(
     @ColumnInfo(name = "id") val id: Long,
     @ColumnInfo(name = "occurred_at") val occurredAt: Long,
@@ -122,6 +125,8 @@ internal data class PurchaseHistoryRowEntity(
     @ColumnInfo(name = "invoice_reference") val invoiceReference: String?,
     @ColumnInfo(name = "supplier_name") val supplierName: String?,
     @ColumnInfo(name = "line_count") val lineCount: Int,
+    @ColumnInfo(name = "on_credit") val onCredit: Boolean,
+    @ColumnInfo(name = "due_date") val dueDate: String?,
 )
 
 /** Lo último pagado a un proveedor por un producto. */
@@ -152,7 +157,8 @@ private const val PURCHASE_SUPPLIER_FILTER =
 internal const val PURCHASE_HISTORY_PAGE_SQL =
     "SELECT p.id, p.occurred_at, p.business_date, p.total, p.status, p.invoice_reference, " +
         "(SELECT s.name FROM suppliers s WHERE s.id = p.supplier_id) AS supplier_name, " +
-        "(SELECT COUNT(*) FROM purchase_lines l WHERE l.purchase_id = p.id) AS line_count " +
+        "(SELECT COUNT(*) FROM purchase_lines l WHERE l.purchase_id = p.id) AS line_count, " +
+        "(p.amount_paid < p.total) AS on_credit, p.due_date " +
         "FROM purchases p WHERE p.status IN ('ACTIVE', 'VOIDED') " +
         "AND (:onlyVoided = 0 OR p.status = 'VOIDED') " +
         "AND (:fromDate IS NULL OR p.business_date >= :fromDate) " +

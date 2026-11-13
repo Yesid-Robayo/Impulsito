@@ -601,4 +601,80 @@ class NewPurchaseViewModelTest {
         assertEquals(null, model.state.date)
         assertEquals(1, model.state.lines.size)
     }
+
+    @Test
+    fun `on credit proposes the due date with the supplier terms and registers what is unpaid`() =
+        runTest(dispatcher) {
+            val withTerms = supplier(5L, "Proveedor uno").let {
+                it.copy(details = it.details.copy(paymentTermsDays = 30))
+            }
+            catalog.value = catalogOf().copy(suppliers = listOf(withTerms))
+            val model = viewModel(prefillSupplier = 5L)
+            model.act(this, NewPurchaseAction.AddProduct(1L))
+            val key = model.line().key
+            model.act(this, NewPurchaseAction.QuantityChange(key, "10"))
+            model.act(this, NewPurchaseAction.AmountChange(key, "1000"))
+
+            model.act(this, NewPurchaseAction.PaymentModeChange(onCredit = true))
+            // Plazo de 30 días desde la compra, hoy: lo mismo que propone el registro.
+            assertEquals(today.plusDays(30), model.state.payment.dueDate)
+            assertTrue(model.state.payment.errors.isEmpty())
+
+            model.act(this, NewPurchaseAction.PaidNowChange("4000"))
+            model.act(this, NewPurchaseAction.Register)
+
+            val request = requests.single()
+            assertEquals(Money(4_000L), request.amountPaid)
+            assertEquals(today.plusDays(30), request.dueDate)
+            assertEquals(5L, request.supplierId)
+        }
+
+    @Test
+    fun `credit without supplier, paid over total or due too early never registers`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            model.act(this, NewPurchaseAction.AddProduct(1L))
+            val key = model.line().key
+            model.act(this, NewPurchaseAction.QuantityChange(key, "1"))
+            model.act(this, NewPurchaseAction.AmountChange(key, "1000"))
+            model.act(this, NewPurchaseAction.PaymentModeChange(onCredit = true))
+            // Sin plazo ni fecha elegida, la compra a plazo no vence.
+            assertNull(model.state.payment.dueDate)
+            assertEquals(
+                setOf(PurchasePaymentError.SUPPLIER_REQUIRED),
+                model.state.payment.errors,
+            )
+
+            model.act(this, NewPurchaseAction.SelectSupplier(6L))
+            model.act(this, NewPurchaseAction.PaidNowChange("1001"))
+            model.act(this, NewPurchaseAction.DueDateChange(today.plusDays(-1)))
+            assertEquals(
+                setOf(
+                    PurchasePaymentError.PAID_OVER_TOTAL,
+                    PurchasePaymentError.DUE_BEFORE_PURCHASE,
+                ),
+                model.state.payment.errors,
+            )
+            model.act(this, NewPurchaseAction.Register)
+            assertTrue(requests.isEmpty())
+
+            // Pagada completa no lleva lo pagado ni el vencimiento.
+            model.act(this, NewPurchaseAction.PaymentModeChange(onCredit = false))
+            model.act(this, NewPurchaseAction.Register)
+            assertNull(requests.single().amountPaid)
+            assertNull(requests.single().dueDate)
+        }
+
+    @Test
+    fun `the credit choice survives the process being closed`() = runTest(dispatcher) {
+        val model = viewModel()
+        model.act(this, NewPurchaseAction.PaymentModeChange(onCredit = true))
+        model.act(this, NewPurchaseAction.PaidNowChange("250"))
+        model.act(this, NewPurchaseAction.DueDateChange(today.plusDays(5)))
+
+        val restored = PurchaseDraftStore.read(savedState)
+        assertTrue(restored.onCredit)
+        assertEquals("250", restored.paidNowText)
+        assertEquals(today.plusDays(5), restored.dueDate)
+    }
 }

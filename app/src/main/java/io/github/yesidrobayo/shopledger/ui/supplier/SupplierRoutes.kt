@@ -181,6 +181,9 @@ private fun SupplierDetailPane(
                         SupplierDetailAction.NewPurchase ->
                             navigator.open(AppNavKey.Purchase(prefillSupplierId = supplierId))
 
+                        SupplierDetailAction.OpenPayables ->
+                            navigator.open(AppNavKey.PayableDetail(supplierId))
+
                         SupplierDetailAction.Edit, SupplierDetailAction.AskArchive,
                         SupplierDetailAction.AskDelete, SupplierDetailAction.Reactivate,
                         SupplierDetailAction.ConfirmDialog, SupplierDetailAction.DismissDialog,

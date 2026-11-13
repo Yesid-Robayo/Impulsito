@@ -67,6 +67,8 @@ internal class RoomPurchaseHistorySource(database: AppDatabase) : PurchaseHistor
         supplierName = row.supplierName,
         lineCount = row.lineCount,
         invoiceReference = row.invoiceReference,
+        onCredit = row.onCredit,
+        dueDate = row.dueDate?.let(::storedDate),
     )
 
     private companion object {

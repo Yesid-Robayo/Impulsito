@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SuppliersOverview
+import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveSupplierUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CreateSupplierUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteSupplierUseCase
@@ -12,8 +13,14 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveSuppliersU
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateSupplierUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveSupplierResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SupplierLifecycleResult
+import io.github.yesidrobayo.shopledger.domain.usecase.payable.ObserveSupplierStatementUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
+import io.github.yesidrobayo.shopledger.ui.payable.PayableDue
+import io.github.yesidrobayo.shopledger.ui.payable.payableDetailView
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * Lo que las pantallas de proveedores le piden al dominio. Es una interfaz para que las pruebas de
@@ -32,6 +39,12 @@ interface SupplierOperations {
     suspend fun reactivate(supplierId: Long): SupplierLifecycleResult
 
     suspend fun delete(supplierId: Long): SupplierLifecycleResult
+
+    /**
+     * El vencimiento de lo que se le debe al proveedor, para la ficha, o `null` si no se sabe o no
+     * hay libro que leer.
+     */
+    fun payableDue(supplierId: Long): Flow<PayableDue?> = flowOf(null)
 }
 
 /** Las operaciones sobre los casos de uso de proveedores. */
@@ -43,6 +56,7 @@ class SupplierUseCases(
     private val archiveUseCase: ArchiveSupplierUseCase,
     private val reactivateUseCase: ReactivateSupplierUseCase,
     private val deleteUseCase: DeleteSupplierUseCase,
+    private val observePayableDue: (Long) -> Flow<PayableDue?> = { flowOf(null) },
 ) : SupplierOperations {
     override fun suppliers(): Flow<SuppliersOverview> = observeSuppliers()
 
@@ -60,6 +74,8 @@ class SupplierUseCases(
     override suspend fun delete(supplierId: Long): SupplierLifecycleResult =
         deleteUseCase(supplierId)
 
+    override fun payableDue(supplierId: Long): Flow<PayableDue?> = observePayableDue(supplierId)
+
     companion object {
         /** Arma las operaciones con los puertos de la base abierta. */
         fun of(dependencies: ScreenDependencies): SupplierUseCases {
@@ -75,7 +91,31 @@ class SupplierUseCases(
                 archiveUseCase = ArchiveSupplierUseCase(tx, ports.suppliers, clock),
                 reactivateUseCase = ReactivateSupplierUseCase(tx, ports.suppliers, clock),
                 deleteUseCase = DeleteSupplierUseCase(tx, ports.suppliers),
+                observePayableDue = payableDueOf(dependencies),
             )
+        }
+    }
+}
+
+/**
+ * El vencimiento de lo que se le debe a cada proveedor, leído de su libro con la fecha de negocio
+ * de hoy: el mismo cálculo que cuentas por pagar.
+ */
+private fun payableDueOf(dependencies: ScreenDependencies): (Long) -> Flow<PayableDue?> {
+    val ports = dependencies.ports
+    val clock = dependencies.container.clock
+    val statement = ObserveSupplierStatementUseCase(ports.suppliers, ports.supplierLedger)
+    val calendar = BusinessCalendarSource(ports.settings)
+    return { supplierId ->
+        combine(statement(supplierId), calendar.observe()) { read, calendarResult ->
+            val today = when (calendarResult) {
+                is BusinessCalendarResult.Ready -> calendarResult.calendar.businessDateOf(
+                    clock.now(),
+                )
+
+                is BusinessCalendarResult.UnknownZone -> null
+            }
+            if (read == null || today == null) null else payableDetailView(read, today)?.due
         }
     }
 }

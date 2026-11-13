@@ -28,13 +28,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseDetail
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseDetailLine
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
+import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
@@ -154,6 +157,15 @@ private fun DetailBody(
             TotalBlock(ready.detail, Modifier.padding(spacing.s16))
         }
         items(ready.detail.lines, key = { it.line.id }) { line -> LineRow(line) }
+        val content = ready.detail.purchase.content
+        val supplierId = content.supplierId
+        if (supplierId != null && content.amountPaid < content.total && ready.canVoid) {
+            item(key = CREDIT) {
+                CreditBlock(content.total, ready.creditBalance) {
+                    onAction(PurchaseDetailAction.OpenPayable(supplierId))
+                }
+            }
+        }
         if (ready.canVoid) {
             item(key = ACTIONS) {
                 Column(
@@ -236,6 +248,47 @@ private fun TotalBlock(detail: PurchaseDetail, modifier: Modifier = Modifier) {
             } ?: reason
             Text(text, style = MaterialTheme.typography.bodyMedium, color = app.heroAccent)
         }
+    }
+}
+
+/**
+ * Una compra a plazo: `Pagado` y `Saldo`, que siguen los pagos posteriores, y `Registrar pago`
+ * mientras quede algo, que abre el libro del proveedor. Las cifras se ocultan con el modo discreto.
+ */
+@Composable
+private fun CreditBlock(total: Money, balance: Money?, onPay: () -> Unit) {
+    val spacing = AppTheme.spacing
+    AppCard(Modifier.fillMaxWidth().padding(horizontal = spacing.s16, vertical = spacing.s8)) {
+        CreditLine(
+            stringResource(R.string.purchase_paid_label),
+            // Lo que falta nunca pasa del total: la resta siempre cabe.
+            balance?.let { total - it },
+        )
+        CreditLine(stringResource(R.string.purchase_balance_label), balance)
+        if (balance != null && balance > Money.ZERO) {
+            PrimaryActionButton(
+                text = stringResource(R.string.payable_payment_action),
+                onClick = onPay,
+                variant = ActionVariant.TONAL,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CreditLine(label: String, amount: Money?) {
+    Row(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        MoneyText(amount, MoneySize.ROW, sensitive = true, loading = amount == null)
     }
 }
 
@@ -383,3 +436,4 @@ private fun DetailSkeleton() {
 private const val SKELETON_ROWS = 3
 private const val TOTAL = "total"
 private const val ACTIONS = "actions"
+private const val CREDIT = "credit"

@@ -109,6 +109,8 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     AppNavKey.Payables -> detail(R.string.payable_title, business)
 
+    is AppNavKey.PayableDetail -> detail(R.string.payable_title, business)
+
     AppNavKey.CashRegister -> detail(R.string.cash_title, business)
 
     is AppNavKey.SupplierReturn -> detail(R.string.supplier_return_title, business)

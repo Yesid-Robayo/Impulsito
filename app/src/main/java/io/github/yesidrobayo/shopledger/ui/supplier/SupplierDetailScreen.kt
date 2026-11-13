@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -34,11 +35,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierPurchase
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.BalanceBadge
+import io.github.yesidrobayo.shopledger.ui.components.BalanceBadgeVariant
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
@@ -58,6 +62,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.payable.PayableDue
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -131,7 +137,8 @@ fun SupplierDetailScreen(
                         }
                     }
 
-                is SupplierDetailContent.Ready -> DetailBody(content.overview, onAction)
+                is SupplierDetailContent.Ready ->
+                    DetailBody(content.overview, uiState.payableDue, onAction)
             }
         }
         val overview = ready?.overview
@@ -181,7 +188,11 @@ private fun TopBarActions(overview: SupplierOverview, onAction: (SupplierDetailA
 }
 
 @Composable
-private fun DetailBody(overview: SupplierOverview, onAction: (SupplierDetailAction) -> Unit) {
+private fun DetailBody(
+    overview: SupplierOverview,
+    payableDue: PayableDue?,
+    onAction: (SupplierDetailAction) -> Unit,
+) {
     val spacing = AppTheme.spacing
     val details = overview.supplier.details
     LazyColumn(
@@ -224,6 +235,13 @@ private fun DetailBody(overview: SupplierOverview, onAction: (SupplierDetailActi
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 MoneyText(overview.totals.activeTotal, MoneySize.TITLE, sensitive = true)
+            }
+        }
+        if (overview.supplier.balance != Money.ZERO) {
+            item(key = "payable") {
+                PayableCard(overview.supplier.balance, payableDue) {
+                    onAction(SupplierDetailAction.OpenPayables)
+                }
             }
         }
         if (overview.usualProducts.isNotEmpty()) {
@@ -310,6 +328,60 @@ private fun ContactText(label: String, value: String) {
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
+    }
+}
+
+/**
+ * Lo que se le debe, o el saldo a favor, con su insignia y su vencimiento, y el acceso a cuentas por
+ * pagar. Se ve con el modo discreto: es la deuda con quien se atiende.
+ */
+@Composable
+private fun PayableCard(balance: Money, due: PayableDue?, onOpen: () -> Unit) {
+    val spacing = AppTheme.spacing
+    val formats = LocalAppFormats.current
+    AppCard(Modifier.fillMaxWidth().padding(horizontal = spacing.s16, vertical = spacing.s8)) {
+        Text(
+            stringResource(R.string.payable_total),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+        ) {
+            MoneyText(
+                if (balance < Money.ZERO) -balance else balance,
+                MoneySize.TITLE,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            CompositionLocalProvider(LocalDiscreetMode provides true) {
+                BalanceBadge(
+                    BalanceBadgeVariant.forSupplier(balance, due is PayableDue.Overdue),
+                    balance,
+                )
+            }
+        }
+        val dueText = when (due) {
+            is PayableDue.Overdue ->
+                stringResource(R.string.payable_overdue_since, formats.date.dayMonthYear(due.since))
+
+            is PayableDue.DueOn ->
+                stringResource(R.string.purchase_due_status, formats.date.dayMonthYear(due.on))
+
+            null, PayableDue.Clear, PayableDue.Credit, PayableDue.NoDue -> null
+        }
+        dueText?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (due is PayableDue.Overdue) {
+                    AppTheme.colors.loss
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+        }
+        InlineTextButton(stringResource(R.string.payable_title), onOpen)
     }
 }
 

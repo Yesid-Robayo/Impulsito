@@ -198,6 +198,7 @@ private fun PurchaseLines(
                     onClick = { onAction(NewPurchaseAction.OpenProducts) },
                 )
             }
+            item(key = "payment") { PaymentSection(uiState, onAction) }
         }
     }
 }
@@ -228,6 +229,82 @@ private fun PurchaseHeader(uiState: NewPurchaseUiState, onAction: (NewPurchaseAc
             onValueChange = { onAction(NewPurchaseAction.ReferenceChange(it)) },
             label = stringResource(R.string.purchase_invoice_ref),
             error = stringResource(R.string.error_value_high).takeIf { uiState.referenceTooLong },
+        )
+    }
+}
+
+/**
+ * `Pago`: `Pagada` o `A plazo`. A plazo pide proveedor, propone el vencimiento con su plazo
+ * habitual y deja escribir lo pagado ahora; lo demás queda en su libro. El campo que se está
+ * llenando sigue a la vista con el modo discreto.
+ */
+@Composable
+private fun PaymentSection(uiState: NewPurchaseUiState, onAction: (NewPurchaseAction) -> Unit) {
+    val spacing = AppTheme.spacing
+    val payment = uiState.payment
+    val paidLabel = stringResource(R.string.purchase_payment_paid)
+    val creditLabel = stringResource(R.string.purchase_payment_credit)
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+        Text(
+            stringResource(R.string.purchase_payment_label),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        CompactChipRow(
+            options = listOf(false, true),
+            label = { if (it) creditLabel else paidLabel },
+            selected = setOf(payment.onCredit),
+            onToggle = { onAction(NewPurchaseAction.PaymentModeChange(it)) },
+            multiple = false,
+        )
+        if (!payment.onCredit) return@Column
+        if (PurchasePaymentError.SUPPLIER_REQUIRED in payment.errors) {
+            NoticeCard(
+                text = stringResource(R.string.purchase_error_credit_needs_supplier),
+                variant = NoticeVariant.WARNING,
+                actionLabel = stringResource(R.string.purchase_supplier),
+                onAction = { onAction(NewPurchaseAction.OpenSuppliers) },
+            )
+        }
+        val today = uiState.today
+        val weekStart = uiState.weekStartDay
+        if (today != null && weekStart != null) {
+            DateField(
+                label = stringResource(R.string.checkout_due_date),
+                date = payment.dueDate,
+                onDateChange = { onAction(NewPurchaseAction.DueDateChange(it)) },
+                today = payment.purchaseDate ?: today,
+                weekStartDay = weekStart,
+                latest = null,
+                error = stringResource(R.string.purchase_error_due_before_purchase)
+                    .takeIf { PurchasePaymentError.DUE_BEFORE_PURCHASE in payment.errors },
+            )
+            if (payment.dueDate == null) {
+                Text(
+                    stringResource(R.string.checkout_no_due_date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else if (payment.canClearDue) {
+                InlineTextButton(
+                    text = stringResource(R.string.checkout_no_due_date),
+                    onClick = { onAction(NewPurchaseAction.DueDateChange(null)) },
+                )
+            }
+        }
+        MoneyField(
+            value = payment.paidNowText,
+            onValueChange = { onAction(NewPurchaseAction.PaidNowChange(it)) },
+            label = stringResource(R.string.purchase_paid_now),
+            error = when {
+                PurchasePaymentError.PAID_OVER_TOTAL in payment.errors ->
+                    stringResource(R.string.purchase_error_paid_over_total)
+
+                PurchasePaymentError.PAID_NOT_A_NUMBER in payment.errors ->
+                    stringResource(R.string.field_error_number)
+
+                else -> null
+            },
         )
     }
 }

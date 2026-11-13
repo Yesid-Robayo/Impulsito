@@ -53,6 +53,8 @@ import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.localcopies.LocalCopiesRoute
 import io.github.yesidrobayo.shopledger.ui.onboarding.OnboardingRoute
+import io.github.yesidrobayo.shopledger.ui.payable.PayableDetailRoute
+import io.github.yesidrobayo.shopledger.ui.payable.PayablesRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodFormRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodsRoute
 import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
@@ -290,6 +292,10 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.Customers -> CustomerListRoute(key, navigator)
 
         is AppNavKey.CustomerDetail -> CustomerDetailRoute(key, navigator)
+
+        AppNavKey.Payables -> PayablesRoute(AppNavKey.Payables, navigator)
+
+        is AppNavKey.PayableDetail -> PayableDetailRoute(key, navigator)
 
         AppNavKey.HeldSales -> HeldSalesRoute(navigator)
 

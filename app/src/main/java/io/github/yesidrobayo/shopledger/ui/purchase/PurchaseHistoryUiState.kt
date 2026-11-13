@@ -20,6 +20,8 @@ data class PurchaseHistoryUiState(
     val today: BusinessDate? = null,
     val selectedPurchaseId: Long? = null,
     val supplierSheet: Boolean = false,
+    /** Las compras a plazo que siguen con algo por pagar, o `null` mientras no se sabe. */
+    val openCredit: Set<Long>? = null,
 )
 
 /**

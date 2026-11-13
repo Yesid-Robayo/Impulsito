@@ -23,6 +23,7 @@ import kotlinx.datetime.DayOfWeek
  * @param registering la compra se está guardando: el botón espera.
  * @param registered la compra quedó guardada: la pantalla muestra el resumen del costo.
  * @param closed la pantalla terminó y la navegación vuelve.
+ * @param payment cómo se paga la compra: `Pagada` o `A plazo`, con su vencimiento y lo pagado ahora.
  */
 data class NewPurchaseUiState(
     val loading: Boolean = true,
@@ -41,6 +42,7 @@ data class NewPurchaseUiState(
     val registering: Boolean = false,
     val registered: PurchaseSummary? = null,
     val closed: Boolean = false,
+    val payment: PurchasePaymentUi = PurchasePaymentUi(),
 ) {
     /** Si hay algo escrito que se perdería al salir. */
     val hasLines: Boolean get() = lines.isNotEmpty()
@@ -80,6 +82,42 @@ data class PurchaseLineUi(
     val amountError: PurchaseFieldError? = null,
     val archived: Boolean = false,
 )
+
+/**
+ * Cómo se paga la compra en pantalla.
+ *
+ * @param onCredit `A plazo`: lo que no se paga ahora queda en el libro del proveedor.
+ * @param dueDate el vencimiento que se usará: el elegido o el que propone el plazo habitual del
+ *   proveedor; `null` es sin vencimiento.
+ * @param canClearDue si se puede volver a `Sin vencimiento`: solo con una fecha elegida a mano y un
+ *   proveedor sin plazo habitual, porque con plazo el vencimiento se propone siempre.
+ * @param purchaseDate la fecha de la compra, desde la que puede vencer.
+ * @param paidNowText lo que se paga al registrar, tal como se escribió.
+ * @param errors lo que impide registrar la compra a plazo, cada uno junto a su campo.
+ */
+data class PurchasePaymentUi(
+    val onCredit: Boolean = false,
+    val dueDate: BusinessDate? = null,
+    val canClearDue: Boolean = false,
+    val purchaseDate: BusinessDate? = null,
+    val paidNowText: String = "",
+    val errors: Set<PurchasePaymentError> = emptySet(),
+)
+
+/** Lo que impide registrar una compra a plazo. La pantalla elige el texto. */
+enum class PurchasePaymentError {
+    /** Una compra a plazo exige proveedor. */
+    SUPPLIER_REQUIRED,
+
+    /** El vencimiento es anterior a la fecha de la compra. */
+    DUE_BEFORE_PURCHASE,
+
+    /** Lo pagado ahora no es un número, o trae más decimales que la moneda. */
+    PAID_NOT_A_NUMBER,
+
+    /** Lo pagado ahora pasa del total de la compra. */
+    PAID_OVER_TOTAL,
+}
 
 /** Por qué un campo de la compra no se puede guardar. La pantalla elige el texto. */
 enum class PurchaseFieldError {
@@ -188,6 +226,14 @@ sealed interface NewPurchaseAction {
     data class DateChange(val date: BusinessDate) : NewPurchaseAction
 
     data class ReferenceChange(val text: String) : NewPurchaseAction
+
+    /** `Pagada` con `false`, `A plazo` con `true`. */
+    data class PaymentModeChange(val onCredit: Boolean) : NewPurchaseAction
+
+    /** El vencimiento de la compra a plazo, o `null` para dejarla sin vencimiento. */
+    data class DueDateChange(val date: BusinessDate?) : NewPurchaseAction
+
+    data class PaidNowChange(val text: String) : NewPurchaseAction
 
     data class QuantityChange(val key: Long, val text: String) : NewPurchaseAction
 

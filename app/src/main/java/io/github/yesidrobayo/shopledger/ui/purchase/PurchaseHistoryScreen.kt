@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierFilter
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
@@ -57,6 +58,8 @@ import io.github.yesidrobayo.shopledger.ui.components.PeriodSelector
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SegmentedTabs
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
+import io.github.yesidrobayo.shopledger.ui.components.StatusTag
+import io.github.yesidrobayo.shopledger.ui.components.StatusTone
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
@@ -298,7 +301,7 @@ private fun HistoryList(
             }
 
             is PurchaseHistoryContent.Days ->
-                DayList(content, uiState.selectedPurchaseId, onAction, bottom)
+                DayList(content, uiState.selectedPurchaseId, onAction, bottom, uiState.openCredit)
         }
     }
 }
@@ -309,6 +312,7 @@ private fun DayList(
     selected: Long?,
     onAction: (PurchaseHistoryAction) -> Unit,
     bottom: androidx.compose.ui.unit.Dp,
+    openCredit: Set<Long>?,
 ) {
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
     // Al acercarse al final de lo leído, se pide el tramo siguiente.
@@ -328,7 +332,7 @@ private fun DayList(
         for (day in content.days) {
             stickyHeader(key = "day-${day.date}", contentType = DAY) { DayHeader(day) }
             items(day.rows, key = { it.id }, contentType = { ROW }) { row ->
-                PurchaseRow(row, row.id == selected) {
+                PurchaseRow(row, row.id == selected, creditTagOf(row, openCredit)) {
                     onAction(PurchaseHistoryAction.OpenPurchase(row.id))
                 }
             }
@@ -394,7 +398,12 @@ private fun DayHeader(day: PurchaseDay) {
  * derecha. Anulada, va apagada, tachada y con su etiqueta.
  */
 @Composable
-private fun PurchaseRow(row: PurchaseHistoryRow, selected: Boolean, onClick: () -> Unit) {
+private fun PurchaseRow(
+    row: PurchaseHistoryRow,
+    selected: Boolean,
+    creditTag: CreditTag?,
+    onClick: () -> Unit,
+) {
     val spacing = AppTheme.spacing
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val text = if (row.voided) muted else MaterialTheme.colorScheme.onSurface
@@ -426,6 +435,7 @@ private fun PurchaseRow(row: PurchaseHistoryRow, selected: Boolean, onClick: () 
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(detail, style = MaterialTheme.typography.bodySmall, color = muted)
+                    creditTag?.let { CreditStatusTag(it) }
                 }
                 MoneyText(
                     row.total,
@@ -441,6 +451,49 @@ private fun PurchaseRow(row: PurchaseHistoryRow, selected: Boolean, onClick: () 
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
         }
+    }
+}
+
+/** Cómo va una compra a plazo: con su vencimiento, a plazo sin vencimiento, o ya pagada. */
+internal sealed interface CreditTag {
+    data class DueOn(val date: BusinessDate) : CreditTag
+
+    data object Open : CreditTag
+
+    data object Paid : CreditTag
+}
+
+/**
+ * La etiqueta de [row]: solo una compra a plazo vigente la lleva, y solo cuando ya se sabe qué
+ * sigue abierto. Una que ya no tiene nada por pagar dice `Pagada`.
+ */
+internal fun creditTagOf(row: PurchaseHistoryRow, openCredit: Set<Long>?): CreditTag? {
+    if (!row.onCredit || row.voided || openCredit == null) return null
+    if (row.id !in openCredit) return CreditTag.Paid
+    return row.dueDate?.let { CreditTag.DueOn(it) } ?: CreditTag.Open
+}
+
+@Composable
+private fun CreditStatusTag(tag: CreditTag) {
+    val formats = LocalAppFormats.current
+    when (tag) {
+        is CreditTag.DueOn -> StatusTag(
+            stringResource(R.string.purchase_due_status, formats.date.dayMonthYear(tag.date)),
+            icon = R.drawable.ic_schedule,
+            tone = StatusTone.INFO,
+        )
+
+        CreditTag.Open -> StatusTag(
+            stringResource(R.string.purchase_payment_credit),
+            icon = R.drawable.ic_schedule,
+            tone = StatusTone.INFO,
+        )
+
+        CreditTag.Paid -> StatusTag(
+            stringResource(R.string.purchase_payment_paid),
+            icon = R.drawable.ic_check,
+            tone = StatusTone.PROFIT,
+        )
     }
 }
 
