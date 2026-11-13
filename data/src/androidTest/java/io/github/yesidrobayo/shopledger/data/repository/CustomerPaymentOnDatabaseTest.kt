@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.NewCustomerLedgerE
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyDocument
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyAccount
@@ -137,6 +138,7 @@ internal class CustomerPaymentOnDatabaseTest : RepositoryTest() {
         assertEquals(paid.movementId, movement.id)
         assertEquals(MoneyMovementType.CUSTOMER_PAYMENT, movement.type)
         assertEquals(MoneyOrigin.CustomerPayment(paid.entryId), movement.draft.origin)
+        assertEquals(MoneyDocument.Customer(customerId), moneyLedger.findDocument(movement.id))
         assertEquals(Money(2_000), accounts.findById(bankId)?.balance)
         assertInvariantsHold()
     }

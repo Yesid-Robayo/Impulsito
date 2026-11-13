@@ -42,6 +42,12 @@ val HUB_ENTRIES: List<HubEntry> =
             AppNavKey.LoyaltyProgram,
         ),
         HubEntry(
+            BusinessTool.MONEY_ACCOUNTS,
+            R.string.hub_tool_money_accounts,
+            R.string.hub_tool_money_accounts_desc,
+            AppNavKey.MoneyAccounts(),
+        ),
+        HubEntry(
             BusinessTool.PAYABLES,
             R.string.hub_tool_payables,
             R.string.hub_tool_payables_desc,

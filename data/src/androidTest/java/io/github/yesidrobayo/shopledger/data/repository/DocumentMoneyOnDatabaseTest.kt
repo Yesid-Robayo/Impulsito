@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.NewExpense
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyDocument
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyAccount
@@ -232,6 +233,7 @@ internal class DocumentMoneyOnDatabaseTest : RepositoryTest() {
         assertEquals(MoneyMovementType.EXPENSE_PAYMENT, payment.type)
         assertEquals(Money(-3_000), payment.amount)
         assertEquals(Money(-3_000), balance())
+        assertEquals(MoneyDocument.Expense(id), money.findDocument(payment.id))
         assertInvariantsHold()
     }
 
@@ -268,6 +270,7 @@ internal class DocumentMoneyOnDatabaseTest : RepositoryTest() {
         assertEquals(MoneyMovementType.PURCHASE_PAYMENT, payment.type)
         assertEquals(Money(-3_000), payment.amount)
         assertEquals(Money(-3_000), balance())
+        assertEquals(MoneyDocument.Purchase(id), money.findDocument(payment.id))
         assertInvariantsHold()
     }
 

@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyDocument
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyAccount
@@ -35,6 +36,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleUseCase
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -228,6 +230,16 @@ internal class SaleMoneyOnDatabaseTest : RepositoryTest() {
         assertEquals(card.content.settlementDate, receipt.draft.availableDate)
         assertEquals(Money(3_890), accounts.findById(bankId)?.balance)
         assertEquals(bankId, card.content.moneyAccountId)
+        // Lo cobrado y su comisión llevan a la venta, y faltan por llegar hasta su acreditación.
+        val sale = MoneyDocument.Sale(registered.saleId)
+        assertEquals(sale, money.findDocument(receipt.id))
+        assertEquals(sale, money.findDocument(fee.id))
+        val settles = requireNotNull(card.content.settlementDate)
+        assertEquals(
+            mapOf(bankId to Money(3_890)),
+            money.observePendingSettlement(settles.plusDays(-1)).first(),
+        )
+        assertEquals(emptyMap<Long, Money>(), money.observePendingSettlement(settles).first())
         assertInvariantsHold()
     }
 
@@ -315,6 +327,13 @@ internal class SaleMoneyOnDatabaseTest : RepositoryTest() {
         assertEquals(Money.ZERO, accounts.findById(bankId)?.balance)
         // La anulación no lleva el pago: solo apunta al movimiento que compensa.
         assertEquals(original, money.findBySalePayment(card.id))
+        // Nada queda por acreditar, y la anulación lleva a la misma venta.
+        assertEquals(MoneyDocument.Sale(saleId), money.findDocument(voids.first().id))
+        val settles = requireNotNull(card.content.settlementDate)
+        assertEquals(
+            emptyMap<Long, Money>(),
+            money.observePendingSettlement(settles.plusDays(-1)).first(),
+        )
         assertInvariantsHold()
     }
 

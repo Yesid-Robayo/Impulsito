@@ -4,9 +4,12 @@ import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountDao
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyMovementDao
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyMovementEntity
+import io.github.yesidrobayo.shopledger.data.local.money.MovementDocumentLinks
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyDocument
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
@@ -81,6 +84,36 @@ internal class RoomMoneyLedgerRepository(
             ).map(::Money)
             .distinctUntilChanged()
 
+    override fun observePendingSettlement(today: BusinessDate): Flow<Map<Long, Money>> = movements
+        .observePendingSettlement(today.toStored())
+        .map { rows -> rows.associate { it.accountId to Money(it.amount) } }
+        .distinctUntilChanged()
+
+    override suspend fun findDocument(movementId: Long): MoneyDocument? {
+        val row = movements.findById(movementId) ?: return null
+        val movement = toMovement(row)
+        return when (val origin = movement.draft.origin) {
+            MoneyOrigin.None ->
+                row.cashSessionId
+                    ?.takeIf { movement.type == MoneyMovementType.CASH_DIFFERENCE }
+                    ?.let(MoneyDocument::CashSession)
+
+            is MoneyOrigin.Expense -> MoneyDocument.Expense(origin.expenseId)
+
+            is MoneyOrigin.Purchase -> MoneyDocument.Purchase(origin.purchaseId)
+
+            // Una transferencia se registra a mano: no tiene documento.
+            is MoneyOrigin.Transfer -> null
+
+            is MoneyOrigin.Void -> findDocument(origin.reversesMovementId)
+
+            is MoneyOrigin.SalePayment, is MoneyOrigin.CustomerPayment,
+            is MoneyOrigin.SupplierPayment, is MoneyOrigin.SaleReturn,
+            is MoneyOrigin.PurchaseReturn,
+            -> movements.findDocumentLinks(movementId)?.let(::documentOf)
+        }
+    }
+
     override suspend fun isCompensated(movementId: Long): Boolean =
         movements.isCompensated(movementId)
 
@@ -142,6 +175,21 @@ internal class RoomMoneyLedgerRepository(
             createdAt = movement.createdAt.toStoredMillis(),
         )
     }
+}
+
+/**
+ * El documento de [links], del primero que el movimiento nombra: un movimiento viene de un solo
+ * documento, así que a lo sumo una columna tiene valor, salvo la devolución a proveedor, que nombra
+ * su compra y, si no tiene, su proveedor.
+ */
+private fun documentOf(links: MovementDocumentLinks): MoneyDocument? = when {
+    links.saleId != null -> MoneyDocument.Sale(links.saleId)
+    links.returnedSaleId != null -> MoneyDocument.Sale(links.returnedSaleId)
+    links.customerId != null -> MoneyDocument.Customer(links.customerId)
+    links.supplierId != null -> MoneyDocument.Supplier(links.supplierId)
+    links.returnedPurchaseId != null -> MoneyDocument.Purchase(links.returnedPurchaseId)
+    links.returnedSupplierId != null -> MoneyDocument.Supplier(links.returnedSupplierId)
+    else -> null
 }
 
 /**

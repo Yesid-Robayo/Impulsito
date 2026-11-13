@@ -41,6 +41,9 @@ object NumberInputParser {
     /** Decimales de un porcentaje en puntos básicos: 12,25 % son 1225. */
     private const val PERCENT_DECIMALS = 2
 
+    /** Decimales de una cotización en millonésimas. */
+    private const val RATE_DECIMALS = 6
+
     private const val RADIX = 10L
 
     /** Del primer al último signo de ancho completo, que equivalen a los de U+0021 a U+007E. */
@@ -100,6 +103,13 @@ object NumberInputParser {
      */
     fun count(text: String, symbols: NumberSymbols, limit: Limit): NumberInput<Long> =
         parse(text, symbols, decimals = 0, maximum = limit.max, percentAllowed = false)
+
+    /**
+     * Una cotización en millonésimas, con hasta seis decimales y los separadores de cualquier número
+     * de la región: `4.150,5` son 4150500000. El tope es [limit].
+     */
+    fun rateMicro(text: String, symbols: NumberSymbols, limit: Limit): NumberInput<Long> =
+        parse(text, symbols, RATE_DECIMALS, limit.max, percentAllowed = false)
 
     private fun <T> NumberInput<Long>.map(wrap: (Long) -> T): NumberInput<T> = when (this) {
         is NumberInput.Value -> NumberInput.Value(wrap(value))

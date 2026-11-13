@@ -56,6 +56,24 @@ class NumberInputParserTest(private val defaults: ForeignSystemDefaults) {
         NumberInputParser.count(text, symbols, Limit.POINTS)
 
     @Test
+    fun `an exchange rate reads up to six decimals as millionths`() {
+        // El ejemplo de la transferencia entre monedas: 4150 por unidad.
+        assertEquals(NumberInput.Value(4_150_000_000L), rate("4.150", COMMA_DECIMAL))
+        assertEquals(NumberInput.Value(4_150_500_000L), rate("4.150,5", COMMA_DECIMAL))
+        assertEquals(NumberInput.Value(1L), rate("0.000001", POINT_DECIMAL))
+        assertEquals(NumberInput.TooManyDecimals(6), rate("0,0000001", COMMA_DECIMAL))
+        assertEquals(NumberInput.Blank, rate("", COMMA_DECIMAL))
+        assertEquals(NumberInput.Malformed, rate("4x", COMMA_DECIMAL))
+        assertEquals(
+            NumberInput.TooLarge(Limit.DOCUMENT_TOTAL.max),
+            rate("1.000.000.000.001", COMMA_DECIMAL),
+        )
+    }
+
+    private fun rate(text: String, symbols: NumberSymbols): NumberInput<Long> =
+        NumberInputParser.rateMicro(text, symbols, Limit.DOCUMENT_TOTAL)
+
+    @Test
     fun `point decimal and comma grouping`() {
         assertEquals(money(123_456), money("1,234.56", POINT_DECIMAL, 2))
         assertEquals(money(123_456), money("1234.56", POINT_DECIMAL, 2))

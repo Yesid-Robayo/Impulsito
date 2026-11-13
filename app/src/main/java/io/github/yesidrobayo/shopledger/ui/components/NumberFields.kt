@@ -47,6 +47,9 @@ private const val QUANTITY_DECIMALS = 3
 /** Decimales de un porcentaje en puntos básicos. */
 private const val PERCENT_DECIMALS = 2
 
+/** Decimales de una cotización en millonésimas. */
+private const val RATE_DECIMALS = 6
+
 /**
  * Un campo de monto. El símbolo va antes o después de las cifras según el formato del negocio, en su
  * propia fuente, y los separadores de miles aparecen mientras se escribe.
@@ -165,6 +168,36 @@ fun PercentField(
         imeAction = imeAction,
         prefix = null,
         suffix = AnnotatedString(symbols.percentSign.toString()),
+    )
+}
+
+/**
+ * Un campo de cotización: cuántas unidades de una moneda vale una de otra, escrita a mano, con hasta
+ * seis decimales y los separadores de cualquier número de la región. Sin símbolo: una cotización no
+ * es un monto de ninguna de las dos monedas. Lo lee el dominio con los mismos símbolos, en
+ * millonésimas.
+ */
+@Composable
+fun RateField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    error: String? = null,
+    imeAction: ImeAction = ImeAction.Next,
+) {
+    val symbols = LocalAppFormats.current.quantity.inputSymbols
+    NumberField(
+        value = value,
+        onValueChange = { onValueChange(cleanNumberInput(it, symbols, RATE_DECIMALS)) },
+        label = label,
+        symbols = symbols,
+        keyboardType = KeyboardType.Decimal,
+        modifier = modifier,
+        error = error,
+        imeAction = imeAction,
+        prefix = null,
+        suffix = null,
     )
 }
 
@@ -318,6 +351,7 @@ private fun NumberFieldsPreview() {
             )
             QuantityField("1,25", {}, stringResource(R.string.form_amount), PreviewSamples.KILOGRAM)
             PercentField("2,75", {}, stringResource(R.string.term_margin))
+            RateField("4.150,5", {}, stringResource(R.string.money_fx_rate))
             PercentField(
                 "-150",
                 {},

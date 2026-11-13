@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.money
 
+import androidx.annotation.StringRes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,17 +15,19 @@ import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 /**
  * `Cuenta de dinero` en un documento que paga, como un gasto o una compra: un chip por cuenta que se
  * ofrece, con [selectedId] marcada. Tocar la elegida la quita, y el documento queda sin movimiento de
- * dinero. Sin cuentas no dibuja nada: quien no lleva cuentas no ve ningún paso más.
+ * dinero. Sin cuentas no dibuja nada: quien no lleva cuentas no ve ningún paso más. [label] es el
+ * rótulo de la fila, que cada formulario toma de su propia redacción.
  */
 @Composable
 fun PayingAccountChips(
     accounts: List<MoneyAccount>,
     selectedId: Long?,
+    @StringRes label: Int = R.string.document_money_account,
     onChoose: (Long?) -> Unit,
 ) {
     if (accounts.isEmpty()) return
     Text(
-        stringResource(R.string.document_money_account),
+        stringResource(label),
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

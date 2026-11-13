@@ -33,6 +33,7 @@ import kotlin.random.Random
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -122,6 +123,10 @@ internal class MoneyLedgerRepositoryTest : RepositoryTest() {
         assertEquals("Mal escrito", ledger.findById(voidId)?.draft?.note)
         assertTrue(ledger.isCompensated(opening.id))
         assertEquals(Money.ZERO, accounts.findById(bank)?.balance)
+        // Lo registrado a mano no lleva a ningún documento, ni su anulación.
+        assertNull(ledger.findDocument(opening.id))
+        assertNull(ledger.findDocument(voidId))
+        assertNull(ledger.findDocument(Long.MAX_VALUE))
 
         val wrong = NewMoneyMovement(
             MoneyMovementDraft(bank, MoneyMovementType.OTHER_INCOME, Money(10), MoneyOrigin.None),

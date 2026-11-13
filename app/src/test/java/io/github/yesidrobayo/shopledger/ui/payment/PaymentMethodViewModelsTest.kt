@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.ui.money.SAMPLE_ACCOUNTS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -90,6 +91,23 @@ class PaymentMethodViewModelsTest {
         val sorting = requireNotNull((list.uiState.value as PaymentMethodsUiState.Ready).sorting)
         assertEquals(SortingStatus.Failed(SaveProblem.OUT_OF_SPACE), sorting.status)
         assertEquals(1L, sorting.order.last().id)
+    }
+
+    @Test
+    fun theMoneyAccountRowOffersTheAccountsAndSavesTheChosenOne() = runTest {
+        base.activeAccounts += SAMPLE_ACCOUNTS[1].id
+        val form =
+            PaymentMethodFormViewModel(2L, base.formUseCases(accounts = SAMPLE_ACCOUNTS), NUMBERS)
+
+        val editing = form.uiState.value as PaymentMethodFormUiState.Editing
+        assertEquals(SAMPLE_ACCOUNTS, editing.accounts)
+        assertNull(editing.form.moneyAccountId)
+
+        form.onAction(PaymentMethodFormAction.AccountChanged(SAMPLE_ACCOUNTS[1].id))
+        form.onAction(PaymentMethodFormAction.Save)
+
+        assertEquals(SAMPLE_ACCOUNTS[1].id, base.methods.value[2L]?.details?.moneyAccountId)
+        assertTrue((form.uiState.value as PaymentMethodFormUiState.Editing).finished)
     }
 
     @Test

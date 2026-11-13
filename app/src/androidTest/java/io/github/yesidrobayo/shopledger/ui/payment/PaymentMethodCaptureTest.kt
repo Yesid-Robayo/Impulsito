@@ -29,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.money.SAMPLE_ACCOUNTS
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
 import java.io.ByteArrayOutputStream
@@ -179,6 +180,24 @@ class PaymentMethodCaptureTest {
                         systemKey = SAMPLE_ACTIVE[0].systemKey,
                         form = PaymentMethodForm(kind = PaymentMethodKind.CASH),
                         options = PaymentMethodOptions(SAMPLE_ACTIVE[0], true, activeCount = 1),
+                    ),
+                    {},
+                )
+            },
+            // Con cuentas en uso, la fila `Cuenta de dinero` con dos cuentas y una elegida.
+            "form-account" to {
+                PaymentMethodFormScreen(
+                    PaymentMethodFormUiState.Editing(
+                        methodId = SAMPLE_ACTIVE[1].id,
+                        systemKey = SAMPLE_ACTIVE[1].systemKey,
+                        form = PaymentMethodForm(
+                            kind = PaymentMethodKind.CARD,
+                            feeRate = "2,5",
+                            settlementDays = "2",
+                            moneyAccountId = SAMPLE_ACCOUNTS[1].id,
+                        ),
+                        options = PaymentMethodOptions(SAMPLE_ACTIVE[1], false, activeCount = 6),
+                        accounts = SAMPLE_ACCOUNTS,
                     ),
                     {},
                 )

@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.payment.InstructionsImageChange
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodDraft
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodInputError
@@ -30,10 +31,12 @@ import io.github.yesidrobayo.shopledger.domain.usecase.payment.ReactivatePayment
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.SavePaymentMethodResult
 import io.github.yesidrobayo.shopledger.ui.ReadOutcome
 import io.github.yesidrobayo.shopledger.ui.readOutcome
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -48,6 +51,8 @@ class PaymentMethodFormUseCases(
     val delete: DeletePaymentMethodUseCase,
     val observeCashRounding: ObserveCashRoundingUseCase,
     val importImage: ImportPaymentImageUseCase,
+    /** Las cuentas que se ofrecen para el método; sin cuentas en uso, ninguna. */
+    val payingAccounts: () -> Flow<List<MoneyAccount>> = { flowOf(emptyList()) },
 )
 
 /**
@@ -68,6 +73,9 @@ class PaymentMethodFormViewModel(
     /** El último redondeo leído, para el formulario que todavía carga cuando llega. */
     private var cashRounding: Money = Money.ZERO
 
+    /** Las últimas cuentas leídas, por la misma razón. */
+    private var payingAccounts: List<MoneyAccount> = emptyList()
+
     val uiState: StateFlow<PaymentMethodFormUiState> = state.asStateFlow()
 
     init {
@@ -82,6 +90,13 @@ class PaymentMethodFormViewModel(
                         .mapNotNull { method -> method.systemKey?.let { it to method.id } }
                         .toMap()
                 updateEditing { it.copy(initialMethods = initial) }
+            }
+        }
+        // Sin la lectura de cuentas la fila no aparece, y el método conserva la cuenta que tenía.
+        viewModelScope.launch {
+            useCases.payingAccounts().catch { emit(emptyList()) }.collect { accounts ->
+                payingAccounts = accounts
+                updateEditing { it.copy(accounts = accounts) }
             }
         }
         viewModelScope.launch {
@@ -113,6 +128,10 @@ class PaymentMethodFormViewModel(
 
             is PaymentMethodFormAction.InstructionsChanged ->
                 edit(FormField.INSTRUCTIONS) { it.copy(instructions = action.value) }
+
+            is PaymentMethodFormAction.AccountChanged -> updateEditing {
+                it.copy(form = it.form.copy(moneyAccountId = action.accountId), notice = null)
+            }
 
             PaymentMethodFormAction.Save -> save()
 
@@ -154,6 +173,7 @@ class PaymentMethodFormViewModel(
                     form = PaymentMethodForm(nameEdited = true),
                     options = null,
                     cashRounding = cashRounding,
+                    accounts = payingAccounts,
                 )
             return
         }
@@ -180,6 +200,7 @@ class PaymentMethodFormViewModel(
                             ),
                         options = options,
                         cashRounding = cashRounding,
+                        accounts = payingAccounts,
                     )
                 }
         }
@@ -205,6 +226,7 @@ class PaymentMethodFormViewModel(
                     plainNumberText(it, PERCENT_DECIMALS, percent)
                 },
             instructions = details.instructionsText.orEmpty(),
+            moneyAccountId = details.moneyAccountId,
         )
     }
 
@@ -418,7 +440,7 @@ class PaymentMethodFormViewModel(
                 feeFixed = feeFixed,
                 settlementDays = days,
                 priceAdjustment = adjustment,
-                moneyAccountId = currentAccount(),
+                moneyAccountId = form.moneyAccountId,
                 instructionsText = form.instructions,
                 image = imageChange(form.image),
             )
@@ -471,10 +493,6 @@ class PaymentMethodFormViewModel(
             }
         }
     }
-
-    /** La cuenta que ya tenía el método: este formulario todavía no la cambia. */
-    private fun currentAccount(): Long? =
-        (state.value as? PaymentMethodFormUiState.Editing)?.options?.method?.details?.moneyAccountId
 
     private fun readPercent(text: String, maximum: BasisPoints): BasisPoints? =
         when (val read = NumberInputParser.percent(text, numbers.percentSymbols, maximum)) {

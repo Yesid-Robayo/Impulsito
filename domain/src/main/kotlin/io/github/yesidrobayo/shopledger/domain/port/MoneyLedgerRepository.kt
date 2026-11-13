@@ -1,8 +1,10 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyDocument
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyMovement
 import kotlinx.coroutines.flow.Flow
@@ -60,6 +62,20 @@ interface MoneyLedgerRepository {
      * [currency] con sus mismos decimales: uno anulado no cuenta, y uno de otra moneda tampoco.
      */
     fun observeOtherIncome(period: ReportPeriod, currency: AccountCurrency): Flow<Money>
+
+    /**
+     * Lo que todavía no llega de cada cuenta, por su id: la suma de los movimientos vigentes con
+     * fecha de disponibilidad después de [today], como el cobro con tarjeta que se acredita en dos
+     * días y su comisión. Uno anulado no cuenta, y una cuenta sin nada por llegar no aparece. Cada
+     * suma va en la moneda de su cuenta. Vuelve a emitir con cada cambio confirmado del libro.
+     */
+    fun observePendingSettlement(today: BusinessDate): Flow<Map<Long, Money>>
+
+    /**
+     * El documento del que salió el movimiento [movementId], o `null` si se registró a mano o ya no
+     * existe. Una anulación lleva al documento del movimiento que compensa.
+     */
+    suspend fun findDocument(movementId: Long): MoneyDocument?
 
     /** Si el movimiento [movementId] ya tiene su anulación: uno se anula una sola vez. */
     suspend fun isCompensated(movementId: Long): Boolean

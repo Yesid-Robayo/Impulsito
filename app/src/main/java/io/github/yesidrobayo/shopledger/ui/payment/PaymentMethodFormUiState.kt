@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.payment
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodOptions
 
@@ -11,6 +12,9 @@ import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodOption
  *
  * Un método inicial muestra su nombre traducido hasta que la persona toca el campo: mientras
  * [nameEdited] sea falso, [name] no cuenta y el método conserva su nombre traducido.
+ *
+ * [moneyAccountId] es la cuenta de dinero donde entra lo cobrado con el método, o `null` si no mueve
+ * ninguna. Una cuenta que ya no se ofrece se conserva tal como estaba hasta que la persona elija otra.
  */
 data class PaymentMethodForm(
     val name: String = "",
@@ -22,6 +26,7 @@ data class PaymentMethodForm(
     val priceAdjustment: String = "",
     val instructions: String = "",
     val image: FormImage = FormImage.None,
+    val moneyAccountId: Long? = null,
 )
 
 /** La imagen de cobro en el formulario, como un código QR. */
@@ -114,6 +119,8 @@ sealed interface PaymentMethodFormUiState {
      * - [finished] se vuelve verdadero al guardar, archivar o eliminar: la ruta vuelve a la lista.
      * - [cashRounding] es el redondeo de efectivo de los ajustes regionales, que se muestra con el
      *   tipo `Efectivo`. Cero es sin redondeo.
+     * - [accounts] son las cuentas de dinero que se ofrecen para el método: las vigentes en la moneda
+     *   del negocio, y solo si la persona lleva cuentas. Vacía, la fila no aparece.
      */
     data class Editing(
         val methodId: Long?,
@@ -129,6 +136,7 @@ sealed interface PaymentMethodFormUiState {
         val cashRounding: Money = Money.ZERO,
         val importingImage: Boolean = false,
         val imageProblem: ImageProblem? = null,
+        val accounts: List<MoneyAccount> = emptyList(),
     ) : PaymentMethodFormUiState
 }
 
@@ -152,6 +160,9 @@ sealed interface PaymentMethodFormAction {
     data class PriceAdjustmentChanged(val value: String) : PaymentMethodFormAction
 
     data class InstructionsChanged(val value: String) : PaymentMethodFormAction
+
+    /** La cuenta de dinero elegida para el método, o `null` para que no mueva ninguna. */
+    data class AccountChanged(val accountId: Long?) : PaymentMethodFormAction
 
     data object Save : PaymentMethodFormAction
 

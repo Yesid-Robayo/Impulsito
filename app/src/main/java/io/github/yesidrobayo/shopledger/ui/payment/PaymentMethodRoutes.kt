@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.usecase.money.ObservePayingAccountsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ArchivePaymentMethodUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.CreatePaymentMethodUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.DeletePaymentMethodUseCase
@@ -205,6 +206,11 @@ private fun PaymentMethodFormPane(
                         observeCashRounding = ObserveCashRoundingUseCase(ports.settings),
                         importImage =
                             ImportPaymentImageUseCase(dependencies.container.data.imageImporter),
+                        payingAccounts = ObservePayingAccountsUseCase(
+                            ports.moduleUsage,
+                            ports.settings,
+                            ports.moneyAccounts,
+                        )::invoke,
                     ),
                 numbers =
                     FormNumbers(
@@ -254,6 +260,7 @@ private fun PaymentMethodFormPane(
                         is PaymentMethodFormAction.SettlementDaysChanged,
                         is PaymentMethodFormAction.PriceAdjustmentChanged,
                         is PaymentMethodFormAction.InstructionsChanged,
+                        is PaymentMethodFormAction.AccountChanged,
                         PaymentMethodFormAction.Save,
                         PaymentMethodFormAction.Retry,
                         PaymentMethodFormAction.AskArchive,

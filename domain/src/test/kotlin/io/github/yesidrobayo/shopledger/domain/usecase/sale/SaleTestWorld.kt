@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.sale
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -35,6 +36,7 @@ import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyDocument
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
@@ -1016,6 +1018,11 @@ internal class SaleWorld(
             period: ReportPeriod,
             currency: AccountCurrency,
         ): Flow<Money> = unused()
+
+        override fun observePendingSettlement(today: BusinessDate): Flow<Map<Long, Money>> =
+            unused()
+
+        override suspend fun findDocument(movementId: Long): MoneyDocument? = unused()
 
         override suspend fun isCompensated(movementId: Long): Boolean =
             read().moneyMovements.values.any {

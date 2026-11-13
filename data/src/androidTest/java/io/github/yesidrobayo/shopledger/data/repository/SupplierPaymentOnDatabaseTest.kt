@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyDocument
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntryType
@@ -79,6 +80,7 @@ internal class SupplierPaymentOnDatabaseTest : RepositoryTest() {
         val movement = money.findBySupplierLedgerEntry(entryId).single()
         assertEquals(MoneyMovementType.SUPPLIER_PAYMENT, movement.type)
         assertEquals(Money(-10_000), movement.amount)
+        assertEquals(MoneyDocument.Supplier(supplierId), money.findDocument(movement.id))
         assertEquals(Money(-10_000), requireNotNull(accounts.findById(bank)).balance)
         assertEquals(Money(-10_000), requireNotNull(suppliers.findById(supplierId)).balance)
         assertInvariantsHold()

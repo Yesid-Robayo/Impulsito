@@ -82,6 +82,44 @@ internal interface MoneyMovementDao {
         currencyDecimals: Long,
     ): Flow<Long>
 
+    /**
+     * Lo que falta por llegar a cada cuenta: la suma de los movimientos vigentes cuya fecha de
+     * disponibilidad es posterior a [today]. Uno anulado no suma, y una cuenta sin nada pendiente no
+     * sale. Solo la lee la pantalla de cuentas mientras está abierta: por eso `available_date` no
+     * lleva índice propio, y recorre el libro.
+     */
+    @Query(
+        "SELECT m.money_account_id AS account_id, SUM(m.amount) AS amount FROM money_movements m " +
+            "WHERE m.available_date > :today " +
+            "AND NOT EXISTS " +
+            "(SELECT 1 FROM money_movements v WHERE v.reverses_movement_id = m.id) " +
+            "GROUP BY m.money_account_id ORDER BY m.money_account_id",
+    )
+    fun observePendingSettlement(today: String): Flow<List<PendingSettlementRow>>
+
+    /**
+     * Los documentos que un movimiento nombra a través de otra tabla: la venta de su pago o de su
+     * devolución, el cliente de su abono, el proveedor de su pago, y la compra o el proveedor de su
+     * devolución. `null` si el movimiento no existe.
+     */
+    @Query(
+        "SELECT " +
+            "(SELECT sp.sale_id FROM sale_payments sp WHERE sp.id = m.sale_payment_id) " +
+            "AS sale_id, " +
+            "(SELECT sr.sale_id FROM sale_returns sr WHERE sr.id = m.sale_return_id) " +
+            "AS returned_sale_id, " +
+            "(SELECT c.customer_id FROM customer_ledger_entries c " +
+            "WHERE c.id = m.customer_ledger_entry_id) AS customer_id, " +
+            "(SELECT s.supplier_id FROM supplier_ledger_entries s " +
+            "WHERE s.id = m.supplier_ledger_entry_id) AS supplier_id, " +
+            "(SELECT pr.purchase_id FROM purchase_returns pr WHERE pr.id = m.purchase_return_id) " +
+            "AS returned_purchase_id, " +
+            "(SELECT pr.supplier_id FROM purchase_returns pr WHERE pr.id = m.purchase_return_id) " +
+            "AS returned_supplier_id " +
+            "FROM money_movements m WHERE m.id = :movementId",
+    )
+    suspend fun findDocumentLinks(movementId: Long): MovementDocumentLinks?
+
     /** Las dos filas de una transferencia, la que sale y la que entra. */
 
     @Query("SELECT * FROM money_movements WHERE transfer_group_id = :groupId ORDER BY id")

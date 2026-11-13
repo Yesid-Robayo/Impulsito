@@ -57,6 +57,7 @@ import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.money.PayingAccountChips
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -244,6 +245,17 @@ private fun FormFields(
             error = errors[FormField.PRICE_ADJUSTMENT]?.let { problemText(it) },
             modifier = side,
         )
+        // Solo si la persona lleva cuentas, y nunca a crédito: lo fiado no entra a ninguna cuenta.
+        if (form.kind != PaymentMethodKind.ON_ACCOUNT && editing.accounts.isNotEmpty()) {
+            Column(side, verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+                PayingAccountChips(
+                    accounts = editing.accounts,
+                    selectedId = form.moneyAccountId,
+                    onChoose = { onAction(PaymentMethodFormAction.AccountChanged(it)) },
+                    label = R.string.payment_method_account,
+                )
+            }
+        }
         SectionHeader(stringResource(R.string.payment_method_section_instructions))
         AppTextField(
             value = form.instructions,

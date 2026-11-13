@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MediaKind
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodDetails
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
@@ -39,6 +40,7 @@ import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 // Apoyo de las pruebas de las pantallas de métodos de pago. Nombres y comisiones inventados, sin
@@ -123,7 +125,10 @@ internal class FakePaymentMethods :
 
     override suspend fun hasSalePayments(id: Long): Boolean = id in withSales
 
-    override suspend fun isActiveMoneyAccount(id: Long): Boolean = false
+    /** Las cuentas de dinero vigentes que un método puede usar. */
+    val activeAccounts = mutableSetOf<Long>()
+
+    override suspend fun isActiveMoneyAccount(id: Long): Boolean = id in activeAccounts
 
     override suspend fun maxSortOrder(): Long? = methods.value.values.maxOfOrNull { it.sortOrder }
 
@@ -175,17 +180,19 @@ internal class FakePaymentMethods :
         .filter { it.isArchived == (filter == ArchiveFilter.ARCHIVED) }
         .sortedWith(compareBy<PaymentMethodRecord> { it.sortOrder }.thenBy { it.id })
 
-    fun formUseCases(clock: Clock = Clock { AT }) = PaymentMethodFormUseCases(
-        observe = ObservePaymentMethodsUseCase(this),
-        loadOptions = LoadPaymentMethodOptionsUseCase(this, this, this),
-        create = CreatePaymentMethodUseCase(this, this, this, clock),
-        edit = EditPaymentMethodUseCase(this, this, this, clock),
-        archive = ArchivePaymentMethodUseCase(this, this, clock),
-        reactivate = ReactivatePaymentMethodUseCase(this, this, clock),
-        delete = DeletePaymentMethodUseCase(this, this, this, clock),
-        observeCashRounding = ObserveCashRoundingUseCase(NoSettings),
-        importImage = ImportPaymentImageUseCase { _, _ -> nextImport },
-    )
+    fun formUseCases(clock: Clock = Clock { AT }, accounts: List<MoneyAccount> = emptyList()) =
+        PaymentMethodFormUseCases(
+            observe = ObservePaymentMethodsUseCase(this),
+            loadOptions = LoadPaymentMethodOptionsUseCase(this, this, this),
+            create = CreatePaymentMethodUseCase(this, this, this, clock),
+            edit = EditPaymentMethodUseCase(this, this, this, clock),
+            archive = ArchivePaymentMethodUseCase(this, this, clock),
+            reactivate = ReactivatePaymentMethodUseCase(this, this, clock),
+            delete = DeletePaymentMethodUseCase(this, this, this, clock),
+            observeCashRounding = ObserveCashRoundingUseCase(NoSettings),
+            importImage = ImportPaymentImageUseCase { _, _ -> nextImport },
+            payingAccounts = { flowOf(accounts) },
+        )
 
     fun listViewModel() = PaymentMethodsViewModel(
         ObservePaymentMethodsUseCase(this),

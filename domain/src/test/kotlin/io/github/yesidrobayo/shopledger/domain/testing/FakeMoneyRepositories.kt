@@ -1,12 +1,14 @@
 package io.github.yesidrobayo.shopledger.domain.testing
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyDocument
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
@@ -155,6 +157,43 @@ internal class FakeMoneyLedgerRepository(private val database: InMemoryDatabase)
                 .map { it.amount }
                 .sum()
         }.distinctUntilChanged()
+
+    override fun observePendingSettlement(today: BusinessDate): Flow<Map<Long, Money>> =
+        database.tables.map { tables ->
+            val voided = tables.moneyMovements.values
+                .mapNotNull { (it.draft.origin as? MoneyOrigin.Void)?.reversesMovementId }
+                .toSet()
+            tables.moneyMovements.values
+                .filter { movement ->
+                    movement.id !in voided &&
+                        movement.draft.availableDate?.let { it > today } == true
+                }
+                .groupBy { it.accountId }
+                .mapValues { (_, rows) -> rows.map { it.amount }.sum() }
+        }.distinctUntilChanged()
+
+    // Sin tablas de pagos de venta ni de proveedores en memoria: lleva solo a lo que el movimiento
+    // ya nombra, y a los clientes por su libro.
+    override suspend fun findDocument(movementId: Long): MoneyDocument? {
+        val tables = database.read()
+        val movement = tables.moneyMovements[movementId] ?: return null
+        movement.draft.cashSessionId
+            ?.takeIf { movement.type == MoneyMovementType.CASH_DIFFERENCE }
+            ?.let { return MoneyDocument.CashSession(it) }
+        return when (val origin = movement.draft.origin) {
+            is MoneyOrigin.Purchase -> MoneyDocument.Purchase(origin.purchaseId)
+
+            is MoneyOrigin.Expense -> MoneyDocument.Expense(origin.expenseId)
+
+            is MoneyOrigin.Void -> findDocument(origin.reversesMovementId)
+
+            is MoneyOrigin.CustomerPayment ->
+                tables.customerLedger[origin.customerLedgerEntryId]
+                    ?.let { MoneyDocument.Customer(it.customerId) }
+
+            else -> null
+        }
+    }
 
     override suspend fun isCompensated(movementId: Long): Boolean =
         database.read().moneyMovements.values.any {
