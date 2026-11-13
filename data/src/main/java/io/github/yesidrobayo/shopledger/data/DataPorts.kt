@@ -38,6 +38,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductUnitRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseHistorySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomReplacementReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFrequencySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleHistorySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSalePaymentRepository
@@ -89,6 +90,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
+import io.github.yesidrobayo.shopledger.domain.port.ReplacementReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
@@ -273,6 +275,12 @@ class DataPorts internal constructor(
      * las estadísticas. Solo lee.
      */
     val periodBreakdowns: PeriodBreakdownRepository = RoomPeriodBreakdownRepository(database)
+
+    /**
+     * Lo que la ganancia si se repone lee de un período: la reposición de lo vendido y lo que volvió
+     * al stock. Va aparte de la ganancia en ventas, para que no la toque. Solo lee.
+     */
+    val replacementReports: ReplacementReportRepository = RoomReplacementReportRepository(database)
 
     /** Si el negocio ya tiene algún producto, para orientar el primer uso. Solo lee. */
     val catalogPresence: CatalogPresenceSource = RoomCatalogPresenceSource(database)
