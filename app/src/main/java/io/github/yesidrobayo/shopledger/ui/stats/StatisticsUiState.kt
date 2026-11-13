@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodMetrics
+import io.github.yesidrobayo.shopledger.domain.model.report.ReplacementProfit
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
 import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodBreakdown
@@ -50,6 +51,8 @@ sealed interface StatisticsUiState {
      * @param otherIncome los otros ingresos del período, aparte de la ganancia, o `null` sin ninguno.
      * @param collection lo vendido y lo cobrado del período, aparte, o `null` si el negocio no vende
      *   a crédito.
+     * @param replacement la ganancia si se repone, aparte de la ganancia en ventas, o `null` sin
+     *   ventas en el período o si una cifra no cabe.
      */
     @Immutable
     data class Content(
@@ -72,6 +75,7 @@ sealed interface StatisticsUiState {
         val weekStartDay: DayOfWeek? = null,
         val otherIncome: Money? = null,
         val collection: SoldAndCollectedView? = null,
+        val replacement: ReplacementProfit? = null,
     ) : StatisticsUiState {
         /** Las métricas que se ofrecen: `Cobrado` solo si el negocio vende a crédito. */
         val offeredMetrics: List<ChartMetric>

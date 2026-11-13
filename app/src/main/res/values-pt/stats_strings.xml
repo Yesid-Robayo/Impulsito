@@ -50,4 +50,13 @@
     <string name="stats_sold_amount">Vendido %1$s</string>
     <string name="stats_on_account_amount">Em pagamentos parciais %1$s</string>
     <string name="stats_receivable_amount">A receber %1$s</string>
+    <string name="stats_tool_replacement">Lucro ao repor</string>
+    <string name="stats_replacement_help">O lucro nas vendas usa o custo médio. Este usa o que custaria comprar de novo o que foi vendido.</string>
+    <string name="product_profit_if_replaced">Lucro ao repor</string>
+    <string name="product_replacement_help">Por unidade, se fosse preciso comprar de novo. O lucro nas vendas continua usando o custo médio.</string>
+    <plurals name="stats_replacement_missing">
+        <item quantity="one">%1$d linha foi vendida sem custo de reposição nem custo: este valor fica abaixo do real.</item>
+        <item quantity="many">%1$d de linhas foram vendidas sem custo de reposição nem custo: este valor fica abaixo do real.</item>
+        <item quantity="other">%1$d linhas foram vendidas sem custo de reposição nem custo: este valor fica abaixo do real.</item>
+    </plurals>
 </resources>

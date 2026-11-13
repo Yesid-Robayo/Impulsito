@@ -50,4 +50,13 @@
     <string name="stats_sold_amount">Vendido %1$s</string>
     <string name="stats_on_account_amount">En abonos %1$s</string>
     <string name="stats_receivable_amount">Por cobrar %1$s</string>
+    <string name="stats_tool_replacement">Ganancia si se repone</string>
+    <string name="stats_replacement_help">La ganancia en ventas usa el costo promedio. Esta usa lo que costaría volver a comprar lo vendido.</string>
+    <string name="product_profit_if_replaced">Ganancia si se repone</string>
+    <string name="product_replacement_help">Por unidad, si hubiera que volver a comprarla. La ganancia en ventas sigue usando el costo promedio.</string>
+    <plurals name="stats_replacement_missing">
+        <item quantity="one">%1$d línea se vendió sin costo de reposición ni costo: esta cifra se queda corta.</item>
+        <item quantity="many">%1$d de líneas se vendieron sin costo de reposición ni costo: esta cifra se queda corta.</item>
+        <item quantity="other">%1$d líneas se vendieron sin costo de reposición ni costo: esta cifra se queda corta.</item>
+    </plurals>
 </resources>

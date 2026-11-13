@@ -92,5 +92,17 @@ object ReplacementProfitRules {
         }
     }
 
+    /**
+     * Lo que deja una unidad vendida a [netPrice], el precio sin impuesto, si hubiera que reponerla
+     * a [replacementCost]. Sin reposición o sin precio no hay cifra: `null`, nunca un número
+     * inventado. Puede ser negativa, si reponer cuesta más de lo que se cobra.
+     */
+    fun unitProfit(netPrice: Money, replacementCost: Money): Money? =
+        if (replacementCost > Money.ZERO && netPrice > Money.ZERO) {
+            netPrice - replacementCost
+        } else {
+            null
+        }
+
     private const val MILLI = 1_000L
 }

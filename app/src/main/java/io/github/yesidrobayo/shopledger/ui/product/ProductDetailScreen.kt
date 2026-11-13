@@ -55,6 +55,7 @@ import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.rule.report.ReplacementProfitRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockEvaluator
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockAdjustmentRules
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
@@ -270,6 +271,7 @@ private fun DetailBody(
             item(key = "stock") { StockBlock(product, unit, onAction) }
         }
         item(key = "figures") { Figures(product, pricing) }
+        item(key = "replacement") { ReplacementFigures(product, pricing) }
         item(key = "notices") { Notices(product) }
         item(key = "tabs") {
             val tabs = ProductDetailTab.entries
@@ -394,6 +396,61 @@ private fun Figures(product: Product, pricing: ProductPricing) {
         Row(padding.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.s12)) {
             tiles.forEach { it(Modifier.weight(1f)) }
         }
+    }
+}
+
+/**
+ * El costo de reposición y la ganancia por unidad si hubiera que reponer, debajo de las tres cifras,
+ * rotulados aparte para que no se confundan con el costo promedio ni con el margen. Solo aparecen
+ * con un costo de reposición conocido: sin él no se inventa ninguna cifra. Los dos se ocultan en
+ * modo discreto, y una línea explica la diferencia.
+ */
+@Composable
+private fun ReplacementFigures(product: Product, pricing: ProductPricing) {
+    val replacement = product.replacementCost
+    if (product.details.stockMode != ProductStockMode.TRACKED || replacement <= Money.ZERO) return
+    val spacing = AppTheme.spacing
+    val profit = ReplacementProfitRules.unitProfit(pricing.netOf(product.salePrice), replacement)
+    val stacked = LocalDensity.current.fontScale >= STACK_FONT_SCALE
+    val tiles: List<@Composable (Modifier) -> Unit> = listOf(
+        { m ->
+            StatTile(
+                stringResource(R.string.product_replacement_cost),
+                replacement,
+                StatTileVariant.PLAIN,
+                m,
+                sensitive = true,
+            )
+        },
+        { m ->
+            StatTile(
+                stringResource(R.string.product_profit_if_replaced),
+                profit,
+                StatTileVariant.PLAIN,
+                m,
+                sensitive = true,
+            )
+        },
+    )
+    Column(
+        Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8).fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(spacing.s8),
+    ) {
+        if (stacked) {
+            tiles.forEach { it(Modifier.fillMaxWidth()) }
+        } else {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+            ) {
+                tiles.forEach { it(Modifier.weight(1f)) }
+            }
+        }
+        Text(
+            stringResource(R.string.product_replacement_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

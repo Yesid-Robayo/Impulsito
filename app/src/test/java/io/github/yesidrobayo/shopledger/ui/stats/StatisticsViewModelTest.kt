@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodNoticeCounts
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodTotals
+import io.github.yesidrobayo.shopledger.domain.model.report.ReplacementProfit
 import io.github.yesidrobayo.shopledger.domain.model.report.SoldAndCollected
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
@@ -87,6 +88,7 @@ class StatisticsViewModelTest {
         ) -> Flow<PeriodBreakdown?> = { _, _ -> flowOf(null) },
         otherIncome: (ReportPeriod) -> Flow<Money> = { flowOf(Money.ZERO) },
         collection: (ReportPeriod) -> Flow<SoldAndCollectedView?> = { flowOf(null) },
+        replacement: (ReportPeriod) -> Flow<ReplacementProfit?> = { flowOf(null) },
     ): StatisticsViewModel {
         val model =
             StatisticsViewModel(
@@ -106,6 +108,7 @@ class StatisticsViewModelTest {
                 breakdown = breakdown,
                 otherIncome = otherIncome,
                 collection = collection,
+                replacement = replacement,
                 tax = { _ ->
                     taxed.map {
                         if (it) {
@@ -139,6 +142,29 @@ class StatisticsViewModelTest {
         assertFalse(content.canGoNext)
         assertNull(content.tax)
     }
+
+    @Test
+    fun `the replacement profit shows apart, only with sales, and leaves the sales profit alone`() =
+        runTest(dispatcher) {
+            val november = ReportPeriod.Month(YearMonth(2026, 11))
+            val replaced = MutableStateFlow<ReplacementProfit?>(
+                ReplacementProfit(Money.ZERO, Money.ZERO, Money.ZERO, 0),
+            )
+            val model = viewModel(replacement = { replaced })
+            assertNull(model.content().replacement)
+
+            totals.value = mapOf(november to totals(net = 16_000, count = 1))
+            val profit = ReplacementProfit(Money(16_000), Money(12_000), Money(4_000), 1)
+            replaced.value = profit
+            advanceUntilIdle()
+
+            assertEquals(profit, model.content().replacement)
+            assertEquals(Money(16_000), model.content().metrics?.profit?.grossProfit)
+
+            replaced.value = null
+            advanceUntilIdle()
+            assertNull(model.content().replacement)
+        }
 
     @Test
     fun `other income shows apart only when the period has some`() = runTest(dispatcher) {

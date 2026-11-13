@@ -47,4 +47,12 @@
     <string name="stats_sold_amount">Sold %1$s</string>
     <string name="stats_on_account_amount">On account %1$s</string>
     <string name="stats_receivable_amount">Receivable %1$s</string>
+    <string name="stats_tool_replacement">Profit at replacement cost</string>
+    <string name="stats_replacement_help">Sales profit uses the average cost. This one uses what it would cost to buy again what was sold.</string>
+    <string name="product_profit_if_replaced">Profit at replacement cost</string>
+    <string name="product_replacement_help">Per unit, if it had to be bought again. Sales profit still uses the average cost.</string>
+    <plurals name="stats_replacement_missing">
+        <item quantity="one">%1$d line was sold without a replacement cost or cost: this figure falls short.</item>
+        <item quantity="other">%1$d lines were sold without a replacement cost or cost: this figure falls short.</item>
+    </plurals>
 </resources>

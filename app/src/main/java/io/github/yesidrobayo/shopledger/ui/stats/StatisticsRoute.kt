@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveDailySeries
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodBreakdownUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodComparisonUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodReportUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveReplacementProfitUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveReportCalendarUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveSoldAndCollectedUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.ObserveTaxEstimateUseCase
@@ -47,6 +48,8 @@ fun StatisticsRoute(navigator: AppNavigator) {
             val comparison = ObservePeriodComparisonUseCase(ports.periodReports)
             val breakdown =
                 ObservePeriodBreakdownUseCase(ports.periodReports, ports.periodBreakdowns)
+            val replacement =
+                ObserveReplacementProfitUseCase(ports.periodReports, ports.replacementReports)
             StatisticsViewModel(
                 calendar = { checks -> calendar(checks) },
                 lastActiveDate = ports.periodReports.observeLastActiveDate(),
@@ -58,6 +61,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
                 units = ports.units.observeAll(),
                 otherIncome = { ObserveOtherIncomeUseCase(ports.settings, ports.moneyLedger)(it) },
                 collection = { collection(it) },
+                replacement = { period -> replacement(period).map { it.replacement } },
             )
         }
     when (model) {

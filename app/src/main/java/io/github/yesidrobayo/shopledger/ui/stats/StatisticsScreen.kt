@@ -48,6 +48,7 @@ import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodMetrics
+import io.github.yesidrobayo.shopledger.domain.model.report.ReplacementProfit
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
 import io.github.yesidrobayo.shopledger.domain.usecase.report.SoldAndCollectedView
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
@@ -540,6 +541,7 @@ private fun ColumnScope.Detail(
         ByPaymentMethod(breakdown.methods, rows)
         breakdown.expenses?.let { ByExpenseCategory(it, rows) }
     }
+    content.replacement?.let { ReplacementTool(it, rows) }
     val tax = content.tax
     if (tax != null) EstimatedTax(tax, rows)
     content.otherIncome?.let { OtherIncome(it, rows) }
@@ -660,6 +662,45 @@ private fun MarginRow(margin: Margin) {
         leading = { Text(label, style = MaterialTheme.typography.bodyLarge) },
         trailing = { Text(text, style = AppTheme.amounts.row) },
     )
+}
+
+/**
+ * La ganancia si se repone: las ventas, menos lo que costaría reponer lo vendido, rotulada aparte de
+ * la ganancia en ventas, que sigue usando el costo promedio. Una línea explica la diferencia, y si
+ * algo se vendió sin costo de reposición ni costo, un aviso dice que la cifra se queda corta. Las
+ * cifras se ocultan en modo discreto.
+ */
+@Composable
+private fun ReplacementTool(replacement: ReplacementProfit, modifier: Modifier) {
+    SectionHeader(stringResource(R.string.stats_tool_replacement))
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+        Column {
+            CascadeRow(stringResource(R.string.stats_metric_sales), replacement.netSales)
+            CascadeRow(
+                stringResource(R.string.product_replacement_cost),
+                replacement.replacementCogs,
+                subtract = true,
+            )
+            CascadeRow(
+                stringResource(R.string.stats_tool_replacement),
+                replacement.replacementProfit,
+                strong = true,
+            )
+        }
+        Text(
+            stringResource(R.string.stats_replacement_help),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val missing = replacement.linesWithoutReplacement
+        if (missing > 0L) {
+            val count = missing.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            NoticeCard(
+                pluralStringResource(R.plurals.stats_replacement_missing, count, count),
+                NoticeVariant.INFO,
+            )
+        }
+    }
 }
 
 /** Lo cobrado y lo pagado de impuesto, rotulado como estimación que no es una declaración. */

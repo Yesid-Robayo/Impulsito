@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
+import io.github.yesidrobayo.shopledger.domain.model.report.ReplacementProfit
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.report.PeriodNavigation
@@ -52,6 +53,7 @@ import kotlinx.coroutines.flow.stateIn
  * @param otherIncome los otros ingresos de un período, que se muestran aparte de la ganancia.
  * @param collection lo vendido y lo cobrado de un período, o `null` si el negocio no vende a
  *   crédito.
+ * @param replacement la ganancia si se repone de un período, o `null` si una cifra no cabe.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class StatisticsViewModel(
@@ -69,6 +71,7 @@ class StatisticsViewModel(
     units: Flow<List<MeasureUnit>> = flowOf(emptyList()),
     private val otherIncome: (ReportPeriod) -> Flow<Money> = { flowOf(Money.ZERO) },
     private val collection: (ReportPeriod) -> Flow<SoldAndCollectedView?> = { flowOf(null) },
+    private val replacement: (ReportPeriod) -> Flow<ReplacementProfit?> = { flowOf(null) },
 ) : ViewModel() {
     private val unitsById = units.map { all -> all.associateBy { it.id } }.distinctUntilChanged()
 
@@ -141,8 +144,13 @@ class StatisticsViewModel(
                 is ReportPeriod.Day, is ReportPeriod.Range -> flowOf(null)
             }
         val figures =
-            combine(report(period), days, tax(period)) { report, points, tax ->
-                Figures(report, points, taxOf(tax))
+            combine(report(period), days, tax(period), replacement(period)) {
+                    report,
+                    points,
+                    tax,
+                    replaced,
+                ->
+                Figures(report, points, taxOf(tax), replaced)
             }
         val details =
             combine(
@@ -180,6 +188,8 @@ class StatisticsViewModel(
                 choosingRange = chosen.choosingRange,
                 weekStartDay = shown.calendar.weekStartDay,
                 collection = details.collection,
+                // Sin ventas no hay nada que reponer: la herramienta no aparece.
+                replacement = figures.replacement?.takeIf { it.netSales != Money.ZERO },
             )
         }
     }
@@ -299,6 +309,7 @@ class StatisticsViewModel(
         val report: PeriodReport,
         val points: List<DayPoint>?,
         val tax: TaxEstimate?,
+        val replacement: ReplacementProfit?,
     )
 
     private data class Details(

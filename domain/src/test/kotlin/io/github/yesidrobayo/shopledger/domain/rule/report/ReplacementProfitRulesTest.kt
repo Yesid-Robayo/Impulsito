@@ -124,4 +124,12 @@ class ReplacementProfitRulesTest {
             ),
         )
     }
+
+    @Test
+    fun `a unit sold at its net price leaves what is left after replacing it, or nothing`() {
+        assertEquals(Money(500), ReplacementProfitRules.unitProfit(Money(2_000), Money(1_500)))
+        assertEquals(Money(-300), ReplacementProfitRules.unitProfit(Money(1_200), Money(1_500)))
+        assertEquals(null, ReplacementProfitRules.unitProfit(Money(2_000), Money.ZERO))
+        assertEquals(null, ReplacementProfitRules.unitProfit(Money.ZERO, Money(1_500)))
+    }
 }
