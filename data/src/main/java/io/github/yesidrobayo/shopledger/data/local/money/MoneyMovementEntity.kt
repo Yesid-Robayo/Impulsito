@@ -18,7 +18,8 @@ import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnEntity
 /**
  * Un movimiento de una cuenta de dinero: lo que entró o salió de ella. Solo se agrega, nunca se
  * edita ni se borra. Anular agrega un `MOVEMENT_VOID` con el monto opuesto, que apunta al
- * movimiento que compensa. Una transferencia no se anula así: se anula con otra transferencia.
+ * movimiento que compensa. Una transferencia se anula igual, con una anulación por cada una de
+ * sus dos partes, en la misma transacción.
  *
  * El orden del libro es el de `id`, que nunca se reutiliza, no el de `occurred_at`. El índice de
  * `money_account_id` lleva el `rowid`, así que da ese orden dentro de cada cuenta.

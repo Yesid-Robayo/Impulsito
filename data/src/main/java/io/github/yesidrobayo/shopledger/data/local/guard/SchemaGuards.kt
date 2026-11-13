@@ -2034,7 +2034,9 @@ private val MONEY_ACCOUNTS_GUARDS =
 
 /** El libro de dinero: solo crece. Cada movimiento lleva el signo y el origen de su tipo, una
  * transferencia lleva su grupo, y una anulación apunta a un movimiento de la misma cuenta, con
- * el monto opuesto, una sola vez y nunca a una transferencia.
+ * el monto opuesto, una sola vez y nunca a otra anulación. Una transferencia se anula con dos
+ * anulaciones, una por parte, en la misma transacción: la guarda ve una fila a la vez, y que vayan
+ * las dos lo cuida el caso de uso.
  *
  * Un registro con dinero exige la moneda confirmada y bloqueada en los ajustes: sin moneda, un
  * monto no tendría unidad. */
@@ -2066,7 +2068,7 @@ private val MONEY_MOVEMENTS_GUARDS =
           AND (NEW.type <> 'SUPPLIER_REFUND' OR NEW.purchase_return_id IS NOT NULL)
           AND (NEW.type <> 'CASH_DIFFERENCE' OR NEW.cash_session_id IS NOT NULL)
           AND (NEW.type = 'MOVEMENT_VOID') = (NEW.reverses_movement_id IS NOT NULL)
-          AND (NEW.reverses_movement_id IS NULL OR EXISTS (SELECT 1 FROM money_movements o WHERE o.id = NEW.reverses_movement_id AND o.money_account_id = NEW.money_account_id AND o.amount = -NEW.amount AND o.type NOT IN ('MOVEMENT_VOID', 'TRANSFER_OUT', 'TRANSFER_IN')))
+          AND (NEW.reverses_movement_id IS NULL OR EXISTS (SELECT 1 FROM money_movements o WHERE o.id = NEW.reverses_movement_id AND o.money_account_id = NEW.money_account_id AND o.amount = -NEW.amount AND o.type <> 'MOVEMENT_VOID'))
           AND NOT EXISTS (SELECT 1 FROM money_movements m WHERE m.reverses_movement_id = NEW.reverses_movement_id)
           AND NOT EXISTS (SELECT 1 FROM money_movements x WHERE x.id = NEW.id)
         ), 0)

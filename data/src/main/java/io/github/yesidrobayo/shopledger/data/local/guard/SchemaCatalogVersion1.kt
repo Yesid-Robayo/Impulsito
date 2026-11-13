@@ -3976,7 +3976,7 @@ private fun triggers(): List<CatalogTrigger> = listOf(
                   AND (NEW.type <> 'SUPPLIER_REFUND' OR NEW.purchase_return_id IS NOT NULL)
                   AND (NEW.type <> 'CASH_DIFFERENCE' OR NEW.cash_session_id IS NOT NULL)
                   AND (NEW.type = 'MOVEMENT_VOID') = (NEW.reverses_movement_id IS NOT NULL)
-                  AND (NEW.reverses_movement_id IS NULL OR EXISTS (SELECT 1 FROM money_movements o WHERE o.id = NEW.reverses_movement_id AND o.money_account_id = NEW.money_account_id AND o.amount = -NEW.amount AND o.type NOT IN ('MOVEMENT_VOID', 'TRANSFER_OUT', 'TRANSFER_IN')))
+                  AND (NEW.reverses_movement_id IS NULL OR EXISTS (SELECT 1 FROM money_movements o WHERE o.id = NEW.reverses_movement_id AND o.money_account_id = NEW.money_account_id AND o.amount = -NEW.amount AND o.type <> 'MOVEMENT_VOID'))
                   AND NOT EXISTS (SELECT 1 FROM money_movements m WHERE m.reverses_movement_id = NEW.reverses_movement_id)
                   AND NOT EXISTS (SELECT 1 FROM money_movements x WHERE x.id = NEW.id)
                 ), 0)

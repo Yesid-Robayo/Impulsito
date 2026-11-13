@@ -209,8 +209,8 @@ internal class MoneyGuardsTest : GuardProbeTest() {
             undo.with("reverses_movement_id" to MISSING_ID),
             undo.with("reverses_movement_id" to null),
             opening.with("reverses_movement_id" to drawId),
-            // Una transferencia no se anula con un compensatorio: se anula con otra transferencia.
-            undo.with("amount" to 30_000L, "reverses_movement_id" to transferId),
+            // Una parte de transferencia se anula con el monto opuesto, nunca con el mismo signo.
+            undo.with("amount" to -30_000L, "reverses_movement_id" to transferId),
         )) {
             rejected(MOVEMENTS, broken.insertInto(TABLE))
         }
@@ -222,7 +222,21 @@ internal class MoneyGuardsTest : GuardProbeTest() {
             MOVEMENTS,
             undo.with("amount" to -10_000L, "reverses_movement_id" to undoId).insertInto(TABLE),
         )
-        assertEquals(4L, count("SELECT COUNT(*) FROM money_movements"))
+        // Una parte de transferencia sí se anula con su compensatorio, una sola vez, y sin grupo: el
+        // grupo sigue con una parte que sale y una que entra.
+        val transferUndo = undo.with("amount" to 30_000L, "reverses_movement_id" to transferId)
+        val transferUndoId = insert(TABLE, transferUndo)
+        rejected(MOVEMENTS, transferUndo.insertInto(TABLE))
+        rejected(
+            MOVEMENTS,
+            transferUndo.with("transfer_group_id" to TRANSFER_GROUP).insertInto(TABLE),
+        )
+        rejected(
+            MOVEMENTS,
+            undo.with("amount" to -30_000L, "reverses_movement_id" to transferUndoId)
+                .insertInto(TABLE),
+        )
+        assertEquals(5L, count("SELECT COUNT(*) FROM money_movements"))
     }
 
     @Test

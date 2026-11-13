@@ -1,6 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.money
 
-import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
+import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
@@ -13,7 +13,10 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.storageSafe
 
 /** Cómo termina anular un movimiento de dinero. Salvo [Voided], no se escribió nada. */
 sealed interface VoidMoneyMovementResult {
-    /** Quedó compensado por el movimiento [voidMovementId]. */
+    /**
+     * Quedó compensado por el movimiento [voidMovementId]. En una transferencia, sus dos partes
+     * quedaron anuladas, y este es el de la parte pedida.
+     */
     data class Voided(val voidMovementId: Long) : VoidMoneyMovementResult
 
     /** El movimiento ya no existe. */
@@ -28,9 +31,6 @@ sealed interface VoidMoneyMovementResult {
      */
     data object FromDocument : VoidMoneyMovementResult
 
-    /** Es una parte de una transferencia: se anula la transferencia entera, nunca una sola parte. */
-    data object TransferPart : VoidMoneyMovementResult
-
     /** El saldo de la cuenta no cabría en `Long` con la anulación. */
     data object Overflow : VoidMoneyMovementResult
 
@@ -43,8 +43,10 @@ sealed interface VoidMoneyMovementResult {
 
 /**
  * Anula un movimiento que la persona registró a mano en una cuenta: un saldo inicial, un retiro, un
- * aporte u otro ingreso. Agrega un `MOVEMENT_VOID` con el monto opuesto, en una sola transacción, y
- * el movimiento original queda en el libro, marcado como anulado. Nada se borra.
+ * aporte, otro ingreso o una transferencia. Agrega un `MOVEMENT_VOID` con el monto opuesto, en una
+ * sola transacción, y el movimiento original queda en el libro, marcado como anulado. Nada se borra.
+ * Una transferencia se anula entera: un `MOVEMENT_VOID` por cada una de sus dos partes, cada uno en
+ * su cuenta y su moneda, y si uno no entra no entra ninguno.
  *
  * La anulación ocurre hoy, no en la fecha del original: el saldo de los días pasados no cambia. Puede
  * dejar la cuenta en negativo, y no se bloquea por eso.
@@ -64,15 +66,15 @@ class VoidMoneyMovementUseCase(
     private suspend fun void(movementId: Long, note: String?): TxResult<VoidMoneyMovementResult> {
         val movement = ledger.findById(movementId)
             ?: return TxResult.Rollback(VoidMoneyMovementResult.NotFound)
-        when (movement.type) {
-            MoneyMovementType.TRANSFER_OUT, MoneyMovementType.TRANSFER_IN ->
-                return TxResult.Rollback(VoidMoneyMovementResult.TransferPart)
-
-            else -> if (!movement.type.isManual) {
-                return TxResult.Rollback(VoidMoneyMovementResult.FromDocument)
-            }
+        if (!movement.type.isManual) {
+            return TxResult.Rollback(VoidMoneyMovementResult.FromDocument)
         }
-        if (ledger.isCompensated(movementId)) {
+        // Una transferencia se anula entera: sus dos partes, nunca una sola.
+        val parts = when (val origin = movement.draft.origin) {
+            is MoneyOrigin.Transfer -> ledger.findByTransferGroup(origin.groupId)
+            else -> listOf(movement)
+        }
+        if (parts.any { ledger.isCompensated(it.id) }) {
             return TxResult.Rollback(VoidMoneyMovementResult.AlreadyVoided)
         }
         val calendar = when (val result = BusinessCalendar.of(settings.get().regional)) {
@@ -84,13 +86,22 @@ class VoidMoneyMovementUseCase(
                 )
         }
         val now = clock.now()
-        return when (val appended = writer.void(movement, calendar.stamp(now), now, note)) {
-            is MoneyAppendResult.Appended ->
-                TxResult.Commit(VoidMoneyMovementResult.Voided(appended.movementId))
+        val time = calendar.stamp(now)
+        var voidOfRequested = 0L
+        for (part in parts) {
+            when (val appended = writer.void(part, time, now, note)) {
+                is MoneyAppendResult.Appended ->
+                    if (part.id == movementId) voidOfRequested = appended.movementId
 
-            MoneyAppendResult.AccountNotFound -> TxResult.Rollback(VoidMoneyMovementResult.NotFound)
+                // Si una parte no entra, la transacción entera se deshace: ninguna queda anulada.
+                MoneyAppendResult.AccountNotFound ->
+                    return TxResult.Rollback(VoidMoneyMovementResult.NotFound)
 
-            MoneyAppendResult.Overflow -> TxResult.Rollback(VoidMoneyMovementResult.Overflow)
+                MoneyAppendResult.Overflow -> return TxResult.Rollback(
+                    VoidMoneyMovementResult.Overflow,
+                )
+            }
         }
+        return TxResult.Commit(VoidMoneyMovementResult.Voided(voidOfRequested))
     }
 }

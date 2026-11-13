@@ -102,24 +102,12 @@ class MoneyLedgerWriterTest {
     }
 
     @Test
-    fun `movements from a document or a transfer are not voided from the account`() = runTest {
+    fun `movements from a document are not voided from the account`() = runTest {
         world.settings.lockCurrency(MoneyWorld.NOW)
         val sale =
             appendedId(draft(MoneyMovementType.SALE_RECEIPT, 500, MoneyOrigin.SalePayment(7)))
-        val transfer = appendedId(
-            draft(MoneyMovementType.TRANSFER_IN, 500, MoneyOrigin.Transfer(GROUP, null)),
-        )
 
         assertEquals(VoidMoneyMovementResult.FromDocument, world.void()(sale))
-        assertEquals(VoidMoneyMovementResult.TransferPart, world.void()(transfer))
-        assertEquals(
-            VoidMoneyMovementResult.TransferPart,
-            world.void()(
-                appendedId(
-                    draft(MoneyMovementType.TRANSFER_OUT, -1, MoneyOrigin.Transfer(GROUP, null)),
-                ),
-            ),
-        )
     }
 
     @Test
@@ -156,8 +144,4 @@ class MoneyLedgerWriterTest {
                 lost.void()(opening.movementId),
             )
         }
-
-    private companion object {
-        const val GROUP = "00000000-0000-4000-8000-000000000001"
-    }
 }

@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
+import io.github.yesidrobayo.shopledger.domain.model.money.TransferRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.testing.InjectedFailure
@@ -44,6 +45,8 @@ class MoneyLedgerPropertyTest {
         var negativeBalances = 0
         var otherCurrencyAccounts = 0
         var archived = 0
+        var transfers = 0
+        var transferVoids = 0
     }
 
     @Test
@@ -63,6 +66,8 @@ class MoneyLedgerPropertyTest {
                 "saldos negativos" to stats.negativeBalances,
                 "cuentas en otra moneda" to stats.otherCurrencyAccounts,
                 "cuentas archivadas" to stats.archived,
+                "transferencias" to stats.transfers,
+                "transferencias anuladas" to stats.transferVoids,
             )
             for ((path, count) in paths) assertTrue("Ningún caso de: $path", count > 0)
         }
@@ -98,7 +103,7 @@ class MoneyLedgerPropertyTest {
     private suspend fun step(world: MoneyWorld, random: Random, stats: Stats) {
         val tables = world.database.tables.value
         val accountId = tables.moneyAccounts.keys.random(random)
-        when (random.nextInt(10)) {
+        when (random.nextInt(12)) {
             in 0..3 -> {
                 val result =
                     write(world) {
@@ -170,11 +175,45 @@ class MoneyLedgerPropertyTest {
                 stats.archived++
             }
 
-            else -> world.reactivate()(accountId)
+            9 -> world.reactivate()(accountId)
+
+            else -> transferStep(world, random, stats, accountId)
         }
         if (world.database.tables.value.moneyAccounts.values.any { it.balance < Money.ZERO }) {
             stats.negativeBalances++
         }
+    }
+
+    /** Una transferencia al azar, a veces entre monedas, o la anulación de una que ya existe. */
+    private suspend fun transferStep(world: MoneyWorld, random: Random, stats: Stats, from: Long) {
+        val tables = world.database.tables.value
+        val part = tables.moneyMovements.values.filter { it.draft.origin is MoneyOrigin.Transfer }
+        if (part.isNotEmpty() && random.nextInt(3) == 0) {
+            if (world.void()(
+                    part.random(random).id,
+                ) is VoidMoneyMovementResult.Voided
+            ) {
+                stats.transferVoids++
+            }
+            return
+        }
+        val to = tables.moneyAccounts.keys.random(random)
+        val result =
+            TransferMoneyUseCase(
+                world.transactions,
+                world.settings,
+                world.accounts,
+                world.writer,
+                world.clock,
+            )(
+                TransferRequest(
+                    from,
+                    to,
+                    Money(random.nextLong(1, 500_000)),
+                    fxRateMicro = random.nextLong(1, 10_000_000_000),
+                ),
+            )
+        if (result is TransferMoneyResult.Transferred) stats.transfers++
     }
 
     private suspend fun write(
@@ -229,6 +268,22 @@ class MoneyLedgerPropertyTest {
                 "Un movimiento cambió o desapareció, $where",
                 movement,
                 after.moneyMovements[id],
+            )
+        }
+        // Cada grupo de transferencia tiene exactamente una parte que sale y una que entra.
+        val groups = after.moneyMovements.values
+            .mapNotNull { movement ->
+                (movement.draft.origin as? MoneyOrigin.Transfer)?.let {
+                    it.groupId to
+                        movement.type
+                }
+            }
+            .groupBy({ it.first }, { it.second })
+        for ((group, types) in groups) {
+            assertEquals(
+                "Transferencia incompleta $group, $where",
+                listOf(MoneyMovementType.TRANSFER_OUT, MoneyMovementType.TRANSFER_IN).sorted(),
+                types.sorted(),
             )
         }
         val running = mutableMapOf<Long, Long>()
