@@ -88,6 +88,30 @@ class BulkPriceViewModelTest {
     }
 
     @Test
+    fun `from review all it opens with the products of the review list`() = runTest(dispatcher) {
+        operations.reviewed.value = setOf(2L)
+        val model = BulkPriceViewModel(operations, NUMBERS, dispatcher, review = true)
+        backgroundScope.launch(dispatcher) { model.uiState.collect {} }
+        advanceUntilIdle()
+        assertEquals(BulkScopeKind.REVIEW, model.uiState.value.input.scope)
+        assertEquals(setOf(2L), model.uiState.value.reviewIds)
+
+        model.onAction(BulkPriceAction.PercentText("10"))
+        advanceUntilIdle()
+        val preview = (model.uiState.value.content as BulkPreviewContent.Ready).preview
+        // Solo el de la lista `Revisar`, por el motivo que sea.
+        assertEquals(listOf(2L), preview.changes.map { it.productId })
+        model.onAction(BulkPriceAction.Apply)
+        advanceUntilIdle()
+        assertEquals(BulkPriceScope.Review(setOf(2L)), operations.requests.single().scope)
+
+        // Elegirlo a mano no abre ninguna hoja.
+        model.onAction(BulkPriceAction.SelectScope(BulkScopeKind.REVIEW))
+        advanceUntilIdle()
+        assertEquals(null, model.uiState.value.sheet)
+    }
+
+    @Test
     fun `an amount and a target margin are modes of their own`() = runTest(dispatcher) {
         // El margen objetivo parte del costo que da el contexto de precios, como en la app.
         operations.choices.value = BulkListChoices(
@@ -369,6 +393,10 @@ private class FakeBulkOperations : BulkPriceOperations {
     val choices = MutableStateFlow(BulkListChoices())
 
     override fun listChoices(): Flow<BulkListChoices> = choices
+
+    val reviewed = MutableStateFlow<Set<Long>>(emptySet())
+
+    override fun reviewIds(): Flow<Set<Long>> = reviewed
 
     override suspend fun apply(
         productIds: Collection<Long>,

@@ -135,6 +135,7 @@ object BulkPricePreviewer {
         is BulkPriceScope.Category -> product.details.categoryId == scope.categoryId
         is BulkPriceScope.Supplier -> product.details.defaultSupplierId == scope.supplierId
         BulkPriceScope.PendingReview -> product.priceReviewSince != null
+        is BulkPriceScope.Review -> product.id in scope.productIds
         is BulkPriceScope.Tag -> product.id in scope.productIds
         is BulkPriceScope.Picked -> product.id in scope.productIds
     }

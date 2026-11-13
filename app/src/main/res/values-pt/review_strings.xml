@@ -4,4 +4,6 @@
     <string name="review_filter">Revisar</string>
     <string name="review_all_action">Revisar tudo</string>
     <string name="review_new_cost">Custo novo sem revisão</string>
+    <string name="review_reason_low_margin">Margem abaixo da meta</string>
+    <string name="review_reason_old_cost">Custo antigo: %1$s</string>
 </resources>

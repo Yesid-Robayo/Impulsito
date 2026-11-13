@@ -8,8 +8,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.DismissPriceReviewUseCase
-import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceReviewQueueUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceReviewUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -38,7 +40,19 @@ fun InventoryRoute(
         rememberAppViewModel { dependencies ->
             val ports = dependencies.ports
             val observe = ObserveInventoryUseCase(ports.products, ports.units)
-            val queue = ObservePriceReviewQueueUseCase(ports.products)
+            val review =
+                ObservePriceReviewUseCase(
+                    products = ports.products,
+                    pricing =
+                        ObservePricingContextUseCase(
+                            ports.settings,
+                            ports.categories,
+                            ports.taxRates,
+                        ),
+                    calendar = BusinessCalendarSource(ports.settings),
+                    settings = ports.settings,
+                    clock = dependencies.container.clock,
+                )
             val dismiss =
                 DismissPriceReviewUseCase(
                     ports.transactions,
@@ -49,7 +63,7 @@ fun InventoryRoute(
                 observe = { observe() },
                 computation = dependencies.container.dispatchers.default,
                 initialChip = initialChip,
-                reviewQueue = { queue() },
+                review = { review() },
                 dismissReview = { dismiss(it) },
             )
         }
@@ -89,7 +103,7 @@ fun InventoryRoute(
                             )
 
                         InventoryAction.ReviewAll ->
-                            navigator.open(AppNavKey.BulkPriceUpdate(pendingReview = true))
+                            navigator.open(AppNavKey.BulkPriceUpdate(review = true))
 
                         InventoryAction.CreateProduct -> navigator.open(AppNavKey.ProductEdit())
 

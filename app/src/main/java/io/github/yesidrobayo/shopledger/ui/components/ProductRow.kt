@@ -94,7 +94,8 @@ sealed interface ProductRowTrailing {
  * Los datos de una fila de producto, ya leídos: la fila no busca nada.
  *
  * [stock] nulo no muestra la línea del stock, como en una lista de precios, donde lo que importa es
- * de dónde sale el precio: eso va en [tag], una etiqueta propia de la pantalla.
+ * de dónde sale el precio: eso va en [tag], una etiqueta propia de la pantalla. [tags] son más
+ * etiquetas propias, cada una en su chip, como los motivos de `Revisar`.
  */
 @Immutable
 data class ProductRowData(
@@ -103,6 +104,7 @@ data class ProductRowData(
     val trailing: ProductRowTrailing,
     val archived: Boolean = false,
     val tag: String? = null,
+    val tags: List<String> = emptyList(),
 )
 
 /**
@@ -187,6 +189,7 @@ private fun ProductRowLeading(data: ProductRowData) {
         ) {
             data.stock?.let { StockLine(it) }
             data.tag?.let { StatusTag(it) }
+            data.tags.forEach { StatusTag(it) }
             tags.forEach { StatusTag(stringResource(it)) }
         }
     }

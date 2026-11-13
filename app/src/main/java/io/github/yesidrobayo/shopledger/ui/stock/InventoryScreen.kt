@@ -29,8 +29,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
@@ -376,9 +378,10 @@ private fun InventoryRow(item: InventoryItem, onAction: (InventoryAction) -> Uni
 }
 
 /**
- * Una fila de `Revisar`: el producto con el motivo, su precio y su margen, que abre el detalle;
- * `Cambiar precio` a la derecha, que abre su hoja; y `Descartar` en el menú, que lo saca de la cola
- * sin cambiar el precio.
+ * Una fila de `Revisar`: el producto con cada motivo como etiqueta, su precio y su margen, que
+ * abre el detalle; `Cambiar precio` a la derecha, que abre su hoja; y, si está en la cola de costo
+ * nuevo, `Descartar` en el menú, que lo saca de ella sin cambiar el precio. Los otros motivos no
+ * se descartan: salen solos cuando el precio o el costo cambian.
  */
 @Composable
 private fun ReviewRow(item: PriceReviewItem, onAction: (InventoryAction) -> Unit) {
@@ -390,7 +393,7 @@ private fun ReviewRow(item: PriceReviewItem, onAction: (InventoryAction) -> Unit
                     name = item.name,
                     stock = null,
                     trailing = item.trailing,
-                    tag = stringResource(R.string.review_new_cost),
+                    tags = item.reasons.map { reasonText(it, item.costSince) },
                 ),
                 modifier = Modifier.weight(1f),
                 onClick = { onAction(InventoryAction.OpenProduct(item.id)) },
@@ -400,13 +403,15 @@ private fun ReviewRow(item: PriceReviewItem, onAction: (InventoryAction) -> Unit
                 stringResource(R.string.product_change_price),
                 { onAction(InventoryAction.ChangePrice(item.id)) },
             )
-            OverflowMenu(
-                listOf(
-                    OverflowAction(dismiss, {
-                        onAction(InventoryAction.DismissReview(item.id))
-                    }),
-                ),
-            )
+            if (item.dismissable) {
+                OverflowMenu(
+                    listOf(
+                        OverflowAction(dismiss, {
+                            onAction(InventoryAction.DismissReview(item.id))
+                        }),
+                    ),
+                )
+            }
         }
         HorizontalDivider(
             modifier = Modifier.padding(start = AppTheme.spacing.s16),
@@ -415,6 +420,20 @@ private fun ReviewRow(item: PriceReviewItem, onAction: (InventoryAction) -> Unit
         )
     }
 }
+
+/** El texto de un motivo. El costo viejo lleva su fecha, en el formato del negocio. */
+@Composable
+private fun reasonText(reason: PriceReviewReason, costSince: BusinessDate?): String =
+    when (reason) {
+        PriceReviewReason.NEW_COST -> stringResource(R.string.review_new_cost)
+
+        PriceReviewReason.LOW_MARGIN -> stringResource(R.string.review_reason_low_margin)
+
+        PriceReviewReason.OLD_COST -> {
+            val date = costSince?.let { LocalAppFormats.current.date.dayMonthYear(it) }
+            stringResource(R.string.review_reason_old_cost, date ?: NO_VALUE_TEXT)
+        }
+    }
 
 @Composable
 private fun messageText(message: InventoryMessage): String = when (message) {

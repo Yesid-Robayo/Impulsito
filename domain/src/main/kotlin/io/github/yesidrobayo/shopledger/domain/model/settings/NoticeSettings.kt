@@ -18,4 +18,9 @@ data class NoticeSettings(
     val expiryNoticeDays: Int,
     val revenueLimit: RevenueLimit?,
     val dailySummaryTime: LocalTime?,
-)
+) {
+    companion object {
+        /** Lo más que admite la base para [costStaleDays]: cien años. */
+        const val MAX_COST_STALE_DAYS: Int = 36_500
+    }
+}

@@ -68,12 +68,15 @@ sealed interface AppNavKey : NavKey {
     ) : AppNavKey
 
     /**
-     * La actualización masiva; con [priceListId], abre con esa lista elegida, y con [pendingReview],
-     * con los productos de `Costo nuevo sin revisar`.
+     * La actualización masiva; con [priceListId], abre con esa lista elegida; con [pendingReview],
+     * con los productos de `Costo nuevo sin revisar`; y con [review], con los de `Revisar`.
      */
     @Serializable
-    data class BulkPriceUpdate(val priceListId: Long? = null, val pendingReview: Boolean = false) :
-        AppNavKey
+    data class BulkPriceUpdate(
+        val priceListId: Long? = null,
+        val pendingReview: Boolean = false,
+        val review: Boolean = false,
+    ) : AppNavKey
 
     @Serializable
     data class Inventory(val filter: InventoryFilter = InventoryFilter.LOW_STOCK) : AppNavKey

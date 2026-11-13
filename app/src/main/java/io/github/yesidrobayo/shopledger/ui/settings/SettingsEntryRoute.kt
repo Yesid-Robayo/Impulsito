@@ -34,7 +34,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSo
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ObserveAppLockUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ObserveBusinessProfileUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.settings.ObserveCostStaleDaysUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.SaveBusinessProfileUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.settings.SetCostStaleDaysUseCase
 import io.github.yesidrobayo.shopledger.format.CsvFormatFactory
 import io.github.yesidrobayo.shopledger.format.FormatLocale
 import io.github.yesidrobayo.shopledger.localization.CsvExportNaming
@@ -75,6 +77,7 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
     val container = (context.applicationContext as ShopLedgerApp).container
     val io = container.dispatchers.io
     val percentSymbols = LocalAppFormats.current.percent.inputSymbols
+    val countSymbols = LocalAppFormats.current.quantity.inputSymbols
     val model =
         rememberAppViewModel { dependencies ->
             val ports = dependencies.ports
@@ -90,12 +93,21 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                     ports.settings,
                     dependencies.container.clock,
                 )
+            val saveDays =
+                SetCostStaleDaysUseCase(
+                    ports.transactions,
+                    ports.settings,
+                    dependencies.container.clock,
+                )
             SettingsEntryViewModel(
                 tipsSource = { ObserveTipsEnabledUseCase(ports.settings)() },
                 setTips = { set(it) },
                 profileSource = { ObserveBusinessProfileUseCase(ports.settings)() },
                 saveProfile = { saveProfile(it) },
                 percentSymbols = percentSymbols,
+                costStaleSource = { ObserveCostStaleDaysUseCase(ports.settings)() },
+                saveCostStale = { saveDays(it) },
+                countSymbols = countSymbols,
             )
         }
     val securityModel =
@@ -312,6 +324,7 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 onTipsChange = viewModel::onTipsChange,
                 tipsSaveFailed = uiState.saveFailed,
                 profile = uiState.profile,
+                costStaleDays = uiState.costStaleDays,
                 profileSheet = uiState.profileSheet,
                 onProfileAction = viewModel::onProfileAction,
                 security = securityState,

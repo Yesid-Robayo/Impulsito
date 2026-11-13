@@ -82,6 +82,12 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
         }
     }
 
+    override suspend fun updateCostStaleDays(days: Int, updatedAt: Instant) {
+        writes.inTransaction {
+            requireOneRow(settings.updateCostStaleDays(days.toLong(), updatedAt.toStoredMillis()))
+        }
+    }
+
     override suspend fun updateReferenceCurrency(
         reference: ReferenceCurrency?,
         updatedAt: Instant,

@@ -21,6 +21,12 @@ sealed interface BulkPriceScope {
     /** Los que esperan revisión porque una compra subió su costo: la cola `Costo nuevo sin revisar`. */
     data object PendingReview : BulkPriceScope
 
+    /**
+     * Los de la lista `Revisar` del inventario: [productIds], leídos con ella. Como una selección,
+     * pero el producto entra por su motivo, no porque la persona lo eligió.
+     */
+    data class Review(val productIds: Set<Long>) : BulkPriceScope
+
     /** Los que llevan la etiqueta [tagId]: [productIds], leídos con ella. */
     data class Tag(val tagId: Long, val productIds: Set<Long>) : BulkPriceScope
 

@@ -72,6 +72,12 @@ interface AppSettingsRepository {
      */
     suspend fun updateLoyalty(loyalty: LoyaltySettings, updatedAt: Instant)
 
+    /**
+     * Cambia los días tras los que un costo se marca como viejo. Solo dentro de
+     * [TransactionRunner.write]: es un dato del negocio y cuenta como cambio.
+     */
+    suspend fun updateCostStaleDays(days: Int, updatedAt: Instant)
+
     /** Marca el fin del primer uso. Fuera de [TransactionRunner.write]: no cuenta como cambio. */
     suspend fun markOnboardingCompleted(completedAt: Instant)
 }

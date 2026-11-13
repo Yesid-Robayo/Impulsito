@@ -3,6 +3,8 @@ package io.github.yesidrobayo.shopledger.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
@@ -10,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.settings.NoticeSettings
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
@@ -17,6 +20,7 @@ import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PercentField
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.WholeNumberField
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -30,6 +34,9 @@ enum class ProfileField {
 
     /** El margen del que parten las sugerencias de precio. */
     TARGET_MARGIN,
+
+    /** Los días tras los que `Revisar` marca un costo como viejo; cero lo apaga. */
+    COST_STALE_DAYS,
 }
 
 /** Por qué lo escrito en la hoja del perfil no se puede guardar. */
@@ -40,6 +47,9 @@ enum class ProfileProblem {
 
     /** Negativo o mayor que 99 %. */
     OUT_OF_RANGE,
+
+    /** Días negativos o de más de cien años. */
+    DAYS_OUT_OF_RANGE,
 }
 
 /**
@@ -68,14 +78,16 @@ sealed interface ProfileAction {
 }
 
 /**
- * La hoja de un dato del perfil: el nombre del negocio, opcional, o el margen objetivo, de 0 a 99 %.
- * `Guardar cambios` va abajo, con el aviso de una falla encima.
+ * La hoja de un dato del perfil: el nombre del negocio, opcional, el margen objetivo, de 0 a 99 %,
+ * o los días para costo viejo, donde 0 apaga ese aviso. `Guardar cambios` va abajo, con el aviso
+ * de una falla encima.
  */
 @Composable
 fun BusinessProfileSheet(sheet: ProfileSheet, onAction: (ProfileAction) -> Unit) {
     val title = when (sheet.field) {
         ProfileField.NAME -> stringResource(R.string.settings_business_name)
         ProfileField.TARGET_MARGIN -> stringResource(R.string.settings_target_margin)
+        ProfileField.COST_STALE_DAYS -> stringResource(R.string.settings_cost_stale_days)
     }
     EditorContainer(
         asPanel = false,
@@ -119,6 +131,22 @@ fun BusinessProfileSheet(sheet: ProfileSheet, onAction: (ProfileAction) -> Unit)
                     error = error,
                     imeAction = ImeAction.Done,
                 )
+
+            ProfileField.COST_STALE_DAYS ->
+                Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+                    WholeNumberField(
+                        value = sheet.text,
+                        onValueChange = { onAction(ProfileAction.Text(it)) },
+                        label = title,
+                        error = error,
+                        imeAction = ImeAction.Done,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_cost_stale_days_help),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
         }
     }
 }
@@ -137,6 +165,15 @@ private fun problemText(problem: ProfileProblem): String = when (problem) {
             R.string.error_percent_range,
             percent.format(BasisPoints.ZERO),
             percent.format(BasisPoints.MAX_TARGET_MARGIN),
+        )
+    }
+
+    ProfileProblem.DAYS_OUT_OF_RANGE -> {
+        val quantity = LocalAppFormats.current.quantity
+        stringResource(
+            R.string.settings_cost_stale_days_range,
+            quantity.formatCount(0L),
+            quantity.formatCount(NoticeSettings.MAX_COST_STALE_DAYS.toLong()),
         )
     }
 }

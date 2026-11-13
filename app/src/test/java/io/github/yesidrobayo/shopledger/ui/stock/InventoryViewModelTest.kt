@@ -1,11 +1,16 @@
 package io.github.yesidrobayo.shopledger.ui.stock
 
 import app.cash.turbine.test
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReview
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
@@ -23,6 +28,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -144,12 +150,12 @@ class InventoryViewModelTest {
     @Test
     fun `the review chip lists the queue and falls back when it empties`() = runTest(dispatcher) {
         products.value = listOf(product(1L, "Arroz", 2_000L))
-        val queue = MutableStateFlow(listOf(product(1L, "Arroz", 2_000L)))
+        val queue = MutableStateFlow(listOf(review(product(1L, "Arroz", 2_000L))))
         val model = InventoryViewModel(
             observe = { products.toOverview() },
             computation = dispatcher,
             initialChip = InventoryChip.REVIEW,
-            reviewQueue = { queue },
+            review = { queue },
         )
         model.uiState.test {
             skipItems(1)
@@ -178,7 +184,7 @@ class InventoryViewModelTest {
             observe = { products.toOverview() },
             computation = dispatcher,
             initialChip = InventoryChip.REVIEW,
-            reviewQueue = { flowOf(listOf(product(1L, "Arroz", 2_000L))) },
+            review = { flowOf(listOf(review(product(1L, "Arroz", 2_000L)))) },
             dismissReview = {
                 dismissed += it
                 result
@@ -206,7 +212,7 @@ class InventoryViewModelTest {
             observe = { products.toOverview() },
             computation = dispatcher,
             initialChip = InventoryChip.REVIEW,
-            reviewQueue = { flow { throw IllegalStateException("lectura") } },
+            review = { flow { throw IllegalStateException("lectura") } },
         )
         model.uiState.test {
             skipItems(1)
@@ -215,6 +221,52 @@ class InventoryViewModelTest {
             assertTrue((shown.content as InventoryContent.Ready).reviewItems.isEmpty())
         }
     }
+
+    @Test
+    fun `each row carries all its reasons and only a new cost can be dismissed`() =
+        runTest(dispatcher) {
+            products.value = listOf(product(1L, "Arroz", 2_000L), product(2L, "Sal", 2_000L))
+            val since = BusinessDate(LocalDate(2026, 8, 1))
+            val model = InventoryViewModel(
+                observe = { products.toOverview() },
+                computation = dispatcher,
+                initialChip = InventoryChip.REVIEW,
+                review = {
+                    flowOf(
+                        listOf(
+                            review(
+                                product(1L, "Arroz", 2_000L),
+                                listOf(PriceReviewReason.NEW_COST, PriceReviewReason.LOW_MARGIN),
+                                margin = Margin.Defined(BasisPoints(1_500L)),
+                            ),
+                            review(
+                                product(2L, "Sal", 2_000L),
+                                listOf(PriceReviewReason.OLD_COST),
+                                since,
+                            ),
+                        ),
+                    )
+                },
+            )
+            model.uiState.test {
+                skipItems(1)
+                val rows = (awaitItem().content as InventoryContent.Ready).reviewItems
+                assertEquals(listOf(1L, 2L), rows.map { it.id })
+                assertTrue(rows[0].dismissable)
+                // El margen de la fila es el de la regla, sin impuesto, no el del catálogo.
+                assertEquals(Margin.Defined(BasisPoints(1_500L)), rows[0].trailing.margin)
+                assertEquals(listOf(PriceReviewReason.OLD_COST), rows[1].reasons)
+                assertEquals(since, rows[1].costSince)
+                assertTrue(!rows[1].dismissable)
+            }
+        }
+
+    private fun review(
+        product: Product,
+        reasons: List<PriceReviewReason> = listOf(PriceReviewReason.NEW_COST),
+        costSince: BusinessDate? = null,
+        margin: Margin = Margin.NoData,
+    ) = PriceReview(product, reasons, margin, BasisPoints(3_000L), costSince)
 
     private fun MutableStateFlow<List<Product>>.toOverview() = flow {
         collect { emit(overviewOf(it)) }

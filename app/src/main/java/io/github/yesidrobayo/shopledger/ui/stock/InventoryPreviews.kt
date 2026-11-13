@@ -2,16 +2,19 @@ package io.github.yesidrobayo.shopledger.ui.stock
 
 import androidx.compose.runtime.Composable
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
+import kotlinx.datetime.LocalDate
 
 // Vistas previas del inventario, con productos y montos inventados: la lista por agotarse con
 // stock negativo, agotado y bajo, un nombre de 80 caracteres y un valor de trece cifras; la lista
@@ -48,12 +51,16 @@ internal fun previewInventoryItems(): List<InventoryItem> = listOf(
     item(4L, PreviewSamples.THIRD_NAME, InventoryStatus.LOW, 5_000L, 5_000L),
 )
 
-/** La cola `Costo nuevo sin revisar`: con margen, con pérdida, sin costo y con nombre de 80 caracteres. */
+/**
+ * `Revisar`: costo nuevo con margen bajo, pérdida con nombre de 80 caracteres, costo nuevo sin
+ * costo, y costo viejo con su fecha.
+ */
 internal fun previewReviewItems(): List<PriceReviewItem> = listOf(
     PriceReviewItem(
         1L,
         PreviewSamples.SHORT_NAME,
         ProductRowTrailing.Catalog(PreviewSamples.PRICE, Margin.Defined(BasisPoints(1_200L)), true),
+        listOf(PriceReviewReason.NEW_COST, PriceReviewReason.LOW_MARGIN),
     ),
     PriceReviewItem(
         2L,
@@ -63,6 +70,8 @@ internal fun previewReviewItems(): List<PriceReviewItem> = listOf(
             Margin.Defined(BasisPoints(-800L)),
             true,
         ),
+        listOf(PriceReviewReason.LOW_MARGIN, PriceReviewReason.OLD_COST),
+        BusinessDate(LocalDate(2026, 8, 1)),
     ),
     PriceReviewItem(
         3L,
@@ -72,6 +81,17 @@ internal fun previewReviewItems(): List<PriceReviewItem> = listOf(
             Margin.Defined(BasisPoints(10_000L)),
             false,
         ),
+    ),
+    PriceReviewItem(
+        4L,
+        PreviewSamples.THIRD_NAME,
+        ProductRowTrailing.Catalog(
+            PreviewSamples.PRICE,
+            Margin.Defined(BasisPoints(4_500L)),
+            true,
+        ),
+        listOf(PriceReviewReason.OLD_COST),
+        BusinessDate(LocalDate(2026, 5, 2)),
     ),
 )
 

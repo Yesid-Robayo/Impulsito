@@ -77,6 +77,9 @@ interface BulkPriceOperations {
     /** Las listas, los precios propios y lo del margen objetivo, para la vista previa. */
     fun listChoices(): Flow<BulkListChoices> = flowOf(BulkListChoices())
 
+    /** Los productos de `Revisar` en el inventario: costo nuevo, margen bajo o costo viejo. */
+    fun reviewIds(): Flow<Set<Long>> = flowOf(emptySet())
+
     /** Lo que haría deshacer la última actualización masiva, o `null` si no hay ninguna. */
     fun undoOffer(): Flow<BulkUndoPlan?>
 
@@ -112,6 +115,12 @@ enum class BulkScopeKind {
     /** `Costo nuevo sin revisar`: solo aparece si hay alguno en la cola. */
     PENDING_REVIEW,
     PICK,
+
+    /**
+     * `Revisar`: los mismos productos de esa lista del inventario. Aparece si hay alguno, o si se
+     * abrió con `Revisar todo`.
+     */
+    REVIEW,
 }
 
 /** Cómo se redondea: los chips de `Redondear`. */
@@ -215,6 +224,7 @@ data class BulkPriceUiState(
     val confirmingUndo: Boolean = false,
     val undoing: Boolean = false,
     val lists: List<PriceList> = emptyList(),
+    val reviewIds: Set<Long> = emptySet(),
 ) {
     /** Las listas que se ofrecen: con una sola no hay nada que elegir. */
     val offeredLists: List<PriceList> get() = lists.takeIf { it.size > 1 }.orEmpty()
@@ -307,13 +317,21 @@ class BulkPriceViewModel(
     computation: CoroutineDispatcher,
     initialListId: Long? = null,
     pendingReview: Boolean = false,
+    review: Boolean = false,
 ) : ViewModel() {
     private val input = MutableStateFlow(
         BulkPriceInput(
-            scope = if (pendingReview) BulkScopeKind.PENDING_REVIEW else BulkScopeKind.ALL,
+            scope = when {
+                review -> BulkScopeKind.REVIEW
+                pendingReview -> BulkScopeKind.PENDING_REVIEW
+                else -> BulkScopeKind.ALL
+            },
             listIds = setOfNotNull(initialListId),
         ),
     )
+
+    /** Los de `Revisar`: si no se pueden leer, el chip no aparece y su alcance queda vacío. */
+    private val reviewIds: Flow<Set<Long>> = operations.reviewIds().catch { emit(emptySet()) }
     private val extra = MutableStateFlow(Extra())
     private val attempts = MutableStateFlow(0)
     private var lastRequest: BulkPriceRequest? = null
@@ -335,8 +353,9 @@ class BulkPriceViewModel(
             input.debounce(TYPING_PAUSE_MILLIS),
             operations.defaultStep(),
             choices,
-        ) { products, typed, saved, lists ->
-            val request = requestOf(typed, saved)
+            reviewIds,
+        ) { products, typed, saved, lists, reviewed ->
+            val request = requestOf(typed, saved, reviewed)
             lastRequest = request
             lastContext = lists.context
             when {
@@ -370,8 +389,9 @@ class BulkPriceViewModel(
                     it.orEmpty().filterNot(Product::isArchived)
                 }.catch { emit(emptyList()) },
                 operations.defaultStep().catch { emit(Money.ZERO) },
-            ) { categories, suppliers, products, step ->
-                Lists(categories, suppliers, products, step)
+                reviewIds,
+            ) { categories, suppliers, products, step, reviewed ->
+                Lists(categories, suppliers, products, step, reviewed)
             },
             combine(
                 extra,
@@ -398,6 +418,7 @@ class BulkPriceViewModel(
                 confirmingUndo = more.confirmingUndo && offer?.canUndo == true,
                 undoing = more.undoing,
                 lists = listed.writable,
+                reviewIds = lists.reviewIds,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -413,7 +434,7 @@ class BulkPriceViewModel(
                     BulkScopeKind.ALL -> null
                     BulkScopeKind.CATEGORY -> BulkSheet.CATEGORY
                     BulkScopeKind.SUPPLIER -> BulkSheet.SUPPLIER
-                    BulkScopeKind.PENDING_REVIEW -> null
+                    BulkScopeKind.PENDING_REVIEW, BulkScopeKind.REVIEW -> null
                     BulkScopeKind.PICK -> BulkSheet.PRODUCTS
                 }
                 extra.update { it.copy(sheet = sheet) }
@@ -542,7 +563,11 @@ class BulkPriceViewModel(
     }
 
     /** La solicitud que pide lo escrito, o `null` si falta algo o no se puede leer. */
-    private fun requestOf(typed: BulkPriceInput, saved: Money): BulkPriceRequest? {
+    private fun requestOf(
+        typed: BulkPriceInput,
+        saved: Money,
+        reviewed: Set<Long>,
+    ): BulkPriceRequest? {
         val adjustment = adjustmentOf(typed) ?: return null
         val scope = when (typed.scope) {
             BulkScopeKind.ALL -> BulkPriceScope.All
@@ -555,6 +580,8 @@ class BulkPriceViewModel(
 
             BulkScopeKind.PICK ->
                 if (typed.picked.isEmpty()) return null else BulkPriceScope.Picked(typed.picked)
+
+            BulkScopeKind.REVIEW -> BulkPriceScope.Review(reviewed)
         }
         val step = when (typed.rounding) {
             BulkRounding.NONE -> Money.ZERO
@@ -644,6 +671,7 @@ class BulkPriceViewModel(
         val suppliers: List<Supplier>,
         val products: List<Product>,
         val step: Money,
+        val reviewIds: Set<Long>,
     )
 
     companion object {

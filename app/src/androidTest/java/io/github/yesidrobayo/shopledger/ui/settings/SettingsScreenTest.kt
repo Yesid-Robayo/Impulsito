@@ -83,6 +83,7 @@ class SettingsScreenTest {
     private var privacyOpened = 0
 
     private val usageActions = mutableListOf<UsageAction>()
+    private val profileActions = mutableListOf<ProfileAction>()
 
     private fun show(
         overview: SettingsOverviewUiState? = null,
@@ -90,6 +91,7 @@ class SettingsScreenTest {
         read: suspend (String) -> String? = { "Texto de licencia de muestra" },
         usage: UsageSettingsUiState? = null,
         notificationsBlocked: Boolean = false,
+        costStaleDays: Int? = null,
     ) {
         compose.setContent {
             PreviewTheme {
@@ -108,6 +110,8 @@ class SettingsScreenTest {
                         ),
                     readLicense = read,
                     usage = usage,
+                    costStaleDays = costStaleDays,
+                    onProfileAction = { profileActions += it },
                     notificationsBlocked = notificationsBlocked,
                     onUsageAction = { usageActions += it },
                 )
@@ -253,6 +257,39 @@ class SettingsScreenTest {
         compose.onNodeWithText(text(R.string.settings_group_data)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.region_title)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.settings_licenses)).performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun theDaysForAnOldCostGoUnderAlertsAndOpenTheirSheet() {
+        show(
+            overview = connected(),
+            usage = UsageSettingsUiState(stockAlerts = true, theme = ThemeMode.SYSTEM),
+            costStaleDays = 90,
+        )
+
+        compose.onNodeWithText(text(R.string.settings_cost_stale_days)).performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText(
+            resources.getQuantityString(R.plurals.settings_cost_stale_days_value, 90, "90"),
+        ).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.settings_cost_stale_days)).performClick()
+
+        assertEquals(
+            listOf<ProfileAction>(ProfileAction.Open(ProfileField.COST_STALE_DAYS)),
+            profileActions,
+        )
+    }
+
+    @Test
+    fun zeroDaysSaysTheOldCostIsOff() {
+        show(
+            overview = connected(),
+            usage = UsageSettingsUiState(stockAlerts = true, theme = ThemeMode.SYSTEM),
+            costStaleDays = 0,
+        )
+
+        compose.onNodeWithText(text(R.string.settings_cost_stale_days_off)).performScrollTo()
             .assertIsDisplayed()
     }
 

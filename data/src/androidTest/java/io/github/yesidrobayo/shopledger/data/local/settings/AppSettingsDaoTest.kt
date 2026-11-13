@@ -167,6 +167,9 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 "updateTaxSettings",
                 // Cambia solo tips_enabled y updated_at: lo comprueba TipsSettingRepositoryTest.
                 "updateTipsEnabled",
+                // Cambia solo cost_stale_days y updated_at: lo comprueba
+                // CostStaleDaysRepositoryTest comparando la fila entera antes y después.
+                "updateCostStaleDays",
                 // Cambia solo las dos columnas de la moneda de referencia y updated_at: lo comprueba
                 // ReferenceRateOnDatabaseTest al elegirla y al quitarla.
                 "updateReferenceCurrency",

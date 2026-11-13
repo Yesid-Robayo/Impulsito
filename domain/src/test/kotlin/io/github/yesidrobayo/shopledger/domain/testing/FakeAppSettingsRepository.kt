@@ -191,6 +191,18 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
         )
     }
 
+    /** Cada cambio de los días para costo viejo, en orden. */
+    val costStaleWrites = mutableListOf<Pair<Int, Instant>>()
+
+    override suspend fun updateCostStaleDays(days: Int, updatedAt: Instant) {
+        costStaleWrites += days to updatedAt
+        val current = settings.value
+        settings.value = current.copy(
+            updatedAt = updatedAt,
+            notices = current.notices.copy(costStaleDays = days),
+        )
+    }
+
     /** Cada cambio de preferencia escrito, en orden. */
     val preferenceWrites = mutableListOf<PreferenceChange>()
 

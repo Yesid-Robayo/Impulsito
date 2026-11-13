@@ -229,8 +229,18 @@ private fun Options(uiState: BulkPriceUiState, onAction: (BulkPriceAction) -> Un
         val chosenSupplier = uiState.suppliers.firstOrNull { it.id == input.supplierId }
         // `Costo nuevo sin revisar` solo si alguno espera revisión, o si se abrió con él.
         val pending = uiState.products.any { it.priceReviewSince != null }
+        // `Revisar`, igual: si hay algo en esa lista del inventario o si se abrió desde ella.
+        val reviewing = uiState.reviewIds.isNotEmpty()
         val scopes = BulkScopeKind.entries.filter {
-            it != BulkScopeKind.PENDING_REVIEW || pending || input.scope == it
+            when (it) {
+                BulkScopeKind.PENDING_REVIEW -> pending || input.scope == it
+
+                BulkScopeKind.REVIEW -> reviewing || input.scope == it
+
+                BulkScopeKind.ALL, BulkScopeKind.CATEGORY, BulkScopeKind.SUPPLIER,
+                BulkScopeKind.PICK,
+                -> true
+            }
         }
         CompactChipRow(
             options = scopes,
@@ -249,6 +259,8 @@ private fun Options(uiState: BulkPriceUiState, onAction: (BulkPriceAction) -> Un
                     BulkScopeKind.PENDING_REVIEW -> stringResource(R.string.review_new_cost)
 
                     BulkScopeKind.PICK -> stringResource(R.string.bulk_scope_pick)
+
+                    BulkScopeKind.REVIEW -> stringResource(R.string.review_filter)
                 }
             },
             selected = setOf(input.scope),

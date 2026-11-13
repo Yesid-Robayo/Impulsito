@@ -4,4 +4,6 @@
     <string name="review_filter">Review</string>
     <string name="review_all_action">Review all</string>
     <string name="review_new_cost">New cost to review</string>
+    <string name="review_reason_low_margin">Margin below target</string>
+    <string name="review_reason_old_cost">Old cost: %1$s</string>
 </resources>

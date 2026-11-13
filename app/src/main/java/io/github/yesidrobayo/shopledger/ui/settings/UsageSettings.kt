@@ -138,7 +138,12 @@ class UsageSettingsViewModel(
  * @param blocked si los avisos no pueden salir: sin permiso, apagados o con el canal silenciado.
  */
 @Composable
-fun AlertsGroup(state: UsageSettingsUiState, blocked: Boolean, onAction: (UsageAction) -> Unit) {
+fun AlertsGroup(
+    state: UsageSettingsUiState,
+    blocked: Boolean,
+    onAction: (UsageAction) -> Unit,
+    more: @Composable () -> Unit = {},
+) {
     if (state.readFailed) {
         // Sin preferencias no hay avisos ni tema que mostrar: se dice una vez, con `Reintentar`.
         NoticeCard(
@@ -165,6 +170,7 @@ fun AlertsGroup(state: UsageSettingsUiState, blocked: Boolean, onAction: (UsageA
             modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
         )
     }
+    more()
 }
 
 /**
@@ -219,7 +225,7 @@ private fun UsageGroupsPreview() {
     PreviewTheme {
         Column {
             val state = UsageSettingsUiState(stockAlerts = true, theme = ThemeMode.SYSTEM)
-            AlertsGroup(state, blocked = true) {}
+            AlertsGroup(state, blocked = true, onAction = {})
             AppearanceGroup(state.copy(saveFailed = true), onAction = {})
         }
     }

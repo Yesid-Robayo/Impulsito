@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingCon
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.UndoBulkPriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceListsUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceReviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.navigation.AppMessages
@@ -39,6 +40,8 @@ import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 /**
  * La actualización masiva en la navegación. Al aplicar vuelve atrás con su aviso, que sobrevive a
@@ -61,6 +64,7 @@ fun BulkPriceRoute(key: AppNavKey.BulkPriceUpdate, navigator: AppNavigator) {
                 dependencies.container.dispatchers.default,
                 initialListId = key.priceListId,
                 pendingReview = key.pendingReview,
+                review = key.review,
             )
         }
     when (model) {
@@ -117,6 +121,7 @@ class BulkPriceUseCases(
     private val undoUseCase: UndoBulkPriceUseCase,
     private val lists: ObservePriceListsUseCase,
     private val pricing: ObservePricingContextUseCase,
+    private val review: ObservePriceReviewUseCase? = null,
 ) : BulkPriceOperations {
     override fun catalog(): Flow<List<Product>> = choices.catalog()
 
@@ -153,6 +158,10 @@ class BulkPriceUseCases(
         )
     }
 
+    override fun reviewIds(): Flow<Set<Long>> =
+        review?.let { reviews -> reviews().map { list -> list.map { it.product.id }.toSet() } }
+            ?: flowOf(emptySet())
+
     override fun undoOffer(): Flow<BulkUndoPlan?> = undoOfferUseCase()
 
     override suspend fun undo(batchId: Uuid): UndoBulkPriceResult = undoUseCase(batchId)
@@ -160,6 +169,11 @@ class BulkPriceUseCases(
     companion object {
         fun of(dependencies: ScreenDependencies): BulkPriceUseCases {
             val ports = dependencies.ports
+            val pricing = ObservePricingContextUseCase(
+                ports.settings,
+                ports.categories,
+                ports.taxRates,
+            )
             return BulkPriceUseCases(
                 choices = ObserveBulkPriceChoicesUseCase(
                     ports.products,
@@ -194,10 +208,13 @@ class BulkPriceUseCases(
                     productPrices = ports.productPrices,
                 ),
                 lists = ObservePriceListsUseCase(ports.priceLists, ports.productPrices),
-                pricing = ObservePricingContextUseCase(
-                    ports.settings,
-                    ports.categories,
-                    ports.taxRates,
+                pricing = pricing,
+                review = ObservePriceReviewUseCase(
+                    products = ports.products,
+                    pricing = pricing,
+                    calendar = BusinessCalendarSource(ports.settings),
+                    settings = ports.settings,
+                    clock = dependencies.container.clock,
                 ),
             )
         }

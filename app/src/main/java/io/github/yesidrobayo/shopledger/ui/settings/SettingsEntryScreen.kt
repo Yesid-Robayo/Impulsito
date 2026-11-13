@@ -19,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
@@ -93,6 +94,7 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE, SUPPORT }
  * @param readLicense lee el texto de una licencia, fuera del hilo principal.
  * @param csvExport `Exportar a CSV`, en `Datos del negocio`, o `null` sin base.
  * @param usage los avisos de stock y el tema, o `null` sin base.
+ * @param costStaleDays los días para costo viejo, en `Avisos`, o `null` mientras se leen.
  * @param notificationsBlocked los avisos no pueden salir del teléfono: sin permiso, apagados o con
  *   el canal silenciado.
  * @param onChoosePalette aplica y guarda una paleta; la hoja de colores sigue abierta.
@@ -121,6 +123,7 @@ fun SettingsEntryScreen(
     csvExport: CsvExportUiState? = null,
     onCsvExportAction: (CsvExportAction) -> Unit = {},
     usage: UsageSettingsUiState? = null,
+    costStaleDays: Int? = null,
     notificationsBlocked: Boolean = false,
     onUsageAction: (UsageAction) -> Unit = {},
     onChoosePalette: (ColorPalette) -> Unit = {},
@@ -194,7 +197,11 @@ fun SettingsEntryScreen(
                         )
                     }
                 overview?.backup?.let { BackupGroup(it, overview.destination, links) }
-                usage?.let { AlertsGroup(it, notificationsBlocked, onUsageAction) }
+                usage?.let {
+                    AlertsGroup(it, notificationsBlocked, onUsageAction) {
+                        costStaleDays?.let { days -> CostStaleDaysRow(days, onProfileAction) }
+                    }
+                }
                 if (profile != null) {
                     BusinessProfileGroup(profile, onProfileAction) {
                         onOpen(AppNavKey.Categories)
@@ -526,6 +533,32 @@ private fun BusinessProfileGroup(
     SettingsRow(
         title = stringResource(R.string.categories_title),
         action = SettingsRowAction.Navigation(onCategories),
+    )
+}
+
+/**
+ * `Días para costo viejo`: tras cuántos días `Revisar` marca un costo como viejo, o `Apagado` con
+ * cero. Abre su hoja.
+ */
+@Composable
+private fun CostStaleDaysRow(days: Int, onAction: (ProfileAction) -> Unit) {
+    val summary =
+        if (days == 0) {
+            stringResource(R.string.settings_cost_stale_days_off)
+        } else {
+            pluralStringResource(
+                R.plurals.settings_cost_stale_days_value,
+                days,
+                LocalAppFormats.current.quantity.formatCount(days.toLong()),
+            )
+        }
+    SettingsRow(
+        title = stringResource(R.string.settings_cost_stale_days),
+        summary = summary,
+        action =
+            SettingsRowAction.Navigation {
+                onAction(ProfileAction.Open(ProfileField.COST_STALE_DAYS))
+            },
     )
 }
 

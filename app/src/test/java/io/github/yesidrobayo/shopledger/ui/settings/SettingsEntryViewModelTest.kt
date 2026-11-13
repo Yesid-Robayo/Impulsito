@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.SetTipsEnabledResult
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.BusinessProfileChange
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.SaveBusinessProfileResult
+import io.github.yesidrobayo.shopledger.domain.usecase.settings.SetCostStaleDaysResult
 import io.github.yesidrobayo.shopledger.ui.unit.SaveFailure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -224,6 +225,81 @@ class SettingsEntryViewModelTest {
         advanceUntilIdle()
         assertNull(model.uiState.value.profileSheet)
     }
+
+    @Test
+    fun `the days for an old cost open with what is saved and zero turns them off`() =
+        runTest(dispatcher) {
+            val days = MutableStateFlow(90)
+            val savedDays = mutableListOf<Int>()
+            var daysResult: SetCostStaleDaysResult = SetCostStaleDaysResult.Saved
+            val model = SettingsEntryViewModel(
+                tipsSource = { tips },
+                setTips = { SetTipsEnabledResult.Saved },
+                profileSource = { profile },
+                saveProfile = { SaveBusinessProfileResult.Saved },
+                percentSymbols = SYMBOLS,
+                costStaleSource = { days },
+                saveCostStale = { value ->
+                    savedDays += value
+                    if (daysResult == SetCostStaleDaysResult.Saved) days.value = value
+                    daysResult
+                },
+            )
+            backgroundScope.launch { model.uiState.collect {} }
+            advanceUntilIdle()
+            assertEquals(90, model.uiState.value.costStaleDays)
+
+            model.onProfileAction(ProfileAction.Open(ProfileField.COST_STALE_DAYS))
+            advanceUntilIdle()
+            assertEquals("90", model.uiState.value.profileSheet?.text)
+
+            // En blanco no son días, y más de cien años no caben: nada se guarda.
+            model.onProfileAction(ProfileAction.Text(""))
+            model.onProfileAction(ProfileAction.Save)
+            advanceUntilIdle()
+            assertEquals(ProfileProblem.NOT_A_NUMBER, model.uiState.value.profileSheet?.problem)
+            model.onProfileAction(ProfileAction.Text("36501"))
+            model.onProfileAction(ProfileAction.Save)
+            advanceUntilIdle()
+            assertEquals(
+                ProfileProblem.DAYS_OUT_OF_RANGE,
+                model.uiState.value.profileSheet?.problem,
+            )
+            model.onProfileAction(ProfileAction.Text("99999999999999999999"))
+            model.onProfileAction(ProfileAction.Save)
+            advanceUntilIdle()
+            assertEquals(
+                ProfileProblem.DAYS_OUT_OF_RANGE,
+                model.uiState.value.profileSheet?.problem,
+            )
+            assertTrue(savedDays.isEmpty())
+
+            // Una falla se dice en la hoja y conserva lo escrito.
+            daysResult = SetCostStaleDaysResult.Failed(StorageFailure.DISK_FULL)
+            model.onProfileAction(ProfileAction.Text("0"))
+            model.onProfileAction(ProfileAction.Save)
+            advanceUntilIdle()
+            assertEquals(
+                SaveFailure(outOfSpace = true),
+                model.uiState.value.profileSheet?.saveFailed,
+            )
+            assertEquals("0", model.uiState.value.profileSheet?.text)
+
+            daysResult = SetCostStaleDaysResult.OutOfRange
+            model.onProfileAction(ProfileAction.Save)
+            advanceUntilIdle()
+            assertEquals(
+                ProfileProblem.DAYS_OUT_OF_RANGE,
+                model.uiState.value.profileSheet?.problem,
+            )
+
+            daysResult = SetCostStaleDaysResult.Saved
+            model.onProfileAction(ProfileAction.Save)
+            advanceUntilIdle()
+            assertNull(model.uiState.value.profileSheet)
+            assertEquals(0, model.uiState.value.costStaleDays)
+            assertEquals(listOf(0, 0, 0), savedDays)
+        }
 
     private companion object {
         val SYMBOLS = NumberSymbols(decimalSeparator = ',', minusSign = '-', grouping = null)

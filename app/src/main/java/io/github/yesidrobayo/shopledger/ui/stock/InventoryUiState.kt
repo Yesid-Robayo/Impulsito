@@ -1,18 +1,20 @@
 package io.github.yesidrobayo.shopledger.ui.stock
 
 import androidx.compose.runtime.Immutable
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 
 /**
- * Los chips del inventario que existen hoy. `Revisar` aparece si hay algo en la cola
- * `Costo nuevo sin revisar`; `Por vencer`, cuando su módulo esté en uso, y mientras tanto abrir con
- * él muestra lo que se está acabando.
+ * Los chips del inventario que existen hoy. `Revisar` aparece si hay algo que revisar; `Por
+ * vencer`, cuando su módulo esté en uso, y mientras tanto abrir con él muestra lo que se está
+ * acabando.
  */
 enum class InventoryChip {
     /** Por agotarse, en el orden de lo urgente. El de siempre. */
@@ -24,16 +26,26 @@ enum class InventoryChip {
     /** Todo lo que lleva stock, por nombre. */
     ALL,
 
-    /** Lo que pide decidir un precio: hoy, la cola `Costo nuevo sin revisar`. */
+    /** Lo que pide decidir un precio: costo nuevo sin revisar, margen bajo y costo viejo. */
     REVIEW,
 }
 
 /**
- * Una fila de `Revisar`: el producto cuyo costo subió con una compra y nadie le revisó el precio,
- * con su precio y su margen de ahora, como en el catálogo.
+ * Una fila de `Revisar`: el producto con su precio y su margen sin impuesto, como en su detalle, y
+ * todos sus motivos en [reasons]. [costSince] es la fecha del costo viejo, si ese es un motivo.
+ * Solo el costo nuevo se descarta: los otros dos salen solos al cambiar el precio o el costo.
  */
 @Immutable
-data class PriceReviewItem(val id: Long, val name: String, val trailing: ProductRowTrailing.Catalog)
+data class PriceReviewItem(
+    val id: Long,
+    val name: String,
+    val trailing: ProductRowTrailing.Catalog,
+    val reasons: List<PriceReviewReason> = listOf(PriceReviewReason.NEW_COST),
+    val costSince: BusinessDate? = null,
+) {
+    /** Si `Descartar` tiene sentido: solo saca el producto de la cola de costo nuevo. */
+    val dismissable: Boolean get() = PriceReviewReason.NEW_COST in reasons
+}
 
 /** Una fila del inventario, ya leída. La unidad va como la guardó la base, sin texto. */
 @Immutable
@@ -118,7 +130,7 @@ sealed interface InventoryAction {
     /** En `Revisar`, eligió `Descartar`: sale de la cola sin cambiar el precio. */
     data class DismissReview(val productId: Long) : InventoryAction
 
-    /** Tocó `Revisar todo`: se abre la actualización masiva con los de la cola. */
+    /** Tocó `Revisar todo`: se abre la actualización masiva con los de `Revisar`. */
     data object ReviewAll : InventoryAction
 
     data object MessageShown : InventoryAction

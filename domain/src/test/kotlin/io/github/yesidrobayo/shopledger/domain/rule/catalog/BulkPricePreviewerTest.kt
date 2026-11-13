@@ -108,6 +108,14 @@ class BulkPricePreviewerTest {
     }
 
     @Test
+    fun `the review scope takes only the products of the review list`() {
+        val review = BulkPriceScope.Review(productIds = setOf(2L))
+
+        assertTrue(BulkPricePreviewer.inScope(product(2L, price = 1_000L), review))
+        assertTrue(!BulkPricePreviewer.inScope(product(1L, price = 1_000L), review))
+    }
+
+    @Test
     fun `the category scope takes only its products`() {
         val inCategory = product(1L, price = 1_000L, categoryId = 7L)
         val other = product(2L, price = 1_000L, categoryId = 8L)

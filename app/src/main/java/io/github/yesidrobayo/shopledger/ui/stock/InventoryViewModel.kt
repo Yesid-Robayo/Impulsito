@@ -2,7 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.stock
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReview
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.DismissPriceReviewResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
 import io.github.yesidrobayo.shopledger.ui.product.ProductListItems
@@ -32,19 +32,19 @@ import kotlinx.coroutines.launch
  * Con el chip de stock negativo y ya sin productos en negativo, muestra lo que se está acabando:
  * el aviso desaparece cuando el stock vuelve a cero o más.
  *
- * `Revisar` aparece mientras haya algo en la cola `Costo nuevo sin revisar`; vacía, como el chip de
- * stock negativo, muestra lo que se está acabando.
+ * `Revisar` aparece mientras haya algo que revisar: costo nuevo, margen bajo o costo viejo; vacía,
+ * como el chip de stock negativo, muestra lo que se está acabando.
  *
  * @param initialChip el chip con que se abre: desde Inicio, el de stock negativo.
- * @param reviewQueue la cola `Costo nuevo sin revisar`, el más antiguo primero.
- * @param dismissReview saca un producto de la cola sin cambiar su precio.
+ * @param review la lista `Revisar`, ya ordenada, con los motivos de cada producto.
+ * @param dismissReview saca un producto de la cola de costo nuevo sin cambiar su precio.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class InventoryViewModel(
     observe: () -> Flow<InventoryOverview>,
     computation: CoroutineDispatcher,
     initialChip: InventoryChip = InventoryChip.LOW_STOCK,
-    reviewQueue: () -> Flow<List<Product>> = { flowOf(emptyList()) },
+    review: () -> Flow<List<PriceReview>> = { flowOf(emptyList()) },
     private val dismissReview: suspend (Long) -> DismissPriceReviewResult =
         { DismissPriceReviewResult.NotPending },
 ) : ViewModel() {
@@ -52,9 +52,9 @@ class InventoryViewModel(
     private val attempts = MutableStateFlow(0)
     private val message = MutableStateFlow<InventoryMessage?>(null)
 
-    // La cola no cierra la pantalla si falla: sin ella, `Revisar` no aparece.
-    private val queue: Flow<List<Product>> = attempts.flatMapLatest {
-        reviewQueue().flowOn(computation).catch { emit(emptyList()) }
+    // La lista no cierra la pantalla si falla: sin ella, `Revisar` no aparece.
+    private val queue: Flow<List<PriceReview>> = attempts.flatMapLatest {
+        review().flowOn(computation).catch { emit(emptyList()) }
     }
 
     private val overview: Flow<InventoryOverview?> = attempts.flatMapLatest {
@@ -119,7 +119,7 @@ class InventoryViewModel(
     private fun contentOf(
         overview: InventoryOverview,
         shown: InventoryChip,
-        pending: List<Product>,
+        pending: List<PriceReview>,
     ): InventoryContent {
         if (!overview.hasProducts) return InventoryContent.EmptyCatalog
         val products = when (shown) {
@@ -139,9 +139,22 @@ class InventoryViewModel(
             archivedValue = overview.archivedValue,
             hasStockWithoutCost = overview.hasStockWithoutCost,
             items = products.map { inventoryItemOf(it, overview.units) },
-            reviewItems = pending.map {
-                PriceReviewItem(it.id, it.details.name, ProductListItems.trailingOf(it))
-            },
+            reviewItems = pending.map(::reviewItemOf),
+        )
+    }
+
+    /**
+     * La fila de [review]: el margen es el de la regla, sin impuesto, para que la cifra y el
+     * motivo digan lo mismo.
+     */
+    private fun reviewItemOf(review: PriceReview): PriceReviewItem {
+        val product = review.product
+        return PriceReviewItem(
+            id = product.id,
+            name = product.details.name,
+            trailing = ProductListItems.trailingOf(product).copy(margin = review.margin),
+            reasons = review.reasons,
+            costSince = review.costSince,
         )
     }
 

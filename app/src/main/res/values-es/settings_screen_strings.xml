@@ -45,4 +45,14 @@
     <string name="settings_palette_vivid_red_cream">Rojo vivo y crema</string>
     <!-- Información para soporte, con la nube del teléfono. -->
     <string name="support_field_last_handoff">Última entrega</string>
+    <!-- Días para costo viejo, en Avisos. -->
+    <string name="settings_cost_stale_days">Días para costo viejo</string>
+    <plurals name="settings_cost_stale_days_value">
+        <item quantity="one">%1$s día</item>
+        <item quantity="many">%1$s de días</item>
+        <item quantity="other">%1$s días</item>
+    </plurals>
+    <string name="settings_cost_stale_days_off">Apagado</string>
+    <string name="settings_cost_stale_days_help">Con 0, Revisar no marca costos viejos.</string>
+    <string name="settings_cost_stale_days_range">Los días deben estar entre %1$s y %2$s</string>
 </resources>

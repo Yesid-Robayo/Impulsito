@@ -128,6 +128,12 @@ internal interface AppSettingsDao {
     @Query("UPDATE app_settings SET tips_enabled = :enabled, updated_at = :updatedAt WHERE id = 1")
     suspend fun updateTipsEnabled(enabled: Long, updatedAt: Long): Int
 
+    /** Los días tras los que un costo se marca como viejo; cero apaga ese aviso. */
+    @Query(
+        "UPDATE app_settings SET cost_stale_days = :days, updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateCostStaleDays(days: Long, updatedAt: Long): Int
+
     /**
      * La moneda de referencia y sus decimales, o las dos en nulo para quitarla. Las cotizaciones
      * de cada moneda se conservan en su libro.
