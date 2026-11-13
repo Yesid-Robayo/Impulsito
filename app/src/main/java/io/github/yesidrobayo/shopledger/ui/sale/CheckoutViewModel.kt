@@ -99,7 +99,8 @@ class CheckoutViewModel(
             val taken = offered()
             sale = taken?.draft?.takeIf { it.lines.isNotEmpty() }
             qrOnly = taken?.qrOnly ?: false
-            editing = MutableStateFlow(Editing())
+            // La venta abierta desde un cliente llega con él elegido.
+            editing = MutableStateFlow(Editing(customerId = sale?.customerId))
             if (sale != null) {
                 SaleDraftStore.write(savedState, sale)
                 savedState[QR_ONLY] = qrOnly
@@ -300,7 +301,8 @@ class CheckoutViewModel(
             ?: return
         val due = previewOf(catalog, current, editing.value).due ?: Money.ZERO
         change {
-            Editing(payments = listOf(Written(methodId, due, moneyText(due))), started = true)
+            // El cliente con que llegó la venta se conserva al poner el primer pago.
+            it.copy(payments = listOf(Written(methodId, due, moneyText(due))), started = true)
         }
         if (qrOnly) showQr(0)
     }

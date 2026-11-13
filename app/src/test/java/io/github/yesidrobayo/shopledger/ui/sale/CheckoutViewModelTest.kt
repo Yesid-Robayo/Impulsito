@@ -631,6 +631,15 @@ class CheckoutViewModelTest {
     }
 
     @Test
+    fun `a sale opened from a customer arrives with that customer chosen`() = runTest {
+        val model = viewModel(draft = twoOils.copy(customerId = 30L), customers = listOf(ana))
+
+        assertEquals(CheckoutCustomer.Chosen(30L, "Ana", Money(4_000L)), model.state.customer)
+        model.act(this, CheckoutAction.Register)
+        assertEquals(30L, requests.single().customerId)
+    }
+
+    @Test
     fun `a cash sale with a customer carries the customer and no due date`() = runTest {
         val model = viewModel(customers = listOf(ana))
         model.act(this, CheckoutAction.PickCustomer(30L))

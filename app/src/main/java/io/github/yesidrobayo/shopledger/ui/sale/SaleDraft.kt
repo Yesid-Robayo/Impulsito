@@ -22,6 +22,8 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
  *   al recrear la pantalla.
  * @param heldSaleId la venta en espera de la que se retomó esta, o `null`.
  * @param heldLabel el nombre que tenía en espera, para volver a ponerla en espera con él.
+ * @param customerId el cliente con que se abrió la venta, como desde `Vender a este cliente`: el
+ *   cobro lo trae elegido.
  */
 data class SaleDraft(
     val lines: List<SaleLineRequest> = emptyList(),
@@ -32,6 +34,7 @@ data class SaleDraft(
     val prefilled: Boolean = false,
     val heldSaleId: Long? = null,
     val heldLabel: String? = null,
+    val customerId: Long? = null,
 )
 
 /**
@@ -47,6 +50,7 @@ internal object SaleDraftStore {
     private const val PREFILLED = "sale.prefilled"
     private const val HELD = "sale.held"
     private const val HELD_LABEL = "sale.heldLabel"
+    private const val CUSTOMER = "sale.customer"
 
     private const val FIELDS = 6
     private const val NO_DISCOUNT = 0L
@@ -62,6 +66,7 @@ internal object SaleDraftStore {
         prefilled = state.get<Boolean>(PREFILLED) ?: false,
         heldSaleId = state.get<Long>(HELD),
         heldLabel = state.get<String>(HELD_LABEL),
+        customerId = state.get<Long>(CUSTOMER),
     )
 
     fun write(state: SavedStateHandle, draft: SaleDraft) {
@@ -73,6 +78,7 @@ internal object SaleDraftStore {
         state[PREFILLED] = draft.prefilled
         state[HELD] = draft.heldSaleId
         state[HELD_LABEL] = draft.heldLabel
+        state[CUSTOMER] = draft.customerId
     }
 
     private fun encode(lines: List<SaleLineRequest>): LongArray {

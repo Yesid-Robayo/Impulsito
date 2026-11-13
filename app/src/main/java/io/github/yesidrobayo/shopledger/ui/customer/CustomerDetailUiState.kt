@@ -233,6 +233,9 @@ sealed interface CustomerDetailAction {
 
     data object ChooseZone : CustomerDetailAction
 
+    /** Abre una venta nueva con este cliente ya elegido: lo resuelve la navegación. */
+    data object SellToCustomer : CustomerDetailAction
+
     data object ShareStatement : CustomerDetailAction
 
     /** La pantalla ya compartió el extracto, o no pudo si [ok] es falso. */

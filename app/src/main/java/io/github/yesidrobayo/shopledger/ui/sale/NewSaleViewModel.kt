@@ -84,6 +84,7 @@ internal sealed interface CatalogLoad {
  *   que esta venta se confirme, en la misma transacción, o hasta que se descarte.
  * @param prefillFromSaleId la venta anulada que esta corrige: la venta nueva abre con sus datos.
  * @param loadCorrection lee lo que trae la corrección de una venta, o `null` si ya no existe.
+ * @param prefillCustomerId el cliente con que se abrió la venta, que el cobro trae elegido.
  */
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class NewSaleViewModel(
@@ -104,8 +105,19 @@ class NewSaleViewModel(
     },
     private val prefillFromSaleId: Long? = null,
     private val loadCorrection: suspend (Long) -> SaleCorrection? = { null },
+    prefillCustomerId: Long? = null,
 ) : ViewModel() {
     private val draft = MutableStateFlow(SaleDraftStore.read(savedState))
+
+    init {
+        // El cliente se pone una sola vez: si Android recrea la pantalla, la marca sigue guardada,
+        // y si la persona lo quita en el cobro, no vuelve.
+        if (prefillCustomerId != null && savedState.get<Boolean>(CUSTOMER_PREFILLED) != true) {
+            savedState[CUSTOMER_PREFILLED] = true
+            draft.value = draft.value.copy(customerId = prefillCustomerId)
+            SaleDraftStore.write(savedState, draft.value)
+        }
+    }
     private val query = MutableStateFlow("")
     private val overlay = MutableStateFlow(Overlay())
     private val attempts = MutableStateFlow(0)
@@ -952,6 +964,9 @@ class NewSaleViewModel(
     )
 
     companion object {
+        /** La marca de que el cliente con que se abrió la venta ya se puso. */
+        private const val CUSTOMER_PREFILLED = "sale.customerPrefilled"
+
         /** La pausa al escribir tras la que se busca. */
         const val SEARCH_PAUSE_MILLIS = 100L
 

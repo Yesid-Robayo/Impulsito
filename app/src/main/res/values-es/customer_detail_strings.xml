@@ -56,4 +56,5 @@
     <string name="customer_adjust_saved">Ajuste guardado</string>
     <string name="customer_archived">Cliente archivado</string>
     <string name="customer_payment_account_unavailable">Esa cuenta no puede recibir el abono. Elegir otra o ninguna.</string>
+    <string name="customer_sell_action">Vender a este cliente</string>
 </resources>

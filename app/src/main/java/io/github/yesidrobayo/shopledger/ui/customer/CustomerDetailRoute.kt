@@ -101,6 +101,9 @@ fun CustomerDetailPane(
                         AppNavKey.SaleDetail(action.saleId),
                     )
 
+                    CustomerDetailAction.SellToCustomer ->
+                        navigator.open(AppNavKey.NewSale(prefillCustomerId = customerId))
+
                     CustomerDetailAction.ChooseZone, CustomerDetailAction.ConfirmCurrency ->
                         navigator.open(AppNavKey.RegionalSettings())
 

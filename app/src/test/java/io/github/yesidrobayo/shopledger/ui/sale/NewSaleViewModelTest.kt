@@ -121,6 +121,7 @@ class NewSaleViewModelTest {
         state: SavedStateHandle = savedState,
         correctsSale: Long? = null,
         correction: SaleCorrection? = null,
+        customer: Long? = null,
     ): NewSaleViewModel {
         val model = NewSaleViewModel(
             catalogSource = source,
@@ -138,6 +139,7 @@ class NewSaleViewModelTest {
                 corrections += it
                 correction
             },
+            prefillCustomerId = customer,
         )
         // El estado se arma mientras alguien lo mira, como en la pantalla.
         backgroundScope.launch { model.uiState.collect {} }
@@ -622,4 +624,17 @@ class NewSaleViewModelTest {
 
             assertEquals(RegisteredSale(99L, Money(1_250L)), model.state.registered)
         }
+
+    @Test
+    fun `a sale opened from a customer hands that customer to checkout only once`() = runTest {
+        val model = viewModel(customer = 30L)
+        model.act(this, NewSaleAction.AddProduct(oil.id))
+        assertEquals(30L, model.checkoutDraft()?.customerId)
+
+        // Recrear la pantalla con el mismo estado no vuelve a poner el cliente si ya se quitó.
+        savedState["sale.customer"] = null
+        val recreated = viewModel(customer = 30L)
+        recreated.act(this, NewSaleAction.AddProduct(oil.id))
+        assertEquals(null, recreated.checkoutDraft()?.customerId)
+    }
 }

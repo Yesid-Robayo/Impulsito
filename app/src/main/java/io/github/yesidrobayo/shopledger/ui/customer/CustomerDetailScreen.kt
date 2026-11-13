@@ -231,6 +231,19 @@ private fun DetailBody(
             item(key = "status") { StatusRow(view, onAction) }
         }
         item(key = "balance") { BalanceBlock(view) }
+        // Solo se le vende a un cliente vigente: archivado o anónimo ya no se elige al vender.
+        if (!customer.isArchived && !customer.isAnonymized) {
+            item(key = "sell") {
+                PrimaryActionButton(
+                    text = stringResource(R.string.customer_sell_action),
+                    onClick = { onAction(CustomerDetailAction.SellToCustomer) },
+                    variant = ActionVariant.TONAL,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = spacing.s16, vertical = spacing.s4),
+                )
+            }
+        }
         customer.contact?.phone?.let { phone ->
             item(key = "phone") { PhoneRow(phone) { onAction(CustomerDetailAction.Dial(phone)) } }
         }

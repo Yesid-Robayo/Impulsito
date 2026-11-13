@@ -129,6 +129,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                 holdSale = { hold(it) },
                 resumeHeldSale = { resume(it) },
                 prefillFromSaleId = key.prefillFromSaleId,
+                prefillCustomerId = key.prefillCustomerId,
                 loadCorrection = { saleId ->
                     ObserveSaleDetailUseCase(
                         ports.sales,

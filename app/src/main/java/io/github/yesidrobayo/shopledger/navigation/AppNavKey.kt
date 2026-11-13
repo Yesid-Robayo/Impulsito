@@ -24,10 +24,16 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object Home : AppNavKey
 
-    /** Nueva venta. Es una acción que se abre encima, no un destino. */
+    /**
+     * Nueva venta. Es una acción que se abre encima, no un destino. [prefillCustomerId] es el cliente
+     * con que abre, como desde el detalle de un cliente.
+     */
     @Serializable
-    data class NewSale(val prefillFromSaleId: Long? = null, val prefillProductId: Long? = null) :
-        AppNavKey
+    data class NewSale(
+        val prefillFromSaleId: Long? = null,
+        val prefillProductId: Long? = null,
+        val prefillCustomerId: Long? = null,
+    ) : AppNavKey
 
     @Serializable
     data class SaleDetail(val saleId: Long) : AppNavKey

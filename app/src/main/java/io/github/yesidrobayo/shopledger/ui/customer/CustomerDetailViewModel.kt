@@ -196,6 +196,7 @@ class CustomerDetailViewModel(
             CustomerDetailAction.Back,
             is CustomerDetailAction.OpenSale, is CustomerDetailAction.Dial,
             CustomerDetailAction.ChooseZone, CustomerDetailAction.ConfirmCurrency,
+            CustomerDetailAction.SellToCustomer,
             -> Unit
         }
     }
