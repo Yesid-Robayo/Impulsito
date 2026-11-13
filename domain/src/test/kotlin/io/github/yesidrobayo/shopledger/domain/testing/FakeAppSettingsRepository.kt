@@ -166,6 +166,10 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
     /** Cada cambio de las propinas, con su instante, en orden. */
     val tipsWrites = mutableListOf<Pair<Boolean, Instant>>()
 
+    override suspend fun updateLoyalty(loyalty: LoyaltySettings, updatedAt: Instant) {
+        settings.value = settings.value.copy(updatedAt = updatedAt, loyalty = loyalty)
+    }
+
     override suspend fun updateTipsEnabled(enabled: Boolean, updatedAt: Instant) {
         tipsWrites += enabled to updatedAt
         val current = settings.value

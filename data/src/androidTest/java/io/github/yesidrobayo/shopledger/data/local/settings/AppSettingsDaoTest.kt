@@ -167,6 +167,9 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 "updateTaxSettings",
                 // Cambia solo tips_enabled y updated_at: lo comprueba TipsSettingRepositoryTest.
                 "updateTipsEnabled",
+                // Cambia solo las columnas del programa de puntos: lo comprueba
+                // LoyaltySettingRepositoryTest comparando la fila entera antes y después.
+                "updateLoyalty",
                 // Cambia solo las columnas regionales: lo comprueba RegionalSettingsRepositoryTest
                 // comparando la fila entera antes y después.
                 "updateRegional",

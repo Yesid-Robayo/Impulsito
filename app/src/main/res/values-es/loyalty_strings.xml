@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="loyalty_enabled">Programa activo</string>
+    <string name="loyalty_not_money">Los puntos no son dinero: no se cambian por efectivo, no son saldo a favor y no cuentan como deuda.</string>
+    <string name="loyalty_amount_per_point">Monto para ganar 1 punto</string>
+    <string name="loyalty_point_value">Descuento por cada punto</string>
+    <string name="loyalty_total_points">Puntos vigentes: %1$d</string>
+    <string name="loyalty_customers_with_points">Clientes con puntos: %1$d</string>
+    <string name="loyalty_save_action">Guardar programa</string>
+    <string name="loyalty_saved">Programa guardado</string>
+    <string name="loyalty_empty_title">Puntos para clientes frecuentes</string>
+    <string name="loyalty_empty_body">Cada venta suma puntos, y los puntos se canjean por descuentos.</string>
+    <string name="loyalty_empty_action">Activar programa</string>
+    <string name="loyalty_no_customers">Sin clientes, nadie gana puntos.</string>
+    <string name="loyalty_error_required">Este monto es obligatorio para activar el programa</string>
+    <string name="loyalty_change_notice">Cambiar estos valores no afecta lo ya ganado.</string>
+    <string name="loyalty_off_confirm_title">¿Apagar el programa?</string>
+    <string name="loyalty_off_confirm_body">Los saldos se conservan. No se gana ni se canjea hasta activarlo otra vez.</string>
+    <string name="loyalty_off_confirm_action">Apagar programa</string>
+    <string name="hub_tool_loyalty">Programa de puntos</string>
+    <string name="hub_tool_loyalty_desc">Puntos por compra, canjeables por descuentos</string>
+    <plurals name="loyalty_example_earn">
+        <item quantity="one">Una venta de %1$s gana %2$d punto</item>
+        <item quantity="many">Una venta de %1$s gana %2$d de puntos</item>
+        <item quantity="other">Una venta de %1$s gana %2$d puntos</item>
+    </plurals>
+    <plurals name="loyalty_example_redeem">
+        <item quantity="one">%1$d punto descuenta %2$s</item>
+        <item quantity="many">%1$d de puntos descuentan %2$s</item>
+        <item quantity="other">%1$d puntos descuentan %2$s</item>
+    </plurals>
+</resources>

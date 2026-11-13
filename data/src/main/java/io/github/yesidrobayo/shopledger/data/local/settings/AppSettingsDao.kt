@@ -129,6 +129,22 @@ internal interface AppSettingsDao {
     suspend fun updateTipsEnabled(enabled: Long, updatedAt: Long): Int
 
     /**
+     * Guarda el programa de puntos: si está activo y sus dos montos, que se conservan al apagarlo.
+     * Es un dato del negocio: va dentro de la transacción del caso de uso y cuenta como cambio.
+     */
+    @Query(
+        "UPDATE app_settings SET loyalty_enabled = :enabled, " +
+            "loyalty_amount_per_point = :amountPerPoint, loyalty_point_value = :pointValue, " +
+            "updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateLoyalty(
+        enabled: Long,
+        amountPerPoint: Long?,
+        pointValue: Long?,
+        updatedAt: Long,
+    ): Int
+
+    /**
      * Cambia cómo se cobra el impuesto, la tasa por defecto y si el impuesto de compra es
      * recuperable. Es un dato del negocio: va dentro de la transacción del caso de uso y cuenta
      * como cambio. La llave de la tasa por defecto rechaza una que no exista.

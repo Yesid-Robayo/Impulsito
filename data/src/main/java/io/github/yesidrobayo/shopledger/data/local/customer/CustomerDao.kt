@@ -42,6 +42,16 @@ internal interface CustomerDao {
     @Query("SELECT * FROM customers WHERE id = :id")
     suspend fun findById(id: Long): CustomerEntity?
 
+    /**
+     * Los puntos vigentes de todos los clientes, también archivados y anonimizados: sus saldos
+     * siguen. Un saldo negativo no resta de los demás.
+     */
+    @Query(
+        "SELECT COALESCE(SUM(points_balance), 0) AS total_points, COUNT(*) AS customers " +
+            "FROM customers WHERE points_balance > 0",
+    )
+    fun observePointsSummary(): Flow<PointsSummaryRow>
+
     @Query("SELECT * FROM customers WHERE id = :id")
     fun observeById(id: Long): Flow<CustomerEntity?>
 

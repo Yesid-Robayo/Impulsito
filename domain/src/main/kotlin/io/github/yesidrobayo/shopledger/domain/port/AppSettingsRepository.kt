@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.port
 
 import io.github.yesidrobayo.shopledger.domain.model.settings.AppSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessProfile
+import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettingsInput
 import kotlin.time.Instant
@@ -57,6 +58,12 @@ interface AppSettingsRepository {
      * del negocio y cuenta como cambio.
      */
     suspend fun updateTipsEnabled(enabled: Boolean, updatedAt: Instant)
+
+    /**
+     * Guarda el programa de puntos tal como se validó: si está activo y sus dos montos. Es un dato
+     * del negocio, así que va dentro de la transacción del caso de uso y cuenta como cambio.
+     */
+    suspend fun updateLoyalty(loyalty: LoyaltySettings, updatedAt: Instant)
 
     /** Marca el fin del primer uso. Fuera de [TransactionRunner.write]: no cuenta como cambio. */
     suspend fun markOnboardingCompleted(completedAt: Instant)

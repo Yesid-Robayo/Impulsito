@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.port
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerDetails
+import io.github.yesidrobayo.shopledger.domain.model.customer.PointsSummary
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 
@@ -24,6 +25,9 @@ interface CustomerRepository {
      * Los que se pueden elegir al vender: ni archivados ni anonimizados, en el orden de su nombre.
      */
     fun observeSelectable(): Flow<List<Customer>>
+
+    /** Cuántos puntos vigentes hay entre todos los clientes, y cuántos clientes los tienen. */
+    fun observePointsSummary(): Flow<PointsSummary>
 
     /** El cliente [id], o `null` si no existe o deja de existir. */
     fun observeById(id: Long): Flow<Customer?>

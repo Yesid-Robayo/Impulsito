@@ -82,6 +82,19 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
         }
     }
 
+    override suspend fun updateLoyalty(loyalty: LoyaltySettings, updatedAt: Instant) {
+        writes.inTransaction {
+            requireOneRow(
+                settings.updateLoyalty(
+                    enabled = if (loyalty.enabled) 1L else 0L,
+                    amountPerPoint = loyalty.amountPerPoint?.minor,
+                    pointValue = loyalty.pointValue?.minor,
+                    updatedAt = updatedAt.toStoredMillis(),
+                ),
+            )
+        }
+    }
+
     override suspend fun updateRegional(input: RegionalSettingsInput, updatedAt: Instant) {
         writes.inTransaction {
             val at = updatedAt.toStoredMillis()

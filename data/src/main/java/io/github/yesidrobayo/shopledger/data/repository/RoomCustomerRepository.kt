@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerDetails
+import io.github.yesidrobayo.shopledger.domain.model.customer.PointsSummary
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +35,10 @@ internal class RoomCustomerRepository(database: AppDatabase) : CustomerRepositor
 
     override fun observeSelectable(): Flow<List<Customer>> =
         customers.observeActive().map { list -> list.map(::toCustomer) }.distinctUntilChanged()
+
+    override fun observePointsSummary(): Flow<PointsSummary> = customers.observePointsSummary()
+        .map { PointsSummary(it.totalPoints, it.customers.toStoredInt()) }
+        .distinctUntilChanged()
 
     override fun observeById(id: Long): Flow<Customer?> =
         customers.observeById(id).map { row -> row?.let(::toCustomer) }.distinctUntilChanged()

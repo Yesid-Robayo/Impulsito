@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="loyalty_enabled">Program active</string>
+    <string name="loyalty_not_money">Points are not money: they cannot be exchanged for cash, are not a credit balance and do not count as debt.</string>
+    <string name="loyalty_amount_per_point">Amount to earn 1 point</string>
+    <string name="loyalty_point_value">Discount per point</string>
+    <string name="loyalty_total_points">Active points: %1$d</string>
+    <string name="loyalty_customers_with_points">Customers with points: %1$d</string>
+    <string name="loyalty_save_action">Save program</string>
+    <string name="loyalty_saved">Program saved</string>
+    <string name="loyalty_empty_title">Points for regular customers</string>
+    <string name="loyalty_empty_body">Each sale adds points, and points are redeemed for discounts.</string>
+    <string name="loyalty_empty_action">Turn on program</string>
+    <string name="loyalty_no_customers">Without customers, nobody earns points.</string>
+    <string name="loyalty_error_required">This amount is required to turn on the program</string>
+    <string name="loyalty_change_notice">Changing these values does not affect what was already earned.</string>
+    <string name="loyalty_off_confirm_title">Turn off the program?</string>
+    <string name="loyalty_off_confirm_body">Balances are kept. Nothing is earned or redeemed until it is turned on again.</string>
+    <string name="loyalty_off_confirm_action">Turn off program</string>
+    <string name="hub_tool_loyalty">Points program</string>
+    <string name="hub_tool_loyalty_desc">Points per purchase, redeemable for discounts</string>
+    <plurals name="loyalty_example_earn">
+        <item quantity="one">A sale of %1$s earns %2$d point</item>
+        <item quantity="other">A sale of %1$s earns %2$d points</item>
+    </plurals>
+    <plurals name="loyalty_example_redeem">
+        <item quantity="one">%1$d point takes off %2$s</item>
+        <item quantity="other">%1$d points take off %2$s</item>
+    </plurals>
+</resources>
