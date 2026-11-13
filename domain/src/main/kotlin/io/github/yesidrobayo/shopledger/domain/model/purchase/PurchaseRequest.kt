@@ -10,12 +10,18 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  * [supplierId] es opcional: una compra en plaza o sin proveedor fijo no lo lleva. [invoiceReference]
  * es el número del documento del proveedor, no algo que genere la app. [date] es la fecha de negocio
  * elegida, o `null` para hoy: puede ser pasada, nunca futura.
+ *
+ * [amountPaid] es lo pagado al confirmar, de cero al total, o `null` si se paga completa. Pagar menos
+ * deja la compra a plazo: exige proveedor, y lo que falta va a su libro. [dueDate] es el vencimiento
+ * de esa deuda, o `null` para proponerlo con el plazo habitual del proveedor. Sin deuda no se usa.
  */
 data class PurchaseRequest(
     val lines: List<PurchaseLineRequest>,
     val supplierId: Long? = null,
     val invoiceReference: String? = null,
     val date: BusinessDate? = null,
+    val amountPaid: Money? = null,
+    val dueDate: BusinessDate? = null,
 )
 
 /**

@@ -19,6 +19,9 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.payable.NewSupplierLedgerEntry
+import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntry
+import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntryType
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
@@ -55,6 +58,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
+import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
@@ -91,6 +95,7 @@ internal data class SaleTables(
     val purchases: Map<Long, Purchase> = emptyMap(),
     val purchaseLines: Map<Long, PurchaseLine> = emptyMap(),
     val suppliers: Map<Long, Supplier> = emptyMap(),
+    val supplierEntries: Map<Long, SupplierLedgerEntry> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
     val alerts: Map<Long, LowStockAlert> = emptyMap(),
@@ -549,9 +554,16 @@ internal class SaleWorld(
             purchaseLinesOf(read(), purchaseId)
 
         override suspend fun insert(purchase: NewPurchase): Long {
-            // Lo que exige la guarda de la base: la moneda bloqueada y el total cuadrado.
+            // Lo que exige la guarda de la base: la moneda bloqueada, el total cuadrado, lo pagado
+            // dentro del total y proveedor si queda debiendo.
             if (settings.settings.value.regional.currency.lockedAt == null) brokenRule()
             if (purchase.total != purchase.netTotal + purchase.taxTotal) brokenRule()
+            if (purchase.amountPaid < Money.ZERO ||
+                purchase.amountPaid > purchase.total
+            ) {
+                brokenRule()
+            }
+            if (purchase.amountPaid != purchase.total && purchase.supplierId == null) brokenRule()
             val id = nextId("purchases")
             write { it.copy(purchases = it.purchases + (id to Purchase(id, purchase, null))) }
             return id
@@ -572,6 +584,60 @@ internal class SaleWorld(
             val purchase = read().purchases[id]
             if (purchase == null || purchase.status != DocumentStatus.ACTIVE) brokenRule()
             write { it.copy(purchases = it.purchases + (id to purchase.copy(voiding = voiding))) }
+        }
+    }
+
+    /**
+     * El libro de los proveedores. Repite lo que comprueban la guarda y el repositorio de la base:
+     * el signo y el origen de cada tipo, la moneda bloqueada, el saldo encadenado y una sola
+     * compensación por fila, del mismo proveedor y con el monto opuesto. Deja al proveedor con el
+     * saldo de la fila.
+     */
+    val supplierLedger: SupplierLedgerRepository = object : SupplierLedgerRepository {
+        override fun observeBySupplier(supplierId: Long): Flow<List<SupplierLedgerEntry>> =
+            committed.map { tables -> supplierEntriesOf(tables, supplierId) }
+
+        override suspend fun findById(id: Long): SupplierLedgerEntry? = read().supplierEntries[id]
+
+        override suspend fun lastBalanceAfter(supplierId: Long): Money? =
+            supplierEntriesOf(read(), supplierId).lastOrNull()?.content?.balanceAfter
+
+        override suspend fun findByPurchase(purchaseId: Long): List<SupplierLedgerEntry> =
+            read().supplierEntries.values
+                .filter { it.content.purchaseId == purchaseId }
+                .sortedBy { it.id }
+
+        override suspend fun isCompensated(entryId: Long): Boolean =
+            read().supplierEntries.values.any { it.content.reversesEntryId == entryId }
+
+        override suspend fun append(entry: NewSupplierLedgerEntry): Long {
+            if (settings.settings.value.regional.currency.lockedAt == null) brokenRule()
+            val supplier = read().suppliers[entry.supplierId] ?: brokenRule()
+            val previous = lastBalanceAfter(entry.supplierId) ?: Money.ZERO
+            if (previous + entry.amount != entry.balanceAfter) brokenRule()
+            if (!supplierEntryFits(entry)) brokenRule()
+            entry.reversesEntryId?.let { reverses ->
+                val original = read().supplierEntries[reverses] ?: brokenRule()
+                val matches = original.content.supplierId == entry.supplierId &&
+                    original.content.amount == -entry.amount &&
+                    original.content.type != SupplierLedgerEntryType.ENTRY_VOID
+                if (!matches || isCompensated(reverses)) brokenRule()
+            }
+            val id = nextId("supplier_ledger_entries")
+            write {
+                it.copy(
+                    supplierEntries =
+                        it.supplierEntries + (id to SupplierLedgerEntry(id, entry)),
+                )
+            }
+            write { tables ->
+                val updated = supplier.copy(
+                    balance = entry.balanceAfter,
+                    updatedAt = entry.createdAt,
+                )
+                tables.copy(suppliers = tables.suppliers + (supplier.id to updated))
+            }
+            return id
         }
     }
 
@@ -612,6 +678,7 @@ internal class SaleWorld(
         clock = clock,
         productUnits = productUnitRepository,
         alerts = alertRepository.takeIf { withAlerts },
+        supplierLedger = supplierLedger,
     )
 
     fun voidPurchase(): VoidPurchaseUseCase = VoidPurchaseUseCase(
@@ -622,14 +689,15 @@ internal class SaleWorld(
         ledger = ledger,
         clock = clock,
         alerts = alertRepository.takeIf { withAlerts },
+        supplierLedger = supplierLedger,
     )
 
-    /** Agrega un proveedor con nombre inventado, archivado o no. */
-    fun addSupplier(id: Long, archived: Boolean = false) = arrange {
+    /** Agrega un proveedor con nombre inventado, archivado o no, y con plazo habitual o sin él. */
+    fun addSupplier(id: Long, archived: Boolean = false, termsDays: Int? = null) = arrange {
         val name = "Supplier $id"
         val supplier = Supplier(
             id = id,
-            details = SupplierDetails(name, name.lowercase(), null, null, null, null),
+            details = SupplierDetails(name, name.lowercase(), null, null, null, termsDays),
             balance = Money.ZERO,
             archivedAt = if (archived) EPOCH else null,
             createdAt = EPOCH,
@@ -682,6 +750,32 @@ internal class SaleWorld(
 
     private fun linesOf(tables: SaleTables, saleId: Long): List<SaleLine> =
         tables.lines.values.filter { it.saleId == saleId }.sortedBy { it.id }
+
+    private fun supplierEntriesOf(tables: SaleTables, supplierId: Long): List<SupplierLedgerEntry> =
+        tables.supplierEntries.values.filter {
+            it.content.supplierId == supplierId
+        }.sortedBy { it.id }
+
+    /** El signo y el origen que la guarda exige a cada tipo de fila del libro del proveedor. */
+    private fun supplierEntryFits(entry: NewSupplierLedgerEntry): Boolean {
+        val sign = when (entry.type) {
+            SupplierLedgerEntryType.CREDIT_PURCHASE -> entry.amount > Money.ZERO
+
+            SupplierLedgerEntryType.PAYMENT, SupplierLedgerEntryType.RETURN_CREDIT ->
+                entry.amount < Money.ZERO
+
+            SupplierLedgerEntryType.OPENING_BALANCE,
+            SupplierLedgerEntryType.ADJUSTMENT,
+            SupplierLedgerEntryType.ENTRY_VOID,
+            -> entry.amount != Money.ZERO
+        }
+        return sign &&
+            (entry.type == SupplierLedgerEntryType.CREDIT_PURCHASE) == (entry.purchaseId != null) &&
+            (entry.type == SupplierLedgerEntryType.RETURN_CREDIT) ==
+            (entry.purchaseReturnId != null) &&
+            (entry.type == SupplierLedgerEntryType.ENTRY_VOID) == (entry.reversesEntryId != null) &&
+            (entry.type != SupplierLedgerEntryType.ADJUSTMENT || entry.note != null)
+    }
 
     private fun purchaseLinesOf(tables: SaleTables, purchaseId: Long): List<PurchaseLine> =
         tables.purchaseLines.values.filter { it.purchaseId == purchaseId }.sortedBy { it.id }

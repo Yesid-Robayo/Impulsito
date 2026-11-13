@@ -36,6 +36,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSalesReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomStockLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierActivitySource
+import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSystemRowRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomTaxRateRepository
@@ -76,6 +77,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalesReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierActivitySource
+import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
@@ -145,6 +147,9 @@ class DataPorts internal constructor(
 
     /** Los clientes, con sus datos mínimos. Sus saldos los mueven sus libros. */
     val customers: CustomerRepository = RoomCustomerRepository(database)
+
+    /** El libro de cada proveedor: lo que se le debe, que mueven las compras a plazo y los pagos. */
+    val supplierLedger: SupplierLedgerRepository = RoomSupplierLedgerRepository(database)
 
     val products: ProductRepository = RoomProductRepository(database)
 

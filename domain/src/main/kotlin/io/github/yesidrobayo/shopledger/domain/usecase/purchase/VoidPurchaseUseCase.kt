@@ -4,6 +4,9 @@ import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.VoidableDocument
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
+import io.github.yesidrobayo.shopledger.domain.model.payable.NewSupplierLedgerEntry
+import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntryType
+import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
@@ -15,14 +18,18 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
+import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.rule.CostReplayResult
 import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
+import io.github.yesidrobayo.shopledger.domain.rule.payable.SupplierCompensation
+import io.github.yesidrobayo.shopledger.domain.rule.payable.SupplierLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockCompensation
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
+import io.github.yesidrobayo.shopledger.domain.usecase.payable.appendChained
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
 import kotlin.time.Instant
 
@@ -44,12 +51,17 @@ import kotlin.time.Instant
  * - **El stock sale hoy.** Los compensatorios llevan la fecha de la anulación, porque el libro es
  *   cronológico. La compra, en cambio, deja de contar en su propia fecha.
  *
- * Un producto archivado no impide anular: su stock sale igual. Por ahora toda compra va pagada al
- * registrarla y sin movimientos de dinero ni libro del proveedor, así que no hay nada más que
- * compensar.
+ * - **La deuda con el proveedor se compensa.** El cargo que dejó una compra a plazo recibe su
+ *   compensación en el libro del proveedor, con la fecha de la anulación, y baja lo que se le debe.
+ *   Los pagos posteriores siguen vigentes: si ya se pagó algo, el saldo puede quedar negativo, y es
+ *   crédito con el proveedor.
+ *
+ * Un producto archivado no impide anular: su stock sale igual. Por ahora ninguna compra tiene
+ * movimientos de dinero, así que no hay nada más que compensar.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
+ * [supplierLedger] solo hace falta para anular una compra a plazo.
  */
 class VoidPurchaseUseCase(
     private val transactions: TransactionRunner,
@@ -59,6 +71,7 @@ class VoidPurchaseUseCase(
     ledger: StockLedgerRepository,
     private val clock: Clock,
     private val alerts: LowStockAlertRepository? = null,
+    private val supplierLedger: SupplierLedgerRepository? = null,
 ) {
     private val ledger = StockChangeRecorder(ledger)
 
@@ -103,6 +116,9 @@ class VoidPurchaseUseCase(
         for ((productId, rows) in purchaseRows.groupBy { it.movement.key.productId }) {
             val compensated = compensate(productId, rows, now, calendar)
             if (!compensated) return TxResult.Rollback(VoidPurchaseResult.LedgerDamaged)
+        }
+        if (!compensateSupplier(purchase, now, calendar)) {
+            return TxResult.Rollback(VoidPurchaseResult.LedgerDamaged)
         }
         alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
         return TxResult.Commit(VoidPurchaseResult.Voided)
@@ -181,6 +197,51 @@ class VoidPurchaseUseCase(
                 ),
             )
             book += provisional.copy(id = id)
+        }
+        return true
+    }
+
+    /**
+     * Agrega la compensación de cada fila que la compra dejó en el libro de su proveedor: el cargo
+     * de lo que quedó debiendo, si fue a plazo. Una compra pagada completa no tiene ninguna. Devuelve
+     * `false` si el saldo que dejaría no cabe: la transacción se deshace y no se anula nada.
+     */
+    private suspend fun compensateSupplier(
+        purchase: Purchase,
+        now: Instant,
+        calendar: BusinessCalendar,
+    ): Boolean {
+        if (purchase.content.amountPaid >= purchase.content.total) return true
+        val ledger = requireNotNull(supplierLedger) { "Anular una compra a plazo pide su libro" }
+        val today = calendar.businessDateOf(now)
+        for (entry in ledger.findByPurchase(purchase.id)) {
+            val amount = when (
+                val compensation = SupplierLedgerRules.compensationOf(
+                    entry,
+                    ledger.isCompensated(entry.id),
+                )
+            ) {
+                is SupplierCompensation.Ready -> compensation.amount
+
+                // Ya se compensó, o es una compensación: anular de nuevo restaría dos veces.
+                SupplierCompensation.AlreadyCompensated,
+                SupplierCompensation.NotCompensable,
+                -> continue
+            }
+            val supplierId = entry.content.supplierId
+            val id = ledger.appendChained(supplierId, amount) { balanceAfter ->
+                NewSupplierLedgerEntry(
+                    supplierId = supplierId,
+                    type = SupplierLedgerEntryType.ENTRY_VOID,
+                    amount = amount,
+                    balanceAfter = balanceAfter,
+                    reversesEntryId = entry.id,
+                    occurredAt = now,
+                    businessDate = today,
+                    createdAt = now,
+                )
+            }
+            if (id == null) return false
         }
         return true
     }

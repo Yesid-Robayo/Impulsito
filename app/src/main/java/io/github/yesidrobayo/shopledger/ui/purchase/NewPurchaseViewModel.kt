@@ -435,6 +435,14 @@ class NewPurchaseViewModel(
             is RegisterPurchaseResult.UnknownTimeZone,
             -> notice(PurchaseNotice.RegisterFailed(outOfSpace = false))
 
+            // Esta pantalla todavía no ofrece comprar a plazo: siempre paga completo, así que estos
+            // rechazos no salen de ella.
+            RegisterPurchaseResult.AmountPaidOutOfRange,
+            RegisterPurchaseResult.SupplierRequiredForCredit,
+            RegisterPurchaseResult.DueDateBeforePurchase,
+            RegisterPurchaseResult.SupplierBalanceTooLarge,
+            -> notice(PurchaseNotice.RegisterFailed(outOfSpace = false))
+
             is RegisterPurchaseResult.StorageFailed -> notice(
                 PurchaseNotice.RegisterFailed(result.failure.isOutOfSpace),
             )

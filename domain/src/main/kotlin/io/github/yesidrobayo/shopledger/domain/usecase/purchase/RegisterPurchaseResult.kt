@@ -48,6 +48,21 @@ sealed interface RegisterPurchaseResult {
      */
     data class UnknownTimeZone(val storedZoneId: String) : RegisterPurchaseResult
 
+    /** Lo pagado al confirmar es negativo o pasa del total de la compra. */
+    data object AmountPaidOutOfRange : RegisterPurchaseResult
+
+    /** La compra queda debiendo algo y no tiene proveedor: una deuda necesita a quién se le debe. */
+    data object SupplierRequiredForCredit : RegisterPurchaseResult
+
+    /** El vencimiento es anterior a la fecha de la compra. */
+    data object DueDateBeforePurchase : RegisterPurchaseResult
+
+    /**
+     * Lo que se le debería al proveedor no cabe en un monto. Solo sale con cifras absurdas, que
+     * pueden venir de una copia dañada.
+     */
+    data object SupplierBalanceTooLarge : RegisterPurchaseResult
+
     /** La moneda del negocio sigue sin confirmar: sin ella, un monto no tiene unidad. */
     data object CurrencyNotConfirmed : RegisterPurchaseResult
 

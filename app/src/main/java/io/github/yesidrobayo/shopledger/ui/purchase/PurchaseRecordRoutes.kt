@@ -133,6 +133,7 @@ fun PurchaseDetailRoute(
                 ledger = ports.stockLedger,
                 clock = dependencies.container.clock,
                 alerts = ports.lowStockAlerts,
+                supplierLedger = ports.supplierLedger,
             )
             PurchaseDetailViewModel(
                 detailSource = { observe(key.purchaseId) },

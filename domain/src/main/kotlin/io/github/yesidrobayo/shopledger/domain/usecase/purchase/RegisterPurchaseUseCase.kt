@@ -4,8 +4,12 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Margin
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
+import io.github.yesidrobayo.shopledger.domain.model.payable.NewSupplierLedgerEntry
+import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntryType
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCostChange
@@ -29,6 +33,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
+import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
@@ -37,6 +42,8 @@ import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
+import io.github.yesidrobayo.shopledger.domain.rule.payable.PurchaseCredit
+import io.github.yesidrobayo.shopledger.domain.rule.payable.SupplierLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PricedPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricing
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricingResult
@@ -45,6 +52,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseTotals
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseUnit
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
+import io.github.yesidrobayo.shopledger.domain.usecase.payable.appendChained
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
@@ -76,12 +84,19 @@ import kotlin.time.Instant
  *   unidad base con el total de la línea. Una caja de 24 por 10000 deja el valor en 10000 y el
  *   promedio en 417 por unidad. Una unidad que el producto no compra se rechaza con su motivo.
  *
- * Por ahora la compra va pagada completa al registrarla y sin cuenta de dinero: la compra a plazo
- * y los movimientos de dinero llegan con su libro. Tampoco compra productos con lotes: los rechaza
- * con su motivo.
+ * - **Se puede comprar a plazo.** Lo pagado al confirmar queda en la compra y no cambia nunca; lo
+ *   que falta entra al libro del proveedor como un cargo de la compra, con su vencimiento, y sube
+ *   lo que se le debe. Una compra a plazo exige proveedor. El vencimiento se propone con el plazo
+ *   habitual del proveedor, se puede cambiar y no puede ser anterior a la compra. Comprar a plazo
+ *   no toca ganancias: la compra pesa al vender. Sin decir lo pagado, la compra va pagada completa
+ *   y no escribe nada en el libro del proveedor, como siempre.
+ *
+ * Por ahora la compra va sin cuenta de dinero: sus movimientos llegan con el libro de dinero.
+ * Tampoco compra productos con lotes: los rechaza con su motivo.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
+ * [supplierLedger] solo hace falta para comprar a plazo.
  */
 class RegisterPurchaseUseCase(
     private val transactions: TransactionRunner,
@@ -97,6 +112,7 @@ class RegisterPurchaseUseCase(
     private val productUnits: ProductUnitRepository? = null,
     private val alerts: LowStockAlertRepository? = null,
     private val categories: CategoryRepository? = null,
+    private val supplierLedger: SupplierLedgerRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -121,10 +137,11 @@ class RegisterPurchaseUseCase(
         val now = clock.now()
         val time = recordTime(calendar, request.date, now)
             ?: return reject(RegisterPurchaseResult.FutureDate)
-        request.supplierId?.let { id ->
-            val supplier = suppliers.findById(id)
+        val supplier = request.supplierId?.let { id ->
+            val found = suppliers.findById(id)
                 ?: return reject(RegisterPurchaseResult.SupplierNotFound)
-            if (supplier.isArchived) return reject(RegisterPurchaseResult.SupplierArchived)
+            if (found.isArchived) return reject(RegisterPurchaseResult.SupplierArchived)
+            found
         }
         val subjects = subjectsOf(request.lines, current.taxes)
         val priced = when (
@@ -138,6 +155,12 @@ class RegisterPurchaseUseCase(
             PurchasePricingResult.TotalTooLarge ->
                 return reject(RegisterPurchaseResult.PurchaseTotalTooLarge)
         }
+        val settlement = when (
+            val result = settlementOf(request, priced.totals.total, supplier, time)
+        ) {
+            is SettlementResult.Ready -> result.settlement
+            is SettlementResult.Rejected -> return reject(result.reason)
+        }
 
         // Justo antes de escribir: la primera compra bloquea la moneda en esta misma transacción,
         // y si la compra se deshace, el bloqueo también.
@@ -148,7 +171,11 @@ class RegisterPurchaseUseCase(
                 return reject(RegisterPurchaseResult.CurrencyNotConfirmed)
         }
         val purchaseId =
-            write(request.supplierId, reference, priced.lines, priced.totals, time, now)
+            write(request.supplierId, reference, priced.lines, priced.totals, settlement, time, now)
+        if (settlement.credit != null && supplier != null) {
+            val charged = charge(supplier.id, purchaseId, settlement.credit, settlement, time, now)
+            if (!charged) return reject(RegisterPurchaseResult.SupplierBalanceTooLarge)
+        }
         alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
         val changes =
             reviewPrices(priced, subjects, current.taxes, current.profile.defaultTargetMargin, now)
@@ -193,6 +220,69 @@ class RegisterPurchaseUseCase(
             }
             change.copy(marginBelowTarget = below)
         }
+    }
+
+    /**
+     * Cuánto se paga al confirmar, cuánto queda debiendo y cuándo vence, o por qué no se puede
+     * registrar así. Una compra pagada completa no lleva vencimiento, aunque se haya escrito.
+     */
+    private fun settlementOf(
+        request: PurchaseRequest,
+        total: Money,
+        supplier: Supplier?,
+        time: RecordTime,
+    ): SettlementResult {
+        val paid = request.amountPaid ?: total
+        val credit = when (val result = SupplierLedgerRules.creditOf(total, paid)) {
+            PurchaseCredit.PaidInFull -> return SettlementResult.Ready(Settlement(paid, null, null))
+
+            is PurchaseCredit.OnCredit -> result.amount
+
+            PurchaseCredit.OutOfRange ->
+                return SettlementResult.Rejected(RegisterPurchaseResult.AmountPaidOutOfRange)
+        }
+        if (supplier == null) {
+            return SettlementResult.Rejected(RegisterPurchaseResult.SupplierRequiredForCredit)
+        }
+        val due = request.dueDate
+            ?: SupplierLedgerRules.proposedDueDate(
+                time.businessDate,
+                supplier.details.paymentTermsDays,
+            )
+        if (due != null && due < time.businessDate) {
+            return SettlementResult.Rejected(RegisterPurchaseResult.DueDateBeforePurchase)
+        }
+        return SettlementResult.Ready(Settlement(paid, credit, due))
+    }
+
+    /**
+     * Agrega al libro del proveedor el cargo de [credit], lo que la compra deja debiendo, con su
+     * vencimiento y la fecha de la compra, y sube su saldo. Devuelve `false` si ese saldo no cabe.
+     */
+    private suspend fun charge(
+        supplierId: Long,
+        purchaseId: Long,
+        credit: Money,
+        settlement: Settlement,
+        time: RecordTime,
+        now: Instant,
+    ): Boolean {
+        val ledger =
+            requireNotNull(supplierLedger) { "Comprar a plazo pide el libro del proveedor" }
+        val id = ledger.appendChained(supplierId, credit) { balanceAfter ->
+            NewSupplierLedgerEntry(
+                supplierId = supplierId,
+                type = SupplierLedgerEntryType.CREDIT_PURCHASE,
+                amount = credit,
+                balanceAfter = balanceAfter,
+                purchaseId = purchaseId,
+                dueDate = settlement.dueDate,
+                occurredAt = time.occurredAt,
+                businessDate = time.businessDate,
+                createdAt = now,
+            )
+        }
+        return id != null
     }
 
     /** Lo que se rechaza sin leer la base: la forma de la compra. */
@@ -293,6 +383,7 @@ class RegisterPurchaseUseCase(
         reference: String?,
         lines: List<PricedPurchaseLine>,
         totals: PurchaseTotals,
+        settlement: Settlement,
         time: RecordTime,
         now: Instant,
     ): Long {
@@ -307,10 +398,9 @@ class RegisterPurchaseUseCase(
                 taxTotal = totals.tax,
                 total = totals.total,
                 costTotal = totals.cost,
-                // Pagada completa al registrarla: la compra a plazo llega con el libro del proveedor.
-                amountPaid = totals.total,
+                amountPaid = settlement.amountPaid,
                 moneyAccountId = null,
-                dueDate = null,
+                dueDate = settlement.dueDate,
                 locationId = location,
                 foreignCurrency = null,
                 occurredAt = time.occurredAt,
@@ -367,6 +457,22 @@ class RegisterPurchaseUseCase(
     /** Una fila que la base garantiza y no está: la base está dañada, y no se escribe nada. */
     private fun damaged(): Nothing =
         throw StorageFailureException(StorageFailure.INVARIANT_VIOLATION)
+
+    /**
+     * Cómo se paga la compra: [amountPaid] al confirmar, [credit] lo que queda debiendo, o `null` si
+     * se pagó completa, y [dueDate] el vencimiento de esa deuda, si tiene.
+     */
+    private data class Settlement(
+        val amountPaid: Money,
+        val credit: Money?,
+        val dueDate: BusinessDate?,
+    )
+
+    private sealed interface SettlementResult {
+        data class Ready(val settlement: Settlement) : SettlementResult
+
+        data class Rejected(val reason: RegisterPurchaseResult) : SettlementResult
+    }
 
     /** La tasa que copia una línea: los puntos básicos y el nombre del momento. */
     private class AppliedTax(val rate: BasisPoints, val name: String?) {

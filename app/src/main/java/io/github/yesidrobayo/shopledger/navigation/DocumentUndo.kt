@@ -142,6 +142,7 @@ fun rememberPurchaseUndo(): DocumentUndo {
                         ledger = ports.stockLedger,
                         clock = container.clock,
                         alerts = ports.lowStockAlerts,
+                        supplierLedger = ports.supplierLedger,
                     )
                     UndoPurchaseUseCase(void)(purchaseId)
                 }
