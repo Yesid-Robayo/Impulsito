@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.report.PeriodMetrics
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
 import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodBreakdown
+import io.github.yesidrobayo.shopledger.domain.usecase.report.SoldAndCollectedView
 import kotlinx.datetime.DayOfWeek
 
 /** Lo que muestra `Números`: cargando, un error, sin zona, sin datos o las cifras de un período. */
@@ -47,6 +48,8 @@ sealed interface StatisticsUiState {
      * @param choosingRange si está abierta la elección de un rango de fechas.
      * @param weekStartDay el primer día de las semanas del negocio, para el calendario del rango.
      * @param otherIncome los otros ingresos del período, aparte de la ganancia, o `null` sin ninguno.
+     * @param collection lo vendido y lo cobrado del período, aparte, o `null` si el negocio no vende
+     *   a crédito.
      */
     @Immutable
     data class Content(
@@ -68,13 +71,24 @@ sealed interface StatisticsUiState {
         val choosingRange: Boolean = false,
         val weekStartDay: DayOfWeek? = null,
         val otherIncome: Money? = null,
-    ) : StatisticsUiState
+        val collection: SoldAndCollectedView? = null,
+    ) : StatisticsUiState {
+        /** Las métricas que se ofrecen: `Cobrado` solo si el negocio vende a crédito. */
+        val offeredMetrics: List<ChartMetric>
+            get() = ChartMetric.entries.filter { it != ChartMetric.COLLECTED || collection != null }
+    }
 }
 
 /** La serie de la gráfica y la cifra grande: una sola a la vez, nunca dos escalas juntas. */
 enum class ChartMetric {
     /** Lo vendido sin impuesto. */
     SALES,
+
+    /**
+     * Lo cobrado: pagos al contado y abonos, en la fecha en que entró el dinero. Solo se ofrece si
+     * el negocio vende a crédito, y nunca se suma con lo vendido.
+     */
+    COLLECTED,
 
     /** La ganancia en ventas: un gasto pagado un día no hunde ese día. */
     PROFIT,

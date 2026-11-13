@@ -42,4 +42,9 @@
         <item quantity="other">This period changed: %1$d backdated records were added</item>
     </plurals>
     <string name="stats_other_income">Other income</string>
+    <string name="stats_metric_collected">Collected</string>
+    <string name="stats_chart_summary_collected">Collected chart, %1$s. Total %2$s. Highest: %3$s, %4$s. Lowest: %5$s, %6$s.</string>
+    <string name="stats_sold_amount">Sold %1$s</string>
+    <string name="stats_on_account_amount">On account %1$s</string>
+    <string name="stats_receivable_amount">Receivable %1$s</string>
 </resources>

@@ -257,6 +257,7 @@ private fun ChartContent(
 /** El monto de [metric] en un día. */
 internal fun DayPoint.valueOf(metric: ChartMetric): Money = when (metric) {
     ChartMetric.SALES -> netSales
+    ChartMetric.COLLECTED -> collected
     ChartMetric.PROFIT -> grossProfit
 }
 

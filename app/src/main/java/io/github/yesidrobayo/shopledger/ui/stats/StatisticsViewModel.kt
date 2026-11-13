@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
 import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodBreakdown
 import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodReport
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ReportCalendar
+import io.github.yesidrobayo.shopledger.domain.usecase.report.SoldAndCollectedView
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.TaxEstimateState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -49,6 +50,8 @@ import kotlinx.coroutines.flow.stateIn
  * @param breakdown los destacados, los desgloses y los avisos de un período.
  * @param units las unidades, para nombrar las cantidades de los más vendidos.
  * @param otherIncome los otros ingresos de un período, que se muestran aparte de la ganancia.
+ * @param collection lo vendido y lo cobrado de un período, o `null` si el negocio no vende a
+ *   crédito.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class StatisticsViewModel(
@@ -65,6 +68,7 @@ class StatisticsViewModel(
     },
     units: Flow<List<MeasureUnit>> = flowOf(emptyList()),
     private val otherIncome: (ReportPeriod) -> Flow<Money> = { flowOf(Money.ZERO) },
+    private val collection: (ReportPeriod) -> Flow<SoldAndCollectedView?> = { flowOf(null) },
 ) : ViewModel() {
     private val unitsById = units.map { all -> all.associateBy { it.id } }.distinctUntilChanged()
 
@@ -146,7 +150,10 @@ class StatisticsViewModel(
                 breakdown(period, shown.calendar),
                 unitsById,
                 otherIncome(period),
-            ) { compared, explained, units, income -> Details(compared, explained, units, income) }
+                collection(period),
+            ) { compared, explained, units, income, collected ->
+                Details(compared, explained, units, income, collected)
+            }
         return combine(figures, details, choice) { figures, details, chosen ->
             StatisticsUiState.Content(
                 kind = PeriodNavigation.kindOf(period),
@@ -154,7 +161,10 @@ class StatisticsViewModel(
                 today = shown.today,
                 canGoPrevious = shown.canGoPrevious,
                 canGoNext = shown.canGoNext,
-                metric = chosen.metric,
+                // Sin ventas a crédito no hay `Cobrado`: se vuelve a las ventas.
+                metric = chosen.metric.takeUnless {
+                    it == ChartMetric.COLLECTED && details.collection == null
+                } ?: ChartMetric.SALES,
                 metrics = figures.report.metrics,
                 series = figures.points,
                 // Un día tocado solo vale dentro del período que lo muestra.
@@ -169,6 +179,7 @@ class StatisticsViewModel(
                 ranking = chosen.ranking,
                 choosingRange = chosen.choosingRange,
                 weekStartDay = shown.calendar.weekStartDay,
+                collection = details.collection,
             )
         }
     }
@@ -295,6 +306,7 @@ class StatisticsViewModel(
         val breakdown: PeriodBreakdown?,
         val units: Map<Long, MeasureUnit>,
         val otherIncome: Money,
+        val collection: SoldAndCollectedView?,
     )
 
     private data class Shown(

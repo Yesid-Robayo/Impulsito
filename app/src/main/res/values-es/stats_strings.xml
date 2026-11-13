@@ -45,4 +45,9 @@
         <item quantity="other">Este período cambió: se agregaron %1$d registros con fecha atrasada</item>
     </plurals>
     <string name="stats_other_income">Otros ingresos</string>
+    <string name="stats_metric_collected">Cobrado</string>
+    <string name="stats_chart_summary_collected">Gráfica de lo cobrado, %1$s. Total %2$s. Mayor: %3$s, %4$s. Menor: %5$s, %6$s.</string>
+    <string name="stats_sold_amount">Vendido %1$s</string>
+    <string name="stats_on_account_amount">En abonos %1$s</string>
+    <string name="stats_receivable_amount">Por cobrar %1$s</string>
 </resources>

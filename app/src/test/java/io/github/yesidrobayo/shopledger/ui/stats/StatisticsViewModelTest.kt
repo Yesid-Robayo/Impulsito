@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodNoticeCounts
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodTotals
+import io.github.yesidrobayo.shopledger.domain.model.report.SoldAndCollected
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
@@ -17,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
 import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodBreakdown
 import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodReport
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ReportCalendar
+import io.github.yesidrobayo.shopledger.domain.usecase.report.SoldAndCollectedView
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.TaxEstimateState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -84,6 +86,7 @@ class StatisticsViewModelTest {
             BusinessCalendar,
         ) -> Flow<PeriodBreakdown?> = { _, _ -> flowOf(null) },
         otherIncome: (ReportPeriod) -> Flow<Money> = { flowOf(Money.ZERO) },
+        collection: (ReportPeriod) -> Flow<SoldAndCollectedView?> = { flowOf(null) },
     ): StatisticsViewModel {
         val model =
             StatisticsViewModel(
@@ -102,6 +105,7 @@ class StatisticsViewModelTest {
                 comparison = comparison,
                 breakdown = breakdown,
                 otherIncome = otherIncome,
+                collection = collection,
                 tax = { _ ->
                     taxed.map {
                         if (it) {
@@ -149,6 +153,30 @@ class StatisticsViewModelTest {
         // Aparte: la ganancia del período no la incluye.
         assertEquals(Money.ZERO, model.content().metrics?.profit?.netSales)
     }
+
+    @Test
+    fun `collected is offered apart only with credit sales and never added to sold`() =
+        runTest(dispatcher) {
+            val withoutCredit = viewModel()
+            assertFalse(ChartMetric.COLLECTED in withoutCredit.content().offeredMetrics)
+            // Elegirlo sin ventas a crédito deja las ventas.
+            withoutCredit.onAction(StatisticsAction.SelectMetric(ChartMetric.COLLECTED))
+            advanceUntilIdle()
+            assertEquals(ChartMetric.SALES, withoutCredit.content().metric)
+
+            val view = SoldAndCollectedView(
+                SoldAndCollected(Money(10_000), Money(3_000), Money(4_000)),
+                emptyList(),
+            )
+            val model = viewModel(collection = { flowOf(view) })
+            assertTrue(ChartMetric.COLLECTED in model.content().offeredMetrics)
+            model.onAction(StatisticsAction.SelectMetric(ChartMetric.COLLECTED))
+            advanceUntilIdle()
+            val content = model.content()
+            assertEquals(ChartMetric.COLLECTED, content.metric)
+            assertEquals(Money(7_000), content.collection?.totals?.collected)
+            assertEquals(Money(10_000), content.collection?.totals?.sold)
+        }
 
     @Test
     fun `an empty period shows zeros and says it had no movements`() = runTest(dispatcher) {

@@ -17,4 +17,9 @@ data class DayPoint(
     val netSales: Money,
     /** Ventas sin impuesto menos su costo, con las devoluciones restadas. Puede ser negativa. */
     val grossProfit: Money,
+    /**
+     * Lo cobrado ese día: pagos al contado de sus ventas y abonos de clientes. Cero hasta que se
+     * suma con `SoldAndCollected.withCollected`, y siempre cero sin ventas a crédito.
+     */
+    val collected: Money = Money.ZERO,
 )

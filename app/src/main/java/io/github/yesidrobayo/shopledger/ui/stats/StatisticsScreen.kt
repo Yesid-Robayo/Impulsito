@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.stats
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -48,6 +49,7 @@ import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodMetrics
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
+import io.github.yesidrobayo.shopledger.domain.usecase.report.SoldAndCollectedView
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
@@ -324,7 +326,7 @@ private fun Overview(
     }
     PeriodFigure(content)
     CompactChipRow(
-        options = ChartMetric.entries,
+        options = content.offeredMetrics,
         label = { chipLabel(it) },
         selected = setOf(content.metric),
         onToggle = { onAction(StatisticsAction.SelectMetric(it)) },
@@ -366,7 +368,7 @@ private fun Overview(
 @Composable
 private fun PeriodFigure(content: StatisticsUiState.Content) {
     val metrics = content.metrics
-    val value = metrics?.let { figureOf(it, content.metric) }
+    val value = figureOf(content)
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4)) {
         Text(
             metricLabel(content.metric),
@@ -380,6 +382,9 @@ private fun PeriodFigure(content: StatisticsUiState.Content) {
             sensitive = true,
         )
         VariationLine(content.comparison, content.metric, content.today)
+        if (content.metric == ChartMetric.COLLECTED) {
+            content.collection?.let { SoldApart(it) }
+        }
         if (metrics != null) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
                 // Cuántas ventas hubo se ve aun en modo discreto: no es dinero.
@@ -400,6 +405,37 @@ private fun PeriodFigure(content: StatisticsUiState.Content) {
             }
         }
     }
+}
+
+/**
+ * Lo vendido, lo abonado y lo que queda por cobrar, bajo la cifra de lo cobrado: `Vendido ¤ 10.000`,
+ * `En abonos ¤ 4.000` y `Por cobrar ¤ 3.000`. Son cifras aparte, nunca una suma: la venta a crédito
+ * cuenta al venderse, y el abono al cobrarse.
+ */
+@Composable
+private fun SoldApart(view: SoldAndCollectedView) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
+        view.totals?.let { totals ->
+            PhraseWithAmount(R.string.stats_sold_amount, totals.sold)
+            PhraseWithAmount(R.string.stats_on_account_amount, totals.collectedOnAccount)
+        }
+        // Lo que se debe hoy, de todos los clientes: no cambia con el período.
+        view.receivable?.let { PhraseWithAmount(R.string.stats_receivable_amount, it) }
+    }
+}
+
+/** Una frase con un monto del período, que el modo discreto oculta. */
+@Composable
+private fun PhraseWithAmount(@StringRes text: Int, amount: Money) {
+    val pattern = stringResource(text)
+    val (shown, spoken) = moneyInText(amount)
+    val description = stringResource(text, spoken)
+    Text(
+        text = formatAnnotated(pattern, shown),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.semantics { contentDescription = description },
+    )
 }
 
 /**
@@ -674,10 +710,11 @@ private fun StatisticsSkeleton() {
     }
 }
 
-/** La cifra grande de [metric]. */
-private fun figureOf(metrics: PeriodMetrics, metric: ChartMetric): Money = when (metric) {
-    ChartMetric.SALES -> metrics.profit.netSales
-    ChartMetric.PROFIT -> metrics.profit.grossProfit
+/** La cifra grande de [metric]: lo cobrado sale aparte, del resumen de vendido y cobrado. */
+private fun figureOf(content: StatisticsUiState.Content): Money? = when (content.metric) {
+    ChartMetric.SALES -> content.metrics?.profit?.netSales
+    ChartMetric.COLLECTED -> content.collection?.totals?.collected
+    ChartMetric.PROFIT -> content.metrics?.profit?.grossProfit
 }
 
 @Composable
@@ -694,6 +731,7 @@ private fun kindLabel(kind: PeriodKind): String = stringResource(
 private fun chipLabel(metric: ChartMetric): String = stringResource(
     when (metric) {
         ChartMetric.SALES -> R.string.stats_metric_sales
+        ChartMetric.COLLECTED -> R.string.stats_metric_collected
         ChartMetric.PROFIT -> R.string.stats_metric_profit
     },
 )
@@ -703,6 +741,7 @@ private fun chipLabel(metric: ChartMetric): String = stringResource(
 private fun metricLabel(metric: ChartMetric): String = stringResource(
     when (metric) {
         ChartMetric.SALES -> R.string.stats_metric_sales
+        ChartMetric.COLLECTED -> R.string.stats_metric_collected
         ChartMetric.PROFIT -> R.string.term_sales_profit
     },
 )
@@ -741,6 +780,7 @@ private fun chartSummary(
     return stringResource(
         when (metric) {
             ChartMetric.SALES -> R.string.stats_chart_summary_sales
+            ChartMetric.COLLECTED -> R.string.stats_chart_summary_collected
             ChartMetric.PROFIT -> R.string.stats_chart_summary_profit
         },
         periodLabel(period, today),

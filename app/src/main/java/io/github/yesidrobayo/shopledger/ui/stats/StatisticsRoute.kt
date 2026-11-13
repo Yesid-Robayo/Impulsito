@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.ObserveCustomersUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.money.ObserveOtherIncomeUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveDailySeriesUseCase
@@ -11,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodBreak
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodComparisonUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodReportUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveReportCalendarUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveSoldAndCollectedUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.tax.ObserveTaxEstimateUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -18,6 +20,7 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
+import kotlinx.coroutines.flow.map
 
 /**
  * `Números` en la navegación. Cada vez que la pantalla vuelve a primer plano mira de nuevo qué día
@@ -36,6 +39,10 @@ fun StatisticsRoute(navigator: AppNavigator) {
                 )
             val report = ObservePeriodReportUseCase(ports.periodReports)
             val series = ObserveDailySeriesUseCase(ports.periodReports)
+            val collection = ObserveSoldAndCollectedUseCase(
+                ports.collectionReports,
+                ObserveCustomersUseCase(ports.customers)().map { it.receivable },
+            )
             val tax = ObserveTaxEstimateUseCase(ports.taxSettings, ports.taxReports)
             val comparison = ObservePeriodComparisonUseCase(ports.periodReports)
             val breakdown =
@@ -44,12 +51,13 @@ fun StatisticsRoute(navigator: AppNavigator) {
                 calendar = { checks -> calendar(checks) },
                 lastActiveDate = ports.periodReports.observeLastActiveDate(),
                 report = { report(it) },
-                series = { series(it) },
+                series = { collection.series(it, series(it)) },
                 tax = { tax(it) },
                 comparison = { period, today -> comparison(period, today) },
                 breakdown = { period, calendar -> breakdown(period, calendar) },
                 units = ports.units.observeAll(),
                 otherIncome = { ObserveOtherIncomeUseCase(ports.settings, ports.moneyLedger)(it) },
+                collection = { collection(it) },
             )
         }
     when (model) {

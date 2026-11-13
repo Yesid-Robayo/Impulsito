@@ -45,4 +45,9 @@
         <item quantity="other">Este período mudou: %1$d registros com data atrasada foram adicionados</item>
     </plurals>
     <string name="stats_other_income">Outras receitas</string>
+    <string name="stats_metric_collected">Recebido</string>
+    <string name="stats_chart_summary_collected">Gráfico do recebido, %1$s. Total %2$s. Maior: %3$s, %4$s. Menor: %5$s, %6$s.</string>
+    <string name="stats_sold_amount">Vendido %1$s</string>
+    <string name="stats_on_account_amount">Em pagamentos parciais %1$s</string>
+    <string name="stats_receivable_amount">A receber %1$s</string>
 </resources>

@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomCashDenominationRepo
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashSessionRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomCollectionReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
@@ -61,6 +62,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CashSessionRepository
 import io.github.yesidrobayo.shopledger.domain.port.CatalogPresenceSource
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CollectionReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerSalesSource
@@ -252,6 +254,9 @@ class DataPorts internal constructor(
      * ganancia final de Inicio. Solo lee.
      */
     val periodReports: PeriodReportRepository = RoomPeriodReportRepository(database)
+
+    /** Lo vendido y lo cobrado por día, aparte, para `Cobrado` en las estadísticas. Solo lee. */
+    val collectionReports: CollectionReportRepository = RoomCollectionReportRepository(database)
 
     /**
      * Los destacados, los desgloses por método y por categoría y los avisos de un período, para

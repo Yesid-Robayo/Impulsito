@@ -68,7 +68,11 @@ internal fun VariationLine(compared: ComparedPeriod?, metric: ChartMetric, today
     val change: BasisPoints =
         when (metric) {
             ChartMetric.SALES -> compared?.variation?.netSales
+
             ChartMetric.PROFIT -> compared?.variation?.grossProfit
+
+            // Lo cobrado no se compara: depende de cuándo paga cada cliente, no de cómo se vendió.
+            ChartMetric.COLLECTED -> null
         } ?: return
     val period = requireNotNull(compared).comparedTo
     // Que suban las ventas o la ganancia es buena noticia.
