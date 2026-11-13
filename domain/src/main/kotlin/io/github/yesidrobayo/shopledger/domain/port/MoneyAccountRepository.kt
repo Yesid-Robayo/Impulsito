@@ -31,4 +31,10 @@ interface MoneyAccountRepository {
 
     /** La archiva en [archivedAt], o la reactiva con `null`. */
     suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant)
+
+    /**
+     * La sesión de caja abierta de la cuenta [accountId], o `null` si no tiene: nunca hay dos. Cada
+     * movimiento de una cuenta con caja abierta cae en esa sesión.
+     */
+    suspend fun openCashSessionId(accountId: Long): Long?
 }

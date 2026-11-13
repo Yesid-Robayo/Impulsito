@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.data.repository
 
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionDao
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountDao
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountEntity
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
@@ -24,10 +25,14 @@ import kotlinx.coroutines.flow.map
 internal class RoomMoneyAccountRepository(
     private val accounts: MoneyAccountDao,
     private val writes: RepositoryWrites,
+    private val sessions: CashSessionDao? = null,
 ) : MoneyAccountRepository {
     constructor(
         database: AppDatabase,
-    ) : this(database.moneyAccountDao(), RepositoryWrites(database))
+    ) : this(database.moneyAccountDao(), RepositoryWrites(database), database.cashSessionDao())
+
+    override suspend fun openCashSessionId(accountId: Long): Long? =
+        sessions?.findOpen(accountId)?.id
 
     override fun observe(filter: ArchiveFilter): Flow<List<MoneyAccount>> = when (filter) {
         ArchiveFilter.ACTIVE -> accounts.observeActive()

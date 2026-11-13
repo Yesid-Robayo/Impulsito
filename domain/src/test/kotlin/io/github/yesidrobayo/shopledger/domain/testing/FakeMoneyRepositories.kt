@@ -24,6 +24,11 @@ import kotlinx.coroutines.flow.map
  */
 internal class FakeMoneyAccountRepository(private val database: InMemoryDatabase) :
     MoneyAccountRepository {
+    override suspend fun openCashSessionId(accountId: Long): Long? =
+        database.read().cashSessions.values.firstOrNull {
+            it.opening.accountId == accountId && it.closing == null
+        }?.id
+
     override fun observe(filter: ArchiveFilter): Flow<List<MoneyAccount>> = database.tables
         .map { tables ->
             tables.moneyAccounts.values

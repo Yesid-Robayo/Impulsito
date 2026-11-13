@@ -35,6 +35,10 @@ sealed interface MoneyAppendResult {
  * mueve el dinero. Si devuelve algo distinto de [MoneyAppendResult.Appended], quien llama deshace la
  * transacción entera. Tampoco bloquea la moneda: quien escribe un registro con dinero ya lo hizo.
  *
+ * Con una caja abierta en la cuenta, el movimiento cae en esa sesión, salvo que el borrador ya
+ * traiga la suya: así lo esperado de la caja suma todo lo que movió la cuenta, sin que cada caso de
+ * uso lo sepa. Sin caja abierta, el movimiento no lleva sesión.
+ *
  * Un movimiento siempre va en la moneda de su cuenta. Escribir en una cuenta de otra moneda un monto
  * en la moneda del negocio sería mezclar unidades: lo convierte antes quien llama, con su cotización.
  */
@@ -53,7 +57,13 @@ class MoneyLedgerWriter(
             is Checked.Value -> next.value
             Checked.Overflow, is Checked.AboveLimit -> return MoneyAppendResult.Overflow
         }
-        val id = ledger.append(NewMoneyMovement(draft, balanceAfter, time, createdAt))
+        val inSession = if (draft.cashSessionId == null) {
+            accounts.openCashSessionId(draft.accountId)
+                ?.let { draft.copy(cashSessionId = it) } ?: draft
+        } else {
+            draft
+        }
+        val id = ledger.append(NewMoneyMovement(inSession, balanceAfter, time, createdAt))
         return MoneyAppendResult.Appended(id, balanceAfter)
     }
 

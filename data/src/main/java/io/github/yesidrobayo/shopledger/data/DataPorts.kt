@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomCashSessionRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerLedgerRepository
@@ -54,6 +55,7 @@ import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.data.transaction.RoomTransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
+import io.github.yesidrobayo.shopledger.domain.port.CashSessionRepository
 import io.github.yesidrobayo.shopledger.domain.port.CatalogPresenceSource
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -219,6 +221,9 @@ class DataPorts internal constructor(
 
     /** El libro de dinero, que mueve el saldo de cada cuenta en la misma transacción. */
     val moneyLedger: MoneyLedgerRepository = RoomMoneyLedgerRepository(database)
+
+    /** Las sesiones de caja, que son opcionales: sin ninguna, nada cambia. */
+    val cashSessions: CashSessionRepository = RoomCashSessionRepository(database)
 
     /** Qué herramientas del centro `Negocio` tienen datos. Solo lee. */
     val moduleUsage: ModuleUsageSource = RoomModuleUsageSource(database)

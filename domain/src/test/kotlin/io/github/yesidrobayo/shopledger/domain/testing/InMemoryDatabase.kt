@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.testing
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashSession
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
@@ -84,6 +85,8 @@ internal data class Tables(
     val moneyMovements: Map<Long, MoneyMovement> = emptyMap(),
     /** El libro de los proveedores, por id: solo crece. */
     val supplierEntries: Map<Long, SupplierLedgerEntry> = emptyMap(),
+    /** Las sesiones de caja, por id. */
+    val cashSessions: Map<Long, CashSession> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )
