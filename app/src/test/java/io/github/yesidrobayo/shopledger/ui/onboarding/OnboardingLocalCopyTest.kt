@@ -87,9 +87,10 @@ class OnboardingLocalCopyTest {
 
     private val restore =
         object : BackupRestorePort {
-            override suspend fun restoreCopy(copyKey: String) = RestoreProgress.Failed
+            override suspend fun restoreCopy(copyKey: String, code: String?) =
+                RestoreProgress.Failed
 
-            override suspend fun restoreFile(uri: String): RestoreProgress {
+            override suspend fun restoreFile(uri: String, code: String?): RestoreProgress {
                 restored += uri
                 return restoreResult
             }

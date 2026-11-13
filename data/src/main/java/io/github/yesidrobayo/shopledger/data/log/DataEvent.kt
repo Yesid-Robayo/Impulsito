@@ -26,6 +26,7 @@ internal enum class DataEvent(override val text: String) : LogEvent {
     RESTORE_CANCELLED("Restauración cancelada, la base no cambió"),
     RESTORE_REFUSED("Copia rechazada, la base no cambió"),
     RESTORE_NO_SPACE("Sin espacio para restaurar, la base no cambió"),
+    RESTORE_NEEDS_CODE("Copia cifrada sin su código en este teléfono, la base no cambió"),
     RESTORE_FAILED("La preparación de la restauración falló, la base no cambió"),
     RESTORE_CLOSE_FAILED("No se pudo cerrar la base tras preparar la restauración"),
     RESTORE_AUDIT_FAILED("No se pudo anotar la restauración en la auditoría"),

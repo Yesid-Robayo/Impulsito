@@ -208,8 +208,12 @@ class MainActivity : AppCompatActivity() {
                 val reason = rescueReason.value
                 if (reason != null) {
                     // El rescate nunca va detrás del bloqueo, pero restaurar pide la verificación
-                    // del sistema si el teléfono tiene bloqueo de pantalla.
-                    CompositionLocalProvider(LocalDeviceAuthenticator provides authenticator) {
+                    // del sistema si el teléfono tiene bloqueo de pantalla. La protección de la
+                    // ventana cubre el código de una copia cifrada mientras se escribe.
+                    CompositionLocalProvider(
+                        LocalDeviceAuthenticator provides authenticator,
+                        LocalWindowProtection provides protection,
+                    ) {
                         RescueRoute(reason)
                     }
                 } else if (appearance == null) {

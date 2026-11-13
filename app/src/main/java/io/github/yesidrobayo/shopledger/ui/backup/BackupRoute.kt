@@ -280,6 +280,7 @@ fun BackupRoute(navigator: AppNavigator) {
                         is BackupAction.ConfirmCopy,
                         is BackupAction.FilePicked,
                         is BackupAction.Answer,
+                        is BackupAction.RestoreCode,
                         BackupAction.CancelRestore,
                         BackupAction.CloseRestore,
                         BackupAction.OpenMeteredPolicy,

@@ -14,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopyList
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeRequest
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -28,8 +29,8 @@ import org.junit.runner.RunWith
 /**
  * Capturas de la restauración en la pantalla del respaldo, para la puerta de calidad visual: la hoja
  * de una copia, la confirmación de una copia y de un archivo, el progreso, la pregunta de copia
- * vacía, el archivo que no abre y `Buscar un archivo` sin destino. Datos inventados. Solo corre con
- * `captureDir`.
+ * vacía, el archivo que no abre, `Buscar un archivo` sin destino y la hoja `Copia cifrada`, que pide
+ * el código. Datos inventados. Solo corre con `captureDir`.
  */
 @RunWith(AndroidJUnit4::class)
 class BackupRestoreGalleryTest {
@@ -57,6 +58,24 @@ class BackupRestoreGalleryTest {
                 restore = RestoreUi.Stopped(RestoreNotice.TRY_ANOTHER_FILE, RestoreOrigin.FILE),
             ),
             "none" to previewBackupState(previewOverview(BackupStatus.NOT_CONNECTED, kind = null)),
+            "code" to upToDate.copy(
+                restore = RestoreUi.AskCode(
+                    RestoreOrigin.LIST,
+                    CodeRetry.Copy(copy.key),
+                    RecoveryCodeRequest.NEEDED,
+                    typed = listOf("0123", "4567", "89", "", "", "", ""),
+                    replacesCurrent = true,
+                ),
+            ),
+            "code-other" to upToDate.copy(
+                restore = RestoreUi.AskCode(
+                    RestoreOrigin.FILE,
+                    CodeRetry.File("content://example/a"),
+                    RecoveryCodeRequest.OTHER_CODE,
+                    typed = listOf("0123", "4567", "89AB", "CDEF", "GHJK", "MNPQ", "RSYQ"),
+                    noCodeHelp = true,
+                ),
+            ),
         )
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             for (dark in listOf(false, true)) {

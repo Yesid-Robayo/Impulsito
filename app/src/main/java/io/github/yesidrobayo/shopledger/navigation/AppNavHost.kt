@@ -37,7 +37,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.safety.PolicyConsentUseCa
 import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
 import io.github.yesidrobayo.shopledger.ui.category.CategoriesRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
+import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
+import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.destination.DestinationChoiceRoute
 import io.github.yesidrobayo.shopledger.ui.destination.SlotSetupRoute
@@ -134,6 +136,13 @@ fun AppNavHost(
                 scope = messageScope,
             )
         }
+    // Tras restaurar una copia cifrada, su código quedó guardado aquí: se dice una sola vez.
+    val codeSaved = stringResource(R.string.recovery_restore_saved)
+    LaunchedEffect(Unit) {
+        if (container.data.takeRestoredCodeSaved()) {
+            messages.show(AppSnackbarVisuals(codeSaved, SnackbarVariant.SUCCESS))
+        }
+    }
     // Cada apertura vuelve a mirar si cambió lo aceptado, hasta que la persona acepte.
     LifecycleStartEffect(policy) {
         policy.checkOnOpen()

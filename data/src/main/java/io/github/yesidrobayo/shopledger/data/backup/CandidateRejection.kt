@@ -15,10 +15,10 @@ internal enum class CandidateRejection {
     UNKNOWN_FORMAT,
 
     /**
-     * Una copia cifrada. Esta versión todavía no abre copias cifradas: no se dice que esté dañada,
-     * porque no lo está.
+     * Una copia cifrada de un formato más nuevo que esta app: hay que actualizar. No se dice que esté
+     * dañada, porque no lo está.
      */
-    ENCRYPTED_FORMAT,
+    FORMAT_TOO_NEW,
 
     /**
      * Descomprimida pasaría del tope de la restauración. Una copia legítima nunca llega ahí: al

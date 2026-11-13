@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.data.backup
 
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCode
 import io.github.yesidrobayo.shopledger.data.destination.DestinationFailure
 import io.github.yesidrobayo.shopledger.data.destination.ListedCopy
 import java.io.InputStream
@@ -9,8 +10,11 @@ internal sealed interface RestoreSource {
     /**
      * Una copia del destino conectado, tal como se listó. Sus metadatos son entrada no confiable:
      * se validan antes de usar la suma, el tamaño o la identidad que dicen.
+     *
+     * @property code el código de recuperación que escribió la persona, si la copia lo pidió. Solo
+     *   vive en memoria: su forma de texto no lo muestra.
      */
-    class Listed(val copy: ListedCopy) : RestoreSource {
+    class Listed(val copy: ListedCopy, val code: RecoveryCode? = null) : RestoreSource {
         override fun toString(): String = "Listed(${copy.ref})"
     }
 
@@ -21,9 +25,13 @@ internal sealed interface RestoreSource {
      * @property declaredSizeBytes el tamaño que dice el proveedor, si lo dice. Solo estima el
      *   espacio: el límite real lo ponen la copia y la descompresión.
      * @property open abre el archivo para leerlo una vez, de principio a fin.
+     * @property code el código de recuperación que escribió la persona, si el archivo lo pidió.
      */
-    class PickedFile(val declaredSizeBytes: Long?, val open: suspend () -> InputStream) :
-        RestoreSource {
+    class PickedFile(
+        val declaredSizeBytes: Long?,
+        val code: RecoveryCode? = null,
+        val open: suspend () -> InputStream,
+    ) : RestoreSource {
         override fun toString(): String = "PickedFile"
     }
 
@@ -86,6 +94,15 @@ internal sealed interface RestoreStage {
      * reemplazo. [warnings] es cuántos avisos tuvo la copia, que se cuentan y se conservan.
      */
     data class ReadyToRestart(val warnings: Int) : RestoreStage
+
+    /**
+     * La copia está cifrada y no hay clave para su `key_id`: ni la de este teléfono ni la del código
+     * escrito. [otherCode] dice si se escribió un código, de otras copias. Se detuvo antes de
+     * descargar si los metadatos lo decían, y nada quedó escrito: con el código, se empieza de nuevo.
+     * [replacesCurrent] dice si al terminar ese código reemplazaría al guardado en este teléfono.
+     */
+    data class NeedsRecoveryCode(val otherCode: Boolean, val replacesCurrent: Boolean = false) :
+        RestoreStage
 }
 
 /** Lo que la persona decide cuando la preparación lo pide. */

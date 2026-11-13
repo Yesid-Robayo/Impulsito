@@ -400,6 +400,9 @@ class BackupHarness internal constructor(
         }
 
         is RestoreStage.ReadyToRestart -> HarnessRestore.ReadyToRestart(warnings)
+
+        is RestoreStage.NeedsRecoveryCode ->
+            HarnessRestore.Stopped(if (otherCode) "OTHER_CODE" else "NEEDS_CODE")
     }
 
     private fun refusalCode(reason: RestoreRefusal): String = when (reason) {

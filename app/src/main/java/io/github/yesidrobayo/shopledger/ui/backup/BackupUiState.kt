@@ -232,6 +232,9 @@ sealed interface BackupAction {
     /** Cierra la hoja, el diálogo o el aviso de la restauración. */
     data object CloseRestore : BackupAction
 
+    /** Lo que la persona hace en la hoja `Copia cifrada`: escribir, abrir o no tener el código. */
+    data class RestoreCode(val event: RestoreCodeEvent) : BackupAction
+
     /** `Copias con datos móviles`: abre la hoja con las tres opciones. */
     data object OpenMeteredPolicy : BackupAction
 

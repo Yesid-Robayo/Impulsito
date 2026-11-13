@@ -37,7 +37,7 @@ internal class SnapshotValidation(private val validator: CandidateValidator) {
                     // rescate manual, igual que un hallazgo fatal en sus datos.
                     CandidateRejection.CHECKSUM_MISMATCH,
                     CandidateRejection.UNKNOWN_FORMAT,
-                    CandidateRejection.ENCRYPTED_FORMAT,
+                    CandidateRejection.FORMAT_TOO_NEW,
                     CandidateRejection.DECOMPRESSED_TOO_LARGE,
                     CandidateRejection.WAL_DATABASE,
                     CandidateRejection.UNKNOWN_SCHEMA_VERSION,

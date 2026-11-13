@@ -1,5 +1,10 @@
 package io.github.yesidrobayo.shopledger.data.backup
 
+import io.github.yesidrobayo.shopledger.data.crypto.BackupHeader
+import io.github.yesidrobayo.shopledger.data.crypto.BackupKey
+import io.github.yesidrobayo.shopledger.data.crypto.EncryptedCopy
+import io.github.yesidrobayo.shopledger.data.crypto.EncryptedReadResult
+import io.github.yesidrobayo.shopledger.data.crypto.HeaderReadResult
 import io.github.yesidrobayo.shopledger.data.destination.newSha256
 import io.github.yesidrobayo.shopledger.data.destination.toLowerHex
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
@@ -30,6 +35,10 @@ import kotlinx.coroutines.withContext
  * - **Con tope.** La descompresión es en flujo y cuenta lo que escribe: se corta al pasar
  *   [maxDecompressedBytes], aunque el pie del gzip diga otra cosa. El disco nunca guarda más que el
  *   tope y un búfer. Un archivo con varios miembros gzip cuenta todos.
+ * - **Una copia cifrada**, el `.slbk`, sigue el orden de la restauración: cabecera contra la lista
+ *   cerrada antes de usar ninguna clave, `key_id` de la cabecera autenticada, descifrado autenticado
+ *   en flujo y descompresión de un solo miembro gzip con el tope. Sin una clave de ese `key_id` no
+ *   descifra nada, y dice cuál pide.
  * - **Nada a medias.** Si algo falla o se cancela, la salida se borra antes de devolver.
  *
  * No registra nada: quien la llama decide qué hacer con el resultado.
@@ -46,15 +55,22 @@ internal class CandidateUnpacker(
      * de la app. Si [target] ya existe, es un resto de una ejecución cortada y se borra antes.
      *
      * @param expectedSha256 la suma esperada, en hexadecimal en minúscula, o `null` si no la hay.
+     * @param keys las claves con que se puede abrir una copia cifrada: la de este teléfono y la del
+     *   código escrito, si las hay. Solo se usa la del `key_id` de la cabecera.
      */
-    suspend fun unpack(source: File, target: File, expectedSha256: String?): UnpackResult {
+    suspend fun unpack(
+        source: File,
+        target: File,
+        expectedSha256: String?,
+        keys: List<BackupKey> = emptyList(),
+    ): UnpackResult {
         require(target.isAbsolute) { "La ruta del candidato debe ser absoluta" }
         var unpacked = false
         try {
             val result = withContext(ioContext) {
                 val checkActive = { coroutineContext.ensureActive() }
                 try {
-                    unpackChecked(source, target, expectedSha256, checkActive)
+                    unpackChecked(source, target, expectedSha256, keys, checkActive)
                 } catch (cancellation: CancellationException) {
                     throw cancellation
                 } catch (failure: IOException) {
@@ -72,6 +88,7 @@ internal class CandidateUnpacker(
         source: File,
         target: File,
         expectedSha256: String?,
+        keys: List<BackupKey>,
         checkActive: () -> Unit,
     ): UnpackResult {
         target.delete()
@@ -82,8 +99,75 @@ internal class CandidateUnpacker(
         val format = FileInputStream(source).use(::formatOf)
             ?: return UnpackResult.Rejected(CandidateRejection.UNKNOWN_FORMAT)
         return when (format) {
-            CopyFormat.ENCRYPTED -> UnpackResult.Rejected(CandidateRejection.ENCRYPTED_FORMAT)
+            CopyFormat.ENCRYPTED -> decrypt(source, target, sha256, keys, checkActive)
             CopyFormat.GZIP -> decompress(source, target, sha256, checkActive)
+        }
+    }
+
+    /**
+     * Descifra y descomprime una copia cifrada en [target]. La cabecera se revisa primero, sin
+     * clave: un valor fuera de la lista, un formato más nuevo o un tamaño que no se acepta se
+     * rechazan sin tocar ninguna.
+     */
+    private fun decrypt(
+        source: File,
+        target: File,
+        sha256: String,
+        keys: List<BackupKey>,
+        checkActive: () -> Unit,
+    ): UnpackResult {
+        val header =
+            when (val read = FileInputStream(source).use { BackupHeader.read(it) }) {
+                is HeaderReadResult.Valid -> read.header
+
+                is HeaderReadResult.NewerFormat ->
+                    return UnpackResult.Rejected(CandidateRejection.FORMAT_TOO_NEW)
+
+                is HeaderReadResult.Rejected, HeaderReadResult.Truncated ->
+                    return UnpackResult.Rejected(CandidateRejection.DAMAGED_ARCHIVE)
+
+                // Los primeros bytes ya dijeron que es cifrada: esto no debería pasar.
+                HeaderReadResult.PlainFormat, HeaderReadResult.NotEncryptedCopy ->
+                    return UnpackResult.Rejected(CandidateRejection.UNKNOWN_FORMAT)
+            }
+        if (header.rawSize > maxDecompressedBytes) {
+            return UnpackResult.Rejected(CandidateRejection.DECOMPRESSED_TOO_LARGE)
+        }
+        val key = keys.firstOrNull { it.matches(header.keyId) }
+            ?: return UnpackResult.NeedsKey(header.keyId.toLowerHex())
+        val directory = requireNotNull(target.parentFile) { "El candidato necesita una carpeta" }
+        directory.mkdirs()
+        val read =
+            FileInputStream(source).use { input ->
+                FileOutputStream(target).use { output ->
+                    EncryptedCopy.read(input, key, output, maxDecompressedBytes, checkActive)
+                        .also { if (it is EncryptedReadResult.Read) output.fd.sync() }
+                }
+            }
+        return when (read) {
+            is EncryptedReadResult.Read ->
+                UnpackResult.Unpacked(
+                    file = target,
+                    sourceSha256 = sha256,
+                    rawSizeBytes = read.content.size,
+                    keyIdHex = key.keyIdHex,
+                )
+
+            is EncryptedReadResult.NewerFormat ->
+                UnpackResult.Rejected(CandidateRejection.FORMAT_TOO_NEW)
+
+            EncryptedReadResult.TooLarge ->
+                UnpackResult.Rejected(CandidateRejection.DECOMPRESSED_TOO_LARGE)
+
+            // La cabecera ya pasó con esta clave: lo que queda es daño en el archivo.
+            is EncryptedReadResult.OtherKey,
+            is EncryptedReadResult.HeaderRejected,
+            EncryptedReadResult.Damaged,
+            EncryptedReadResult.SizeMismatch,
+            -> UnpackResult.Rejected(CandidateRejection.DAMAGED_ARCHIVE)
+
+            EncryptedReadResult.PlainFormat, EncryptedReadResult.NotEncryptedCopy ->
+                UnpackResult.Rejected(CandidateRejection.UNKNOWN_FORMAT)
         }
     }
 
@@ -179,10 +263,21 @@ internal class CandidateUnpacker(
 internal sealed interface UnpackResult {
     /**
      * La base quedó descomprimida en [file], con [rawSizeBytes] bytes. [sourceSha256] es la suma del
-     * archivo de origen, que decide después si la copia ya está en el destino.
+     * archivo de origen, que decide después si la copia ya está en el destino. [keyIdHex] es la clave
+     * con que se descifró, o `null` si era una copia en claro.
      */
-    data class Unpacked(val file: File, val sourceSha256: String, val rawSizeBytes: Long) :
-        UnpackResult
+    data class Unpacked(
+        val file: File,
+        val sourceSha256: String,
+        val rawSizeBytes: Long,
+        val keyIdHex: String? = null,
+    ) : UnpackResult
+
+    /**
+     * Es una copia cifrada y ninguna de las claves dadas es la de su `key_id`, [keyIdHex]. No se
+     * descifró ni se escribió nada.
+     */
+    data class NeedsKey(val keyIdHex: String) : UnpackResult
 
     /** El archivo no sirve como copia. No quedó nada escrito. */
     data class Rejected(val reason: CandidateRejection) : UnpackResult

@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.data.backup.BackupWorkQueue
 import io.github.yesidrobayo.shopledger.data.backup.CandidateUnpacker
 import io.github.yesidrobayo.shopledger.data.backup.CandidateValidator
 import io.github.yesidrobayo.shopledger.data.backup.ConflictResolver
+import io.github.yesidrobayo.shopledger.data.backup.CustodyRestoreKeys
 import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
 import io.github.yesidrobayo.shopledger.data.backup.DamagedGenerationStore
 import io.github.yesidrobayo.shopledger.data.backup.DataHealthReader
@@ -653,6 +654,14 @@ class DataGraph internal constructor(
      */
     val opening: StateFlow<OpeningStep> = openingStep.asStateFlow()
 
+    @Volatile private var restoredCodeSaved = false
+
+    /**
+     * Si la restauración que terminó al abrir dejó guardado en este teléfono el código de la copia
+     * cifrada, para decirlo una vez. Devuelve `true` una sola vez por proceso.
+     */
+    fun takeRestoredCodeSaved(): Boolean = restoredCodeSaved.also { restoredCodeSaved = false }
+
     /** La última sonda de la cabeza, en `no_backup/last-probe`. Pedirla toca el disco. */
     private suspend fun lastProbeStore(): LastProbeStore = withContext(ioContext) {
         LastProbeStore(File(files().noBackupDirectory, LastProbeStore.FILE_NAME), ioContext)
@@ -707,6 +716,7 @@ class DataGraph internal constructor(
             log = log,
             ioContext = ioContext,
             migrator = RoomCandidateMigrator(context, ioContext, clock),
+            localKey = { CustodyRestoreKeys(recoveryCustody).local() },
         )
     }
 
@@ -784,6 +794,7 @@ class DataGraph internal constructor(
                 destinations = destinations,
                 backupMutex = backupMutex,
                 scheduledWork = scheduledBackupWork,
+                keys = CustodyRestoreKeys(recoveryCustody),
             )
         }.also { restoreCoordinator = it }
     }
@@ -1152,6 +1163,7 @@ class DataGraph internal constructor(
                     )
                 if (pendingRestore.takeEncryptionChanged()) {
                     recordEncryptionChanged(ports, clock, log)
+                    restoredCodeSaved = true
                 }
                 val opened = DataAccess.Ready(ports)
                 ready = opened

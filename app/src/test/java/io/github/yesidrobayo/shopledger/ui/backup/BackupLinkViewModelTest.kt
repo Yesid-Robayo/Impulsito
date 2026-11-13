@@ -158,9 +158,11 @@ class BackupLinkViewModelTest {
     }
 
     private object NoRestore : BackupRestorePort {
-        override suspend fun restoreCopy(copyKey: String): RestoreProgress = error(NOT_HERE)
+        override suspend fun restoreCopy(copyKey: String, code: String?): RestoreProgress =
+            error(NOT_HERE)
 
-        override suspend fun restoreFile(uri: String): RestoreProgress = error(NOT_HERE)
+        override suspend fun restoreFile(uri: String, code: String?): RestoreProgress =
+            error(NOT_HERE)
 
         override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = null
 

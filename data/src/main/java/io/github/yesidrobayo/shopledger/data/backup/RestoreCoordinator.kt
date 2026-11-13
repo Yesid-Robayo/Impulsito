@@ -1,5 +1,7 @@
 package io.github.yesidrobayo.shopledger.data.backup
 
+import io.github.yesidrobayo.shopledger.data.crypto.BackupKey
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCode
 import io.github.yesidrobayo.shopledger.data.destination.BackupDestination
 import io.github.yesidrobayo.shopledger.data.destination.ConnectedDestination
 import io.github.yesidrobayo.shopledger.data.destination.CopyListing
@@ -78,16 +80,22 @@ internal fun interface CandidateMigrator {
  * 2. **Pausa.** Ninguna ejecución del respaldo corre hasta terminar o cancelar.
  * 3. **Espacio.** Tres veces la base de la copia y 50 MiB, o nueve veces el archivo si no se sabe
  *    cuánto ocupa descomprimido. Si no cabe, dice cuánto falta y no baja nada.
+ *    Con una copia cifrada, sus metadatos dicen su `key_id`: si no es el del código de este
+ *    teléfono ni el del código escrito, se detiene antes de bajar nada y pide el código.
  * 4. **Bajar.** A un nombre fijo, con el tope de tamaño. Un nombre que venga de afuera nunca es una
  *    ruta. Al deshacer, la copia de seguridad se aparta y se copia como candidata. Al volver a
  *    antes de la actualización, la copia previa se copia como candidata y queda en su sitio.
  * 5. a 11. **Revisar.** Suma, formato, descompresión con tope y el validador entero. Un hallazgo
- *    reparable, o una copia vacía sobre una base con datos, se detienen a preguntar.
+ *    reparable, o una copia vacía sobre una base con datos, se detienen a preguntar. Una copia
+ *    cifrada se descifra con la clave del `key_id` de su cabecera autenticada, que manda sobre los
+ *    metadatos; sin esa clave se detiene y pide el código.
  * 12. **Migrar** la candidata si es de un esquema anterior: una migración que falla nunca llega a la
  *     base activa.
  * 13. **Preparar.** Los valores desconocidos, los saldos si la persona confirmó, y el estado del
  *     respaldo con que arranca: el destino actual, su cabeza recién listada y si la copia ya está
- *     guardada allí.
+ *     guardada allí. Si la copia se abrió con el código escrito, ese código se sella aparte, en
+ *     `rk.pending`, y el arranque lo deja vigente solo si el reemplazo queda verificado. Si la
+ *     persona apagó el cifrado en este teléfono, no se sella: restaurar no lo vuelve a encender.
  * 14. **Copia de seguridad** de la base activa, para deshacer durante 30 días.
  * 15. **Diario** en `PREPARED`, solo si el cerrojo sigue siendo el de esta preparación.
  * 16. **Cerrar la base.** Falta reiniciar el proceso, y eso lo hace la app con su pantalla.
@@ -106,6 +114,7 @@ internal fun interface CandidateMigrator {
  * @param deviceSecure si el teléfono tiene bloqueo de pantalla.
  * @param freeSpace los bytes libres para la app en la carpeta dada.
  * @param appSchemaVersion la versión del esquema que compila la app.
+ * @param keys el código de recuperación de este teléfono, para las copias cifradas.
  */
 internal class RestoreCoordinator(
     private val files: RestoreFiles,
@@ -129,6 +138,7 @@ internal class RestoreCoordinator(
     private val ioContext: CoroutineContext,
     private val freeSpace: (File) -> Long = File::getUsableSpace,
     private val appSchemaVersion: Int = AppDatabase.SCHEMA_VERSION,
+    private val keys: RestoreKeys = RestoreKeys.None,
 ) {
     private val mutex = Mutex()
     private var session: Session? = null
@@ -192,6 +202,7 @@ internal class RestoreCoordinator(
             is RestoreStage.NotEnoughSpace,
             is RestoreStage.Refused,
             is RestoreStage.Failed,
+            is RestoreStage.NeedsRecoveryCode,
             -> {
                 session?.let { withContext(NonCancellable) { abandon(it) } }
                 logStop(stage)
@@ -216,6 +227,8 @@ internal class RestoreCoordinator(
             meta?.let { ExpectedCopy(it.deviceId, it.generation, it.schemaVersion.toInt()) }
         // Paso 3.
         spaceShortage(source, meta)?.let { return it }
+        // Paso 3a: con otro código, ni se descarga.
+        missingKey(current, meta)?.let { return it }
         // Pasos 4 a 6.
         fetch(current, meta)?.let { return it }
         current.activeDatabase = active()
@@ -293,6 +306,27 @@ internal class RestoreCoordinator(
         return if (free < required) RestoreStage.NotEnoughSpace(required - free) else null
     }
 
+    /**
+     * El paso 3a: si los metadatos dicen que la copia está cifrada con un `key_id` que no es el del
+     * código de este teléfono ni el del escrito, se detiene antes de descargar. Sin metadatos, lo
+     * dice la cabecera después de bajar.
+     */
+    private suspend fun missingKey(current: Session, meta: SlMeta?): RestoreStage? {
+        val keyId = meta?.keyId ?: return null
+        if (current.typedKey?.keyIdHex == keyId) return null
+        if (keys.local()?.keyIdHex == keyId) return null
+        return needsCode(current)
+    }
+
+    /**
+     * Pide el código. Si este teléfono ya guarda otro y la persona no apagó aquí el cifrado, el
+     * código de la copia lo reemplazará al terminar: la hoja lo avisa antes de seguir.
+     */
+    private suspend fun needsCode(current: Session): RestoreStage = RestoreStage.NeedsRecoveryCode(
+        otherCode = current.typedKey != null,
+        replacesCurrent = keys.savedHere() && !keys.turnedOffHere(),
+    )
+
     /** La copia previa a la última actualización. Pedirla no toca el disco. */
     private fun beforeUpdateCopy(): File = files.databaseFiles.preMigrationCandidate
 
@@ -331,13 +365,18 @@ internal class RestoreCoordinator(
 
             is RestoreSource.PickedFile -> copyPicked(source)?.let { return it }
         }
-        val unpacked = unpacker.unpack(files.incoming, files.candidate, meta?.sha256)
+        val keyring = listOfNotNull(current.typedKey, keys.local())
+        val unpacked = unpacker.unpack(files.incoming, files.candidate, meta?.sha256, keyring)
         withContext(ioContext) { ops.delete(files.incoming) }
         return when (unpacked) {
             is UnpackResult.Unpacked -> {
                 current.sourceSha256 = unpacked.sourceSha256
+                current.decryptedWith = unpacked.keyIdHex
                 null
             }
+
+            // La cabecera autenticada manda sobre los metadatos: pide el código de esa clave.
+            is UnpackResult.NeedsKey -> needsCode(current)
 
             is UnpackResult.Rejected ->
                 RestoreStage.Refused(RestoreRefusal.Candidate(unpacked.reason))
@@ -511,7 +550,26 @@ internal class RestoreCoordinator(
 
                 is PreparationResult.Failed -> return RestoreStage.Failed(prepared.cause)
             }
+        sealTypedCode(current)?.let { return it }
         return saveSafetyCopy(current)
+    }
+
+    /**
+     * El resto del paso 13 con una copia cifrada que abrió el código escrito: lo sella en
+     * `rk.pending`, que el arranque deja vigente solo si el reemplazo queda verificado. No sella
+     * nada si la copia abrió con el código de este teléfono, o si la persona apagó aquí el cifrado:
+     * restaurar no lo vuelve a encender. Si no se puede sellar, se detiene: sin el código guardado,
+     * la copia siguiente no saldría cifrada.
+     */
+    private suspend fun sealTypedCode(current: Session): RestoreStage? {
+        val typed = current.typedCode ?: return null
+        val used = current.decryptedWith ?: return null
+        if (current.pendingSealed || used != current.typedKey?.keyIdHex) return null
+        if (keys.local()?.keyIdHex == used) return null
+        if (keys.turnedOffHere()) return null
+        if (!keys.sealPending(typed)) return RestoreStage.Failed(PendingCodeNotSealed())
+        current.pendingSealed = true
+        return null
     }
 
     /** Pasos 14 a 16. */
@@ -677,6 +735,8 @@ internal class RestoreCoordinator(
                     LogField.count("faltan_bytes", stage.missingBytes),
                 )
 
+            is RestoreStage.NeedsRecoveryCode -> log.info(DataEvent.RESTORE_NEEDS_CODE)
+
             is RestoreStage.Failed -> {
                 val cause = stage.cause
                 if (cause == null) {
@@ -717,6 +777,20 @@ internal class RestoreCoordinator(
 
     /** Una preparación en curso, con lo que ya se sabe y lo que la persona ya decidió. */
     private class Session(val source: RestoreSource, val lockTakenAt: Long) {
+        /** El código que escribió la persona, si la copia lo pidió. */
+        val typedCode: RecoveryCode? =
+            when (source) {
+                is RestoreSource.Listed -> source.code
+                is RestoreSource.PickedFile -> source.code
+                is RestoreSource.Undo, RestoreSource.BeforeUpdate -> null
+            }
+        val typedKey: BackupKey? = typedCode?.let(BackupKey::from)
+
+        /** La clave con que se descifró la copia, o `null` si venía en claro. */
+        var decryptedWith: String? = null
+
+        /** Si el código escrito ya quedó en `rk.pending`. */
+        var pendingSealed = false
         var paused = false
         var undoPrepared = false
         var expected: ExpectedCopy? = null
@@ -760,6 +834,9 @@ internal class RestoreCoordinator(
     )
 
     private class KnownListedCopy(val ref: String, val meta: SlMeta)
+
+    /** El código de la copia no se pudo sellar en este teléfono. Solo su clase va al registro. */
+    private class PendingCodeNotSealed : IOException()
 
     private companion object {
         /** Tres veces la base: la candidata, la copia de seguridad y lo que migre o se repare. */

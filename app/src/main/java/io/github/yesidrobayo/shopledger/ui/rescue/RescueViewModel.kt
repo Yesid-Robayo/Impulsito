@@ -132,6 +132,8 @@ class RescueViewModel(
 
             BackupAction.CancelRestore -> restoring.cancel()
 
+            is BackupAction.RestoreCode -> restoring.code(action.event)
+
             BackupAction.CloseRestore -> restoring.close()
 
             BackupAction.RetryCopies -> list()

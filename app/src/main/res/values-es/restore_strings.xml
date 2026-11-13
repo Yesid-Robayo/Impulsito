@@ -46,4 +46,5 @@
     <string name="dialog_discard_safety_title">¿Qué copia de seguridad descartar?</string>
     <string name="dialog_discard_safety_body">Las dos copias de seguridad de este teléfono tienen cambios que no llegaron a la nube. Para seguir, hay que descartar una de ellas.</string>
     <string name="dialog_discard_safety_option">Descartar la del %1$s</string>
+    <string name="dialog_restore_other_code_notice">Esta copia usa otro código. Al terminar, ese código reemplaza al actual en este teléfono. Las copias con el código actual siguen necesitándolo.</string>
 </resources>

@@ -10,11 +10,13 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
  * detiene la restauración hasta que la persona conteste o cancele.
  */
 class RestoreBackupUseCase(private val port: BackupRestorePort) {
-    /** Empieza con una copia de la lista. */
-    suspend fun copy(copyKey: String): RestoreProgress = port.restoreCopy(copyKey)
+    /** Empieza con una copia de la lista, con el código escrito si la copia lo pidió. */
+    suspend fun copy(copyKey: String, code: String? = null): RestoreProgress =
+        port.restoreCopy(copyKey, code)
 
-    /** Empieza con un archivo elegido con el selector. */
-    suspend fun file(uri: String): RestoreProgress = port.restoreFile(uri)
+    /** Empieza con un archivo elegido con el selector, con el código escrito si lo pidió. */
+    suspend fun file(uri: String, code: String? = null): RestoreProgress =
+        port.restoreFile(uri, code)
 
     /** La copia previa a la última actualización, o nula si no hay. */
     suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = port.beforeUpdateCopy()
@@ -42,6 +44,8 @@ class RestoreBackupUseCase(private val port: BackupRestorePort) {
             is RestoreProgress.Refused,
             RestoreProgress.Failed,
             is RestoreProgress.ReadyToRestart,
+            // El código no se contesta: con él, la restauración empieza de nuevo.
+            is RestoreProgress.AskRecoveryCode,
             -> false
         }
     }

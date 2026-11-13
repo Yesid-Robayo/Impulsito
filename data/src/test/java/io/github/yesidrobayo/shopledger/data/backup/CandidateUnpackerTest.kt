@@ -1,10 +1,15 @@
 package io.github.yesidrobayo.shopledger.data.backup
 
+import io.github.yesidrobayo.shopledger.data.crypto.BackupHeader
+import io.github.yesidrobayo.shopledger.data.crypto.BackupKey
+import io.github.yesidrobayo.shopledger.data.crypto.EncryptedCopy
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCode
 import io.github.yesidrobayo.shopledger.data.destination.newSha256
 import io.github.yesidrobayo.shopledger.data.destination.toLowerHex
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.UUID
 import java.util.zip.GZIPOutputStream
 import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
@@ -129,10 +134,11 @@ class CandidateUnpackerTest {
 
     @Test
     fun `the format comes from the first bytes`() = runBlocking {
+        // Empieza como una copia cifrada pero no lo es: se rechaza sin pedir ninguna clave.
         val encrypted = byteArrayOf(0x53, 0x4C, 0x42, 0x4B) + content
-        assertEquals(
-            UnpackResult.Rejected(CandidateRejection.ENCRYPTED_FORMAT),
-            unpacker().unpack(file("copy.db.gz", encrypted), target, expectedSha256 = null),
+        assertTrue(
+            unpacker().unpack(file("copy.db.gz", encrypted), target, expectedSha256 = null) is
+                UnpackResult.Rejected,
         )
         // Una base sin comprimir con nombre de copia no se toma por copia.
         val plain = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII) + content
@@ -146,6 +152,71 @@ class CandidateUnpackerTest {
                 unpacker().unpack(file("short", short), target, expectedSha256 = null),
             )
         }
+        assertFalse(target.exists())
+    }
+
+    @Test
+    fun `an encrypted copy opens with the key of its header and says which key it was`() =
+        runBlocking {
+            val packed = encrypt(content)
+            val source = file("incoming.slbk", packed)
+
+            val result = unpacker().unpack(source, target, sha256(packed), listOf(other, key))
+
+            assertEquals(
+                UnpackResult.Unpacked(target, sha256(packed), content.size.toLong(), key.keyIdHex),
+                result,
+            )
+            assertArrayEquals(content, target.readBytes())
+        }
+
+    @Test
+    fun `without the key of its header an encrypted copy decrypts nothing`() = runBlocking {
+        val source = file("incoming.slbk", encrypt(content))
+
+        assertEquals(
+            UnpackResult.NeedsKey(key.keyIdHex),
+            unpacker().unpack(source, target, expectedSha256 = null),
+        )
+        assertEquals(
+            UnpackResult.NeedsKey(key.keyIdHex),
+            unpacker().unpack(source, target, expectedSha256 = null, keys = listOf(other)),
+        )
+        assertFalse(target.exists())
+    }
+
+    @Test
+    fun `a damaged encrypted copy is refused and leaves nothing`() = runBlocking {
+        val packed = encrypt(content)
+        packed[packed.size - 20] = (packed[packed.size - 20] + 1).toByte()
+
+        val result =
+            unpacker().unpack(file("picked", packed), target, expectedSha256 = null, listOf(key))
+
+        assertEquals(UnpackResult.Rejected(CandidateRejection.DAMAGED_ARCHIVE), result)
+        assertFalse(target.exists())
+    }
+
+    @Test
+    fun `the header is checked before any key`() = runBlocking {
+        val packed = encrypt(content)
+        // Un formato más nuevo pide actualizar, nunca dice copia dañada, y no necesita clave.
+        val newer = packed.copyOf().also { it[9] = 3 }
+        assertEquals(
+            UnpackResult.Rejected(CandidateRejection.FORMAT_TOO_NEW),
+            unpacker().unpack(file("newer", newer), target, expectedSha256 = null),
+        )
+        // Una base más grande que el tope se rechaza por su cabecera, sin descifrar.
+        assertEquals(
+            UnpackResult.Rejected(CandidateRejection.DECOMPRESSED_TOO_LARGE),
+            unpacker(limit = content.size - 1L)
+                .unpack(file("large", packed), target, expectedSha256 = null),
+        )
+        // Cortada dentro de la cabecera: dañada.
+        assertEquals(
+            UnpackResult.Rejected(CandidateRejection.DAMAGED_ARCHIVE),
+            unpacker().unpack(file("cut", packed.copyOf(40)), target, expectedSha256 = null),
+        )
         assertFalse(target.exists())
     }
 
@@ -172,6 +243,17 @@ class CandidateUnpackerTest {
     @Test
     fun `the default limit is the restore limit`() {
         assertEquals(1024L * 1024 * 1024, BackupLimits.MAX_RESTORE_DECOMPRESSED_BYTES)
+    }
+
+    private val key = BackupKey.from(RecoveryCode("0123456789ABCDEFGHJKMNPQRS"))
+    private val other = BackupKey.from(RecoveryCode("SRQPNMKJHGFEDCBA9876543210"))
+
+    /** [bytes] como copia cifrada con [key], de la generación 1. */
+    private fun encrypt(bytes: ByteArray): ByteArray {
+        val header = BackupHeader(key.keyId, 1, 1, 1_000L, UUID(1, 2), bytes.size.toLong())
+        val out = ByteArrayOutputStream()
+        EncryptedCopy.write(bytes.inputStream(), out, header, key)
+        return out.toByteArray()
     }
 
     private fun unpacker(limit: Long = BackupLimits.MAX_RESTORE_DECOMPRESSED_BYTES) =

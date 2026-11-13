@@ -82,4 +82,11 @@
     <string name="recovery_missing_newer_body">Fewer backups are visible than before. This is only a notice: restoring still works.</string>
     <string name="recovery_no_anchor">This phone has no earlier reference to compare with.</string>
     <string name="recovery_plain_newer_warning">This unencrypted backup is newer than the last encrypted one. Confirm where it came from before restoring.</string>
+    <string name="recovery_restore_title">Encrypted backup</string>
+    <string name="recovery_restore_body">This backup is protected. Opening it needs the recovery code.</string>
+    <string name="recovery_restore_open_action">Open backup</string>
+    <string name="recovery_restore_saved">The code is saved on this phone for future backups</string>
+    <string name="recovery_restore_other_key">This backup uses another code. Nothing was downloaded or deleted.</string>
+    <string name="recovery_no_code_action">Without the code</string>
+    <string name="recovery_no_code_body">Without the code, nobody can open this backup. Look for the recovery kit or the paper where it was written.</string>
 </resources>

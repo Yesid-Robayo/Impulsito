@@ -76,12 +76,12 @@ class RescueViewModelTest {
         val started = mutableListOf<String>()
         var next: RestoreProgress = RestoreProgress.ReadyToRestart(0)
 
-        override suspend fun restoreCopy(copyKey: String): RestoreProgress {
+        override suspend fun restoreCopy(copyKey: String, code: String?): RestoreProgress {
             started += "copy:$copyKey"
             return next
         }
 
-        override suspend fun restoreFile(uri: String): RestoreProgress {
+        override suspend fun restoreFile(uri: String, code: String?): RestoreProgress {
             started += "file:$uri"
             return next
         }

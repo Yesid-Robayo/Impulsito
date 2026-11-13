@@ -57,9 +57,20 @@ internal class RecoveryKeyStore(
     /**
      * Sella [code] en `rk.sealed`, en lugar del sobre anterior si había uno. Un fallo deja el
      * sobre anterior intacto y abriendo con su clave.
+     *
+     * Con un `rk.pending` de una restauración en curso no sella nada: solo hay dos alias, y el sobre
+     * nuevo le cambiaría la clave al pendiente. El arranque lo promueve o lo borra, y después se
+     * puede volver a intentar.
      */
     suspend fun seal(code: RecoveryCode): RecoveryKeySave = mutex.withLock {
-        withContext(ioContext) { sealInto(sealedFile(), code, deletePrevious = true) }
+        withContext(ioContext) {
+            val pending = pendingFile()
+            if (pending.exists() || DurableFile.temporaryOf(pending).exists()) {
+                RecoveryKeySave.Failed(RESTORE_PENDING)
+            } else {
+                sealInto(sealedFile(), code, deletePrevious = true)
+            }
+        }
     }
 
     /** Abre `rk.sealed`. Nunca crea, borra ni reescribe nada. */
@@ -226,6 +237,9 @@ internal class RecoveryKeyStore(
         const val PENDING_FILE = "rk.pending"
         const val KEY_ALIAS_A = "recovery-code-a"
         const val KEY_ALIAS_B = "recovery-code-b"
+
+        /** La causa de un sello rechazado porque una restauración espera con su código. */
+        const val RESTORE_PENDING = "RestorePending"
     }
 }
 

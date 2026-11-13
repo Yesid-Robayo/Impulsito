@@ -10,11 +10,17 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
  * tocar nada, y los datos solo se reemplazan al reiniciar la app.
  */
 interface BackupRestorePort {
-    /** Empieza con la copia de la lista cuya clave es [copyKey]. */
-    suspend fun restoreCopy(copyKey: String): RestoreProgress
+    /**
+     * Empieza con la copia de la lista cuya clave es [copyKey]. [code] es el código de recuperación
+     * que escribió la persona, si la copia lo pidió: solo vive en memoria, y nunca se guarda tal cual.
+     */
+    suspend fun restoreCopy(copyKey: String, code: String? = null): RestoreProgress
 
-    /** Empieza con el archivo [uri] que se eligió con el selector, sin suma esperada. */
-    suspend fun restoreFile(uri: String): RestoreProgress
+    /**
+     * Empieza con el archivo [uri] que se eligió con el selector, sin suma esperada. [code] es el
+     * código escrito, si el archivo lo pidió.
+     */
+    suspend fun restoreFile(uri: String, code: String? = null): RestoreProgress
 
     /**
      * La copia previa a la última actualización de los datos, o nula si no hay ninguna. Solo lee

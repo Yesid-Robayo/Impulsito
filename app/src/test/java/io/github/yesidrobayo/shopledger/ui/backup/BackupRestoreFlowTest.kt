@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeRequest
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
@@ -35,6 +36,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.DayOfWeek
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -86,17 +88,21 @@ class BackupRestoreFlowTest {
         var next: RestoreProgress = RestoreProgress.ReadyToRestart(0)
         var afterAnswer: RestoreProgress = RestoreProgress.ReadyToRestart(0)
         var gate: CompletableDeferred<Unit>? = null
+        val codes = mutableListOf<String?>()
+        val queue = ArrayDeque<RestoreProgress>()
 
-        override suspend fun restoreCopy(copyKey: String): RestoreProgress {
+        override suspend fun restoreCopy(copyKey: String, code: String?): RestoreProgress {
             started += "copy:$copyKey"
+            codes += code
             gate?.await()
-            return next
+            return queue.removeFirstOrNull() ?: next
         }
 
-        override suspend fun restoreFile(uri: String): RestoreProgress {
+        override suspend fun restoreFile(uri: String, code: String?): RestoreProgress {
             started += "file:$uri"
+            codes += code
             gate?.await()
-            return next
+            return queue.removeFirstOrNull() ?: next
         }
 
         override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = null
@@ -165,6 +171,101 @@ class BackupRestoreFlowTest {
         assertEquals(listOf("copy:copia-1"), restore.started)
         assertEquals(RestoreUi.Ready, model.uiState.value.restore)
     }
+
+    @Test
+    fun `an encrypted copy asks for its code, keeps what was typed and starts again with it`() =
+        runTest(dispatcher) {
+            restore.queue +=
+                listOf(
+                    RestoreProgress.AskRecoveryCode(
+                        RecoveryCodeRequest.NEEDED,
+                        replacesCurrent = true,
+                    ),
+                    RestoreProgress.AskRecoveryCode(RecoveryCodeRequest.OTHER_CODE),
+                    RestoreProgress.ReadyToRestart(0),
+                )
+            val model = viewModel()
+            model.onAction(BackupAction.ConfirmCopy(copy.key))
+            model.onAction(BackupAction.StartRestore)
+            advanceUntilIdle()
+            val asking = model.uiState.value.restore as RestoreUi.AskCode
+            assertEquals(RecoveryCodeRequest.NEEDED, asking.request)
+            assertEquals(RestoreUi.AskCode.EMPTY, asking.typed)
+            assertTrue("Avisa que reemplaza el código de este teléfono", asking.replacesCurrent)
+
+            model.onAction(BackupAction.RestoreCode(RestoreCodeEvent.Typed(OTHER_GROUPS)))
+            model.onAction(BackupAction.RestoreCode(RestoreCodeEvent.Open))
+            advanceUntilIdle()
+
+            // Otro código: lo escrito sigue ahí, sin límite de intentos.
+            val other = model.uiState.value.restore as RestoreUi.AskCode
+            assertEquals(RecoveryCodeRequest.OTHER_CODE, other.request)
+            assertEquals(OTHER_GROUPS, other.typed)
+            assertFalse("$other", "$other".contains("WXYZ"))
+            model.onAction(BackupAction.RestoreCode(RestoreCodeEvent.Typed(GROUPS)))
+            assertEquals(
+                RecoveryCodeRequest.NEEDED,
+                (model.uiState.value.restore as RestoreUi.AskCode).request,
+            )
+            model.onAction(BackupAction.RestoreCode(RestoreCodeEvent.Open))
+            advanceUntilIdle()
+
+            assertEquals(List(3) { "copy:copia-1" }, restore.started)
+            assertEquals(
+                listOf(null, OTHER_GROUPS.joinToString(""), GROUPS.joinToString("")),
+                restore.codes,
+            )
+            assertEquals(RestoreUi.Ready, model.uiState.value.restore)
+            assertEquals(0, restore.cancels)
+        }
+
+    @Test
+    fun `a picked encrypted file starts again with the code, and leaving asks nothing`() =
+        runTest(dispatcher) {
+            restore.next = RestoreProgress.AskRecoveryCode(RecoveryCodeRequest.NEEDED)
+            val model = viewModel()
+            model.onAction(BackupAction.FilePicked("content://example/copy"))
+            model.onAction(BackupAction.StartRestore)
+            advanceUntilIdle()
+
+            model.onAction(BackupAction.RestoreCode(RestoreCodeEvent.WithoutCode))
+            assertTrue((model.uiState.value.restore as RestoreUi.AskCode).noCodeHelp)
+            model.onAction(BackupAction.RestoreCode(RestoreCodeEvent.Typed(GROUPS)))
+            model.onAction(BackupAction.RestoreCode(RestoreCodeEvent.Open))
+            advanceUntilIdle()
+            assertEquals(List(2) { "file:content://example/copy" }, restore.started)
+            assertEquals(GROUPS.joinToString(""), restore.codes.last())
+
+            // La preparación ya se detuvo: cancelar no llama a nada y los datos siguen igual.
+            model.onAction(BackupAction.CancelRestore)
+            advanceUntilIdle()
+            assertEquals(0, restore.cancels)
+            assertEquals(
+                RestoreUi.Stopped(RestoreNotice.CANCELLED, RestoreOrigin.FILE),
+                model.uiState.value.restore,
+            )
+        }
+
+    @Test
+    fun `without internet a webdav copy does not start again with the code`() =
+        runTest(dispatcher) {
+            restore.next = RestoreProgress.AskRecoveryCode(RecoveryCodeRequest.NEEDED)
+            val model = viewModel()
+            model.onAction(BackupAction.ConfirmCopy(copy.key))
+            model.onAction(BackupAction.StartRestore)
+            advanceUntilIdle()
+            destination.network = false
+
+            model.onAction(BackupAction.RestoreCode(RestoreCodeEvent.Typed(GROUPS)))
+            model.onAction(BackupAction.RestoreCode(RestoreCodeEvent.Open))
+            advanceUntilIdle()
+
+            assertEquals(1, restore.started.size)
+            assertEquals(
+                RestoreUi.Stopped(RestoreNotice.NO_INTERNET, RestoreOrigin.LIST),
+                model.uiState.value.restore,
+            )
+        }
 
     @Test
     fun `a copy that cannot be restored has no sheet`() = runTest(dispatcher) {
@@ -271,7 +372,6 @@ class BackupRestoreFlowTest {
             RestoreProgress.Refused(RestoreProblem.MARKED_FATAL) to RestoreNotice.DAMAGED,
             RestoreProgress.Refused(RestoreProblem.NEWER_VERSION) to RestoreNotice.NEWER_VERSION,
             RestoreProgress.Refused(RestoreProblem.TOO_LARGE) to RestoreNotice.TOO_LARGE,
-            RestoreProgress.Refused(RestoreProblem.ENCRYPTED) to RestoreNotice.OTHER,
             RestoreProgress.Refused(RestoreProblem.NOT_AVAILABLE) to RestoreNotice.OTHER,
             RestoreProgress.NotEnoughSpace(5_000_000) to RestoreNotice.NO_SPACE,
             RestoreProgress.Failed to RestoreNotice.OTHER,
@@ -300,5 +400,11 @@ class BackupRestoreFlowTest {
             RestoreUi.Stopped(RestoreNotice.NO_SPACE, RestoreOrigin.FILE, 12_345_678),
             model.uiState.value.restore,
         )
+    }
+
+    private companion object {
+        /** Códigos inventados, en grupos de 4, como los deja el campo. */
+        val GROUPS = listOf("0123", "4567", "89AB", "CDEF", "GHJK", "MNPQ", "RS00")
+        val OTHER_GROUPS = listOf("WXYZ", "4567", "89AB", "CDEF", "GHJK", "MNPQ", "RS00")
     }
 }

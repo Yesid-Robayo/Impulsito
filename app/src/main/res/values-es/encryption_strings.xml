@@ -77,4 +77,11 @@
     <string name="recovery_missing_newer_body">Se ven menos copias que antes. Es solo un aviso: se puede restaurar igual.</string>
     <string name="recovery_no_anchor">En este teléfono no hay una referencia anterior para comparar.</string>
     <string name="recovery_plain_newer_warning">Esta copia sin cifrar es más nueva que la última copia cifrada. Conviene confirmar de dónde salió antes de restaurar.</string>
+    <string name="recovery_restore_title">Copia cifrada</string>
+    <string name="recovery_restore_body">Esta copia está protegida. Para abrirla se necesita el código de recuperación.</string>
+    <string name="recovery_restore_open_action">Abrir copia</string>
+    <string name="recovery_restore_saved">El código quedó guardado en este teléfono para las próximas copias</string>
+    <string name="recovery_restore_other_key">Esta copia usa otro código. No se descargó ni se borró nada.</string>
+    <string name="recovery_no_code_action">Sin el código</string>
+    <string name="recovery_no_code_body">Sin el código, nadie puede abrir esta copia. Conviene buscar el kit de recuperación o el papel donde se anotó.</string>
 </resources>

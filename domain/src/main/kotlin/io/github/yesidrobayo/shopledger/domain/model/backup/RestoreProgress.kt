@@ -36,6 +36,30 @@ sealed interface RestoreProgress {
 
     /** Todo listo: falta reiniciar la app, y el arranque reemplaza los datos. */
     data class ReadyToRestart(val warnings: Int) : RestoreProgress
+
+    /**
+     * La copia está cifrada y este teléfono no tiene su código: se pide escribirlo, por [request].
+     * No espera una respuesta: la restauración se detuvo sin descargar ni tocar nada, y empieza de
+     * nuevo con el código escrito. Un código errado nunca borra ni bloquea nada.
+     * [replacesCurrent] dice si, al terminar, ese código reemplazaría al guardado en este teléfono:
+     * las copias con el código actual lo siguen necesitando, y la persona lo sabe antes de seguir.
+     */
+    data class AskRecoveryCode(
+        val request: RecoveryCodeRequest,
+        val replacesCurrent: Boolean = false,
+    ) : RestoreProgress
+}
+
+/** Por qué la restauración pide el código de recuperación. */
+enum class RecoveryCodeRequest {
+    /** Este teléfono no tiene el código de esta copia. */
+    NEEDED,
+
+    /** Lo escrito no es un código: sus caracteres de control no cuadran o le falta algo. */
+    TYPO,
+
+    /** Es un código válido, pero de otras copias. No se descargó ni se borró nada. */
+    OTHER_CODE,
 }
 
 /** Una copia de seguridad de este teléfono, para elegir cuál descartar. */
@@ -54,9 +78,6 @@ enum class RestoreProblem {
 
     /** Supera el tamaño que la app puede abrir. */
     TOO_LARGE,
-
-    /** Está cifrada, y esta versión todavía no abre copias cifradas. */
-    ENCRYPTED,
 
     /** La copia se marcó como imposible de restaurar al crearla. */
     MARKED_FATAL,

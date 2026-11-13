@@ -85,12 +85,12 @@ class OnboardingViewModelTest {
     private class FakeRestore : BackupRestorePort {
         val started = mutableListOf<String>()
 
-        override suspend fun restoreCopy(copyKey: String): RestoreProgress {
+        override suspend fun restoreCopy(copyKey: String, code: String?): RestoreProgress {
             started += copyKey
             return RestoreProgress.ReadyToRestart(0)
         }
 
-        override suspend fun restoreFile(uri: String): RestoreProgress {
+        override suspend fun restoreFile(uri: String, code: String?): RestoreProgress {
             started += uri
             return RestoreProgress.ReadyToRestart(0)
         }

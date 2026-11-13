@@ -126,6 +126,25 @@ class RecoveryCustodyTest {
     }
 
     @Test
+    fun whileARestoredCodeWaitsNoOtherCodeIsSealed() = runBlocking {
+        store().seal(first)
+        store().sealPending(second)
+        val sealedBefore = sealed.readBytes()
+
+        // Con solo dos alias, un sello nuevo le cambiaría la clave al código que espera.
+        assertEquals(
+            RecoveryKeySave.Failed(RecoveryKeyStore.RESTORE_PENDING),
+            store().seal(RecoveryCode("G7K2M9PQR4STV6WXY8Z3ABCDEG")),
+        )
+        assertTrue(sealedBefore.contentEquals(sealed.readBytes()))
+        assertEquals(first, (store().open() as RecoveryKeyRead.Available).code)
+        assertEquals(second, (store().openPending() as RecoveryKeyRead.Available).code)
+
+        assertTrue(store().deletePending())
+        assertTrue(store().seal(second) is RecoveryKeySave.Sealed)
+    }
+
+    @Test
     fun theEnvelopeRulesTheStateAtStartupUnlessItsKeyWasTurnedOff() = runBlocking {
         val custody = custody()
         assertEquals(RecoveryState.NEVER_ENABLED, custody.alignAtStartup())

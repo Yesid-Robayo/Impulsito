@@ -210,6 +210,8 @@ class OnboardingViewModel(
 
             BackupAction.CancelRestore -> restoring.cancel()
 
+            is BackupAction.RestoreCode -> restoring.code(action.event)
+
             BackupAction.CloseRestore -> restoring.close()
 
             // El resto es de la pantalla del respaldo y no llega aquí.

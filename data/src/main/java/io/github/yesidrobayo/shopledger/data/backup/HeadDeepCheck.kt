@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.data.backup
 
+import io.github.yesidrobayo.shopledger.data.crypto.BackupKey
 import io.github.yesidrobayo.shopledger.data.destination.BackupDestination
 import io.github.yesidrobayo.shopledger.data.destination.CopyMetadata
 import io.github.yesidrobayo.shopledger.data.destination.CopyRef
@@ -70,6 +71,9 @@ import kotlinx.coroutines.withContext
  * @param mutex el cerrojo del respaldo, solo para anotar el resultado.
  * @param migrator abre la candidata con la base de la app y la migra, sobre el temporal. Nulo donde
  *   no se migra.
+ * @param localKey la clave del código guardado en este teléfono, para abrir una cabeza cifrada como
+ *   la abriría restaurar. Sin ella, una cabeza cifrada no se puede comprobar, y no por eso está
+ *   dañada: se reintenta.
  */
 internal class HeadDeepCheck(
     private val prepare: suspend () -> ProbeAccess,
@@ -85,6 +89,7 @@ internal class HeadDeepCheck(
     private val ioContext: CoroutineContext,
     private val freeSpace: (File) -> Long = File::getUsableSpace,
     private val migrator: CandidateMigrator? = null,
+    private val localKey: suspend () -> BackupKey? = { null },
 ) {
     /** Un simulacro a la vez en el proceso: los dos usan la misma carpeta. */
     private val running = Mutex()
@@ -380,8 +385,15 @@ internal class HeadDeepCheck(
                 -> Outcome.Failed
             }
         }
-        val unpacked = unpacker.unpack(download, candidate, head.sha256)
-        if (unpacked !is UnpackResult.Unpacked) return Outcome.Failed
+        val unpacked = unpacker.unpack(download, candidate, head.sha256, listOfNotNull(localKey()))
+        when (unpacked) {
+            is UnpackResult.Unpacked -> Unit
+
+            // Cifrada con un código que este teléfono no tiene a mano: no dice nada de la copia.
+            is UnpackResult.NeedsKey -> return Outcome.Retry
+
+            is UnpackResult.Rejected, is UnpackResult.Failed -> return Outcome.Failed
+        }
         val expected = ExpectedCopy(head.deviceId, head.generation, head.schemaVersion.toInt())
         val validated =
             when (val validation = validator.validate(candidate, CandidateContext(expected))) {

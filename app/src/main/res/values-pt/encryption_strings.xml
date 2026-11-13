@@ -77,4 +77,11 @@
     <string name="recovery_missing_newer_body">Há menos cópias visíveis do que antes. É apenas um aviso: ainda é possível restaurar.</string>
     <string name="recovery_no_anchor">Neste telefone não há uma referência anterior para comparar.</string>
     <string name="recovery_plain_newer_warning">Esta cópia sem criptografia é mais nova que a última cópia criptografada. O ideal é confirmar a origem antes de restaurar.</string>
+    <string name="recovery_restore_title">Cópia criptografada</string>
+    <string name="recovery_restore_body">Esta cópia está protegida. Para abri-la é preciso o código de recuperação.</string>
+    <string name="recovery_restore_open_action">Abrir cópia</string>
+    <string name="recovery_restore_saved">O código ficou salvo neste telefone para as próximas cópias</string>
+    <string name="recovery_restore_other_key">Esta cópia usa outro código. Nada foi baixado nem apagado.</string>
+    <string name="recovery_no_code_action">Sem o código</string>
+    <string name="recovery_no_code_body">Sem o código, ninguém consegue abrir esta cópia. O ideal é procurar o kit de recuperação ou o papel onde foi anotado.</string>
 </resources>

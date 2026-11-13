@@ -31,6 +31,7 @@ import kotlinx.coroutines.sync.Mutex
  * @param ports la base activa abierta, o `null` si no abrió, como en el rescate.
  * @param backupMutex el cerrojo del respaldo, el mismo de cada ejecución.
  * @param scheduledWork los trabajos programados del respaldo, que la pausa cancela.
+ * @param keys el código de recuperación de este teléfono, para abrir copias cifradas.
  */
 internal fun productionRestoreCoordinator(
     context: Context,
@@ -42,6 +43,7 @@ internal fun productionRestoreCoordinator(
     destinations: DestinationOpener,
     backupMutex: Mutex,
     scheduledWork: ScheduledBackupWork,
+    keys: RestoreKeys = RestoreKeys.None,
 ): RestoreCoordinator {
     val ops = DurableFileOps()
     val validator = CandidateValidator(ioContext)
@@ -70,6 +72,7 @@ internal fun productionRestoreCoordinator(
         clock = clock,
         log = log,
         ioContext = ioContext,
+        keys = keys,
     )
 }
 

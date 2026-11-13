@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.backup
 
 import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeRequest
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
@@ -18,13 +19,13 @@ class RestoreBackupUseCaseTest {
     private val calls = mutableListOf<String>()
     private val port =
         object : BackupRestorePort {
-            override suspend fun restoreCopy(copyKey: String): RestoreProgress {
-                calls += "copy:$copyKey"
+            override suspend fun restoreCopy(copyKey: String, code: String?): RestoreProgress {
+                calls += "copy:$copyKey" + (code?.let { ":con código" } ?: "")
                 return RestoreProgress.AskEmptyCopy
             }
 
-            override suspend fun restoreFile(uri: String): RestoreProgress {
-                calls += "file:$uri"
+            override suspend fun restoreFile(uri: String, code: String?): RestoreProgress {
+                calls += "file:$uri" + (code?.let { ":con código" } ?: "")
                 return RestoreProgress.Refused(RestoreProblem.DAMAGED)
             }
 
@@ -62,6 +63,8 @@ class RestoreBackupUseCaseTest {
             use.beforeUpdateCopy(),
         )
         assertEquals(RestoreProgress.Refused(RestoreProblem.NEEDS_UPDATE), use.beforeUpdate())
+        use.copy("a", "CODIGO-INVENTADO")
+        use.file("content://b", "CODIGO-INVENTADO")
         assertEquals(
             listOf(
                 "copy:a",
@@ -70,6 +73,8 @@ class RestoreBackupUseCaseTest {
                 "cancel",
                 "before-update-copy",
                 "before-update",
+                "copy:a:con código",
+                "file:content://b:con código",
             ),
             calls,
         )
@@ -89,6 +94,8 @@ class RestoreBackupUseCaseTest {
             RestoreProgress.Refused(RestoreProblem.OTHER),
             RestoreProgress.Failed,
             RestoreProgress.ReadyToRestart(0),
+            // Pedir el código no deja nada en espera: con él, la restauración empieza de nuevo.
+            RestoreProgress.AskRecoveryCode(RecoveryCodeRequest.NEEDED),
         )
         asking.forEach { assertTrue("$it", RestoreBackupUseCase.asks(it)) }
         stopped.forEach { assertFalse("$it", RestoreBackupUseCase.asks(it)) }

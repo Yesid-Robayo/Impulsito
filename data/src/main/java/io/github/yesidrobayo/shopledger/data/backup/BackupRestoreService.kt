@@ -1,10 +1,14 @@
 package io.github.yesidrobayo.shopledger.data.backup
 
+import io.github.yesidrobayo.shopledger.data.crypto.CodeParseResult
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCode
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCodec
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.DestinationResult
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeRequest
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
@@ -36,6 +40,9 @@ internal interface PickedFiles {
  *   pantalla es solo esa clave, nunca una ruta ni metadatos.
  * - Un archivo elegido no trae suma esperada: lo revisa el CRC de gzip y todo lo demás.
  * - Nada de lo que devuelve lleva texto del destino ni datos del negocio: solo códigos.
+ * - El código de recuperación escrito se valida con sus caracteres de control antes de empezar: un
+ *   error de escritura no toma el cerrojo ni descarga nada. Solo viaja en memoria hasta la
+ *   preparación, que lo sella en `rk.pending` si abrió la copia.
  *
  * @param saved el destino conectado: de la fila del respaldo, o de `link.json` en el rescate, donde
  *   la base no se lee.
@@ -55,7 +62,10 @@ internal class BackupRestoreService(
     /** Si la preparación en curso vuelve a antes de la actualización: cambia lo que dice un rechazo. */
     private var undoingUpdate = false
 
-    override suspend fun restoreCopy(copyKey: String): RestoreProgress {
+    override suspend fun restoreCopy(copyKey: String, code: String?): RestoreProgress {
+        val typed = typedCode(code) ?: return RestoreProgress.AskRecoveryCode(
+            RecoveryCodeRequest.TYPO,
+        )
         val link = saved()?.connected()
             ?: return RestoreProgress.Refused(RestoreProblem.NOT_CONNECTED)
         val destination =
@@ -75,11 +85,15 @@ internal class BackupRestoreService(
         val copy = listing.copies.firstOrNull { it.ref.value == copyKey }
             ?: return RestoreProgress.Refused(RestoreProblem.NOT_AVAILABLE)
         undoingUpdate = false
-        return progressOf(coordinator().start(RestoreSource.Listed(copy)))
+        return progressOf(coordinator().start(RestoreSource.Listed(copy, typed.code)))
     }
 
-    override suspend fun restoreFile(uri: String): RestoreProgress {
-        val source = RestoreSource.PickedFile(files.declaredSize(uri)) { files.open(uri) }
+    override suspend fun restoreFile(uri: String, code: String?): RestoreProgress {
+        val typed = typedCode(code) ?: return RestoreProgress.AskRecoveryCode(
+            RecoveryCodeRequest.TYPO,
+        )
+        val source =
+            RestoreSource.PickedFile(files.declaredSize(uri), typed.code) { files.open(uri) }
         undoingUpdate = false
         return progressOf(coordinator().start(source))
     }
@@ -119,6 +133,27 @@ internal class BackupRestoreService(
 
     override suspend fun cancel(): Boolean = coordinator().cancel()
 
+    /**
+     * El código escrito, ya validado, o `null` si no es un código: le falta algo, lleva un carácter
+     * que no va o sus caracteres de control no cuadran. Sin código escrito, un [Typed] vacío.
+     */
+    private fun typedCode(code: String?): Typed? {
+        if (code == null) return Typed(null)
+        return when (val parsed = RecoveryCodec.parse(code)) {
+            is CodeParseResult.Valid -> Typed(parsed.code)
+
+            CodeParseResult.WrongLength,
+            CodeParseResult.InvalidCharacter,
+            CodeParseResult.CheckMismatch,
+            -> null
+        }
+    }
+
+    /** Un código escrito y válido, o ninguno. Su forma de texto no lo muestra. */
+    private class Typed(val code: RecoveryCode?) {
+        override fun toString(): String = "Typed"
+    }
+
     private fun progressOf(stage: RestoreStage): RestoreProgress = when (stage) {
         RestoreStage.Busy -> RestoreProgress.Busy
 
@@ -142,6 +177,12 @@ internal class BackupRestoreService(
         }
 
         is RestoreStage.ReadyToRestart -> RestoreProgress.ReadyToRestart(stage.warnings)
+
+        is RestoreStage.NeedsRecoveryCode ->
+            RestoreProgress.AskRecoveryCode(
+                if (stage.otherCode) RecoveryCodeRequest.OTHER_CODE else RecoveryCodeRequest.NEEDED,
+                replacesCurrent = stage.replacesCurrent,
+            )
     }
 
     /**
@@ -187,9 +228,9 @@ internal class BackupRestoreService(
             CandidateRejection.UNKNOWN_SCHEMA_VERSION,
             -> RestoreProblem.NOT_A_BACKUP
 
-            CandidateRejection.SCHEMA_TOO_NEW -> RestoreProblem.NEWER_VERSION
-
-            CandidateRejection.ENCRYPTED_FORMAT -> RestoreProblem.ENCRYPTED
+            CandidateRejection.SCHEMA_TOO_NEW,
+            CandidateRejection.FORMAT_TOO_NEW,
+            -> RestoreProblem.NEWER_VERSION
 
             CandidateRejection.DECOMPRESSED_TOO_LARGE -> RestoreProblem.TOO_LARGE
 

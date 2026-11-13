@@ -45,4 +45,5 @@
     <string name="dialog_discard_safety_title">Which safety copy to discard?</string>
     <string name="dialog_discard_safety_body">Both safety copies on this phone have changes that did not reach the cloud. To continue, one of them must be discarded.</string>
     <string name="dialog_discard_safety_option">Discard the one from %1$s</string>
+    <string name="dialog_restore_other_code_notice">This backup uses another code. When it finishes, that code replaces the current one on this phone. Backups with the current code still need it.</string>
 </resources>

@@ -6,15 +6,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -25,11 +32,13 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupCopySummary
+import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeRequest
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
 import io.github.yesidrobayo.shopledger.format.DataSizeFormatter
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
+import io.github.yesidrobayo.shopledger.lock.SensitiveScreen
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.BackupCopyRow
@@ -40,8 +49,11 @@ import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.RECOVERY_CODE_GROUPS
+import io.github.yesidrobayo.shopledger.ui.components.RecoveryCodeField
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.StatusTone
+import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlin.time.Instant
@@ -104,6 +116,59 @@ sealed interface RestoreUi {
 
     /** Lista: falta reiniciar la app, que hace el reemplazo al arrancar. */
     data object Ready : RestoreUi
+
+    /**
+     * La hoja `Copia cifrada`: la copia necesita su código de recuperación, y nada se descargó ni
+     * cambió. [typed] es lo escrito, en grupos de 4: vive solo en memoria y la forma de texto del
+     * estado no lo muestra. [request] dice si hubo un error de escritura o es el código de otras
+     * copias, y [noCodeHelp] si se abrió la ayuda de `Sin el código`. [retry] es lo que se vuelve a
+     * empezar con el código. [replacesCurrent] avisa que ese código reemplazará al guardado aquí.
+     */
+    class AskCode(
+        val origin: RestoreOrigin,
+        val retry: CodeRetry,
+        val request: RecoveryCodeRequest,
+        val typed: List<String> = EMPTY,
+        val noCodeHelp: Boolean = false,
+        val replacesCurrent: Boolean = false,
+    ) : RestoreUi {
+        fun copy(
+            typed: List<String> = this.typed,
+            request: RecoveryCodeRequest = this.request,
+            noCodeHelp: Boolean = this.noCodeHelp,
+        ) = AskCode(origin, retry, request, typed, noCodeHelp, replacesCurrent)
+
+        override fun toString(): String = "AskCode(origin=$origin, request=$request)"
+
+        companion object {
+            /** Los 7 grupos vacíos del código. */
+            val EMPTY: List<String> = List(RECOVERY_CODE_GROUPS) { "" }
+        }
+    }
+}
+
+/** Lo que se vuelve a empezar con el código escrito: una copia de la lista o un archivo elegido. */
+sealed interface CodeRetry {
+    data class Copy(val key: String) : CodeRetry
+
+    /** [uri] solo vive en memoria, como lo escrito. */
+    class File(val uri: String) : CodeRetry {
+        override fun toString(): String = "File"
+    }
+}
+
+/** Lo que la persona hace en la hoja `Copia cifrada`. */
+sealed interface RestoreCodeEvent {
+    /** Escribió o borró: [groups] es el código en grupos. La forma de texto no lo muestra. */
+    class Typed(val groups: List<String>) : RestoreCodeEvent {
+        override fun toString(): String = "Typed"
+    }
+
+    /** `Abrir copia`: empieza de nuevo con lo escrito. */
+    data object Open : RestoreCodeEvent
+
+    /** `Sin el código`: explica qué hacer. */
+    data object WithoutCode : RestoreCodeEvent
 }
 
 /** El aviso que corresponde a un resultado que detuvo la restauración, o nulo si no la detuvo. */
@@ -120,6 +185,7 @@ internal fun noticeOf(progress: RestoreProgress, origin: RestoreOrigin): Restore
         RestoreProgress.AskWithoutSafetyCopy,
         is RestoreProgress.AskDiscardSafetyCopy,
         is RestoreProgress.ReadyToRestart,
+        is RestoreProgress.AskRecoveryCode,
         -> null
     }
 
@@ -140,7 +206,6 @@ private fun noticeOf(problem: RestoreProblem, origin: RestoreOrigin): RestoreNot
 
         RestoreProblem.NEEDS_UPDATE -> RestoreNotice.NEEDS_UPDATE
 
-        RestoreProblem.ENCRYPTED,
         RestoreProblem.NOT_CONNECTED,
         RestoreProblem.NOT_AVAILABLE,
         RestoreProblem.OTHER,
@@ -223,6 +288,8 @@ internal fun RestoreLayer(
         }
 
         RestoreUi.Ready -> Progress(RestoreOrigin.FILE, onAction = null)
+
+        is RestoreUi.AskCode -> EncryptedCopyCode(restore, onAction)
     }
 }
 
@@ -417,6 +484,7 @@ private fun Question(
         is RestoreProgress.Refused,
         RestoreProgress.Failed,
         is RestoreProgress.ReadyToRestart,
+        is RestoreProgress.AskRecoveryCode,
         -> Unit
     }
 }
@@ -507,3 +575,111 @@ internal fun RestoreStoppedNotice(stopped: RestoreUi.Stopped, onAction: (BackupA
         },
     )
 }
+
+/**
+ * La hoja `Copia cifrada`, a pantalla entera: pide el código de recuperación antes de reemplazar
+ * nada. Va en la ventana de la actividad y no en una hoja aparte, para que toda ella quede sin
+ * capturas ni Recientes, sin superposiciones de otras apps y sin toques tapados mientras se escribe.
+ *
+ * Un error de escritura o el código de otras copias se dicen en el campo, sin borrar lo escrito y
+ * sin límite de intentos. `Sin el código` explica que nadie puede abrir la copia sin él.
+ */
+@Composable
+private fun EncryptedCopyCode(asking: RestoreUi.AskCode, onAction: (BackupAction) -> Unit) {
+    var obscured by remember { mutableStateOf(false) }
+    SensitiveScreen { obscured = true }
+    BackHandler { onAction(BackupAction.CancelRestore) }
+    val spacing = AppTheme.spacing
+    val complete = asking.typed.sumOf { it.length } == RECOVERY_CODE_LENGTH
+    Surface(
+        Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Column(
+            Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Column(
+                Modifier
+                    .weight(1f)
+                    .widthIn(max = AppTheme.sizes.maxContentWidth)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(spacing.s24),
+                verticalArrangement = Arrangement.spacedBy(spacing.s16),
+            ) {
+                Text(
+                    stringResource(R.string.recovery_restore_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    stringResource(R.string.recovery_restore_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                RecoveryCodeField(
+                    groups = asking.typed,
+                    onGroupsChange = {
+                        onAction(BackupAction.RestoreCode(RestoreCodeEvent.Typed(it)))
+                    },
+                    label = stringResource(R.string.recovery_field_label),
+                    error =
+                        when (asking.request) {
+                            RecoveryCodeRequest.NEEDED -> null
+
+                            RecoveryCodeRequest.TYPO -> stringResource(
+                                R.string.recovery_check_mismatch,
+                            )
+
+                            RecoveryCodeRequest.OTHER_CODE ->
+                                stringResource(R.string.recovery_restore_other_key)
+                        },
+                )
+                // El código de la copia reemplazará al de este teléfono: se dice antes de seguir.
+                if (asking.replacesCurrent) {
+                    NoticeCard(
+                        stringResource(R.string.dialog_restore_other_code_notice),
+                        NoticeVariant.WARNING,
+                    )
+                }
+                if (obscured) {
+                    NoticeCard(stringResource(R.string.security_obscured_touch), NoticeVariant.INFO)
+                }
+                if (asking.noCodeHelp) {
+                    NoticeCard(stringResource(R.string.recovery_no_code_body), NoticeVariant.INFO)
+                } else {
+                    InlineTextButton(
+                        stringResource(R.string.recovery_no_code_action),
+                        { onAction(BackupAction.RestoreCode(RestoreCodeEvent.WithoutCode)) },
+                    )
+                }
+            }
+            Column(
+                Modifier
+                    .widthIn(max = AppTheme.sizes.maxContentWidth)
+                    .fillMaxWidth()
+                    .keepsMessagesAbove()
+                    .padding(horizontal = spacing.s24, vertical = spacing.s16),
+                verticalArrangement = Arrangement.spacedBy(spacing.s8),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                PrimaryActionButton(
+                    text = stringResource(R.string.recovery_restore_open_action),
+                    onClick = { onAction(BackupAction.RestoreCode(RestoreCodeEvent.Open)) },
+                    variant = ActionVariant.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = complete,
+                )
+                InlineTextButton(
+                    stringResource(R.string.action_cancel),
+                    { onAction(BackupAction.CancelRestore) },
+                )
+            }
+        }
+    }
+}
+
+/** Los 28 caracteres del código impreso: 26 del código y 2 de control. */
+private const val RECOVERY_CODE_LENGTH = 28
