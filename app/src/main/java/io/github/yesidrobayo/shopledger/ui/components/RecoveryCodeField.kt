@@ -19,13 +19,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.isSensitiveData
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -44,6 +49,9 @@ const val RECOVERY_CODE_GROUP_LENGTH = 4
  * - **Avanza solo.** Al completar 4 caracteres pasa a la casilla siguiente. Pegar o escribir un
  *   código entero en una casilla lo reparte entre las siguientes.
  * - **Marca, no borra.** [errorGroup] marca el grupo que no coincide, sin tocar lo escrito.
+ * - **Se lee entero con cualquier letra.** Cada casilla mide al menos lo que ocupan 4 de los
+ *   caracteres más anchos del código con la letra actual: con la letra grande crecen, y caben menos
+ *   por línea, pero ningún carácter queda cortado. Un código que no se lee es un código perdido.
  *
  * Solo admite letras y cifras, en mayúsculas; los espacios y guiones de un código pegado se quitan.
  * Comprobar el código es de quien lo usa.
@@ -71,6 +79,8 @@ fun RecoveryCodeField(
         }
     }
     val spacing = AppTheme.spacing
+    val textStyle = AppTheme.amounts.row
+    val groupWidth = recoveryCodeGroupWidth(textStyle)
     PrivateInput {
         Column(modifier, verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
             Text(label, style = MaterialTheme.typography.bodyLarge)
@@ -95,13 +105,13 @@ fun RecoveryCodeField(
                         },
                         modifier =
                             Modifier
-                                .width(AppTheme.sizes.recoveryCodeGroup)
+                                .width(groupWidth)
                                 .focusRequester(focus[index])
                                 .semantics {
                                     contentDescription = groupLabel
                                     isSensitiveData = true
                                 },
-                        textStyle = AppTheme.amounts.row,
+                        textStyle = textStyle,
                         isError = errorGroup == index,
                         singleLine = true,
                         keyboardOptions =
@@ -125,6 +135,28 @@ fun RecoveryCodeField(
         }
     }
 }
+
+/**
+ * El ancho de una casilla: el de 4 de los caracteres más anchos del código en [style], con la letra
+ * actual, más el relleno del campo, y nunca menos que el ancho de diseño.
+ */
+@Composable
+private fun recoveryCodeGroupWidth(style: TextStyle): Dp {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val minimum = AppTheme.sizes.recoveryCodeGroup
+    return remember(measurer, style, density, minimum) {
+        val widest =
+            WIDEST_GROUPS.maxOf { sample -> measurer.measure(sample, style).size.width }
+        maxOf(minimum, with(density) { widest.toDp() } + FIELD_HORIZONTAL_PADDING)
+    }
+}
+
+/** Los grupos más anchos que puede tener el código, en Crockford Base32. */
+private val WIDEST_GROUPS = listOf("WWWW", "MMMM", "0000")
+
+/** El relleno a los dos lados del texto de un campo con borde, y un margen para el cursor. */
+private val FIELD_HORIZONTAL_PADDING = 36.dp
 
 /** Las reglas de escritura de [RecoveryCodeField], aparte para probarlas sin pantalla. */
 object RecoveryCodeInput {
