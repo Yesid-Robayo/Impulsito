@@ -329,7 +329,8 @@ class SupplierReturnViewModel(
         ?.value?.takeIf { it.milli > 0L }
 
     private fun Overlay.after(result: RegisterSupplierReturnResult): Overlay = when (result) {
-        is RegisterSupplierReturnResult.Registered -> copy(registered = result.total)
+        is RegisterSupplierReturnResult.Registered ->
+            copy(registered = result.total, registeredId = result.purchaseReturnId)
 
         RegisterSupplierReturnResult.CurrencyNotConfirmed ->
             copy(notice = SupplierReturnNotice.CurrencyUnconfirmed)
@@ -379,6 +380,7 @@ class SupplierReturnViewModel(
             notice = shown.notice,
             registering = shown.registering,
             registered = shown.registered,
+            registeredId = shown.registeredId,
         )
         val form = when (load) {
             FormLoad.Loading -> return base.copy(loading = true)
@@ -599,6 +601,7 @@ class SupplierReturnViewModel(
         val notice: SupplierReturnNotice? = null,
         val registering: Boolean = false,
         val registered: Money? = null,
+        val registeredId: Long? = null,
         val closed: Boolean = false,
         val accounts: List<MoneyAccount> = emptyList(),
     )

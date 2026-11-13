@@ -115,6 +115,8 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     is AppNavKey.SupplierReturn -> detail(R.string.supplier_return_title, business)
 
+    is AppNavKey.SupplierReturnDetail -> detail(R.string.supplier_return_title, business)
+
     AppNavKey.PriceLists -> detail(R.string.price_list_title, business)
 
     AppNavKey.ReferenceCurrency -> detail(R.string.reference_title, business)

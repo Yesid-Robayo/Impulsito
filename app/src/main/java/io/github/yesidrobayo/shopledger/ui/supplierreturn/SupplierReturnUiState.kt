@@ -45,6 +45,8 @@ data class SupplierReturnUiState(
     val notice: SupplierReturnNotice? = null,
     val registering: Boolean = false,
     val registered: Money? = null,
+    /** La devolución recién registrada, para abrirla desde el aviso con `Ver`. */
+    val registeredId: Long? = null,
 ) {
     /** Si hay algo escrito que se perdería al salir. */
     val hasInput: Boolean get() = lines.any { it.quantityText.isNotBlank() } || note.isNotBlank()

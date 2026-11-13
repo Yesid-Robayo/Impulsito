@@ -25,6 +25,9 @@ interface SupplierLedgerRepository {
     /** Las filas que llevan la compra [purchaseId]: su cargo, si quedó a plazo. */
     suspend fun findByPurchase(purchaseId: Long): List<SupplierLedgerEntry>
 
+    /** Las filas que llevan la devolución [purchaseReturnId]: su crédito, si se resolvió así. */
+    suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<SupplierLedgerEntry>
+
     /** Si la fila [entryId] ya tiene su compensación: una fila se anula una sola vez. */
     suspend fun isCompensated(entryId: Long): Boolean
 

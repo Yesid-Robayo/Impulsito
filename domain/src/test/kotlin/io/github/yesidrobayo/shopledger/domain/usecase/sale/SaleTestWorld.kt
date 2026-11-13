@@ -119,6 +119,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseC
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSaleReturnUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSupplierReturnUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSupplierReturnUseCase
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -633,6 +634,14 @@ internal class SaleWorld(
             return movementsOf(tables) { it.source.purchaseLineId in lineIds }
         }
 
+        override suspend fun findByPurchaseReturn(
+            purchaseReturnId: Long,
+        ): List<StockMovementRecord> {
+            val tables = read()
+            val lineIds = purchaseReturnLinesOf(tables, purchaseReturnId).map { it.id }.toSet()
+            return movementsOf(tables) { it.source.purchaseReturnLineId in lineIds }
+        }
+
         override suspend fun isCompensated(movementId: Long): Boolean =
             read().movements.values.any { it.movement.reversesMovementId == movementId }
 
@@ -853,6 +862,12 @@ internal class SaleWorld(
             read().supplierEntries.values
                 .filter { it.content.purchaseId == purchaseId }
                 .sortedBy { it.id }
+
+        override suspend fun findByPurchaseReturn(
+            purchaseReturnId: Long,
+        ): List<SupplierLedgerEntry> = read().supplierEntries.values
+            .filter { it.content.purchaseReturnId == purchaseReturnId }
+            .sortedBy { it.id }
 
         override suspend fun isCompensated(entryId: Long): Boolean =
             read().supplierEntries.values.any { it.content.reversesEntryId == entryId }
@@ -1147,6 +1162,18 @@ internal class SaleWorld(
         alerts = alertRepository.takeIf { withAlerts },
     )
 
+    fun voidSupplierReturn(): VoidSupplierReturnUseCase = VoidSupplierReturnUseCase(
+        transactions = transactions,
+        settings = settings,
+        products = products,
+        purchaseReturns = purchaseReturnRepository,
+        supplierLedger = supplierLedger,
+        ledger = ledger,
+        clock = clock,
+        money = DocumentMoney(moneyAccountRepository, moneyLedger),
+        alerts = alertRepository.takeIf { withAlerts },
+    )
+
     /** Agrega un proveedor con nombre inventado, archivado o no, y con plazo habitual o sin él. */
     fun addSupplier(id: Long, archived: Boolean = false, termsDays: Int? = null) = arrange {
         val name = "Supplier $id"
@@ -1223,6 +1250,11 @@ internal class SaleWorld(
         override suspend fun findByPurchase(purchaseId: Long): List<MoneyMovement> =
             read().moneyMovements.values
                 .filter { it.draft.origin == MoneyOrigin.Purchase(purchaseId) }
+                .sortedBy { it.id }
+
+        override suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<MoneyMovement> =
+            read().moneyMovements.values
+                .filter { it.draft.origin == MoneyOrigin.PurchaseReturn(purchaseReturnId) }
                 .sortedBy { it.id }
 
         override suspend fun findByCustomerLedgerEntry(

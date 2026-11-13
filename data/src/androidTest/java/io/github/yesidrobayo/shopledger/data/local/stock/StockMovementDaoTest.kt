@@ -413,6 +413,7 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
                 "findByProduct",
                 "findBySale",
                 "findByPurchase",
+                "findByPurchaseReturn",
                 "isCompensated",
                 "insert",
                 // Solo lee: de qué venta o compra salió cada fila.

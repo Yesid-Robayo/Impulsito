@@ -146,6 +146,7 @@ fun PurchaseDetailRoute(
                 voidPurchase = { reason, note -> void(key.purchaseId, reason, note) },
                 purchaseId = key.purchaseId,
                 purchaseBalance = { supplierId -> balance(supplierId, key.purchaseId) },
+                returnsSource = { ports.purchaseReturns.observeByPurchase(key.purchaseId) },
             )
         }
     when (model) {
@@ -171,6 +172,9 @@ fun PurchaseDetailRoute(
 
                         PurchaseDetailAction.ReturnToSupplier ->
                             navigator.open(AppNavKey.SupplierReturn(purchaseId = key.purchaseId))
+
+                        is PurchaseDetailAction.OpenReturn ->
+                            navigator.open(AppNavKey.SupplierReturnDetail(action.purchaseReturnId))
 
                         is PurchaseDetailAction.OpenPayable ->
                             navigator.open(AppNavKey.PayableDetail(action.supplierId))

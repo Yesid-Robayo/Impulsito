@@ -30,6 +30,11 @@ internal class FakeSupplierLedgerRepository(private val database: InMemoryDataba
             .filter { it.content.purchaseId == purchaseId }
             .sortedBy { it.id }
 
+    override suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<SupplierLedgerEntry> =
+        database.read().supplierEntries.values
+            .filter { it.content.purchaseReturnId == purchaseReturnId }
+            .sortedBy { it.id }
+
     override suspend fun isCompensated(entryId: Long): Boolean =
         database.read().supplierEntries.values.any { it.content.reversesEntryId == entryId }
 

@@ -72,6 +72,13 @@ class DocumentMoney(
     suspend fun reversePurchase(purchaseId: Long, time: RecordTime, createdAt: Instant): Boolean =
         reverse(ledger.findByPurchase(purchaseId), time, createdAt)
 
+    /** Compensa el dinero que entró por la devolución a proveedor [purchaseReturnId]. Ver [reverse]. */
+    suspend fun reversePurchaseReturn(
+        purchaseReturnId: Long,
+        time: RecordTime,
+        createdAt: Instant,
+    ): Boolean = reverse(ledger.findByPurchaseReturn(purchaseReturnId), time, createdAt)
+
     /**
      * Compensa cada uno de [movements] que todavía no tiene su anulación, en su cuenta, con la fecha
      * [time]. Devuelve `false` si el saldo de una cuenta no cabría: quien llama deshace todo.

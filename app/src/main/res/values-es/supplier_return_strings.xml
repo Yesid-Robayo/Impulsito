@@ -26,4 +26,11 @@
     <string name="supplier_return_error_register">No se pudo registrar la devolución. Lo escrito se conserva.</string>
     <string name="supplier_return_success">Devolución registrada: %1$s</string>
     <string name="a11y_supplier_return_line">%1$s, %2$s, costo unitario %3$s</string>
+    <string name="supplier_return_detail_title">Devolución %1$s</string>
+    <string name="supplier_return_void_action">Anular devolución</string>
+    <string name="supplier_return_void_confirm_title">¿Anular esta devolución?</string>
+    <string name="supplier_return_void_confirm_body">La mercancía vuelve al inventario, el dinero o el crédito se revierte y el costo se recalcula.</string>
+    <string name="supplier_return_voided">Devolución anulada</string>
+    <string name="error_supplier_return_void">No se pudo anular. La devolución sigue activa.</string>
+    <string name="supplier_return_returns_title">Devoluciones al proveedor</string>
 </resources>

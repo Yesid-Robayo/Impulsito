@@ -60,6 +60,9 @@ internal class RoomStockLedgerRepository(
     override suspend fun findByPurchase(purchaseId: Long): List<StockMovementRecord> =
         movements.findByPurchase(purchaseId).map(::toRecord)
 
+    override suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<StockMovementRecord> =
+        movements.findByPurchaseReturn(purchaseReturnId).map(::toRecord)
+
     override suspend fun isCompensated(movementId: Long): Boolean =
         movements.isCompensated(movementId)
 

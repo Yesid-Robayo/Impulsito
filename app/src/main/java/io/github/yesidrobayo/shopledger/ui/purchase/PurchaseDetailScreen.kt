@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.purchase
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,10 +31,12 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseDetail
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseDetailLine
+import io.github.yesidrobayo.shopledger.domain.model.returns.PurchaseReturn
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
@@ -52,6 +55,7 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
@@ -166,6 +170,16 @@ private fun DetailBody(
                 }
             }
         }
+        if (ready.returns.isNotEmpty()) {
+            item(key = RETURNS) {
+                SectionHeader(stringResource(R.string.supplier_return_returns_title))
+            }
+            items(ready.returns, key = { "return-${it.id}" }) { purchaseReturn ->
+                ReturnRow(purchaseReturn) {
+                    onAction(PurchaseDetailAction.OpenReturn(purchaseReturn.id))
+                }
+            }
+        }
         if (ready.canVoid) {
             item(key = ACTIONS) {
                 Column(
@@ -179,6 +193,8 @@ private fun DetailBody(
                         variant = ActionVariant.OUTLINED,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    // Con una devolución activa, la compra no se anula ni se corrige.
+                    if (!ready.canVoidPurchase) return@Column
                     // Corregir va sobre anular: es lo que se busca casi siempre tras un error.
                     PrimaryActionButton(
                         text = stringResource(R.string.dialog_correct_action),
@@ -208,6 +224,41 @@ private fun DetailBody(
                 }
             }
         }
+    }
+}
+
+/**
+ * Una devolución de la compra: su número y su fecha, con lo que el proveedor devolvió, tachado si se
+ * anuló. Abre su detalle, donde se anula.
+ */
+@Composable
+private fun ReturnRow(purchaseReturn: PurchaseReturn, onClick: () -> Unit) {
+    val formats = LocalAppFormats.current
+    val number = formats.quantity.format(
+        QuantityMilli.ofUnits(purchaseReturn.id),
+        allowsFraction = false,
+    )
+    val voided = purchaseReturn.status == DocumentStatus.VOIDED
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = AppTheme.sizes.listRow)
+            .clickable(onClick = onClick)
+            .padding(horizontal = AppTheme.spacing.s16, vertical = AppTheme.spacing.s8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                stringResource(R.string.supplier_return_detail_title, number),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                formats.date.dayMonthYear(purchaseReturn.content.businessDate),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        MoneyText(purchaseReturn.content.total, MoneySize.ROW, voided = voided, sensitive = true)
     }
 }
 
@@ -444,3 +495,4 @@ private const val SKELETON_ROWS = 3
 private const val TOTAL = "total"
 private const val ACTIONS = "actions"
 private const val CREDIT = "credit"
+private const val RETURNS = "returns"

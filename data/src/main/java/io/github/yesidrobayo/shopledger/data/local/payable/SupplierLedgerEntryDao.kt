@@ -54,6 +54,13 @@ internal interface SupplierLedgerEntryDao {
     @Query("SELECT * FROM supplier_ledger_entries WHERE purchase_id = :purchaseId ORDER BY id")
     suspend fun findByPurchase(purchaseId: Long): List<SupplierLedgerEntryEntity>
 
+    /** El crédito de una devolución a proveedor: lo que su anulación compensa. */
+    @Query(
+        "SELECT * FROM supplier_ledger_entries WHERE purchase_return_id = :purchaseReturnId " +
+            "ORDER BY id",
+    )
+    suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<SupplierLedgerEntryEntity>
+
     /** Si alguna fila ya anula a [entryId]: una fila se anula una sola vez. */
     @Query(
         "SELECT EXISTS (SELECT 1 FROM supplier_ledger_entries WHERE reverses_entry_id = :entryId)",

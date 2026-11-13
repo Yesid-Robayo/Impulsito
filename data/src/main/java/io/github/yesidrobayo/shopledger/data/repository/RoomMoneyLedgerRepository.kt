@@ -69,6 +69,9 @@ internal class RoomMoneyLedgerRepository(
     override suspend fun findByPurchase(purchaseId: Long): List<MoneyMovement> =
         movements.findByPurchase(purchaseId).map(::toMovement)
 
+    override suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<MoneyMovement> =
+        movements.findByPurchaseReturn(purchaseReturnId).map(::toMovement)
+
     override suspend fun findByCustomerLedgerEntry(
         customerLedgerEntryId: Long,
     ): List<MoneyMovement> =

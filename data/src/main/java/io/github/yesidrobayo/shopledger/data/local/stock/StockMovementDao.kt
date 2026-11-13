@@ -47,6 +47,14 @@ internal interface StockMovementDao {
     )
     suspend fun findByPurchase(purchaseId: Long): List<StockMovementEntity>
 
+    /** Las filas que salieron de las líneas de una devolución a proveedor, con sus compensatorios. */
+    @Query(
+        "SELECT * FROM stock_movements WHERE purchase_return_line_id IN " +
+            "(SELECT id FROM purchase_return_lines " +
+            "WHERE purchase_return_id = :purchaseReturnId) ORDER BY id",
+    )
+    suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<StockMovementEntity>
+
     /** Si alguna fila ya anula a [movementId]: una fila se anula una sola vez. */
     @Query("SELECT EXISTS (SELECT 1 FROM stock_movements WHERE reverses_movement_id = :movementId)")
     suspend fun isCompensated(movementId: Long): Boolean

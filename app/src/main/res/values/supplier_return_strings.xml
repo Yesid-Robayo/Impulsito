@@ -26,4 +26,11 @@
     <string name="supplier_return_error_register">Could not record the return. What was entered is kept.</string>
     <string name="supplier_return_success">Return recorded: %1$s</string>
     <string name="a11y_supplier_return_line">%1$s, %2$s, unit cost %3$s</string>
+    <string name="supplier_return_detail_title">Return %1$s</string>
+    <string name="supplier_return_void_action">Void return</string>
+    <string name="supplier_return_void_confirm_title">Void this return?</string>
+    <string name="supplier_return_void_confirm_body">The stock returns to inventory, the money or credit is reversed and the cost is recalculated.</string>
+    <string name="supplier_return_voided">Return voided</string>
+    <string name="error_supplier_return_void">Could not void. The return is still active.</string>
+    <string name="supplier_return_returns_title">Returns to supplier</string>
 </resources>

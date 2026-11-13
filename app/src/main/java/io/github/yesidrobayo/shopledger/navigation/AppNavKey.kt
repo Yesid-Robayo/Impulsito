@@ -184,6 +184,10 @@ sealed interface AppNavKey : NavKey {
     data class SupplierReturn(val purchaseId: Long? = null, val supplierId: Long? = null) :
         AppNavKey
 
+    /** El detalle de una devolución a proveedor, con su anulación. */
+    @Serializable
+    data class SupplierReturnDetail(val purchaseReturnId: Long) : AppNavKey
+
     @Serializable
     data object PriceLists : AppNavKey
 

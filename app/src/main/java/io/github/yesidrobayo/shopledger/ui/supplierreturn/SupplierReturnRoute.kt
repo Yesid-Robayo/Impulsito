@@ -105,6 +105,7 @@ fun SupplierReturnRoute(key: AppNavKey.SupplierReturn, navigator: AppNavigator) 
             val haptics = LocalHapticFeedback.current
             val messages = LocalAppMessages.current
             val registered = uiState.registered
+            val viewLabel = stringResource(R.string.action_view)
             val registeredText = registered?.let {
                 stringResource(
                     R.string.supplier_return_success,
@@ -114,7 +115,12 @@ fun SupplierReturnRoute(key: AppNavKey.SupplierReturn, navigator: AppNavigator) 
             LaunchedEffect(registered) {
                 if (registered == null || registeredText == null) return@LaunchedEffect
                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                messages.show(AppSnackbarVisuals(registeredText, SnackbarVariant.SUCCESS))
+                val returnId = uiState.registeredId
+                messages.show(
+                    AppSnackbarVisuals(registeredText, SnackbarVariant.SUCCESS, viewLabel),
+                ) {
+                    returnId?.let { navigator.open(AppNavKey.SupplierReturnDetail(it)) }
+                }
                 viewModel.onAction(SupplierReturnAction.RegisteredShown)
             }
             LaunchedEffect(closed) {

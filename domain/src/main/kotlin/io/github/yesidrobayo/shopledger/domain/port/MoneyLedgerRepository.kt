@@ -54,6 +54,12 @@ interface MoneyLedgerRepository {
      */
     suspend fun findByPurchase(purchaseId: Long): List<MoneyMovement>
 
+    /**
+     * Los movimientos de la devolución a proveedor [purchaseReturnId], en el orden del libro: su
+     * `SUPPLIER_REFUND`, si el reembolso entró a una cuenta.
+     */
+    suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<MoneyMovement>
+
     /** Los movimientos del abono [customerLedgerEntryId] del libro del cliente, en el orden del libro. */
     suspend fun findByCustomerLedgerEntry(customerLedgerEntryId: Long): List<MoneyMovement>
 

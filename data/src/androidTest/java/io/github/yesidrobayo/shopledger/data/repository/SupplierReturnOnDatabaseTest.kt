@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
+import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
@@ -40,6 +41,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseResu
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSupplierReturnResult
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSupplierReturnUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSupplierReturnResult
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSupplierReturnUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -99,7 +102,25 @@ internal class SupplierReturnOnDatabaseTest : RepositoryTest() {
                 tick()
                 return returns.insertLine(purchaseReturnId, line)
             }
+
+            override suspend fun markVoided(id: Long, voiding: Voiding) {
+                tick()
+                returns.markVoided(id, voiding)
+            }
         }
+    }
+
+    private val voidReturn by lazy {
+        VoidSupplierReturnUseCase(
+            transactions = runner,
+            settings = settings,
+            products = products,
+            purchaseReturns = countedReturns,
+            supplierLedger = countedSupplierLedger,
+            ledger = countedStock,
+            clock = Clock { LATER_AT },
+            money = DocumentMoney(accounts, countedMoney),
+        )
     }
 
     private val countedStock by lazy {
@@ -335,6 +356,59 @@ internal class SupplierReturnOnDatabaseTest : RepositoryTest() {
             void(purchaseId, VoidReason.ENTRY_ERROR, null),
         )
         assertEquals(DocumentStatus.ACTIVE, requireNotNull(purchases.findById(purchaseId)).status)
+        assertInvariantsHold()
+    }
+
+    @Test
+    fun voidingACreditReturnBringsEverythingBackAndAFailureAtEachWriteLeavesItActive() =
+        runBlocking {
+            val returnId = (
+                registerReturn(request(PurchaseReturnResolution.SUPPLIER_CREDIT))
+                    as RegisterSupplierReturnResult.Registered
+                ).purchaseReturnId
+            val writes = failEachWrite({
+                assertEquals(
+                    DocumentStatus.ACTIVE,
+                    requireNotNull(returns.findById(returnId)).status,
+                )
+                assertEquals(Money(11_600), requireNotNull(products.findById(flourId)).stockValue)
+                assertEquals(Money(-2_800), requireNotNull(suppliers.findById(supplierId)).balance)
+            }) {
+                assertEquals(
+                    VoidSupplierReturnResult.Voided,
+                    voidReturn(returnId, VoidReason.ENTRY_ERROR, null),
+                )
+            }
+            // La marca, la fila de stock que vuelve y la compensación del crédito.
+            assertEquals(3, writes)
+            val product = requireNotNull(products.findById(flourId))
+            assertEquals(QuantityMilli(12_000), product.onHand)
+            assertEquals(Money(14_400), product.stockValue)
+            assertEquals(Money(1_200), product.averageCost)
+            assertEquals(
+                StockMovementType.PURCHASE_RETURN_VOID,
+                stock.findByPurchaseReturn(returnId).last().movement.type,
+            )
+            assertEquals(Money.ZERO, requireNotNull(suppliers.findById(supplierId)).balance)
+            assertTrue(returns.takenByPurchase(purchaseId).isEmpty())
+            assertTrue(!purchases.hasActiveReturns(purchaseId))
+            assertInvariantsHold()
+        }
+
+    @Test
+    fun voidingARefundTakesTheMoneyBackOut() = runBlocking {
+        val returnId = (
+            registerReturn(request(PurchaseReturnResolution.CASH_REFUND, bankId))
+                as RegisterSupplierReturnResult.Registered
+            ).purchaseReturnId
+
+        assertEquals(VoidSupplierReturnResult.Voided, voidReturn(returnId, VoidReason.UNDO, null))
+
+        val reversal = money.findByAccount(bankId).last()
+        assertEquals(MoneyMovementType.MOVEMENT_VOID, reversal.type)
+        assertEquals(Money.ZERO, requireNotNull(accounts.findById(bankId)).balance)
+        assertEquals(1, money.findByPurchaseReturn(returnId).size)
+        assertTrue(supplierLedger.findByPurchaseReturn(returnId).isEmpty())
         assertInvariantsHold()
     }
 

@@ -28,6 +28,9 @@ interface StockLedgerRepository {
     /** Las filas que salieron de las líneas de una compra, en el orden del libro. */
     suspend fun findByPurchase(purchaseId: Long): List<StockMovementRecord>
 
+    /** Las filas que salieron de las líneas de una devolución a proveedor, en el orden del libro. */
+    suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<StockMovementRecord>
+
     /** Si la fila [movementId] ya tiene su compensatorio: una fila se anula una sola vez. */
     suspend fun isCompensated(movementId: Long): Boolean
 

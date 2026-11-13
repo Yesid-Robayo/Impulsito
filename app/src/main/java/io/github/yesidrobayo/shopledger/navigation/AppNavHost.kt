@@ -94,6 +94,7 @@ import io.github.yesidrobayo.shopledger.ui.stock.InventoryRoute
 import io.github.yesidrobayo.shopledger.ui.stock.StockAdjustmentRoute
 import io.github.yesidrobayo.shopledger.ui.supplier.SupplierDetailRoute
 import io.github.yesidrobayo.shopledger.ui.supplier.SupplierListRoute
+import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnDetailRoute
 import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
@@ -310,6 +311,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.PayableDetail -> PayableDetailRoute(key, navigator)
 
         is AppNavKey.SupplierReturn -> SupplierReturnRoute(key, navigator)
+
+        is AppNavKey.SupplierReturnDetail -> SupplierReturnDetailRoute(key, navigator)
 
         AppNavKey.CashRegister -> CashRegisterRoute(navigator)
 

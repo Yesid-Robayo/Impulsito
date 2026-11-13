@@ -48,6 +48,9 @@ internal class RoomSupplierLedgerRepository(
     override suspend fun findByPurchase(purchaseId: Long): List<SupplierLedgerEntry> =
         entries.findByPurchase(purchaseId).map(::toSupplierLedgerEntry)
 
+    override suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<SupplierLedgerEntry> =
+        entries.findByPurchaseReturn(purchaseReturnId).map(::toSupplierLedgerEntry)
+
     override suspend fun isCompensated(entryId: Long): Boolean = entries.isCompensated(entryId)
 
     /**

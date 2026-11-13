@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseDetail
+import io.github.yesidrobayo.shopledger.domain.model.returns.PurchaseReturn
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,9 +50,18 @@ sealed interface PurchaseDetailUiState {
         val correctedId: Long? = null,
         /** Lo que falta pagar de una compra a plazo, o `null` si no fue a plazo o no se sabe. */
         val creditBalance: Money? = null,
+        /** Las devoluciones al proveedor de esta compra, activas y anuladas. */
+        val returns: List<PurchaseReturn> = emptyList(),
     ) : PurchaseDetailUiState {
-        /** Solo una compra activa se anula. */
+        /** Solo una compra activa se anula, o se devuelve. */
         val canVoid: Boolean get() = detail.purchase.status == DocumentStatus.ACTIVE
+
+        /**
+         * Una compra con una devolución activa no se anula ni se corrige: se devuelve el resto, o se
+         * anula primero la devolución.
+         */
+        val canVoidPurchase: Boolean
+            get() = canVoid && returns.none { it.status == DocumentStatus.ACTIVE }
     }
 }
 
@@ -118,6 +128,9 @@ sealed interface PurchaseDetailAction {
 
     /** `Devolver al proveedor`: abre la devolución con esta compra de origen. */
     data object ReturnToSupplier : PurchaseDetailAction
+
+    /** Abre una devolución de esta compra: lo resuelve la navegación. */
+    data class OpenReturn(val purchaseReturnId: Long) : PurchaseDetailAction
 }
 
 /**
@@ -135,6 +148,7 @@ class PurchaseDetailViewModel(
     private val voidPurchase: suspend (VoidReason, String?) -> VoidPurchaseResult,
     private val purchaseId: Long = 0L,
     private val purchaseBalance: (supplierId: Long) -> Flow<Money?> = { flowOf(null) },
+    private val returnsSource: () -> Flow<List<PurchaseReturn>> = { flowOf(emptyList()) },
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val overlay = MutableStateFlow(Overlay())
@@ -163,10 +177,16 @@ class PurchaseDetailViewModel(
         }
         .onStart { emit(null) }
 
-    val uiState: StateFlow<PurchaseDetailUiState> = combine(loaded, overlay, credit) {
+    /** Las devoluciones de la compra: si falla su lectura, el detalle sigue sin ellas. */
+    private val returns: Flow<List<PurchaseReturn>> = attempts.flatMapLatest {
+        returnsSource().catch { emit(emptyList()) }
+    }.onStart { emit(emptyList()) }
+
+    val uiState: StateFlow<PurchaseDetailUiState> = combine(loaded, overlay, credit, returns) {
             read,
             shown,
             balance,
+            purchaseReturns,
         ->
         when (read) {
             Loaded.Failed -> PurchaseDetailUiState.ReadError
@@ -180,6 +200,7 @@ class PurchaseDetailViewModel(
                     shown.confirmCorrect,
                     shown.correctedId,
                     balance,
+                    purchaseReturns,
                 )
             } ?: PurchaseDetailUiState.NotFound
         }
@@ -221,6 +242,7 @@ class PurchaseDetailViewModel(
             PurchaseDetailAction.Back,
             is PurchaseDetailAction.OpenPayable,
             PurchaseDetailAction.ReturnToSupplier,
+            is PurchaseDetailAction.OpenReturn,
             -> Unit
         }
     }
