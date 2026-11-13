@@ -45,6 +45,7 @@ import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ReplacementCostRules
 import io.github.yesidrobayo.shopledger.domain.rule.payable.PurchaseCredit
 import io.github.yesidrobayo.shopledger.domain.rule.payable.SupplierLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PricedPurchaseLine
@@ -103,6 +104,11 @@ import kotlin.time.Instant
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
  * [supplierLedger] solo hace falta para comprar a plazo.
+ *
+ * Cada producto comprado toma como costo de reposición lo que costó una unidad base de su última
+ * línea con costo, fechado con la compra, en esta misma transacción. Una compra con fecha anterior a
+ * la reposición que ya tiene no la cambia, y una bonificación tampoco. El costo promedio no se mueve
+ * por eso: la reposición es solo una vista adicional.
  *
  * Con una cuenta elegida, lo pagado al confirmar sale de ella como un `PURCHASE_PAYMENT`, en esta
  * misma transacción y con la fecha de la compra. La cuenta tiene que estar vigente y llevar la
@@ -200,6 +206,7 @@ class RegisterPurchaseUseCase(
             time,
             now,
         )
+        refreshReplacementCosts(priced.lines, time, now)
         if (payer != null) {
             val draft = MoneyMovementDraft(
                 accountId = accountId,
@@ -264,6 +271,27 @@ class RegisterPurchaseUseCase(
                 Margin.OutOfRange -> true
             }
             change.copy(marginBelowTarget = below)
+        }
+    }
+
+    /**
+     * Pone como costo de reposición de cada producto lo que costó una unidad base en la compra, si
+     * la compra no es anterior a la reposición que ya conoce. El producto es el que se leyó al
+     * empezar esta misma transacción, así que su reposición no pudo cambiar por debajo.
+     */
+    private suspend fun refreshReplacementCosts(
+        lines: List<PricedPurchaseLine>,
+        time: RecordTime,
+        now: Instant,
+    ) {
+        val costs = ReplacementCostRules.fromPurchase(
+            lines.map { it.subject.product.id to it.movementCost },
+        )
+        for ((productId, unitCost) in costs) {
+            val product = lines.first { it.subject.product.id == productId }.subject.product
+            if (ReplacementCostRules.purchaseReplaces(product.replacementCostAt, time.occurredAt)) {
+                products.updateReplacementCost(productId, unitCost, time.occurredAt, now)
+            }
         }
     }
 

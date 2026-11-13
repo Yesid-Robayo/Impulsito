@@ -45,6 +45,9 @@ sealed interface ProductEditAction {
 
     data class BarcodeChange(val text: String) : ProductEditAction
 
+    /** Corrigió a mano lo que costaría reponer una unidad. Vacío es sin dato. */
+    data class ReplacementCostChange(val text: String) : ProductEditAction
+
     data object Save : ProductEditAction
 
     /** Quiere cerrar: con cambios sin guardar, primero pregunta. */

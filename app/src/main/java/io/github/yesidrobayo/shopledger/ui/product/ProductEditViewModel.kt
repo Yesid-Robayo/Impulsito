@@ -186,6 +186,9 @@ class ProductEditViewModel(
             is ProductEditAction.BarcodeChange ->
                 edit(ProductEditField.BARCODE) { copy(barcode = action.text) }
 
+            is ProductEditAction.ReplacementCostChange ->
+                edit(ProductEditField.REPLACEMENT_COST) { copy(replacementCost = action.text) }
+
             ProductEditAction.Save -> save()
 
             ProductEditAction.Close ->
@@ -251,7 +254,8 @@ class ProductEditViewModel(
         return ProductPricing.draft(
             context = context,
             cost = cost,
-            replacementCost = saved?.replacementCost ?: Money.ZERO,
+            // La reposición que se está escribiendo, para sugerir con lo que la persona ve.
+            replacementCost = money(form.replacementCost) {},
             productTarget = saved?.details?.targetMargin,
             categoryId = form.categoryId,
             taxRateId = saved?.details?.taxRateId,
@@ -291,6 +295,7 @@ class ProductEditViewModel(
                 cost = moneyText(cost),
                 minStock = quantityText(details.minStock),
                 barcode = details.barcode.orEmpty(),
+                replacementCost = moneyText(product.replacementCost),
             )
             current.copy(
                 loading = false,
@@ -463,6 +468,22 @@ class ProductEditViewModel(
                     FieldProblem.FractionNotAllowed
             }
         }
+        // Sin stock propio el producto no se compra: no lleva reposición, y el campo no se muestra.
+        // Sin tocar el campo se manda `null`, para no pisar lo que una compra haya puesto mientras
+        // el formulario estaba abierto.
+        val untouched = current.product?.let {
+            text.replacementCost == moneyText(it.replacementCost)
+        }
+        val replacement =
+            when {
+                !tracks -> Money.ZERO
+
+                untouched == true -> null
+
+                else -> money(text.replacementCost) {
+                    errors[ProductEditField.REPLACEMENT_COST] = it
+                }
+            }
         val barcode = CatalogText.barcode(text.barcode)
         if (barcode != null && CatalogText.length(barcode) > CatalogText.BARCODE_MAX) {
             errors[ProductEditField.BARCODE] = FieldProblem.TooLong(CatalogText.BARCODE_MAX)
@@ -488,6 +509,7 @@ class ProductEditViewModel(
                 },
             minStock = minimum,
             barcode = barcode,
+            replacementCost = replacement,
         )
         return ReadForm(form, if (current.isNew) initial else QuantityMilli.ZERO, emptyMap())
     }
@@ -609,6 +631,11 @@ class ProductEditViewModel(
 
                 ProductFormIssue.BARCODE_TOO_LONG ->
                     ProductEditField.BARCODE to FieldProblem.TooLong(CatalogText.BARCODE_MAX)
+
+                ProductFormIssue.REPLACEMENT_COST_OUT_OF_RANGE,
+                ProductFormIssue.REPLACEMENT_COST_NOT_APPLICABLE,
+                ->
+                    ProductEditField.REPLACEMENT_COST to FieldProblem.TooHigh
             }
         }
 

@@ -346,6 +346,7 @@ class EditProductUseCaseTest {
                     salePrice = Money(200L),
                     cost = Money(60L),
                     minStock = QuantityMilli(2_000L),
+                    replacementCost = Money(70L),
                 ),
             )
         }

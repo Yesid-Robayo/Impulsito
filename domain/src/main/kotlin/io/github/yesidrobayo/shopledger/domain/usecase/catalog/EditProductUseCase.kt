@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductFormCheck
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductFormRules
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductHistoryLock
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ReplacementCostRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockEvaluator
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockTransition
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
@@ -38,6 +39,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
  * - **Costo.** El costo inicial cambia, y con él el promedio, solo mientras el producto no tenga
  *   filas en su libro. Después lo lleva el libro, y se corrige con una corrección de costo.
  * - **Unidad, modo de stock y lotes.** Con historia ya no cambian: el libro no mezcla unidades.
+ * - **Reposición.** Se corrige a mano sin tocar el costo promedio, y se fecha al guardarla. Un
+ *   producto que deja de llevar stock propio la pierde, porque ya no se compra.
  * - **Mínimo.** Si el producto queda bajo, crea su alerta callada; si deja de estarlo, la resuelve.
  * - **Archivado.** Se puede renombrar, para reactivarlo si su nombre choca, pero no cambia de
  *   precio ni de costo hasta reactivarlo.
@@ -126,14 +129,20 @@ class EditProductUseCase(
         val initialCost = if (form.stockMode == ProductStockMode.TRACKED) form.cost else Money.ZERO
         val priceChanged = form.salePrice != product.salePrice
         val initialCostChanged = initialCost != product.initialCost
-        val costChanged = initialCostChanged || requested.fixedUnitCost != current.fixedUnitCost
+        val replacement = when {
+            form.stockMode != ProductStockMode.TRACKED -> Money.ZERO
+            else -> form.replacementCost ?: product.replacementCost
+        }
+        val replacementChanged = replacement != product.replacementCost
+        val costChanged = initialCostChanged || replacementChanged ||
+            requested.fixedUnitCost != current.fixedUnitCost
         if (product.isArchived && (priceChanged || costChanged)) {
             return reject(SaveProductResult.ArchivedPriceLocked)
         }
         if (initialCostChanged && ledger.findByProduct(product.id).isNotEmpty()) {
             return reject(SaveProductResult.CostLockedByMovements)
         }
-        if (requested == current && !priceChanged && !initialCostChanged) {
+        if (requested == current && !priceChanged && !initialCostChanged && !replacementChanged) {
             // Nada cambió: no se escribe ni se cuenta un cambio sin respaldar.
             return TxResult.Rollback(SaveProductResult.Saved(product.id))
         }
@@ -158,7 +167,7 @@ class EditProductUseCase(
         val now = clock.now()
         // Con algún monto, la moneda debe estar confirmada; si es el primero, la bloquea ahora.
         val hasMoney = form.salePrice != Money.ZERO || initialCost != Money.ZERO ||
-            requested.fixedUnitCost != Money.ZERO
+            requested.fixedUnitCost != Money.ZERO || replacement != Money.ZERO
         if (hasMoney &&
             !currencyLock.lock(now)
         ) {
@@ -172,6 +181,10 @@ class EditProductUseCase(
         }
         products.updateDetails(product.id, requested, now)
         if (initialCostChanged) products.updateInitialCost(product.id, initialCost, now)
+        if (replacementChanged) {
+            val at = ReplacementCostRules.manualStamp(replacement, now)
+            products.updateReplacementCost(product.id, replacement, at, now)
+        }
         if (priceChanged) {
             val at = checkNotNull(time)
             products.updateSalePrice(product.id, form.salePrice, now)

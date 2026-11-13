@@ -27,6 +27,7 @@ import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductFormCheck
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductFormRules
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ReplacementCostRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockEvaluator
 import io.github.yesidrobayo.shopledger.domain.rule.stock.OpeningBalanceEntry
 import io.github.yesidrobayo.shopledger.domain.rule.stock.OpeningBalanceRule
@@ -98,7 +99,9 @@ class CreateProductUseCase(
         val tracked = form.stockMode == ProductStockMode.TRACKED
         val initialCost = if (tracked) form.cost else Money.ZERO
         // Un producto con precio y costo en cero no lleva dinero: no fija ninguna moneda.
-        val hasMoney = form.salePrice != Money.ZERO || form.cost != Money.ZERO
+        val replacement = form.replacementCost ?: Money.ZERO
+        val hasMoney =
+            form.salePrice != Money.ZERO || form.cost != Money.ZERO || replacement != Money.ZERO
         if (hasMoney && !currencyLock.lock(time.occurredAt)) {
             return reject(SaveProductResult.CurrencyUnconfirmed)
         }
@@ -156,8 +159,8 @@ class CreateProductUseCase(
                 details = details,
                 salePrice = form.salePrice,
                 initialCost = initialCost,
-                replacementCost = Money.ZERO,
-                replacementCostAt = null,
+                replacementCost = replacement,
+                replacementCostAt = ReplacementCostRules.manualStamp(replacement, time.occurredAt),
                 createdAt = time.occurredAt,
             ),
         )

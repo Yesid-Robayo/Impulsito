@@ -13,6 +13,10 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  * componentes no lleva costo propio, porque sale de sus componentes. [minStock] es el mínimo de la
  * alerta, y cero avisa al agotarse. [barcode] en blanco es sin código.
  *
+ * [replacementCost] es lo que costaría comprar hoy una unidad base, corregido a mano: cero es sin
+ * dato, y `null` lo deja como está. Solo lo lleva un producto con stock propio, porque es el único
+ * que se compra; lo normal es que lo actualice la última compra.
+ *
  * Lo que no está aquí, como las variantes, la foto o el impuesto, lo conserva la edición tal como
  * estaba.
  */
@@ -26,4 +30,5 @@ data class ProductForm(
     val cost: Money = Money.ZERO,
     val minStock: QuantityMilli = QuantityMilli.ZERO,
     val barcode: String? = null,
+    val replacementCost: Money? = null,
 )

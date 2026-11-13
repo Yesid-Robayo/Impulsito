@@ -533,8 +533,9 @@ class RegisterPurchaseUseCaseTest {
         world.addProduct(product(1))
         world.addProduct(product(2))
         val before = world.tables
-        // Cabecera, y por línea: su id y la línea, y la fila con su id y el producto.
-        val writes = 2 + 2 * 5
+        // Cabecera, y por línea: su id y la línea, y la fila con su id y el producto. Después, la
+        // reposición de cada producto.
+        val writes = 2 + 2 * 5 + 2
         for (failAt in 1..writes) {
             world.failAtWrite = failAt
             val failed = runCatching {

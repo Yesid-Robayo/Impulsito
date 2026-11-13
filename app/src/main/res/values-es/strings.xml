@@ -152,6 +152,8 @@
     <string name="product_initial_stock">Stock inicial</string>
     <string name="product_min_stock">Stock mínimo</string>
     <string name="product_min_stock_help">Se avisará al llegar a este número</string>
+    <string name="product_replacement_cost">Costo de reposición</string>
+    <string name="product_replacement_cost_help">Lo actualiza la última compra. La ganancia se sigue midiendo con el costo promedio.</string>
     <string name="product_profit_per_unit">Ganancia por unidad: %1$s · Margen %2$s</string>
     <string name="product_loss_per_sale">Pérdida en cada venta: %1$s</string>
     <string name="product_no_cost_hint">Sin costo no se puede calcular la ganancia real</string>

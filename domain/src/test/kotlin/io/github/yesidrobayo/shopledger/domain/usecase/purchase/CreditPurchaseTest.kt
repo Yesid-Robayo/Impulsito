@@ -179,9 +179,9 @@ class CreditPurchaseTest {
     @Test
     fun `a failure at any write leaves nothing behind`() = runTest {
         val before = world.tables
-        // Cabecera con su id, la línea con su id, la fila del stock con su id y el producto, y la
-        // fila del proveedor con su id y el saldo.
-        val writes = 2 + 2 + 3 + 3
+        // Cabecera con su id, la línea con su id, la fila del stock con su id y el producto, la
+        // reposición del producto, y la fila del proveedor con su id y el saldo.
+        val writes = 2 + 2 + 3 + 1 + 3
         for (failAt in 1..writes) {
             world.failAtWrite = failAt
             val failed = runCatching { register(paid = 20_000) }

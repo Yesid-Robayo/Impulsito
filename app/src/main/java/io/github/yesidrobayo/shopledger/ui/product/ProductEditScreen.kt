@@ -193,7 +193,9 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
     var choosingUnit by rememberSaveable { mutableStateOf(false) }
     // Se abre sola si el producto ya tiene alguno de los datos de adentro.
     var moreDetails by rememberSaveable {
-        mutableStateOf(form.barcode.isNotEmpty() || !uiState.tracksStock)
+        mutableStateOf(
+            form.barcode.isNotEmpty() || form.replacementCost.isNotEmpty() || !uiState.tracksStock,
+        )
     }
     LaunchedEffect(uiState.conversions.isNotEmpty()) {
         if (uiState.conversions.isNotEmpty()) moreDetails = true
@@ -318,7 +320,40 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
             multiple = false,
         )
     }
+    if (uiState.tracksStock) ReplacementCostField(uiState, onAction)
     if (!uiState.isNew) ProductConversions(uiState, onAction)
+}
+
+/**
+ * Lo que costaría reponer una unidad, corregido a mano. Vacío es sin dato, y así se queda: nunca se
+ * llena con el costo promedio. La ayuda recuerda que la última compra lo actualiza y que la ganancia
+ * se sigue midiendo con el costo promedio.
+ */
+@Composable
+private fun ReplacementCostField(
+    uiState: ProductEditUiState,
+    onAction: (ProductEditAction) -> Unit,
+) {
+    Column {
+        MoneyField(
+            value = uiState.form.replacementCost,
+            onValueChange = { onAction(ProductEditAction.ReplacementCostChange(it)) },
+            label = stringResource(R.string.product_replacement_cost),
+            modifier = Modifier.fillMaxWidth(),
+            error = fieldError(uiState, ProductEditField.REPLACEMENT_COST),
+        )
+        if (uiState.errors[ProductEditField.REPLACEMENT_COST] == null) {
+            Text(
+                stringResource(R.string.product_replacement_cost_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    start = AppTheme.spacing.s16,
+                    top = AppTheme.spacing.s4,
+                ),
+            )
+        }
+    }
 }
 
 /**

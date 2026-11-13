@@ -327,6 +327,105 @@ class ProductEditViewModelTest {
         }
 
     @Test
+    fun `the replacement cost loads as written, empty stays empty, and only a change is sent`() =
+        runTest(dispatcher) {
+            operations.editing = ProductForEdit(
+                product = product(5L, "Arroz", salePrice = 420_000L, averageCost = 300_000L)
+                    .copy(replacementCost = Money(310_050L)),
+                lockedFields = emptySet(),
+                costLocked = false,
+            )
+            val model = ProductEditViewModel(operations, numbers, 5L, null, NAMES)
+            advanceUntilIdle()
+            assertEquals("3100,5", model.uiState.value.form.replacementCost)
+
+            // Sin tocar el campo no se manda: lo que ponga una compra mientras tanto no se pisa.
+            model.onAction(ProductEditAction.SalePriceChange("4300"))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertNull(operations.edited.last().second.replacementCost)
+
+            model.onAction(ProductEditAction.ReplacementCostChange("3200"))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertEquals(Money(320_000L), operations.edited.last().second.replacementCost)
+
+            model.onAction(ProductEditAction.ReplacementCostChange(""))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertEquals(Money.ZERO, operations.edited.last().second.replacementCost)
+        }
+
+    @Test
+    fun `without a replacement cost the field is empty, never the average cost`() =
+        runTest(dispatcher) {
+            operations.editing = ProductForEdit(
+                product = product(5L, "Arroz", salePrice = 420_000L, averageCost = 300_000L),
+                lockedFields = emptySet(),
+                costLocked = true,
+            )
+            val model = ProductEditViewModel(operations, numbers, 5L, null, NAMES)
+            advanceUntilIdle()
+
+            assertEquals("", model.uiState.value.form.replacementCost)
+        }
+
+    @Test
+    fun `a replacement cost that cannot be read marks its field and saves nothing`() =
+        runTest(dispatcher) {
+            val model = newProduct()
+            advanceUntilIdle()
+            model.onAction(ProductEditAction.NameChange("Arroz"))
+            model.onAction(ProductEditAction.ReplacementCostChange("1,234"))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            assertEquals(
+                FieldProblem.TooManyDecimals(2),
+                model.uiState.value.errors[ProductEditField.REPLACEMENT_COST],
+            )
+            assertTrue(operations.created.isEmpty())
+
+            model.onAction(ProductEditAction.ReplacementCostChange("12,5"))
+            assertNull(model.uiState.value.errors[ProductEditField.REPLACEMENT_COST])
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertEquals(Money(1_250L), operations.created.single().first.replacementCost)
+        }
+
+    @Test
+    fun `a rejected replacement cost is shown on its field`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+        model.onAction(ProductEditAction.NameChange("Arroz"))
+        operations.result = SaveProductResult.Invalid(
+            setOf(ProductFormIssue.REPLACEMENT_COST_OUT_OF_RANGE),
+        )
+
+        model.onAction(ProductEditAction.Save)
+        advanceUntilIdle()
+
+        assertEquals(
+            FieldProblem.TooHigh,
+            model.uiState.value.errors[ProductEditField.REPLACEMENT_COST],
+        )
+    }
+
+    @Test
+    fun `a service sends no replacement cost`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+        model.onAction(ProductEditAction.NameChange("Corte"))
+        model.onAction(ProductEditAction.ReplacementCostChange("10"))
+        model.onAction(ProductEditAction.StockModeChange(ProductStockMode.UNTRACKED))
+
+        model.onAction(ProductEditAction.Save)
+        advanceUntilIdle()
+
+        assertEquals(Money.ZERO, operations.created.single().first.replacementCost)
+    }
+
+    @Test
     fun `a service has no stock to count and its cost is the fixed cost of each sale`() =
         runTest(dispatcher) {
             val model = newProduct()

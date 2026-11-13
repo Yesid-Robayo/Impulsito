@@ -156,6 +156,8 @@
     <string name="product_initial_stock">Opening stock</string>
     <string name="product_min_stock">Minimum stock</string>
     <string name="product_min_stock_help">An alert appears at this number</string>
+    <string name="product_replacement_cost">Replacement cost</string>
+    <string name="product_replacement_cost_help">Updated by the latest purchase. Profit is still measured with the average cost.</string>
     <string name="product_profit_per_unit">Profit per unit: %1$s · Margin %2$s</string>
     <string name="product_loss_per_sale">Loss on each sale: %1$s</string>
     <string name="product_no_cost_hint">Without a cost, the real profit cannot be calculated</string>

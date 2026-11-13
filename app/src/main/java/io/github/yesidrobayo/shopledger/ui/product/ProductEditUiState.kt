@@ -19,6 +19,7 @@ enum class ProductEditField {
     INITIAL_STOCK,
     MIN_STOCK,
     BARCODE,
+    REPLACEMENT_COST,
 }
 
 /** Por qué un campo no se puede guardar así. La pantalla lo dice con su texto. */
@@ -75,6 +76,7 @@ sealed interface ProductEditNotice {
 /**
  * Lo que la persona escribe, tal cual, y lo que eligió. [stockMode] empieza con stock propio; sin
  * stock, el costo es el costo fijo de cada unidad vendida y no hay stock que contar ni vigilar.
+ * [replacementCost] vacío es sin dato: la pantalla no pone ninguna cifra en su lugar.
  */
 @Immutable
 data class ProductEditForm(
@@ -87,6 +89,7 @@ data class ProductEditForm(
     val initialStock: String = "",
     val minStock: String = "",
     val barcode: String = "",
+    val replacementCost: String = "",
 )
 
 /**

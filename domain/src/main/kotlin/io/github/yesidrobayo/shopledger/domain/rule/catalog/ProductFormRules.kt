@@ -35,6 +35,7 @@ object ProductFormRules {
         }
         if (!isUnitMoney(form.salePrice)) issues += ProductFormIssue.SALE_PRICE_OUT_OF_RANGE
         costIssue(form)?.let { issues += it }
+        replacementIssue(form)?.let { issues += it }
         if (StockModeRules.hasLedger(form.stockMode)) {
             quantityIssue(initialStock, allowsFraction, mustMove = false)?.let { issues += it }
             minStockIssue(form.minStock, allowsFraction)?.let { issues += it }
@@ -65,6 +66,22 @@ object ProductFormRules {
         quantityIssue(quantity, allowsFraction, mustMove = true),
         if (isUnitMoney(unitCost)) null else ProductFormIssue.COST_OUT_OF_RANGE,
     )
+
+    /**
+     * El costo de reposición escrito: dentro del tope de un costo por unidad, y solo en un producto
+     * con stock propio. Cero o sin escribir siempre vale, porque es sin dato.
+     */
+    private fun replacementIssue(form: ProductForm): ProductFormIssue? {
+        val replacement = form.replacementCost ?: return null
+        return when {
+            !isUnitMoney(replacement) -> ProductFormIssue.REPLACEMENT_COST_OUT_OF_RANGE
+
+            replacement != Money.ZERO && form.stockMode != ProductStockMode.TRACKED ->
+                ProductFormIssue.REPLACEMENT_COST_NOT_APPLICABLE
+
+            else -> null
+        }
+    }
 
     private fun costIssue(form: ProductForm): ProductFormIssue? = when {
         !isUnitMoney(form.cost) -> ProductFormIssue.COST_OUT_OF_RANGE

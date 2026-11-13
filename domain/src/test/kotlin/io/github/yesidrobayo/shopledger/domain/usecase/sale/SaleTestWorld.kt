@@ -292,7 +292,20 @@ internal class SaleWorld(
             replacementCost: Money,
             replacementCostAt: Instant?,
             updatedAt: Instant,
-        ) = unused()
+        ) {
+            val product = read().products[id] ?: brokenRule()
+            write {
+                it.copy(
+                    products = it.products + (
+                        id to product.copy(
+                            replacementCost = replacementCost,
+                            replacementCostAt = replacementCostAt,
+                            updatedAt = updatedAt,
+                        )
+                        ),
+                )
+            }
+        }
 
         override suspend fun setPriceReviewSince(id: Long, since: Instant?, updatedAt: Instant) {
             val product = read().products[id] ?: brokenRule()

@@ -40,4 +40,10 @@ enum class ProductFormIssue {
 
     /** El código de barras pasa de 64 caracteres. */
     BARCODE_TOO_LONG,
+
+    /** El costo de reposición es negativo o pasa del tope de costo por unidad. */
+    REPLACEMENT_COST_OUT_OF_RANGE,
+
+    /** Un producto sin stock propio no se compra, así que no lleva costo de reposición. */
+    REPLACEMENT_COST_NOT_APPLICABLE,
 }

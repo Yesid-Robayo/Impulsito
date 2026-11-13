@@ -152,6 +152,8 @@
     <string name="product_initial_stock">Estoque inicial</string>
     <string name="product_min_stock">Estoque mínimo</string>
     <string name="product_min_stock_help">Haverá um aviso ao chegar a este número</string>
+    <string name="product_replacement_cost">Custo de reposição</string>
+    <string name="product_replacement_cost_help">A última compra o atualiza. O lucro continua sendo medido com o custo médio.</string>
     <string name="product_profit_per_unit">Lucro por unidade: %1$s · Margem %2$s</string>
     <string name="product_loss_per_sale">Perda em cada venda: %1$s</string>
     <string name="product_no_cost_hint">Sem custo não é possível calcular o lucro real</string>
