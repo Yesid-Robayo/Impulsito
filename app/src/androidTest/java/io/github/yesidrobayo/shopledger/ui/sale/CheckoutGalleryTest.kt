@@ -18,11 +18,14 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -30,6 +33,7 @@ import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
 import java.io.File
+import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assume.assumeTrue
@@ -57,6 +61,8 @@ class CheckoutGalleryTest {
         val methodId: Long = 1L,
         val catalog: SaleCatalog = checkoutCatalog(),
         val result: RegisterSaleResult = RegisterSaleResult.Registered(1_204L),
+        val customers: List<Customer> = emptyList(),
+        val scrolled: Boolean = false,
         val discreet: Boolean = false,
         val qrOnly: Boolean = false,
         val actions: List<CheckoutAction> = emptyList(),
@@ -100,6 +106,11 @@ class CheckoutGalleryTest {
                             SystemClock.sleep(STEP_MILLIS)
                         }
                         SystemClock.sleep(SETTLE_MILLIS)
+                        if (scene.scrolled) {
+                            // La sección de abajo: se desliza como lo haría la persona.
+                            instrumentation.uiAutomation.executeShellCommand(SWIPE_UP).close()
+                            SystemClock.sleep(SETTLE_MILLIS)
+                        }
                         val mode = if (dark) "dark" else "light"
                         val file = "${palette.name.lowercase()}-$mode-checkout-${scene.name}.png"
                         save(File(requireNotNull(dir), file))
@@ -121,6 +132,7 @@ class CheckoutGalleryTest {
                 numbers = SaleNumberFormat(SYMBOLS, 0, SYMBOLS, SYMBOLS),
                 offered = { CheckoutHandoff.Offered(draft, scene.qrOnly) },
                 computation = Dispatchers.Default,
+                customersSource = { flowOf(scene.customers) },
             )
         }
         return model
@@ -168,6 +180,38 @@ class CheckoutGalleryTest {
             ),
             Scene("qr", methodId = 3L, qrOnly = true),
             Scene(
+                "points",
+                catalog = checkoutCatalog().copy(loyalty = PROGRAM),
+                customers = listOf(MEMBER),
+                scrolled = true,
+                actions = listOf(
+                    CheckoutAction.PickCustomer(MEMBER.id),
+                    CheckoutAction.PointsChange("100"),
+                    CheckoutAction.RedeemPoints,
+                ),
+            ),
+            Scene(
+                "pointstotal",
+                catalog = checkoutCatalog().copy(loyalty = PROGRAM),
+                customers = listOf(MEMBER),
+                actions = listOf(
+                    CheckoutAction.PickCustomer(MEMBER.id),
+                    CheckoutAction.PointsChange("100"),
+                    CheckoutAction.RedeemPoints,
+                ),
+            ),
+            Scene(
+                "pointserror",
+                catalog = checkoutCatalog().copy(loyalty = PROGRAM),
+                customers = listOf(MEMBER),
+                scrolled = true,
+                actions = listOf(
+                    CheckoutAction.PickCustomer(MEMBER.id),
+                    CheckoutAction.PointsChange("151"),
+                    CheckoutAction.RedeemPoints,
+                ),
+            ),
+            Scene(
                 "failed",
                 result = RegisterSaleResult.StorageFailed(StorageFailure.DISK_FULL),
                 actions = listOf(CheckoutAction.Register),
@@ -184,6 +228,19 @@ class CheckoutGalleryTest {
     private companion object {
         const val SETTLE_MILLIS = 900L
         const val STEP_MILLIS = 250L
+        const val SWIPE_UP = "input swipe 540 1600 540 300 400"
+        val PROGRAM = LoyaltySettings(true, amountPerPoint = Money(1_000L), pointValue = Money(5L))
+        val MEMBER = Customer(
+            id = 41L,
+            contact = CustomerContact("Cliente con puntos", "cliente con puntos", null, null, null),
+            priceListId = null,
+            balance = Money.ZERO,
+            pointsBalance = 150L,
+            anonymizedAt = null,
+            archivedAt = null,
+            createdAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
+            updatedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
+        )
         val SYMBOLS = NumberSymbols(decimalSeparator = ',', minusSign = '-', grouping = null)
     }
 }

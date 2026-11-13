@@ -45,4 +45,13 @@
     <string name="checkout_error_no_customer">A payment on credit needs a customer</string>
     <string name="checkout_customer_removed_notice">The customer was removed, along with the redemption, credit balance and payments on credit.</string>
     <string name="checkout_error_due_before_sale">The due date cannot be before the sale</string>
+    <string name="checkout_points">Points</string>
+    <string name="checkout_points_available">Available: %1$s</string>
+    <string name="checkout_points_to_redeem">Points to redeem</string>
+    <string name="checkout_points_discount">Discount: %1$s</string>
+    <string name="checkout_redeem_action">Redeem points</string>
+    <string name="checkout_points_not_money">Points are not money.</string>
+    <string name="checkout_error_points">Not enough points. Available: %1$s</string>
+    <string name="checkout_error_points_exceed">The discount exceeds the sale total</string>
+    <string name="checkout_registered_points">Sale recorded: %1$s. Points earned: %2$s.</string>
 </resources>

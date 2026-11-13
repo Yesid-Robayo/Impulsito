@@ -40,6 +40,7 @@ data class CheckoutUiState(
     val customerQuery: String = "",
     val customerRemoved: Boolean = false,
     val credit: CheckoutCredit? = null,
+    val points: CheckoutPoints? = null,
 ) {
     /** Si algún pago usa un método que ya no se ofrece: hay que quitarlo o cambiarlo. */
     val hasGoneMethod: Boolean get() = payments.any { it.gone }
@@ -65,7 +66,8 @@ sealed interface CheckoutContent {
  * El bloque del total. [amountDue] es lo que se cobra y nunca se oculta. Debajo, solo las filas que
  * aplican: [subtotal], el ajuste escrito, el recargo o descuento de cada método en [methodAdjustments]
  * [tax], que solo existe cuando el impuesto se suma al precio, [cashRounding], el redondeo del
- * efectivo, y [tip], la propina: así las filas suman el total.
+ * efectivo, [tip], la propina, y [pointsDiscount], el descuento de los puntos canjeados, positivo:
+ * así las filas suman el total.
  */
 @Immutable
 data class CheckoutSummary(
@@ -76,6 +78,7 @@ data class CheckoutSummary(
     val tax: Money? = null,
     val cashRounding: Money = Money.ZERO,
     val tip: Money = Money.ZERO,
+    val pointsDiscount: Money = Money.ZERO,
 )
 
 /** El recargo, positivo, o el descuento, negativo, que suma pagar con [method]. */
@@ -150,6 +153,35 @@ data class CheckoutCredit(
     val saleDate: BusinessDate?,
     val weekStartDay: DayOfWeek?,
 )
+
+/**
+ * La sección `Puntos`, solo con el programa activo y un cliente. [available] son sus puntos antes
+ * de la venta. [text] es lo escrito en `Puntos por canjear`, y [discount], lo que descontaría, si se
+ * lee. [redeemed] son los puntos ya canjeados en esta venta, cuyo descuento está en el total.
+ *
+ * Los puntos no son dinero: el canje es un descuento de la venta, nunca un pago.
+ */
+@Immutable
+data class CheckoutPoints(
+    val available: Long,
+    val text: String,
+    val discount: Money?,
+    val redeemed: Long,
+    val error: CheckoutPointsError?,
+)
+
+/** Por qué no se canjean los puntos escritos. */
+@Immutable
+sealed interface CheckoutPointsError {
+    /** No es un número entero. */
+    data object NotANumber : CheckoutPointsError
+
+    /** Pide más puntos de los que tiene el cliente: solo hay [available]. */
+    data class NotEnough(val available: Long) : CheckoutPointsError
+
+    /** Su descuento, con el ajuste escrito, supera el total de la venta. */
+    data object AboveSale : CheckoutPointsError
+}
 
 /** Si el ajuste de la venta baja o sube el total. */
 enum class AdjustmentKind {

@@ -45,4 +45,13 @@
     <string name="checkout_error_no_customer">El pago a crédito necesita un cliente</string>
     <string name="checkout_customer_removed_notice">Se quitó el cliente: también se retiraron el canje, el saldo a favor y los pagos a crédito.</string>
     <string name="checkout_error_due_before_sale">El vencimiento no puede ser antes de la venta</string>
+    <string name="checkout_points">Puntos</string>
+    <string name="checkout_points_available">Disponibles: %1$s</string>
+    <string name="checkout_points_to_redeem">Puntos por canjear</string>
+    <string name="checkout_points_discount">Descuento: %1$s</string>
+    <string name="checkout_redeem_action">Canjear puntos</string>
+    <string name="checkout_points_not_money">Los puntos no son dinero.</string>
+    <string name="checkout_error_points">Sin puntos suficientes. Disponibles: %1$s</string>
+    <string name="checkout_error_points_exceed">El descuento supera el total de la venta</string>
+    <string name="checkout_registered_points">Venta registrada: %1$s. Puntos ganados: %2$s.</string>
 </resources>

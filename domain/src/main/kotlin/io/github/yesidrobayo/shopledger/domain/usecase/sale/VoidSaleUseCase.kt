@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -27,6 +28,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.stock.StockCompensation
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOutcome
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.LoyaltyEntryOutcome
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.LoyaltyLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
 import kotlin.time.Instant
 
@@ -49,6 +52,10 @@ import kotlin.time.Instant
  *   libro del cliente, que no lleva la venta: apunta al cargo que compensa. Lo ya abonado queda
  *   como saldo a favor.
  *
+ * - **Los puntos se revierten.** Lo que la venta ganó y lo que canjeó recibe su `ENTRY_VOID` en el
+ *   libro de puntos, que tampoco lleva la venta. El saldo de puntos puede quedar negativo si lo
+ *   ganado ya se canjeó en otra venta: se muestra así, y no impide anular.
+ *
  * Una venta con una devolución activa no se anula: lo que falta se devuelve. Un producto archivado
  * no impide anular: su stock vuelve igual.
  *
@@ -64,6 +71,7 @@ class VoidSaleUseCase(
     private val clock: Clock,
     private val alerts: LowStockAlertRepository? = null,
     private val customerLedger: CustomerLedgerRepository? = null,
+    private val loyaltyLedger: LoyaltyLedgerRepository? = null,
 ) {
     private val ledger = StockChangeRecorder(ledger)
 
@@ -110,6 +118,9 @@ class VoidSaleUseCase(
             if (!compensated) return TxResult.Rollback(VoidSaleResult.LedgerDamaged)
         }
         if (!reverseCredit(saleId, calendar.stamp(now))) {
+            return TxResult.Rollback(VoidSaleResult.LedgerDamaged)
+        }
+        if (!reversePoints(saleId, calendar.stamp(now))) {
             return TxResult.Rollback(VoidSaleResult.LedgerDamaged)
         }
         alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
@@ -211,6 +222,30 @@ class VoidSaleUseCase(
 
                 CustomerEntryOutcome.EntryNotFound, CustomerEntryOutcome.NotReversible ->
                     error("Un cargo de la venta siempre existe y se puede compensar")
+            }
+        }
+        return true
+    }
+
+    /**
+     * Compensa lo que la venta ganó y canjeó en el libro de puntos de su cliente, una sola vez cada
+     * fila. Devuelve `false` si el saldo de puntos pasaría del tope: la transacción se deshace y no
+     * se anula nada.
+     */
+    private suspend fun reversePoints(saleId: Long, time: RecordTime): Boolean {
+        val book = loyaltyLedger ?: return true
+        val writer = LoyaltyLedgerWriter(book)
+        for (entry in book.findBySale(saleId)) {
+            when (writer.reverse(entry.customerId, entry.id, note = null, time = time)) {
+                is LoyaltyEntryOutcome.Appended -> Unit
+
+                // Ya se compensó: anular de nuevo lo revertiría dos veces.
+                LoyaltyEntryOutcome.AlreadyCompensated -> Unit
+
+                is LoyaltyEntryOutcome.Rejected -> return false
+
+                LoyaltyEntryOutcome.EntryNotFound, LoyaltyEntryOutcome.NotReversible ->
+                    error("Una fila de puntos de la venta siempre existe y se puede compensar")
             }
         }
         return true

@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
@@ -552,12 +553,12 @@ class CheckoutViewModelTest {
     private val credit = method(13L, PaymentMethodKind.ON_ACCOUNT)
     private val ana = customer(30L, "Ana", balance = 4_000L)
 
-    private fun customer(id: Long, name: String, balance: Long = 0L) = Customer(
+    private fun customer(id: Long, name: String, balance: Long = 0L, points: Long = 0L) = Customer(
         id = id,
         contact = CustomerContact(name, name.lowercase(), null, null, null),
         priceListId = null,
         balance = Money(balance),
-        pointsBalance = 0L,
+        pointsBalance = points,
         anonymizedAt = null,
         archivedAt = null,
         createdAt = CREATED,
@@ -647,5 +648,184 @@ class CheckoutViewModelTest {
 
         assertEquals(30L, requests.single().customerId)
         assertNull(requests.single().creditDueDate)
+    }
+
+    // ------------------------------------------------------------------ puntos
+
+    private val program =
+        LoyaltySettings(true, amountPerPoint = Money(1_000L), pointValue = Money(5L))
+    private val luis = customer(31L, "Luis", points = 150L)
+    private val eva = customer(32L, "Eva", points = 10_000L)
+
+    private fun TestScope.withPoints(): CheckoutViewModel {
+        catalog.value = catalog.value.copy(loyalty = program)
+        val model = viewModel(customers = listOf(luis, eva))
+        model.act(this, CheckoutAction.PickCustomer(31L))
+        return model
+    }
+
+    @Test
+    fun `without the program or without a customer points are never mentioned`() = runTest {
+        val off = viewModel(customers = listOf(luis))
+        off.act(this, CheckoutAction.PickCustomer(31L))
+        assertNull(off.state.points)
+
+        catalog.value = catalog.value.copy(loyalty = program)
+        val noCustomer = viewModel(customers = listOf(luis), state = SavedStateHandle())
+        assertNull(noCustomer.state.points)
+    }
+
+    @Test
+    fun `redeeming a hundred points takes five hundred off and is never a payment`() = runTest {
+        val model = withPoints()
+        assertEquals(150L, model.state.points?.available)
+
+        model.act(this, CheckoutAction.PointsChange("100"))
+        // Lo escrito dice cuánto descontaría, sin tocar el total hasta canjear.
+        assertEquals(Money(500L), model.state.points?.discount)
+        assertEquals(Money(25_000L), model.state.summary.amountDue)
+        model.act(this, CheckoutAction.RedeemPoints)
+
+        assertEquals(100L, model.state.points?.redeemed)
+        assertEquals(Money(500L), model.state.summary.pointsDiscount)
+        assertEquals(Money(24_500L), model.state.summary.amountDue)
+        // El pago único que cubría todo sigue cubriendo todo.
+        assertEquals("24500", model.state.payments.single().amountText)
+        assertEquals(CheckoutBalance.Complete, model.state.balance)
+        result = RegisterSaleResult.Registered(99L, pointsEarned = 24L)
+        model.act(this, CheckoutAction.Register)
+
+        val request = requests.single()
+        assertEquals(100L, request.pointsRedeemed)
+        assertEquals(Money.ZERO, request.orderAdjustment)
+        assertEquals(listOf(Money(24_500L)), request.payments.map { it.amount })
+        assertEquals(24L, model.state.registered?.pointsEarned)
+    }
+
+    @Test
+    fun `more points than the customer has are not redeemed`() = runTest {
+        val model = withPoints()
+        model.act(this, CheckoutAction.PointsChange("151"))
+        model.act(this, CheckoutAction.RedeemPoints)
+
+        assertEquals(CheckoutPointsError.NotEnough(150L), model.state.points?.error)
+        assertEquals(0L, model.state.points?.redeemed)
+        assertEquals(Money(25_000L), model.state.summary.amountDue)
+        // Escribir de nuevo quita el aviso.
+        model.act(this, CheckoutAction.PointsChange("15"))
+        assertNull(model.state.points?.error)
+    }
+
+    @Test
+    fun `points past the limit are more than the customer has`() = runTest {
+        val model = withPoints()
+        model.act(this, CheckoutAction.PointsChange("1000000000001"))
+        model.act(this, CheckoutAction.RedeemPoints)
+
+        assertEquals(CheckoutPointsError.NotEnough(150L), model.state.points?.error)
+    }
+
+    @Test
+    fun `a discount above the sale is not redeemed`() = runTest {
+        val model = withPoints()
+        model.act(this, CheckoutAction.PickCustomer(32L))
+        // 5001 puntos a 5 descuentan 25005, cinco más que la venta.
+        model.act(this, CheckoutAction.PointsChange("5001"))
+        model.act(this, CheckoutAction.RedeemPoints)
+
+        assertEquals(CheckoutPointsError.AboveSale, model.state.points?.error)
+        assertEquals(0L, model.state.points?.redeemed)
+        model.act(this, CheckoutAction.PointsChange("5000"))
+        model.act(this, CheckoutAction.RedeemPoints)
+        assertEquals(Money.ZERO, model.state.summary.amountDue)
+    }
+
+    @Test
+    fun `what is not a whole number is not redeemed, and blank removes the redemption`() = runTest {
+        val model = withPoints()
+        model.act(this, CheckoutAction.PointsChange("1,5"))
+        model.act(this, CheckoutAction.RedeemPoints)
+        assertEquals(CheckoutPointsError.NotANumber, model.state.points?.error)
+        model.act(this, CheckoutAction.PointsChange("x"))
+        model.act(this, CheckoutAction.RedeemPoints)
+        assertEquals(CheckoutPointsError.NotANumber, model.state.points?.error)
+
+        model.act(this, CheckoutAction.PointsChange("100"))
+        model.act(this, CheckoutAction.RedeemPoints)
+        model.act(this, CheckoutAction.PointsChange(""))
+        model.act(this, CheckoutAction.RedeemPoints)
+
+        assertEquals(0L, model.state.points?.redeemed)
+        assertEquals(Money.ZERO, model.state.summary.pointsDiscount)
+        assertEquals("25000", model.state.payments.single().amountText)
+    }
+
+    @Test
+    fun `changing or removing the customer takes the redemption away`() = runTest {
+        val model = withPoints()
+        model.act(this, CheckoutAction.PointsChange("100"))
+        model.act(this, CheckoutAction.RedeemPoints)
+
+        model.act(this, CheckoutAction.PickCustomer(32L))
+        assertEquals(0L, model.state.points?.redeemed)
+        assertEquals("", model.state.points?.text)
+        assertEquals("25000", model.state.payments.single().amountText)
+
+        model.act(this, CheckoutAction.PointsChange("100"))
+        model.act(this, CheckoutAction.RedeemPoints)
+        model.act(this, CheckoutAction.RemoveCustomer)
+        assertNull(model.state.points)
+        assertTrue(model.state.customerRemoved)
+        assertEquals(Money(25_000L), model.state.summary.amountDue)
+        model.act(this, CheckoutAction.Register)
+        assertEquals(0L, requests.single().pointsRedeemed)
+    }
+
+    @Test
+    fun `turning the program off while charging stops the redemption from counting`() = runTest {
+        val model = withPoints()
+        model.act(this, CheckoutAction.PointsChange("100"))
+        model.act(this, CheckoutAction.RedeemPoints)
+
+        catalog.value = catalog.value.copy(loyalty = program.copy(enabled = false))
+        advanceUntilIdle()
+
+        assertNull(model.state.points)
+        assertEquals(Money.ZERO, model.state.summary.pointsDiscount)
+        model.act(this, CheckoutAction.UseDue)
+        model.act(this, CheckoutAction.Register)
+        assertEquals(0L, requests.single().pointsRedeemed)
+    }
+
+    @Test
+    fun `a balance that changed while charging is said on the field`() = runTest {
+        val model = withPoints()
+        model.act(this, CheckoutAction.PointsChange("100"))
+        model.act(this, CheckoutAction.RedeemPoints)
+        result = RegisterSaleResult.NotEnoughPoints(40L)
+
+        model.act(this, CheckoutAction.Register)
+
+        assertEquals(CheckoutPointsError.NotEnough(40L), model.state.points?.error)
+        assertEquals(RegisterStatus.IDLE, model.state.status)
+        result = RegisterSaleResult.PointsAboveSale
+        model.act(this, CheckoutAction.Register)
+        assertEquals(CheckoutPointsError.AboveSale, model.state.points?.error)
+        result = RegisterSaleResult.PointsNotAvailable
+        model.act(this, CheckoutAction.Register)
+        assertEquals(RegisterStatus.FAILED, model.state.status)
+    }
+
+    @Test
+    fun `the redemption survives the process being closed`() = runTest {
+        val first = withPoints()
+        first.act(this, CheckoutAction.PointsChange("100"))
+        first.act(this, CheckoutAction.RedeemPoints)
+
+        val second = viewModel(draft = null, customers = listOf(luis))
+
+        assertEquals(100L, second.state.points?.redeemed)
+        assertEquals("100", second.state.points?.text)
+        assertEquals(Money(24_500L), second.state.summary.amountDue)
     }
 }

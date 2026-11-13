@@ -12,6 +12,9 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntryDraft
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
+import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyEntryDraft
+import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyEntrySource
+import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyEntryType
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
@@ -22,6 +25,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
@@ -36,6 +40,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -58,6 +63,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockPlan
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockSubject
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerEntryIssue
+import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyLedgerRules
+import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyProgramRules
+import io.github.yesidrobayo.shopledger.domain.rule.customer.RedemptionCheck
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.AdjustmentSplit
@@ -74,6 +82,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SurchargeSettlement
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOutcome
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.LoyaltyEntryOutcome
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.LoyaltyLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
@@ -134,6 +144,14 @@ import kotlin.time.Instant
  *   transacción. Sin cliente, un pago a crédito se rechaza. El cliente debe estar vigente: uno
  *   archivado o anonimizado ya no se ofrece al vender.
  *
+ * - **Los puntos no son dinero.** Con el programa de puntos activo y un cliente, la venta gana lo
+ *   neto que queda después del canje dividido por el monto de un punto, truncado, y lo escribe
+ *   como un `EARN` en el libro de puntos, en esta misma transacción. El canje descuenta los puntos
+ *   pedidos, nunca más que el saldo del libro, y su descuento entra en el ajuste de toda la venta,
+ *   nunca como un pago: se reparte entre las líneas junto con el ajuste escrito. Se escribe como un
+ *   `REDEEM`, antes del `EARN`. Lo que pasaría del tope de puntos no se gana: ganar nunca deshace
+ *   una venta.
+ *
  * Por ahora no vende combos ni productos con lotes: los rechaza con su motivo.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
@@ -156,10 +174,12 @@ class RegisterSaleUseCase(
     private val alerts: LowStockAlertRepository? = null,
     private val customers: CustomerRepository? = null,
     customerLedger: CustomerLedgerRepository? = null,
+    loyaltyLedger: LoyaltyLedgerRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
     private val customerLedger = customerLedger?.let(::CustomerLedgerWriter)
+    private val loyaltyLedger = loyaltyLedger?.let(::LoyaltyLedgerWriter)
 
     suspend operator fun invoke(request: SaleRequest): RegisterSaleResult = try {
         transactions.write { register(request) }
@@ -187,6 +207,10 @@ class RegisterSaleUseCase(
         val time = recordTime(calendar, request.date, now)
             ?: return TxResult.Rollback(RegisterSaleResult.FutureDate)
         customerRejection(request, time)?.let { return TxResult.Rollback(it) }
+        val redemption = when (val result = redemptionOf(request, current.loyalty)) {
+            is Redemption.Points -> result
+            is Redemption.Rejected -> return TxResult.Rollback(result.rejection)
+        }
 
         val chosen = when (val result = choosePayments(request)) {
             is Chosen.Payments -> result.payments
@@ -197,7 +221,9 @@ class RegisterSaleUseCase(
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
         }
-        val due = when (val result = withWrittenAdjustment(priced, request.orderAdjustment)) {
+        val due = when (
+            val result = withWrittenAdjustment(priced, request.orderAdjustment, redemption.discount)
+        ) {
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
         }
@@ -229,13 +255,21 @@ class RegisterSaleUseCase(
         chargeOnAccount(saleId, request, settled.payments, time)?.let {
             return TxResult.Rollback(it)
         }
+        val earned = rewardPoints(
+            saleId,
+            request.customerId,
+            redemption.points,
+            settled.priced.totals.net,
+            current.loyalty,
+            time,
+        )
         request.heldSaleId?.let { held ->
             // Si ya no existe, alguien la descartó en el intermedio: la venta igual se confirma.
             requireNotNull(heldSales) { "Una venta de la espera necesita sus ventas en espera" }
                 .delete(held)
         }
         alerts?.let { ledger.applyAlerts(it, products, calendar.stamp(now)) }
-        return TxResult.Commit(RegisterSaleResult.Registered(saleId))
+        return TxResult.Commit(RegisterSaleResult.Registered(saleId, earned))
     }
 
     /** Lo que se rechaza sin leer la base: la forma de la venta. */
@@ -379,6 +413,93 @@ class RegisterSaleUseCase(
             CustomerEntryOutcome.EntryNotFound, CustomerEntryOutcome.AlreadyCompensated,
             CustomerEntryOutcome.NotReversible,
             -> error("Agregar un cargo no compensa ninguna fila")
+        }
+    }
+
+    /**
+     * Los puntos que se canjean y su descuento, leídos dentro de la transacción: el saldo es el de
+     * su libro al confirmar. Sin canje, cero puntos y ningún descuento. El canje exige cliente y el
+     * programa activo, y nunca supera el saldo.
+     */
+    private suspend fun redemptionOf(request: SaleRequest, loyalty: LoyaltySettings): Redemption {
+        val points = request.pointsRedeemed
+        if (points == 0L) return Redemption.NONE
+        val customerId = request.customerId
+        val pointValue = loyalty.pointValue
+        if (customerId == null || !loyalty.enabled || pointValue == null || points < 0L) {
+            return Redemption.Rejected(RegisterSaleResult.PointsNotAvailable)
+        }
+        val writer = checkNotNull(loyaltyLedger) { "Un canje necesita el libro de puntos" }
+        val available = writer.balanceOf(customerId)
+        return when (val check = LoyaltyLedgerRules.redemption(points, available, pointValue)) {
+            is RedemptionCheck.Discount -> Redemption.Points(check.points, check.discount)
+
+            is RedemptionCheck.NotEnough ->
+                Redemption.Rejected(RegisterSaleResult.NotEnoughPoints(check.available))
+
+            RedemptionCheck.AboveSale -> Redemption.Rejected(RegisterSaleResult.PointsAboveSale)
+
+            // Cero o negativo ya se resolvió arriba.
+            RedemptionCheck.NothingToRedeem -> error("Un canje sin puntos ya salió antes")
+        }
+    }
+
+    /**
+     * Escribe en el libro de puntos lo que la venta canjea y lo que gana, en ese orden, y devuelve
+     * lo ganado. Sin cliente o con el programa apagado no escribe nada. Lo ganado sale de [net], lo
+     * neto de la venta después del canje, y lo que pasaría del tope de puntos no se suma.
+     */
+    private suspend fun rewardPoints(
+        saleId: Long,
+        customerId: Long?,
+        redeemed: Long,
+        net: Money,
+        loyalty: LoyaltySettings,
+        time: RecordTime,
+    ): Long {
+        if (customerId == null || !loyalty.enabled) return 0L
+        // Sin el monto de un punto no se gana nada, pero un canje ya aceptado se escribe igual.
+        val earned = loyalty.amountPerPoint?.let { LoyaltyProgramRules.pointsEarned(net, it) } ?: 0L
+        if (redeemed == 0L && earned == 0L) return 0L
+        val writer = checkNotNull(loyaltyLedger) { "Ganar puntos necesita el libro de puntos" }
+        if (redeemed > 0L) {
+            appendPoints(writer, customerId, LoyaltyEntryType.REDEEM, -redeemed, saleId, time)
+        }
+        val added = LoyaltyLedgerRules.earnable(earned, writer.balanceOf(customerId))
+        if (added > 0L) {
+            appendPoints(writer, customerId, LoyaltyEntryType.EARN, added, saleId, time)
+        }
+        return added
+    }
+
+    /**
+     * Agrega una fila de puntos de la venta. El canje ya se comprobó contra el saldo y lo ganado ya
+     * se recortó al tope, así que un rechazo es un error de programación, no algo que la persona
+     * pueda corregir.
+     */
+    private suspend fun appendPoints(
+        writer: LoyaltyLedgerWriter,
+        customerId: Long,
+        type: LoyaltyEntryType,
+        points: Long,
+        saleId: Long,
+        time: RecordTime,
+    ) {
+        val draft = LoyaltyEntryDraft(
+            customerId = customerId,
+            type = type,
+            points = points,
+            source = LoyaltyEntrySource.Sale(saleId),
+            note = null,
+        )
+        when (val outcome = writer.append(draft, time)) {
+            is LoyaltyEntryOutcome.Appended -> Unit
+
+            is LoyaltyEntryOutcome.Rejected -> error("Fila de puntos mal armada: " + outcome.issue)
+
+            LoyaltyEntryOutcome.EntryNotFound, LoyaltyEntryOutcome.AlreadyCompensated,
+            LoyaltyEntryOutcome.NotReversible,
+            -> error("Agregar puntos no compensa ninguna fila")
         }
     }
 
@@ -573,20 +694,32 @@ class RegisterSaleUseCase(
     }
 
     /**
-     * Las líneas con el ajuste que escribió la persona para toda la venta, que es lo que se cobra
-     * antes de los recargos de los métodos. Sin ajuste, las mismas líneas. Un descuento mayor que
-     * lo que suman las líneas tras sus descuentos se rechaza con su motivo; un recargo que deja la
-     * venta, o una línea, sobre el tope de un documento, como cualquier total demasiado grande.
+     * Las líneas con el ajuste que escribió la persona para toda la venta, más el descuento de los
+     * puntos canjeados, [pointsDiscount]: es lo que se cobra antes de los recargos de los métodos.
+     * Sin ajuste, las mismas líneas. Un descuento escrito mayor que lo que suman las líneas tras sus
+     * descuentos se rechaza con su motivo, y uno que solo se pasa con los puntos, con el suyo; un
+     * recargo que deja la venta, o una línea, sobre el tope de un documento, como cualquier total
+     * demasiado grande.
      */
-    private fun withWrittenAdjustment(priced: Priced.Lines, adjustment: Money): Priced {
-        if (adjustment == Money.ZERO) return priced
+    private fun withWrittenAdjustment(
+        priced: Priced.Lines,
+        adjustment: Money,
+        pointsDiscount: Money,
+    ): Priced {
+        if (adjustment == Money.ZERO && pointsDiscount == Money.ZERO) return priced
         // Las bases suman como mucho el tope de líneas por el tope de un documento: cabe en Long.
         val baseSum = priced.lines.fold(Money.ZERO) { sum, line -> sum + line.base }
         // Se compara sin negar el descuento: negar el menor Long no cabe.
         if (adjustment.minor < -Limit.DOCUMENT_TOTAL.max || adjustment.minor < -baseSum.minor) {
             return Priced.Rejected(RegisterSaleResult.OrderDiscountTooLarge)
         }
-        return adjusted(priced, adjustment)
+        // El ajuste escrito y el descuento de los puntos caben en el tope de un documento: la resta
+        // cabe en Long.
+        val combined = adjustment - pointsDiscount
+        if (combined.minor < -baseSum.minor) {
+            return Priced.Rejected(RegisterSaleResult.PointsAboveSale)
+        }
+        return adjusted(priced, combined)
             ?: Priced.Rejected(RegisterSaleResult.SaleTotalTooLarge)
     }
 
@@ -937,6 +1070,17 @@ class RegisterSaleUseCase(
         ) : Settled
 
         class Rejected(val rejection: RegisterSaleResult) : Settled
+    }
+
+    /** Los puntos que canjea la venta y su descuento, o por qué no se pueden canjear. */
+    private sealed interface Redemption {
+        class Points(val points: Long, val discount: Money) : Redemption
+
+        class Rejected(val rejection: RegisterSaleResult) : Redemption
+
+        companion object {
+            val NONE = Points(0L, Money.ZERO)
+        }
     }
 
     private sealed interface Priced {

@@ -81,4 +81,10 @@ sealed interface CheckoutAction {
     data class CreditDueChange(val date: BusinessDate?) : CheckoutAction
 
     data object CustomerNoticeShown : CheckoutAction
+
+    /** Lo escrito en `Puntos por canjear`. No cambia el total hasta tocar `Canjear puntos`. */
+    data class PointsChange(val text: String) : CheckoutAction
+
+    /** `Canjear puntos`: aplica lo escrito como descuento de la venta. En blanco, quita el canje. */
+    data object RedeemPoints : CheckoutAction
 }

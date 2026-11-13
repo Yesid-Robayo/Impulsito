@@ -11,4 +11,14 @@ data class LoyaltySettings(
     val enabled: Boolean,
     val amountPerPoint: Money?,
     val pointValue: Money?,
-)
+) {
+    /**
+     * Si el programa está activo y tiene sus dos montos: solo así una venta gana o canjea puntos.
+     */
+    val active: Boolean get() = enabled && amountPerPoint != null && pointValue != null
+
+    companion object {
+        /** El programa apagado y sin montos, como en un negocio nuevo. */
+        val OFF: LoyaltySettings = LoyaltySettings(false, amountPerPoint = null, pointValue = null)
+    }
+}

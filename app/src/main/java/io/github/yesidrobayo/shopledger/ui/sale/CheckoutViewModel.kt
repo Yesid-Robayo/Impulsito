@@ -19,11 +19,15 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerSearch
+import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyLedgerRules
+import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyProgramRules
+import io.github.yesidrobayo.shopledger.domain.rule.customer.RedemptionCheck
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPricing
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutBalance
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutPaymentInput
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutPreview
+import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutProblem
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentFees
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCheckout
 import io.github.yesidrobayo.shopledger.domain.rule.timesRate
@@ -68,6 +72,10 @@ import kotlinx.coroutines.launch
  *
  * El cliente se ofrece siempre y es obligatorio solo con un pago a crédito: elegir `A crédito` sin
  * cliente abre la lista de clientes, y quitar el cliente retira los pagos a crédito, con un aviso.
+ *
+ * Con el programa de puntos activo y un cliente, el cobro ofrece canjear sus puntos. El canje es un
+ * descuento de la venta que entra en el ajuste, nunca un pago: los puntos no son dinero. Cambiar o
+ * quitar el cliente quita el canje.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CheckoutViewModel(
@@ -235,25 +243,45 @@ class CheckoutViewModel(
             CheckoutAction.CustomerNoticeShown -> overlay.update {
                 it.copy(customerRemoved = false)
             }
+
+            is CheckoutAction.PointsChange -> change {
+                it.copy(pointsText = action.text, pointsError = null)
+            }
+
+            CheckoutAction.RedeemPoints -> redeemPoints()
         }
     }
 
     // ------------------------------------------------------------------ cliente
 
+    /**
+     * Elige el cliente de la venta. Si cambia, el canje de puntos se quita: eran puntos del cliente
+     * anterior. Con un solo pago que cubría todo, el pago sigue cubriendo todo.
+     */
     private fun pickCustomer(customerId: Long) {
-        change { it.copy(customerId = customerId) }
+        keepingSinglePaymentFull {
+            if (it.customerId == customerId) {
+                it
+            } else {
+                it.copy(customerId = customerId).withoutRedemption()
+            }
+        }
         overlay.update {
             it.copy(sheet = null, customerQuery = "", customerMissing = false)
         }
     }
 
     /**
-     * Quita el cliente, y con él los pagos a crédito, que no pueden quedar sin cliente. Si había
-     * alguno, lo avisa: los demás pagos siguen.
+     * Quita el cliente, y con él los pagos a crédito y el canje de puntos, que no pueden quedar sin
+     * cliente. Si había alguno, lo avisa: los demás pagos siguen.
      */
     private fun removeCustomer() {
         val catalog = readyCatalog()
         val credit = catalog?.creditMethods?.map { it.id }?.toSet().orEmpty()
+        // El canje se quita primero, con el cliente todavía elegido: así un pago único que cubría
+        // todo sigue cubriendo todo sin el descuento.
+        val redeemed = editing.value.redeemed > 0L
+        if (redeemed) keepingSinglePaymentFull { it.withoutRedemption() }
         val written = editing.value
         val kept = written.payments.filter { it.methodId !in credit }
         change {
@@ -265,8 +293,125 @@ class CheckoutViewModel(
             )
         }
         overlay.update {
-            it.copy(customerRemoved = kept.size != written.payments.size, dueError = false)
+            it.copy(
+                customerRemoved = kept.size != written.payments.size || redeemed,
+                dueError = false,
+            )
         }
+    }
+
+    // ------------------------------------------------------------------ puntos
+
+    /**
+     * `Canjear puntos`: lee lo escrito y lo aplica como descuento de la venta, nunca más que los
+     * puntos del cliente ni más que lo que suman las líneas. En blanco, quita el canje. Con un solo
+     * pago que cubría todo, el pago sigue cubriendo todo.
+     */
+    private fun redeemPoints() {
+        val catalog = readyCatalog() ?: return
+        val current = sale ?: return
+        val written = editing.value
+        val customer = customers.value.firstOrNull { it.id == written.customerId } ?: return
+        val pointValue = catalog.loyalty.pointValue
+        if (!catalog.loyalty.active || pointValue == null) return
+        val read = NumberInputParser.count(
+            written.pointsText,
+            numbers.quantitySymbols,
+            Limit.POINTS,
+        )
+        val points = when (read) {
+            NumberInput.Blank -> 0L
+
+            is NumberInput.Value -> read.value
+
+            // Más que el tope de puntos siempre es más de lo que tiene.
+            is NumberInput.TooLarge ->
+                return pointsError(CheckoutPointsError.NotEnough(customer.pointsBalance))
+
+            NumberInput.Malformed, is NumberInput.TooManyDecimals ->
+                return pointsError(CheckoutPointsError.NotANumber)
+        }
+        if (points < 0L) return pointsError(CheckoutPointsError.NotANumber)
+        if (points > 0L) {
+            when (
+                val check = LoyaltyLedgerRules.redemption(
+                    points,
+                    customer.pointsBalance,
+                    pointValue,
+                )
+            ) {
+                is RedemptionCheck.Discount -> {
+                    val preview = previewOf(catalog, current, written.copy(redeemed = points))
+                    if (preview.problem == CheckoutProblem.PointsAboveSale) {
+                        return pointsError(CheckoutPointsError.AboveSale)
+                    }
+                }
+
+                is RedemptionCheck.NotEnough ->
+                    return pointsError(CheckoutPointsError.NotEnough(check.available))
+
+                RedemptionCheck.AboveSale -> return pointsError(CheckoutPointsError.AboveSale)
+
+                // Cero ya se resolvió arriba: quita el canje.
+                RedemptionCheck.NothingToRedeem -> Unit
+            }
+        }
+        keepingSinglePaymentFull {
+            it.copy(
+                redeemed = points,
+                pointsText = if (points == 0L) "" else it.pointsText,
+                pointsError = null,
+            )
+        }
+    }
+
+    private fun pointsError(error: CheckoutPointsError) = change { it.copy(pointsError = error) }
+
+    /**
+     * El descuento de los puntos canjeados, o cero si no hay canje, si el cliente ya no se puede
+     * elegir o si el programa se apagó mientras se cobraba: como la propina, deja de contar.
+     */
+    private fun pointsDiscountOf(catalog: SaleCatalog, written: Editing): Money {
+        val pointValue = catalog.loyalty.pointValue
+        val customerId = written.customerId
+        if (written.redeemed <= 0L || customerId == null || !catalog.loyalty.active ||
+            pointValue == null || customers.value.none { it.id == customerId }
+        ) {
+            return Money.ZERO
+        }
+        // El canje ya se comprobó al aplicarlo: su descuento cabe en el tope de un documento.
+        val discount = LoyaltyProgramRules.discountFor(written.redeemed, pointValue)
+        return (discount as? Checked.Value)?.value ?: Money.ZERO
+    }
+
+    /** Los puntos que se canjean al registrar: los aplicados, si siguen contando. */
+    private fun pointsToRedeem(catalog: SaleCatalog, written: Editing): Long =
+        if (pointsDiscountOf(catalog, written) > Money.ZERO) written.redeemed else 0L
+
+    /** La sección `Puntos`, solo con el programa activo y un cliente que se puede elegir. */
+    private fun pointsOf(
+        catalog: SaleCatalog,
+        written: Editing,
+        choices: List<Customer>,
+    ): CheckoutPoints? {
+        val pointValue = catalog.loyalty.pointValue
+        if (!catalog.loyalty.active || pointValue == null) return null
+        val customer = choices.firstOrNull { it.id == written.customerId } ?: return null
+        val typed = NumberInputParser.count(
+            written.pointsText,
+            numbers.quantitySymbols,
+            Limit.POINTS,
+        ) as? NumberInput.Value
+        val discount = typed?.value?.takeIf { it > 0L }?.let { points ->
+            (LoyaltyProgramRules.discountFor(points, pointValue) as? Checked.Value)?.value
+        }
+        return CheckoutPoints(
+            available = customer.pointsBalance,
+            text = written.pointsText,
+            discount = discount,
+            redeemed = written.redeemed,
+            error = written.pointsError,
+        )
     }
 
     /** El vencimiento del cargo a crédito: nunca antes de la fecha de la venta. */
@@ -618,6 +763,7 @@ class CheckoutViewModel(
         if (written.payments.any { it.hasError } || written.tipError != null) return
         val credit = hasCredit(catalog, written)
         val customerId = written.customerId?.takeIf { id -> customers.value.any { it.id == id } }
+        val redeemed = pointsToRedeem(catalog, written)
         if (credit && customerId == null) {
             overlay.update {
                 it.copy(customerMissing = true, sheet = CheckoutSheet.Customers, customerQuery = "")
@@ -651,10 +797,25 @@ class CheckoutViewModel(
                 tipAmount = tipOf(catalog, written),
                 customerId = customerId,
                 creditDueDate = written.creditDue.takeIf { credit },
+                pointsRedeemed = redeemed,
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> overlay.update {
-                    Overlay(registered = RegisteredSale(result.saleId, charged))
+                    Overlay(
+                        registered = RegisteredSale(result.saleId, charged, result.pointsEarned),
+                    )
+                }
+
+                // El saldo de puntos cambió mientras se cobraba: se dice en el campo, y el cobro
+                // sigue armado para corregirlo.
+                is RegisterSaleResult.NotEnoughPoints -> {
+                    pointsError(CheckoutPointsError.NotEnough(result.available))
+                    overlay.update { it.copy(status = RegisterStatus.IDLE) }
+                }
+
+                RegisterSaleResult.PointsAboveSale -> {
+                    pointsError(CheckoutPointsError.AboveSale)
+                    overlay.update { it.copy(status = RegisterStatus.IDLE) }
                 }
 
                 is RegisterSaleResult.PaymentsDoNotMatch -> overlay.update {
@@ -681,6 +842,7 @@ class CheckoutViewModel(
                 is RegisterSaleResult.PaymentRejected,
                 RegisterSaleResult.OrderDiscountTooLarge,
                 RegisterSaleResult.TipNotAccepted,
+                RegisterSaleResult.PointsNotAvailable,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }
@@ -751,6 +913,7 @@ class CheckoutViewModel(
             tax = preview.taxTotal?.takeIf { catalog.taxes.mode == TaxMode.ADDED },
             cashRounding = preview.cashRounding,
             tip = preview.tip,
+            pointsDiscount = preview.pointsDiscount,
         )
         val qr = shown.qrIndex?.let { index ->
             val row = written.payments.getOrNull(index) ?: return@let null
@@ -791,6 +954,7 @@ class CheckoutViewModel(
             customerQuery = shown.customerQuery,
             customerRemoved = shown.customerRemoved,
             credit = creditOf(catalog, current, written, shown, choices, preview),
+            points = pointsOf(catalog, written, choices),
         )
     }
 
@@ -878,6 +1042,7 @@ class CheckoutViewModel(
             cashStep = catalog.cashRounding,
             conversions = catalog.conversions,
             tip = tipOf(catalog, written),
+            pointsDiscount = pointsDiscountOf(catalog, written),
         )
     }
 
@@ -917,12 +1082,14 @@ class CheckoutViewModel(
         savedState[TIP] = written.tip.minor
         savedState[CUSTOMER] = written.customerId
         savedState[CREDIT_DUE] = written.creditDue?.toString()
+        savedState[POINTS] = written.redeemed
     }
 
     private fun restore(): Editing {
         val values = savedState.get<LongArray>(PAYMENTS)?.takeIf { it.size % FIELDS == 0 }
             ?: return Editing()
         val tip = Money(savedState.get<Long>(TIP) ?: 0L)
+        val redeemed = savedState.get<Long>(POINTS) ?: 0L
         val payments = (0 until values.size / FIELDS).map { index ->
             val base = index * FIELDS
             val amount = Money(values[base + 1])
@@ -946,6 +1113,9 @@ class CheckoutViewModel(
             tipText = if (tip == Money.ZERO) "" else moneyText(tip),
             customerId = savedState.get<Long>(CUSTOMER),
             creditDue = savedState.get<String>(CREDIT_DUE)?.let(BusinessDate::parse),
+            redeemed = redeemed,
+            // Sin separadores: el campo los acepta igual, y no depende del formato al volver.
+            pointsText = if (redeemed > 0L) redeemed.toString() else "",
         )
     }
 
@@ -1015,7 +1185,13 @@ class CheckoutViewModel(
         val tipError: SaleFieldError? = null,
         val customerId: Long? = null,
         val creditDue: BusinessDate? = null,
-    )
+        val redeemed: Long = 0L,
+        val pointsText: String = "",
+        val pointsError: CheckoutPointsError? = null,
+    ) {
+        /** Lo mismo sin canje de puntos: lo que queda al cambiar o quitar el cliente. */
+        fun withoutRedemption(): Editing = copy(redeemed = 0L, pointsText = "", pointsError = null)
+    }
 
     /** Lo que está abierto encima del cobro, y lo que pasa una sola vez. */
     private data class Overlay(
@@ -1040,6 +1216,7 @@ class CheckoutViewModel(
         const val TIP = "checkout.tip"
         const val CUSTOMER = "checkout.customer"
         const val CREDIT_DUE = "checkout.creditDue"
+        const val POINTS = "checkout.points"
         const val FIELDS = 6
 
         /** Lo que sigue viva la lectura al rotar la pantalla, para no releer el catálogo. */

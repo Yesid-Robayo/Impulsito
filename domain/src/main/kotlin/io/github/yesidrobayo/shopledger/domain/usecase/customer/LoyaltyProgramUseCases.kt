@@ -38,6 +38,15 @@ class ObserveLoyaltyProgramUseCase(
     }.distinctUntilChanged()
 }
 
+/**
+ * El programa de puntos tal como está, para la venta: el cobro ofrece el canje solo con el programa
+ * activo. Emite de nuevo solo cuando cambia.
+ */
+class ObserveLoyaltySettingsUseCase(private val settings: AppSettingsRepository) {
+    operator fun invoke(): Flow<LoyaltySettings> =
+        settings.observe().map { it.loyalty }.distinctUntilChanged()
+}
+
 /** Cómo termina guardar el programa de puntos. Salvo [Saved], no se escribió nada. */
 sealed interface SaveLoyaltyProgramResult {
     /** Quedó así, o ya estaba así y no hacía falta escribir. */

@@ -68,6 +68,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.WholeNumberField
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -88,6 +89,8 @@ import kotlinx.datetime.DayOfWeek
  *   columna a 600 dp.
  * - El precio de lo que se atiende nunca se oculta. En modo discreto se ocultan la comisión y el
  *   neto.
+ * - Con el programa de puntos activo y un cliente, la sección `Puntos` canjea sus puntos como un
+ *   descuento de la venta, con la nota de que no son dinero.
  *
  * Es pura: recibe el estado y avisa cada acción.
  */
@@ -177,6 +180,7 @@ private fun NarrowCheckout(uiState: CheckoutUiState, onAction: (CheckoutAction) 
             AdjustmentRow(uiState, onAction)
             Payments(uiState, onAction)
             CreditSection(uiState, onAction)
+            PointsSection(uiState, onAction)
             TipSection(uiState, onAction)
         }
     }
@@ -200,6 +204,7 @@ private fun WideCheckout(uiState: CheckoutUiState, onAction: (CheckoutAction) ->
             TotalBlock(uiState.summary)
             CustomerSection(uiState, onAction)
             AdjustmentRow(uiState, onAction)
+            PointsSection(uiState, onAction)
             TipSection(uiState, onAction)
         }
         Column(
@@ -259,6 +264,9 @@ private fun TotalBlock(summary: CheckoutSummary) {
                     stringResource(R.string.checkout_method_discount, name)
                 }
                 HeroRow(label, adjustment.amount)
+            }
+            if (summary.pointsDiscount != Money.ZERO) {
+                HeroRow(stringResource(R.string.checkout_points), -summary.pointsDiscount)
             }
             summary.tax?.let { HeroRow(stringResource(R.string.term_tax), it) }
             if (summary.tip != Money.ZERO) {
@@ -320,6 +328,68 @@ private fun AdjustmentRow(uiState: CheckoutUiState, onAction: (CheckoutAction) -
         action = SettingsRowAction.Navigation { onAction(CheckoutAction.OpenAdjustment) },
         summary = summary,
     )
+}
+
+/**
+ * `Puntos`, solo con el programa activo y un cliente: sus puntos disponibles, el campo de los que se
+ * canjean, lo que descontarían y `Canjear puntos`, que los aplica al total. Los puntos no son dinero:
+ * el canje es un descuento de la venta, nunca un pago, y la nota lo dice.
+ */
+@Composable
+private fun PointsSection(uiState: CheckoutUiState, onAction: (CheckoutAction) -> Unit) {
+    val points = uiState.points ?: return
+    val formats = LocalAppFormats.current
+    SectionHeader(stringResource(R.string.checkout_points))
+    Text(
+        stringResource(
+            R.string.checkout_points_available,
+            formats.quantity.formatCount(points.available),
+        ),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    WholeNumberField(
+        value = points.text,
+        onValueChange = { onAction(CheckoutAction.PointsChange(it)) },
+        label = stringResource(R.string.checkout_points_to_redeem),
+        error = pointsErrorText(points.error),
+        imeAction = ImeAction.Done,
+    )
+    points.discount?.let { discount ->
+        Text(
+            stringResource(
+                R.string.checkout_points_discount,
+                rememberMoneyDisplay(discount, formats.money).text.text,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+    PrimaryActionButton(
+        text = stringResource(R.string.checkout_redeem_action),
+        onClick = { onAction(CheckoutAction.RedeemPoints) },
+        variant = ActionVariant.OUTLINED,
+    )
+    Text(
+        stringResource(R.string.checkout_points_not_money),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** Por qué no se canjean los puntos escritos, con los disponibles si no alcanzan. */
+@Composable
+private fun pointsErrorText(error: CheckoutPointsError?): String? = when (error) {
+    null -> null
+
+    CheckoutPointsError.NotANumber -> stringResource(R.string.field_error_number)
+
+    is CheckoutPointsError.NotEnough -> stringResource(
+        R.string.checkout_error_points,
+        LocalAppFormats.current.quantity.formatCount(error.available),
+    )
+
+    CheckoutPointsError.AboveSale -> stringResource(R.string.checkout_error_points_exceed)
 }
 
 /**
@@ -754,6 +824,8 @@ private fun problemText(problem: CheckoutProblem?): String? = when (problem) {
     is CheckoutProblem.TenderedBelowAmount -> null
 
     CheckoutProblem.DiscountAboveSale -> stringResource(R.string.checkout_error_discount)
+
+    CheckoutProblem.PointsAboveSale -> stringResource(R.string.checkout_error_points_exceed)
 
     CheckoutProblem.LineIssue,
     CheckoutProblem.TooLarge,

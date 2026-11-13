@@ -12,8 +12,11 @@ import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
  * negativo.
  */
 sealed interface RegisterSaleResult {
-    /** La venta quedó guardada con [saleId], que también es su número visible. */
-    data class Registered(val saleId: Long) : RegisterSaleResult
+    /**
+     * La venta quedó guardada con [saleId], que también es su número visible. [pointsEarned] son
+     * los puntos que ganó su cliente, cero si no ganó ninguno.
+     */
+    data class Registered(val saleId: Long, val pointsEarned: Long = 0L) : RegisterSaleResult
 
     /** La venta no tiene líneas. */
     data object EmptySale : RegisterSaleResult
@@ -92,6 +95,21 @@ sealed interface RegisterSaleResult {
      * apagadas: el cobro no la ofrecía.
      */
     data object TipNotAccepted : RegisterSaleResult
+
+    /**
+     * Se pidió canjear puntos sin cliente, con el programa de puntos apagado o con puntos negativos:
+     * el cobro no ofrecía ese canje.
+     */
+    data object PointsNotAvailable : RegisterSaleResult
+
+    /** El cliente tiene [available] puntos, menos de los que se pidió canjear. */
+    data class NotEnoughPoints(val available: Long) : RegisterSaleResult
+
+    /**
+     * El descuento de los puntos, sumado al ajuste escrito, supera lo que suman las líneas: dejaría
+     * la venta con un total negativo.
+     */
+    data object PointsAboveSale : RegisterSaleResult
 }
 
 /** Por qué una línea de la venta no se puede vender. */

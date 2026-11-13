@@ -312,6 +312,9 @@ sealed interface HeldNotice {
     data class Resumed(val changedPrices: Int, val removed: Int) : HeldNotice
 }
 
-/** La venta recién guardada: su número y su total, para el mensaje de Inicio. */
+/**
+ * La venta recién guardada: su número y su total, para el mensaje de Inicio, y los puntos que ganó
+ * su cliente, que el mensaje nombra si son más que cero.
+ */
 @Immutable
-data class RegisteredSale(val saleId: Long, val total: Money)
+data class RegisteredSale(val saleId: Long, val total: Money, val pointsEarned: Long = 0L)

@@ -25,7 +25,11 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerDetails
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
+import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyEntrySource
+import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyEntryType
+import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.NewCustomerLedgerEntry
+import io.github.yesidrobayo.shopledger.domain.model.customer.NewLoyaltyLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.PointsSummary
 import io.github.yesidrobayo.shopledger.domain.model.payable.NewSupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntry
@@ -59,6 +63,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -108,6 +113,7 @@ internal data class SaleTables(
     val supplierEntries: Map<Long, SupplierLedgerEntry> = emptyMap(),
     val customers: Map<Long, Customer> = emptyMap(),
     val customerEntries: Map<Long, CustomerLedgerEntry> = emptyMap(),
+    val loyaltyEntries: Map<Long, LoyaltyLedgerEntry> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
     val alerts: Map<Long, LowStockAlert> = emptyMap(),
@@ -713,6 +719,83 @@ internal class SaleWorld(
         }
     }
 
+    /**
+     * El libro de puntos, con las reglas de su guarda: el signo de cada tipo, la venta en lo que se
+     * gana o se canjea, saldo encadenado dentro del tope y una sola compensación por fila.
+     */
+    val loyaltyLedger: LoyaltyLedgerRepository = object : LoyaltyLedgerRepository {
+        override fun observeByCustomer(customerId: Long): Flow<List<LoyaltyLedgerEntry>> = unused()
+
+        override suspend fun findById(id: Long): LoyaltyLedgerEntry? = read().loyaltyEntries[id]
+
+        override suspend fun lastBalanceAfter(customerId: Long): Long? =
+            loyaltyEntriesOf(read(), customerId).lastOrNull()?.balanceAfter
+
+        override suspend fun findBySale(saleId: Long): List<LoyaltyLedgerEntry> =
+            read().loyaltyEntries.values
+                .filter { (it.source as? LoyaltyEntrySource.Sale)?.saleId == saleId }
+                .sortedBy { it.id }
+
+        override suspend fun isCompensated(entryId: Long): Boolean =
+            read().loyaltyEntries.values.any {
+                (it.source as? LoyaltyEntrySource.Reverses)?.entryId == entryId
+            }
+
+        override suspend fun append(entry: NewLoyaltyLedgerEntry): Long {
+            val draft = entry.draft
+            val customer = read().customers[draft.customerId] ?: brokenRule()
+            val previous = lastBalanceAfter(draft.customerId) ?: 0L
+            if (previous + draft.points != entry.balanceAfter) brokenRule()
+            if (draft.points == 0L || entry.balanceAfter !in -MAX_POINTS..MAX_POINTS) brokenRule()
+            val signFits = when (draft.type) {
+                LoyaltyEntryType.EARN -> draft.points > 0L
+                LoyaltyEntryType.REDEEM -> draft.points < 0L
+                LoyaltyEntryType.ADJUSTMENT, LoyaltyEntryType.ENTRY_VOID -> true
+            }
+            if (!signFits) brokenRule()
+            val source = draft.source
+            val bySale =
+                draft.type == LoyaltyEntryType.EARN || draft.type == LoyaltyEntryType.REDEEM
+            if (bySale != (source is LoyaltyEntrySource.Sale)) brokenRule()
+            if (source is LoyaltyEntrySource.Sale && read().sales[source.saleId] == null) {
+                brokenRule()
+            }
+            if ((draft.type == LoyaltyEntryType.ENTRY_VOID) !=
+                (source is LoyaltyEntrySource.Reverses)
+            ) {
+                brokenRule()
+            }
+            if (source is LoyaltyEntrySource.Reverses) {
+                val original = read().loyaltyEntries[source.entryId] ?: brokenRule()
+                val matches = original.customerId == draft.customerId &&
+                    original.points == -draft.points &&
+                    original.type != LoyaltyEntryType.ENTRY_VOID
+                if (!matches || isCompensated(source.entryId)) brokenRule()
+            }
+            val id = nextId("loyalty_ledger_entries")
+            val saved = LoyaltyLedgerEntry(
+                id = id,
+                customerId = draft.customerId,
+                type = draft.type,
+                points = draft.points,
+                balanceAfter = entry.balanceAfter,
+                source = draft.source,
+                note = draft.note,
+                occurredAt = entry.occurredAt,
+                businessDate = entry.businessDate,
+            )
+            write { it.copy(loyaltyEntries = it.loyaltyEntries + (id to saved)) }
+            write { tables ->
+                val updated = customer.copy(pointsBalance = entry.balanceAfter)
+                tables.copy(customers = tables.customers + (customer.id to updated))
+            }
+            return id
+        }
+    }
+
+    private fun loyaltyEntriesOf(tables: SaleTables, customerId: Long): List<LoyaltyLedgerEntry> =
+        tables.loyaltyEntries.values.filter { it.customerId == customerId }.sortedBy { it.id }
+
     /** Los clientes, que la venta solo lee. */
     val customerRepository: CustomerRepository = object : CustomerRepository {
         override fun observe(filter: ArchiveFilter): Flow<List<Customer>> = unused()
@@ -846,6 +929,7 @@ internal class SaleWorld(
         alerts = alertRepository.takeIf { withAlerts },
         customers = customerRepository,
         customerLedger = customerLedger,
+        loyaltyLedger = loyaltyLedger,
     )
 
     fun voidSale(): VoidSaleUseCase = VoidSaleUseCase(
@@ -857,6 +941,7 @@ internal class SaleWorld(
         clock = clock,
         alerts = alertRepository.takeIf { withAlerts },
         customerLedger = customerLedger,
+        loyaltyLedger = loyaltyLedger,
     )
 
     /** Agrega un producto ya guardado, con el estado de stock que se le dé. */
@@ -929,6 +1014,9 @@ internal class SaleWorld(
         const val UNIT = 1L
         const val KILOGRAM = 2L
         const val CASH = 1L
+
+        /** El tope de puntos de un cliente, hacia arriba y hacia abajo, como la guarda. */
+        const val MAX_POINTS = 1_000_000_000_000L
     }
 }
 

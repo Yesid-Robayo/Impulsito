@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
+import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -40,6 +41,8 @@ import kotlinx.coroutines.flow.map
  * - El paso del redondeo del efectivo va con el catálogo, de [cashRounding]: la venta muestra lo
  *   que cobra en efectivo ya redondeado. Sin él, no se redondea.
  * - Si el cobro ofrece propina, de [tipsEnabled]. Sin él, no la ofrece.
+ * - El programa de puntos, de [loyalty]: el cobro ofrece el canje con un cliente. Sin él, el
+ *   programa va apagado y no se mencionan puntos.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObserveSaleCatalogUseCase(
@@ -54,6 +57,7 @@ class ObserveSaleCatalogUseCase(
     private val cashRounding: () -> Flow<Money> = { flowOf(Money.ZERO) },
     private val productUnits: ProductUnitRepository? = null,
     private val tipsEnabled: () -> Flow<Boolean> = { flowOf(false) },
+    private val loyalty: () -> Flow<LoyaltySettings> = { flowOf(LoyaltySettings.OFF) },
 ) {
     operator fun invoke(): Flow<SaleCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = result as? BusinessCalendarResult.Ready
@@ -104,6 +108,7 @@ class ObserveSaleCatalogUseCase(
             ->
             sale.copy(taxes = taxes, taxRates = byId, cashRounding = step, conversions = byProduct)
         }.combine(tipsEnabled()) { sale, tips -> sale.copy(tipsEnabled = tips) }
+            .combine(loyalty()) { sale, program -> sale.copy(loyalty = program) }
     }
 }
 

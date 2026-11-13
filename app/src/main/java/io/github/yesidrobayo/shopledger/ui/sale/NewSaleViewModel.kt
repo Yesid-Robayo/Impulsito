@@ -615,6 +615,10 @@ class NewSaleViewModel(
                 is RegisterSaleResult.PaymentsDoNotMatch,
                 RegisterSaleResult.OrderDiscountTooLarge,
                 RegisterSaleResult.TipNotAccepted,
+                // La venta nueva no lleva cliente ni canjea puntos: no llegan aquí.
+                RegisterSaleResult.PointsNotAvailable,
+                is RegisterSaleResult.NotEnoughPoints,
+                RegisterSaleResult.PointsAboveSale,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }

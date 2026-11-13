@@ -42,6 +42,20 @@ class NumberInputParserTest(private val defaults: ForeignSystemDefaults) {
     }
 
     @Test
+    fun `a count reads whole numbers with the grouping of the region and nothing else`() {
+        assertEquals(NumberInput.Value(1_250L), count("1.250", COMMA_DECIMAL))
+        assertEquals(NumberInput.Value(1_250L), count("1,250", POINT_DECIMAL))
+        assertEquals(NumberInput.Value(100L), count("100", COMMA_DECIMAL))
+        assertEquals(NumberInput.Blank, count(" ", COMMA_DECIMAL))
+        assertEquals(NumberInput.Malformed, count("1x", COMMA_DECIMAL))
+        assertEquals(NumberInput.TooManyDecimals(0), count("1,5", COMMA_DECIMAL))
+        assertEquals(NumberInput.TooLarge(Limit.POINTS.max), count("1000000000001", COMMA_DECIMAL))
+    }
+
+    private fun count(text: String, symbols: NumberSymbols): NumberInput<Long> =
+        NumberInputParser.count(text, symbols, Limit.POINTS)
+
+    @Test
     fun `point decimal and comma grouping`() {
         assertEquals(money(123_456), money("1,234.56", POINT_DECIMAL, 2))
         assertEquals(money(123_456), money("1234.56", POINT_DECIMAL, 2))

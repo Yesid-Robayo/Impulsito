@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
+import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import kotlinx.datetime.DayOfWeek
 
@@ -28,6 +29,7 @@ import kotlinx.datetime.DayOfWeek
  * - [cashRounding]: el paso al que se redondea un pago en efectivo, en unidad menor. Cero es sin
  *   redondeo.
  * - [tipsEnabled]: si el cobro ofrece propina. Apagadas, no aparece.
+ * - [loyalty]: el programa de puntos. Apagado, el cobro no menciona puntos.
  */
 data class SaleCatalog(
     val products: List<Product>,
@@ -43,6 +45,7 @@ data class SaleCatalog(
     val conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
     val tipsEnabled: Boolean = false,
     val creditMethods: List<PaymentMethodRecord> = emptyList(),
+    val loyalty: LoyaltySettings = LoyaltySettings.OFF,
 ) {
     /**
      * Los métodos con que se cobra en la pantalla de cobro: los de la venta y, aparte, los métodos

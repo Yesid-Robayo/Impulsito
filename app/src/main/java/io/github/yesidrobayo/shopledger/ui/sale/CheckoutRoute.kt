@@ -10,6 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CreateCustomerUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.ObserveLoyaltySettingsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.FindPaymentImagesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveTipsEnabledUseCase
@@ -67,6 +68,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     cashRounding = { ObserveCashRoundingUseCase(ports.settings)() },
                     productUnits = ports.productUnits,
                     tipsEnabled = { ObserveTipsEnabledUseCase(ports.settings)() },
+                    loyalty = { ObserveLoyaltySettingsUseCase(ports.settings)() },
                 )
             val register =
                 RegisterSaleUseCase(
@@ -86,6 +88,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     alerts = ports.lowStockAlerts,
                     customers = ports.customers,
                     customerLedger = ports.customerLedger,
+                    loyaltyLedger = ports.loyaltyLedger,
                 )
             val images = FindPaymentImagesUseCase(ports.transactions, ports.mediaAssets)
             val createCustomer =
@@ -116,12 +119,19 @@ fun CheckoutRoute(navigator: AppNavigator) {
             val messages = LocalAppMessages.current
             val haptics = LocalHapticFeedback.current
             val registered = uiState.registered
+            // Con puntos ganados, el mensaje los nombra; sin ellos, es el de cualquier venta.
             val registeredText =
                 registered?.let {
-                    stringResource(
-                        R.string.confirm_sale_registered,
-                        rememberMoneyDisplay(it.total, formats.money).text.text,
-                    )
+                    val total = rememberMoneyDisplay(it.total, formats.money).text.text
+                    if (it.pointsEarned > 0L) {
+                        stringResource(
+                            R.string.checkout_registered_points,
+                            total,
+                            formats.quantity.formatCount(it.pointsEarned),
+                        )
+                    } else {
+                        stringResource(R.string.confirm_sale_registered, total)
+                    }
                 }
             val viewLabel = stringResource(R.string.action_view)
             LaunchedEffect(registered) {

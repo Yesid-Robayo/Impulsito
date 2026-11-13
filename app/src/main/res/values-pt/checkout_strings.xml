@@ -45,4 +45,13 @@
     <string name="checkout_error_no_customer">O pagamento a prazo exige um cliente</string>
     <string name="checkout_customer_removed_notice">O cliente foi removido, junto com o resgate, o saldo a favor e os pagamentos a prazo.</string>
     <string name="checkout_error_due_before_sale">O vencimento não pode ser antes da venda</string>
+    <string name="checkout_points">Pontos</string>
+    <string name="checkout_points_available">Disponíveis: %1$s</string>
+    <string name="checkout_points_to_redeem">Pontos a resgatar</string>
+    <string name="checkout_points_discount">Desconto: %1$s</string>
+    <string name="checkout_redeem_action">Resgatar pontos</string>
+    <string name="checkout_points_not_money">Pontos não são dinheiro.</string>
+    <string name="checkout_error_points">Pontos insuficientes. Disponíveis: %1$s</string>
+    <string name="checkout_error_points_exceed">O desconto supera o total da venda</string>
+    <string name="checkout_registered_points">Venda registrada: %1$s. Pontos ganhos: %2$s.</string>
 </resources>

@@ -201,6 +201,50 @@ class SaleCheckoutTest {
     }
 
     @Test
+    fun `the points discount goes into the order adjustment and never into a payment`() {
+        // Canjear 100 puntos a 5 descuenta 500 de una venta de 10000: se cobran 9500.
+        val preview = SaleCheckout.preview(
+            listOf(SaleLineRequest(3L, units(1L))),
+            products,
+            pricing(TaxMode.NONE),
+            Money.ZERO,
+            listOf(pay(9_500L)),
+            pointsDiscount = Money(500L),
+        )
+
+        assertNull(preview.problem)
+        assertEquals(Money(500L), preview.pointsDiscount)
+        assertEquals(Money.ZERO, preview.writtenAdjustment)
+        assertEquals(Money(9_500L), preview.total)
+        assertEquals(Money(9_500L), preview.amountDue)
+        assertEquals(CheckoutBalance.Complete, preview.balance)
+    }
+
+    @Test
+    fun `a points discount above the sale, alone or with the written one, is its own problem`() {
+        fun withPoints(points: Long, adjustment: Long = 0L) = SaleCheckout.preview(
+            listOf(SaleLineRequest(3L, units(1L))),
+            products,
+            pricing(TaxMode.NONE),
+            Money(adjustment),
+            listOf(pay(0L)),
+            pointsDiscount = Money(points),
+        ).problem
+
+        assertNull(withPoints(10_000L))
+        assertEquals(CheckoutProblem.PointsAboveSale, withPoints(10_001L))
+        assertEquals(CheckoutProblem.PointsAboveSale, withPoints(5_000L, adjustment = -5_001L))
+        // Un descuento escrito que ya se pasa solo conserva su propio problema.
+        assertEquals(CheckoutProblem.DiscountAboveSale, withPoints(5_000L, adjustment = -10_001L))
+        // Un descuento negativo o fuera del tope de un documento nunca sale de un canje válido.
+        assertEquals(CheckoutProblem.PointsAboveSale, withPoints(-1L))
+        assertEquals(
+            CheckoutProblem.PointsAboveSale,
+            withPoints(1_000_000_000_000_001L),
+        )
+    }
+
+    @Test
     fun `a total past the document limit is too large`() {
         val twoBig = SaleCheckout.preview(
             listOf(SaleLineRequest(4L, units(600L)), SaleLineRequest(4L, units(600L))),

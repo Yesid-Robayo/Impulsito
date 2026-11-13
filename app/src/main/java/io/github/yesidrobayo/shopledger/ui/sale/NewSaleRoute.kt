@@ -92,6 +92,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     alerts = ports.lowStockAlerts,
                     customers = ports.customers,
                     customerLedger = ports.customerLedger,
+                    loyaltyLedger = ports.loyaltyLedger,
                 )
             val hold =
                 HoldSaleUseCase(

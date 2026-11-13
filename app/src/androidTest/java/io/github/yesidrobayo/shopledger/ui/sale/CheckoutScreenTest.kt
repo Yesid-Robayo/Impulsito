@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
@@ -26,6 +27,7 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import kotlin.time.Instant
@@ -57,10 +59,14 @@ class CheckoutScreenTest {
         methodId: Long = 1L,
         qrOnly: Boolean = false,
         customers: List<Customer> = emptyList(),
+        loyalty: LoyaltySettings = LoyaltySettings.OFF,
     ) = CheckoutViewModel(
         catalogSource = {
             MutableStateFlow(
-                checkoutCatalog().copy(creditMethods = listOf(saleMethod(CREDIT, "ON_ACCOUNT"))),
+                checkoutCatalog().copy(
+                    creditMethods = listOf(saleMethod(CREDIT, "ON_ACCOUNT")),
+                    loyalty = loyalty,
+                ),
             )
         },
         registerSale = {
@@ -225,6 +231,42 @@ class CheckoutScreenTest {
         assertEquals(CLIENT.id, requests.single().customerId)
     }
 
+    @Test
+    fun pointsAreRedeemedAsADiscountAndSaySoAlsoWithLargeText() {
+        show(model(customers = listOf(MEMBER), loyalty = PROGRAM), fontScale = LARGE_FONT)
+        awaitText(text(R.string.checkout_complete))
+        // Sin cliente, el cobro no menciona puntos.
+        assertTrue(
+            compose.onAllNodesWithText(text(R.string.checkout_points_to_redeem))
+                .fetchSemanticsNodes().isEmpty(),
+        )
+        compose.onNodeWithText(text(R.string.checkout_customer)).performScrollTo().performClick()
+        awaitText(MEMBER_NAME)
+        compose.onNodeWithText(MEMBER_NAME).performClick()
+        awaitText(text(R.string.checkout_points_not_money))
+
+        compose.onNodeWithText(text(R.string.checkout_points_available, "150"))
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.checkout_points_to_redeem))
+            .performScrollTo()
+            .performTextInput("10")
+        compose.onNodeWithText(text(R.string.checkout_redeem_action))
+            .performScrollTo()
+            .performClick()
+        // La fila del canje aparece en el bloque del total, y el pago único sigue cuadrando.
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodesWithText(text(R.string.checkout_points))
+                .fetchSemanticsNodes().size > 1
+        }
+        awaitText(text(R.string.checkout_complete))
+        register()
+        compose.waitUntil(TIMEOUT_MS) { requests.isNotEmpty() }
+
+        assertEquals(10L, requests.single().pointsRedeemed)
+        assertEquals(MEMBER.id, requests.single().customerId)
+    }
+
     private companion object {
         const val CREDIT = 9L
         val CREATED: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000L)
@@ -240,6 +282,19 @@ class CheckoutScreenTest {
             createdAt = CREATED,
             updatedAt = CREATED,
         )
+        const val MEMBER_NAME = "Cliente con puntos"
+        val MEMBER = Customer(
+            id = 41L,
+            contact = CustomerContact(MEMBER_NAME, "cliente con puntos", null, null, null),
+            priceListId = null,
+            balance = Money.ZERO,
+            pointsBalance = 150L,
+            anonymizedAt = null,
+            archivedAt = null,
+            createdAt = CREATED,
+            updatedAt = CREATED,
+        )
+        val PROGRAM = LoyaltySettings(true, amountPerPoint = Money(1_000L), pointValue = Money(5L))
         const val TIMEOUT_MS = 5_000L
         const val LARGE_FONT = 2f
         const val WIDE_WIDTH = 900

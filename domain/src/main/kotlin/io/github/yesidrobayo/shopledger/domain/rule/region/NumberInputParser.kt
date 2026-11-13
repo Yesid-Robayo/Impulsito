@@ -94,6 +94,13 @@ object NumberInputParser {
             .map(::BasisPoints)
     }
 
+    /**
+     * Un conteo entero, como unos puntos, sin decimales y con los separadores de grupo de la
+     * región, igual que se muestra: `1.250` son 1250. El tope es [limit].
+     */
+    fun count(text: String, symbols: NumberSymbols, limit: Limit): NumberInput<Long> =
+        parse(text, symbols, decimals = 0, maximum = limit.max, percentAllowed = false)
+
     private fun <T> NumberInput<Long>.map(wrap: (Long) -> T): NumberInput<T> = when (this) {
         is NumberInput.Value -> NumberInput.Value(wrap(value))
         NumberInput.Blank -> NumberInput.Blank

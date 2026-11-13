@@ -30,6 +30,10 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  * [customerId] es el cliente de la venta, si la persona eligió uno. Es obligatorio con un pago a
  * crédito, que carga lo pagado así en su libro, con el vencimiento [creditDueDate] si la persona
  * eligió uno.
+ *
+ * [pointsRedeemed] son los puntos del cliente que se canjean en esta venta. Los puntos no son
+ * dinero: su descuento entra en el ajuste de toda la venta, junto con [orderAdjustment], y nunca
+ * como un pago. Exige cliente y el programa de puntos activo; cero es sin canje.
  */
 data class SaleRequest(
     val lines: List<SaleLineRequest>,
@@ -42,4 +46,5 @@ data class SaleRequest(
     val tipAmount: Money = Money.ZERO,
     val customerId: Long? = null,
     val creditDueDate: BusinessDate? = null,
+    val pointsRedeemed: Long = 0L,
 )

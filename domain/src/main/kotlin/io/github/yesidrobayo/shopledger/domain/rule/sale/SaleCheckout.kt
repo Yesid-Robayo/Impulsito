@@ -79,6 +79,12 @@ sealed interface CheckoutProblem {
     /** El descuento escrito para toda la venta supera lo que suman sus líneas. */
     data object DiscountAboveSale : CheckoutProblem
 
+    /**
+     * El descuento de los puntos canjeados, sumado al ajuste escrito, supera lo que suman las
+     * líneas.
+     */
+    data object PointsAboveSale : CheckoutProblem
+
     /** Algún total, recargo o comisión pasa del tope de un documento. */
     data object TooLarge : CheckoutProblem
 
@@ -98,6 +104,8 @@ sealed interface CheckoutProblem {
  * - [subtotal] es lo que cobran las líneas tras sus descuentos, antes de cualquier ajuste y, con el
  *   impuesto añadido, antes del impuesto.
  * - [writtenAdjustment] es el descuento o recargo escrito para toda la venta, con signo.
+ * - [pointsDiscount] es el descuento de los puntos canjeados, positivo. Entra en el ajuste de la
+ *   venta junto con el escrito, nunca como un pago: los puntos no son dinero.
  * - [taxTotal] y [total] son el impuesto y el total de la venta con todos los ajustes: el escrito y
  *   los recargos de los métodos.
  * - [due] es lo que deben sumar los pagos escritos: el total con el ajuste escrito, más la propina,
@@ -120,6 +128,7 @@ data class CheckoutPreview(
     val problem: CheckoutProblem?,
     val cashRounding: Money = Money.ZERO,
     val tip: Money = Money.ZERO,
+    val pointsDiscount: Money = Money.ZERO,
 ) {
     /** Si lo escrito cubre lo que se cobra, o `null` si no hay cómo saber cuánto se cobra. */
     val balance: CheckoutBalance?
@@ -151,7 +160,8 @@ object SaleCheckout {
      * pago trae el suyo. Cada pago en efectivo se redondea a [cashStep], ya con su recargo, y cero
      * es sin redondeo. [conversions] son, por producto, sus unidades de venta: una línea por caja
      * cobra el precio de la caja. [tip] es la propina: los pagos la cubren, cada uno con su parte,
-     * y su recargo se calcula sin ella.
+     * y su recargo se calcula sin ella. [pointsDiscount] es el descuento de los puntos canjeados,
+     * que se suma al ajuste escrito como un descuento más.
      */
     fun preview(
         lines: List<SaleLineRequest>,
@@ -162,11 +172,13 @@ object SaleCheckout {
         cashStep: Money = Money.ZERO,
         conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
         tip: Money = Money.ZERO,
+        pointsDiscount: Money = Money.ZERO,
     ): CheckoutPreview {
         val paid = payments.fold(Money.ZERO) { sum, it -> sum + it.amount }
         val empty = CheckoutPreview(
             subtotal = null,
             writtenAdjustment = adjustment,
+            pointsDiscount = pointsDiscount,
             taxTotal = null,
             total = null,
             due = null,
@@ -187,7 +199,16 @@ object SaleCheckout {
         if (adjustment.minor < -Limit.DOCUMENT_TOTAL.max || adjustment.minor < -subtotal.minor) {
             return withSubtotal.copy(problem = CheckoutProblem.DiscountAboveSale)
         }
-        val due = totalWith(bases, pricing.taxMode, adjustment)
+        // Como al confirmar: el descuento de los puntos se suma al ajuste escrito. Los dos caben en
+        // el tope de un documento, así que la resta cabe en Long.
+        if (pointsDiscount < Money.ZERO || !Limit.DOCUMENT_TOTAL.allows(pointsDiscount.minor)) {
+            return withSubtotal.copy(problem = CheckoutProblem.PointsAboveSale)
+        }
+        val combined = adjustment - pointsDiscount
+        if (combined.minor < -subtotal.minor) {
+            return withSubtotal.copy(problem = CheckoutProblem.PointsAboveSale)
+        }
+        val due = totalWith(bases, pricing.taxMode, combined)
             ?: return withSubtotal.copy(problem = CheckoutProblem.TooLarge)
         // Las dos sumas caben en Long: cada una está dentro del tope de un documento.
         val dueWithTip = due.total + tip
@@ -208,7 +229,7 @@ object SaleCheckout {
             amounts = payments.zip(tips) { payment, share -> payment.amount - share },
             rates = payments.map { it.priceAdjustment },
             totalWith = { surcharge ->
-                totalWith(bases, pricing.taxMode, adjustment + surcharge)
+                totalWith(bases, pricing.taxMode, combined + surcharge)
                     ?.also { charged = it }
                     ?.total
             },

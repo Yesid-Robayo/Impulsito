@@ -22,6 +22,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepos
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomHeldSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLowStockAlertRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomLoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMediaAssetRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomMoneyAccountRepository
@@ -71,6 +72,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.HumanCheckRecorder
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
@@ -168,6 +170,9 @@ class DataPorts internal constructor(
 
     /** El libro de los clientes: solo agrega, y deja a cada cliente con su saldo. */
     val customerLedger: CustomerLedgerRepository = RoomCustomerLedgerRepository(database)
+
+    /** El libro de puntos de los clientes: solo agrega, y deja a cada cliente con su saldo. */
+    val loyaltyLedger: LoyaltyLedgerRepository = RoomLoyaltyLedgerRepository(database)
 
     /** Las cuentas por pagar: cada proveedor con saldo, con su libro. Solo lee. */
     val payables: PayablesSource = RoomPayablesSource(database)
