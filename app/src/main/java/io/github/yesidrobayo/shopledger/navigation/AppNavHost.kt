@@ -66,6 +66,7 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderAction
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderScreen
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
+import io.github.yesidrobayo.shopledger.ui.pricing.PriceListsRoute
 import io.github.yesidrobayo.shopledger.ui.product.BulkPriceRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductDetailRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
@@ -285,6 +286,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
             TaxSettingsRoute(onBack = { navigator.back() }) { PlaceholderRoute(key, navigator) }
 
         AppNavKey.PaymentMethods -> PaymentMethodsRoute(navigator)
+
+        AppNavKey.PriceLists -> PriceListsRoute(navigator)
 
         AppNavKey.Units -> UnitsRoute(navigator)
 

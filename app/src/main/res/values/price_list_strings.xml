@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: listas de precios. -->
+    <string name="price_list_kind_label">Type</string>
+    <string name="price_list_kind_fixed">Fixed</string>
+    <string name="price_list_kind_relative">Relative</string>
+    <string name="price_list_fixed_desc">Fixed prices</string>
+    <string name="price_list_relative_desc">%1$s on %2$s</string>
+    <string name="price_list_archived_group">Archived</string>
+    <string name="price_list_new_action">New list</string>
+    <string name="price_list_name_label">Name</string>
+    <string name="price_list_base_label">Base list</string>
+    <string name="price_list_adjustment_label">Adjustment</string>
+    <string name="price_list_save_action">Save list</string>
+    <string name="price_list_tag_general">General price</string>
+    <string name="price_list_tag_calculated">Calculated</string>
+    <string name="price_list_tag_own">Own price</string>
+    <string name="price_list_margin">Margin %1$s</string>
+    <string name="price_list_price_label">Price in this list</string>
+    <string name="price_list_resulting_margin_label">Resulting margin</string>
+    <string name="price_list_remove_own_action">Remove own price</string>
+    <string name="price_list_empty_title">A list for each type of customer</string>
+    <string name="price_list_error_name_empty">Enter the list name</string>
+    <string name="price_list_error_name_repeated">A list with that name already exists</string>
+    <string name="price_list_error_cycle">That list already depends on this one</string>
+    <string name="price_list_error_zero">Enter a price greater than %1$s</string>
+    <string name="price_list_archive_confirm_title">Archive %1$s?</string>
+    <string name="price_list_archive_confirm_action">Archive list</string>
+    <string name="price_list_saved">List saved</string>
+    <string name="price_list_edit_title">Edit list</string>
+    <string name="price_list_search_no_results">No results for \"%1$s\"</string>
+    <string name="price_list_error_base_missing">Choose the base list</string>
+    <string name="price_list_error_base_unavailable">Choose an active base list</string>
+    <string name="price_list_error_adjustment_missing">Enter the adjustment</string>
+    <string name="price_list_error_adjustment_range">Enter an adjustment between %1$s and %2$s</string>
+    <string name="price_list_error_has_own_prices">This list has its own prices. Remove them before making it relative</string>
+    <string name="price_list_price_saved">Price saved</string>
+    <plurals name="price_list_own_prices_count">
+        <item quantity="one">%1$d product with its own price</item>
+        <item quantity="other">%1$d products with their own price</item>
+    </plurals>
+    <plurals name="price_list_archive_confirm_body">
+        <item quantity="one">%1$d customer goes back to the general price list. Past sales do not change.</item>
+        <item quantity="other">%1$d customers go back to the general price list. Past sales do not change.</item>
+    </plurals>
+</resources>

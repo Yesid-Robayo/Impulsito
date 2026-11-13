@@ -31,6 +31,14 @@ internal class FakePriceListRepository(private val database: InMemoryDatabase) :
         tables.priceLists.keys.filter { inUse(tables, it) }.toSet()
     }
 
+    override fun observeCustomerCounts(): Flow<Map<Long, Int>> = database.tables.map { tables ->
+        tables.customers.values
+            .filter { !it.isArchived }
+            .mapNotNull { it.priceListId }
+            .groupingBy { it }
+            .eachCount()
+    }
+
     override suspend fun findById(id: Long): PriceList? = database.read().priceLists[id]
 
     override suspend fun findAll(): List<PriceList> =
@@ -81,6 +89,12 @@ internal class FakePriceListRepository(private val database: InMemoryDatabase) :
             tables.productPrices.filterKeys { it.first == priceListId }
                 .mapKeys { it.key.second }
         }
+
+    override fun observeAll(): Flow<Map<Long, Map<Long, Money>>> = database.tables.map { tables ->
+        tables.productPrices.entries
+            .groupBy({ it.key.first }, { it.key.second to it.value })
+            .mapValues { (_, prices) -> prices.toMap() }
+    }
 
     override suspend fun findByProduct(productId: Long): Map<Long, Money> =
         database.read().productPrices.filterKeys { it.second == productId }.mapKeys { it.key.first }

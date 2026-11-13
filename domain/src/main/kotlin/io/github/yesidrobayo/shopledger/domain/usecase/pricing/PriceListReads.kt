@@ -11,10 +11,20 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
- * Las listas de precios como las muestra su pantalla: vigentes, archivadas y cuáles tienen uso.
- * Vuelve a emitir con cada cambio confirmado.
+ * Las listas de precios como las muestra su pantalla: vigentes, archivadas y cuáles tienen uso,
+ * los precios propios de cada lista y cuántos clientes tiene cada una. Vuelve a emitir con cada
+ * cambio confirmado.
  */
-class ObservePriceListsUseCase(private val priceLists: PriceListRepository) {
+class ObservePriceListsUseCase(
+    private val priceLists: PriceListRepository,
+    private val productPrices: ProductPriceRepository,
+) {
+    /** Los precios propios: por lista, y dentro, por producto. */
+    fun ownPrices(): Flow<Map<Long, Map<Long, Money>>> = productPrices.observeAll()
+
+    /** Cuántos clientes vigentes tiene cada lista, que vuelven a la inicial si se archiva. */
+    fun customerCounts(): Flow<Map<Long, Int>> = priceLists.observeCustomerCounts()
+
     operator fun invoke(): Flow<PriceListsOverview> = combine(
         priceLists.observeActive(),
         priceLists.observeArchived(),

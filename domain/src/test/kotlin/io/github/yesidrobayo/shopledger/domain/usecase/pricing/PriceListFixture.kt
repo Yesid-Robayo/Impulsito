@@ -39,7 +39,7 @@ internal class PriceListFixture(zoneId: String = "UTC", currencyConfirmed: Boole
         catalog.clock,
     )
     val resolver = ListPriceResolver(priceLists, priceLists)
-    val observe = ObservePriceListsUseCase(priceLists)
+    val observe = ObservePriceListsUseCase(priceLists, priceLists)
 
     init {
         seedList(PriceList(DEFAULT_PRICE_LIST_ID, "DEFAULT", null, PriceListPricing.Fixed, null))

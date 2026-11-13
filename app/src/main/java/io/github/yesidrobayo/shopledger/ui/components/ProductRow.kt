@@ -90,13 +90,19 @@ sealed interface ProductRowTrailing {
     data class PricePreview(val newPrice: Money, val oldPrice: Money) : ProductRowTrailing
 }
 
-/** Los datos de una fila de producto, ya leídos: la fila no busca nada. */
+/**
+ * Los datos de una fila de producto, ya leídos: la fila no busca nada.
+ *
+ * [stock] nulo no muestra la línea del stock, como en una lista de precios, donde lo que importa es
+ * de dónde sale el precio: eso va en [tag], una etiqueta propia de la pantalla.
+ */
 @Immutable
 data class ProductRowData(
     val name: String,
-    val stock: ProductStock,
+    val stock: ProductStock?,
     val trailing: ProductRowTrailing,
     val archived: Boolean = false,
+    val tag: String? = null,
 )
 
 /**
@@ -179,7 +185,8 @@ private fun ProductRowLeading(data: ProductRowData) {
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
-            StockLine(data.stock)
+            data.stock?.let { StockLine(it) }
+            data.tag?.let { StatusTag(it) }
             tags.forEach { StatusTag(stringResource(it)) }
         }
     }

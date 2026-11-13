@@ -28,6 +28,12 @@ interface PriceListRepository {
      */
     fun observeInUse(): Flow<Set<Long>>
 
+    /**
+     * Cuántos clientes vigentes tiene cada lista, por id. Al archivarla, esos clientes vuelven a la
+     * inicial. Las listas sin clientes no salen.
+     */
+    fun observeCustomerCounts(): Flow<Map<Long, Int>>
+
     suspend fun findById(id: Long): PriceList?
 
     /** Todas, vigentes y archivadas, leídas una vez: una relativa puede partir de una archivada. */
@@ -72,6 +78,9 @@ interface PriceListRepository {
 interface ProductPriceRepository {
     /** Los precios propios de una lista, por id de producto. */
     fun observeByList(priceListId: Long): Flow<Map<Long, Money>>
+
+    /** Todos los precios propios: por id de lista, y dentro, por id de producto. */
+    fun observeAll(): Flow<Map<Long, Map<Long, Money>>>
 
     /** Los precios propios de un producto, por id de lista. */
     suspend fun findByProduct(productId: Long): Map<Long, Money>

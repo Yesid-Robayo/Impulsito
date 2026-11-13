@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.local.pricing
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
+import io.github.yesidrobayo.shopledger.data.local.OwnerCount
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -85,6 +86,16 @@ internal interface PriceListDao {
      */
     @Query(CYCLE_SQL)
     suspend fun wouldCreateCycle(id: Long, basePriceListId: Long): Boolean
+
+    /**
+     * Cuántos clientes vigentes tienen cada lista: al archivarla vuelven a la inicial, y la persona
+     * lo sabe antes. Las listas sin clientes no salen.
+     */
+    @Query(
+        "SELECT price_list_id AS ownerId, COUNT(*) AS count FROM customers " +
+            "WHERE price_list_id IS NOT NULL AND archived_at IS NULL GROUP BY price_list_id",
+    )
+    fun observeCustomerCounts(): Flow<List<OwnerCount>>
 
     /** Devuelve el id nuevo. Falla si la clave ya existe, o si el nombre ya es de una vigente. */
     @Insert

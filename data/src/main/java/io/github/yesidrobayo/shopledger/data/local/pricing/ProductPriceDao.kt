@@ -18,6 +18,10 @@ internal interface ProductPriceDao {
     @Query("SELECT * FROM product_prices WHERE price_list_id = :priceListId ORDER BY id")
     fun observeByPriceList(priceListId: Long): Flow<List<ProductPriceEntity>>
 
+    /** Todos los precios propios, de todas las listas: una relativa parte de los de su base. */
+    @Query("SELECT * FROM product_prices ORDER BY id")
+    fun observeAll(): Flow<List<ProductPriceEntity>>
+
     /** Los precios de un producto en las listas fijas que le dieron uno. */
     @Query("SELECT * FROM product_prices WHERE product_id = :productId ORDER BY id")
     suspend fun findByProduct(productId: Long): List<ProductPriceEntity>

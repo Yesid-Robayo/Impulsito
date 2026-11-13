@@ -12,6 +12,8 @@
     <string name="hub_first_use_body">Las herramientas pasan a En uso con su primer registro.</string>
     <string name="hub_search_empty">Sin resultados para \"%1$s\"</string>
     <string name="hub_help_row">Ayuda</string>
+    <string name="hub_tool_price_lists">Listas de precios</string>
+    <string name="hub_tool_price_lists_desc">Precios distintos por tipo de cliente</string>
     <string name="hub_tool_units">Unidades y conversiones</string>
     <string name="hub_tool_units_desc">Comprar por caja y vender por unidad</string>
 </resources>

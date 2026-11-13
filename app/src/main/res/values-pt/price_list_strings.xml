@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Portugués: listas de precios. -->
+    <string name="price_list_kind_label">Tipo</string>
+    <string name="price_list_kind_fixed">Fixa</string>
+    <string name="price_list_kind_relative">Relativa</string>
+    <string name="price_list_fixed_desc">Preços fixos</string>
+    <string name="price_list_relative_desc">%1$s sobre %2$s</string>
+    <string name="price_list_archived_group">Arquivadas</string>
+    <string name="price_list_new_action">Nova tabela</string>
+    <string name="price_list_name_label">Nome</string>
+    <string name="price_list_base_label">Tabela base</string>
+    <string name="price_list_adjustment_label">Ajuste</string>
+    <string name="price_list_save_action">Salvar tabela</string>
+    <string name="price_list_tag_general">Preço geral</string>
+    <string name="price_list_tag_calculated">Calculado</string>
+    <string name="price_list_tag_own">Preço próprio</string>
+    <string name="price_list_margin">Margem %1$s</string>
+    <string name="price_list_price_label">Preço nesta tabela</string>
+    <string name="price_list_resulting_margin_label">Margem resultante</string>
+    <string name="price_list_remove_own_action">Remover preço próprio</string>
+    <string name="price_list_empty_title">Uma tabela para cada tipo de cliente</string>
+    <string name="price_list_error_name_empty">Escrever o nome da tabela</string>
+    <string name="price_list_error_name_repeated">Já existe uma tabela com esse nome</string>
+    <string name="price_list_error_cycle">Essa tabela já depende desta</string>
+    <string name="price_list_error_zero">Escrever um preço maior que %1$s</string>
+    <string name="price_list_archive_confirm_title">Arquivar %1$s?</string>
+    <string name="price_list_archive_confirm_action">Arquivar tabela</string>
+    <string name="price_list_saved">Tabela salva</string>
+    <string name="price_list_edit_title">Editar tabela</string>
+    <string name="price_list_search_no_results">Sem resultados para \"%1$s\"</string>
+    <string name="price_list_error_base_missing">Escolher a tabela base</string>
+    <string name="price_list_error_base_unavailable">Escolher uma tabela base ativa</string>
+    <string name="price_list_error_adjustment_missing">Escrever o ajuste</string>
+    <string name="price_list_error_adjustment_range">Escrever um ajuste entre %1$s e %2$s</string>
+    <string name="price_list_error_has_own_prices">Esta tabela tem preços próprios. Removê-los antes de torná-la relativa</string>
+    <string name="price_list_price_saved">Preço salvo</string>
+    <plurals name="price_list_own_prices_count">
+        <item quantity="one">%1$d produto com preço próprio</item>
+        <item quantity="many">%1$d de produtos com preço próprio</item>
+        <item quantity="other">%1$d produtos com preço próprio</item>
+    </plurals>
+    <plurals name="price_list_archive_confirm_body">
+        <item quantity="one">%1$d cliente voltará à Tabela geral. As vendas anteriores não mudam.</item>
+        <item quantity="many">%1$d de clientes voltarão à Tabela geral. As vendas anteriores não mudam.</item>
+        <item quantity="other">%1$d clientes voltarão à Tabela geral. As vendas anteriores não mudam.</item>
+    </plurals>
+</resources>

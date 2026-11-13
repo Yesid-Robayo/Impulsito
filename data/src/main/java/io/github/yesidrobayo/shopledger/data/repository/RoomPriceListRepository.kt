@@ -42,6 +42,11 @@ internal class RoomPriceListRepository(database: AppDatabase) :
     override fun observeInUse(): Flow<Set<Long>> =
         lists.observeInUseIds().map { it.toSet() }.distinctUntilChanged()
 
+    override fun observeCustomerCounts(): Flow<Map<Long, Int>> = lists
+        .observeCustomerCounts()
+        .map { rows -> rows.associate { it.ownerId to it.count } }
+        .distinctUntilChanged()
+
     override suspend fun findById(id: Long): PriceList? = lists.findById(id)?.let(::toPriceList)
 
     override suspend fun findAll(): List<PriceList> = lists.findAll().map(::toPriceList)
@@ -108,6 +113,14 @@ internal class RoomPriceListRepository(database: AppDatabase) :
     override fun observeByList(priceListId: Long): Flow<Map<Long, Money>> = prices
         .observeByPriceList(priceListId)
         .map { rows -> rows.associate { it.productId to Money(it.price) } }
+        .distinctUntilChanged()
+
+    override fun observeAll(): Flow<Map<Long, Map<Long, Money>>> = prices
+        .observeAll()
+        .map { rows ->
+            rows.groupBy { it.priceListId }
+                .mapValues { (_, ofList) -> ofList.associate { it.productId to Money(it.price) } }
+        }
         .distinctUntilChanged()
 
     override suspend fun findByProduct(productId: Long): Map<Long, Money> =
