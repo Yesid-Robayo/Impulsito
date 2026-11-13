@@ -62,6 +62,7 @@ import io.github.yesidrobayo.shopledger.data.backup.StartupRestoreGate
 import io.github.yesidrobayo.shopledger.data.backup.UploadUsageRecorder
 import io.github.yesidrobayo.shopledger.data.backup.UploadUsageStore
 import io.github.yesidrobayo.shopledger.data.backup.cleanUpExpiredLocalCopies
+import io.github.yesidrobayo.shopledger.data.backup.packEncryption
 import io.github.yesidrobayo.shopledger.data.backup.probeAccess
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
 import io.github.yesidrobayo.shopledger.data.backup.productionRestoreCoordinator
@@ -829,22 +830,7 @@ class DataGraph internal constructor(
      * no. Con el cifrado activo y un código que no abre, no sale nada, nunca en claro. El sobre
      * manda sobre el estado, como al arrancar.
      */
-    private suspend fun packEncryption(): PackEncryption {
-        val state = recoveryCustody.alignAtStartup()
-        if (!state.enabled) return PackEncryption.Plain
-        return when (val read = recoveryCustody.keys.open()) {
-            is RecoveryKeyRead.Available ->
-                if (read.key.keyIdHex == state.keyIdHex) {
-                    PackEncryption.Encrypt(read.code)
-                } else {
-                    PackEncryption.KeyUnavailable
-                }
-
-            RecoveryKeyRead.Absent, is RecoveryKeyRead.Unavailable -> PackEncryption.KeyUnavailable
-
-            is RecoveryKeyRead.RetryLater -> PackEncryption.RetryLater
-        }
-    }
+    private suspend fun packEncryption(): PackEncryption = recoveryCustody.packEncryption()
 
     /**
      * La clave vigente para la poda: la del código si el cifrado está activo, o ninguna si está

@@ -9,6 +9,8 @@ import io.github.yesidrobayo.shopledger.data.crypto.EncryptedReadResult
 import io.github.yesidrobayo.shopledger.data.crypto.RawContent
 import io.github.yesidrobayo.shopledger.data.crypto.RawSizeMismatch
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCode
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCustody
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryKeyRead
 import io.github.yesidrobayo.shopledger.data.destination.newSha256
 import io.github.yesidrobayo.shopledger.data.destination.toLowerHex
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
@@ -391,6 +393,28 @@ internal sealed interface PackageResult {
 
     /** Otra falla del disco. Solo la clase de [cause] puede ir al registro. */
     class Failed(val cause: IOException) : PackageResult
+}
+
+/**
+ * Cómo sale la copia siguiente según la custodia del código: cifrada con el código sellado si el
+ * cifrado está activo y su `key_id` es el del estado, en claro si está apagado, y nada, nunca en
+ * claro, si el código no abre. El sobre manda sobre el estado, como al arrancar.
+ */
+internal suspend fun RecoveryCustody.packEncryption(): PackEncryption {
+    val state = alignAtStartup()
+    if (!state.enabled) return PackEncryption.Plain
+    return when (val read = keys.open()) {
+        is RecoveryKeyRead.Available ->
+            if (read.key.keyIdHex == state.keyIdHex) {
+                PackEncryption.Encrypt(read.code)
+            } else {
+                PackEncryption.KeyUnavailable
+            }
+
+        RecoveryKeyRead.Absent, is RecoveryKeyRead.Unavailable -> PackEncryption.KeyUnavailable
+
+        is RecoveryKeyRead.RetryLater -> PackEncryption.RetryLater
+    }
 }
 
 /** Cómo sale una copia: en claro, cifrada con un código, o no sale. */
