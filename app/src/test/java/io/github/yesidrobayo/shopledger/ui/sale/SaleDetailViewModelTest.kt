@@ -28,6 +28,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSaleReturnResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleResult
 import io.github.yesidrobayo.shopledger.ui.product.COUNT_UNIT
 import kotlin.time.Instant
@@ -148,6 +149,56 @@ class SaleDetailViewModelTest {
     }
 
     private val returnLines = mutableListOf<SaleReturnLine>()
+    private val returnVoids = mutableListOf<Triple<Long, VoidReason, String?>>()
+    private var returnVoidResult: VoidSaleReturnResult = VoidSaleReturnResult.Voided
+    private var replacementActive = true
+
+    /** La venta con una devolución activa de 1 unidad, que es parte de un cambio si [exchange]. */
+    private fun withReturn(exchange: Boolean = false): SaleDetail {
+        val base = detailOf(voiding = null)
+        val header = SaleReturn(
+            id = 41L,
+            content = NewSaleReturn(
+                saleId = 7L,
+                resolution = if (exchange) ReturnResolution.EXCHANGE else ReturnResolution.REFUND,
+                netRefund = Money(18_000L),
+                taxRefund = Money.ZERO,
+                totalRefund = Money(18_000L),
+                costReturned = Money(11_111L),
+                moneyAccountId = 1L,
+                replacementSaleId = if (exchange) 9L else null,
+                note = null,
+                occurredAt = at,
+                businessDate = date,
+                createdAt = at,
+            ),
+            voiding = null,
+        )
+        returnLines += SaleReturnLine(
+            id = 410L,
+            saleReturnId = 41L,
+            content = NewSaleReturnLine(
+                saleLineId = 70L,
+                quantity = QuantityMilli(1_000L),
+                netAmount = Money(18_000L),
+                taxAmount = Money.ZERO,
+                lineTotal = Money(18_000L),
+                lineCost = Money(11_111L),
+                restock = true,
+            ),
+        )
+        return base.copy(
+            returns = listOf(header),
+            returned = mapOf(
+                70L to LineAmounts(
+                    QuantityMilli(1_000L),
+                    Money(18_000L),
+                    Money.ZERO,
+                    Money(11_111L),
+                ),
+            ),
+        )
+    }
 
     private fun TestScope.viewModel(
         failRead: Boolean = false,
@@ -168,6 +219,21 @@ class SaleDetailViewModelTest {
             computation = dispatcher,
             observeBusinessName = { MutableStateFlow(businessName) },
             loadReturnLines = { id -> returnLines.filter { it.saleReturnId == id } },
+            voidReturn = { id, reason, note ->
+                returnVoids += Triple(id, reason, note)
+                if (returnVoidResult == VoidSaleReturnResult.Voided) {
+                    // Como la base: la devolución queda anulada y deja de contar en lo devuelto.
+                    val current = requireNotNull(detail.value)
+                    detail.value = current.copy(
+                        returns = current.returns.map {
+                            if (it.id == id) it.copy(voiding = Voiding(at, reason, note)) else it
+                        },
+                        returned = emptyMap(),
+                    )
+                }
+                returnVoidResult
+            },
+            isSaleActive = { replacementActive },
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -455,6 +521,119 @@ class SaleDetailViewModelTest {
 
         model.act(this, SaleDetailAction.CloseReturnDetail)
         assertNull(model.ready.returnSheet)
+    }
+
+    @Test
+    fun `voiding a return asks the reason and gives the sale back its void`() =
+        runTest(dispatcher) {
+            detail.value = withReturn()
+            val model = viewModel()
+            assertFalse(model.ready.sale.canVoid)
+            model.act(this, SaleDetailAction.OpenReturnDetail(41L))
+            assertTrue(requireNotNull(model.ready.returnSheet).canVoid)
+            assertNull(model.ready.returnSheet?.lockedBySale)
+
+            model.act(this, SaleDetailAction.OpenReturnVoid)
+            assertEquals(VoidSheet(), model.ready.returnSheet?.void)
+            model.act(this, SaleDetailAction.ReturnVoidReasonChange(VoidReason.OTHER))
+            model.act(this, SaleDetailAction.ReturnVoidNoteChange("  Otro cliente  "))
+            model.act(this, SaleDetailAction.ConfirmReturnVoid)
+
+            assertEquals(listOf(Triple(41L, VoidReason.OTHER, "Otro cliente")), returnVoids)
+            assertNull(model.ready.returnSheet)
+            assertTrue(model.ready.returnVoided)
+            val shown = model.ready.sale
+            assertTrue(shown.returns.single().voided)
+            assertEquals(QuantityMilli.ZERO, shown.lines.single().returned)
+            assertTrue(shown.canVoid)
+            model.act(this, SaleDetailAction.ReturnVoidedShown)
+            assertFalse(model.ready.returnVoided)
+        }
+
+    @Test
+    fun `a failed return void keeps it active and can be retried`() = runTest(dispatcher) {
+        detail.value = withReturn()
+        returnVoidResult = VoidSaleReturnResult.StorageFailed(StorageFailure.IO_ERROR)
+        val model = viewModel()
+        model.act(this, SaleDetailAction.OpenReturnDetail(41L))
+        model.act(this, SaleDetailAction.OpenReturnVoid)
+
+        model.act(this, SaleDetailAction.ConfirmReturnVoid)
+
+        val sheet = requireNotNull(model.ready.returnSheet)
+        assertEquals(VoidStatus.FAILED, sheet.voidStatus)
+        assertFalse(sheet.row.voided)
+        assertFalse(model.ready.returnVoided)
+        // Cambiar la nota limpia la falla; reintentar vuelve a llamar.
+        model.act(this, SaleDetailAction.ReturnVoidNoteChange("Error"))
+        assertEquals(VoidStatus.IDLE, model.ready.returnSheet?.voidStatus)
+        returnVoidResult = VoidSaleReturnResult.Voided
+        model.act(this, SaleDetailAction.ConfirmReturnVoid)
+        assertEquals(2, returnVoids.size)
+        assertNull(model.ready.returnSheet)
+    }
+
+    @Test
+    fun `a note too long is not sent, and a return voided elsewhere just closes`() =
+        runTest(dispatcher) {
+            detail.value = withReturn()
+            returnVoidResult = VoidSaleReturnResult.AlreadyVoided
+            val model = viewModel()
+            model.act(this, SaleDetailAction.OpenReturnDetail(41L))
+            model.act(this, SaleDetailAction.OpenReturnVoid)
+            model.act(this, SaleDetailAction.ReturnVoidNoteChange("n".repeat(201)))
+
+            model.act(this, SaleDetailAction.ConfirmReturnVoid)
+            assertTrue(returnVoids.isEmpty())
+
+            model.act(this, SaleDetailAction.ReturnVoidNoteChange(""))
+            model.act(this, SaleDetailAction.ConfirmReturnVoid)
+            assertEquals(listOf(Triple(41L, VoidReason.ENTRY_ERROR, null)), returnVoids)
+            assertNull(model.ready.returnSheet)
+            assertFalse(model.ready.returnVoided)
+        }
+
+    @Test
+    fun `an exchange with its new sale active is not offered to void`() = runTest(dispatcher) {
+        detail.value = withReturn(exchange = true)
+        val model = viewModel()
+
+        model.act(this, SaleDetailAction.OpenReturnDetail(41L))
+
+        val sheet = requireNotNull(model.ready.returnSheet)
+        assertFalse(sheet.canVoid)
+        assertEquals(9L, sheet.lockedBySale)
+    }
+
+    @Test
+    fun `an exchange with its new sale voided is voided like any return`() = runTest(dispatcher) {
+        detail.value = withReturn(exchange = true)
+        replacementActive = false
+        returnVoidResult = VoidSaleReturnResult.PartOfExchange(9L)
+        val model = viewModel()
+        model.act(this, SaleDetailAction.OpenReturnDetail(41L))
+        assertTrue(requireNotNull(model.ready.returnSheet).canVoid)
+        model.act(this, SaleDetailAction.OpenReturnVoid)
+
+        // La venta nueva se reactivó por otro camino: la anulación lo dice, y la hoja también.
+        model.act(this, SaleDetailAction.ConfirmReturnVoid)
+
+        val sheet = requireNotNull(model.ready.returnSheet)
+        assertNull(sheet.void)
+        assertEquals(9L, sheet.lockedBySale)
+    }
+
+    @Test
+    fun `without an open return there is nothing to void`() = runTest(dispatcher) {
+        detail.value = withReturn()
+        val model = viewModel()
+
+        model.act(this, SaleDetailAction.OpenReturnVoid)
+        model.act(this, SaleDetailAction.ReturnVoidReasonChange(VoidReason.OTHER))
+        model.act(this, SaleDetailAction.ConfirmReturnVoid)
+
+        assertNull(model.ready.returnSheet)
+        assertTrue(returnVoids.isEmpty())
     }
 
     @Test

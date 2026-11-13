@@ -16,6 +16,8 @@ import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.report.ReplacementProfit
 import io.github.yesidrobayo.shopledger.domain.model.report.ReplacementTotals
 import io.github.yesidrobayo.shopledger.domain.model.report.RestockedReturnLine
+import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
+import io.github.yesidrobayo.shopledger.domain.rule.report.ReplacementProfitRules
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveReplacementProfitUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -136,6 +138,24 @@ internal class ReplacementReportQueryTest : LedgerDatabaseTest() {
             listOf(restocked(2_000, 1_000)),
             replacement.observeTotals(day(TOMORROW)).first().restockedReturns,
         )
+    }
+
+    @Test
+    fun voidingAReturnInTheMiddleKeepsTheReturnedReplacementExactInAnyOrder() = runBlocking {
+        // Una línea de 3 unidades que repone 10000, devuelta de a 1 tres veces. En un día se anula
+        // la del medio y en otro la primera: las dos activas reparten igual, y suman 6667, lo que
+        // toca a 2 de 3 unidades.
+        for ((date, voided) in listOf(TODAY to 1, TOMORROW to 0)) {
+            val saleId = saleOf(YESTERDAY, net = 30_000, cost = 6_000, replacement = 10_000)
+            val lineId = lineOf(saleId, 3_000, 10_000)
+            val ids = List(3) { returnOf(saleId, lineId, date, 1_000) }
+            returns.markVoided(ids[voided], CREATED_AT, "ENTRY_ERROR", null)
+
+            val lines = replacement.observeTotals(day(date)).first().restockedReturns
+            assertEquals(listOf(restocked(0, 1_000), restocked(1_000, 1_000)), lines)
+            val shares = lines.map { ReplacementProfitRules.returnedShare(it).valueOrNull() }
+            assertEquals(listOf(Money(3_333), Money(3_334)), shares)
+        }
     }
 
     @Test

@@ -52,4 +52,10 @@
     <string name="a11y_sale_return_total">Total a devolver: %1$s</string>
     <string name="sale_return_returned_and_left">Já devolvido: %1$s · Resta: %2$s</string>
     <string name="sale_return_exchange_success">Troca registrada</string>
+    <string name="sale_return_void_action">Anular devolução</string>
+    <string name="sale_return_void_confirm_title">Anular esta devolução?</string>
+    <string name="sale_return_void_confirm_body">O estoque e o dinheiro ou o saldo a favor voltam a como estavam. A devolução fica no histórico.</string>
+    <string name="sale_return_void_exchange_locked">Faz parte de uma troca: desfaz-se anulando primeiro a venda %1$s.</string>
+    <string name="sale_return_voided">Devolução anulada</string>
+    <string name="error_sale_return_void">Não foi possível anular. A devolução continua ativa.</string>
 </resources>

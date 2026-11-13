@@ -28,7 +28,7 @@ sealed interface SaleDetailUiState {
      * La venta, con lo que está abierto encima. [voided] llega una sola vez, al anularla, para el
      * mensaje. [correcting] pregunta antes de anular y corregir; [corrected] llega una sola vez,
      * con la venta ya anulada, para abrir la nueva con sus datos, y [correctFailed] si no se pudo
-     * anular.
+     * anular. [returnVoided] llega una sola vez, al anular una devolución, para el mensaje.
      */
     @Immutable
     data class Ready(
@@ -40,6 +40,7 @@ sealed interface SaleDetailUiState {
         val corrected: Long? = null,
         val correctFailed: Boolean = false,
         val returnSheet: SaleReturnSheet? = null,
+        val returnVoided: Boolean = false,
     ) : SaleDetailUiState
 }
 
@@ -106,6 +107,7 @@ data class SaleDetailLine(
 /**
  * Una devolución de la venta en su lista: su número, que es su id, el día en que cuenta, cómo se
  * resolvió, lo que devolvió y su nota. [voided] si se anuló: sigue en la lista, sin contar.
+ * [replacementSaleId] es la venta nueva, si la devolución es parte de un cambio.
  */
 @Immutable
 data class SaleReturnRow(
@@ -115,14 +117,33 @@ data class SaleReturnRow(
     val total: Money,
     val voided: Boolean,
     val note: String? = null,
+    val replacementSaleId: Long? = null,
 )
 
 /**
  * La hoja de una devolución: la fila de la lista y sus líneas con el nombre congelado en la venta y
- * lo devuelto. [lines] falta mientras se leen.
+ * lo devuelto. [lines] falta mientras se leen. [replacementActive] dice si la venta nueva de su
+ * cambio sigue activa: entonces no se anula desde aquí. [void] es el paso de anularla, con el
+ * motivo y la nota, y [voidStatus] en qué va.
  */
 @Immutable
-data class SaleReturnSheet(val row: SaleReturnRow, val lines: List<SaleReturnSheetLine>? = null)
+data class SaleReturnSheet(
+    val row: SaleReturnRow,
+    val lines: List<SaleReturnSheetLine>? = null,
+    val replacementActive: Boolean = false,
+    val void: VoidSheet? = null,
+    val voidStatus: VoidStatus = VoidStatus.IDLE,
+) {
+    /**
+     * Se ofrece anular una devolución activa, ya leída, salvo que sea parte de un cambio cuya
+     * venta nueva siga activa: ese cambio se deshace anulando primero la venta nueva.
+     */
+    val canVoid: Boolean get() = !row.voided && lines != null && !replacementActive
+
+    /** La venta nueva que hay que anular antes, o `null` si nada lo impide. */
+    val lockedBySale: Long?
+        get() = row.replacementSaleId.takeIf { !row.voided && lines != null && replacementActive }
+}
 
 /** Una línea de una devolución: el producto, lo devuelto en la unidad de la línea y su total. */
 @Immutable
@@ -186,6 +207,12 @@ data class VoidSheet(val reason: VoidReason = VoidReason.ENTRY_ERROR, val note: 
         /** Los motivos que la persona elige para una venta. Deshacer usa el suyo. */
         val REASONS: List<VoidReason> =
             listOf(VoidReason.ENTRY_ERROR, VoidReason.CUSTOMER_RETURN, VoidReason.OTHER)
+
+        /**
+         * Los motivos de anular una devolución: devolver lo devuelto no tiene sentido, y deshacer
+         * es de la venta recién registrada.
+         */
+        val RETURN_REASONS: List<VoidReason> = listOf(VoidReason.ENTRY_ERROR, VoidReason.OTHER)
     }
 }
 
@@ -238,4 +265,16 @@ sealed interface SaleDetailAction {
     data class OpenReturnDetail(val returnId: Long) : SaleDetailAction
 
     data object CloseReturnDetail : SaleDetailAction
+
+    /** Pasa de la hoja de la devolución abierta a anularla. */
+    data object OpenReturnVoid : SaleDetailAction
+
+    data class ReturnVoidReasonChange(val reason: VoidReason) : SaleDetailAction
+
+    data class ReturnVoidNoteChange(val note: String) : SaleDetailAction
+
+    data object ConfirmReturnVoid : SaleDetailAction
+
+    /** El aviso de devolución anulada ya se mostró. */
+    data object ReturnVoidedShown : SaleDetailAction
 }

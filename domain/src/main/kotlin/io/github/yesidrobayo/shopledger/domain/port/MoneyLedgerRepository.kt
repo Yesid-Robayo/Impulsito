@@ -60,6 +60,13 @@ interface MoneyLedgerRepository {
      */
     suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<MoneyMovement>
 
+    /**
+     * Los movimientos de la devolución de venta [saleReturnId], en el orden del libro: su
+     * `REFUND`, si el dinero salió de una cuenta. La anulación no lleva la devolución, solo el
+     * movimiento que compensa.
+     */
+    suspend fun findBySaleReturn(saleReturnId: Long): List<MoneyMovement>
+
     /** Los movimientos del abono [customerLedgerEntryId] del libro del cliente, en el orden del libro. */
     suspend fun findByCustomerLedgerEntry(customerLedgerEntryId: Long): List<MoneyMovement>
 

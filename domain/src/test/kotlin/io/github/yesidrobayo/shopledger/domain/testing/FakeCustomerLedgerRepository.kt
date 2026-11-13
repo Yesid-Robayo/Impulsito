@@ -32,6 +32,11 @@ internal class FakeCustomerLedgerRepository(private val database: InMemoryDataba
             .filter { it.source == CustomerEntrySource.Sale(saleId) }
             .sortedBy { it.id }
 
+    override suspend fun findBySaleReturn(saleReturnId: Long): List<CustomerLedgerEntry> =
+        database.read().customerLedger.values
+            .filter { it.source == CustomerEntrySource.SaleReturn(saleReturnId) }
+            .sortedBy { it.id }
+
     override suspend fun isCompensated(entryId: Long): Boolean =
         database.read().customerLedger.values.any {
             it.source == CustomerEntrySource.Reverses(entryId)

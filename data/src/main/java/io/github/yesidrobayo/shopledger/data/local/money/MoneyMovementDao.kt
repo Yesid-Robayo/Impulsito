@@ -67,6 +67,13 @@ internal interface MoneyMovementDao {
     )
     suspend fun findByPurchaseReturn(purchaseReturnId: Long): List<MoneyMovementEntity>
 
+    /**
+     * Los movimientos de una devolución de venta: su `REFUND`. Solo se lee al anularla, poco
+     * frecuente: por eso la columna no lleva índice propio.
+     */
+    @Query("SELECT * FROM money_movements WHERE sale_return_id = :saleReturnId ORDER BY id")
+    suspend fun findBySaleReturn(saleReturnId: Long): List<MoneyMovementEntity>
+
     /** Los movimientos de un pago a proveedor: su `SUPPLIER_PAYMENT`, si se pagó desde una cuenta. */
     @Query(
         "SELECT * FROM money_movements WHERE supplier_ledger_entry_id = :entryId ORDER BY id",

@@ -5,15 +5,16 @@ package io.github.yesidrobayo.shopledger.domain.model
  *
  * Una devolución de cliente solo tiene sentido en una venta, y una devolución al proveedor solo en
  * una compra. Un gasto no se devuelve: se anula por error, por deshacer o por otro motivo, y una
- * devolución a proveedor tampoco: devolver lo devuelto es anularla. Las
- * guardas de la base repiten esta lista; aquí se revisa antes, para que el caso de uso devuelva un
- * motivo en vez de chocar con la base.
+ * devolución, a proveedor o de cliente, tampoco: devolver lo devuelto es anularla. Las guardas de
+ * la base repiten esta lista; aquí se revisa antes, para que el caso de uso devuelva un motivo en
+ * vez de chocar con la base.
  */
 enum class VoidableDocument {
     SALE,
     PURCHASE,
     EXPENSE,
     PURCHASE_RETURN,
+    SALE_RETURN,
     ;
 
     /** Si un documento de este tipo se puede anular con [reason]. */

@@ -40,6 +40,9 @@ internal class RoomCustomerLedgerRepository(database: AppDatabase) : CustomerLed
     override suspend fun findBySale(saleId: Long): List<CustomerLedgerEntry> =
         entries.findBySale(saleId).map(::toEntry)
 
+    override suspend fun findBySaleReturn(saleReturnId: Long): List<CustomerLedgerEntry> =
+        entries.findBySaleReturn(saleReturnId).map(::toEntry)
+
     override suspend fun isCompensated(entryId: Long): Boolean = entries.isCompensated(entryId)
 
     override suspend fun append(entry: NewCustomerLedgerEntry): Long = writes.inTransaction {

@@ -44,6 +44,15 @@ internal interface CustomerLedgerEntryDao {
     @Query("SELECT * FROM customer_ledger_entries WHERE sale_id = :saleId ORDER BY id")
     suspend fun findBySale(saleId: Long): List<CustomerLedgerEntryEntity>
 
+    /**
+     * El saldo a favor de una devolución de venta: lo que su anulación compensa. Solo se lee al
+     * anularla, poco frecuente: por eso la columna no lleva índice propio.
+     */
+    @Query(
+        "SELECT * FROM customer_ledger_entries WHERE sale_return_id = :saleReturnId ORDER BY id",
+    )
+    suspend fun findBySaleReturn(saleReturnId: Long): List<CustomerLedgerEntryEntity>
+
     /** Si alguna fila ya anula a [entryId]: una fila se anula una sola vez. */
     @Query(
         "SELECT EXISTS (SELECT 1 FROM customer_ledger_entries WHERE reverses_entry_id = :entryId)",

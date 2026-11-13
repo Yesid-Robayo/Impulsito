@@ -38,6 +38,11 @@ class VoidableDocumentTest {
                 VoidReason.UNDO,
                 VoidReason.OTHER,
             ),
+            VoidableDocument.SALE_RETURN to setOf(
+                VoidReason.ENTRY_ERROR,
+                VoidReason.UNDO,
+                VoidReason.OTHER,
+            ),
         )
         for (document in VoidableDocument.entries) {
             val allowed = VoidReason.entries.filter { document.allows(it) }.toSet()

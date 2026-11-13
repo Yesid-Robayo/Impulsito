@@ -119,6 +119,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseC
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSaleReturnUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSupplierReturnUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSaleReturnUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSupplierReturnUseCase
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -437,6 +438,12 @@ internal class SaleWorld(
             }
             return id
         }
+
+        override suspend fun markVoided(id: Long, voiding: Voiding) {
+            val found = read().saleReturns[id]
+            if (found == null || found.status != DocumentStatus.ACTIVE) brokenRule()
+            write { it.copy(saleReturns = it.saleReturns + (id to found.copy(voiding = voiding))) }
+        }
     }
 
     private fun activeReturnsOf(tables: SaleTables, saleId: Long): List<SaleReturn> =
@@ -640,6 +647,15 @@ internal class SaleWorld(
             val tables = read()
             val lineIds = purchaseReturnLinesOf(tables, purchaseReturnId).map { it.id }.toSet()
             return movementsOf(tables) { it.source.purchaseReturnLineId in lineIds }
+        }
+
+        override suspend fun findBySaleReturn(saleReturnId: Long): List<StockMovementRecord> {
+            val tables = read()
+            val lineIds = tables.saleReturnLines.values
+                .filter { it.saleReturnId == saleReturnId }
+                .map { it.id }
+                .toSet()
+            return movementsOf(tables) { it.source.saleReturnLineId in lineIds }
         }
 
         override suspend fun isCompensated(movementId: Long): Boolean =
@@ -918,6 +934,11 @@ internal class SaleWorld(
         override suspend fun findBySale(saleId: Long): List<CustomerLedgerEntry> =
             read().customerEntries.values
                 .filter { (it.source as? CustomerEntrySource.Sale)?.saleId == saleId }
+                .sortedBy { it.id }
+
+        override suspend fun findBySaleReturn(saleReturnId: Long): List<CustomerLedgerEntry> =
+            read().customerEntries.values
+                .filter { it.source == CustomerEntrySource.SaleReturn(saleReturnId) }
                 .sortedBy { it.id }
 
         override suspend fun isCompensated(entryId: Long): Boolean =
@@ -1257,6 +1278,11 @@ internal class SaleWorld(
                 .filter { it.draft.origin == MoneyOrigin.PurchaseReturn(purchaseReturnId) }
                 .sortedBy { it.id }
 
+        override suspend fun findBySaleReturn(saleReturnId: Long): List<MoneyMovement> =
+            read().moneyMovements.values
+                .filter { it.draft.origin == MoneyOrigin.SaleReturn(saleReturnId) }
+                .sortedBy { it.id }
+
         override suspend fun findByCustomerLedgerEntry(
             customerLedgerEntryId: Long,
         ): List<MoneyMovement> = unused()
@@ -1383,6 +1409,19 @@ internal class SaleWorld(
         moneyLedger = moneyLedger,
         customers = customerRepository,
         customerLedger = customerLedger,
+    )
+
+    fun voidSaleReturn(): VoidSaleReturnUseCase = VoidSaleReturnUseCase(
+        transactions = transactions,
+        settings = settings,
+        products = products,
+        sales = sales,
+        returns = saleReturns,
+        ledger = ledger,
+        clock = clock,
+        money = DocumentMoney(moneyAccountRepository, moneyLedger),
+        customerLedger = customerLedger,
+        alerts = alertRepository.takeIf { withAlerts },
     )
 
     fun exchangeSale(): ExchangeSaleUseCase =

@@ -26,6 +26,12 @@ interface CustomerLedgerRepository {
     /** Los cargos a crédito de una venta, en el orden del libro. Su anulación no la lleva. */
     suspend fun findBySale(saleId: Long): List<CustomerLedgerEntry>
 
+    /**
+     * El saldo a favor que dejó la devolución [saleReturnId], en el orden del libro. Su anulación
+     * no la lleva.
+     */
+    suspend fun findBySaleReturn(saleReturnId: Long): List<CustomerLedgerEntry>
+
     /** Si alguna fila ya compensa a [entryId]. */
     suspend fun isCompensated(entryId: Long): Boolean
 

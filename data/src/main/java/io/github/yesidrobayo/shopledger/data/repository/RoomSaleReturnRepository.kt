@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.data.local.returns.SaleReturnLineEntity
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.returns.LineAmounts
 import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturn
 import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturnLine
@@ -84,6 +85,23 @@ internal class RoomSaleReturnRepository(database: AppDatabase) : SaleReturnRepos
                 ),
             )
         }
+
+    /**
+     * Una devolución que no existe o ya estaba anulada no cambia, y la transacción se deshace como
+     * regla rota: anularla dos veces duplicaría sus compensatorios.
+     */
+    override suspend fun markVoided(id: Long, voiding: Voiding) {
+        writes.inTransaction {
+            requireOneRow(
+                returns.markVoided(
+                    id,
+                    voiding.voidedAt.toStoredMillis(),
+                    voiding.reason.name,
+                    voiding.note,
+                ),
+            )
+        }
+    }
 
     private fun toReturn(row: SaleReturnEntity): SaleReturn = SaleReturn(
         id = row.id,

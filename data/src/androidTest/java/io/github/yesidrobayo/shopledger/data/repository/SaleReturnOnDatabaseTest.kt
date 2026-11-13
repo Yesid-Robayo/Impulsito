@@ -3,13 +3,16 @@ package io.github.yesidrobayo.shopledger.data.repository
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.data.backup.InvariantQueries
 import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
+import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
+import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerDetails
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
+import io.github.yesidrobayo.shopledger.domain.model.customer.NewCustomerLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
@@ -29,15 +32,19 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeResult
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSaleReturnResult
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSaleReturnUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSaleReturnResult
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSaleReturnUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleResult
@@ -92,7 +99,51 @@ internal class SaleReturnOnDatabaseTest : RepositoryTest() {
                 tick()
                 return returns.insertLine(saleReturnId, line)
             }
+
+            override suspend fun markVoided(id: Long, voiding: Voiding) {
+                tick()
+                returns.markVoided(id, voiding)
+            }
         }
+    }
+
+    private val countedCustomerLedger by lazy {
+        object : CustomerLedgerRepository by customerLedger {
+            override suspend fun append(entry: NewCustomerLedgerEntry): Long {
+                tick()
+                return customerLedger.append(entry)
+            }
+        }
+    }
+
+    /** Anula una venta con su dinero, como la pantalla. */
+    private val voidSaleFully by lazy {
+        VoidSaleUseCase(
+            transactions = runner,
+            settings = settings,
+            products = products,
+            sales = sales,
+            ledger = stock,
+            clock = Clock { AT },
+            customerLedger = customerLedger,
+            payments = RoomSalePaymentRepository(database),
+            moneyAccounts = accounts,
+            moneyLedger = money,
+        )
+    }
+
+    private val voidReturn by lazy {
+        VoidSaleReturnUseCase(
+            transactions = runner,
+            settings = settings,
+            products = products,
+            sales = sales,
+            returns = countedReturns,
+            ledger = countedStock,
+            clock = Clock { AT },
+            money = DocumentMoney(accounts, countedMoney),
+            customerLedger = countedCustomerLedger,
+        )
     }
 
     private val countedStock by lazy {
@@ -326,6 +377,132 @@ internal class SaleReturnOnDatabaseTest : RepositoryTest() {
     }
 
     @Test
+    fun voidingARefundTakesTheSoapOutAgainAndPutsTheMoneyBack() = runBlocking {
+        val saleId = threeSoaps()
+        val lineId = lineOf(saleId)
+        val valueBefore = checkNotNull(products.findById(soapId)).stockValue
+        val cashBefore = checkNotNull(accounts.findById(cashId)).balance
+        val first = registered(giveBack(request(saleId, lineId, 1_000)))
+        val second = registered(giveBack(request(saleId, lineId, 1_000)))
+
+        // Primero la segunda y después la primera: el orden no cambia el resultado.
+        for (returnId in listOf(second, first)) {
+            assertEquals(
+                VoidSaleReturnResult.Voided,
+                voidReturn(returnId, VoidReason.ENTRY_ERROR, null),
+            )
+            assertEquals(
+                StockMovementType.SALE_RETURN_VOID,
+                stock.findBySaleReturn(returnId).last().movement.type,
+            )
+            val refund = money.findBySaleReturn(returnId).single()
+            assertTrue(money.isCompensated(refund.id))
+        }
+
+        val soap = checkNotNull(products.findById(soapId))
+        assertEquals(QuantityMilli(7_000), soap.onHand)
+        assertEquals(valueBefore, soap.stockValue)
+        assertEquals(cashBefore, checkNotNull(accounts.findById(cashId)).balance)
+        assertTrue(returns.takenBySale(saleId).isEmpty())
+        assertEquals(VoidSaleResult.Voided, voidSaleFully(saleId, VoidReason.ENTRY_ERROR, null))
+        assertInvariantsHold()
+    }
+
+    @Test
+    fun voidingAStoreCreditRaisesTheBalanceAndAFailureAtEachWriteLeavesItActive() = runBlocking {
+        val customerId = commit {
+            customers.insert(
+                CustomerDetails(
+                    CustomerContact("Cliente inventado", "cliente inventado", null, null, null),
+                    null,
+                ),
+                AT,
+            )
+        }
+        val saleId = threeSoaps()
+        val returnId = registered(
+            giveBack(
+                SaleReturnRequest(
+                    saleId,
+                    listOf(ReturnLineRequest(lineOf(saleId), QuantityMilli(1_000))),
+                    ReturnSettlement.StoreCredit(customerId),
+                ),
+            ),
+        )
+        val before = tableCounts()
+        val seq = changeSeq()
+        var at = 1
+        while (true) {
+            failAt = at
+            writes = 0
+            val failed = runCatching { voidReturn(returnId, VoidReason.OTHER, "Inventada") }
+                .exceptionOrNull() ?: break
+            assertTrue(
+                "Escritura $at: ${failed.javaClass.simpleName}",
+                failed is InjectedWriteFailure,
+            )
+            assertEquals("Escritura $at", before, tableCounts())
+            assertEquals(
+                DocumentStatus.ACTIVE,
+                checkNotNull(returns.findById(returnId)).status,
+            )
+            assertEquals(seq, changeSeq())
+            at++
+        }
+        failAt = null
+        // La marca, la fila de stock que vuelve a salir y la compensación del saldo a favor.
+        assertEquals(VOID_WRITES + 1, at)
+        val voided = checkNotNull(returns.findById(returnId))
+        assertEquals(DocumentStatus.VOIDED, voided.status)
+        assertEquals("Inventada", voided.voiding?.note)
+        val reversal = customerLedger.findByCustomer(customerId).last()
+        assertEquals(CustomerLedgerEntryType.ENTRY_VOID, reversal.type)
+        assertEquals(Money(3_500), reversal.amount)
+        assertEquals(Money.ZERO, checkNotNull(customers.findById(customerId)).balance)
+        assertEquals(1, customerLedger.findBySaleReturn(returnId).size)
+        assertTrue(money.findBySaleReturn(returnId).isEmpty())
+        assertEquals(seq + 1, changeSeq())
+        assertInvariantsHold()
+    }
+
+    @Test
+    fun anExchangeIsUndoneByVoidingItsNewSaleFirst() = runBlocking {
+        val saleId = threeSoaps()
+        val cash = count("SELECT id FROM payment_methods WHERE system_key = 'CASH'")
+        val exchanged = ExchangeSaleUseCase(runner, registerSale, giveBack)(
+            ExchangeRequest(
+                saleId = saleId,
+                lines = listOf(ReturnLineRequest(lineOf(saleId), QuantityMilli(1_000))),
+                replacement = SaleRequest(
+                    listOf(SaleLineRequest(soapId, QuantityMilli(2_000))),
+                    cash,
+                ),
+                refundAccountId = cashId,
+            ),
+        ) as ExchangeResult.Exchanged
+
+        assertEquals(
+            VoidSaleReturnResult.PartOfExchange(exchanged.replacementSaleId),
+            voidReturn(exchanged.saleReturnId, VoidReason.ENTRY_ERROR, null),
+        )
+        assertEquals(
+            VoidSaleResult.Voided,
+            voidSaleFully(exchanged.replacementSaleId, VoidReason.ENTRY_ERROR, null),
+        )
+        assertEquals(
+            VoidSaleReturnResult.Voided,
+            voidReturn(exchanged.saleReturnId, VoidReason.ENTRY_ERROR, null),
+        )
+
+        // Diez de inicio y tres vendidos: el cambio ya no está.
+        assertEquals(QuantityMilli(7_000), checkNotNull(products.findById(soapId)).onHand)
+        assertInvariantsHold()
+    }
+
+    private fun registered(result: RegisterSaleReturnResult): Long =
+        (result as RegisterSaleReturnResult.Registered).saleReturnId
+
+    @Test
     fun aFailureAtEachWriteLeavesNoReturnWithoutItsStockOrMoney() = runBlocking {
         val saleId = threeSoaps()
         val lineId = lineOf(saleId)
@@ -365,11 +542,13 @@ internal class SaleReturnOnDatabaseTest : RepositoryTest() {
 
     private companion object {
         const val RETURN_WRITES = 4
+        const val VOID_WRITES = 3
         val TABLES = listOf(
             "sale_returns",
             "sale_return_lines",
             "stock_movements",
             "money_movements",
+            "customer_ledger_entries",
         )
     }
 }

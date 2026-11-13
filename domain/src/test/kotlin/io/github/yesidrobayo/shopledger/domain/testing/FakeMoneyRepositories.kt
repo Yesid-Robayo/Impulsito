@@ -139,6 +139,11 @@ internal class FakeMoneyLedgerRepository(private val database: InMemoryDatabase)
             .filter { it.draft.origin == MoneyOrigin.PurchaseReturn(purchaseReturnId) }
             .sortedBy { it.id }
 
+    override suspend fun findBySaleReturn(saleReturnId: Long): List<MoneyMovement> =
+        database.read().moneyMovements.values
+            .filter { it.draft.origin == MoneyOrigin.SaleReturn(saleReturnId) }
+            .sortedBy { it.id }
+
     override suspend fun findByCustomerLedgerEntry(
         customerLedgerEntryId: Long,
     ): List<MoneyMovement> = database.read().moneyMovements.values

@@ -51,4 +51,10 @@
     <string name="a11y_sale_return_total">Total to refund: %1$s</string>
     <string name="sale_return_returned_and_left">Already returned: %1$s · Left: %2$s</string>
     <string name="sale_return_exchange_success">Exchange recorded</string>
+    <string name="sale_return_void_action">Void return</string>
+    <string name="sale_return_void_confirm_title">Void this return?</string>
+    <string name="sale_return_void_confirm_body">Stock and the money or credit balance go back to how they were. The return stays in the history.</string>
+    <string name="sale_return_void_exchange_locked">Part of an exchange: undo it by voiding sale %1$s first.</string>
+    <string name="sale_return_voided">Return voided</string>
+    <string name="error_sale_return_void">Could not void. The return is still active.</string>
 </resources>

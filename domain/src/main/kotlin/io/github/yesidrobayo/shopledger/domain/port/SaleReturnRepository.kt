@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
+import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.returns.LineAmounts
 import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturn
 import io.github.yesidrobayo.shopledger.domain.model.returns.NewSaleReturnLine
@@ -37,4 +38,7 @@ interface SaleReturnRepository {
 
     /** Guarda una línea de la devolución [saleReturnId] y devuelve su id. */
     suspend fun insertLine(saleReturnId: Long, line: NewSaleReturnLine): Long
+
+    /** Anula una devolución activa. Es lo único que cambia en ella después de confirmarse. */
+    suspend fun markVoided(id: Long, voiding: Voiding)
 }

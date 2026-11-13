@@ -8,7 +8,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
+import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSaleReturnUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleDetailUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -61,6 +64,18 @@ fun SaleDetailRoute(
                 moneyAccounts = ports.moneyAccounts,
                 moneyLedger = ports.moneyLedger,
             )
+            val voidReturn = VoidSaleReturnUseCase(
+                transactions = ports.transactions,
+                settings = ports.settings,
+                products = ports.products,
+                sales = ports.sales,
+                returns = ports.saleReturns,
+                ledger = ports.stockLedger,
+                clock = clock,
+                money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
+                customerLedger = ports.customerLedger,
+                alerts = ports.lowStockAlerts,
+            )
             SaleDetailViewModel(
                 saleId = key.saleId,
                 observeDetail = { observe(it) },
@@ -72,6 +87,8 @@ fun SaleDetailRoute(
                     ports.settings.observe().map { it.profile.businessName }.distinctUntilChanged()
                 },
                 loadReturnLines = { ports.saleReturns.findLines(it) },
+                voidReturn = { id, reason, note -> voidReturn(id, reason, note) },
+                isSaleActive = { ports.sales.findById(it)?.status == DocumentStatus.ACTIVE },
             )
         }
     when (model) {

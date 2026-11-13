@@ -112,6 +112,12 @@ fun SaleDetailScreen(
         onAction(SaleDetailAction.CorrectShown)
         notices.showSnackbar(AppSnackbarVisuals(voidFailedText, SnackbarVariant.ERROR))
     }
+    val returnVoidedText = stringResource(R.string.sale_return_voided)
+    LaunchedEffect(ready?.returnVoided) {
+        if (ready?.returnVoided != true) return@LaunchedEffect
+        onAction(SaleDetailAction.ReturnVoidedShown)
+        notices.showSnackbar(AppSnackbarVisuals(returnVoidedText, SnackbarVariant.SUCCESS))
+    }
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
@@ -700,16 +706,105 @@ private fun ReturnRow(row: SaleReturnRow, onAction: (SaleDetailAction) -> Unit) 
 
 /**
  * La hoja de una devolución: el día, cómo se resolvió, sus líneas con lo devuelto y si volvió al
- * inventario, el total y la nota. Anularla llega con su propio paso.
+ * inventario, el total y la nota, con `Anular devolución` abajo si está activa. Anularla pasa,
+ * en la misma hoja, a pedir el motivo y la nota, como al anular la venta. Una devolución de un
+ * cambio cuya venta nueva sigue activa no se anula desde aquí: una línea dice que se anula primero
+ * esa venta.
  */
 @Composable
 private fun ReturnSheetContent(sheet: SaleReturnSheet, onAction: (SaleDetailAction) -> Unit) {
-    val row = sheet.row
-    val spacing = AppTheme.spacing
+    val void = sheet.void
     AppBottomSheet(
         onDismissRequest = { onAction(SaleDetailAction.CloseReturnDetail) },
-        title = returnTitle(row),
+        title = if (void != null) {
+            stringResource(R.string.sale_return_void_confirm_title)
+        } else {
+            returnTitle(sheet.row)
+        },
+        action = when {
+            void != null -> {
+                {
+                    PrimaryActionButton(
+                        text = stringResource(R.string.sale_return_void_action),
+                        onClick = { onAction(SaleDetailAction.ConfirmReturnVoid) },
+                        variant = ActionVariant.DESTRUCTIVE,
+                        enabled = !void.noteTooLong,
+                        state = if (sheet.voidStatus == VoidStatus.WORKING) {
+                            ActionState.WORKING
+                        } else {
+                            ActionState.IDLE
+                        },
+                    )
+                }
+            }
+
+            sheet.canVoid -> {
+                {
+                    PrimaryActionButton(
+                        text = stringResource(R.string.sale_return_void_action),
+                        onClick = { onAction(SaleDetailAction.OpenReturnVoid) },
+                        variant = ActionVariant.OUTLINED,
+                    )
+                }
+            }
+
+            else -> null
+        },
     ) {
+        if (void != null) {
+            ReturnVoidStep(void, sheet.voidStatus, onAction)
+        } else {
+            ReturnDetailStep(sheet)
+        }
+    }
+}
+
+/** El paso de anular una devolución: lo que pasará, el motivo, una nota opcional y si falló. */
+@Composable
+private fun ReturnVoidStep(
+    void: VoidSheet,
+    status: VoidStatus,
+    onAction: (SaleDetailAction) -> Unit,
+) {
+    Text(
+        stringResource(R.string.sale_return_void_confirm_body),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    CompactChipRow(
+        options = VoidSheet.RETURN_REASONS,
+        label = { stringResource(reasonLabel(it)) },
+        selected = setOf(void.reason),
+        onToggle = { onAction(SaleDetailAction.ReturnVoidReasonChange(it)) },
+        multiple = false,
+    )
+    AppTextField(
+        value = void.note,
+        onValueChange = { onAction(SaleDetailAction.ReturnVoidNoteChange(it)) },
+        label = stringResource(R.string.form_note),
+        singleLine = false,
+        error =
+            if (void.noteTooLong) {
+                pluralStringResource(
+                    R.plurals.error_text_long,
+                    VoidSheet.MAX_VOID_NOTE_LENGTH,
+                    VoidSheet.MAX_VOID_NOTE_LENGTH,
+                )
+            } else {
+                null
+            },
+    )
+    if (status == VoidStatus.FAILED) {
+        NoticeCard(stringResource(R.string.error_sale_return_void), NoticeVariant.ERROR)
+    }
+}
+
+/** El detalle de una devolución en su hoja, y por qué no se anula si es parte de un cambio. */
+@Composable
+private fun ReturnDetailStep(sheet: SaleReturnSheet) {
+    val row = sheet.row
+    val spacing = AppTheme.spacing
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
         Text(
             text = stringResource(
                 R.string.sale_voided_on,
@@ -758,6 +853,17 @@ private fun ReturnSheetContent(sheet: SaleReturnSheet, onAction: (SaleDetailActi
             MoneyText(row.total, MoneySize.TITLE, voided = row.voided)
         }
         row.note?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        sheet.lockedBySale?.let { saleId ->
+            val number = LocalAppFormats.current.quantity.format(
+                QuantityMilli.ofUnits(saleId),
+                allowsFraction = false,
+            )
+            Text(
+                stringResource(R.string.sale_return_void_exchange_locked, number),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleResults
+import io.github.yesidrobayo.shopledger.domain.usecase.returns.VoidSaleReturnResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleResult
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -48,9 +50,16 @@ import kotlinx.coroutines.launch
  *
  * El comprobante que se comparte sale de un modelo sin costo, ganancia, comisión ni nota.
  *
+ * Una devolución se anula desde su hoja, con motivo y nota como la venta. Si es parte de un
+ * cambio cuya venta nueva sigue activa, la hoja no lo ofrece: el cambio se deshace anulando antes
+ * la venta nueva. Al anularla, lo devuelto se recalcula sin ella, y sin devoluciones activas la
+ * venta se vuelve a poder anular.
+ *
  * @param voidSale anula la venta con el motivo y la nota.
  * @param observeBusinessName el nombre del negocio, que encabeza el comprobante si existe.
  * @param loadReturnLines las líneas de una devolución, para su hoja.
+ * @param voidReturn anula una devolución con el motivo y la nota.
+ * @param isSaleActive si una venta sigue activa: la venta nueva de un cambio, para su hoja.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SaleDetailViewModel(
@@ -62,6 +71,9 @@ class SaleDetailViewModel(
     computation: CoroutineDispatcher,
     private val observeBusinessName: () -> Flow<String?> = { flowOf(null) },
     private val loadReturnLines: suspend (Long) -> List<SaleReturnLine> = { emptyList() },
+    private val voidReturn: suspend (Long, VoidReason, String?) -> VoidSaleReturnResult =
+        { _, _, _ -> VoidSaleReturnResult.NotFound },
+    private val isSaleActive: suspend (Long) -> Boolean = { true },
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val overlay = MutableStateFlow(Overlay())
@@ -101,9 +113,17 @@ class SaleDetailViewModel(
                 correctFailed = shown.correctFailed,
                 returnSheet = shown.returnId?.let { id ->
                     found.view.returns.firstOrNull { it.returnId == id }?.let { row ->
-                        SaleReturnSheet(row, shown.returnLines?.let { linesOf(found.view, it) })
+                        SaleReturnSheet(
+                            row = row,
+                            lines = shown.returnLines?.let { linesOf(found.view, it) },
+                            replacementActive = shown.replacementActive,
+                            // Una devolución ya anulada no tiene paso de anular.
+                            void = shown.returnVoid.takeIf { !row.voided },
+                            voidStatus = shown.returnVoidStatus,
+                        )
                     }
                 },
+                returnVoided = shown.returnVoided,
             )
         }
     }.stateIn(
@@ -155,24 +175,101 @@ class SaleDetailViewModel(
 
             is SaleDetailAction.OpenReturnDetail -> openReturn(action.returnId)
 
-            SaleDetailAction.CloseReturnDetail ->
-                overlay.update { it.copy(returnId = null, returnLines = null) }
+            SaleDetailAction.CloseReturnDetail -> overlay.update {
+                if (it.returnVoidStatus == VoidStatus.WORKING) it else it.closedReturn()
+            }
+
+            SaleDetailAction.OpenReturnVoid -> overlay.update {
+                if (it.returnId == null) {
+                    it
+                } else {
+                    it.copy(returnVoid = VoidSheet(), returnVoidStatus = VoidStatus.IDLE)
+                }
+            }
+
+            is SaleDetailAction.ReturnVoidReasonChange ->
+                editReturnVoid { it.copy(reason = action.reason) }
+
+            is SaleDetailAction.ReturnVoidNoteChange -> editReturnVoid {
+                it.copy(note = action.note)
+            }
+
+            SaleDetailAction.ConfirmReturnVoid -> confirmReturnVoid()
+
+            SaleDetailAction.ReturnVoidedShown -> overlay.update { it.copy(returnVoided = false) }
         }
     }
 
-    /** Abre la hoja de la devolución y lee sus líneas, que nunca cambian. */
+    /**
+     * Abre la hoja de la devolución y lee sus líneas, que nunca cambian, y si la venta nueva de su
+     * cambio sigue activa.
+     */
     private fun openReturn(returnId: Long) {
-        overlay.update { it.copy(returnId = returnId, returnLines = null) }
+        overlay.update { it.closedReturn().copy(returnId = returnId) }
+        val replacementId = (uiState.value as? SaleDetailUiState.Ready)?.sale?.returns
+            ?.firstOrNull { it.returnId == returnId }?.replacementSaleId
         viewModelScope.launch {
             // Sin poder leer las líneas, la hoja muestra igual la cabecera.
-            flow { emit(loadReturnLines(returnId)) }
+            val lines = flow { emit(loadReturnLines(returnId)) }
                 .catch { emit(emptyList()) }
-                .collect { lines ->
-                    overlay.update {
-                        if (it.returnId == returnId) it.copy(returnLines = lines) else it
-                    }
+                .first()
+            // Sin poder leer la venta nueva, se supone activa: la anulación la revisa de nuevo.
+            val replacementActive = replacementId != null &&
+                flow { emit(isSaleActive(replacementId)) }.catch { emit(true) }.first()
+            overlay.update {
+                if (it.returnId == returnId) {
+                    it.copy(returnLines = lines, replacementActive = replacementActive)
+                } else {
+                    it
                 }
+            }
         }
+    }
+
+    /**
+     * Anula la devolución abierta con el motivo y la nota de su paso. Al anularse se cierra la
+     * hoja y el detalle, que observa la base, la muestra anulada; si es parte de un cambio
+     * vigente, la hoja lo explica; si falla, sigue activa y se puede reintentar.
+     */
+    private fun confirmReturnVoid() {
+        val shown = overlay.value
+        val returnId = shown.returnId ?: return
+        val sheet = shown.returnVoid ?: return
+        if (shown.returnVoidStatus == VoidStatus.WORKING || sheet.noteTooLong) return
+        overlay.update { it.copy(returnVoidStatus = VoidStatus.WORKING) }
+        viewModelScope.launch {
+            val note = sheet.note.trim().takeIf { it.isNotEmpty() }
+            val result = voidReturn(returnId, sheet.reason, note)
+            overlay.update {
+                when (result) {
+                    // Ya anulada por otro camino: el detalle la muestra así, sin mensaje.
+                    VoidSaleReturnResult.Voided, VoidSaleReturnResult.AlreadyVoided -> {
+                        val announced = result == VoidSaleReturnResult.Voided
+                        it.closedReturn().copy(returnVoided = announced)
+                    }
+
+                    is VoidSaleReturnResult.PartOfExchange -> it.copy(
+                        returnVoid = null,
+                        returnVoidStatus = VoidStatus.IDLE,
+                        replacementActive = true,
+                    )
+
+                    VoidSaleReturnResult.NotFound,
+                    VoidSaleReturnResult.ReasonNotAllowed,
+                    VoidSaleReturnResult.NoteTooLong,
+                    is VoidSaleReturnResult.UnknownTimeZone,
+                    VoidSaleReturnResult.LedgerDamaged,
+                    is VoidSaleReturnResult.StorageFailed,
+                    -> it.copy(returnVoidStatus = VoidStatus.FAILED)
+                }
+            }
+        }
+    }
+
+    private fun editReturnVoid(change: (VoidSheet) -> VoidSheet) = overlay.update { shown ->
+        val sheet = shown.returnVoid ?: return@update shown
+        if (shown.returnVoidStatus == VoidStatus.WORKING) return@update shown
+        shown.copy(returnVoid = change(sheet), returnVoidStatus = VoidStatus.IDLE)
     }
 
     /** Las líneas de una devolución con el nombre y la unidad de su línea vendida. */
@@ -260,6 +357,7 @@ class SaleDetailViewModel(
                     total = header.totalRefund,
                     voided = saleReturn.voiding != null,
                     note = header.note,
+                    replacementSaleId = header.replacementSaleId,
                 )
             },
             lines = detail.lines.map { line ->
@@ -344,7 +442,20 @@ class SaleDetailViewModel(
         val correctFailed: Boolean = false,
         val returnId: Long? = null,
         val returnLines: List<SaleReturnLine>? = null,
-    )
+        val replacementActive: Boolean = false,
+        val returnVoid: VoidSheet? = null,
+        val returnVoidStatus: VoidStatus = VoidStatus.IDLE,
+        val returnVoided: Boolean = false,
+    ) {
+        /** Sin la hoja de la devolución, ni su paso de anular. */
+        fun closedReturn(): Overlay = copy(
+            returnId = null,
+            returnLines = null,
+            replacementActive = false,
+            returnVoid = null,
+            returnVoidStatus = VoidStatus.IDLE,
+        )
+    }
 
     private companion object {
         /** Milésimas en una unidad entera. */
