@@ -44,4 +44,5 @@
         <item quantity="many">Este período mudou: %1$d de registros com data atrasada foram adicionados</item>
         <item quantity="other">Este período mudou: %1$d registros com data atrasada foram adicionados</item>
     </plurals>
+    <string name="stats_other_income">Outras receitas</string>
 </resources>

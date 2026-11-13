@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.stats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
@@ -47,6 +48,7 @@ import kotlinx.coroutines.flow.stateIn
  * @param comparison la variación de un período frente a su comparable, si lo tiene.
  * @param breakdown los destacados, los desgloses y los avisos de un período.
  * @param units las unidades, para nombrar las cantidades de los más vendidos.
+ * @param otherIncome los otros ingresos de un período, que se muestran aparte de la ganancia.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class StatisticsViewModel(
@@ -62,6 +64,7 @@ class StatisticsViewModel(
         flowOf(null)
     },
     units: Flow<List<MeasureUnit>> = flowOf(emptyList()),
+    private val otherIncome: (ReportPeriod) -> Flow<Money> = { flowOf(Money.ZERO) },
 ) : ViewModel() {
     private val unitsById = units.map { all -> all.associateBy { it.id } }.distinctUntilChanged()
 
@@ -142,7 +145,8 @@ class StatisticsViewModel(
                 comparison(period, shown.today),
                 breakdown(period, shown.calendar),
                 unitsById,
-            ) { compared, explained, units -> Details(compared, explained, units) }
+                otherIncome(period),
+            ) { compared, explained, units, income -> Details(compared, explained, units, income) }
         return combine(figures, details, choice) { figures, details, chosen ->
             StatisticsUiState.Content(
                 kind = PeriodNavigation.kindOf(period),
@@ -160,6 +164,8 @@ class StatisticsViewModel(
                 comparison = details.compared,
                 breakdown = details.breakdown,
                 units = details.units,
+                // Solo con datos: sin otros ingresos en el período, la sección no aparece.
+                otherIncome = details.otherIncome.takeIf { it != Money.ZERO },
                 ranking = chosen.ranking,
                 choosingRange = chosen.choosingRange,
                 weekStartDay = shown.calendar.weekStartDay,
@@ -288,6 +294,7 @@ class StatisticsViewModel(
         val compared: ComparedPeriod?,
         val breakdown: PeriodBreakdown?,
         val units: Map<Long, MeasureUnit>,
+        val otherIncome: Money,
     )
 
     private data class Shown(

@@ -83,6 +83,7 @@ class StatisticsViewModelTest {
             ReportPeriod,
             BusinessCalendar,
         ) -> Flow<PeriodBreakdown?> = { _, _ -> flowOf(null) },
+        otherIncome: (ReportPeriod) -> Flow<Money> = { flowOf(Money.ZERO) },
     ): StatisticsViewModel {
         val model =
             StatisticsViewModel(
@@ -100,6 +101,7 @@ class StatisticsViewModelTest {
                 },
                 comparison = comparison,
                 breakdown = breakdown,
+                otherIncome = otherIncome,
                 tax = { _ ->
                     taxed.map {
                         if (it) {
@@ -132,6 +134,20 @@ class StatisticsViewModelTest {
         assertTrue(content.canGoPrevious)
         assertFalse(content.canGoNext)
         assertNull(content.tax)
+    }
+
+    @Test
+    fun `other income shows apart only when the period has some`() = runTest(dispatcher) {
+        val income = MutableStateFlow(Money.ZERO)
+        val model = viewModel(otherIncome = { income })
+        assertEquals(null, model.content().otherIncome)
+
+        income.value = Money(12_000)
+        advanceUntilIdle()
+
+        assertEquals(Money(12_000), model.content().otherIncome)
+        // Aparte: la ganancia del período no la incluye.
+        assertEquals(Money.ZERO, model.content().metrics?.profit?.netSales)
     }
 
     @Test

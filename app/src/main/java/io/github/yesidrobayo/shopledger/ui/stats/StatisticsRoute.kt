@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yesidrobayo.shopledger.domain.usecase.money.ObserveOtherIncomeUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveDailySeriesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodBreakdownUseCase
@@ -48,6 +49,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
                 comparison = { period, today -> comparison(period, today) },
                 breakdown = { period, calendar -> breakdown(period, calendar) },
                 units = ports.units.observeAll(),
+                otherIncome = { ObserveOtherIncomeUseCase(ports.settings, ports.moneyLedger)(it) },
             )
         }
     when (model) {

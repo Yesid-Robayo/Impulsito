@@ -53,5 +53,6 @@ class ManualMoneyRulesTest {
     fun `a draw goes out and a contribution comes in`() {
         assertEquals(MoneyMovementType.OWNER_DRAW, ManualMoneyKind.OWNER_DRAW.type)
         assertEquals(MoneyMovementType.OWNER_CONTRIBUTION, ManualMoneyKind.OWNER_CONTRIBUTION.type)
+        assertEquals(MoneyMovementType.OTHER_INCOME, ManualMoneyKind.OTHER_INCOME.type)
     }
 }

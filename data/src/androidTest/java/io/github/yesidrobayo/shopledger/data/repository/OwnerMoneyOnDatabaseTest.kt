@@ -7,10 +7,12 @@ import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.ManualMoneyKind
 import io.github.yesidrobayo.shopledger.domain.model.money.ManualMoneyRequest
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDraft
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseResult
@@ -20,6 +22,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.money.RecordManualMoneyRe
 import io.github.yesidrobayo.shopledger.domain.usecase.money.RecordManualMoneyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.money.SaveMoneyAccountResult
 import io.github.yesidrobayo.shopledger.domain.usecase.money.SaveMoneyAccountUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.money.VoidMoneyMovementUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -78,5 +81,46 @@ internal class OwnerMoneyOnDatabaseTest : RepositoryTest() {
         )
         assertEquals(before, netProfit(date))
         assertEquals(Money(555_000), accounts.findById(bank)?.balance)
+    }
+
+    @Test
+    fun otherIncomeAddsApartWithoutOtherCurrenciesOrVoidedOnesAndNeverTheProfit() = runBlocking {
+        val save = SaveMoneyAccountUseCase(runner, settings, accounts, writer, clock)
+        val bank = (
+            save(
+                null,
+                MoneyAccountDraft("Banco inventado", MoneyAccountKind.BANK),
+            ) as SaveMoneyAccountResult.Saved
+            ).accountId
+        val foreign = (
+            save(
+                null,
+                MoneyAccountDraft(
+                    "Divisas inventadas",
+                    MoneyAccountKind.OTHER,
+                    AccountCurrency(requireNotNull(CurrencyCode.of("XBA")), 0),
+                ),
+            ) as SaveMoneyAccountResult.Saved
+            ).accountId
+        val record = RecordManualMoneyUseCase(runner, settings, accounts, writer, clock)
+        val first = (
+            record(
+                ManualMoneyRequest(bank, ManualMoneyKind.OTHER_INCOME, Money(12_000)),
+            ) as RecordManualMoneyResult.Recorded
+            ).movementId
+        record(ManualMoneyRequest(bank, ManualMoneyKind.OTHER_INCOME, Money(3_000)))
+        record(ManualMoneyRequest(foreign, ManualMoneyKind.OTHER_INCOME, Money(99_999)))
+        val date = requireNotNull(ledger.findById(first)).time.businessDate
+        val book = AccountCurrency.of(settings.get().regional.currency)
+        val income = { ledger.observeOtherIncome(ReportPeriod.Day(date), book) }
+
+        assertEquals(Money(15_000), income().first())
+        assertEquals(Money.ZERO, netProfit(date))
+        VoidMoneyMovementUseCase(runner, settings, ledger, writer, clock)(first)
+        assertEquals(Money(3_000), income().first())
+        assertEquals(
+            Money.ZERO,
+            ledger.observeOtherIncome(ReportPeriod.Day(date.plusDays(1)), book).first(),
+        )
     }
 }

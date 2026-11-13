@@ -209,6 +209,18 @@ private fun StatisticsProfitListPreview() {
     }
 }
 
+/** Con otros ingresos largos, que van aparte al final y no entran en la ganancia. */
+@ThemePreviews
+@Composable
+private fun StatisticsOtherIncomePreview() {
+    PreviewTheme {
+        StatisticsScreen(
+            previewStatisticsContent().copy(otherIncome = Money(98_765_432_100)),
+            onAction = {},
+        )
+    }
+}
+
 @ThemePreviews
 @Composable
 private fun StatisticsEmptyPeriodPreview() {

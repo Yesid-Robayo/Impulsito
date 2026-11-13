@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
@@ -148,6 +149,24 @@ class StatisticsScreenTest {
         compose.onNodeWithText(text(R.string.stats_view_chart)).assertExists()
         // Treinta días de noviembre, uno por fila, aunque no se vean todos a la vez.
         scrollTo(text(R.string.stats_how_calculated))
+    }
+
+    @Test
+    fun otherIncomeIsShownApartAtTheEndAndHiddenInDiscreetMode() {
+        show(previewStatisticsContent().copy(otherIncome = Money(12_000)), discreet = true)
+
+        scrollTo(text(R.string.money_other_income_help))
+        compose.onNodeWithText(text(R.string.money_other_income_help)).assertIsDisplayed()
+        // El encabezado y la fila llevan el mismo nombre.
+        val labels = compose.onAllNodesWithText(text(R.string.stats_other_income))
+        assertEquals(2, labels.fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun withoutOtherIncomeTheSectionDoesNotExist() {
+        show(previewStatisticsContent())
+
+        compose.onNodeWithText(text(R.string.money_other_income_help)).assertDoesNotExist()
     }
 
     @Test

@@ -506,6 +506,7 @@ private fun ColumnScope.Detail(
     }
     val tax = content.tax
     if (tax != null) EstimatedTax(tax, rows)
+    content.otherIncome?.let { OtherIncome(it, rows) }
 }
 
 /**
@@ -635,6 +636,23 @@ private fun EstimatedTax(tax: TaxEstimate, modifier: Modifier) {
             CascadeRow(stringResource(R.string.stats_tax_paid), tax.paid)
         }
         NoticeCard(stringResource(R.string.tax_estimate_notice), NoticeVariant.INFO)
+    }
+}
+
+/**
+ * Los otros ingresos del período: dinero que no vino de una venta. Van aparte, debajo de todo, porque
+ * no entran en la ganancia final.
+ */
+@Composable
+private fun OtherIncome(amount: Money, modifier: Modifier) {
+    SectionHeader(stringResource(R.string.stats_other_income))
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+        CascadeRow(stringResource(R.string.stats_other_income), amount)
+        Text(
+            stringResource(R.string.money_other_income_help),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

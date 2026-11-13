@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.stats
 
 import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
@@ -45,6 +46,7 @@ sealed interface StatisticsUiState {
      * @param ranking qué ranking de los más vendidos se muestra.
      * @param choosingRange si está abierta la elección de un rango de fechas.
      * @param weekStartDay el primer día de las semanas del negocio, para el calendario del rango.
+     * @param otherIncome los otros ingresos del período, aparte de la ganancia, o `null` sin ninguno.
      */
     @Immutable
     data class Content(
@@ -65,6 +67,7 @@ sealed interface StatisticsUiState {
         val ranking: RankingKind = RankingKind.SALES,
         val choosingRange: Boolean = false,
         val weekStartDay: DayOfWeek? = null,
+        val otherIncome: Money? = null,
     ) : StatisticsUiState
 }
 

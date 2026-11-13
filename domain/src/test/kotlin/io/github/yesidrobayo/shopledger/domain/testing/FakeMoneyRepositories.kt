@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.testing
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
@@ -11,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyMovement
+import io.github.yesidrobayo.shopledger.domain.model.sum
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import kotlin.time.Instant
@@ -123,6 +125,21 @@ internal class FakeMoneyLedgerRepository(private val database: InMemoryDatabase)
                 customerLedgerEntryId
         }
         .sortedBy { it.id }
+
+    override fun observeOtherIncome(period: ReportPeriod, currency: AccountCurrency): Flow<Money> =
+        database.tables.map { tables ->
+            val voided = tables.moneyMovements.values
+                .mapNotNull { (it.draft.origin as? MoneyOrigin.Void)?.reversesMovementId }
+                .toSet()
+            tables.moneyMovements.values
+                .filter {
+                    it.type == MoneyMovementType.OTHER_INCOME && it.id !in voided &&
+                        it.time.businessDate in period &&
+                        tables.moneyAccounts[it.accountId]?.currency == currency
+                }
+                .map { it.amount }
+                .sum()
+        }.distinctUntilChanged()
 
     override suspend fun isCompensated(movementId: Long): Boolean =
         database.read().moneyMovements.values.any {

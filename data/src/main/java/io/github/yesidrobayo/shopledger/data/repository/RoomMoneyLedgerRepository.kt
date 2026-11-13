@@ -5,6 +5,8 @@ import io.github.yesidrobayo.shopledger.data.local.money.MoneyAccountDao
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyMovementDao
 import io.github.yesidrobayo.shopledger.data.local.money.MoneyMovementEntity
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
@@ -59,6 +61,16 @@ internal class RoomMoneyLedgerRepository(
         customerLedgerEntryId: Long,
     ): List<MoneyMovement> =
         movements.findByCustomerLedgerEntry(customerLedgerEntryId).map(::toMovement)
+
+    override fun observeOtherIncome(period: ReportPeriod, currency: AccountCurrency): Flow<Money> =
+        movements
+            .observeOtherIncome(
+                start = period.storedStart,
+                end = period.storedEnd,
+                currencyCode = currency.code.code,
+                currencyDecimals = currency.decimals.toLong(),
+            ).map(::Money)
+            .distinctUntilChanged()
 
     override suspend fun isCompensated(movementId: Long): Boolean =
         movements.isCompensated(movementId)

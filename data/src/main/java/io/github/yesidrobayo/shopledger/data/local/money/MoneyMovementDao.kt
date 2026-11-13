@@ -43,6 +43,24 @@ internal interface MoneyMovementDao {
     )
     suspend fun findBySupplierLedgerEntry(entryId: Long): List<MoneyMovementEntity>
 
+    /**
+     * La suma de los otros ingresos vigentes con fecha de negocio entre [start] y [end], ambas
+     * incluidas, de las cuentas en esa moneda y con esos decimales. Uno anulado no suma.
+     */
+    @Query(
+        "SELECT COALESCE(SUM(m.amount), 0) FROM money_movements m " +
+            "JOIN money_accounts a ON a.id = m.money_account_id " +
+            "WHERE m.type = 'OTHER_INCOME' AND m.business_date BETWEEN :start AND :end " +
+            "AND a.currency_code = :currencyCode AND a.currency_decimals = :currencyDecimals " +
+            "AND NOT EXISTS (SELECT 1 FROM money_movements v WHERE v.reverses_movement_id = m.id)",
+    )
+    fun observeOtherIncome(
+        start: String,
+        end: String,
+        currencyCode: String,
+        currencyDecimals: Long,
+    ): Flow<Long>
+
     /** Las dos filas de una transferencia, la que sale y la que entra. */
 
     @Query("SELECT * FROM money_movements WHERE transfer_group_id = :groupId ORDER BY id")

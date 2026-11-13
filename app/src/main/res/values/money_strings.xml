@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="money_other_income_help">Money that does not come from sales. It is shown separately and is not part of final profit.</string>
+</resources>

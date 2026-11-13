@@ -1,5 +1,8 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.money.NewMoneyMovement
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +35,12 @@ interface MoneyLedgerRepository {
 
     /** Los movimientos del abono [customerLedgerEntryId] del libro del cliente, en el orden del libro. */
     suspend fun findByCustomerLedgerEntry(customerLedgerEntryId: Long): List<MoneyMovement>
+
+    /**
+     * La suma de los otros ingresos vigentes de [period], por fecha de negocio, de las cuentas en
+     * [currency] con sus mismos decimales: uno anulado no cuenta, y uno de otra moneda tampoco.
+     */
+    fun observeOtherIncome(period: ReportPeriod, currency: AccountCurrency): Flow<Money>
 
     /** Si el movimiento [movementId] ya tiene su anulación: uno se anula una sola vez. */
     suspend fun isCompensated(movementId: Long): Boolean

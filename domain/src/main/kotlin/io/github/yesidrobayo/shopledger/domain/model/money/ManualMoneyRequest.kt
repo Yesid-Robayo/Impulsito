@@ -12,6 +12,12 @@ enum class ManualMoneyKind(val type: MoneyMovementType) {
 
     /** Dinero que la persona dueña pone en el negocio. Sube la cuenta, y no es una venta. */
     OWNER_CONTRIBUTION(MoneyMovementType.OWNER_CONTRIBUTION),
+
+    /**
+     * Dinero que no viene de una venta, como un reintegro. Se muestra aparte y no entra en la
+     * ganancia final.
+     */
+    OTHER_INCOME(MoneyMovementType.OTHER_INCOME),
 }
 
 /**

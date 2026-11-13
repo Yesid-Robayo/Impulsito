@@ -44,4 +44,5 @@
         <item quantity="many">Este período cambió: se agregaron %1$d de registros con fecha atrasada</item>
         <item quantity="other">Este período cambió: se agregaron %1$d registros con fecha atrasada</item>
     </plurals>
+    <string name="stats_other_income">Otros ingresos</string>
 </resources>

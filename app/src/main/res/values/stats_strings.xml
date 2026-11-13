@@ -41,4 +41,5 @@
         <item quantity="one">This period changed: %1$d backdated record was added</item>
         <item quantity="other">This period changed: %1$d backdated records were added</item>
     </plurals>
+    <string name="stats_other_income">Other income</string>
 </resources>
