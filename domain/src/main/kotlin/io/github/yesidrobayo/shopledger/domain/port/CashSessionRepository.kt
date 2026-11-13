@@ -2,7 +2,9 @@ package io.github.yesidrobayo.shopledger.domain.port
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashClosing
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashCountPhase
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashSession
+import io.github.yesidrobayo.shopledger.domain.model.cash.DenominationCount
 import io.github.yesidrobayo.shopledger.domain.model.cash.NewCashSession
 import kotlinx.coroutines.flow.Flow
 
@@ -33,4 +35,14 @@ interface CashSessionRepository {
 
     /** La cierra con [closing]. Devuelve `false` si ya estaba cerrada: no se toca. */
     suspend fun close(sessionId: Long, closing: CashClosing): Boolean
+
+    /** Guarda el conteo por denominación de [phase]. Una vez guardado no cambia. */
+    suspend fun insertCounts(
+        sessionId: Long,
+        phase: CashCountPhase,
+        counts: List<DenominationCount>,
+    )
+
+    /** El conteo por denominación de [phase], o vacío si se escribió un monto. */
+    suspend fun findCounts(sessionId: Long, phase: CashCountPhase): List<DenominationCount>
 }

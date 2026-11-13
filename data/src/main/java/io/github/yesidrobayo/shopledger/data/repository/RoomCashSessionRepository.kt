@@ -1,12 +1,16 @@
 package io.github.yesidrobayo.shopledger.data.repository
 
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionCountDao
+import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionCountEntity
 import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionDao
 import io.github.yesidrobayo.shopledger.data.local.cash.CashSessionEntity
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashClosing
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashCountPhase
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashSession
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashSessionStatus
+import io.github.yesidrobayo.shopledger.domain.model.cash.DenominationCount
 import io.github.yesidrobayo.shopledger.domain.model.cash.NewCashSession
 import io.github.yesidrobayo.shopledger.domain.port.CashSessionRepository
 import kotlinx.coroutines.flow.Flow
@@ -20,8 +24,41 @@ import kotlinx.coroutines.flow.map
 internal class RoomCashSessionRepository(
     private val sessions: CashSessionDao,
     private val writes: RepositoryWrites,
+    private val counts: CashSessionCountDao? = null,
 ) : CashSessionRepository {
-    constructor(database: AppDatabase) : this(database.cashSessionDao(), RepositoryWrites(database))
+    constructor(database: AppDatabase) : this(
+        database.cashSessionDao(),
+        RepositoryWrites(database),
+        database.cashSessionCountDao(),
+    )
+
+    override suspend fun insertCounts(
+        sessionId: Long,
+        phase: CashCountPhase,
+        counts: List<DenominationCount>,
+    ) {
+        if (counts.isEmpty()) return
+        val dao = requireNotNull(this.counts) { "Guardar un conteo pide su tabla" }
+        writes.inTransaction {
+            dao.insertAll(
+                counts.map {
+                    CashSessionCountEntity(
+                        cashSessionId = sessionId,
+                        phase = phase.name,
+                        denominationId = it.denominationId,
+                        count = it.count,
+                    )
+                },
+            )
+        }
+    }
+
+    override suspend fun findCounts(
+        sessionId: Long,
+        phase: CashCountPhase,
+    ): List<DenominationCount> = requireNotNull(counts) { "Leer un conteo pide su tabla" }
+        .findBySession(sessionId, phase.name)
+        .map { DenominationCount(it.denominationId, it.count) }
 
     override fun observeByAccount(accountId: Long): Flow<List<CashSession>> = sessions
         .observeByAccount(accountId)

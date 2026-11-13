@@ -3,11 +3,14 @@ package io.github.yesidrobayo.shopledger.domain.usecase.cash
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashClosing
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashCountPhase
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashCounted
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashSessionStatus
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
+import io.github.yesidrobayo.shopledger.domain.port.CashDenominationRepository
 import io.github.yesidrobayo.shopledger.domain.port.CashSessionRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
@@ -43,6 +46,7 @@ class CloseCashSessionUseCase(
     private val ledger: MoneyLedgerRepository,
     private val sessions: CashSessionRepository,
     private val clock: Clock,
+    private val denominations: CashDenominationRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val writer = MoneyLedgerWriter(accounts, ledger)
@@ -52,6 +56,16 @@ class CloseCashSessionUseCase(
         sessionId: Long,
         counted: Money,
         note: String? = null,
+    ): CloseCashSessionResult = invoke(sessionId, CashCounted.Amount(counted), note)
+
+    /**
+     * Cierra la sesión [sessionId] con lo contado, escrito o por denominación. Un conteo por
+     * denominación queda guardado con la sesión.
+     */
+    suspend operator fun invoke(
+        sessionId: Long,
+        counted: CashCounted,
+        note: String? = null,
     ): CloseCashSessionResult = try {
         transactions.write { close(sessionId, counted, note?.trim()?.takeIf { it.isNotEmpty() }) }
     } catch (failure: StorageFailureException) {
@@ -60,12 +74,19 @@ class CloseCashSessionUseCase(
 
     private suspend fun close(
         sessionId: Long,
-        counted: Money,
+        countedAs: CashCounted,
         note: String?,
     ): TxResult<CloseCashSessionResult> {
-        if (counted < Money.ZERO || !Limit.DOCUMENT_TOTAL.allows(counted.minor)) {
-            return TxResult.Rollback(CloseCashSessionResult.CountedOutOfRange)
+        val reading = when (val read = readCount(countedAs, denominations)) {
+            is CountReading.Read -> read
+
+            CountReading.OutOfRange ->
+                return TxResult.Rollback(CloseCashSessionResult.CountedOutOfRange)
+
+            CountReading.UnknownDenomination ->
+                return TxResult.Rollback(CloseCashSessionResult.UnknownDenomination)
         }
+        val counted = reading.amount
         if ((note?.length ?: 0) > MAX_NOTE_LENGTH) {
             return TxResult.Rollback(CloseCashSessionResult.NoteTooLong)
         }
@@ -113,6 +134,7 @@ class CloseCashSessionUseCase(
         if (!sessions.close(sessionId, closing)) {
             return TxResult.Rollback(CloseCashSessionResult.AlreadyClosed)
         }
+        sessions.insertCounts(sessionId, CashCountPhase.CLOSING, reading.counts)
         return TxResult.Commit(CloseCashSessionResult.Closed(closing))
     }
 
@@ -135,6 +157,9 @@ sealed interface CloseCashSessionResult {
 
     /** Lo contado es negativo o pasa del máximo de un documento. */
     data object CountedOutOfRange : CloseCashSessionResult
+
+    /** Una denominación del conteo no existe, está inactiva o se repite. */
+    data object UnknownDenomination : CloseCashSessionResult
 
     /** La nota pasa de su largo máximo. */
     data object NoteTooLong : CloseCashSessionResult

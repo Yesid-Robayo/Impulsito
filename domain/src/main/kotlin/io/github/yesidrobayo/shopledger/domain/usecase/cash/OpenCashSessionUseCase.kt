@@ -1,13 +1,15 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.cash
 
-import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashCountPhase
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashCounted
 import io.github.yesidrobayo.shopledger.domain.model.cash.NewCashSession
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
+import io.github.yesidrobayo.shopledger.domain.port.CashDenominationRepository
 import io.github.yesidrobayo.shopledger.domain.port.CashSessionRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
@@ -41,6 +43,7 @@ class OpenCashSessionUseCase(
     private val ledger: MoneyLedgerRepository,
     private val sessions: CashSessionRepository,
     private val clock: Clock,
+    private val denominations: CashDenominationRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val writer = MoneyLedgerWriter(accounts, ledger)
@@ -50,17 +53,33 @@ class OpenCashSessionUseCase(
      * si es `null`.
      */
     suspend operator fun invoke(accountId: Long, counted: Money? = null): OpenCashSessionResult =
+        invoke(accountId, counted?.let(CashCounted::Amount))
+
+    /**
+     * Abre caja en [accountId] con lo contado, escrito o por denominación, o con el saldo de la
+     * cuenta si es `null`. Un conteo por denominación queda guardado con la sesión.
+     */
+    suspend operator fun invoke(accountId: Long, counted: CashCounted?): OpenCashSessionResult =
         try {
             transactions.write { open(accountId, counted) }
         } catch (failure: StorageFailureException) {
             OpenCashSessionResult.StorageFailed(failure.failure)
         }
 
-    private suspend fun open(accountId: Long, counted: Money?): TxResult<OpenCashSessionResult> {
-        if (counted != null &&
-            (counted < Money.ZERO || !Limit.DOCUMENT_TOTAL.allows(counted.minor))
-        ) {
-            return TxResult.Rollback(OpenCashSessionResult.CountedOutOfRange)
+    private suspend fun open(
+        accountId: Long,
+        counted: CashCounted?,
+    ): TxResult<OpenCashSessionResult> {
+        val reading = counted?.let {
+            when (val read = readCount(it, denominations)) {
+                is CountReading.Read -> read
+
+                CountReading.OutOfRange ->
+                    return TxResult.Rollback(OpenCashSessionResult.CountedOutOfRange)
+
+                CountReading.UnknownDenomination ->
+                    return TxResult.Rollback(OpenCashSessionResult.UnknownDenomination)
+            }
         }
         val account = accounts.findById(accountId)
             ?: return TxResult.Rollback(OpenCashSessionResult.AccountNotFound)
@@ -81,10 +100,11 @@ class OpenCashSessionUseCase(
         }
         val now = clock.now()
         val time = calendar.stamp(now)
-        val opening = counted ?: account.balance
+        val opening = reading?.amount ?: account.balance
         val sessionId = sessions.insert(
             NewCashSession(accountId, opening, now, time.businessDate),
         )
+        reading?.let { sessions.insertCounts(sessionId, CashCountPhase.OPENING, it.counts) }
         val difference = try {
             opening - account.balance
         } catch (overflow: ArithmeticException) {
@@ -137,6 +157,9 @@ sealed interface OpenCashSessionResult {
 
     /** Lo contado es negativo o pasa del máximo de un documento. */
     data object CountedOutOfRange : OpenCashSessionResult
+
+    /** Una denominación del conteo no existe, está inactiva o se repite. */
+    data object UnknownDenomination : OpenCashSessionResult
 
     /** La moneda del negocio sigue sin confirmar, y una diferencia de caja es un registro con dinero. */
     data object CurrencyNotConfirmed : OpenCashSessionResult

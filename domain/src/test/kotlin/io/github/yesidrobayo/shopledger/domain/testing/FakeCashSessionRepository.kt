@@ -2,7 +2,9 @@ package io.github.yesidrobayo.shopledger.domain.testing
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashClosing
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashCountPhase
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashSession
+import io.github.yesidrobayo.shopledger.domain.model.cash.DenominationCount
 import io.github.yesidrobayo.shopledger.domain.model.cash.NewCashSession
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.sum
@@ -56,6 +58,21 @@ internal class FakeCashSessionRepository(private val database: InMemoryDatabase)
         }
         return true
     }
+
+    override suspend fun insertCounts(
+        sessionId: Long,
+        phase: CashCountPhase,
+        counts: List<DenominationCount>,
+    ) {
+        if (counts.isEmpty()) return
+        check((sessionId to phase) !in database.read().cashCounts) { "Un conteo no cambia" }
+        database.write { it.copy(cashCounts = it.cashCounts + ((sessionId to phase) to counts)) }
+    }
+
+    override suspend fun findCounts(
+        sessionId: Long,
+        phase: CashCountPhase,
+    ): List<DenominationCount> = database.read().cashCounts[sessionId to phase].orEmpty()
 
     private companion object {
         const val TABLE = "cash_sessions"

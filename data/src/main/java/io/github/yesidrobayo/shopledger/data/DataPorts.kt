@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomCashDenominationRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashSessionRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
@@ -55,6 +56,7 @@ import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.data.transaction.RoomTransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
+import io.github.yesidrobayo.shopledger.domain.port.CashDenominationRepository
 import io.github.yesidrobayo.shopledger.domain.port.CashSessionRepository
 import io.github.yesidrobayo.shopledger.domain.port.CatalogPresenceSource
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
@@ -228,6 +230,9 @@ class DataPorts internal constructor(
 
     /** Las sesiones de caja, que son opcionales: sin ninguna, nada cambia. */
     val cashSessions: CashSessionRepository = RoomCashSessionRepository(database)
+
+    /** Los billetes y monedas que escribe la persona para contar la caja. */
+    val cashDenominations: CashDenominationRepository = RoomCashDenominationRepository(database)
 
     /** Qué herramientas del centro `Negocio` tienen datos. Solo lee. */
     val moduleUsage: ModuleUsageSource = RoomModuleUsageSource(database)

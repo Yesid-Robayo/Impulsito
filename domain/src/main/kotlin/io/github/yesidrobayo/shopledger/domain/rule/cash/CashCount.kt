@@ -21,6 +21,21 @@ object CashCount {
         null
     }
 
+    /**
+     * Lo contado por denominación: la suma de valor por piezas, con multiplicación y suma exactas,
+     * o `null` si no cabe. Con los topes de las dos columnas el producto no siempre cabe en un
+     * `Long`, y en la base daría un real sin aviso: por eso se calcula aquí.
+     */
+    fun countedOf(values: List<Pair<Money, Long>>): Money? = try {
+        var total = 0L
+        for ((value, count) in values) {
+            total = Math.addExact(total, Math.multiplyExact(value.minor, count))
+        }
+        Money(total)
+    } catch (overflow: ArithmeticException) {
+        null
+    }
+
     /** Lo contado menos lo esperado, o `null` si no cabe. */
     fun difference(counted: Money, expected: Money): Money? = try {
         counted - expected

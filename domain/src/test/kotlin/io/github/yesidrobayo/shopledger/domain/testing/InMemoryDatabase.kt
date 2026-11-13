@@ -2,7 +2,10 @@ package io.github.yesidrobayo.shopledger.domain.testing
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashCountPhase
+import io.github.yesidrobayo.shopledger.domain.model.cash.CashDenomination
 import io.github.yesidrobayo.shopledger.domain.model.cash.CashSession
+import io.github.yesidrobayo.shopledger.domain.model.cash.DenominationCount
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
@@ -87,6 +90,9 @@ internal data class Tables(
     val supplierEntries: Map<Long, SupplierLedgerEntry> = emptyMap(),
     /** Las sesiones de caja, por id. */
     val cashSessions: Map<Long, CashSession> = emptyMap(),
+    val cashDenominations: Map<Long, CashDenomination> = emptyMap(),
+    /** Los conteos por denominación, por sesión y fase, en el orden en que se guardaron. */
+    val cashCounts: Map<Pair<Long, CashCountPhase>, List<DenominationCount>> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )
