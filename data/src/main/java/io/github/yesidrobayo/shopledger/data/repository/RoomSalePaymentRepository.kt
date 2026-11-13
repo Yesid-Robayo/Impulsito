@@ -6,9 +6,11 @@ import io.github.yesidrobayo.shopledger.data.local.payment.SalePaymentEntity
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSalePayment
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePayment
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -51,10 +53,10 @@ internal class RoomSalePaymentRepository(database: AppDatabase) : SalePaymentRep
                     moneyAccountId = payment.moneyAccountId,
                     tenderedAmount = payment.tenderedAmount?.minor,
                     changeAmount = payment.changeAmount?.minor,
-                    tenderCurrencyCode = null,
-                    tenderCurrencyDecimals = null,
-                    tenderAmount = null,
-                    fxRateMicro = null,
+                    tenderCurrencyCode = payment.foreignTender?.currency?.code,
+                    tenderCurrencyDecimals = payment.foreignTender?.decimals?.toLong(),
+                    tenderAmount = payment.foreignTender?.amountMinor,
+                    fxRateMicro = payment.foreignTender?.rateMicro,
                     createdAt = payment.createdAt.toStoredMillis(),
                 ),
             )
@@ -87,8 +89,20 @@ internal class RoomSalePaymentRepository(database: AppDatabase) : SalePaymentRep
             createdAt = row.createdAt.toInstant(),
             tenderedAmount = row.tenderedAmount?.let(::Money),
             changeAmount = row.changeAmount?.let(::Money),
+            foreignTender = foreignOf(row),
         ),
     )
+
+    /** Lo recibido en otra moneda, si lo hubo: las cuatro columnas van juntas, por su guarda. */
+    private fun foreignOf(row: SalePaymentEntity): ForeignTender? {
+        val code = row.tenderCurrencyCode ?: return null
+        return ForeignTender(
+            currency = CurrencyCode.of(code) ?: brokenRow(),
+            decimals = (row.tenderCurrencyDecimals ?: brokenRow()).toStoredInt(),
+            amountMinor = row.tenderAmount ?: brokenRow(),
+            rateMicro = row.fxRateMicro ?: brokenRow(),
+        )
+    }
 
     private fun kindOf(stored: String): PaymentMethodKind =
         PaymentMethodKind.fromStoredOrNull(stored) ?: PaymentMethodKind.OTHER

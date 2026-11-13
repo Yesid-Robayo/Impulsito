@@ -31,4 +31,13 @@ enum class PaymentRejection {
 
     /** Lo recibido no alcanza para lo que cubre este pago en efectivo, ya redondeado. */
     TENDERED_BELOW_AMOUNT,
+
+    /** Lo recibido en otra moneda tiene decimales, monto o cotización fuera de rango. */
+    INVALID_FOREIGN,
+
+    /** La otra moneda es la del negocio: no hay nada que convertir. */
+    FOREIGN_SAME_CURRENCY,
+
+    /** Lo recibido en otra moneda, pasado a la del negocio, no es lo que dice el pago. */
+    FOREIGN_MISMATCH,
 }

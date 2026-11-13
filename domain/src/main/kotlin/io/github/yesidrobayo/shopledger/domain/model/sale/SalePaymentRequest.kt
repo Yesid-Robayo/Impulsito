@@ -18,10 +18,15 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  * método de efectivo. El cambio es lo recibido menos lo que cubre el pago ya redondeado, y no puede
  * ser negativo: con menos de lo que se cobra, la venta no se confirma. Sin lo recibido no hay
  * cambio: es solo una ayuda.
+ *
+ * [foreign] es lo recibido en otra moneda, con su cotización. El pago sigue en la moneda del
+ * negocio: en efectivo, lo recibido es [foreign] pasado a ella, y el cambio se da en la moneda del
+ * negocio; con otro método, [amount] debe ser exactamente [foreign] pasado a ella.
  */
 data class SalePaymentRequest(
     val paymentMethodId: Long,
     val amount: Money,
     val feeAmount: Money? = null,
     val tenderedAmount: Money? = null,
+    val foreign: ForeignTender? = null,
 )

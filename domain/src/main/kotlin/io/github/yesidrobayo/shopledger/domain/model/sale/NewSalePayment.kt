@@ -31,6 +31,7 @@ data class NewSalePayment(
     val createdAt: Instant,
     val tenderedAmount: Money? = null,
     val changeAmount: Money? = null,
+    val foreignTender: ForeignTender? = null,
 ) {
     /**
      * Lo que de verdad llega por este pago: `amount - fee_amount`. La comisión baja la ganancia

@@ -5,12 +5,15 @@ import io.github.yesidrobayo.shopledger.data.backup.InvariantQueries
 import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.PaymentRejection
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
+import io.github.yesidrobayo.shopledger.domain.rule.sale.ForeignTenderRules
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
 import kotlinx.coroutines.runBlocking
@@ -128,5 +131,42 @@ internal class CashChangeOnDatabaseTest : RepositoryTest() {
             val rows = query.sql.trimEnd().removeSuffix(";")
             assertEquals(query.label, 0L, count("SELECT COUNT(*) FROM ($rows)"))
         }
+    }
+
+    @Test
+    fun cashInAnotherCurrencyKeepsWhatWasReceivedApartAndTheBookInItsCurrency() = runBlocking {
+        val product = soldProduct()
+        val other = requireNotNull(CurrencyCode.of("XXX"))
+        val tender = ForeignTender(other, 2, 2_000, 4_150_500_000)
+        val business = RoomAppSettingsRepository(database, RestoreLock { false }).get()
+            .regional.currency
+        val converted = requireNotNull(
+            ForeignTenderRules.toBook(tender, business.code, business.decimals),
+        )
+        val request = SaleRequest(
+            lines = listOf(SaleLineRequest(product, QuantityMilli.ofUnits(1L))),
+            paymentMethodId = methodId("CASH"),
+            payments = listOf(
+                SalePaymentRequest(methodId("CARD"), Money(3_001)),
+                SalePaymentRequest(methodId("CASH"), Money(2_279), foreign = tender),
+            ),
+        )
+
+        val saleId = (registerSale(request) as RegisterSaleResult.Registered).saleId
+
+        val cash = salePayments.findBySale(saleId).map { it.content }.last()
+        assertEquals(Money(2_279), cash.amount)
+        assertEquals(converted, cash.tenderedAmount)
+        assertEquals(converted - Money(2_279), cash.changeAmount)
+        assertEquals(tender, cash.foreignTender)
+        assertEquals(
+            1L,
+            count(
+                "SELECT COUNT(*) FROM sale_payments WHERE tender_currency_code = 'XXX' " +
+                    "AND tender_currency_decimals = 2 AND tender_amount = 2000 " +
+                    "AND fx_rate_micro = 4150500000",
+            ),
+        )
+        assertInvariantsHold()
     }
 }

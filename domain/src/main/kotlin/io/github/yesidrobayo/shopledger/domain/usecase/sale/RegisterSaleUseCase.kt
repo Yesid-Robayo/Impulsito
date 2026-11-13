@@ -21,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovementType
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
+import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSalePayment
@@ -80,6 +81,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.pricing.SalePriceList
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.AdjustmentSplit
+import io.github.yesidrobayo.shopledger.domain.rule.sale.ForeignTenderRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.OrderAdjustmentShares
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentFees
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentSplit
@@ -246,7 +248,7 @@ class RegisterSaleUseCase(
             is Redemption.Rejected -> return TxResult.Rollback(result.rejection)
         }
 
-        val chosen = when (val result = choosePayments(request)) {
+        val chosen = when (val result = choosePayments(request, current.regional.currency)) {
             is Chosen.Payments -> result.payments
             is Chosen.Rejected -> return TxResult.Rollback(result.rejection)
         }
@@ -450,7 +452,7 @@ class RegisterSaleUseCase(
      * confirmar. Sin pagos escritos, el único pago es el método de la venta, y cubre todo lo que se
      * cobra.
      */
-    private suspend fun choosePayments(request: SaleRequest): Chosen {
+    private suspend fun choosePayments(request: SaleRequest, business: BusinessCurrency): Chosen {
         val hasCustomer = request.customerId != null
         val written = request.payments.isNotEmpty()
         val requested = request.payments.ifEmpty {
@@ -466,14 +468,50 @@ class RegisterSaleUseCase(
                     RegisterSaleResult.PaymentRejected(index, PaymentRejection.TENDER_NOT_CASH),
                 )
             }
+            val tendered = when (val foreign = foreignOf(payment, method, business)) {
+                is ForeignCheck.Rejected ->
+                    return Chosen.Rejected(
+                        RegisterSaleResult.PaymentRejected(index, foreign.reason),
+                    )
+
+                is ForeignCheck.Tendered -> foreign.tendered
+            }
             chosen += ChosenPayment(
                 method,
                 payment.amount.takeIf { written },
                 payment.feeAmount,
-                payment.tenderedAmount,
+                tendered,
+                payment.foreign,
             )
         }
         return Chosen.Payments(chosen)
+    }
+
+    /**
+     * Lo recibido de [payment] si llegó en otra moneda, pasado a la del negocio. En efectivo, eso es
+     * lo recibido, y el cambio sale de ahí; si además se escribió lo recibido, debe coincidir. Con
+     * otro método, el monto del pago debe ser exactamente eso. Sin otra moneda, lo recibido que se
+     * escribió, si hay.
+     */
+    private fun foreignOf(
+        payment: SalePaymentRequest,
+        method: SalePaymentMethod,
+        business: BusinessCurrency,
+    ): ForeignCheck {
+        val foreign = payment.foreign ?: return ForeignCheck.Tendered(payment.tenderedAmount)
+        if (foreign.currency == business.code) {
+            return ForeignCheck.Rejected(PaymentRejection.FOREIGN_SAME_CURRENCY)
+        }
+        val converted = ForeignTenderRules.toBook(foreign, business.code, business.decimals)
+            ?: return ForeignCheck.Rejected(PaymentRejection.INVALID_FOREIGN)
+        val cash = method.kind == PaymentMethodKind.CASH
+        // En efectivo se compara con lo recibido, si se escribió; con otro método, con el monto.
+        val written = if (cash) payment.tenderedAmount ?: converted else payment.amount
+        return when {
+            written != converted -> ForeignCheck.Rejected(PaymentRejection.FOREIGN_MISMATCH)
+            cash -> ForeignCheck.Tendered(converted)
+            else -> ForeignCheck.Tendered(payment.tenderedAmount)
+        }
     }
 
     private fun methodRejection(
@@ -969,7 +1007,11 @@ class RegisterSaleUseCase(
                 )
             }
             settled += paymentOf(payment.method, amount, payment.fee, businessDate, now)
-                ?.copy(tenderedAmount = tendered, changeAmount = tendered?.let { it - amount })
+                ?.copy(
+                    tenderedAmount = tendered,
+                    changeAmount = tendered?.let { it - amount },
+                    foreignTender = payment.foreign,
+                )
                 ?: return Settled.Rejected(RegisterSaleResult.SaleTotalTooLarge)
         }
         // Lo que se cobra: el total con los recargos, la propina y el redondeo del efectivo.
@@ -1231,7 +1273,15 @@ class RegisterSaleUseCase(
         val amount: Money?,
         val fee: Money?,
         val tendered: Money?,
+        val foreign: ForeignTender?,
     )
+
+    /** Lo recibido de un pago, ya pasado a la moneda del negocio, o por qué no se acepta. */
+    private sealed interface ForeignCheck {
+        class Tendered(val tendered: Money?) : ForeignCheck
+
+        class Rejected(val reason: PaymentRejection) : ForeignCheck
+    }
 
     private sealed interface Chosen {
         class Payments(val payments: List<ChosenPayment>) : Chosen

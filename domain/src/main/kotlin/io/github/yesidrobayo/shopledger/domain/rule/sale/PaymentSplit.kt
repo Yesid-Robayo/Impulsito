@@ -27,6 +27,9 @@ object PaymentSplit {
                 payment.tenderedAmount?.let(::isValidAmount) == false ->
                     PaymentRejection.INVALID_TENDERED
 
+                payment.foreign?.let(ForeignTenderRules::shapeRejection) != null ->
+                    PaymentRejection.INVALID_FOREIGN
+
                 !seen.add(payment.paymentMethodId) -> PaymentRejection.DUPLICATE_METHOD
 
                 else -> null
