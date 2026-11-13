@@ -239,7 +239,8 @@ class CandidateRepairTest {
                     )
                     returnBeyondSold(line, extraMilli = -1)
                     execSQL(
-                        "UPDATE sales SET status = 'VOIDED', voided_at = 1, void_reason = 'OTHER' " +
+                        "UPDATE sales SET status = 'VOIDED', voided_at = 1, " +
+                            "void_reason = 'OTHER' " +
                             "WHERE id = (SELECT sale_id FROM sale_lines WHERE id = $line)",
                     )
                 },
@@ -417,7 +418,8 @@ class CandidateRepairTest {
      */
     private fun SQLiteConnection.returnBeyondSold(saleLineId: Long, extraMilli: Long = 1) {
         execSQL(
-            "INSERT INTO sale_returns (sale_id, resolution, net_refund, tax_refund, total_refund, " +
+            "INSERT INTO sale_returns (sale_id, resolution, net_refund, tax_refund, " +
+                "total_refund, " +
                 "cost_returned, money_account_id, replacement_sale_id, note, occurred_at, " +
                 "business_date, created_at, status, voided_at, void_reason, void_note) " +
                 "SELECT sale_id, 'REFUND', 0, 0, 0, 0, NULL, NULL, NULL, 1, " +
