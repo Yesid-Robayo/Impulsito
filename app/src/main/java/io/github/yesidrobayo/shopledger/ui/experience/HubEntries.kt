@@ -83,6 +83,12 @@ val HUB_ENTRIES: List<HubEntry> =
             R.string.hub_tool_units_desc,
             AppNavKey.Units,
         ),
+        HubEntry(
+            BusinessTool.SUPPLIER_RETURNS,
+            R.string.hub_tool_supplier_returns,
+            R.string.hub_tool_supplier_returns_desc,
+            AppNavKey.SupplierReturn(),
+        ),
     )
 
 /** El nombre de cada grupo, de la redacción. */

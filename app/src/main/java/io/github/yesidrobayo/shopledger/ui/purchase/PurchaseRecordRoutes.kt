@@ -169,6 +169,9 @@ fun PurchaseDetailRoute(
                     when (action) {
                         PurchaseDetailAction.Back -> onBack()
 
+                        PurchaseDetailAction.ReturnToSupplier ->
+                            navigator.open(AppNavKey.SupplierReturn(purchaseId = key.purchaseId))
+
                         is PurchaseDetailAction.OpenPayable ->
                             navigator.open(AppNavKey.PayableDetail(action.supplierId))
 

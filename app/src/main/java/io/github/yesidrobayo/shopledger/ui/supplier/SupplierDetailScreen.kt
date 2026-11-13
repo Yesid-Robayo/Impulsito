@@ -165,7 +165,10 @@ fun SupplierDetailScreen(
     uiState.dialog?.let { SupplierConfirm(it, onAction) }
 }
 
-/** `Editar` siempre, y en el menú archivar con historia o eliminar sin ella. */
+/**
+ * `Editar` siempre, y en el menú `Devolver al proveedor` y archivar con historia o eliminar sin
+ * ella.
+ */
 @Composable
 private fun TopBarActions(overview: SupplierOverview, onAction: (SupplierDetailAction) -> Unit) {
     TopBarAction(R.drawable.ic_edit, stringResource(R.string.action_edit)) {
@@ -184,7 +187,10 @@ private fun TopBarActions(overview: SupplierOverview, onAction: (SupplierDetailA
                 destructive = true,
             )
         }
-    OverflowMenu(listOf(action))
+    val giveBack = OverflowAction(stringResource(R.string.supplier_return_action), {
+        onAction(SupplierDetailAction.ReturnToSupplier)
+    })
+    OverflowMenu(listOf(giveBack, action))
 }
 
 @Composable

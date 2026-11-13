@@ -77,6 +77,9 @@ sealed interface SupplierDetailAction {
     /** Abre lo que se le debe en cuentas por pagar: lo resuelve la navegación. */
     data object OpenPayables : SupplierDetailAction
 
+    /** Abre una devolución a este proveedor: lo resuelve la navegación. */
+    data object ReturnToSupplier : SupplierDetailAction
+
     data object Retry : SupplierDetailAction
 
     data object MessageShown : SupplierDetailAction
@@ -164,6 +167,7 @@ class SupplierDetailViewModel(
             SupplierDetailAction.Back, is SupplierDetailAction.Dial,
             is SupplierDetailAction.OpenPurchase, is SupplierDetailAction.OpenProduct,
             SupplierDetailAction.NewPurchase, SupplierDetailAction.OpenPayables,
+            SupplierDetailAction.ReturnToSupplier,
             -> Unit
         }
     }

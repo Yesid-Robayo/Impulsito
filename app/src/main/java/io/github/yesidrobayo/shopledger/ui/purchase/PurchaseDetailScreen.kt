@@ -172,6 +172,13 @@ private fun DetailBody(
                     Modifier.padding(spacing.s16).navigationBarsPadding(),
                     verticalArrangement = Arrangement.spacedBy(spacing.s8),
                 ) {
+                    // Devolver va primero: una compra real con mercancía mala no se anula.
+                    PrimaryActionButton(
+                        text = stringResource(R.string.supplier_return_action),
+                        onClick = { onAction(PurchaseDetailAction.ReturnToSupplier) },
+                        variant = ActionVariant.OUTLINED,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     // Corregir va sobre anular: es lo que se busca casi siempre tras un error.
                     PrimaryActionButton(
                         text = stringResource(R.string.dialog_correct_action),

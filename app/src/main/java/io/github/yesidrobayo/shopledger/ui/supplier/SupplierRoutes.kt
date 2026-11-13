@@ -184,6 +184,9 @@ private fun SupplierDetailPane(
                         SupplierDetailAction.OpenPayables ->
                             navigator.open(AppNavKey.PayableDetail(supplierId))
 
+                        SupplierDetailAction.ReturnToSupplier ->
+                            navigator.open(AppNavKey.SupplierReturn(supplierId = supplierId))
+
                         SupplierDetailAction.Edit, SupplierDetailAction.AskArchive,
                         SupplierDetailAction.AskDelete, SupplierDetailAction.Reactivate,
                         SupplierDetailAction.ConfirmDialog, SupplierDetailAction.DismissDialog,

@@ -34,6 +34,10 @@ internal interface PurchaseReturnLineDao {
     @Query(TAKEN_BY_PURCHASE)
     suspend fun takenByPurchase(purchaseId: Long): List<TakenFromPurchaseLine>
 
+    /** Lo mismo que [takenByPurchase], y vuelve a emitir con cada cambio de las tablas que lee. */
+    @Query(TAKEN_BY_PURCHASE)
+    fun observeTakenByPurchase(purchaseId: Long): Flow<List<TakenFromPurchaseLine>>
+
     /** Agrega la línea y devuelve su id. Solo se llama dentro de la transacción de la devolución. */
     @Insert
     suspend fun insert(line: PurchaseReturnLineEntity): Long

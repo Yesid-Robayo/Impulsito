@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de la devolución a proveedor, copiados de la redacción. -->
+<resources>
+    <string name="supplier_return_action">Devolver ao fornecedor</string>
+    <string name="supplier_return_supplier_label">Fornecedor</string>
+    <string name="supplier_return_origin_label">Compra de origem</string>
+    <string name="supplier_return_origin_none">Sem compra de origem</string>
+    <string name="supplier_return_supplier_from_origin">É o da compra de origem</string>
+    <string name="supplier_return_add_product_action">Adicionar produto</string>
+    <string name="supplier_return_unit_cost_label">Custo unitário</string>
+    <string name="supplier_return_line_total_label">Total da linha</string>
+    <string name="supplier_return_cost_effect">O custo médio passa de %1$s para %2$s</string>
+    <string name="supplier_return_how_title">Como é resolvido</string>
+    <string name="supplier_return_resolution_cash_refund">Reembolso em dinheiro</string>
+    <string name="supplier_return_resolution_supplier_credit">Crédito com o fornecedor</string>
+    <string name="supplier_return_refund_to">Entra em</string>
+    <string name="supplier_return_balance_after">A pagar depois: %1$s</string>
+    <string name="supplier_return_note_label">Nota</string>
+    <string name="supplier_return_note_hint">Opcional</string>
+    <string name="supplier_return_total_label">Total</string>
+    <string name="supplier_return_register_action">Registrar devolução</string>
+    <string name="supplier_return_empty_title">Escolher o que é devolvido</string>
+    <string name="supplier_return_error_max">Máximo %1$s desta compra</string>
+    <string name="supplier_return_warning_negative">Restariam %1$s</string>
+    <string name="supplier_return_error_no_supplier">Escolher o fornecedor para deixar o crédito</string>
+    <string name="supplier_return_error_register">Não foi possível registrar a devolução. O que foi escrito foi mantido.</string>
+    <string name="supplier_return_success">Devolução registrada: %1$s</string>
+    <string name="a11y_supplier_return_line">%1$s, %2$s, custo unitário %3$s</string>
+</resources>

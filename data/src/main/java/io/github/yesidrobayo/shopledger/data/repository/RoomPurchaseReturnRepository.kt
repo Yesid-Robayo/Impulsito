@@ -50,6 +50,11 @@ internal class RoomPurchaseReturnRepository(database: AppDatabase) : PurchaseRet
     override suspend fun takenByPurchase(purchaseId: Long): Map<Long, LineAmounts> =
         lines.takenByPurchase(purchaseId).associate { it.purchaseLineId to toTaken(it) }
 
+    override fun observeTakenByPurchase(purchaseId: Long): Flow<Map<Long, LineAmounts>> =
+        lines.observeTakenByPurchase(purchaseId)
+            .map { rows -> rows.associate { it.purchaseLineId to toTaken(it) } }
+            .distinctUntilChanged()
+
     override suspend fun insert(purchaseReturn: NewPurchaseReturn): Long = writes.inTransaction {
         returns.insert(
             PurchaseReturnEntity(

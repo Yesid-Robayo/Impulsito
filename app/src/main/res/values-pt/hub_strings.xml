@@ -16,4 +16,6 @@
     <string name="hub_tool_price_lists_desc">Preços diferentes por tipo de cliente</string>
     <string name="hub_tool_units">Unidades e conversões</string>
     <string name="hub_tool_units_desc">Comprar por caixa e vender por unidade</string>
+    <string name="hub_tool_supplier_returns">Devolução a fornecedor</string>
+    <string name="hub_tool_supplier_returns_desc">Devolver mercadoria comprada</string>
 </resources>

@@ -764,9 +764,14 @@ internal class SaleWorld(
         override suspend fun findLines(purchaseReturnId: Long): List<PurchaseReturnLine> =
             purchaseReturnLinesOf(read(), purchaseReturnId)
 
+        override fun observeTakenByPurchase(purchaseId: Long): Flow<Map<Long, LineAmounts>> =
+            committed.map { takenOf(it, purchaseId) }
+
+        override suspend fun takenByPurchase(purchaseId: Long): Map<Long, LineAmounts> =
+            takenOf(read(), purchaseId)
+
         /** Como la base: el costo de cada línea sale de su fila `PURCHASE_RETURN` del libro. */
-        override suspend fun takenByPurchase(purchaseId: Long): Map<Long, LineAmounts> {
-            val tables = read()
+        private fun takenOf(tables: SaleTables, purchaseId: Long): Map<Long, LineAmounts> {
             val active = tables.purchaseReturns.values.filter {
                 it.content.purchaseId == purchaseId && it.status == DocumentStatus.ACTIVE
             }.map { it.id }.toSet()

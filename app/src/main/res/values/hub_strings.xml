@@ -16,4 +16,6 @@
     <string name="hub_tool_price_lists_desc">Different prices by customer type</string>
     <string name="hub_tool_units">Units and conversions</string>
     <string name="hub_tool_units_desc">Buy by the box and sell by the unit</string>
+    <string name="hub_tool_supplier_returns">Return to supplier</string>
+    <string name="hub_tool_supplier_returns_desc">Return purchased goods</string>
 </resources>

@@ -37,6 +37,9 @@ interface PurchaseReturnRepository {
      */
     suspend fun takenByPurchase(purchaseId: Long): Map<Long, LineAmounts>
 
+    /** Lo mismo que [takenByPurchase], y vuelve a emitir con cada devolución nueva o anulada. */
+    fun observeTakenByPurchase(purchaseId: Long): Flow<Map<Long, LineAmounts>>
+
     /** Guarda la cabecera, activa, y devuelve su id. */
     suspend fun insert(purchaseReturn: NewPurchaseReturn): Long
 

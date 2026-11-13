@@ -299,7 +299,13 @@ internal class ReturnDaoTest : LedgerDatabaseTest() {
             functionsOf(PurchaseReturnDao::class.java),
         )
         assertEquals(
-            setOf("findByReturn", "observeByReturn", "takenByPurchase", "insert"),
+            setOf(
+                "findByReturn",
+                "observeByReturn",
+                "takenByPurchase",
+                "observeTakenByPurchase",
+                "insert",
+            ),
             functionsOf(PurchaseReturnLineDao::class.java),
         )
     }

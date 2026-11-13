@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de la devolución a proveedor, copiados de la redacción. -->
+<resources>
+    <string name="supplier_return_action">Return to supplier</string>
+    <string name="supplier_return_supplier_label">Supplier</string>
+    <string name="supplier_return_origin_label">Original purchase</string>
+    <string name="supplier_return_origin_none">No original purchase</string>
+    <string name="supplier_return_supplier_from_origin">From the original purchase</string>
+    <string name="supplier_return_add_product_action">Add product</string>
+    <string name="supplier_return_unit_cost_label">Unit cost</string>
+    <string name="supplier_return_line_total_label">Line total</string>
+    <string name="supplier_return_cost_effect">Average cost goes from %1$s to %2$s</string>
+    <string name="supplier_return_how_title">How it is settled</string>
+    <string name="supplier_return_resolution_cash_refund">Cash refund</string>
+    <string name="supplier_return_resolution_supplier_credit">Credit with supplier</string>
+    <string name="supplier_return_refund_to">Paid into</string>
+    <string name="supplier_return_balance_after">Payable after: %1$s</string>
+    <string name="supplier_return_note_label">Note</string>
+    <string name="supplier_return_note_hint">Optional</string>
+    <string name="supplier_return_total_label">Total</string>
+    <string name="supplier_return_register_action">Record return</string>
+    <string name="supplier_return_empty_title">Choose what is returned</string>
+    <string name="supplier_return_error_max">Maximum %1$s from this purchase</string>
+    <string name="supplier_return_warning_negative">%1$s would be left</string>
+    <string name="supplier_return_error_no_supplier">Choose the supplier to keep the credit</string>
+    <string name="supplier_return_error_register">Could not record the return. What was entered is kept.</string>
+    <string name="supplier_return_success">Return recorded: %1$s</string>
+    <string name="a11y_supplier_return_line">%1$s, %2$s, unit cost %3$s</string>
+</resources>

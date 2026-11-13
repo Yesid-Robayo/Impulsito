@@ -181,7 +181,8 @@ sealed interface AppNavKey : NavKey {
     data class SaleReturn(val saleId: Long) : AppNavKey
 
     @Serializable
-    data class SupplierReturn(val purchaseId: Long? = null) : AppNavKey
+    data class SupplierReturn(val purchaseId: Long? = null, val supplierId: Long? = null) :
+        AppNavKey
 
     @Serializable
     data object PriceLists : AppNavKey

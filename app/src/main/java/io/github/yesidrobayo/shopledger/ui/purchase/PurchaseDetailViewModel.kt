@@ -115,6 +115,9 @@ sealed interface PurchaseDetailAction {
 
     /** `Registrar pago` de una compra a plazo: abre el libro del proveedor. */
     data class OpenPayable(val supplierId: Long) : PurchaseDetailAction
+
+    /** `Devolver al proveedor`: abre la devolución con esta compra de origen. */
+    data object ReturnToSupplier : PurchaseDetailAction
 }
 
 /**
@@ -215,7 +218,10 @@ class PurchaseDetailViewModel(
             PurchaseDetailAction.Retry -> attempts.update { it + 1 }
 
             // Volver lo resuelve la navegación.
-            PurchaseDetailAction.Back, is PurchaseDetailAction.OpenPayable -> Unit
+            PurchaseDetailAction.Back,
+            is PurchaseDetailAction.OpenPayable,
+            PurchaseDetailAction.ReturnToSupplier,
+            -> Unit
         }
     }
 
