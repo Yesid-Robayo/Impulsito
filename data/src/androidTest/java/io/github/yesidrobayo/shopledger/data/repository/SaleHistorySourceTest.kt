@@ -4,6 +4,7 @@ import androidx.room3.useReaderConnection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
 import io.github.yesidrobayo.shopledger.data.local.catalog.LATER
+import io.github.yesidrobayo.shopledger.data.local.customer.customer
 import io.github.yesidrobayo.shopledger.data.local.payment.cardPayment
 import io.github.yesidrobayo.shopledger.data.local.payment.cashPayment
 import io.github.yesidrobayo.shopledger.data.local.sale.SALE_HISTORY_METHOD_PAGE_SQL
@@ -244,6 +245,31 @@ internal class SaleHistorySourceTest : RepositoryTest() {
         after?.id,
         2,
     )
+
+    @Test
+    fun aCustomerPageBringsOnlyTheirSalesNewestFirstWithTheVoidedMarked() = runBlocking {
+        val customerId = commit { database.customerDao().insert(customer("Cliente de prueba")) }
+        val otherId = commit { database.customerDao().insert(customer("Otra persona")) }
+        // Ventas atrasadas a la misma hora: el tramo sigue por id sin repetir ni saltar.
+        val theirs = List(3) { sellTo(customerId) }
+        sellTo(otherId)
+        sell()
+        commit { sales.markVoided(theirs[1], Voiding(LATER_AT, VoidReason.ENTRY_ERROR, null)) }
+
+        val first = history.page(customerId, after = null, limit = 2)
+        val second = history.page(customerId, after = first.last().cursor, limit = 2)
+
+        assertEquals(theirs.reversed(), (first + second).map { it.id })
+        assertEquals(listOf(false, true, false), (first + second).map { it.voided })
+        assertEquals(emptyList<Long>(), history.page(otherId + 1, after = null, limit = 2))
+    }
+
+    /** Una venta de una línea a [customerId]; devuelve su id. */
+    private suspend fun sellTo(customerId: Long): Long = commit {
+        val saleId = sales.insert(newSale(priceListId).copy(customerId = customerId))
+        sales.insertLine(saleId, newSaleLine(productId, priceListId))
+        saleId
+    }
 
     /** Todos los tramos de dos filas, uno tras otro, hasta el primero que llega incompleto. */
     private suspend fun allPages(

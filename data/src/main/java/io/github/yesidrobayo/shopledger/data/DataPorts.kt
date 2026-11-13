@@ -61,6 +61,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
+import io.github.yesidrobayo.shopledger.domain.port.CustomerSalesSource
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
@@ -209,6 +210,9 @@ class DataPorts internal constructor(
 
     /** El historial de ventas por tramos, sin límite de años. Solo lee. */
     val saleHistory: SaleHistorySource = RoomSaleHistorySource(database)
+
+    /** Las ventas de un cliente por tramos, para su detalle. Solo lee. */
+    val customerSales: CustomerSalesSource = RoomSaleHistorySource(database)
 
     val expenseCategories: ExpenseCategoryRepository = RoomExpenseCategoryRepository(database)
 

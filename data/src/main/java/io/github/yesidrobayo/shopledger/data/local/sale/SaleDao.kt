@@ -99,6 +99,19 @@ internal interface SaleDao {
     ): List<SaleHistoryRowEntity>
 
     /**
+     * Un tramo de las ventas de [customerId], activas y anuladas, en el mismo orden y con el mismo
+     * cursor que [historyPage]. Parte del índice de `customer_id` y ordena solo las ventas de ese
+     * cliente.
+     */
+    @Query(SALE_HISTORY_CUSTOMER_PAGE_SQL)
+    suspend fun historyPageOfCustomer(
+        customerId: Long,
+        afterAt: Long?,
+        afterId: Long?,
+        limit: Int,
+    ): List<SaleHistoryRowEntity>
+
+    /**
      * Cuántos pagos tiene [methodId], contados por su índice hasta [cap]: dice si el método tiene
      * pocas ventas sin recorrer las de un método muy usado.
      */
@@ -220,6 +233,16 @@ internal const val SALE_HISTORY_METHOD_PAGE_SQL =
         "AND (:onlyVoided = 0 OR s.status = 'VOIDED') " +
         "AND (:fromDate IS NULL OR s.business_date >= :fromDate) " +
         "AND (:toDate IS NULL OR s.business_date <= :toDate) " +
+        SALE_HISTORY_AFTER_CURSOR
+
+/**
+ * La consulta de [SaleDao.historyPageOfCustomer]. Las ventas salen del índice de `customer_id`: un
+ * cliente tiene pocas ventas al lado de las del negocio, y ordenarlas aparte cuesta poco.
+ */
+internal const val SALE_HISTORY_CUSTOMER_PAGE_SQL =
+    SALE_HISTORY_COLUMNS +
+        "FROM sales s INDEXED BY index_sales_customer_id " +
+        "WHERE s.customer_id = :customerId " +
         SALE_HISTORY_AFTER_CURSOR
 
 /**

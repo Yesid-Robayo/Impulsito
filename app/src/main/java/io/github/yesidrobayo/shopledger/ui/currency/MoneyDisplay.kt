@@ -42,14 +42,22 @@ const val POP_DIRECTIONAL_ISOLATE: Char = '\u2069'
  * parte de un texto de derecha a izquierda, y el símbolo se dibuja después del monto. El espacio
  * entre símbolo y cifras es duro, para que el monto nunca se parta en dos líneas. Si ninguna fuente
  * tiene el símbolo, va el código ISO, siempre separado de las cifras: `ABC 1.200` y no `ABC1.200`.
+ *
+ * Con [plus], un monto positivo lleva `+` donde la región pone el signo, como en un libro, donde
+ * cada fila dice hacia dónde mueve el saldo. Un monto negativo lleva siempre su `−`.
  */
 fun moneyText(
     parts: MoneyParts,
     symbol: ResolvedSymbol,
     currencyFamily: FontFamily = CurrencySymbolFamily,
+    plus: Boolean = false,
 ): AnnotatedString = buildAnnotatedString {
     val space = parts.symbolSpace || symbol.usesIsoCode
-    val sign = if (parts.negative) IcuTextNormalizer.MINUS_SIGN.toString() else ""
+    val sign = when {
+        parts.negative -> IcuTextNormalizer.MINUS_SIGN.toString()
+        plus -> PLUS_SIGN
+        else -> ""
+    }
 
     fun symbolRun() {
         append(LEFT_TO_RIGHT_ISOLATE)
@@ -96,25 +104,40 @@ fun moneyText(
  * Lo que dice TalkBack de un monto: las cifras y el nombre de la moneda en el idioma de la interfaz,
  * como `menos 1.200,00 euros`. Nunca el símbolo, que cada motor de voz lee a su manera o no lee.
  */
-fun moneyDescription(parts: MoneyParts, resources: Resources): String {
+fun moneyDescription(parts: MoneyParts, resources: Resources, plus: Boolean = false): String {
     val amount = resources.getString(R.string.a11y_money_amount, parts.number, parts.currencyName)
-    return if (parts.negative) resources.getString(R.string.a11y_minus_amount, amount) else amount
+    return when {
+        parts.negative -> resources.getString(R.string.a11y_minus_amount, amount)
+        plus -> resources.getString(R.string.a11y_plus_amount, amount)
+        else -> amount
+    }
 }
+
+/** El signo de un monto que suma, en una fila de libro. */
+private const val PLUS_SIGN = "+"
 
 /**
  * El monto [amount] formateado con [formatter], listo para dibujar con su lectura para TalkBack.
  * Las fuentes de los símbolos se leen una sola vez por proceso, y el texto se arma de nuevo solo si
  * cambia el monto, el formateador o el idioma de los recursos.
+ *
+ * Con [signed], un monto mayor que cero lleva `+` y TalkBack dice «más»: es para las filas de un
+ * libro. Cero nunca lleva signo.
  */
 @Composable
-fun rememberMoneyDisplay(amount: Money, formatter: MoneyFormatter): MoneyDisplay {
+fun rememberMoneyDisplay(
+    amount: Money,
+    formatter: MoneyFormatter,
+    signed: Boolean = false,
+): MoneyDisplay {
     val resources = LocalResources.current
     val chain = remember(resources) { CurrencySymbolFonts.chain(resources) }
-    return remember(amount, formatter, chain, resources) {
+    return remember(amount, formatter, chain, resources, signed) {
         val parts = formatter.parts(amount)
+        val plus = signed && amount > Money.ZERO
         MoneyDisplay(
-            text = moneyText(parts, chain.resolve(parts.symbol, parts.currencyCode)),
-            description = moneyDescription(parts, resources),
+            text = moneyText(parts, chain.resolve(parts.symbol, parts.currencyCode), plus = plus),
+            description = moneyDescription(parts, resources, plus),
         )
     }
 }

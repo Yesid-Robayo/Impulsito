@@ -19,6 +19,9 @@ internal object PreviewSamples {
     const val LONG_NAME =
         "Café molido de altura en bolsa resellable con válvula, tostión media, 500 gramos"
 
+    const val LEDGER_PAYMENT = "Abono"
+    const val LEDGER_CREDIT_SALE = "Venta a crédito"
+    const val LEDGER_DETAIL = "20 oct, Venta 1.180"
     const val METHOD_CASH = "Efectivo"
     const val METHOD_CARD = "Tarjeta"
     const val METHOD_TRANSFER = "Transferencia"

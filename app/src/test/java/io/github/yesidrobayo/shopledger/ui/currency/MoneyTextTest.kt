@@ -77,6 +77,35 @@ class MoneyTextTest {
     }
 
     @Test
+    fun aLedgerRowPutsThePlusWhereTheRegionPutsTheSignAndNeverOnANegative() {
+        assertEquals(
+            "+¤ 1.200,00",
+            visible(
+                moneyText(
+                    parts(true, SignPosition.LEADING, negative = false),
+                    genericSign,
+                    plus = true,
+                ),
+            ),
+        )
+        assertEquals(
+            "1.200,00 ¤+",
+            visible(
+                moneyText(
+                    parts(false, SignPosition.TRAILING, negative = false),
+                    genericSign,
+                    plus = true,
+                ),
+            ),
+        )
+        // Un negativo lleva su menos aunque se pida el signo de suma.
+        assertEquals(
+            "−¤ 1.200,00",
+            visible(moneyText(parts(true, SignPosition.LEADING), genericSign, plus = true)),
+        )
+    }
+
+    @Test
     fun aPositiveAmountHasNoSignAndARegionWithoutSpaceGetsNone() {
         val text =
             moneyText(

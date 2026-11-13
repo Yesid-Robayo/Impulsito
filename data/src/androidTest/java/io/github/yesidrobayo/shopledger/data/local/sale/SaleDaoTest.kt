@@ -336,6 +336,8 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
                 // Solo leen: el historial por tramos y lo vendido por día.
                 "historyPage",
                 "historyPageOfMethod",
+                // Solo lee: las ventas de un cliente, para su detalle.
+                "historyPageOfCustomer",
                 "paymentCountUpTo",
                 "methodsWithPayments",
                 "dayTotals",

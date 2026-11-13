@@ -41,6 +41,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.customer.CustomerDetailRoute
 import io.github.yesidrobayo.shopledger.ui.customer.CustomerListRoute
 import io.github.yesidrobayo.shopledger.ui.customer.LoyaltyProgramRoute
 import io.github.yesidrobayo.shopledger.ui.destination.DestinationChoiceRoute
@@ -287,6 +288,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.LoyaltyProgram -> LoyaltyProgramRoute(key, navigator)
 
         is AppNavKey.Customers -> CustomerListRoute(key, navigator)
+
+        is AppNavKey.CustomerDetail -> CustomerDetailRoute(key, navigator)
 
         AppNavKey.HeldSales -> HeldSalesRoute(navigator)
 

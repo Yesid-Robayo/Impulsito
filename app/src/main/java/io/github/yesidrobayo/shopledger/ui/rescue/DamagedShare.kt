@@ -29,6 +29,9 @@ internal object ExportFolder {
     /** El tipo del registro de fallos. */
     const val TEXT_TYPE = "text/plain"
 
+    /** El tipo de un documento para compartir, como el extracto de un cliente. */
+    const val PDF_TYPE = "application/pdf"
+
     /** La carpeta. Pedirla no toca el disco. */
     fun of(context: Context): File = File(context.cacheDir, NAME)
 
@@ -61,8 +64,11 @@ internal suspend fun exportCrashLog(context: Context, text: String): Uri? =
         true
     }
 
-/** Vacía la carpeta, escribe [name] con [write] y da su dirección; si algo falla, no deja nada. */
-private suspend fun exportFile(
+/**
+ * Vacía la carpeta, escribe [name] con [write] y da su dirección; si algo falla, no deja nada. Lee y
+ * escribe el disco: va fuera del hilo principal.
+ */
+internal suspend fun exportFile(
     context: Context,
     name: String,
     write: suspend (File) -> Boolean,
@@ -95,6 +101,9 @@ internal fun damagedShareIntent(uri: Uri): Intent = shareIntent(uri, ExportFolde
 
 /** El selector del sistema para compartir el registro de fallos, ya mostrado en la pantalla. */
 internal fun crashLogShareIntent(uri: Uri): Intent = shareIntent(uri, ExportFolder.TEXT_TYPE)
+
+/** El selector del sistema para compartir un PDF de `cache/exports/`, con permiso solo de lectura. */
+internal fun pdfShareIntent(uri: Uri): Intent = shareIntent(uri, ExportFolder.PDF_TYPE)
 
 private fun shareIntent(uri: Uri, type: String): Intent {
     val send =

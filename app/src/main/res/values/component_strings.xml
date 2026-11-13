@@ -75,4 +75,6 @@
         <item quantity="one">%1$d product found</item>
         <item quantity="other">%1$d products found</item>
     </plurals>
+    <string name="ledger_status_voided">Voided</string>
+    <string name="a11y_ledger_voided_amount">%1$s, voided</string>
 </resources>

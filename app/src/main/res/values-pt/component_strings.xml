@@ -77,4 +77,6 @@
         <item quantity="many">%1$d de produtos encontrados</item>
         <item quantity="other">%1$d produtos encontrados</item>
     </plurals>
+    <string name="ledger_status_voided">Anulado</string>
+    <string name="a11y_ledger_voided_amount">%1$s, anulado</string>
 </resources>

@@ -100,6 +100,8 @@ enum class MoneyTone {
  * @param loading si la cifra aún no llega: un esqueleto del ancho de siete cifras.
  * @param voidedLabel la etiqueta de un documento anulado, y [voidedDescription] su lectura en
  *   TalkBack, cuando el documento pide otra concordancia, como un gasto: «Anulado» y no «Anulada».
+ * @param signed si es una fila de un libro: un monto mayor que cero lleva `+`, para que cada fila
+ *   diga hacia dónde mueve el saldo.
  */
 @Composable
 fun MoneyText(
@@ -112,6 +114,7 @@ fun MoneyText(
     loading: Boolean = false,
     @StringRes voidedLabel: Int = R.string.status_voided,
     @StringRes voidedDescription: Int = R.string.a11y_voided_amount,
+    signed: Boolean = false,
 ) {
     val style = moneyStyle(size)
     val voidedText = VoidedText(voidedLabel, voidedDescription).takeIf { voided }
@@ -119,10 +122,10 @@ fun MoneyText(
         loading -> MoneySkeleton(style, modifier)
 
         sensitive -> DiscreetValue(modifier, style, mutedColor(tone)) {
-            MoneyValue(amount, size, style, tone, voidedText, Modifier, sensitive = true)
+            MoneyValue(amount, size, style, tone, voidedText, Modifier, true, signed)
         }
 
-        else -> MoneyValue(amount, size, style, tone, voidedText, modifier)
+        else -> MoneyValue(amount, size, style, tone, voidedText, modifier, signed = signed)
     }
 }
 
@@ -138,6 +141,7 @@ private fun MoneyValue(
     voided: VoidedText?,
     modifier: Modifier,
     sensitive: Boolean = false,
+    signed: Boolean = false,
 ) {
     // Se marca cada texto de la cifra: la marca de un nodo no alcanza a sus hijos.
     val marked = if (sensitive) Modifier.semantics { isSensitiveData = true } else Modifier
@@ -152,7 +156,7 @@ private fun MoneyValue(
         )
         return
     }
-    val display = rememberMoneyDisplay(amount, LocalAppFormats.current.money)
+    val display = rememberMoneyDisplay(amount, LocalAppFormats.current.money, signed)
     val autoSize =
         when (size) {
             MoneySize.HERO, MoneySize.LARGE ->

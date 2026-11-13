@@ -57,6 +57,7 @@ private const val PERCENT_DECIMALS = 2
  *
  * @param error el mensaje que dice cómo arreglarlo, o `null`. Se pasa al salir del campo o al
  *   intentar guardar, nunca mientras se escribe.
+ * @param allowNegative si admite un signo menos al principio, como un ajuste que baja un saldo.
  */
 @Composable
 fun MoneyField(
@@ -66,6 +67,7 @@ fun MoneyField(
     modifier: Modifier = Modifier,
     error: String? = null,
     imeAction: ImeAction = ImeAction.Next,
+    allowNegative: Boolean = false,
 ) {
     val formatter = LocalAppFormats.current.money
     val resources = LocalResources.current
@@ -81,10 +83,14 @@ fun MoneyField(
     val decimals = formatter.currencyDecimals
     NumberField(
         value = value,
-        onValueChange = { onValueChange(cleanNumberInput(it, symbols, decimals)) },
+        onValueChange = {
+            onValueChange(cleanSignedNumberInput(it, symbols, decimals, allowNegative))
+        },
         label = label,
         symbols = symbols,
-        keyboardType = if (decimals > 0) KeyboardType.Decimal else KeyboardType.Number,
+        // Con signo, el teclado decimal, que casi siempre trae el guion.
+        keyboardType =
+            if (decimals > 0 || allowNegative) KeyboardType.Decimal else KeyboardType.Number,
         modifier = modifier,
         error = error,
         imeAction = imeAction,

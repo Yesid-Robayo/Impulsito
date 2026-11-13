@@ -145,6 +145,7 @@
     <string name="a11y_money_amount">%1$s %2$s</string>
     <!-- TalkBack: un monto negativo. %1$s es el monto ya leído, con su moneda. -->
     <string name="a11y_minus_amount">Menos %1$s</string>
+    <string name="a11y_plus_amount">Mais %1$s</string>
     <!-- Crear o editar producto. -->
     <string name="product_save">Salvar produto</string>
     <string name="product_sale_price">Preço de venda</string>

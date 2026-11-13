@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryCursor
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
+import io.github.yesidrobayo.shopledger.domain.port.CustomerSalesSource
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -17,8 +18,21 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  * consulta acotada por el índice `(occurred_at, id)`: con años de ventas, leer el siguiente cuesta lo
  * mismo que leer el primero. Solo lee.
  */
-internal class RoomSaleHistorySource(database: AppDatabase) : SaleHistorySource {
+internal class RoomSaleHistorySource(database: AppDatabase) :
+    SaleHistorySource,
+    CustomerSalesSource {
     private val sales = database.saleDao()
+
+    override suspend fun page(
+        customerId: Long,
+        after: SaleHistoryCursor?,
+        limit: Int,
+    ): List<SaleHistoryRow> = sales.historyPageOfCustomer(
+        customerId = customerId,
+        afterAt = after?.occurredAt?.toStoredMillis(),
+        afterId = after?.id,
+        limit = limit,
+    ).map(::toRow)
 
     /**
      * Con filtro de método, elige el camino más corto: un método con pocos pagos se lee desde sus
