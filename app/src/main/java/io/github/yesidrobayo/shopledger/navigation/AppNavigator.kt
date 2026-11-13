@@ -128,6 +128,18 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
         while (backStack.size > sale + 1) backStack.removeAt(backStack.lastIndex)
     }
 
+    /** Lo que pasa entre la pantalla de clientes, abierta para elegir, y el cobro. */
+    val customerPick: CustomerPickHandoff = CustomerPickHandoff()
+
+    /**
+     * Deja [customerId] elegido para la venta y vuelve a la pantalla de debajo, el cobro, que lo
+     * toma al verse.
+     */
+    fun pickCustomerForSale(customerId: Long) {
+        customerPick.choose(customerId)
+        back()
+    }
+
     /**
      * Vuelve a la pantalla anterior. En Inicio no hace nada y devuelve `false`: ahí atrás le toca al
      * sistema, que cierra la app.

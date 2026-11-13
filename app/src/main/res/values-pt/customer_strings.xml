@@ -49,6 +49,8 @@
         <item quantity="other">%1$s pontos</item>
     </plurals>
     <string name="customer_picker_title">Escolher cliente</string>
+    <string name="customer_picker_recent">Recentes</string>
+    <string name="customer_picker_all">Todos os clientes</string>
     <string name="customer_picker_none">Sem cliente</string>
     <string name="a11y_remove_customer">Remover cliente</string>
 </resources>

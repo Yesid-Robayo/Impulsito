@@ -101,6 +101,43 @@ internal class CustomerRepositoryTest : RepositoryTest() {
     }
 
     @Test
+    fun recentCustomersAreThoseOfTheNewestActiveSalesThatCanStillBeSoldTo() = runBlocking {
+        val sales = database.saleDao()
+        suspend fun soldTo(id: Long?): Long = sales.insert(sale(priceListId).copy(customerId = id))
+        val ana = commit { customers.insert(details("Ana"), AT) }
+        val bruno = commit { customers.insert(details("Bruno"), AT) }
+        val carla = commit { customers.insert(details("Carla"), AT) }
+        val dani = commit { customers.insert(details("Dani"), AT) }
+        val eva = commit { customers.insert(details("Eva"), AT) }
+
+        customers.observeRecent(3).test {
+            assertEquals(emptyList<Customer>(), awaitItem())
+            soldTo(ana)
+            assertEquals(listOf(ana), awaitItem().map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+        soldTo(bruno)
+        soldTo(ana)
+        soldTo(null)
+        // Una venta anulada no cuenta, ni un archivado ni un anonimizado: no se les vende.
+        val voided = soldTo(carla)
+        sales.markVoided(voided, LATER_AT.toEpochMilliseconds(), "ENTRY_ERROR", null)
+        soldTo(dani)
+        commit { customers.setArchivedAt(dani, LATER_AT, LATER_AT) }
+        soldTo(eva)
+        database.customerDao().anonymize(eva, LATER_AT.toEpochMilliseconds())
+
+        assertEquals(listOf(ana, bruno), customers.observeRecent(3).first().map { it.id })
+
+        // Primero el de la venta más nueva, por id, hasta el límite.
+        val fer = commit { customers.insert(details("Fer"), AT) }
+        val gabi = commit { customers.insert(details("Gabi"), AT) }
+        soldTo(fer)
+        soldTo(gabi)
+        assertEquals(listOf(gabi, fer, ana), customers.observeRecent(3).first().map { it.id })
+    }
+
+    @Test
     fun anAnonymizedCustomerIsNotEditedAndTheWriteIsUndone() = runBlocking {
         val id = commit { customers.insert(details("Ana"), AT) }
         database.customerDao().anonymize(id, LATER_AT.toEpochMilliseconds())

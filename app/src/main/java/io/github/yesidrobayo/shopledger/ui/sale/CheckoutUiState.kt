@@ -41,6 +41,8 @@ data class CheckoutUiState(
     val customerRemoved: Boolean = false,
     val credit: CheckoutCredit? = null,
     val points: CheckoutPoints? = null,
+    val customerRecents: List<Customer> = emptyList(),
+    val creditBalance: CheckoutCreditBalance? = null,
 ) {
     /** Si algún pago usa un método que ya no se ofrece: hay que quitarlo o cambiarlo. */
     val hasGoneMethod: Boolean get() = payments.any { it.gone }
@@ -143,7 +145,8 @@ sealed interface CheckoutCustomer {
 /**
  * Lo que agrega un pago a crédito: el vencimiento, [due], o ninguno, y el saldo que le queda al
  * cliente tras esta venta, [balanceAfter], si ya hay cliente. [dueError] marca un vencimiento
- * anterior a la venta, [saleDate].
+ * anterior a la venta, [saleDate]. Sin [owes], el saldo a favor cubre todo lo que va a crédito: no
+ * queda deuda, y no se pide vencimiento.
  */
 @Immutable
 data class CheckoutCredit(
@@ -152,7 +155,16 @@ data class CheckoutCredit(
     val balanceAfter: Money?,
     val saleDate: BusinessDate?,
     val weekStartDay: DayOfWeek?,
+    val owes: Boolean = true,
 )
+
+/**
+ * La sección `Saldo a favor`, solo con un cliente con saldo negativo: lo que queda por usar en esta
+ * venta, [available], después de los pagos a crédito ya escritos, y si `Usar saldo a favor` tiene
+ * algo que pasar a crédito, [canUse].
+ */
+@Immutable
+data class CheckoutCreditBalance(val available: Money, val canUse: Boolean)
 
 /**
  * La sección `Puntos`, solo con el programa activo y un cliente. [available] son sus puntos antes

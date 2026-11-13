@@ -24,9 +24,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
+import kotlin.time.Instant
 
 /**
  * El cliente de un documento: una fila que abre la lista de clientes. Sin cliente dice
@@ -107,6 +109,10 @@ fun CustomerPicker(
 /**
  * La lista para elegir un cliente: búsqueda por nombre o teléfono, una [CustomerRow] por cliente y
  * `Crear «…»` con lo buscado, que abre la hoja de un cliente nuevo. [customers] ya viene filtrada.
+ *
+ * Sin búsqueda, [recent] va arriba, bajo `Recientes`, y la lista completa sigue debajo con
+ * `Todos los clientes`: quien vuelve a comprar está a un toque. Con [onViewAll], `Ver clientes`
+ * queda fijo bajo la lista y abre la pantalla de clientes, con sus filtros, para elegir desde ahí.
  */
 @Composable
 fun CustomerPickerSheet(
@@ -116,6 +122,8 @@ fun CustomerPickerSheet(
     onPick: (Long) -> Unit,
     onCreate: (String) -> Unit,
     onDismiss: () -> Unit,
+    recent: List<Customer> = emptyList(),
+    onViewAll: (() -> Unit)? = null,
 ) {
     SelectionSheet(
         title = stringResource(R.string.customer_picker_title),
@@ -125,13 +133,28 @@ fun CustomerPickerSheet(
         onQueryChange = onQueryChange,
         onDismissRequest = onDismiss,
         searchHint = stringResource(R.string.customer_search_hint),
-        itemContent = { customer ->
-            CustomerRow(
-                CustomerRowData(customer.contact?.name, customer.balance, customer.contact?.phone),
-                onClick = { onPick(customer.id) },
+        itemContent = { customer -> PickerRow(customer, onPick) },
+        onCreate = onCreate,
+        pinned = SelectionPinned(
+            title = stringResource(R.string.customer_picker_recent),
+            items = recent,
+            itemsTitle = stringResource(R.string.customer_picker_all),
+        ),
+        footer = onViewAll?.let {
+            SelectionFooter(
+                stringResource(R.string.customer_picker_view_all),
+                R.drawable.ic_group,
+                it,
             )
         },
-        onCreate = onCreate,
+    )
+}
+
+@Composable
+private fun PickerRow(customer: Customer, onPick: (Long) -> Unit) {
+    CustomerRow(
+        CustomerRowData(customer.contact?.name, customer.balance, customer.contact?.phone),
+        onClick = { onPick(customer.id) },
     )
 }
 
@@ -158,3 +181,52 @@ private fun CustomerPickerPreview() {
         }
     }
 }
+
+/** El contenido de la hoja sin búsqueda: `Recientes` arriba, la lista completa y `Ver clientes`. */
+@ThemePreviews
+@Composable
+private fun CustomerPickerSheetPreview() {
+    val recent = previewCustomer(2, PreviewSamples.LONG_NAME, PreviewSamples.LONG_AMOUNT)
+    val all = listOf(
+        previewCustomer(1, "Ana Ríos", Money(4_000L), "300 000 000"),
+        recent,
+        previewCustomer(3, "Bruno Paz", Money(-1_500L)),
+    )
+    PreviewTheme {
+        Column(Modifier.padding(AppTheme.spacing.s16)) {
+            SelectionSheetContent(
+                items = all,
+                key = { it.id },
+                query = "",
+                onQueryChange = {},
+                searchHint = stringResource(R.string.customer_search_hint),
+                itemContent = { PickerRow(it) {} },
+                pinned = SelectionPinned(
+                    stringResource(R.string.customer_picker_recent),
+                    listOf(recent),
+                    stringResource(R.string.customer_picker_all),
+                ),
+                footer = SelectionFooter(
+                    stringResource(R.string.customer_picker_view_all),
+                    R.drawable.ic_group,
+                ) {},
+            )
+        }
+    }
+}
+
+/** Un cliente inventado para las vistas previas. */
+private fun previewCustomer(id: Long, name: String, balance: Money, phone: String? = null) =
+    Customer(
+        id = id,
+        contact = CustomerContact(name, name.lowercase(), phone, null, null),
+        priceListId = null,
+        balance = balance,
+        pointsBalance = 0L,
+        anonymizedAt = null,
+        archivedAt = null,
+        createdAt = PREVIEW_AT,
+        updatedAt = PREVIEW_AT,
+    )
+
+private val PREVIEW_AT = Instant.fromEpochMilliseconds(1_700_000_000_000L)

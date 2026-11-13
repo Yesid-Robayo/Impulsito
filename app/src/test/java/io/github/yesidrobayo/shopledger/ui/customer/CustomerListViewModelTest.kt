@@ -220,6 +220,39 @@ class CustomerListViewModelTest {
     }
 
     @Test
+    fun `opened to pick for a sale, the customer created comes back picked`() =
+        runTest(dispatcher) {
+            val model = CustomerListViewModel(operations, pickForSale = true)
+            observe(model.uiState)
+            advanceUntilIdle()
+            assertTrue(model.uiState.value.pickForSale)
+            model.onAction(CustomerListAction.NewCustomer("Eva"))
+            operations.saveResult = SaveCustomerResult.Saved(9L)
+
+            model.editor.onAction(CustomerEditorAction.Save)
+            advanceUntilIdle()
+
+            // Sin el aviso de guardado: el cobro ya muestra al cliente elegido.
+            assertEquals(9L, model.uiState.value.picked)
+            assertNull(model.uiState.value.message)
+            model.onAction(CustomerListAction.PickedShown)
+            advanceUntilIdle()
+            assertNull(model.uiState.value.picked)
+        }
+
+    @Test
+    fun `only a customer that can be sold to is picked for a sale`() {
+        val content = CustomerListContent.Customers(CustomerSamples.list)
+
+        assertTrue(CustomerListViewModel.pickable(content, 1L))
+        // Archivado, anonimizado o que no está en la lista: se abre su detalle, como siempre.
+        assertFalse(CustomerListViewModel.pickable(content, 5L))
+        assertFalse(CustomerListViewModel.pickable(content, 6L))
+        assertFalse(CustomerListViewModel.pickable(content, 99L))
+        assertFalse(CustomerListViewModel.pickable(CustomerListContent.Loading, 1L))
+    }
+
+    @Test
     fun `a repeated name warns once and the next save creates it anyway`() = runTest(dispatcher) {
         val model = CustomerListViewModel(operations)
         observe(model.uiState)

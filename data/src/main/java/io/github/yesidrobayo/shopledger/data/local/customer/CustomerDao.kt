@@ -23,6 +23,22 @@ internal interface CustomerDao {
     fun observeActive(): Flow<List<CustomerEntity>>
 
     /**
+     * Los vigentes con nombre a quienes se vendió hace poco: el de la venta vigente más nueva
+     * primero, hasta [limit]. Una venta anulada no cuenta, porque casi siempre fue un error, a veces
+     * de cliente. Se ordena por el `id` de la venta, no por su fecha, como los libros: dos ventas del
+     * mismo instante quedan en el orden en que se guardaron. Usa el índice de `sales.customer_id`.
+     */
+    @Query(
+        "SELECT c.* FROM customers c JOIN (" +
+            "SELECT customer_id, MAX(id) AS last_sale_id FROM sales " +
+            "WHERE customer_id IS NOT NULL AND status = 'ACTIVE' GROUP BY customer_id" +
+            ") r ON r.customer_id = c.id " +
+            "WHERE c.archived_at IS NULL AND c.anonymized_at IS NULL " +
+            "ORDER BY r.last_sale_id DESC LIMIT :limit",
+    )
+    fun observeRecent(limit: Int): Flow<List<CustomerEntity>>
+
+    /**
      * Los sin archivar, también los anonimizados, que van al final porque ya no tienen nombre. Es la
      * lista de clientes: un anonimizado sigue ahí, como cliente anónimo, con su saldo.
      */

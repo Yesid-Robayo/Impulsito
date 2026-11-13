@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +35,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutBalance
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CheckoutProblem
@@ -180,6 +182,7 @@ private fun NarrowCheckout(uiState: CheckoutUiState, onAction: (CheckoutAction) 
             AdjustmentRow(uiState, onAction)
             Payments(uiState, onAction)
             CreditSection(uiState, onAction)
+            CreditBalanceSection(uiState, onAction)
             PointsSection(uiState, onAction)
             TipSection(uiState, onAction)
         }
@@ -215,6 +218,7 @@ private fun WideCheckout(uiState: CheckoutUiState, onAction: (CheckoutAction) ->
         ) {
             Payments(uiState, onAction)
             CreditSection(uiState, onAction)
+            CreditBalanceSection(uiState, onAction)
         }
     }
 }
@@ -448,12 +452,37 @@ private fun CustomerSection(uiState: CheckoutUiState, onAction: (CheckoutAction)
 
 /**
  * Lo que agrega un pago a crédito: el vencimiento, sin vencimiento por defecto, y el saldo que le
- * queda al cliente tras esta venta, que es sensible.
+ * queda al cliente tras esta venta, que es sensible. Si el saldo a favor cubre todo lo que va a
+ * crédito, no queda deuda y el vencimiento no se pide.
  */
 @Composable
 private fun CreditSection(uiState: CheckoutUiState, onAction: (CheckoutAction) -> Unit) {
     val credit = uiState.credit ?: return
     val today = credit.saleDate ?: return
+    if (credit.owes) DueDate(credit, today, onAction)
+    credit.balanceAfter?.let {
+        Row(
+            Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.checkout_balance_after),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            MoneyText(it, MoneySize.ROW, sensitive = true)
+        }
+    }
+}
+
+/** El vencimiento del cargo a crédito, con `Sin vencimiento` para quitarlo. */
+@Composable
+private fun DueDate(
+    credit: CheckoutCredit,
+    today: BusinessDate,
+    onAction: (CheckoutAction) -> Unit,
+) {
     DateField(
         label = stringResource(R.string.checkout_due_date),
         date = credit.due,
@@ -476,21 +505,50 @@ private fun CreditSection(uiState: CheckoutUiState, onAction: (CheckoutAction) -
             onClick = { onAction(CheckoutAction.CreditDueChange(null)) },
         )
     }
-    credit.balanceAfter?.let {
-        Row(
-            Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.checkout_balance_after),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            MoneyText(it, MoneySize.ROW, sensitive = true)
-        }
+}
+
+/**
+ * `Saldo a favor`, solo con un cliente que lo tiene: lo que queda por usar, sensible como todo
+ * saldo, y `Usar saldo a favor`, que lo pasa a un pago a crédito sin vencimiento. El botón solo se
+ * ofrece si hay algo que pasar: con el saldo ya usado o nada por cobrar, no aparece.
+ */
+@Composable
+private fun CreditBalanceSection(uiState: CheckoutUiState, onAction: (CheckoutAction) -> Unit) {
+    val balance = uiState.creditBalance ?: return
+    SectionHeader(stringResource(R.string.checkout_credit_balance))
+    CreditAvailable(balance.available)
+    if (balance.canUse) {
+        PrimaryActionButton(
+            text = stringResource(R.string.checkout_use_credit_action),
+            onClick = { onAction(CheckoutAction.UseCreditBalance) },
+            variant = ActionVariant.OUTLINED,
+        )
     }
 }
+
+/**
+ * `Disponible: {amount}`, con el monto en su propia cifra: así el modo discreto lo oculta como
+ * cualquier saldo y TalkBack lee la frase entera, con el nombre de la moneda.
+ */
+@Composable
+private fun CreditAvailable(available: Money) {
+    val template = stringResource(R.string.checkout_credit_available, AMOUNT_MARK)
+    val before = template.substringBefore(AMOUNT_MARK)
+    val after = template.substringAfter(AMOUNT_MARK, missingDelimiterValue = "")
+    val label = MaterialTheme.typography.bodyMedium
+    val tint = MaterialTheme.colorScheme.onSurfaceVariant
+    FlowRow(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        verticalArrangement = Arrangement.Center,
+    ) {
+        if (before.isNotEmpty()) Text(before, style = label, color = tint)
+        MoneyText(available, MoneySize.ROW, sensitive = true)
+        if (after.isNotEmpty()) Text(after, style = label, color = tint)
+    }
+}
+
+/** Dónde va el monto en una frase traducida: un carácter que ningún idioma escribe. */
+private const val AMOUNT_MARK = "\uE000"
 
 /** Los pagos, `Agregar pago` y la línea de balance, que recibe el foco si los pagos no suman. */
 @Composable
@@ -710,6 +768,8 @@ private fun CheckoutSheets(uiState: CheckoutUiState, onAction: (CheckoutAction) 
             onPick = { onAction(CheckoutAction.PickCustomer(it)) },
             onCreate = { onAction(CheckoutAction.NewCustomer(it)) },
             onDismiss = close,
+            recent = uiState.customerRecents,
+            onViewAll = { onAction(CheckoutAction.ViewAllCustomers) },
         )
     }
 }

@@ -33,11 +33,14 @@ import kotlinx.coroutines.withContext
 /**
  * La lista de clientes en la navegación. Abrir un cliente lleva a su detalle; `Programa de puntos`
  * abre su pantalla. Atrás con la hoja abierta la cierra primero.
+ *
+ * Abierta desde el cobro con `pickForSale`, tocar un cliente que se puede vender lo deja elegido y
+ * vuelve al cobro, y el que se crea en la hoja vuelve elegido. Atrás vuelve sin elegir.
  */
 @Composable
 fun CustomerListRoute(key: AppNavKey.Customers, navigator: AppNavigator) {
-    val model = rememberAppViewModel(key = "customers") {
-        CustomerListViewModel(CustomerUseCases.of(it))
+    val model = rememberAppViewModel(key = if (key.pickForSale) "customers-pick" else "customers") {
+        CustomerListViewModel(CustomerUseCases.of(it), pickForSale = key.pickForSale)
     }
     when (model) {
         ScreenModel.Opening -> CustomerListScreen(CustomerListUiState(), {})
@@ -50,6 +53,11 @@ fun CustomerListRoute(key: AppNavKey.Customers, navigator: AppNavigator) {
             val editor by viewModel.editor.editor.collectAsStateWithLifecycle()
             val pickContact = rememberContactPicker(viewModel.editor)
             ShowMessage(uiState.message) { viewModel.onAction(CustomerListAction.MessageShown) }
+            LaunchedEffect(uiState.picked) {
+                val created = uiState.picked ?: return@LaunchedEffect
+                viewModel.onAction(CustomerListAction.PickedShown)
+                navigator.pickCustomerForSale(created)
+            }
             BackHandler(enabled = editor != null) {
                 viewModel.editor.onAction(CustomerEditorAction.Dismiss)
             }
@@ -58,14 +66,20 @@ fun CustomerListRoute(key: AppNavKey.Customers, navigator: AppNavigator) {
                     CustomerListAction.Back -> navigator.back()
 
                     is CustomerListAction.OpenCustomer ->
-                        navigator.open(AppNavKey.CustomerDetail(action.customerId))
+                        if (key.pickForSale &&
+                            CustomerListViewModel.pickable(uiState.content, action.customerId)
+                        ) {
+                            navigator.pickCustomerForSale(action.customerId)
+                        } else {
+                            navigator.open(AppNavKey.CustomerDetail(action.customerId))
+                        }
 
                     CustomerListAction.OpenLoyalty -> navigator.open(AppNavKey.LoyaltyProgram)
 
                     is CustomerListAction.QueryChange, is CustomerListAction.FilterChange,
                     CustomerListAction.ClearFilters, CustomerListAction.Retry,
                     is CustomerListAction.NewCustomer, is CustomerListAction.Reactivate,
-                    CustomerListAction.MessageShown,
+                    CustomerListAction.MessageShown, CustomerListAction.PickedShown,
                     -> viewModel.onAction(action)
                 }
             })

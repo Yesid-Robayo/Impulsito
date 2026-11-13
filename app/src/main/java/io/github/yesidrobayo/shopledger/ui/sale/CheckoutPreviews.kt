@@ -8,7 +8,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 
 // Vistas previas del cobro, con datos inventados: un método de 80 caracteres, un monto de trece
-// cifras, un pago con comisión y recargo, y la variante con pagos que no suman.
+// cifras, un pago con comisión y recargo, la variante con pagos que no suman y la de un cliente
+// con saldo a favor.
 
 private val CASH = SaleMethod(1L, "CASH", null, hasQr = false)
 private val LONG_METHOD = SaleMethod(2L, null, PreviewSamples.LONG_NAME, hasQr = true)
@@ -60,4 +61,30 @@ private fun CheckoutScreenMissingPreview() {
 @Composable
 private fun CheckoutScreenLoadingPreview() {
     PreviewTheme { CheckoutScreen(CheckoutUiState(), onAction = {}, onBack = {}) }
+}
+
+/** Un cliente con saldo a favor: `Saldo a favor`, lo disponible y `Usar saldo a favor`. */
+@ThemePreviews
+@Composable
+private fun CheckoutScreenCreditBalancePreview() {
+    val state = previewState().copy(
+        customer = CheckoutCustomer.Chosen(
+            1L,
+            PreviewSamples.LONG_NAME,
+            Money(-1_234_567_890_123L),
+        ),
+        creditBalance = CheckoutCreditBalance(Money(1_234_567_890_123L), canUse = true),
+    )
+    PreviewTheme { CheckoutScreen(state, onAction = {}, onBack = {}) }
+}
+
+/** En modo discreto, lo disponible se oculta como cualquier saldo, y el botón sigue. */
+@ThemePreviews
+@Composable
+private fun CheckoutScreenCreditBalanceDiscreetPreview() {
+    val state = previewState().copy(
+        customer = CheckoutCustomer.Chosen(1L, PreviewSamples.SHORT_NAME, Money(-1_500L)),
+        creditBalance = CheckoutCreditBalance(Money(1_500L), canUse = true),
+    )
+    PreviewTheme(discreet = true) { CheckoutScreen(state, onAction = {}, onBack = {}) }
 }

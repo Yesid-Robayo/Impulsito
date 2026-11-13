@@ -46,6 +46,9 @@
     <string name="checkout_customer_removed_notice">The customer was removed, along with the redemption, credit balance and payments on credit.</string>
     <string name="checkout_error_due_before_sale">The due date cannot be before the sale</string>
     <string name="checkout_points">Points</string>
+    <string name="checkout_credit_balance">Credit balance</string>
+    <string name="checkout_credit_available">Available: %1$s</string>
+    <string name="checkout_use_credit_action">Use credit balance</string>
     <string name="checkout_points_available">Available: %1$s</string>
     <string name="checkout_points_to_redeem">Points to redeem</string>
     <string name="checkout_points_discount">Discount: %1$s</string>

@@ -8,9 +8,11 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerDetails
+import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntryDraft
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
 import io.github.yesidrobayo.shopledger.domain.model.customer.NewCustomerLedgerEntry
+import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSalePayment
@@ -24,6 +26,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleResult
@@ -207,6 +210,49 @@ internal class CreditSaleOnDatabaseTest : RepositoryTest() {
         // Cabecera, línea, su fila de stock, dos pagos y el cargo: seis escrituras, cada una probada.
         assertEquals(WRITES + 1, at)
         assertEquals(1L, count("SELECT COUNT(*) FROM customer_ledger_entries"))
+        assertInvariantsHold()
+    }
+
+    /**
+     * Un anticipo de 10.000 deja saldo a favor, y la venta de 7.000 lo usa con 5.000 a crédito: el
+     * cargo lo consume en la misma transacción, sin deuda ni vencimiento. Una falla en cada escritura
+     * deja el saldo a favor intacto.
+     */
+    @Test
+    fun aSaleThatUsesTheCreditBalanceConsumesItInTheSameTransaction() = runBlocking {
+        val prepaid = CustomerEntryDraft(
+            customerId,
+            CustomerLedgerEntryType.PAYMENT,
+            Money(-10_000),
+            CustomerEntrySource.None,
+            null,
+            null,
+        )
+        commit { CustomerLedgerWriter(customerLedger).append(prepaid, RecordTime(AT, DATE)) }
+        assertEquals(Money(-10_000), customers.findById(customerId)?.balance)
+        val before = tableCounts()
+        val seq = changeSeq()
+        var at = 1
+        while (true) {
+            failAt = at
+            writes = 0
+            val result = runCatching { registerSale(creditSale()) }
+            val failed = result.exceptionOrNull() ?: break
+            assertTrue("Escritura $at", failed is InjectedWriteFailure)
+            assertEquals("Escritura $at", before, tableCounts())
+            assertEquals(Money(-10_000), customers.findById(customerId)?.balance)
+            assertEquals(seq, changeSeq())
+            at++
+        }
+        assertEquals(WRITES + 1, at)
+
+        val saleId = count("SELECT MAX(id) FROM sales")
+        val charge = customerLedger.findBySale(saleId).single()
+        assertEquals(CustomerLedgerEntryType.CREDIT_SALE, charge.type)
+        assertEquals(Money(5_000), charge.amount)
+        assertEquals(Money(-5_000), charge.balanceAfter)
+        assertNull(charge.dueDate)
+        assertEquals(Money(-5_000), customers.findById(customerId)?.balance)
         assertInvariantsHold()
     }
 

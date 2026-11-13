@@ -36,6 +36,9 @@ internal class RoomCustomerRepository(database: AppDatabase) : CustomerRepositor
     override fun observeSelectable(): Flow<List<Customer>> =
         customers.observeActive().map { list -> list.map(::toCustomer) }.distinctUntilChanged()
 
+    override fun observeRecent(limit: Int): Flow<List<Customer>> =
+        customers.observeRecent(limit).map { list -> list.map(::toCustomer) }.distinctUntilChanged()
+
     override fun observePointsSummary(): Flow<PointsSummary> = customers.observePointsSummary()
         .map { PointsSummary(it.totalPoints, it.customers.toStoredInt()) }
         .distinctUntilChanged()

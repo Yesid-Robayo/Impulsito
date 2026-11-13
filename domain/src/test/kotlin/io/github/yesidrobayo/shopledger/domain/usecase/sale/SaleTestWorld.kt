@@ -817,6 +817,8 @@ internal class SaleWorld(
 
         override fun observeSelectable(): Flow<List<Customer>> = unused()
 
+        override fun observeRecent(limit: Int): Flow<List<Customer>> = unused()
+
         override fun observePointsSummary(): Flow<PointsSummary> = unused()
 
         override fun observeById(id: Long): Flow<Customer?> = committed.map { it.customers[id] }

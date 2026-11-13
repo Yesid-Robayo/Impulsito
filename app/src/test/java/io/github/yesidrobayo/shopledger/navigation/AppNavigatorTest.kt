@@ -145,6 +145,20 @@ class AppNavigatorTest {
     }
 
     @Test
+    fun aCustomerPickedForTheSaleGoesBackToCheckoutOnce() {
+        navigator.open(AppNavKey.NewSale())
+        navigator.open(AppNavKey.Checkout)
+        navigator.open(AppNavKey.Customers(pickForSale = true))
+
+        navigator.pickCustomerForSale(30L)
+
+        assertEquals(AppNavKey.Checkout, navigator.current)
+        assertEquals(30L, navigator.customerPick.toPick.value)
+        assertEquals(30L, navigator.customerPick.take())
+        assertEquals(null, navigator.customerPick.take())
+    }
+
+    @Test
     fun everyTabRootIsRecognized() {
         for (tab in TopLevelDestination.entries) {
             assertEquals(tab, TopLevelDestination.ofRoot(tab.root))

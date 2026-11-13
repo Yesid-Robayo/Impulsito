@@ -70,7 +70,14 @@ fun CustomerListScreen(
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxSize()) {
             AppTopBar(
-                title = stringResource(R.string.customer_title),
+                // Abierta desde el cobro, la lista sirve para elegir: el título lo dice.
+                title = stringResource(
+                    if (uiState.pickForSale) {
+                        R.string.customer_picker_title
+                    } else {
+                        R.string.customer_title
+                    },
+                ),
                 navigation = navigation,
                 onNavigate = { onAction(CustomerListAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),

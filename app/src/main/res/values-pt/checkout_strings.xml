@@ -46,6 +46,9 @@
     <string name="checkout_customer_removed_notice">O cliente foi removido, junto com o resgate, o saldo a favor e os pagamentos a prazo.</string>
     <string name="checkout_error_due_before_sale">O vencimento não pode ser antes da venda</string>
     <string name="checkout_points">Pontos</string>
+    <string name="checkout_credit_balance">Saldo a favor</string>
+    <string name="checkout_credit_available">Disponível: %1$s</string>
+    <string name="checkout_use_credit_action">Usar saldo a favor</string>
     <string name="checkout_points_available">Disponíveis: %1$s</string>
     <string name="checkout_points_to_redeem">Pontos a resgatar</string>
     <string name="checkout_points_discount">Desconto: %1$s</string>

@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  * La lista que recibe ya viene filtrada por quien la usa, que compara sin mayúsculas ni tildes.
  *
  * @param onCreate crea un elemento con lo escrito, o `null` si aquí no se crea nada.
+ * @param pinned unos pocos elementos que van arriba, bajo su propio título, mientras no se busca
+ *   nada: los recientes, por ejemplo. La lista completa sigue debajo, con [itemsTitle].
+ * @param footer una acción fija bajo la lista, siempre a la vista aunque la lista sea larga.
  */
 @Composable
 fun <T> SelectionSheet(
@@ -48,11 +52,36 @@ fun <T> SelectionSheet(
     searchHint: String,
     itemContent: @Composable (T) -> Unit,
     onCreate: ((String) -> Unit)? = null,
+    pinned: SelectionPinned<T>? = null,
+    footer: SelectionFooter? = null,
 ) {
     AppBottomSheet(onDismissRequest = onDismissRequest, title = title, scrollable = false) {
-        SelectionSheetContent(items, key, query, onQueryChange, searchHint, itemContent, onCreate)
+        SelectionSheetContent(
+            items,
+            key,
+            query,
+            onQueryChange,
+            searchHint,
+            itemContent,
+            onCreate,
+            pinned,
+            footer,
+        )
     }
 }
+
+/**
+ * Los elementos que una hoja de selección pone arriba, bajo [title], mientras no se busca nada. La
+ * lista completa sigue debajo con [itemsTitle], y puede repetirlos: así conserva su orden.
+ */
+data class SelectionPinned<T>(val title: String, val items: List<T>, val itemsTitle: String)
+
+/** Una acción fija bajo la lista de una hoja de selección, con su icono. */
+data class SelectionFooter(
+    val text: String,
+    @param:DrawableRes val icon: Int,
+    val onClick: () -> Unit,
+)
 
 /** El contenido de la hoja de selección, aparte para poder verlo sin abrirla. */
 @Composable
@@ -64,6 +93,8 @@ fun <T> ColumnScope.SelectionSheetContent(
     searchHint: String,
     itemContent: @Composable (T) -> Unit,
     onCreate: ((String) -> Unit)? = null,
+    pinned: SelectionPinned<T>? = null,
+    footer: SelectionFooter? = null,
 ) {
     SearchField(query, onQueryChange, searchHint)
     if (query.isNotBlank()) {
@@ -75,7 +106,16 @@ fun <T> ColumnScope.SelectionSheetContent(
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
+    // Los fijados solo se ven sin búsqueda: al buscar, cada elemento aparece una sola vez.
+    val shownPinned = pinned?.takeIf { query.isBlank() && it.items.isNotEmpty() }
     LazyColumn(Modifier.weight(1f, fill = false)) {
+        if (shownPinned != null) {
+            item(key = PINNED_TITLE_KEY) { SectionHeader(shownPinned.title) }
+            items(shownPinned.items, key = { "$PINNED_PREFIX${key(it)}" }) { itemContent(it) }
+            if (items.isNotEmpty()) {
+                item(key = ITEMS_TITLE_KEY) { SectionHeader(shownPinned.itemsTitle) }
+            }
+        }
         items(items, key = key) { itemContent(it) }
         if (items.isEmpty() && query.isNotBlank()) {
             item(key = EMPTY_KEY) {
@@ -83,14 +123,24 @@ fun <T> ColumnScope.SelectionSheetContent(
             }
         }
         if (onCreate != null && query.isNotBlank()) {
-            item(key = CREATE_KEY) { CreateRow(query.trim()) { onCreate(query.trim()) } }
+            item(key = CREATE_KEY) {
+                ActionRow(
+                    stringResource(R.string.selection_create, query.trim()),
+                    R.drawable.ic_add,
+                ) {
+                    onCreate(query.trim())
+                }
+            }
         }
     }
+    footer?.let { ActionRow(it.text, it.icon, it.onClick) }
 }
 
-/** `Crear «…»`: una fila de 56 dp con el icono de agregar, en el color de acción. */
+/**
+ * `Crear «…»` o la acción fija de la hoja: una fila de 56 dp con su icono, en el color de acción.
+ */
 @Composable
-private fun CreateRow(text: String, onClick: () -> Unit) {
+private fun ActionRow(text: String, @DrawableRes icon: Int, onClick: () -> Unit) {
     Row(
         modifier =
             Modifier
@@ -102,13 +152,13 @@ private fun CreateRow(text: String, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_add),
+            painter = painterResource(icon),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(AppTheme.sizes.icon),
         )
         Text(
-            text = stringResource(R.string.selection_create, text),
+            text = text,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.primary,
         )
@@ -117,6 +167,14 @@ private fun CreateRow(text: String, onClick: () -> Unit) {
 
 private const val EMPTY_KEY = "selection-empty"
 private const val CREATE_KEY = "selection-create"
+private const val PINNED_TITLE_KEY = "selection-pinned-title"
+private const val ITEMS_TITLE_KEY = "selection-items-title"
+
+/**
+ * El prefijo de la clave de un elemento fijado: la lista completa puede repetirlo, y cada clave de
+ * la lista debe ser única y caber en el estado guardado, así que va como texto.
+ */
+private const val PINNED_PREFIX = "selection-pinned-"
 
 @ThemePreviews
 @Composable

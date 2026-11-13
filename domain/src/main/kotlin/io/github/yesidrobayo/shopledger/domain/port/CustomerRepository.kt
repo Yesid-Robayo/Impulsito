@@ -26,6 +26,13 @@ interface CustomerRepository {
      */
     fun observeSelectable(): Flow<List<Customer>>
 
+    /**
+     * Los que se pueden elegir al vender y tienen alguna venta vigente: el de la venta más nueva
+     * primero, hasta [limit]. Son los `Recientes` del selector de clientes. Una venta anulada no
+     * cuenta.
+     */
+    fun observeRecent(limit: Int): Flow<List<Customer>>
+
     /** Cuántos puntos vigentes hay entre todos los clientes, y cuántos clientes los tienen. */
     fun observePointsSummary(): Flow<PointsSummary>
 

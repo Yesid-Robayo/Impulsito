@@ -120,6 +120,7 @@ class CheckoutViewModelTest {
         state: SavedStateHandle = savedState,
         format: SaleNumberFormat = numbers,
         customers: List<Customer> = emptyList(),
+        recent: List<Customer> = emptyList(),
     ): CheckoutViewModel {
         val model = CheckoutViewModel(
             catalogSource = { catalog },
@@ -133,6 +134,7 @@ class CheckoutViewModelTest {
             offered = { draft?.let { CheckoutHandoff.Offered(it, qrOnly) } },
             computation = dispatcher,
             customersSource = { MutableStateFlow(customers) },
+            recentCustomersSource = { MutableStateFlow(recent) },
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -648,6 +650,176 @@ class CheckoutViewModelTest {
 
         assertEquals(30L, requests.single().customerId)
         assertNull(requests.single().creditDueDate)
+    }
+
+    // ------------------------------------------------------------------ saldo a favor
+
+    private val bruno = customer(33L, "Bruno", balance = -1_500L)
+    private val carla = customer(34L, "Carla", balance = -30_000L)
+
+    private fun TestScope.withCredit(vararg customers: Customer): CheckoutViewModel {
+        catalog.value = catalog.value.copy(creditMethods = listOf(credit))
+        return viewModel(customers = customers.toList())
+    }
+
+    @Test
+    fun `only a customer with a credit balance is offered to use it`() = runTest {
+        val model = withCredit(ana, bruno)
+        assertNull(model.state.creditBalance)
+
+        model.act(this, CheckoutAction.PickCustomer(30L))
+        assertNull(model.state.creditBalance)
+
+        model.act(this, CheckoutAction.PickCustomer(33L))
+        assertEquals(CheckoutCreditBalance(Money(1_500L), canUse = true), model.state.creditBalance)
+    }
+
+    @Test
+    fun `without a credit method the credit balance is not offered`() = runTest {
+        val model = viewModel(customers = listOf(bruno))
+        model.act(this, CheckoutAction.PickCustomer(33L))
+
+        assertNull(model.state.creditBalance)
+        model.act(this, CheckoutAction.UseCreditBalance)
+        assertEquals(listOf(10L), model.state.payments.map { it.method.id })
+    }
+
+    @Test
+    fun `a credit balance larger than the sale pays all of it, without a due date`() = runTest {
+        val model = withCredit(carla)
+        model.act(this, CheckoutAction.PickCustomer(34L))
+
+        model.act(this, CheckoutAction.UseCreditBalance)
+
+        // El efectivo quedó en cero y sale: el saldo a favor paga toda la venta.
+        assertEquals(listOf(13L), model.state.payments.map { it.method.id })
+        assertEquals("25000", model.state.payments.single().amountText)
+        assertEquals(CheckoutBalance.Complete, model.state.balance)
+        assertEquals(Money(25_000L), model.state.summary.amountDue)
+        assertEquals(
+            CheckoutCreditBalance(Money(5_000L), canUse = false),
+            model.state.creditBalance,
+        )
+        assertEquals(Money(-5_000L), model.state.credit?.balanceAfter)
+        assertEquals(false, model.state.credit?.owes)
+
+        // Sin deuda nada vence, aunque se hubiera escrito una fecha.
+        model.act(this, CheckoutAction.CreditDueChange(BusinessDate(LocalDate(2026, 11, 30))))
+        model.act(this, CheckoutAction.Register)
+        val request = requests.single()
+        assertEquals(34L, request.customerId)
+        assertNull(request.creditDueDate)
+        assertEquals(
+            listOf(13L to Money(25_000L)),
+            request.payments.map {
+                it.paymentMethodId to it.amount
+            },
+        )
+    }
+
+    @Test
+    fun `a smaller credit balance pays its part and the rest stays in the other payment`() =
+        runTest {
+            val model = withCredit(bruno)
+            model.act(this, CheckoutAction.PickCustomer(33L))
+
+            model.act(this, CheckoutAction.UseCreditBalance)
+
+            assertEquals(listOf("23500", "1500"), model.state.payments.map { it.amountText })
+            assertEquals(listOf(10L, 13L), model.state.payments.map { it.method.id })
+            assertEquals(CheckoutBalance.Complete, model.state.balance)
+            assertEquals(
+                CheckoutCreditBalance(Money.ZERO, canUse = false),
+                model.state.creditBalance,
+            )
+            assertEquals(Money.ZERO, model.state.credit?.balanceAfter)
+            model.act(this, CheckoutAction.Register)
+            assertEquals(
+                listOf(10L to Money(23_500L), 13L to Money(1_500L)),
+                requests.single().payments.map { it.paymentMethodId to it.amount },
+            )
+            assertNull(requests.single().creditDueDate)
+        }
+
+    @Test
+    fun `it covers what is missing first, and adds to a credit payment already written`() =
+        runTest {
+            val model = withCredit(bruno)
+            model.act(this, CheckoutAction.PickCustomer(33L))
+            model.act(this, CheckoutAction.AmountChange(0, "24000"))
+            model.act(this, CheckoutAction.AddPayment(13L))
+            model.act(this, CheckoutAction.AmountChange(1, "200"))
+            // Faltan 800 y quedan 1.300 de saldo a favor: cubre lo que falta y 500 del efectivo.
+            assertEquals(
+                CheckoutCreditBalance(Money(1_300L), canUse = true),
+                model.state.creditBalance,
+            )
+
+            model.act(this, CheckoutAction.UseCreditBalance)
+
+            assertEquals(listOf("23500", "1500"), model.state.payments.map { it.amountText })
+            assertEquals(CheckoutBalance.Complete, model.state.balance)
+        }
+
+    @Test
+    fun `a credit payment beyond the credit balance leaves a debt that asks for a due date`() =
+        runTest {
+            val model = withCredit(bruno)
+            model.act(this, CheckoutAction.PickCustomer(33L))
+            model.act(this, CheckoutAction.AmountChange(0, "20000"))
+            model.act(this, CheckoutAction.AddPayment(13L))
+
+            assertEquals(Money(3_500L), model.state.credit?.balanceAfter)
+            assertEquals(true, model.state.credit?.owes)
+            assertEquals(
+                CheckoutCreditBalance(Money.ZERO, canUse = false),
+                model.state.creditBalance,
+            )
+            val due = BusinessDate(LocalDate(2026, 11, 30))
+            model.act(this, CheckoutAction.CreditDueChange(due))
+            model.act(this, CheckoutAction.Register)
+            assertEquals(due, requests.single().creditDueDate)
+        }
+
+    @Test
+    fun `removing the customer takes back the credit balance used`() = runTest {
+        val model = withCredit(bruno)
+        model.act(this, CheckoutAction.PickCustomer(33L))
+        model.act(this, CheckoutAction.UseCreditBalance)
+
+        model.act(this, CheckoutAction.RemoveCustomer)
+
+        assertEquals(listOf(10L), model.state.payments.map { it.method.id })
+        assertNull(model.state.creditBalance)
+        assertTrue(model.state.customerRemoved)
+    }
+
+    // ------------------------------------------------------------------ recientes
+
+    @Test
+    fun `recent customers show with the list open and nothing searched`() = runTest {
+        // Bruno ya no se puede elegir: aunque se le vendió hace poco, no aparece.
+        val model = viewModel(customers = listOf(ana, carla), recent = listOf(carla, bruno, ana))
+        assertTrue(model.state.customerRecents.isEmpty())
+
+        model.act(this, CheckoutAction.OpenCustomers)
+        assertEquals(listOf(34L, 30L), model.state.customerRecents.map { it.id })
+        assertEquals(listOf(30L, 34L), model.state.customerChoices.map { it.id })
+
+        model.act(this, CheckoutAction.CustomerQueryChange("an"))
+        assertTrue(model.state.customerRecents.isEmpty())
+    }
+
+    @Test
+    fun `view customers closes the list, and a customer picked there is chosen`() = runTest {
+        val model = viewModel(customers = listOf(ana))
+        model.act(this, CheckoutAction.OpenCustomers)
+
+        model.act(this, CheckoutAction.ViewAllCustomers)
+        assertNull(model.state.sheet)
+
+        model.act(this, CheckoutAction.PickCustomer(30L))
+        assertEquals(CheckoutCustomer.Chosen(30L, "Ana", Money(4_000L)), model.state.customer)
     }
 
     // ------------------------------------------------------------------ puntos

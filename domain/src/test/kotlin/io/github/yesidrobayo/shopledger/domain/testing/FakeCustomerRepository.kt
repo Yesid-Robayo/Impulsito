@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.PointsSummary
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /**
@@ -28,6 +29,9 @@ internal class FakeCustomerRepository(private val database: InMemoryDatabase) : 
     override fun observeSelectable(): Flow<List<Customer>> = database.tables.map { tables ->
         sorted(tables.customers.values.filter { !it.isArchived && !it.isAnonymized })
     }
+
+    /** Este mundo no guarda ventas: nadie tiene una venta reciente. */
+    override fun observeRecent(limit: Int): Flow<List<Customer>> = flowOf(emptyList())
 
     override fun observePointsSummary(): Flow<PointsSummary> = database.tables.map { tables ->
         val holders = tables.customers.values.filter { it.pointsBalance > 0 }

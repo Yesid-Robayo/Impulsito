@@ -57,7 +57,9 @@ sealed interface CustomerListContent {
  * El estado de la lista de clientes: lo buscado, el filtro, lo que se muestra, lo que hay por cobrar
  * entre todos, si se muestran los puntos y el aviso de la última acción.
  *
- * [receivable] es `null` mientras no hay nadie que deba: entonces no hay tarjeta.
+ * [receivable] es `null` mientras no hay nadie que deba: entonces no hay tarjeta. Con [pickForSale],
+ * la lista se abrió desde el cobro para elegir el cliente de la venta, y [picked] es el recién creado
+ * en la hoja, que vuelve al cobro elegido.
  */
 @Immutable
 data class CustomerListUiState(
@@ -67,6 +69,8 @@ data class CustomerListUiState(
     val receivable: Money? = null,
     val showPoints: Boolean = false,
     val message: CustomerMessage? = null,
+    val pickForSale: Boolean = false,
+    val picked: Long? = null,
 )
 
 /** Lo que la persona hace en la lista, fuera de la hoja. */
@@ -94,26 +98,38 @@ sealed interface CustomerListAction {
     data class Reactivate(val customerId: Long) : CustomerListAction
 
     data object MessageShown : CustomerListAction
+
+    /** El cliente recién creado ya volvió al cobro. */
+    data object PickedShown : CustomerListAction
 }
 
 /**
  * La lista de clientes: busca por nombre, sin mayúsculas ni tildes, o por los dígitos del teléfono,
  * y filtra por quién debe, quién tiene saldo a favor o quién está archivado. La hoja crea uno nuevo
  * sin salir de la lista.
+ *
+ * Con [pickForSale], la lista elige el cliente del cobro: el que se crea en la hoja vuelve elegido,
+ * sin el aviso de guardado, porque el cobro ya lo muestra.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class CustomerListViewModel(private val operations: CustomerOperations) : ViewModel() {
+class CustomerListViewModel(
+    private val operations: CustomerOperations,
+    private val pickForSale: Boolean = false,
+) : ViewModel() {
     private val query = MutableStateFlow("")
     private val filter = MutableStateFlow(CustomerFilter.ALL)
     private val attempts = MutableStateFlow(0)
     private val message = MutableStateFlow<CustomerMessage?>(null)
+    private val picked = MutableStateFlow<Long?>(null)
 
     /** La hoja de crear un cliente, abierta o no. */
     val editor =
         CustomerEditorModel(
             scope = viewModelScope,
             save = operations::save,
-            onSaved = { message.value = CustomerMessage.Saved },
+            onSaved = { id ->
+                if (pickForSale) picked.value = id else message.value = CustomerMessage.Saved
+            },
         )
 
     private val overview = attempts.flatMapLatest {
@@ -127,7 +143,7 @@ class CustomerListViewModel(private val operations: CustomerOperations) : ViewMo
     }
 
     val uiState: StateFlow<CustomerListUiState> =
-        combine(overview, query, filter, message) { loaded, typed, chosen, shown ->
+        combine(overview, query, filter, message, picked) { loaded, typed, chosen, shown, created ->
             CustomerListUiState(
                 query = typed,
                 filter = chosen,
@@ -139,6 +155,8 @@ class CustomerListViewModel(private val operations: CustomerOperations) : ViewMo
                 receivable = loaded?.overview?.receivable?.takeIf { it > Money.ZERO },
                 showPoints = loaded?.showPoints ?: false,
                 message = shown,
+                pickForSale = pickForSale,
+                picked = created,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -174,6 +192,8 @@ class CustomerListViewModel(private val operations: CustomerOperations) : ViewMo
                 }
 
             CustomerListAction.MessageShown -> message.value = null
+
+            CustomerListAction.PickedShown -> picked.value = null
         }
     }
 
@@ -187,6 +207,16 @@ class CustomerListViewModel(private val operations: CustomerOperations) : ViewMo
     companion object {
         /** Lo que sigue viva la lectura al rotar la pantalla, para no releer la lista. */
         private const val STOP_TIMEOUT_MILLIS = 5_000L
+
+        /**
+         * Si tocar [customerId] en [content] lo elige para la venta. Un archivado o un anonimizado
+         * no se vende, como en la lista del cobro: tocarlo abre su detalle, como siempre.
+         */
+        internal fun pickable(content: CustomerListContent, customerId: Long): Boolean {
+            val tapped = (content as? CustomerListContent.Customers)?.customers
+                ?.firstOrNull { it.id == customerId } ?: return false
+            return !tapped.isArchived && !tapped.isAnonymized
+        }
 
         /** Lo que se muestra de [overview] con [typed] en la búsqueda y [chosen] como filtro. */
         internal fun contentOf(

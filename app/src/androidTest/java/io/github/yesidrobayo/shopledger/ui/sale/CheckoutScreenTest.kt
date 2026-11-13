@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -34,6 +36,7 @@ import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -43,7 +46,8 @@ import org.junit.runner.RunWith
  * El cobro en el teléfono, con su ViewModel y un catálogo inventado: abre con un pago que ya cuadra,
  * los pagos que no suman se dicen y se completan con `Usar`, la imagen de cobro va a pantalla
  * completa, TalkBack lee el total, y la pantalla se acomoda a la letra grande y a una ventana ancha.
- * La venta común sigue confirmando directo, con `Más opciones de cobro` a la vista.
+ * La venta común sigue confirmando directo, con `Más opciones de cobro` a la vista. Un cliente
+ * reciente con saldo a favor lo usa desde el cobro, y el modo discreto oculta lo disponible.
  */
 @RunWith(AndroidJUnit4::class)
 class CheckoutScreenTest {
@@ -60,6 +64,7 @@ class CheckoutScreenTest {
         qrOnly: Boolean = false,
         customers: List<Customer> = emptyList(),
         loyalty: LoyaltySettings = LoyaltySettings.OFF,
+        recent: List<Customer> = emptyList(),
     ) = CheckoutViewModel(
         catalogSource = {
             MutableStateFlow(
@@ -79,11 +84,17 @@ class CheckoutScreenTest {
         offered = { CheckoutHandoff.Offered(SaleDraft(CHECKOUT_LINES, methodId), qrOnly) },
         computation = Dispatchers.Default,
         customersSource = { MutableStateFlow(customers) },
+        recentCustomersSource = { MutableStateFlow(recent) },
     )
 
-    private fun show(model: CheckoutViewModel, fontScale: Float? = null, width: Int? = null) {
+    private fun show(
+        model: CheckoutViewModel,
+        fontScale: Float? = null,
+        width: Int? = null,
+        discreet: Boolean = false,
+    ) {
         compose.setContent {
-            PreviewTheme {
+            PreviewTheme(discreet = discreet) {
                 val state by model.uiState.collectAsState()
                 val density = LocalDensity.current
                 CompositionLocalProvider(
@@ -267,6 +278,67 @@ class CheckoutScreenTest {
         assertEquals(MEMBER.id, requests.single().customerId)
     }
 
+    @Test
+    fun aRecentCustomerWithCreditBalanceUsesItAlsoWithLargeText() {
+        show(
+            model(customers = listOf(CLIENT, PREPAID), recent = listOf(PREPAID)),
+            fontScale = LARGE_FONT,
+        )
+        awaitText(text(R.string.checkout_complete))
+        compose.onNodeWithText(text(R.string.checkout_customer)).performScrollTo().performClick()
+
+        // Sin búsqueda, los recientes van arriba y `Ver clientes` queda a la vista.
+        awaitText(text(R.string.customer_picker_recent))
+        compose.onNodeWithText(text(R.string.customer_picker_all)).assertExists()
+        compose.onNodeWithText(text(R.string.customer_picker_view_all)).assertIsDisplayed()
+        compose.onAllNodesWithText(PREPAID_NAME)[0].performClick()
+
+        val available = text(R.string.checkout_credit_available, "").trim()
+        awaitText(available)
+        compose.onNodeWithText(text(R.string.checkout_credit_balance))
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.checkout_use_credit_action))
+            .performScrollTo()
+            .performClick()
+        // El saldo a favor paga todo: el botón se va, y el vencimiento no se pide.
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodesWithText(text(R.string.checkout_use_credit_action))
+                .fetchSemanticsNodes().isEmpty()
+        }
+        assertTrue(
+            compose.onAllNodesWithText(text(R.string.checkout_due_date))
+                .fetchSemanticsNodes().isEmpty(),
+        )
+        awaitText(text(R.string.checkout_complete))
+        register()
+        compose.waitUntil(TIMEOUT_MS) { requests.isNotEmpty() }
+
+        val request = requests.single()
+        assertEquals(PREPAID.id, request.customerId)
+        assertEquals(listOf(SalePaymentRequest(CREDIT, Money(38_410L))), request.payments)
+        assertNull(request.creditDueDate)
+    }
+
+    @Test
+    fun inDiscreetModeTheAvailableCreditIsHiddenAndStillUsable() {
+        val model = model(customers = listOf(PREPAID))
+        show(model, discreet = true)
+        awaitText(text(R.string.checkout_complete))
+        compose.runOnIdle { model.onAction(CheckoutAction.PickCustomer(PREPAID.id)) }
+
+        val available = text(R.string.checkout_credit_available, "").trim()
+        awaitText(available)
+        compose.onNode(
+            hasText(available, substring = true) and
+                hasContentDescription(text(R.string.a11y_discreet_hidden)),
+            useUnmergedTree = false,
+        ).assertExists()
+        compose.onNodeWithText(text(R.string.checkout_use_credit_action))
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
     private companion object {
         const val CREDIT = 9L
         val CREATED: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000L)
@@ -289,6 +361,18 @@ class CheckoutScreenTest {
             priceListId = null,
             balance = Money.ZERO,
             pointsBalance = 150L,
+            anonymizedAt = null,
+            archivedAt = null,
+            createdAt = CREATED,
+            updatedAt = CREATED,
+        )
+        const val PREPAID_NAME = "Cliente con anticipo"
+        val PREPAID = Customer(
+            id = 42L,
+            contact = CustomerContact(PREPAID_NAME, "cliente con anticipo", null, null, null),
+            priceListId = null,
+            balance = Money(-50_000L),
+            pointsBalance = 0L,
             anonymizedAt = null,
             archivedAt = null,
             createdAt = CREATED,

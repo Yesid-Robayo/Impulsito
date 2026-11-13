@@ -87,4 +87,10 @@ sealed interface CheckoutAction {
 
     /** `Canjear puntos`: aplica lo escrito como descuento de la venta. En blanco, quita el canje. */
     data object RedeemPoints : CheckoutAction
+
+    /** `Usar saldo a favor`: pasa a un pago a crédito lo que queda del saldo a favor del cliente. */
+    data object UseCreditBalance : CheckoutAction
+
+    /** `Ver clientes`: cierra la lista y abre la pantalla de clientes para elegir desde ahí. */
+    data object ViewAllCustomers : CheckoutAction
 }

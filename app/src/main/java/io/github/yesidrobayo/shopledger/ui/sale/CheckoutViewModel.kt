@@ -18,6 +18,8 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.model.sum
+import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerSearch
 import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyProgramRules
@@ -76,6 +78,11 @@ import kotlinx.coroutines.launch
  * Con el programa de puntos activo y un cliente, el cobro ofrece canjear sus puntos. El canje es un
  * descuento de la venta que entra en el ajuste, nunca un pago: los puntos no son dinero. Cambiar o
  * quitar el cliente quita el canje.
+ *
+ * Con un cliente que tiene saldo a favor, `Usar saldo a favor` lo pasa a un pago a crédito sin
+ * vencimiento: el cargo de la venta lo consume en el libro del cliente, en la misma transacción.
+ *
+ * @param recentCustomersSource los clientes de las últimas ventas, para `Recientes` en la lista.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CheckoutViewModel(
@@ -89,6 +96,7 @@ class CheckoutViewModel(
     customersSource: () -> Flow<List<Customer>> = { flowOf(emptyList()) },
     private val createCustomer: suspend (CustomerForm, Boolean) -> SaveCustomerResult =
         { _, _ -> SaveCustomerResult.NotFound },
+    recentCustomersSource: () -> Flow<List<Customer>> = { flowOf(emptyList()) },
 ) : ViewModel() {
     private val sale: SaleDraft?
     private val qrOnly: Boolean
@@ -137,6 +145,12 @@ class CheckoutViewModel(
         .flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Los de las últimas ventas. Una falla de lectura deja la lista sin `Recientes`, nada más. */
+    private val recent: StateFlow<List<Customer>> = recentCustomersSource()
+        .catch { emit(emptyList()) }
+        .flowOn(computation)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     /** La hoja de crear un cliente desde el cobro: al guardarlo, queda elegido. */
     val customerEditor = CustomerEditorModel(
         scope = viewModelScope,
@@ -144,13 +158,20 @@ class CheckoutViewModel(
         onSaved = ::pickCustomer,
     )
 
-    val uiState: StateFlow<CheckoutUiState> = combine(catalog, editing, overlay, customers) {
+    val uiState: StateFlow<CheckoutUiState> = combine(
+        catalog,
+        editing,
+        overlay,
+        customers,
+        recent,
+    ) {
             load,
             written,
             shown,
             choices,
+            lately,
         ->
-        build(load, written, shown, choices)
+        build(load, written, shown, choices, lately)
     }.flowOn(computation)
         .stateIn(
             viewModelScope,
@@ -249,6 +270,13 @@ class CheckoutViewModel(
             }
 
             CheckoutAction.RedeemPoints -> redeemPoints()
+
+            CheckoutAction.UseCreditBalance -> useCreditBalance()
+
+            // La pantalla de clientes la abre la navegación; aquí solo se cierra la lista.
+            CheckoutAction.ViewAllCustomers -> overlay.update {
+                it.copy(sheet = null, customerQuery = "")
+            }
         }
     }
 
@@ -411,6 +439,100 @@ class CheckoutViewModel(
             discount = discount,
             redeemed = written.redeemed,
             error = written.pointsError,
+        )
+    }
+
+    // ------------------------------------------------------------------ saldo a favor
+
+    /**
+     * `Usar saldo a favor`: pasa a un pago a crédito lo que queda del saldo a favor del cliente,
+     * hasta lo que se cobra. Primero cubre lo que falta; después achica los demás pagos, del último al
+     * primero, y quita los que quedan en cero. Si ya hay un pago a crédito, le suma; si no, agrega uno
+     * sin vencimiento. El total no cambia: solo cambia con qué se paga.
+     */
+    private fun useCreditBalance() {
+        val catalog = readyCatalog() ?: return
+        val current = sale ?: return
+        val written = editing.value
+        val customer = customers.value.firstOrNull { it.id == written.customerId } ?: return
+        val method = catalog.creditMethods.firstOrNull() ?: return
+        val preview = previewOf(catalog, current, written)
+        val credit = catalog.creditMethods.map { it.id }.toSet()
+        val remaining = creditRemaining(customer, written, preview, credit) ?: return
+        val missing = (preview.balance as? CheckoutBalance.Missing)?.amount ?: Money.ZERO
+        val others = written.payments.filter { it.methodId !in credit }.map { it.amount }.sum()
+        val use = minOf(remaining, missing + others)
+        if (use <= Money.ZERO) return
+        var fromOthers = use - minOf(use, missing)
+        val reduced = written.payments.asReversed().mapNotNull { row ->
+            if (row.methodId in credit || fromOthers == Money.ZERO) return@mapNotNull row
+            val take = minOf(row.amount, fromOthers)
+            fromOthers -= take
+            val left = row.amount - take
+            // Un pago que el saldo a favor cubrió entero sale: no queda un pago en cero.
+            if (take > Money.ZERO && left == Money.ZERO) {
+                null
+            } else {
+                row.copy(amount = left, amountText = moneyText(left), amountError = null)
+            }
+        }.asReversed()
+        val existing = reduced.indexOfFirst { it.methodId in credit }
+        val payments = if (existing >= 0) {
+            reduced.mapIndexed { index, row ->
+                if (index != existing) return@mapIndexed row
+                val amount = row.amount + use
+                row.copy(amount = amount, amountText = moneyText(amount), amountError = null)
+            }
+        } else {
+            reduced + Written(method.id, use, moneyText(use))
+        }
+        change {
+            it.copy(
+                payments = payments,
+                active = payments.indexOfFirst { row -> row.methodId in credit },
+            )
+        }
+        clearBalanceError()
+    }
+
+    /**
+     * Lo que queda del saldo a favor de [customer] tras los pagos a crédito ya escritos, o `null` si
+     * no queda nada. Un pago a crédito lo consume por lo que cubre, con el recargo de su método.
+     */
+    private fun creditRemaining(
+        customer: Customer,
+        written: Editing,
+        preview: CheckoutPreview,
+        credit: Set<Long>,
+    ): Money? {
+        if (customer.balance >= Money.ZERO) return null
+        val charged = written.payments.mapIndexedNotNull { index, row ->
+            if (row.methodId !in credit) return@mapIndexedNotNull null
+            preview.payments.getOrNull(index)?.amount ?: row.amount
+        }.sumOrNull() ?: return null
+        val remaining = runCatching { -customer.balance - charged }.getOrNull() ?: return null
+        return remaining.takeIf { it > Money.ZERO }
+    }
+
+    /**
+     * La sección `Saldo a favor`, solo con un cliente con saldo negativo y un método a crédito: lo
+     * que queda por usar y si `Usar saldo a favor` tiene algo que hacer.
+     */
+    private fun creditBalanceOf(
+        catalog: SaleCatalog,
+        written: Editing,
+        choices: List<Customer>,
+        preview: CheckoutPreview,
+    ): CheckoutCreditBalance? {
+        val customer = choices.firstOrNull { it.id == written.customerId } ?: return null
+        if (customer.balance >= Money.ZERO || catalog.creditMethods.isEmpty()) return null
+        val credit = catalog.creditMethods.map { it.id }.toSet()
+        val remaining = creditRemaining(customer, written, preview, credit)
+        val missing = (preview.balance as? CheckoutBalance.Missing)?.amount ?: Money.ZERO
+        val payable = written.payments.any { it.methodId !in credit && it.amount > Money.ZERO }
+        return CheckoutCreditBalance(
+            available = remaining ?: Money.ZERO,
+            canUse = remaining != null && (missing > Money.ZERO || payable),
         )
     }
 
@@ -796,7 +918,10 @@ class CheckoutViewModel(
                 heldSaleId = current.heldSaleId,
                 tipAmount = tipOf(catalog, written),
                 customerId = customerId,
-                creditDueDate = written.creditDue.takeIf { credit },
+                // Lo que el saldo a favor cubre entero no deja deuda, y sin deuda nada vence.
+                creditDueDate = written.creditDue.takeIf {
+                    credit && owesAfter(catalog, written, preview) != false
+                },
                 pointsRedeemed = redeemed,
             )
             when (val result = registerSale(request)) {
@@ -860,6 +985,7 @@ class CheckoutViewModel(
         written: Editing,
         shown: Overlay,
         choices: List<Customer>,
+        lately: List<Customer>,
     ): CheckoutUiState {
         val current = sale ?: return CheckoutUiState(content = CheckoutContent.Unavailable)
         val catalog = when (load) {
@@ -960,7 +1086,25 @@ class CheckoutViewModel(
             customerRemoved = shown.customerRemoved,
             credit = creditOf(catalog, current, written, shown, choices, preview),
             points = pointsOf(catalog, written, choices),
+            customerRecents = recentOf(shown, choices, lately),
+            creditBalance = creditBalanceOf(catalog, written, choices, preview),
         )
+    }
+
+    /**
+     * `Recientes` de la lista de clientes, solo con la lista abierta y sin búsqueda. Cada uno sale de
+     * [choices], con su saldo al día, y uno que dejó de poder elegirse no aparece.
+     */
+    private fun recentOf(
+        shown: Overlay,
+        choices: List<Customer>,
+        lately: List<Customer>,
+    ): List<Customer> {
+        if (shown.sheet != CheckoutSheet.Customers || shown.customerQuery.isNotBlank()) {
+            return emptyList()
+        }
+        val byId = choices.associateBy { it.id }
+        return lately.mapNotNull { byId[it.id] }
     }
 
     /** El cliente elegido, si sigue entre los que se pueden elegir, o si falta uno a crédito. */
@@ -996,22 +1140,42 @@ class CheckoutViewModel(
         preview: CheckoutPreview,
     ): CheckoutCredit? {
         if (!hasCredit(catalog, written)) return null
-        val credit = catalog.creditMethods.map { it.id }.toSet()
-        val onAccount = written.payments.mapIndexedNotNull { index, row ->
-            preview.payments.getOrNull(index)?.amount?.takeIf { row.methodId in credit }
-        }
-        val customer = choices.firstOrNull { it.id == written.customerId }
-        val after = customer?.let {
-            runCatching { onAccount.fold(it.balance) { sum, amount -> sum + amount } }.getOrNull()
-        }
+        val after = balanceAfter(catalog, written, preview, choices)
         return CheckoutCredit(
             due = written.creditDue,
             dueError = shown.dueError,
             balanceAfter = after,
             saleDate = current.date ?: catalog.today,
             weekStartDay = catalog.weekStartDay,
+            owes = after == null || after > Money.ZERO,
         )
     }
+
+    /** El saldo que le queda al cliente elegido tras los pagos a crédito, o `null` sin cliente. */
+    private fun balanceAfter(
+        catalog: SaleCatalog,
+        written: Editing,
+        preview: CheckoutPreview,
+        choices: List<Customer>,
+    ): Money? {
+        val credit = catalog.creditMethods.map { it.id }.toSet()
+        val onAccount = written.payments.mapIndexedNotNull { index, row ->
+            preview.payments.getOrNull(index)?.amount?.takeIf { row.methodId in credit }
+        }
+        val customer = choices.firstOrNull { it.id == written.customerId } ?: return null
+        return runCatching { onAccount.fold(customer.balance) { sum, amount -> sum + amount } }
+            .getOrNull()
+    }
+
+    /**
+     * Si la venta deja deuda al cliente: `false` si el saldo a favor cubre todo lo que va a crédito,
+     * y `null` si no se sabe, sin cliente a la vista.
+     */
+    private fun owesAfter(
+        catalog: SaleCatalog,
+        written: Editing,
+        preview: CheckoutPreview,
+    ): Boolean? = balanceAfter(catalog, written, preview, customers.value)?.let { it > Money.ZERO }
 
     /** Las cuentas del cobro con lo escrito, las mismas que hará la venta al confirmarse. */
     private fun previewOf(

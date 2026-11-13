@@ -105,6 +105,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                 computation = container.dispatchers.default,
                 customersSource = { ports.customers.observeSelectable() },
                 createCustomer = { form, allowSameName -> createCustomer(form, allowSameName) },
+                recentCustomersSource = { ports.customers.observeRecent(RECENT_CUSTOMERS) },
             )
         }
     when (model) {
@@ -154,6 +155,14 @@ fun CheckoutRoute(navigator: AppNavigator) {
             LaunchedEffect(uiState.content) {
                 if (uiState.content == CheckoutContent.Unavailable) navigator.back()
             }
+            // El cliente elegido en la pantalla de clientes llega al volver, una sola vez.
+            val picked by navigator.customerPick.toPick.collectAsStateWithLifecycle()
+            LaunchedEffect(picked) {
+                if (picked == null) return@LaunchedEffect
+                navigator.customerPick.take()?.let {
+                    viewModel.onAction(CheckoutAction.PickCustomer(it))
+                }
+            }
             val qr = uiState.qr
             // La imagen de cobro abierta desde un pago se cierra con atrás; abierta desde la venta,
             // atrás vuelve a la venta, como `Volver`.
@@ -167,6 +176,9 @@ fun CheckoutRoute(navigator: AppNavigator) {
                         navigator.back()
                     } else {
                         viewModel.onAction(action)
+                    }
+                    if (action == CheckoutAction.ViewAllCustomers) {
+                        navigator.open(AppNavKey.Customers(pickForSale = true))
                     }
                 },
                 onBack = { navigator.back() },
@@ -183,3 +195,6 @@ fun CheckoutRoute(navigator: AppNavigator) {
         }
     }
 }
+
+/** Cuántos clientes muestra `Recientes`: pocos, para que la lista completa siga a la vista. */
+private const val RECENT_CUSTOMERS = 3

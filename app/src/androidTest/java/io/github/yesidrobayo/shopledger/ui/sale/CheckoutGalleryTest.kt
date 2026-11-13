@@ -66,6 +66,7 @@ class CheckoutGalleryTest {
         val discreet: Boolean = false,
         val qrOnly: Boolean = false,
         val actions: List<CheckoutAction> = emptyList(),
+        val recent: List<Customer> = emptyList(),
     )
 
     @Test
@@ -133,12 +134,14 @@ class CheckoutGalleryTest {
                 offered = { CheckoutHandoff.Offered(draft, scene.qrOnly) },
                 computation = Dispatchers.Default,
                 customersSource = { flowOf(scene.customers) },
+                recentCustomersSource = { flowOf(scene.recent) },
             )
         }
         return model
     }
 
     private fun scenes(): List<Scene> {
+        val credit = checkoutCatalog().copy(creditMethods = listOf(saleMethod(9L, "ON_ACCOUNT")))
         val split = listOf(
             CheckoutAction.AmountChange(0, "15000"),
             CheckoutAction.AddPayment(2L),
@@ -211,6 +214,41 @@ class CheckoutGalleryTest {
                     CheckoutAction.RedeemPoints,
                 ),
             ),
+            // Un cliente con 20.000 a favor en una venta de 38.410: lo disponible y, ya usado, el
+            // pago a crédito que lo consume junto al efectivo que queda.
+            Scene(
+                "credit",
+                catalog = credit,
+                customers = listOf(PREPAID),
+                scrolled = true,
+                actions = listOf(CheckoutAction.PickCustomer(PREPAID.id)),
+            ),
+            Scene(
+                "creditused",
+                catalog = credit,
+                customers = listOf(PREPAID),
+                scrolled = true,
+                actions = listOf(
+                    CheckoutAction.PickCustomer(PREPAID.id),
+                    CheckoutAction.UseCreditBalance,
+                ),
+            ),
+            Scene(
+                "creditdiscreet",
+                catalog = credit,
+                customers = listOf(PREPAID),
+                scrolled = true,
+                discreet = true,
+                actions = listOf(CheckoutAction.PickCustomer(PREPAID.id)),
+            ),
+            // La lista de clientes sin búsqueda: `Recientes`, la lista completa y `Ver clientes`.
+            Scene(
+                "recent",
+                catalog = credit,
+                customers = listOf(MEMBER, PREPAID),
+                recent = listOf(PREPAID),
+                actions = listOf(CheckoutAction.OpenCustomers),
+            ),
             Scene(
                 "failed",
                 result = RegisterSaleResult.StorageFailed(StorageFailure.DISK_FULL),
@@ -236,6 +274,23 @@ class CheckoutGalleryTest {
             priceListId = null,
             balance = Money.ZERO,
             pointsBalance = 150L,
+            anonymizedAt = null,
+            archivedAt = null,
+            createdAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
+            updatedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
+        )
+        val PREPAID = Customer(
+            id = 42L,
+            contact = CustomerContact(
+                "Cliente con anticipo",
+                "cliente con anticipo",
+                null,
+                null,
+                null,
+            ),
+            priceListId = null,
+            balance = Money(-20_000L),
+            pointsBalance = 0L,
             anonymizedAt = null,
             archivedAt = null,
             createdAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),

@@ -48,6 +48,8 @@
         <item quantity="other">%1$s points</item>
     </plurals>
     <string name="customer_picker_title">Choose customer</string>
+    <string name="customer_picker_recent">Recent</string>
+    <string name="customer_picker_all">All customers</string>
     <string name="customer_picker_none">No customer</string>
     <string name="a11y_remove_customer">Remove customer</string>
 </resources>
