@@ -233,6 +233,10 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object Locations : AppNavKey
 
+    /** El formulario de una transferencia de stock, desde [fromLocationId] si se sabe. */
+    @Serializable
+    data class NewStockTransfer(val fromLocationId: Long? = null) : AppNavKey
+
     @Serializable
     data class StockCount(val sessionId: Long? = null) : AppNavKey
 

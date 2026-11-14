@@ -5,4 +5,53 @@
     <string name="location_manage_action">Manage locations</string>
     <string name="a11y_location_switcher">Location: %1$s. Change</string>
     <string name="product_stock_by_location">Stock by location</string>
+    <!-- Pantalla de ubicaciones y transferencias. -->
+    <string name="location_tab_locations">Locations</string>
+    <string name="location_tab_transfers">Transfers</string>
+    <string name="location_new_action">New location</string>
+    <string name="location_new_transfer_action">New transfer</string>
+    <string name="location_name_label">Name</string>
+    <string name="location_kind_label">Type</string>
+    <string name="location_kind_store">Store</string>
+    <string name="location_kind_warehouse">Warehouse</string>
+    <string name="location_kind_stall">Stall</string>
+    <string name="location_kind_other">Other</string>
+    <string name="location_save_action">Save location</string>
+    <string name="location_transfer_from">From</string>
+    <string name="location_transfer_to">To</string>
+    <string name="location_transfer_add_product_action">Add product</string>
+    <string name="location_transfer_note_label">Note</string>
+    <string name="location_transfer_register_action">Record transfer</string>
+    <string name="location_transfer_row">%1$s to %2$s</string>
+    <string name="location_transfer_void_action">Void transfer</string>
+    <string name="location_transfer_void_confirm_title">Void this transfer?</string>
+    <string name="location_transfer_void_confirm_body">Stock goes back to the original location. The transfer stays in the history.</string>
+    <string name="location_empty_title">One place for now</string>
+    <string name="location_empty_body">With a second location, stock can be seen for each place</string>
+    <string name="location_transfer_empty_title">No transfers yet</string>
+    <string name="location_error_same">Choose another location</string>
+    <string name="location_warning_negative">%1$s would be left in %2$s</string>
+    <string name="location_error_no_lines">Add at least one product</string>
+    <string name="location_error_name_empty">Enter the location name</string>
+    <string name="location_error_name_repeated">A location with that name already exists</string>
+    <string name="location_error_archive_with_stock">It has stock. Transfer it to another location first</string>
+    <string name="location_archive_confirm_title">Archive %1$s?</string>
+    <string name="location_archive_confirm_body">It is no longer offered in sales, purchases and transfers. Its history is kept.</string>
+    <string name="location_archive_confirm_action">Archive location</string>
+    <string name="location_error_register">Could not record the transfer. What was entered is kept.</string>
+    <string name="location_saved">Location saved</string>
+    <string name="location_transfer_success">Transfer recorded</string>
+    <string name="location_transfer_voided">Transfer voided</string>
+    <string name="location_archived_group">Archived</string>
+    <string name="a11y_transfer_row">Transfer from %1$s to %2$s, %3$s</string>
+    <string name="hub_tool_locations">Locations and transfers</string>
+    <string name="hub_tool_locations_desc">Stock in more than one place</string>
+    <plurals name="location_products_with_stock">
+        <item quantity="one">%1$d product in stock</item>
+        <item quantity="other">%1$d products in stock</item>
+    </plurals>
+    <plurals name="location_transfer_products">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
 </resources>

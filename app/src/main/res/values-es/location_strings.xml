@@ -5,4 +5,55 @@
     <string name="location_manage_action">Administrar ubicaciones</string>
     <string name="a11y_location_switcher">Ubicación: %1$s. Cambiar</string>
     <string name="product_stock_by_location">Stock por ubicación</string>
+    <!-- Pantalla de ubicaciones y transferencias. -->
+    <string name="location_tab_locations">Ubicaciones</string>
+    <string name="location_tab_transfers">Transferencias</string>
+    <string name="location_new_action">Nueva ubicación</string>
+    <string name="location_new_transfer_action">Nueva transferencia</string>
+    <string name="location_name_label">Nombre</string>
+    <string name="location_kind_label">Tipo</string>
+    <string name="location_kind_store">Tienda</string>
+    <string name="location_kind_warehouse">Almacén</string>
+    <string name="location_kind_stall">Puesto</string>
+    <string name="location_kind_other">Otra</string>
+    <string name="location_save_action">Guardar ubicación</string>
+    <string name="location_transfer_from">Desde</string>
+    <string name="location_transfer_to">Hacia</string>
+    <string name="location_transfer_add_product_action">Agregar producto</string>
+    <string name="location_transfer_note_label">Nota</string>
+    <string name="location_transfer_register_action">Registrar transferencia</string>
+    <string name="location_transfer_row">%1$s a %2$s</string>
+    <string name="location_transfer_void_action">Anular transferencia</string>
+    <string name="location_transfer_void_confirm_title">¿Anular esta transferencia?</string>
+    <string name="location_transfer_void_confirm_body">El stock vuelve a la ubicación de origen. La transferencia queda en el historial.</string>
+    <string name="location_empty_title">Un solo lugar por ahora</string>
+    <string name="location_empty_body">Con una segunda ubicación se puede ver el stock de cada sitio</string>
+    <string name="location_transfer_empty_title">Sin transferencias todavía</string>
+    <string name="location_error_same">Elegir otra ubicación</string>
+    <string name="location_warning_negative">Quedarían %1$s en %2$s</string>
+    <string name="location_error_no_lines">Agregar al menos un producto</string>
+    <string name="location_error_name_empty">Escribir el nombre de la ubicación</string>
+    <string name="location_error_name_repeated">Ya hay una ubicación con ese nombre</string>
+    <string name="location_error_archive_with_stock">Tiene stock. Primero transferirlo a otra ubicación</string>
+    <string name="location_archive_confirm_title">¿Archivar %1$s?</string>
+    <string name="location_archive_confirm_body">Deja de ofrecerse en ventas, compras y transferencias. Su historial se conserva.</string>
+    <string name="location_archive_confirm_action">Archivar ubicación</string>
+    <string name="location_error_register">No se pudo registrar la transferencia. Lo escrito se conserva.</string>
+    <string name="location_saved">Ubicación guardada</string>
+    <string name="location_transfer_success">Transferencia registrada</string>
+    <string name="location_transfer_voided">Transferencia anulada</string>
+    <string name="location_archived_group">Archivadas</string>
+    <string name="a11y_transfer_row">Transferencia de %1$s a %2$s, %3$s</string>
+    <string name="hub_tool_locations">Ubicaciones y transferencias</string>
+    <string name="hub_tool_locations_desc">Stock en más de un lugar</string>
+    <plurals name="location_products_with_stock">
+        <item quantity="one">%1$d producto con stock</item>
+        <item quantity="many">%1$d de productos con stock</item>
+        <item quantity="other">%1$d productos con stock</item>
+    </plurals>
+    <plurals name="location_transfer_products">
+        <item quantity="one">%1$d producto</item>
+        <item quantity="many">%1$d de productos</item>
+        <item quantity="other">%1$d productos</item>
+    </plurals>
 </resources>

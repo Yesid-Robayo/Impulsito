@@ -113,6 +113,8 @@ fun InventoryRoute(
                         InventoryAction.OpenNotificationSettings ->
                             NotificationPermissionPrompt.openSettings(context)
 
+                        InventoryAction.ManageLocations -> navigator.open(AppNavKey.Locations)
+
                         is InventoryAction.ChipChanged, InventoryAction.Retry,
                         is InventoryAction.LocationChanged,
                         is InventoryAction.DismissReview, InventoryAction.MessageShown,

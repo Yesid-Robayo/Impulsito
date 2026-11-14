@@ -63,6 +63,8 @@ import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.label.LabelsRoute
 import io.github.yesidrobayo.shopledger.ui.localcopies.LocalCopiesRoute
+import io.github.yesidrobayo.shopledger.ui.location.LocationsRoute
+import io.github.yesidrobayo.shopledger.ui.location.NewTransferRoute
 import io.github.yesidrobayo.shopledger.ui.money.MoneyAccountsRoute
 import io.github.yesidrobayo.shopledger.ui.onboarding.OnboardingRoute
 import io.github.yesidrobayo.shopledger.ui.payable.PayableDetailRoute
@@ -373,6 +375,10 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.Scanner -> ScannerRoute(key, navigator)
 
         is AppNavKey.Labels -> LabelsRoute(key, navigator)
+
+        AppNavKey.Locations -> LocationsRoute(navigator)
+
+        is AppNavKey.NewStockTransfer -> NewTransferRoute(key, navigator)
 
         // Ajustes: solo configuración, en grupos.
         AppNavKey.Settings ->

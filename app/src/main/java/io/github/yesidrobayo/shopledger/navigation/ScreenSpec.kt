@@ -135,6 +135,8 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     AppNavKey.Locations -> detail(R.string.location_title, business)
 
+    is AppNavKey.NewStockTransfer -> detail(R.string.location_title, business)
+
     is AppNavKey.StockCount -> detail(R.string.count_title, business)
 
     AppNavKey.Production -> detail(R.string.production_title, business)

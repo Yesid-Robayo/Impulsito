@@ -140,6 +140,7 @@ class InventoryViewModel(
             InventoryAction.ReviewAll,
             InventoryAction.CreateProduct,
             InventoryAction.OpenNotificationSettings,
+            InventoryAction.ManageLocations,
             -> Unit
         }
     }

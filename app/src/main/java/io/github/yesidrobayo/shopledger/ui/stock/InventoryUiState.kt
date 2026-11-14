@@ -152,4 +152,7 @@ sealed interface InventoryAction {
     data object OpenNotificationSettings : InventoryAction
 
     data object Retry : InventoryAction
+
+    /** Abre la pantalla de ubicaciones desde el selector de ubicación. */
+    data object ManageLocations : InventoryAction
 }

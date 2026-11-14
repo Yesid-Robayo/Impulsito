@@ -5,4 +5,55 @@
     <string name="location_manage_action">Gerenciar locais</string>
     <string name="a11y_location_switcher">Local: %1$s. Trocar</string>
     <string name="product_stock_by_location">Estoque por local</string>
+    <!-- Pantalla de ubicaciones y transferencias. -->
+    <string name="location_tab_locations">Locais</string>
+    <string name="location_tab_transfers">Transferências</string>
+    <string name="location_new_action">Novo local</string>
+    <string name="location_new_transfer_action">Nova transferência</string>
+    <string name="location_name_label">Nome</string>
+    <string name="location_kind_label">Tipo</string>
+    <string name="location_kind_store">Loja</string>
+    <string name="location_kind_warehouse">Depósito</string>
+    <string name="location_kind_stall">Barraca</string>
+    <string name="location_kind_other">Outro</string>
+    <string name="location_save_action">Salvar local</string>
+    <string name="location_transfer_from">De</string>
+    <string name="location_transfer_to">Para</string>
+    <string name="location_transfer_add_product_action">Adicionar produto</string>
+    <string name="location_transfer_note_label">Nota</string>
+    <string name="location_transfer_register_action">Registrar transferência</string>
+    <string name="location_transfer_row">%1$s para %2$s</string>
+    <string name="location_transfer_void_action">Anular transferência</string>
+    <string name="location_transfer_void_confirm_title">Anular esta transferência?</string>
+    <string name="location_transfer_void_confirm_body">O estoque volta ao local de origem. A transferência fica no histórico.</string>
+    <string name="location_empty_title">Um só lugar por enquanto</string>
+    <string name="location_empty_body">Com um segundo local é possível ver o estoque de cada lugar</string>
+    <string name="location_transfer_empty_title">Sem transferências ainda</string>
+    <string name="location_error_same">Escolher outro local</string>
+    <string name="location_warning_negative">Restariam %1$s em %2$s</string>
+    <string name="location_error_no_lines">Adicionar pelo menos um produto</string>
+    <string name="location_error_name_empty">Escrever o nome do local</string>
+    <string name="location_error_name_repeated">Já existe um local com esse nome</string>
+    <string name="location_error_archive_with_stock">Tem estoque. Primeiro transferir para outro local</string>
+    <string name="location_archive_confirm_title">Arquivar %1$s?</string>
+    <string name="location_archive_confirm_body">Deixa de ser oferecido em vendas, compras e transferências. O histórico é mantido.</string>
+    <string name="location_archive_confirm_action">Arquivar local</string>
+    <string name="location_error_register">Não foi possível registrar a transferência. O que foi escrito foi mantido.</string>
+    <string name="location_saved">Local salvo</string>
+    <string name="location_transfer_success">Transferência registrada</string>
+    <string name="location_transfer_voided">Transferência anulada</string>
+    <string name="location_archived_group">Arquivados</string>
+    <string name="a11y_transfer_row">Transferência de %1$s para %2$s, %3$s</string>
+    <string name="hub_tool_locations">Locais e transferências</string>
+    <string name="hub_tool_locations_desc">Estoque em mais de um lugar</string>
+    <plurals name="location_products_with_stock">
+        <item quantity="one">%1$d produto com estoque</item>
+        <item quantity="many">%1$d de produtos com estoque</item>
+        <item quantity="other">%1$d produtos com estoque</item>
+    </plurals>
+    <plurals name="location_transfer_products">
+        <item quantity="one">%1$d produto</item>
+        <item quantity="many">%1$d de produtos</item>
+        <item quantity="other">%1$d produtos</item>
+    </plurals>
 </resources>

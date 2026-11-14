@@ -229,6 +229,7 @@ private fun InventoryList(
                     selectedId = uiState.locationId,
                     onSelect = { onAction(InventoryAction.LocationChanged(it)) },
                     allowAll = true,
+                    onManage = { onAction(InventoryAction.ManageLocations) },
                     modifier = Modifier.padding(horizontal = spacing.s16),
                 )
             }
