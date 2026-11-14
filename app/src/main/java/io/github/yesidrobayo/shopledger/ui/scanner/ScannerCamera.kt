@@ -28,7 +28,10 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.util.concurrent.Executors
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.withContext
 
 /**
  * La configuración de la cámara para todo el proceso: solo la trasera.
@@ -93,7 +96,13 @@ fun ScannerCamera(
         try {
             val cameraProvider = cameraProviderOrNull(context, viewModel) ?: return@LaunchedEffect
             provider = cameraProvider
-            when (val bound = bind(cameraProvider, lifecycleOwner, preview, analysis)) {
+            // La cámara solo se ata y se suelta en el hilo principal. Tras esperar la cámara del
+            // proceso, la corrutina puede seguir en un hilo de la cámara: no se depende de eso.
+            val bound =
+                withContext(Dispatchers.Main.immediate) {
+                    bind(cameraProvider, lifecycleOwner, preview, analysis)
+                }
+            when (bound) {
                 is BindResult.Bound -> {
                     camera = bound.camera
                     viewModel.onCameraBound(bound.camera.cameraInfo.hasFlashUnit())
@@ -105,12 +114,16 @@ fun ScannerCamera(
                 is BindResult.Failed -> viewModel.onCameraFailed(bound.failure)
             }
         } finally {
-            camera = null
-            provider?.unbind(preview, analysis)
-            analysis.clearAnalyzer()
-            executor.shutdown()
-            surfaceRequest = null
-            viewModel.closeSession()
+            // Al salir la corrutina ya está cancelada: sin NonCancellable no podría volver al hilo
+            // principal para soltar la cámara.
+            withContext(NonCancellable + Dispatchers.Main.immediate) {
+                camera = null
+                provider?.unbind(preview, analysis)
+                analysis.clearAnalyzer()
+                executor.shutdown()
+                surfaceRequest = null
+                viewModel.closeSession()
+            }
         }
     }
 
