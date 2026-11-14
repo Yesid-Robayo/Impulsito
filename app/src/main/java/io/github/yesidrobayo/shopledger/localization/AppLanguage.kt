@@ -118,10 +118,11 @@ class AppLanguage(
      *
      * - **Android 8 a 12L.** Primero guarda el archivo, fuera del hilo principal, y solo si quedó
      *   guardado lo aplica: así el idioma en pantalla nunca es uno que se perdería al cerrar la app.
-     *   Las actividades abiertas se recrean en el idioma nuevo, sin perder su estado.
-     * - **Android 13 o superior.** Se lo pasa a Android, que lo guarda, lo aplica y recrea las
-     *   actividades, y después lo copia al archivo. Si el archivo no se pudo escribir, el idioma
-     *   igual cambió, porque Android manda, y el arranque siguiente vuelve a copiarlo.
+     *   Las actividades abiertas cambian al idioma nuevo sin recrearse ni perder su estado.
+     * - **Android 13 o superior.** Se lo pasa a Android, que lo guarda y lo aplica a las
+     *   actividades sin recrearlas, y después lo copia al archivo. Si el archivo no se pudo
+     *   escribir, el idioma igual cambió, porque Android manda, y el arranque siguiente vuelve a
+     *   copiarlo.
      *
      * Después corre `afterChoice`, que en la app vuelve a escribir los textos de fuera de ella, y
      * solo entonces devuelve.

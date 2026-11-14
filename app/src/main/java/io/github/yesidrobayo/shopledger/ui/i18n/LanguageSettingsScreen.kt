@@ -93,7 +93,9 @@ fun LanguageSettingsScreen(
             ?: stringResource(R.string.language_system)
     val notSaved = stringResource(R.string.language_error_save, selectedName)
     val retry = stringResource(R.string.action_retry)
-    LaunchedEffect(uiState.notice) {
+    // La actividad no se recrea al cambiar de idioma: si el aviso llega antes que los textos
+    // nuevos, vuelve a mostrarse con ellos, y nunca queda en el idioma de antes.
+    LaunchedEffect(uiState.notice, updated, notSaved, retry) {
         when (uiState.notice) {
             null -> Unit
 

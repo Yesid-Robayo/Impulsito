@@ -35,7 +35,8 @@ interface LocalePlatform {
     /**
      * Aplica el idioma a las actividades de este proceso, solo si no [systemManagesAppLanguage]. Va
      * en el hilo principal. Sin actividades vivas lo guarda en memoria, y la primera actividad lo
-     * toma al crearse, sin recrearse. Con actividades vivas, las recrea en el idioma nuevo.
+     * toma al crearse, sin recrearse. Con actividades vivas, les cambia el idioma: la actividad de
+     * la app lo recibe sin recrearse, porque declara que atiende ese cambio.
      */
     fun applyToActivities(language: UiLanguage)
 

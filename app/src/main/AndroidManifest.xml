@@ -35,8 +35,13 @@
 
         <!-- Único componente exportado y único intent-filter de este esqueleto. -->
         <!-- Arranca con la pantalla de inicio de la paleta predeterminada: antes de abrir la base no se sabe otra. -->
+        <!-- Cambiar de idioma no recrea la actividad: la misma pantalla vuelve a escribir sus
+             textos, sin el parpadeo de destruirla, abrir otra y esperar de nuevo los ajustes de
+             la base. Hacen falta los dos valores: sin el sentido de escritura, AppCompat la
+             recrea igual en Android 8 a 12. -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="locale|layoutDirection"
             android:exported="true"
             android:theme="@style/Theme.App.Starting.IndigoMustard"
             android:windowSoftInputMode="adjustResize">

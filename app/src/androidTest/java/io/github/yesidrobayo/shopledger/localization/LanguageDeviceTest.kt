@@ -3,6 +3,8 @@ package io.github.yesidrobayo.shopledger.localization
 import android.app.Activity
 import android.app.Application
 import android.app.LocaleManager
+import android.content.ComponentName
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.os.LocaleList
@@ -126,13 +128,14 @@ class LanguageDeviceTest {
                 // cambio de idioma ante la persona.
                 assertEquals(1, created.count)
 
-                // Con la actividad viva, elegir otro idioma sí la recrea, ya en ese idioma.
+                // Con la actividad viva, elegir otro idioma la deja en ese idioma sin recrearla:
+                // recrearla se veía como un parpadeo.
                 assertEquals(LanguageChoice.Applied, runBlocking { language.choose(chosen("pt")) })
                 instrumentation.waitForIdleSync()
                 scenario.onActivity { activity ->
                     assertEquals("Início", activity.getString(R.string.nav_home))
                 }
-                assertEquals(2, created.count)
+                assertEquals(1, created.count)
             }
         } finally {
             app.unregisterActivityLifecycleCallbacks(created)
@@ -187,6 +190,17 @@ class LanguageDeviceTest {
                 testDirectory
             }).read(),
         )
+    }
+
+    @Test
+    fun theMainScreenTakesALanguageChangeWithoutBeingRecreated() {
+        // Sin los dos valores, Android o AppCompat destruyen la pantalla y abren otra al elegir un
+        // idioma, y eso se veía como un parpadeo. Desde Android 13 el cambio llega de Android; la
+        // prueba de arriba cubre el camino de AppCompat en Android 8 a 12L.
+        val info =
+            app.packageManager.getActivityInfo(ComponentName(app, MainActivity::class.java), 0)
+        val language = ActivityInfo.CONFIG_LOCALE or ActivityInfo.CONFIG_LAYOUT_DIRECTION
+        assertEquals(language, info.configChanges and language)
     }
 
     @Test

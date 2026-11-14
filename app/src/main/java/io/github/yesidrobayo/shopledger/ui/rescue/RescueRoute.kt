@@ -178,7 +178,8 @@ fun RescueRoute(cause: RescueReason) {
 
 /**
  * `Idioma` en el rescate: solo el selector, sin el enlace a la configuración regional, que vive en
- * la base. El idioma se guarda fuera de ella, y elegir uno recrea la pantalla en el idioma nuevo.
+ * la base. El idioma se guarda fuera de ella, y elegir uno vuelve a escribir la pantalla en el
+ * idioma nuevo, sin recrearla.
  */
 @Composable
 private fun RescueLanguageSheet(onDismiss: () -> Unit) {

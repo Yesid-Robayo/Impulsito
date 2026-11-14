@@ -56,8 +56,8 @@ sealed interface LanguageSettingsAction {
  *
  * El idioma vive fuera de la base, así que esta pantalla no la lee ni la escribe: funciona también
  * cuando la base no abre, y elegir un idioma nunca toca el formato regional ni la moneda. Al
- * aplicarse, Android recrea la actividad; este ViewModel sigue vivo y trae el aviso a la pantalla
- * nueva.
+ * aplicarse, la actividad no se recrea: la misma pantalla vuelve a escribir sus textos en el
+ * idioma nuevo, y el aviso sale ya en ese idioma.
  *
  * @param language el idioma elegido, que cambia también desde los ajustes de Android.
  * @param choose guarda y aplica un idioma.
