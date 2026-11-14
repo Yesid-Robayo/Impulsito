@@ -192,28 +192,27 @@ class NewTransferViewModelTest {
     }
 
     @Test
-    fun `a rejected line is marked and a storage failure keeps everything`() =
-        runTest(dispatcher) {
-            result = RegisterStockTransferResult.LineRejected(
-                0,
-                StockTransferLineRejection.PRODUCT_ARCHIVED,
-            )
-            val model = model()
-            model.act(this, NewTransferAction.AddProduct(7L))
-            val key = model.state.lines.single().key
-            model.act(this, NewTransferAction.QuantityChange(key, "2"))
+    fun `a rejected line is marked and a failure keeps everything`() = runTest(dispatcher) {
+        result = RegisterStockTransferResult.LineRejected(
+            0,
+            StockTransferLineRejection.PRODUCT_ARCHIVED,
+        )
+        val model = model()
+        model.act(this, NewTransferAction.AddProduct(7L))
+        val key = model.state.lines.single().key
+        model.act(this, NewTransferAction.QuantityChange(key, "2"))
 
-            model.act(this, NewTransferAction.Register)
-            assertEquals(TransferLineError.UNAVAILABLE, model.state.lines.single().error)
+        model.act(this, NewTransferAction.Register)
+        assertEquals(TransferLineError.UNAVAILABLE, model.state.lines.single().error)
 
-            model.act(this, NewTransferAction.QuantityChange(key, "3"))
-            result = RegisterStockTransferResult.StorageFailed(StorageFailure.DISK_FULL)
-            model.act(this, NewTransferAction.Register)
+        model.act(this, NewTransferAction.QuantityChange(key, "3"))
+        result = RegisterStockTransferResult.StorageFailed(StorageFailure.DISK_FULL)
+        model.act(this, NewTransferAction.Register)
 
-            assertEquals(TransferNotice.SaveFailed(outOfSpace = true), model.state.notice)
-            assertEquals("3", model.state.lines.single().quantityText)
-            assertFalse(model.state.saving)
-        }
+        assertEquals(TransferNotice.SaveFailed(outOfSpace = true), model.state.notice)
+        assertEquals("3", model.state.lines.single().quantityText)
+        assertFalse(model.state.saving)
+    }
 
     @Test
     fun `an unknown zone asks to choose it`() = runTest(dispatcher) {
