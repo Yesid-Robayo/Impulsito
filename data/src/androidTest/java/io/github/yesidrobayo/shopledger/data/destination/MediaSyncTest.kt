@@ -37,9 +37,11 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * `media-sync` contra el servicio WebDAV falso en memoria: sube cada foto con su `.slmeta` a
- * `media/` y la verifica, una foto nunca aparece como copia, se detiene si en el servicio caben
- * menos de 3 copias, cede al respaldo, respeta la red medida y no hace nada con ranuras. Baja lo
+ * `media-sync` contra el servicio WebDAV falso en memoria: sube cada foto con su `.slmeta` a la
+ * subcarpeta de su prefijo en `media/` y la verifica, crea cada subcarpeta una sola vez, lista
+ * solo las que hacen falta y no lee nada fuera de su subcarpeta. Una foto nunca aparece como
+ * copia, se detiene si en el servicio caben menos de 3 copias, cede al respaldo, respeta la red
+ * medida y no hace nada con ranuras. Baja lo
  * que falta tras restaurar, con tope y comprobado, cifra cada foto con el cifrado activo y nunca la
  * sube en claro, la reemplaza al cambiar de código o apagarlo y borra lo que la limpieza borró.
  *
@@ -75,8 +77,8 @@ class MediaSyncTest {
         assertEquals(MediaSyncRun.DONE, sync(photos).run(TransferControl.Unbounded))
 
         for (photo in photos) {
-            assertTrue(dav.files.containsKey("/dav/app/media/${photo.sha256}.webp"))
-            val meta = dav.files.getValue("/dav/app/media/${photo.sha256}.webp.slmeta")
+            assertTrue(dav.files.containsKey(remote("${photo.sha256}.webp")))
+            val meta = dav.files.getValue(remote("${photo.sha256}.webp.slmeta"))
             val text = meta.decodeToString()
             assertTrue(text, text.contains("\"sl_kind\":\"media\""))
             assertTrue(text, text.contains("\"sl_media_sha256\":\"${photo.sha256}\""))
@@ -227,7 +229,7 @@ class MediaSyncTest {
         val changed = photo(1)
         val notImage = photo(2)
         sync(listOf(changed, notImage)).run(TransferControl.Unbounded)
-        dav.files["/dav/app/media/${changed.sha256}.webp"] = ByteArray(50)
+        dav.files[remote("${changed.sha256}.webp")] = ByteArray(50)
         localFile(changed).delete()
         localFile(notImage).delete()
 
@@ -243,7 +245,7 @@ class MediaSyncTest {
     fun aDownloadIsCappedAtTwoMebibytes() = runBlocking {
         val photo = photo(1)
         sync(listOf(photo)).run(TransferControl.Unbounded)
-        dav.files["/dav/app/media/${photo.sha256}.webp"] = ByteArray(2 * 1024 * 1024 + 1)
+        dav.files[remote("${photo.sha256}.webp")] = ByteArray(2 * 1024 * 1024 + 1)
         localFile(photo).delete()
 
         sync(listOf(photo)).run(TransferControl.Unbounded)
@@ -260,10 +262,10 @@ class MediaSyncTest {
 
         val key = BackupKey.from(CODE)
         for (photo in photos) {
-            val sealed = dav.files.getValue("/dav/app/media/${photo.sha256}.slmd")
+            val sealed = dav.files.getValue(remote("${photo.sha256}.slmd"))
             assertTrue(sealed.copyOfRange(0, 4).contentEquals(byteArrayOf(0x53, 0x4C, 0x42, 0x4B)))
             assertFalse(sealed.contentEquals(localFile(photo).readBytes()))
-            val meta = dav.files.getValue("/dav/app/media/${photo.sha256}.slmd.slmeta")
+            val meta = dav.files.getValue(remote("${photo.sha256}.slmd.slmeta"))
             assertTrue(meta.decodeToString().contains("\"sl_key_id\":\"${key.keyIdHex}\""))
         }
         assertFalse(server.requests.any { it.method == "PUT" && ".webp" in it.path })
@@ -291,12 +293,12 @@ class MediaSyncTest {
             .run(TransferControl.Unbounded)
 
         val after = server.requests.drop(before).map { it.method to it.path }
-        val verified = after.indexOfLast { it == "GET" to "/dav/app/media/${photo.sha256}.slmd" }
-        val deleted = after.indexOf("DELETE" to "/dav/app/media/${photo.sha256}.webp")
+        val verified = after.indexOfLast { it == "GET" to remote("${photo.sha256}.slmd") }
+        val deleted = after.indexOf("DELETE" to remote("${photo.sha256}.webp"))
         assertTrue(after.toString(), verified in 0 until deleted)
-        assertFalse(dav.files.containsKey("/dav/app/media/${photo.sha256}.webp"))
-        assertFalse(dav.files.containsKey("/dav/app/media/${photo.sha256}.webp.slmeta"))
-        assertTrue(dav.files.containsKey("/dav/app/media/${photo.sha256}.slmd"))
+        assertFalse(dav.files.containsKey(remote("${photo.sha256}.webp")))
+        assertFalse(dav.files.containsKey(remote("${photo.sha256}.webp.slmeta")))
+        assertTrue(dav.files.containsKey(remote("${photo.sha256}.slmd")))
     }
 
     @Test
@@ -309,10 +311,10 @@ class MediaSyncTest {
             .run(TransferControl.Unbounded)
 
         val key = BackupKey.from(OTHER_CODE)
-        val sealed = dav.files.getValue("/dav/app/media/${photo.sha256}.slmd")
+        val sealed = dav.files.getValue(remote("${photo.sha256}.slmd"))
         val read = EncryptedCopy.read(sealed.inputStream(), key, sink = null)
         assertTrue(read.toString(), read is EncryptedReadResult.Read)
-        val meta = dav.files.getValue("/dav/app/media/${photo.sha256}.slmd.slmeta")
+        val meta = dav.files.getValue(remote("${photo.sha256}.slmd.slmeta"))
         assertTrue(meta.decodeToString().contains("\"sl_key_id\":\"${key.keyIdHex}\""))
         assertFalse(dav.files.keys.any { it.endsWith(".sltmp") })
         assertEquals(mapOf(photo.sha256 to MediaForm.Sealed(key.keyIdHex)), store().verifiedForms())
@@ -326,9 +328,9 @@ class MediaSyncTest {
 
         sync(listOf(photo)).run(TransferControl.Unbounded)
 
-        assertTrue(dav.files.containsKey("/dav/app/media/${photo.sha256}.webp"))
-        assertFalse(dav.files.containsKey("/dav/app/media/${photo.sha256}.slmd"))
-        assertFalse(dav.files.containsKey("/dav/app/media/${photo.sha256}.slmd.slmeta"))
+        assertTrue(dav.files.containsKey(remote("${photo.sha256}.webp")))
+        assertFalse(dav.files.containsKey(remote("${photo.sha256}.slmd")))
+        assertFalse(dav.files.containsKey(remote("${photo.sha256}.slmd.slmeta")))
         assertEquals(mapOf(photo.sha256 to MediaForm.Plain), store().verifiedForms())
     }
 
@@ -376,11 +378,93 @@ class MediaSyncTest {
 
         sync(listOf(back)).run(TransferControl.Unbounded)
 
-        assertFalse(dav.files.containsKey("/dav/app/media/${gone.sha256}.webp"))
-        assertFalse(dav.files.containsKey("/dav/app/media/${gone.sha256}.webp.slmeta"))
-        assertTrue(dav.files.containsKey("/dav/app/media/${back.sha256}.webp"))
+        assertFalse(dav.files.containsKey(remote("${gone.sha256}.webp")))
+        assertFalse(dav.files.containsKey(remote("${gone.sha256}.webp.slmeta")))
+        assertTrue(dav.files.containsKey(remote("${back.sha256}.webp")))
         assertEquals(emptySet<String>(), store().deletions())
         assertEquals(setOf(back.sha256), store().verified())
+    }
+
+    @Test
+    fun eachPhotoGoesToTheSubfolderOfItsPrefixAndEachSubfolderIsCreatedOnce() = runBlocking {
+        val (a, b, c) = seedsInOneShard(3)
+        val photos = listOf(photo(a), photo(b), photo(SEED_ELSEWHERE))
+
+        sync(photos).run(TransferControl.Unbounded)
+
+        for (photo in photos) {
+            assertTrue(dav.files.containsKey(remote("${photo.sha256}.webp")))
+            assertTrue(dav.files.containsKey(remote("${photo.sha256}.webp.slmeta")))
+        }
+        // Nada queda suelto en media/: cada archivo va en su subcarpeta.
+        assertFalse(dav.files.keys.any { it.substringBeforeLast('/') == "/dav/app/media" })
+        val made = mkcols()
+        assertEquals(made.toString(), made.toSet().size, made.size)
+        assertEquals(
+            photos.map { "/dav/app/media/${it.sha256.take(2)}/" }.toSet(),
+            made.filter { it != "/dav/app/media/" }.toSet(),
+        )
+
+        // Una foto nueva en una subcarpeta que ya existe no la crea otra vez: la lista la encontró.
+        val third = photo(c)
+        sync(photos + third).run(TransferControl.Unbounded)
+
+        assertEquals(made, mkcols())
+        assertTrue(dav.files.containsKey(remote("${third.sha256}.webp")))
+    }
+
+    @Test
+    fun onlyTheSubfolderOfAPhotoToFetchIsListedAndItIsRestoredFromThere() = runBlocking {
+        val photos = (1..4).map(::photo)
+        sync(photos).run(TransferControl.Unbounded)
+
+        // Todo verificado: ninguna subcarpeta se lista.
+        val idle = server.requests.size
+        sync(photos).run(TransferControl.Unbounded)
+        assertEquals(emptyList<String>(), shardListings(idle))
+
+        val gone = photos.first()
+        val bytes = localFile(gone).readBytes()
+        localFile(gone).delete()
+        val mark = server.requests.size
+        sync(photos).run(TransferControl.Unbounded)
+
+        val shard = "/dav/app/media/${gone.sha256.take(2)}/"
+        assertEquals(listOf(shard), shardListings(mark))
+        assertTrue(bytes.contentEquals(localFile(gone).readBytes()))
+        assertTrue(
+            server.requests.drop(mark).any {
+                it.method == "GET" && it.path == remote("${gone.sha256}.webp")
+            },
+        )
+    }
+
+    @Test
+    fun aPhotoOutsideItsSubfolderOrWithAnotherNameIsNeverRead() = runBlocking {
+        val photo = photo(1)
+        val bytes = localFile(photo).readBytes()
+        sync(listOf(photo)).run(TransferControl.Unbounded)
+        val name = "${photo.sha256}.webp"
+        val meta = dav.files.getValue(remote("$name.slmeta"))
+        dav.files.remove(remote(name))
+        dav.files.remove(remote("$name.slmeta"))
+        // Plana en media/, como antes de las subcarpetas; en otra subcarpeta; y en la suya, pero
+        // con mayúsculas, que la app nunca escribe.
+        val other = if (photo.sha256.startsWith("00")) "ff" else "00"
+        dav.collections += "/dav/app/media/$other/"
+        val upper = "/dav/app/media/${photo.sha256.take(2)}/${photo.sha256.uppercase()}.webp"
+        for (path in listOf("/dav/app/media/$name", "/dav/app/media/$other/$name", upper)) {
+            dav.files[path] = bytes
+            dav.files["$path.slmeta"] = meta
+        }
+        localFile(photo).delete()
+        val mark = server.requests.size
+
+        sync(listOf(photo)).run(TransferControl.Unbounded)
+
+        assertFalse(localFile(photo).exists())
+        assertEquals(setOf(photo.sha256), store().unavailable())
+        assertFalse(server.requests.drop(mark).any { it.method == "GET" })
     }
 
     @Test
@@ -424,6 +508,30 @@ class MediaSyncTest {
 
     private fun puts() = server.requests.count { it.method == "PUT" }
 
+    private fun mkcols() = server.requests.filter { it.method == "MKCOL" }.map { it.path }
+
+    /** Los `PROPFIND` de subcarpetas de `media/` desde la petición [from]. */
+    private fun shardListings(from: Int) =
+        server.requests.drop(from)
+            .filter { it.method == "PROPFIND" && it.path.startsWith("/dav/app/media/") }
+            .map { it.path }
+            .filter { it != "/dav/app/media/" }
+
+    /** Dónde vive [name] en el servicio: en la subcarpeta de los dos primeros caracteres. */
+    private fun remote(name: String) = "/dav/app/media/${name.take(2)}/$name"
+
+    /** [count] semillas de [photo] cuyas sumas comparten subcarpeta. */
+    private fun seedsInOneShard(count: Int): List<Int> {
+        val byShard = HashMap<String, MutableList<Int>>()
+        for (seed in 1..100_000) {
+            val shard = sha256(Random(seed).nextBytes(4_000 + seed)).take(2)
+            val seeds = byShard.getOrPut(shard) { mutableListOf() }
+            seeds += seed
+            if (seeds.size == count) return seeds
+        }
+        error("Sin semillas que compartan subcarpeta")
+    }
+
     /** Una foto inventada en la carpeta local, nombrada por su suma. */
     private fun photo(seed: Int): StoredImage {
         val bytes = Random(seed).nextBytes(4_000 + seed)
@@ -466,6 +574,9 @@ class MediaSyncTest {
 
     private companion object {
         const val DEVICE = "00000000-0000-4000-8000-000000000001"
+
+        /** Una semilla grande, para que su foto no coincida con las de las primeras semillas. */
+        const val SEED_ELSEWHERE = 200_001
         val CODE = RecoveryCode("0123456789ABCDEFGHJKMNPQRS")
         val OTHER_CODE = RecoveryCode("SRQPNMKJHGFEDCBA9876543210")
     }

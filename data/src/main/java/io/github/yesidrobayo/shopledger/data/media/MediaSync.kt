@@ -37,6 +37,9 @@ import kotlinx.coroutines.sync.Mutex
  *
  * Reglas:
  *
+ * - **Una subcarpeta por prefijo.** Cada foto vive en `media/ab/`, por los dos primeros caracteres
+ *   de su suma. Solo se lista la subcarpeta de una foto que hay que borrar, bajar o subir, una vez
+ *   por ejecución y con el cerrojo de esa foto: nunca las 256 por recorrerlas.
  * - **Solo con WebDAV.** Con ranuras las fotos no salen del teléfono.
  * - **Cede siempre a la copia de la base.** Toma el cerrojo del respaldo para cada foto, sin
  *   esperarlo, y lo suelta entre una y otra: una copia que llega espera a lo sumo una foto, de
@@ -129,6 +132,7 @@ internal class MediaSync(
                 LogField.count("subidas", tally.uploaded.toLong()),
                 LogField.count("bajadas", tally.downloaded.toLong()),
                 LogField.count("no disponibles", tally.unavailable.toLong()),
+                LogField.count("subcarpetas listadas", session.shards.size.toLong()),
             )
         }
     }
@@ -167,11 +171,11 @@ internal class MediaSync(
                 )
             }
         val media =
-            when (val listed = opened.media.list(control)) {
-                is DestinationResult.Success -> listed.value
+            when (val prepared = opened.media.openFolder(control)) {
+                is DestinationResult.Success -> prepared.value
 
                 is DestinationResult.Failure -> return Start.Finished(
-                    finish(listed.failure, states),
+                    finish(prepared.failure, states),
                 )
             }
         val copyBytes = copies.copies.maxOfOrNull { it.sizeBytes }
@@ -183,11 +187,34 @@ internal class MediaSync(
             states.setStop(MediaSyncStop.SERVICE_SPACE)
             log.warn(MediaSyncEvent.SERVICE_SPACE)
         }
-        val verified =
-            states.verifiedForms()
-                ?: media.plainSums().associateWith<String, MediaForm> { MediaForm.Plain }
-                    .also { states.saveVerifiedForms(it) }
-        return Start.Go(Session(opened.media, media, verified.toMutableMap(), uploadsAllowed))
+        // Sin el estado local, cada subcarpeta que se liste lo reconstruye con lo que trae.
+        val stored = states.verifiedForms()
+        val verified = stored?.toMutableMap() ?: mutableMapOf()
+        val session = Session(opened.media, verified, uploadsAllowed, rebuilding = stored == null)
+        return Start.Go(session)
+    }
+
+    /**
+     * La lista de la subcarpeta de [sha], pedida una sola vez por ejecución. Al reconstruir el
+     * estado local, las fotos en claro que trae, con su `.slmeta`, cuentan como verificadas.
+     */
+    private suspend fun listingOf(
+        session: Session,
+        sha: String,
+        control: TransferControl,
+    ): DestinationResult<MediaListing> {
+        val shard = MediaNames.shardOf(sha)
+        session.shards[shard]?.let { return DestinationResult.Success(it) }
+        val listed = session.channel.list(shard, control)
+        if (listed is DestinationResult.Success) {
+            session.shards[shard] = listed.value
+            if (session.rebuilding) {
+                for (sum in listed.value.plainSums()) {
+                    session.verified.getOrPut(sum) { MediaForm.Plain }
+                }
+            }
+        }
+        return listed
     }
 
     /** Paso 1: borra del servicio lo que la limpieza borró del teléfono. */
@@ -202,8 +229,7 @@ internal class MediaSync(
         if (pending != states.deletions()) states.saveDeletions(pending)
         for (sha in deletions) {
             if (control.isStopped()) return MediaSyncRun.RETRY
-            val names = session.listing.namesOf(sha) + temporaries(session, sha)
-            val removal = locked { Removal(removeAll(session, names)) } ?: return MediaSyncRun.DONE
+            val removal = locked { remove(session, sha, control) } ?: return MediaSyncRun.DONE
             removal.failure?.let { return finish(it, states) }
             pending -= sha
             session.verified -= sha
@@ -213,18 +239,33 @@ internal class MediaSync(
         return null
     }
 
+    /** Borra del servicio la foto [sha] en cualquier forma, con su `.slmeta` y sus temporales. */
+    private suspend fun remove(session: Session, sha: String, control: TransferControl): Removal {
+        val listing =
+            when (val listed = listingOf(session, sha, control)) {
+                is DestinationResult.Success -> listed.value
+                is DestinationResult.Failure -> return Removal(listed.failure)
+            }
+        val names = listing.namesOf(sha) + temporaries(listing, sha)
+        return Removal(removeAll(session.channel, listing, names))
+    }
+
     /** Los temporales de [sha] que quedaron de una subida cortada. */
-    private fun temporaries(session: Session, sha: String): List<String> =
+    private fun temporaries(listing: MediaListing, sha: String): List<String> =
         listOf(MediaNames.photo(sha), MediaNames.sealed(sha))
             .map(MediaNames::temporaryOf)
-            .filter { it in session.listing.files }
+            .filter { it in listing.files }
 
     /** Borra cada archivo de [names] con su `.slmeta`. Devuelve la falla, o `null`. */
-    private suspend fun removeAll(session: Session, names: List<String>): DestinationFailure? {
+    private suspend fun removeAll(
+        channel: MediaChannel,
+        listing: MediaListing,
+        names: List<String>,
+    ): DestinationFailure? {
         for (name in names) {
             for (target in listOf(name, MediaNames.metaOf(name))) {
-                if (target !in session.listing.files) continue
-                val deleted = session.channel.delete(target, TransferControl.Unbounded)
+                if (target !in listing.files) continue
+                val deleted = channel.delete(target, TransferControl.Unbounded)
                 if (deleted is DestinationResult.Failure) return deleted.failure
             }
         }
@@ -287,8 +328,13 @@ internal class MediaSync(
         val target = File(directory, StoredImage.fileNameOf(sha))
         // Pudo llegar entre la lista y su turno, por ejemplo por una importación.
         if (target.isFile) return Fetch.AlreadyHere
+        val listing =
+            when (val listed = listingOf(session, sha, control)) {
+                is DestinationResult.Success -> listed.value
+                is DestinationResult.Failure -> return Fetch.Stop(listed.failure)
+            }
         val preferred = mode.form?.let { MediaNames.fileOf(sha, it) }
-        val names = session.listing.namesOf(sha).sortedBy { it != preferred }
+        val names = listing.namesOf(sha).sortedBy { it != preferred }
         for (name in names) {
             val buffer = ByteArrayOutputStream()
             val got =
@@ -364,6 +410,8 @@ internal class MediaSync(
                     tally.uploaded++
                 }
 
+                Step.Known -> states.saveVerifiedForms(session.verified)
+
                 Step.Skipped -> Unit
 
                 is Step.Stop -> return finish(step.failure, states)
@@ -388,8 +436,15 @@ internal class MediaSync(
         // La foto pudo borrarse del teléfono entre la lista y su turno.
         if (!file.isFile) return Step.Skipped
         val form = requireNotNull(mode.form)
+        val listing =
+            when (val listed = listingOf(session, sha, control)) {
+                is DestinationResult.Success -> listed.value
+                is DestinationResult.Failure -> return Step.Stop(listed.failure)
+            }
+        // Al reconstruir el estado, la lista de su subcarpeta pudo traerla ya guardada así.
+        if (session.verified[sha] == form) return Step.Known
         val name = MediaNames.fileOf(sha, form)
-        val files = session.listing.files
+        val files = listing.files
         val present = name in files
         val already =
             if (present) {
@@ -415,7 +470,7 @@ internal class MediaSync(
                 if (present) {
                     replace(session, name, sha, payload, meta, mode, control)
                 } else {
-                    upload(session, name, sha, payload, meta, mode, control)
+                    upload(session, listing, name, sha, payload, meta, mode, control)
                 }
             }
         when (problem) {
@@ -424,14 +479,15 @@ internal class MediaSync(
             is Problem.Failed -> return Step.Stop(problem.failure)
         }
         // La forma anterior se borra solo ahora, con la nueva verificada.
-        val others = session.listing.namesOf(sha).filter { it != name }
-        removeAll(session, others)?.let { return Step.Stop(it) }
+        val others = listing.namesOf(sha).filter { it != name }
+        removeAll(session.channel, listing, others)?.let { return Step.Stop(it) }
         return Step.Verified
     }
 
     /** Sube [payload] como [name], nuevo en el servicio, con su `.slmeta`, y lo verifica. */
     private suspend fun upload(
         session: Session,
+        listing: MediaListing,
         name: String,
         sha: String,
         payload: ByteArray,
@@ -441,7 +497,7 @@ internal class MediaSync(
     ): Problem? {
         val channel = session.channel
         channel.upload(name, payload, control).failureOrNull()?.let { return Problem.Failed(it) }
-        val metaPresent = MediaNames.metaOf(name) in session.listing.files
+        val metaPresent = MediaNames.metaOf(name) in listing.files
         put(session, name, meta, replace = metaPresent, control)?.let { return it }
         return verified(holds(channel, name, sha, mode, control))
     }
@@ -553,12 +609,18 @@ internal class MediaSync(
     /** La forma en que suben las fotos, o `null` si no puede subir ninguna, con su clave. */
     private class Mode(val form: MediaForm?, val key: BackupKey?)
 
+    /**
+     * Lo que dura una ejecución. [rebuilding] dice que el estado local se perdió, y [shards]
+     * guarda cada subcarpeta ya listada por su prefijo.
+     */
     private class Session(
         val channel: MediaChannel,
-        val listing: MediaListing,
         val verified: MutableMap<String, MediaForm>,
         val uploadsAllowed: Boolean,
-    )
+        val rebuilding: Boolean,
+    ) {
+        val shards = HashMap<String, MediaListing>()
+    }
 
     private class Tally {
         var uploaded = 0
@@ -599,6 +661,9 @@ internal class MediaSync(
 
     private sealed interface Step {
         data object Verified : Step
+
+        /** Ya estaba guardada: la lista de su subcarpeta la trajo al reconstruir el estado. */
+        data object Known : Step
 
         /** No se subió ahora: ya no está en el teléfono, o el servicio devolvió otra cosa. */
         data object Skipped : Step
