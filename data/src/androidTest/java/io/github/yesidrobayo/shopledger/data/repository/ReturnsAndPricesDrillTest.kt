@@ -184,7 +184,7 @@ internal class ReturnsAndPricesDrillTest : CatalogDatabaseTest() {
             ports.lowStockAlerts,
             calendar,
             CurrencyLock(ports.settings),
-            clock,
+            clock, ports.mediaAssets,
         )
         val soap = savedProduct(createProduct(SOAP, QuantityMilli(10_000)))
         val candle = savedProduct(createProduct(CANDLE, QuantityMilli(10_000)))
@@ -314,7 +314,7 @@ internal class ReturnsAndPricesDrillTest : CatalogDatabaseTest() {
             ports.transactions, ports.products, ports.categories, ports.suppliers,
             ports.units, ports.systemRows, ports.priceHistory, ports.stockLedger,
             ports.lowStockAlerts, calendar, CurrencyLock(ports.settings), clock,
-            ports.productComponents,
+            ports.productComponents, ports.mediaAssets,
         )
         val applyBulk = ApplyBulkPriceUseCase(
             tx,

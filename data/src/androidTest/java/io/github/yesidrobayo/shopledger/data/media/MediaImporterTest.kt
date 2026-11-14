@@ -12,7 +12,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MediaKind
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.nio.ByteBuffer
+import java.util.zip.CRC32
 import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -142,6 +145,50 @@ internal class MediaImporterTest {
     }
 
     @Test
+    fun twoProductPhotosWithTheSameContentAreOneFile() = runBlocking {
+        val photo = jpeg("pan.jpg", 900, 700)
+        val copy = File(inputs, "pan-copia.jpg").apply { writeBytes(photo.readBytes()) }
+
+        val first =
+            imported(importer().import(Uri.fromFile(photo).toString(), MediaKind.PRODUCT_PHOTO))
+        val second =
+            imported(importer().import(Uri.fromFile(copy).toString(), MediaKind.PRODUCT_PHOTO))
+
+        assertEquals(first, second)
+        assertEquals(listOf(first.fileName), media.list()?.toList())
+        assertTrue(first.sizeBytes <= 64 * 1024)
+        assertEquals(640, maxOf(first.widthPx, first.heightPx))
+    }
+
+    @Test
+    fun anImageThatDeclaresHugeSizesIsRejectedWithoutDecodingIt() = runBlocking {
+        // Unos cientos de bytes que dicen ser una imagen de 30.000 x 30.000: 900 millones de píxeles.
+        val bomb = File(inputs, "bomba.png").apply { writeBytes(pngHeader(30_000, 30_000)) }
+        val wide = File(inputs, "ancha.png").apply { writeBytes(pngHeader(20_001, 10)) }
+        val markup = File(inputs, "dibujo.png").apply {
+            writeText("<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'/>")
+        }
+
+        for (source in listOf(bomb, wide, markup)) {
+            val result =
+                importer().import(Uri.fromFile(source).toString(), MediaKind.PRODUCT_PHOTO)
+            assertEquals(source.name, ImageImport.Unreadable, result)
+        }
+        assertTrue(media.list().isNullOrEmpty())
+    }
+
+    @Test
+    fun onlyReasonableDeclaredSizesAreRead() {
+        assertTrue(MediaImporter.acceptsDeclaredSize(16_320, 12_240))
+        assertTrue(MediaImporter.acceptsDeclaredSize(20_000, 10_000))
+        assertFalse(MediaImporter.acceptsDeclaredSize(20_000, 10_001))
+        assertFalse(MediaImporter.acceptsDeclaredSize(20_001, 1))
+        assertFalse(MediaImporter.acceptsDeclaredSize(1, 20_001))
+        assertFalse(MediaImporter.acceptsDeclaredSize(0, 100))
+        assertFalse(MediaImporter.acceptsDeclaredSize(100, -1))
+    }
+
+    @Test
     fun theSampleSizeNeverLoadsTheWholeImage() {
         assertEquals(1, MediaImporter.sampleSizeFor(1_000, 800, 640))
         assertEquals(2, MediaImporter.sampleSizeFor(1_280, 900, 640))
@@ -184,6 +231,31 @@ internal class MediaImporterTest {
         return file
     }
 
+    /**
+     * Un PNG con su firma, una cabecera válida que declara [width] por [height] y un bloque de datos
+     * casi vacío: decodificarlo de verdad obligaría a recorrer todos esos píxeles.
+     */
+    private fun pngHeader(width: Int, height: Int): ByteArray {
+        val out = ByteArrayOutputStream()
+        out.write(PNG_SIGNATURE)
+        val header = ByteBuffer.allocate(13)
+            .putInt(width).putInt(height)
+            .put(8).put(2).put(0).put(0).put(0)
+            .array()
+        chunk(out, "IHDR", header)
+        chunk(out, "IDAT", byteArrayOf(0x78, 0x9C.toByte(), 0x03, 0x00))
+        chunk(out, "IEND", ByteArray(0))
+        return out.toByteArray()
+    }
+
+    private fun chunk(out: ByteArrayOutputStream, type: String, data: ByteArray) {
+        val typed = type.toByteArray(Charsets.US_ASCII) + data
+        val crc = CRC32().apply { update(typed) }.value
+        out.write(ByteBuffer.allocate(4).putInt(data.size).array())
+        out.write(typed)
+        out.write(ByteBuffer.allocate(4).putInt(crc.toInt()).array())
+    }
+
     /** Los bloques de un WebP, o `null` si no es un WebP bien formado. */
     private fun webpChunks(bytes: ByteArray): List<String>? {
         if (bytes.size < 12 || String(bytes, 0, 4) != "RIFF" ||
@@ -208,5 +280,6 @@ internal class MediaImporterTest {
     private companion object {
         const val SEED = 20_261_108
         const val OPAQUE = 0xFF000000.toInt()
+        val PNG_SIGNATURE = byteArrayOf(-119, 80, 78, 71, 13, 10, 26, 10)
     }
 }

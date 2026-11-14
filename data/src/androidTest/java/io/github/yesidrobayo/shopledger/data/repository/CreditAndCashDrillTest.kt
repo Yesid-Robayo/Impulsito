@@ -162,7 +162,7 @@ internal class CreditAndCashDrillTest : CatalogDatabaseTest() {
             ports.lowStockAlerts,
             calendar,
             CurrencyLock(ports.settings),
-            clock,
+            clock, ports.mediaAssets,
         )
         val soap = savedProduct(createProduct(SOAP, QuantityMilli(10_000)))
         val candle = savedProduct(createProduct(CANDLE, QuantityMilli(10_000)))

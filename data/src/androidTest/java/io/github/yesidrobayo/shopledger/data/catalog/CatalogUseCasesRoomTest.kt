@@ -80,11 +80,12 @@ internal class CatalogUseCasesRoomTest : CatalogDatabaseTest() {
         val tx = ports.transactions
         create = CreateProductUseCase(
             tx, products, categories, ports.suppliers, ports.units, ports.systemRows, priceHistory,
-            ledger, alerts, calendar, currencyLock, FIXED_CLOCK,
+            ledger, alerts, calendar, currencyLock, FIXED_CLOCK, ports.mediaAssets,
         )
         edit = EditProductUseCase(
             tx, products, categories, ports.suppliers, ports.units, ports.systemRows, priceHistory,
             ledger, alerts, calendar, currencyLock, FIXED_CLOCK, ports.productComponents,
+            ports.mediaAssets,
         )
         archive = ArchiveProductUseCase(tx, products, alerts, FIXED_CLOCK, ports.productVariants)
         reactivate = ReactivateProductUseCase(

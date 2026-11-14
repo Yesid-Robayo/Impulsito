@@ -149,12 +149,13 @@ private fun useCasesOf(dependencies: ScreenDependencies): ProductEditUseCases {
         createUseCase = CreateProductUseCase(
             ports.transactions, ports.products, ports.categories, ports.suppliers,
             ports.units, ports.systemRows, ports.priceHistory, ports.stockLedger,
-            ports.lowStockAlerts, calendar, currencyLock, clock,
+            ports.lowStockAlerts, calendar, currencyLock, clock, ports.mediaAssets,
         ),
         editUseCase = EditProductUseCase(
             ports.transactions, ports.products, ports.categories, ports.suppliers,
             ports.units, ports.systemRows, ports.priceHistory, ports.stockLedger,
             ports.lowStockAlerts, calendar, currencyLock, clock, ports.productComponents,
+            ports.mediaAssets,
         ),
         createCategoryUseCase = CreateCategoryUseCase(
             ports.transactions,

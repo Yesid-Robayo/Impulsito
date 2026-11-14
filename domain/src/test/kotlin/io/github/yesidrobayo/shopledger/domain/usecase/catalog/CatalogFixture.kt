@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import io.github.yesidrobayo.shopledger.domain.testing.FakeAppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeLowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeMediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakePriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeProductRepository
@@ -64,16 +65,17 @@ internal class CatalogFixture(zoneId: String = "UTC", currencyConfirmed: Boolean
     val ledger = FakeStockLedgerRepository(database)
     val alerts = FakeLowStockAlertRepository(database)
     val components = FakeProductComponentRepository(database)
+    val media = FakeMediaAssetRepository(database)
     private val calendar = BusinessCalendarSource(settings)
     private val currencyLock = CurrencyLock(settings)
 
     val create = CreateProductUseCase(
         transactions, products, categories, suppliers, units, systemRows, priceHistory, ledger,
-        alerts, calendar, currencyLock, clock,
+        alerts, calendar, currencyLock, clock, media,
     )
     val edit = EditProductUseCase(
         transactions, products, categories, suppliers, units, systemRows, priceHistory, ledger,
-        alerts, calendar, currencyLock, clock, components,
+        alerts, calendar, currencyLock, clock, components, media,
     )
     val variants = FakeProductVariantRepository(database, products)
     val archive = ArchiveProductUseCase(transactions, products, alerts, clock, variants)

@@ -111,7 +111,7 @@ class LowStockNoticeFlowTest {
                 ports.transactions, ports.products, ports.categories, ports.suppliers, ports.units,
                 ports.systemRows, ports.priceHistory, ports.stockLedger, ports.lowStockAlerts,
                 BusinessCalendarSource(ports.settings), CurrencyLock(ports.settings),
-                app.container.clock,
+                app.container.clock, ports.mediaAssets,
             )
         val form = ProductForm(name = name, minStock = QuantityMilli.ofUnits(MIN_STOCK))
         val saved = create(form, QuantityMilli.ofUnits(START_STOCK))

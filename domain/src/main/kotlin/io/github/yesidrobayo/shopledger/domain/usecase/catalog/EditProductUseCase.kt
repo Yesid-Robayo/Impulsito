@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
@@ -29,6 +30,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductHistoryLock
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ReplacementCostRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockEvaluator
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockTransition
+import io.github.yesidrobayo.shopledger.domain.usecase.payment.releaseImage
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 
@@ -47,6 +49,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
  *   transacción: sin historia no hay venta que la necesite, y una receta que no se vende solo
  *   estorbaría al revisar los niveles de los demás combos.
  * - **Mínimo.** Si el producto queda bajo, crea su alerta callada; si deja de estarlo, la resuelve.
+ * - **Foto.** Una nueva se anota en la misma transacción; la que deja de usarse queda marcada para
+ *   que la limpieza la borre más adelante.
  * - **Archivado.** Se puede renombrar, para reactivarlo si su nombre choca, pero no cambia de
  *   precio ni de costo hasta reactivarlo.
  *
@@ -67,6 +71,7 @@ class EditProductUseCase(
     private val currencyLock: CurrencyLock,
     private val clock: Clock,
     private val components: ProductComponentRepository,
+    private val media: MediaAssetRepository,
 ) {
     private val references = ProductReferences(categories, suppliers, units, systemRows)
 
@@ -120,6 +125,7 @@ class EditProductUseCase(
                 null -> current.referencePrice
                 else -> written.takeIf { it > Money.ZERO }
             },
+            photoMediaId = photoIdAfter(media, form.photo, current.photoMediaId, clock.now()),
         )
         val locked = ProductHistoryLock.lockedChanges(
             current,
@@ -196,6 +202,10 @@ class EditProductUseCase(
             requested.stockMode != ProductStockMode.COMPONENTS
         ) {
             components.findByParent(product.id).forEach { components.delete(it.id) }
+        }
+        // Después de escribir el producto, para que su propia referencia ya no cuente.
+        if (requested.photoMediaId != current.photoMediaId) {
+            releaseImage(media, current.photoMediaId, now)
         }
         if (initialCostChanged) products.updateInitialCost(product.id, initialCost, now)
         if (replacementChanged) {

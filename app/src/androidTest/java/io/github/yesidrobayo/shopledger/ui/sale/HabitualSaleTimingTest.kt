@@ -267,7 +267,7 @@ class HabitualSaleTimingTest {
         val create = CreateProductUseCase(
             ports.transactions, ports.products, ports.categories, ports.suppliers,
             ports.units, ports.systemRows, ports.priceHistory, ports.stockLedger,
-            ports.lowStockAlerts, calendar, CurrencyLock(settings), clock,
+            ports.lowStockAlerts, calendar, CurrencyLock(settings), clock, ports.mediaAssets,
         )
         val ids = PRODUCT_NAMES.mapIndexed { index, name ->
             val form = ProductForm(

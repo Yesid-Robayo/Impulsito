@@ -34,6 +34,7 @@ internal class CatalogCurrencyRoomTest : CatalogDatabaseTest() {
             ports.transactions, ports.products, ports.categories, ports.suppliers, ports.units,
             ports.systemRows, ports.priceHistory, ports.stockLedger, ports.lowStockAlerts,
             BusinessCalendarSource(ports.settings), CurrencyLock(ports.settings), FIXED_CLOCK,
+            ports.mediaAssets,
         )
     }
 

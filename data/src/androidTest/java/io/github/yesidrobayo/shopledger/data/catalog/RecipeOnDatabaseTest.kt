@@ -121,6 +121,7 @@ internal class RecipeOnDatabaseTest : CatalogDatabaseTest() {
             ports.systemRows, ports.priceHistory, ports.stockLedger, ports.lowStockAlerts,
             BusinessCalendarSource(ports.settings), CurrencyLock(ports.settings), FIXED_CLOCK,
             ports.productComponents,
+            ports.mediaAssets,
         )
 
         val form = ProductForm(name = "Kit de frutas", stockMode = ProductStockMode.TRACKED)

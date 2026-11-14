@@ -14,8 +14,8 @@ internal data class MediaAssetRow(
 )
 
 /**
- * Un [MediaAssetRepository] sobre [InMemoryDatabase]. Una imagen se usa si algún método de pago la
- * nombra, o si la prueba la puso en [otherReferences], como la foto de un producto.
+ * Un [MediaAssetRepository] sobre [InMemoryDatabase]. Una imagen se usa si algún método de pago o
+ * producto la nombra, o si la prueba la puso en [otherReferences], como un comprobante.
  */
 internal class FakeMediaAssetRepository(private val database: InMemoryDatabase) :
     MediaAssetRepository {
@@ -35,7 +35,8 @@ internal class FakeMediaAssetRepository(private val database: InMemoryDatabase) 
     }
 
     override suspend fun isReferenced(id: Long): Boolean = id in otherReferences ||
-        database.read().paymentMethods.values.any { it.details.instructionsMediaId == id }
+        database.read().paymentMethods.values.any { it.details.instructionsMediaId == id } ||
+        database.read().products.values.any { it.details.photoMediaId == id }
 
     override suspend fun setOrphanedAt(id: Long, orphanedAt: Instant?) {
         val row = checkNotNull(database.read().mediaAssets[id]) { "La imagen no existe" }

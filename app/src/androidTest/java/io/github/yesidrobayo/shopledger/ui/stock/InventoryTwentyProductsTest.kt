@@ -476,7 +476,7 @@ class InventoryTwentyProductsTest {
                     create = CreateProductUseCase(
                         ports.transactions, ports.products, ports.categories, ports.suppliers,
                         ports.units, ports.systemRows, ports.priceHistory, ports.stockLedger,
-                        ports.lowStockAlerts, calendar, currencyLock, clock,
+                        ports.lowStockAlerts, calendar, currencyLock, clock, ports.mediaAssets,
                     ),
                     purchase = RegisterPurchaseUseCase(
                         transactions = ports.transactions,

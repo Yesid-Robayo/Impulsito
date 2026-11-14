@@ -29,8 +29,10 @@ import kotlinx.coroutines.withContext
  * - **Lectura con tope.** Se leen como máximo [maxSourceBytes]; más que eso se rechaza sin
  *   decodificar. Se lee una vez entero para medirlo, porque el decodificador puede no llegar al
  *   final.
- * - **Primero las medidas, después una decodificación acotada.** Se decodifica con un muestreo que
- *   deja el lado mayor apenas sobre el tope, así nunca se carga la imagen entera en memoria.
+ * - **Primero las medidas, después una decodificación acotada.** Una imagen que declara medidas
+ *   desmesuradas se rechaza sin decodificarla: un archivo pequeño puede declarar miles de millones
+ *   de píxeles y dejar al decodificador trabajando minutos. Las demás se decodifican con un
+ *   muestreo que deja el lado mayor apenas sobre el tope, así nunca se carga la imagen entera.
  * - **Siempre se recodifica a WebP,** que no copia EXIF ni ubicación. El giro que indica EXIF se
  *   aplica antes, para que la imagen se vea derecha sin conservar la etiqueta.
  * - **El original nunca se guarda:** se lee del documento que dio el selector, cuatro veces, y no
@@ -71,7 +73,7 @@ internal class MediaImporter(
         open(uri).use(::readToEnd)
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         open(uri).use { BitmapFactory.decodeStream(it, null, bounds) }
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        if (!acceptsDeclaredSize(bounds.outWidth, bounds.outHeight)) return null
         val orientation = open(uri).use(::orientationOf)
         val options =
             BitmapFactory.Options().apply {
@@ -197,6 +199,26 @@ internal class MediaImporter(
 
         /** Por debajo de este lado mayor ya no se reduce más. */
         private const val MIN_LONG_SIDE = 64
+
+        /**
+         * Lado mayor que puede declarar una imagen para intentar leerla. Es el mismo tope que admite
+         * la base para una imagen guardada, y deja pasar la foto de cualquier cámara de teléfono.
+         */
+        const val MAX_SOURCE_SIDE = 20_000
+
+        /**
+         * Píxeles que puede declarar una imagen para intentar leerla. Es una estimación: la cámara
+         * de teléfono más grande conocida ronda los 200 millones, y casi todas entregan menos.
+         */
+        const val MAX_SOURCE_PIXELS = 200_000_000L
+
+        /**
+         * Si una imagen que declara [width] por [height] se intenta leer. Unas medidas vacías no son
+         * una imagen, y unas desmesuradas son una imagen hostil.
+         */
+        fun acceptsDeclaredSize(width: Int, height: Int): Boolean = width > 0 && height > 0 &&
+            width <= MAX_SOURCE_SIDE && height <= MAX_SOURCE_SIDE &&
+            width.toLong() * height <= MAX_SOURCE_PIXELS
 
         /** Espacio libre que se pide, en veces el tamaño del archivo, antes de escribir. */
         private const val SPACE_MARGIN = 2L

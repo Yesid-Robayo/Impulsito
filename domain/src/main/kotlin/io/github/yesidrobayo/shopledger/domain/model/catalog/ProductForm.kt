@@ -20,8 +20,9 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  * [referencePrice] es el precio de venta escrito en la moneda de referencia, en su unidad menor,
  * del que parte repreciar con una cotización: cero es sin dato, y `null` lo deja como está.
  *
- * Lo que no está aquí, como las variantes, la foto o el impuesto, lo conserva la edición tal como
- * estaba.
+ * [photo] dice qué pasa con la foto: por omisión queda la que tenía.
+ *
+ * Lo que no está aquí, como las variantes o el impuesto, lo conserva la edición tal como estaba.
  */
 data class ProductForm(
     val name: String,
@@ -35,4 +36,5 @@ data class ProductForm(
     val barcode: String? = null,
     val replacementCost: Money? = null,
     val referencePrice: Money? = null,
+    val photo: ProductPhotoChange = ProductPhotoChange.Keep,
 )

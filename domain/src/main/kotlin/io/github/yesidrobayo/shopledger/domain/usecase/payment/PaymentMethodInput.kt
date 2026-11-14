@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.rule.payment.PaymentMethodCheck
 import io.github.yesidrobayo.shopledger.domain.rule.payment.PaymentMethodRules
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.recordImage
 import kotlin.time.Instant
 
 /**
@@ -78,18 +79,8 @@ internal suspend fun imageIdAfter(
     at: Instant,
 ): Long? = when (change) {
     InstructionsImageChange.Keep -> current
-
     InstructionsImageChange.Remove -> null
-
-    is InstructionsImageChange.Use -> {
-        val existing = media.findIdBySha256(change.image.sha256)
-        if (existing == null) {
-            media.insert(change.image, MediaKind.PAYMENT_QR, at)
-        } else {
-            media.setOrphanedAt(existing, orphanedAt = null)
-            existing
-        }
-    }
+    is InstructionsImageChange.Use -> recordImage(media, change.image, MediaKind.PAYMENT_QR, at)
 }
 
 /**

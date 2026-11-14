@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -44,7 +45,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
  *
  * Un nombre repetido entre los productos sin archivar se rechaza nombrando al que ya lo tiene,
  * comparado sin mayúsculas ni tildes. Con precio o costo, la moneda del negocio debe estar
- * confirmada, y si es el primer monto que se guarda, queda bloqueada en la misma transacción.
+ * confirmada, y si es el primer monto que se guarda, queda bloqueada en la misma transacción. Con
+ * foto, anota su imagen en la misma transacción; si ya estaba anotada, la reusa.
  */
 class CreateProductUseCase(
     private val transactions: TransactionRunner,
@@ -59,6 +61,7 @@ class CreateProductUseCase(
     private val calendar: BusinessCalendarSource,
     private val currencyLock: CurrencyLock,
     private val clock: Clock,
+    private val media: MediaAssetRepository,
 ) {
     private val references = ProductReferences(categories, suppliers, units, systemRows)
 
@@ -147,7 +150,7 @@ class CreateProductUseCase(
             variantAxis2 = null,
             variantValue1 = null,
             variantValue2 = null,
-            photoMediaId = null,
+            photoMediaId = photoIdAfter(media, form.photo, current = null, time.occurredAt),
             taxRateId = null,
             targetMargin = null,
             referenceCost = null,
