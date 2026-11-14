@@ -1,7 +1,13 @@
 package io.github.yesidrobayo.shopledger.domain.rule.catalog
 
+import io.github.yesidrobayo.shopledger.domain.model.Checked
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.Scale
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 
 /**
@@ -12,6 +18,23 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
  * pantalla.
  */
 data class ComboAvailability(val units: Long?, val limitingProductId: Long?)
+
+/**
+ * Lo que cuesta y cuánto alcanza una unidad de un combo con una receta dada, como la ve la persona
+ * mientras la arma.
+ *
+ * [rowCosts] es el costo de cada fila de la receta, por id de su componente: el de la hoja, o la
+ * suma de las hojas de un combo de adentro. [unitCost] es la suma, la que congelaría vender una
+ * unidad hoy. Los dos faltan si la receta no se puede expandir o una cifra no cabe: la pantalla
+ * muestra un guion en vez de un costo inventado. [hasUncostedLeaf] avisa que alguna hoja cuesta
+ * cero, así que el margen puede verse mejor de lo que es.
+ */
+data class RecipePreview(
+    val rowCosts: Map<Long, Money>,
+    val unitCost: Money?,
+    val availability: ComboAvailability?,
+    val hasUncostedLeaf: Boolean,
+)
 
 /**
  * Las cifras de un combo que salen de sus componentes: cuántos alcanzan y qué cuesta uno.
@@ -85,6 +108,52 @@ object ComboFigures {
             }
         }
         return LineStockSubject.Components(componentLeaves, states)
+    }
+
+    /**
+     * Las cifras de una unidad del combo [comboId] si su receta fuera [lines]. [stored] son las
+     * recetas guardadas, de las que salen las de los combos de adentro; la del propio combo se
+     * reemplaza por [lines]. [products] trae todos los productos de las recetas, también los
+     * archivados.
+     */
+    fun preview(
+        comboId: Long,
+        lines: List<RecipeLine>,
+        stored: List<RecipeComponent>,
+        products: Map<Long, Product>,
+    ): RecipePreview {
+        val draft = lines.map { RecipeComponent(0L, comboId, it.componentProductId, it.quantity) }
+        val recipes = stored.filter { it.parentProductId != comboId }
+            .groupBy { it.parentProductId } + (comboId to draft)
+        val modes = products.mapValues { it.value.details.stockMode }
+        val one = QuantityMilli(Scale.MILLI)
+        val leaves = when (val result = ComboExpansion.expand(comboId, one, recipes, modes)) {
+            is ComboExpansionResult.Leaves -> result.leaves
+
+            is ComboExpansionResult.LeafRoundsToZero,
+            ComboExpansionResult.QuantityOutOfRange,
+            ComboExpansionResult.TooDeep,
+            -> return RecipePreview(emptyMap(), null, null, hasUncostedLeaf = false)
+        }
+        val availability = availability(leaves, products)
+        val plan = when (val result = StockModeRules.planLine(subjectOf(leaves, products))) {
+            is Checked.Value -> result.value
+
+            Checked.Overflow, is Checked.AboveLimit ->
+                return RecipePreview(emptyMap(), null, availability, hasUncostedLeaf = false)
+        }
+        val planned = (plan as LineStockPlan.Components).leaves
+        val rowCosts = LinkedHashMap<Long, Money>()
+        leaves.zip(planned).forEach { (leaf, cost) ->
+            rowCosts[leaf.viaComponentId] =
+                (rowCosts[leaf.viaComponentId] ?: Money.ZERO) + cost.lineCost
+        }
+        return RecipePreview(
+            rowCosts = rowCosts,
+            unitCost = plan.lineCost,
+            availability = availability,
+            hasUncostedLeaf = planned.any { it.lineCost == Money.ZERO },
+        )
     }
 
     private fun requireLeaf(products: Map<Long, Product>, productId: Long): Product =

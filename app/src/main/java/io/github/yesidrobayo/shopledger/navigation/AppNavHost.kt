@@ -41,6 +41,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.safety.PolicyConsentUseCa
 import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
 import io.github.yesidrobayo.shopledger.ui.cash.CashRegisterRoute
 import io.github.yesidrobayo.shopledger.ui.category.CategoriesRoute
+import io.github.yesidrobayo.shopledger.ui.combo.CombosRoute
+import io.github.yesidrobayo.shopledger.ui.combo.RecipeRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
@@ -322,6 +324,10 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.Units -> UnitsRoute(navigator)
 
         is AppNavKey.Variants -> VariantsRoute(key, navigator)
+
+        AppNavKey.Combos -> CombosRoute(navigator)
+
+        is AppNavKey.Components -> RecipeRoute(key, navigator)
 
         AppNavKey.LoyaltyProgram -> LoyaltyProgramRoute(key, navigator)
 

@@ -153,6 +153,8 @@ data class ProductEditUiState(
     val dirty: Boolean = false,
     val confirmingDiscard: Boolean = false,
     val savedProductId: Long? = null,
+    /** Lo guardado es un combo sin receta todavía: al cerrar se abre su receta. */
+    val opensRecipe: Boolean = false,
     val closed: Boolean = false,
     val pricing: PricingContext? = null,
     val suggestTarget: BasisPoints? = null,

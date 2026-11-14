@@ -84,6 +84,12 @@ val HUB_ENTRIES: List<HubEntry> =
             AppNavKey.Units,
         ),
         HubEntry(
+            BusinessTool.COMBOS,
+            R.string.hub_tool_combos,
+            R.string.hub_tool_combos_desc,
+            AppNavKey.Combos,
+        ),
+        HubEntry(
             BusinessTool.SUPPLIER_RETURNS,
             R.string.hub_tool_supplier_returns,
             R.string.hub_tool_supplier_returns_desc,

@@ -64,6 +64,7 @@ import kotlinx.coroutines.launch
  * @param listPrices los precios del producto en las demás listas, que se editan aquí con la hoja de
  *   la pantalla de listas, cada uno en su propia transacción.
  * @param setListPrice deja o quita el precio propio del producto en una lista.
+ * @param startAsCombo un producto nuevo empieza con `Por componentes` elegido.
  */
 class ProductEditViewModel(
     private val useCases: ProductEditOperations,
@@ -80,17 +81,22 @@ class ProductEditViewModel(
     private val generateBarcode: suspend (Long) -> GenerateOwnBarcodesResult = {
         GenerateOwnBarcodesResult.Done(emptyMap(), emptyList(), listOf(it))
     },
+    startAsCombo: Boolean = false,
 ) : ViewModel() {
     private val state =
         MutableStateFlow(
             ProductEditUiState(
                 isNew = productId == null,
                 loading = productId != null,
-                form =
-                    ProductEditForm(
-                        name = prefillName.orEmpty(),
-                        barcode = prefillBarcode.orEmpty(),
-                    ),
+                form = ProductEditForm(
+                    name = prefillName.orEmpty(),
+                    barcode = prefillBarcode.orEmpty(),
+                    stockMode = if (startAsCombo) {
+                        ProductStockMode.COMPONENTS
+                    } else {
+                        ProductStockMode.TRACKED
+                    },
+                ),
             ),
         )
     val uiState: StateFlow<ProductEditUiState> = state.asStateFlow()
@@ -254,6 +260,8 @@ class ProductEditViewModel(
             ProductEditAction.ScanBarcode -> Unit
 
             ProductEditAction.GenerateBarcode -> generateOwnBarcode()
+
+            ProductEditAction.OpenRecipe -> Unit
 
             is ProductEditAction.SalePriceChange ->
                 edit(ProductEditField.SALE_PRICE) { copy(salePrice = action.text) }
@@ -580,7 +588,13 @@ class ProductEditViewModel(
 
     private fun ProductEditUiState.withResult(result: SaveProductResult): ProductEditUiState =
         when (result) {
-            is SaveProductResult.Saved -> copy(savedProductId = result.productId, dirty = false)
+            // Un combo recién creado, o un producto que pasa a combo, sigue con su receta.
+            is SaveProductResult.Saved -> copy(
+                savedProductId = result.productId,
+                dirty = false,
+                opensRecipe = form.stockMode == ProductStockMode.COMPONENTS &&
+                    product?.details?.stockMode != ProductStockMode.COMPONENTS,
+            )
 
             is SaveProductResult.Invalid -> copy(errors = errorsOf(result.issues))
 

@@ -51,13 +51,15 @@ sealed interface AppNavKey : NavKey {
     /**
      * Crear un producto si [productId] es nulo, o editarlo. [prefillName] es lo que la persona ya
      * escribió en una búsqueda sin resultados, para no escribirlo dos veces. [prefillBarcode] es el
-     * código que el escáner leyó y ningún producto tenía.
+     * código que el escáner leyó y ningún producto tenía. Con [asCombo], un producto nuevo empieza
+     * con `Por componentes` elegido, como desde `Nuevo combo`.
      */
     @Serializable
     data class ProductEdit(
         val productId: Long? = null,
         val prefillName: String? = null,
         val prefillBarcode: String? = null,
+        val asCombo: Boolean = false,
     ) : AppNavKey
 
     /**
@@ -204,8 +206,13 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data class Variants(val productId: Long) : AppNavKey
 
+    /** La receta de un combo: sus componentes, lo que cuesta y cuánto alcanza. */
     @Serializable
     data class Components(val productId: Long) : AppNavKey
+
+    /** La lista de combos y recetas, que abre el centro `Negocio`. */
+    @Serializable
+    data object Combos : AppNavKey
 
     @Serializable
     data class Scanner(val purpose: ScanPurpose) : AppNavKey

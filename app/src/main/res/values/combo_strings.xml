@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: combos y recetas, su lista y su receta. -->
+    <string name="hub_tool_combos">Combos and recipes</string>
+    <string name="hub_tool_combos_desc">Products made from other products</string>
+    <string name="combo_available">Available: %1$s</string>
+    <string name="combo_new_action">New combo</string>
+    <string name="combo_edit_product_action">Edit product</string>
+    <string name="combo_components_title">Components</string>
+    <string name="combo_add_component_action">Add component</string>
+    <string name="combo_cost_label">Component cost</string>
+    <string name="combo_price_label">Price</string>
+    <string name="combo_profit_per_unit">Profit per unit: %1$s</string>
+    <string name="combo_margin">Margin %1$s</string>
+    <string name="combo_available_now">Available now: %1$s</string>
+    <string name="combo_limited_by">Limited by: %1$s</string>
+    <string name="combo_save_action">Save combo</string>
+    <string name="combo_empty_title">Sell several products as one</string>
+    <string name="combo_empty_body">A kit, a dish or a recipe</string>
+    <string name="combo_detail_empty_title">Add the first component</string>
+    <string name="combo_error_levels">A combo allows 2 levels at most</string>
+    <string name="combo_error_cycle">This product already contains %1$s</string>
+    <string name="combo_no_stock_component">Does not reduce stock</string>
+    <string name="combo_warning_no_cost">Some components have no cost: the margin may be inflated</string>
+    <string name="combo_saved">Combo saved</string>
+    <string name="combo_search_no_results">No results for \"%1$s\"</string>
+    <string name="combo_error_unavailable">This product can no longer be chosen</string>
+    <plurals name="combo_component_count">
+        <item quantity="one">%1$d component</item>
+        <item quantity="other">%1$d components</item>
+    </plurals>
+</resources>

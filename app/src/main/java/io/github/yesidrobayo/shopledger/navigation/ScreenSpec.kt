@@ -97,6 +97,8 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     is AppNavKey.Components -> detail(R.string.combo_title, products)
 
+    AppNavKey.Combos -> detail(R.string.combo_title, business)
+
     AppNavKey.BusinessHub -> detail(R.string.hub_title, business)
 
     is AppNavKey.Customers -> detail(R.string.customer_title, business)

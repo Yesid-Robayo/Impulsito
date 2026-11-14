@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Portugués: combos y recetas, su lista y su receta. -->
+    <string name="hub_tool_combos">Combos e receitas</string>
+    <string name="hub_tool_combos_desc">Produtos feitos com outros produtos</string>
+    <string name="combo_available">Disponíveis: %1$s</string>
+    <string name="combo_new_action">Novo combo</string>
+    <string name="combo_edit_product_action">Editar produto</string>
+    <string name="combo_components_title">Componentes</string>
+    <string name="combo_add_component_action">Adicionar componente</string>
+    <string name="combo_cost_label">Custo dos componentes</string>
+    <string name="combo_price_label">Preço</string>
+    <string name="combo_profit_per_unit">Lucro por unidade: %1$s</string>
+    <string name="combo_margin">Margem %1$s</string>
+    <string name="combo_available_now">Disponíveis agora: %1$s</string>
+    <string name="combo_limited_by">Limitado por: %1$s</string>
+    <string name="combo_save_action">Salvar combo</string>
+    <string name="combo_empty_title">Vender vários produtos como um só</string>
+    <string name="combo_empty_body">Um kit, um prato ou uma receita</string>
+    <string name="combo_detail_empty_title">Adicionar o primeiro componente</string>
+    <string name="combo_error_levels">Um combo aceita no máximo 2 níveis</string>
+    <string name="combo_error_cycle">Este produto já contém %1$s</string>
+    <string name="combo_no_stock_component">Não reduz o estoque</string>
+    <string name="combo_warning_no_cost">Há componentes sem custo: a margem pode estar inflada</string>
+    <string name="combo_saved">Combo salvo</string>
+    <string name="combo_search_no_results">Sem resultados para \"%1$s\"</string>
+    <string name="combo_error_unavailable">Este produto não pode mais ser escolhido</string>
+    <plurals name="combo_component_count">
+        <item quantity="one">%1$d componente</item>
+        <item quantity="many">%1$d de componentes</item>
+        <item quantity="other">%1$d componentes</item>
+    </plurals>
+</resources>

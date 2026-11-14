@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: combos y recetas, su lista y su receta. -->
+    <string name="hub_tool_combos">Combos y recetas</string>
+    <string name="hub_tool_combos_desc">Productos hechos con otros productos</string>
+    <string name="combo_available">Disponibles: %1$s</string>
+    <string name="combo_new_action">Nuevo combo</string>
+    <string name="combo_edit_product_action">Editar producto</string>
+    <string name="combo_components_title">Componentes</string>
+    <string name="combo_add_component_action">Agregar componente</string>
+    <string name="combo_cost_label">Costo de componentes</string>
+    <string name="combo_price_label">Precio</string>
+    <string name="combo_profit_per_unit">Ganancia por unidad: %1$s</string>
+    <string name="combo_margin">Margen %1$s</string>
+    <string name="combo_available_now">Disponibles ahora: %1$s</string>
+    <string name="combo_limited_by">Limita: %1$s</string>
+    <string name="combo_save_action">Guardar combo</string>
+    <string name="combo_empty_title">Vender varios productos como uno</string>
+    <string name="combo_empty_body">Un kit, un plato o una receta</string>
+    <string name="combo_detail_empty_title">Agregar el primer componente</string>
+    <string name="combo_error_levels">Un combo admite 2 niveles como máximo</string>
+    <string name="combo_error_cycle">Este producto ya contiene a %1$s</string>
+    <string name="combo_no_stock_component">No descuenta stock</string>
+    <string name="combo_warning_no_cost">Hay componentes sin costo: el margen puede estar inflado</string>
+    <string name="combo_saved">Combo guardado</string>
+    <string name="combo_search_no_results">Sin resultados para \"%1$s\"</string>
+    <string name="combo_error_unavailable">Este producto ya no se puede elegir</string>
+    <plurals name="combo_component_count">
+        <item quantity="one">%1$d componente</item>
+        <item quantity="many">%1$d de componentes</item>
+        <item quantity="other">%1$d componentes</item>
+    </plurals>
+</resources>

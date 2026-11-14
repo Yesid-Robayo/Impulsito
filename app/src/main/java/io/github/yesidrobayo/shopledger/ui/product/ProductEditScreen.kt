@@ -342,15 +342,19 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
             color = MaterialTheme.colorScheme.onSurface,
         )
     } else {
-        val modes =
-            listOf(ProductStockMode.TRACKED, ProductStockMode.UNTRACKED) +
-                listOfNotNull(form.stockMode.takeIf { it == ProductStockMode.COMPONENTS })
         CompactChipRow(
-            options = modes,
+            options = ProductStockMode.entries,
             label = { stringResource(stockModeLabel(it)) },
             selected = setOf(form.stockMode),
             onToggle = { onAction(ProductEditAction.StockModeChange(it)) },
             multiple = false,
+        )
+    }
+    // Un combo guardado lleva a su receta: su costo y lo que alcanza salen de ella.
+    if (!uiState.isNew && uiState.product?.details?.stockMode == ProductStockMode.COMPONENTS) {
+        InlineTextButton(
+            text = stringResource(R.string.combo_components_title),
+            onClick = { onAction(ProductEditAction.OpenRecipe) },
         )
     }
     if (uiState.tracksStock) ReplacementCostField(uiState, onAction)

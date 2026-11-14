@@ -32,6 +32,9 @@ sealed interface ProductEditAction {
     /** Abre las variantes del producto guardado. */
     data object OpenVariants : ProductEditAction
 
+    /** Quiere ver la receta del combo que edita: lo resuelve la navegación. */
+    data object OpenRecipe : ProductEditAction
+
     /** Quiere agregar una conversión de compra o venta a este producto. */
     data object NewConversion : ProductEditAction
 

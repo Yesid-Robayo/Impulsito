@@ -100,6 +100,7 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                         dependencies.container.clock,
                     )(listOf(id))
                 },
+                startAsCombo = key.asCombo,
             )
         }
     when (model) {
@@ -120,7 +121,12 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                 if (uiState.savedProductId != null && key.productId == null) {
                     notificationPermission?.offerAfterNewProduct()
                 }
-                if (uiState.savedProductId != null || uiState.closed) navigator.back()
+                val saved = uiState.savedProductId
+                if (saved != null || uiState.closed) navigator.back()
+                // Un combo sin receta sigue a su receta, que es lo que le falta para venderse.
+                if (saved != null && uiState.opensRecipe) {
+                    navigator.open(AppNavKey.Components(saved))
+                }
             }
             // El código que dejó el escáner llega al volver a verse, como si se hubiera escrito.
             val scanned by navigator.scans.toTake.collectAsStateWithLifecycle()
@@ -159,6 +165,9 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
 
                         ProductEditAction.ScanBarcode ->
                             navigator.open(AppNavKey.Scanner(ScanPurpose.PRODUCT_BARCODE))
+
+                        ProductEditAction.OpenRecipe ->
+                            key.productId?.let { navigator.open(AppNavKey.Components(it)) }
 
                         else -> viewModel.onAction(action)
                     }
