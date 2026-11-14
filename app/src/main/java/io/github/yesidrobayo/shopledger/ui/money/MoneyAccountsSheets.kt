@@ -252,6 +252,7 @@ private fun CurrencySheet(editor: AccountEditor, onAction: (MoneyAccountsAction)
                 )
             }
         },
+        resultsCount = R.plurals.a11y_search_results_currencies,
     )
 }
 

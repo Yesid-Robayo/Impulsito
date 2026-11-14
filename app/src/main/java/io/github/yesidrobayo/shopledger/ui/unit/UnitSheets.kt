@@ -444,6 +444,7 @@ private fun ProductSheet(products: List<Product>, onPick: (Long) -> Unit, onDism
                     },
             )
         },
+        resultsCount = R.plurals.a11y_search_results,
     )
 }
 

@@ -214,6 +214,7 @@ private fun ExtraPickerSheet(picker: ExtraPicker?, onAction: (ExtrasAction) -> U
                 action = SettingsRowAction.Navigation { onAction(ExtrasAction.Add(option.id)) },
             )
         },
+        resultsCount = R.plurals.a11y_search_results,
     )
 }
 

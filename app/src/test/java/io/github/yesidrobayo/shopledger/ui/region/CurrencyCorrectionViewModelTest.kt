@@ -40,17 +40,17 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class CurrencyCorrectionViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
-    private val xts = code("XTS")
+    private val xtr = code("XTR")
     private val xtu = code("XTU")
     private val lockedAt = Instant.fromEpochMilliseconds(1_793_000_000_000)
     private val corrections = mutableListOf<CurrencyCorrection>()
     private val saved = mutableListOf<RegionalSettingsInput>()
     private var nextResult: CorrectCurrencyResult? = null
 
-    // El negocio en XTS, con dos decimales y ya con registros con dinero.
+    // El negocio en XTR, con dos decimales y ya con registros con dinero.
     private val locked =
         RegionalSettings(
-            currency = BusinessCurrency(xts, 2, null, lockedAt),
+            currency = BusinessCurrency(xtr, 2, null, lockedAt),
             cashRounding = Money.ZERO,
             formatLocaleTag = FORMAT,
             businessTimeZoneId = "Etc/GMT+5",
@@ -107,6 +107,44 @@ class CurrencyCorrectionViewModelTest {
     }
 
     @Test
+    fun `the testing code and the metals are never offered, also when searched`() {
+        val model = viewModel()
+
+        assertEquals(listOf("XTU", "XTV"), model.ready().correctionOptions?.map { it.key })
+        model.onAction(RegionalSettingsAction.OpenSheet(RegionalSheet.CORRECTION))
+        model.onAction(RegionalSettingsAction.Search("testing"))
+        assertTrue(model.ready().sheetOptions.isEmpty())
+        model.onAction(RegionalSettingsAction.Pick("XTS"))
+        assertNull(model.ready().correctionTarget)
+    }
+
+    @Test
+    fun `before the lock the currency sheet does not offer them either`() {
+        val model = viewModel(locked.copy(currency = locked.currency.copy(lockedAt = null)))
+        model.onAction(RegionalSettingsAction.OpenSheet(RegionalSheet.CURRENCY))
+
+        assertEquals(
+            listOf("XTR", "XTT", "XTU", "XTV"),
+            model.ready().sheetOptions.map { it.key },
+        )
+        model.onAction(RegionalSettingsAction.Pick("XAU"))
+        assertEquals(xtr, model.ready().draft.currency)
+    }
+
+    @Test
+    fun `offered codes are every code but the special ones of the standard`() {
+        listOf("XTS", "XXX", "XAU", "XAG", "XPT", "XPD", "XDR", "XSU", "XUA").forEach {
+            assertFalse(it, OfferedCurrencies.isOffered(it))
+        }
+        listOf("XBA", "XBB", "XBC", "XBD").forEach {
+            assertFalse(it, OfferedCurrencies.isOffered(it))
+        }
+        listOf("XTR", "XTU", "XTV", "XAA").forEach {
+            assertTrue(it, OfferedCurrencies.isOffered(it))
+        }
+    }
+
+    @Test
     fun `picking asks first, and cancelling changes nothing`() {
         val model = viewModel()
         model.onAction(RegionalSettingsAction.OpenSheet(RegionalSheet.CORRECTION))
@@ -119,7 +157,7 @@ class CurrencyCorrectionViewModelTest {
 
         model.onAction(RegionalSettingsAction.CancelCorrection)
         assertNull(model.ready().correctionTarget)
-        assertEquals(xts, model.ready().draft.currency)
+        assertEquals(xtr, model.ready().draft.currency)
         // Sin una moneda elegida, confirmar no hace nada.
         model.onAction(RegionalSettingsAction.ConfirmCorrection)
         assertTrue(corrections.isEmpty())
@@ -153,7 +191,7 @@ class CurrencyCorrectionViewModelTest {
         assertNull(state.correctionTarget)
         assertNull(state.correctionError)
         // La moneda de antes vuelve a ofrecerse, y la nueva ya no.
-        assertEquals(listOf("XTS", "XTV"), state.correctionOptions?.map { it.key })
+        assertEquals(listOf("XTR", "XTV"), state.correctionOptions?.map { it.key })
 
         model.onAction(RegionalSettingsAction.CorrectionShown)
         assertFalse(model.ready().currencyCorrected)
@@ -206,7 +244,7 @@ class CurrencyCorrectionViewModelTest {
 
             assertEquals(error, model.ready().correctionError)
             assertFalse(model.ready().correcting)
-            assertEquals(xts, model.ready().draft.currency)
+            assertEquals(xtr, model.ready().draft.currency)
             assertFalse(model.ready().currencyCorrected)
         }
         assertEquals(expected.size, corrections.size)
@@ -214,13 +252,19 @@ class CurrencyCorrectionViewModelTest {
 
     private fun code(text: String): CurrencyCode = requireNotNull(CurrencyCode.of(text))
 
-    /** Un catálogo inventado: tres monedas de prueba con dos decimales y una con tres. */
+    /**
+     * Un catálogo inventado: tres monedas de prueba con dos decimales y una con tres, y dos
+     * códigos especiales de la norma con dos, que no se ofrecen.
+     */
     private class FakeCatalog : RegionalCatalog {
         private fun option(key: String, title: String) =
             RegionalOption(key, title, key, TextNormalizer.normalize("$title $key"))
 
         override fun currencies(uiLocale: Locale) = listOf(
-            option("XTS", "Test money"),
+            option("XTR", "Test money"),
+            // Los códigos especiales de la norma, que el catálogo podría traer y nunca se ofrecen.
+            option("XTS", "Testing code"),
+            option("XAU", "Gold"),
             option("XTT", "Other test money"),
             option("XTU", "Third test money"),
             option("XTV", "Fourth test money"),
@@ -233,7 +277,7 @@ class CurrencyCorrectionViewModelTest {
         override fun sameZone(optionKey: String, zoneId: String): Boolean = optionKey == zoneId
 
         override fun isoDecimals(code: CurrencyCode): Int? = when (code.code) {
-            "XTS", "XTU", "XTV" -> 2
+            "XTR", "XTS", "XAU", "XTU", "XTV" -> 2
             "XTT" -> 3
             else -> null
         }

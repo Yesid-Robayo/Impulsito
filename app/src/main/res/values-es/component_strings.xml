@@ -77,6 +77,16 @@
         <item quantity="many">%1$d de productos encontrados</item>
         <item quantity="other">%1$d productos encontrados</item>
     </plurals>
+    <plurals name="a11y_search_results_currencies">
+        <item quantity="one">%1$d moneda encontrada</item>
+        <item quantity="many">%1$d de monedas encontradas</item>
+        <item quantity="other">%1$d monedas encontradas</item>
+    </plurals>
+    <plurals name="a11y_search_results_any">
+        <item quantity="one">%1$d resultado</item>
+        <item quantity="many">%1$d de resultados</item>
+        <item quantity="other">%1$d resultados</item>
+    </plurals>
     <string name="ledger_status_voided">Anulado</string>
     <string name="a11y_ledger_voided_amount">%1$s, anulado</string>
     <string name="a11y_ranking_expanded">Desplegado</string>

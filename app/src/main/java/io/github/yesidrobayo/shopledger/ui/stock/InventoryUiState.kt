@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryRules
@@ -67,7 +68,10 @@ data class PriceReviewItem(
     val dismissable: Boolean get() = PriceReviewReason.NEW_COST in reasons
 }
 
-/** Una fila del inventario, ya leída. La unidad va como la guardó la base, sin texto. */
+/**
+ * Una fila del inventario, ya leída. La unidad va como la guardó la base, sin texto. [usage] marca
+ * los insumos con su etiqueta, para distinguirlos sin abrir el producto.
+ */
 @Immutable
 data class InventoryItem(
     val id: Long,
@@ -76,6 +80,7 @@ data class InventoryItem(
     val onHand: QuantityMilli,
     val minStock: QuantityMilli,
     val unit: MeasureUnit?,
+    val usage: ProductUsage = ProductUsage.SALE,
 )
 
 /**
@@ -90,6 +95,7 @@ internal fun inventoryItemOf(product: Product, units: Map<Long, MeasureUnit>) = 
     onHand = product.onHand,
     minStock = product.details.minStock,
     unit = units[product.details.baseUnitId],
+    usage = product.details.usage,
 )
 
 /** Lo que muestra el inventario debajo de sus pestañas. */
@@ -103,6 +109,9 @@ sealed interface InventoryContent {
     /**
      * El inventario: cuántos se están acabando y cuántos están en negativo, el valor de lo que hay
      * y la parte de los archivados, si hay stock sin costo, y las filas del chip elegido.
+     *
+     * Las filas ya pasaron por la búsqueda [query]; [showsReview] y [showsExpiring] dicen si sus
+     * chips existen, que no dependen de lo que se busca: buscar no esconde un chip.
      */
     data class Ready(
         val lowStockCount: Int,
@@ -113,6 +122,9 @@ sealed interface InventoryContent {
         val items: List<InventoryItem>,
         val reviewItems: List<PriceReviewItem> = emptyList(),
         val expiringItems: List<ExpiringLotItem> = emptyList(),
+        val query: String = "",
+        val showsReview: Boolean = reviewItems.isNotEmpty(),
+        val showsExpiring: Boolean = expiringItems.isNotEmpty(),
     ) : InventoryContent
 
     /** No se pudo leer. Se puede reintentar. */
@@ -121,7 +133,8 @@ sealed interface InventoryContent {
 
 /**
  * El inventario en pantalla. [locations] son las ubicaciones vigentes, solo si hay más de una, y
- * [locationId] la que se mira, o `null` para todas.
+ * [locationId] la que se mira, o `null` para todas. [query] es lo escrito en la búsqueda, tal
+ * cual: busca por nombre o por código completo, dentro del chip y de la ubicación elegidos.
  */
 @Immutable
 data class InventoryUiState(
@@ -130,6 +143,7 @@ data class InventoryUiState(
     val message: InventoryMessage? = null,
     val locations: List<Location> = emptyList(),
     val locationId: Long? = null,
+    val query: String = "",
 )
 
 /** Un aviso breve del inventario. */
@@ -141,6 +155,9 @@ sealed interface InventoryMessage {
 /** Lo que la persona puede hacer en el inventario. La navegación la resuelve la ruta. */
 sealed interface InventoryAction {
     data class ChipChanged(val chip: InventoryChip) : InventoryAction
+
+    /** Escribió en la búsqueda, o el escáner la llenó con un código. */
+    data class QueryChange(val query: String) : InventoryAction
 
     /** Eligió una ubicación en el selector, o `null` para ver todas. */
     data class LocationChanged(val locationId: Long?) : InventoryAction

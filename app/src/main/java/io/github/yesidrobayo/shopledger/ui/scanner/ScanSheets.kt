@@ -107,6 +107,7 @@ private fun AssignSheet(sheet: ScanSheet.Assign, onAction: (ScannerAction) -> Un
                 SettingsRowAction.Navigation { onAction(ScannerAction.AssignTo(candidate.id)) },
             )
         },
+        resultsCount = R.plurals.a11y_search_results,
     )
 }
 

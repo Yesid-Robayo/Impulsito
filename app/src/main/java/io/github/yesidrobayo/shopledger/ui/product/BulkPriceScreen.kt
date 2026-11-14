@@ -607,6 +607,7 @@ private fun ScopeSheet(
                         onCheckedChange = { onAction(BulkPriceAction.TogglePicked(product.id)) },
                     )
                 },
+                resultsCount = R.plurals.a11y_search_results,
             )
     }
 }

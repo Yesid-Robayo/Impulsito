@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +59,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ProductRow
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowData
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 import io.github.yesidrobayo.shopledger.ui.components.ProductStock
+import io.github.yesidrobayo.shopledger.ui.components.SearchField
 import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.StatTile
 import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
@@ -69,6 +71,7 @@ import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.product.usageTagText
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -86,6 +89,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  *
  * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
  *   atención.
+ * @param onScan abre el escáner desde la búsqueda, o `null` si ningún producto tiene código.
  */
 @Composable
 fun InventoryScreen(
@@ -97,6 +101,7 @@ fun InventoryScreen(
     tabs: @Composable () -> Unit = {},
     notificationsBlocked: Boolean = false,
     backupBanner: @Composable () -> Unit = {},
+    onScan: (() -> Unit)? = null,
 ) {
     val snackbar = remember { SnackbarHostState() }
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
@@ -108,6 +113,7 @@ fun InventoryScreen(
             tabs,
             notificationsBlocked,
             backupBanner,
+            onScan,
         )
         AppSnackbarHost(
             snackbar,
@@ -135,6 +141,7 @@ private fun InventoryBody(
     tabs: @Composable () -> Unit,
     notificationsBlocked: Boolean,
     backupBanner: @Composable () -> Unit,
+    onScan: (() -> Unit)?,
 ) {
     Column(Modifier.fillMaxSize()) {
         AppTopBar(
@@ -160,6 +167,19 @@ private fun InventoryBody(
                 .fillMaxWidth(),
         ) {
             tabs()
+            // La misma búsqueda de la lista de productos: por nombre o por código, con el escáner.
+            if (uiState.content != InventoryContent.EmptyCatalog) {
+                SearchField(
+                    query = uiState.query,
+                    onQueryChange = { onAction(InventoryAction.QueryChange(it)) },
+                    placeholder = stringResource(R.string.sale_search_hint),
+                    modifier = Modifier.padding(
+                        horizontal = AppTheme.spacing.s16,
+                        vertical = AppTheme.spacing.s8,
+                    ),
+                    onScan = onScan,
+                )
+            }
             when (val content = uiState.content) {
                 InventoryContent.Loading -> DelayedSkeleton { InventorySkeleton() }
 
@@ -210,8 +230,8 @@ private fun InventoryList(
         item(key = "chips") {
             val chips = buildList {
                 add(InventoryChip.LOW_STOCK)
-                if (content.reviewItems.isNotEmpty()) add(InventoryChip.REVIEW)
-                if (content.expiringItems.isNotEmpty()) add(InventoryChip.EXPIRING)
+                if (content.showsReview) add(InventoryChip.REVIEW)
+                if (content.showsExpiring) add(InventoryChip.EXPIRING)
                 if (content.negativeCount > 0) add(InventoryChip.NEGATIVE_STOCK)
                 add(InventoryChip.ALL)
             }
@@ -253,18 +273,22 @@ private fun InventoryList(
                     modifier = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
                 )
             }
+            if (content.reviewItems.isEmpty()) searchEmpty(content.query)
             items(content.reviewItems, key = { "review-${it.id}" }) { item ->
                 ReviewRow(item, onAction)
             }
             return@LazyColumn
         }
         if (chip == InventoryChip.EXPIRING) {
+            if (content.expiringItems.isEmpty()) searchEmpty(content.query)
             items(content.expiringItems, key = { "lot-${it.lotId}" }) { item ->
                 ExpiringRow(item, onAction)
             }
             return@LazyColumn
         }
-        if (content.items.isEmpty()) {
+        if (content.items.isEmpty() && content.query.isNotBlank()) {
+            searchEmpty(content.query)
+        } else if (content.items.isEmpty()) {
             item(key = "empty") {
                 val title = stringResource(
                     if (chip == InventoryChip.ALL) {
@@ -283,6 +307,21 @@ private fun InventoryList(
             }
         }
         items(content.items, key = { it.id }) { item -> InventoryRow(item, onAction) }
+    }
+}
+
+/**
+ * Lo que dice la lista cuando la búsqueda no encuentra nada en el chip elegido: lo buscado y
+ * cómo seguir. No ofrece crear el producto, porque aquí se mira el stock de lo que ya existe.
+ */
+private fun LazyListScope.searchEmpty(query: String) {
+    if (query.isBlank()) return
+    item(key = "search-empty") {
+        EmptyStateInline(
+            title = stringResource(R.string.empty_search_title, query.trim()),
+            body = stringResource(R.string.inventory_search_empty_body),
+            modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
+        )
     }
 }
 
@@ -477,8 +516,9 @@ private fun messageText(message: InventoryMessage): String = when (message) {
 }
 
 /**
- * Lo que dice la fila de [item]: su nombre, su stock con el icono de su estado, y a la derecha el
- * stock y el mínimo. La usan el inventario y la tarjeta por agotarse de Inicio.
+ * Lo que dice la fila de [item]: su nombre, su stock con el icono de su estado, la etiqueta de un
+ * insumo, y a la derecha el stock y el mínimo. La usan el inventario y la tarjeta por agotarse de
+ * Inicio.
  */
 @Composable
 internal fun inventoryRowData(item: InventoryItem): ProductRowData {
@@ -488,6 +528,7 @@ internal fun inventoryRowData(item: InventoryItem): ProductRowData {
         name = item.name,
         stock = stockOf(item, unit),
         trailing = ProductRowTrailing.Stock(item.onHand, item.minStock, unit),
+        tag = usageTagText(item.usage),
     )
 }
 

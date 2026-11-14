@@ -534,6 +534,7 @@ private fun SupplierReturnSheets(
                     },
                 )
             },
+            resultsCount = R.plurals.a11y_search_results,
         )
 
         is SupplierReturnSheet.Purchases -> PurchasesSheet(sheet, onAction)

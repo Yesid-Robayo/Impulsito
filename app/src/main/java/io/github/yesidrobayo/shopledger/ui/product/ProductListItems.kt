@@ -99,7 +99,23 @@ object ProductListItems {
         trailing = trailingOf(product),
         archived = product.isArchived,
         photoMediaId = product.details.photoMediaId,
+        usage = product.details.usage,
+        cost = costOf(product),
     )
+
+    /**
+     * El costo que muestra la fila de un insumo: el promedio con stock propio, el fijo sin él, y
+     * ninguno por componentes. Un costo en cero no se conoce.
+     */
+    internal fun costOf(product: Product): Money? {
+        val details = product.details
+        val cost = when (details.stockMode) {
+            ProductStockMode.TRACKED -> product.averageCost
+            ProductStockMode.UNTRACKED -> details.fixedUnitCost
+            ProductStockMode.COMPONENTS -> Money.ZERO
+        }
+        return cost.takeIf { it > Money.ZERO }
+    }
 
     private fun stockOf(product: Product): ProductListStock {
         val details = product.details

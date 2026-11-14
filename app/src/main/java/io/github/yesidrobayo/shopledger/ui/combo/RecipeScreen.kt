@@ -383,6 +383,7 @@ private fun RecipePickerSheet(picker: RecipePicker?, onAction: (RecipeAction) ->
                 },
             )
         },
+        resultsCount = R.plurals.a11y_search_results,
     )
 }
 

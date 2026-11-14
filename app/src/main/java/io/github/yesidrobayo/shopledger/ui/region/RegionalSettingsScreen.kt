@@ -693,6 +693,14 @@ private fun Sheets(
         onDismissRequest = { onAction(RegionalSettingsAction.CloseSheet) },
         searchHint = stringResource(hint),
         itemContent = { option -> OptionRow(option, option.key == selected, onAction) },
+        // Al buscar una moneda se cuentan monedas; un formato o una zona, resultados.
+        resultsCount =
+            when (sheet) {
+                RegionalSheet.CURRENCY, RegionalSheet.CORRECTION ->
+                    R.plurals.a11y_search_results_currencies
+
+                RegionalSheet.FORMAT, RegionalSheet.ZONE -> R.plurals.a11y_search_results_any
+            },
     )
 }
 

@@ -74,6 +74,13 @@ sealed interface ProductRowTrailing {
     data class Catalog(val price: Money?, val margin: Margin, val hasCost: Boolean) :
         ProductRowTrailing
 
+    /**
+     * Un insumo en el catálogo: no se vende, así que en vez de precio y margen va su costo, con su
+     * rótulo debajo para que no se lea como un precio. Es sensible: en modo discreto se oculta.
+     * Sin costo conocido, una raya y la etiqueta `Sin costo`.
+     */
+    data class InputCost(val cost: Money?) : ProductRowTrailing
+
     /** El inventario: el stock y el mínimo. */
     data class Stock(val onHand: QuantityMilli, val minimum: QuantityMilli?, val unit: UnitLabel) :
         ProductRowTrailing
@@ -180,6 +187,9 @@ private fun ProductRowLeading(data: ProductRowData) {
                     if (trailing.price == null) add(R.string.notice_no_price)
                     if (!trailing.hasCost) add(R.string.status_no_cost)
                 }
+                if (trailing is ProductRowTrailing.InputCost && trailing.cost == null) {
+                    add(R.string.status_no_cost)
+                }
                 if (data.archived) add(R.string.status_archived)
             }
         FlowRow(
@@ -281,6 +291,17 @@ private fun ProductRowTrailingColumn(
             is ProductRowTrailing.Catalog -> {
                 MoneyText(trailing.price, MoneySize.ROW)
                 MarginLine(trailing)
+            }
+
+            is ProductRowTrailing.InputCost -> {
+                MoneyText(trailing.cost, MoneySize.ROW, sensitive = true)
+                Text(
+                    text = stringResource(R.string.term_average_cost),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                )
             }
 
             is ProductRowTrailing.Stock -> {
@@ -474,6 +495,12 @@ private fun ProductRowPreview() {
                 s.THIRD_NAME,
                 ProductStock.Normal(s.TWO, s.BOX),
                 ProductRowTrailing.PricePreview(s.PRICE, s.OLD_PRICE),
+            ),
+            ProductRowData(
+                s.LONG_NAME,
+                ProductStock.Normal(s.WEIGHT, s.KILOGRAM),
+                ProductRowTrailing.InputCost(s.LONG_AMOUNT),
+                tag = stringResource(R.string.product_usage_input),
             ),
         )
     PreviewTheme {

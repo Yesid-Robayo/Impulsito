@@ -13,6 +13,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -96,6 +97,12 @@ class ProductDetailGalleryTest {
                     s.overview(s.product(mode = ProductStockMode.UNTRACKED), withHistory = false),
                 ),
             "archived" to ready(s.overview(s.product(archived = true))),
+            "input" to
+                ready(
+                    s.overview(
+                        s.product(usage = ProductUsage.INPUT, replacementCost = 4_000_00L),
+                    ),
+                ),
             "costsheet" to
                 ready(s.overview()).copy(costSheet = CostSheet("3800,5", "Factura perdida")),
             "pricesheet" to ready(s.overview()).copy(

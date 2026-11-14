@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.PluralsRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,6 +42,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  *   nada: los recientes, por ejemplo. La lista completa sigue debajo, con [itemsTitle].
  * @param footer una acción fija bajo la lista, siempre a la vista aunque la lista sea larga.
  * @param onScan abre el escáner desde la búsqueda, o `null` si no se ofrece.
+ * @param resultsCount el conteo que se lee al buscar, con el sustantivo de lo que se elige:
+ *   productos, monedas o, por defecto, resultados. Nunca el de otra lista.
  */
 @Composable
 fun <T> SelectionSheet(
@@ -56,6 +59,7 @@ fun <T> SelectionSheet(
     pinned: SelectionPinned<T>? = null,
     footer: SelectionFooter? = null,
     onScan: (() -> Unit)? = null,
+    @PluralsRes resultsCount: Int = R.plurals.a11y_search_results_any,
 ) {
     AppBottomSheet(onDismissRequest = onDismissRequest, title = title, scrollable = false) {
         SelectionSheetContent(
@@ -69,6 +73,7 @@ fun <T> SelectionSheet(
             pinned,
             footer,
             onScan,
+            resultsCount,
         )
     }
 }
@@ -99,12 +104,13 @@ fun <T> ColumnScope.SelectionSheetContent(
     pinned: SelectionPinned<T>? = null,
     footer: SelectionFooter? = null,
     onScan: (() -> Unit)? = null,
+    @PluralsRes resultsCount: Int = R.plurals.a11y_search_results_any,
 ) {
     SearchField(query, onQueryChange, searchHint, onScan = onScan)
     if (query.isNotBlank()) {
         // Lo lee TalkBack al cambiar; no ocupa lugar en pantalla más allá de una línea discreta.
         Text(
-            text = pluralStringResource(R.plurals.a11y_search_results, items.size, items.size),
+            text = pluralStringResource(resultsCount, items.size, items.size),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },

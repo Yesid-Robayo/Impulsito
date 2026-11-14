@@ -102,6 +102,10 @@ class RegionalCatalogDeviceTest {
             assertEquals(list.size, list.map { it.key }.toSet().size)
         }
         assertTrue(currencies.all { CurrencyCode.of(it.key)?.isConfirmed == true })
+        // Ni el código de pruebas ni los metales, aunque ICU los liste como monedas.
+        for (special in listOf("XTS", "XXX", "XAU", "XAG", "XDR")) {
+            assertTrue(special, currencies.none { it.key == special })
+        }
         assertTrue(zones.all { BusinessTimeZone.of(it.key) != null })
         assertTrue(zones.any { it.key == "UTC" })
         for (row in RegionalMatrix.ROWS) {

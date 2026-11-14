@@ -116,6 +116,10 @@ import io.github.yesidrobayo.shopledger.ui.unit.EditorContainer
  * reciente al más antiguo, y el historial de precios. La acción fija es `Vender este`. El costo y el
  * margen son cifras del negocio: con el modo discreto se ocultan; el precio, no, porque se atiende
  * con él.
+ *
+ * Un insumo puro (`INPUT`) no se vende: no muestra precio, margen, ganancia si se repone,
+ * avisos de precio, `Cambiar precio` ni el historial de precios; deja el stock, el costo promedio
+ * y el costo de reposición. `BOTH` y `SALE` se ven como siempre.
  */
 @Composable
 fun ProductDetailScreen(
@@ -222,11 +226,14 @@ private fun TopBarActions(overview: ProductOverview, onAction: (ProductDetailAct
     val product = overview.product
     if (product.isArchived) return
     val actions = buildList {
-        add(
-            OverflowAction(stringResource(R.string.product_change_price), {
-                onAction(ProductDetailAction.OpenPriceSheet)
-            }),
-        )
+        // Un insumo puro no tiene precio de venta que cambiar.
+        if (product.details.usage.isSold) {
+            add(
+                OverflowAction(stringResource(R.string.product_change_price), {
+                    onAction(ProductDetailAction.OpenPriceSheet)
+                }),
+            )
+        }
         if (product.details.stockMode == ProductStockMode.TRACKED) {
             add(
                 OverflowAction(stringResource(R.string.product_fix_cost), {
@@ -329,19 +336,23 @@ private fun DetailBody(
                 LocationStockRow(locationName(row.location), row.onHand, unit)
             }
         }
+        // `Lotes` solo con control por lotes, y `Precios` solo en lo que se vende.
+        val tabs = ProductDetailTab.entries.filter {
+            (it != ProductDetailTab.LOTS || product.details.tracksLots) &&
+                (it != ProductDetailTab.PRICES || product.details.usage.isSold)
+        }
+        // Si el segmento elegido ya no existe, como los precios de un producto que pasó a insumo,
+        // se ven los movimientos.
+        val shownTab = tab.takeIf { it in tabs } ?: ProductDetailTab.MOVEMENTS
         item(key = "tabs") {
-            // `Lotes` solo en un producto que se controla por lotes.
-            val tabs = ProductDetailTab.entries.filter {
-                it != ProductDetailTab.LOTS || product.details.tracksLots
-            }
             SegmentedTabs(
                 options = tabs.map { stringResource(tabLabel(it)) },
-                selectedIndex = tabs.indexOf(tab),
+                selectedIndex = tabs.indexOf(shownTab),
                 onSelect = { onAction(ProductDetailAction.SelectTab(tabs[it])) },
                 modifier = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
             )
         }
-        when (tab) {
+        when (shownTab) {
             ProductDetailTab.MOVEMENTS -> movementRows(overview, unit, onAction)
             ProductDetailTab.PRICES -> priceRows(overview.prices)
             ProductDetailTab.SUPPLIERS -> lastCostRows(overview, onAction)
@@ -497,26 +508,32 @@ private fun Figures(product: Product, pricing: ProductPricing) {
         ProductStockMode.COMPONENTS -> null
     }
     val stacked = LocalDensity.current.fontScale >= STACK_FONT_SCALE
-    val tiles: List<@Composable (Modifier) -> Unit> = listOf(
-        { m ->
-            StatTile(
-                stringResource(R.string.product_sale_price),
-                price.takeIf { it > Money.ZERO },
-                StatTileVariant.PLAIN,
-                m,
-            )
-        },
-        { m ->
-            StatTile(
-                stringResource(R.string.term_average_cost),
-                shownCost,
-                StatTileVariant.PLAIN,
-                m,
-                sensitive = true,
-            )
-        },
-        { m -> MarginTile(margin, m) },
-    )
+    val cost: @Composable (Modifier) -> Unit = { m ->
+        StatTile(
+            stringResource(R.string.term_average_cost),
+            shownCost,
+            StatTileVariant.PLAIN,
+            m,
+            sensitive = true,
+        )
+    }
+    // Un insumo puro no se vende: solo su costo, sin precio ni margen.
+    val tiles: List<@Composable (Modifier) -> Unit> = if (details.usage.isSold) {
+        listOf(
+            { m ->
+                StatTile(
+                    stringResource(R.string.product_sale_price),
+                    price.takeIf { it > Money.ZERO },
+                    StatTileVariant.PLAIN,
+                    m,
+                )
+            },
+            cost,
+            { m -> MarginTile(margin, m) },
+        )
+    } else {
+        listOf(cost)
+    }
     val padding = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8)
     if (stacked) {
         Column(padding.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(spacing.s12)) {
@@ -542,26 +559,27 @@ private fun ReplacementFigures(product: Product, pricing: ProductPricing) {
     val spacing = AppTheme.spacing
     val profit = ReplacementProfitRules.unitProfit(pricing.netOf(product.salePrice), replacement)
     val stacked = LocalDensity.current.fontScale >= STACK_FONT_SCALE
-    val tiles: List<@Composable (Modifier) -> Unit> = listOf(
-        { m ->
-            StatTile(
-                stringResource(R.string.product_replacement_cost),
-                replacement,
-                StatTileVariant.PLAIN,
-                m,
-                sensitive = true,
-            )
-        },
-        { m ->
-            StatTile(
-                stringResource(R.string.product_profit_if_replaced),
-                profit,
-                StatTileVariant.PLAIN,
-                m,
-                sensitive = true,
-            )
-        },
-    )
+    val sold = product.details.usage.isSold
+    val replacementTile: @Composable (Modifier) -> Unit = { m ->
+        StatTile(
+            stringResource(R.string.product_replacement_cost),
+            replacement,
+            StatTileVariant.PLAIN,
+            m,
+            sensitive = true,
+        )
+    }
+    val profitTile: @Composable (Modifier) -> Unit = { m ->
+        StatTile(
+            stringResource(R.string.product_profit_if_replaced),
+            profit,
+            StatTileVariant.PLAIN,
+            m,
+            sensitive = true,
+        )
+    }
+    // La ganancia si se repone es de una venta: un insumo puro no la tiene.
+    val tiles = if (sold) listOf(replacementTile, profitTile) else listOf(replacementTile)
     Column(
         Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8).fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(spacing.s8),
@@ -576,11 +594,13 @@ private fun ReplacementFigures(product: Product, pricing: ProductPricing) {
                 tiles.forEach { it(Modifier.weight(1f)) }
             }
         }
-        Text(
-            stringResource(R.string.product_replacement_help),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (sold) {
+            Text(
+                stringResource(R.string.product_replacement_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -625,13 +645,14 @@ private fun Notices(product: Product) {
 
         ProductStockMode.COMPONENTS -> false
     }
-    val noPrice = product.salePrice == Money.ZERO
+    // Un insumo puro no se vende: sin avisos de precio ni de pérdida.
+    val noPrice = details.usage.isSold && product.salePrice == Money.ZERO
     val cost = when (details.stockMode) {
         ProductStockMode.TRACKED -> product.averageCost
         ProductStockMode.UNTRACKED -> details.fixedUnitCost
         ProductStockMode.COMPONENTS -> Money.ZERO
     }
-    val loss = !noPrice && !noCost && product.salePrice < cost
+    val loss = details.usage.isSold && !noPrice && !noCost && product.salePrice < cost
     val notices = buildList {
         if (noCost) add(R.string.product_no_cost_hint)
         if (noPrice) add(R.string.notice_no_price)

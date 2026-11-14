@@ -40,11 +40,13 @@ data class RegionalOption(
  * y lo que propone a partir de su región.
  *
  * Todo sale de ICU y de la base de zonas que vienen en el teléfono: nada se descarga, y ninguna
- * lista está escrita en el código. Las listas solo ofrecen; lo guardado se respeta aunque no esté en
- * ellas, porque una copia de otro teléfono puede traer una moneda o una zona que este no lista.
+ * lista está escrita en el código, salvo los códigos de moneda que la norma reserva para pruebas,
+ * metales y unidades de cuenta, que no se ofrecen (`OfferedCurrencies`). Las listas solo ofrecen;
+ * lo guardado se respeta aunque no esté en ellas, porque una copia de otro teléfono puede traer
+ * una moneda o una zona que este no lista.
  */
 interface RegionalCatalog {
-    /** Las monedas en uso hoy, por nombre en [uiLocale]. */
+    /** Las monedas en uso hoy, por nombre en [uiLocale], sin los códigos especiales de ISO. */
     fun currencies(uiLocale: Locale): List<RegionalOption>
 
     /** Los formatos regionales, por nombre en [uiLocale]. */
@@ -97,6 +99,8 @@ class IcuRegionalCatalog(
             .filter { Currency.isAvailable(it.currencyCode, today, null) }
             // Solo códigos de tres letras que la base acepta, y nunca el de sin moneda.
             .filter { CurrencyCode.of(it.currencyCode)?.isConfirmed == true }
+            // Ni el de pruebas, ni metales, ni unidades de cuenta: no son dinero de un negocio.
+            .filter { OfferedCurrencies.isOffered(it.currencyCode) }
             .map {
                 option(it.currencyCode, it.getDisplayName(uiLocale), it.currencyCode)
             }.sortedFor(uiLocale)

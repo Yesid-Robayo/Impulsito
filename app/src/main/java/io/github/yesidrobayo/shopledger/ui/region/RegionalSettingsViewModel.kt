@@ -62,10 +62,12 @@ class RegionalSettingsViewModel(
 
     /**
      * Las tres listas, en el idioma de la interfaz con que se armaron, y los decimales de la norma
-     * de cada moneda, para la corrección.
+     * de cada moneda, para la corrección. [currencies] trae todas las del catálogo, para nombrar
+     * la guardada aunque ya no se ofrezca; [offered], las que se pueden elegir.
      */
     private class Lists(
         val currencies: List<RegionalOption>,
+        val offered: List<RegionalOption>,
         val formats: List<RegionalOption>,
         val zones: List<RegionalOption>,
         val currencyDecimals: Map<String, Int?>,
@@ -102,6 +104,9 @@ class RegionalSettingsViewModel(
                     val currencies = catalog.currencies(locale)
                     Lists(
                         currencies,
+                        // Ni la moneda inicial ni la corrección ofrecen un código especial de la
+                        // norma, como el de pruebas, aunque el catálogo lo traiga.
+                        currencies.filter { OfferedCurrencies.isOffered(it.key) },
                         catalog.formats(locale),
                         catalog.zones(locale),
                         currencies.associate { option ->
@@ -236,7 +241,7 @@ class RegionalSettingsViewModel(
 
             RegionalSheet.CURRENCY -> {
                 val code = CurrencyCode.of(key)
-                if (current.locked || code == null) {
+                if (current.locked || code == null || !OfferedCurrencies.isOffered(key)) {
                     closed
                 } else {
                     val decimals = catalog.isoDecimals(code) ?: current.draft.decimals
@@ -568,7 +573,7 @@ class RegionalSettingsViewModel(
             zoneKey = built.zones.firstOrNull { catalog.sameZone(it.key, draft.zoneId) }?.key,
             correctionOptions =
                 if (locked) {
-                    built.currencies.filter {
+                    built.offered.filter {
                         it.key != draft.currency.code &&
                             built.currencyDecimals[it.key] == draft.decimals
                     }
@@ -584,7 +589,7 @@ class RegionalSettingsViewModel(
         val all =
             when (sheet) {
                 null -> return copy(sheetOptions = emptyList())
-                RegionalSheet.CURRENCY -> built?.currencies
+                RegionalSheet.CURRENCY -> built?.offered
                 RegionalSheet.FORMAT -> built?.formats
                 RegionalSheet.ZONE -> built?.zones
                 RegionalSheet.CORRECTION -> correctionOptions

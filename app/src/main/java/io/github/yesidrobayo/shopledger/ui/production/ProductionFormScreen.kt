@@ -445,6 +445,7 @@ private fun ProductPickerSheet(
                 },
             )
         },
+        resultsCount = R.plurals.a11y_search_results,
     )
 }
 

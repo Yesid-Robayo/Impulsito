@@ -372,6 +372,7 @@ private fun ProductPicker(picker: TransferPicker, onAction: (NewTransferAction) 
                 },
             )
         },
+        resultsCount = R.plurals.a11y_search_results,
     )
 }
 

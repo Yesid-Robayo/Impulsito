@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
@@ -18,7 +19,8 @@ import kotlinx.datetime.LocalDate
 
 // Vistas previas del inventario, con productos y montos inventados: la lista por agotarse con
 // stock negativo, agotado y bajo, un nombre de 80 caracteres y un valor de trece cifras; la lista
-// vacía; el modo discreto; el catálogo vacío y el error.
+// vacía; el modo discreto; el catálogo vacío y el error; un insumo con su etiqueta, y una búsqueda
+// sin resultados.
 
 private val UNIT_SAMPLE =
     MeasureUnit(
@@ -42,6 +44,8 @@ private fun item(id: Long, name: String, status: InventoryStatus, onHand: Long, 
         onHand = QuantityMilli(onHand),
         minStock = QuantityMilli(min),
         unit = if (id == 3L) KILOGRAM_SAMPLE else UNIT_SAMPLE,
+        // El de kilos es un insumo: lleva su etiqueta en la fila.
+        usage = if (id == 3L) ProductUsage.INPUT else ProductUsage.SALE,
     )
 
 internal fun previewInventoryItems(): List<InventoryItem> = listOf(
@@ -162,6 +166,22 @@ private fun InventoryReviewPreview() {
                 content = previewInventory(reviewItems = previewReviewItems()),
             ),
             {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun InventorySearchEmptyPreview() {
+    val query = PreviewSamples.SEARCH_QUERY
+    PreviewTheme {
+        InventoryScreen(
+            InventoryUiState(
+                content = previewInventory(items = emptyList()).copy(query = query),
+                query = query,
+            ),
+            {},
+            onScan = {},
         )
     }
 }

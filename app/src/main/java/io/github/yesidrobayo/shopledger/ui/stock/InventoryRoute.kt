@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.stock
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,16 +20,22 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.InventoryFilter
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
+import io.github.yesidrobayo.shopledger.navigation.ScanPurpose
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /**
  * El inventario en la navegación. Como pestaña de Productos recibe las pestañas en [tabs] y va sin
  * flecha; abierto desde otra pantalla, como el aviso de stock negativo de Inicio, va con flecha.
  * Resuelve abrir el producto, reponerlo con una compra, ajustar su stock y crear el primero.
+ *
+ * El escáner de la búsqueda es el mismo de la lista de productos: un código conocido abre su
+ * producto, y uno desconocido se resuelve en el escáner, que ofrece crearlo o asignarlo.
  */
 @Composable
 fun InventoryRoute(
@@ -77,6 +84,10 @@ fun InventoryRoute(
                 locations = { ports.locations.observe(ArchiveFilter.ACTIVE) },
                 observeAt = { observe(it) },
                 expiring = { expiring() },
+                hasCodes =
+                    ports.products.observe(ArchiveFilter.ACTIVE)
+                        .map { list -> list.any { it.details.barcode != null } }
+                        .distinctUntilChanged(),
             )
         }
     val navigation = if (asTab) TopBarNavigation.NONE else TopBarNavigation.BACK
@@ -96,6 +107,14 @@ fun InventoryRoute(
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val canScan by viewModel.canScan.collectAsStateWithLifecycle()
+            // Un código leído abre su producto, como en la lista de productos.
+            val scanned by navigator.scans.toTake.collectAsStateWithLifecycle()
+            LaunchedEffect(scanned) {
+                navigator.scans.take(ScanPurpose.PRODUCT_SEARCH).lastOrNull()?.productId?.let {
+                    navigator.open(AppNavKey.ProductDetail(it))
+                }
+            }
             InventoryScreen(
                 uiState = uiState,
                 onAction = { action ->
@@ -126,7 +145,8 @@ fun InventoryRoute(
 
                         InventoryAction.OpenReorder -> navigator.open(AppNavKey.Replenishment())
 
-                        is InventoryAction.ChipChanged, InventoryAction.Retry,
+                        is InventoryAction.ChipChanged, is InventoryAction.QueryChange,
+                        InventoryAction.Retry,
                         is InventoryAction.LocationChanged,
                         is InventoryAction.DismissReview, InventoryAction.MessageShown,
                         -> viewModel.onAction(action)
@@ -137,6 +157,12 @@ fun InventoryRoute(
                 tabs = tabs,
                 notificationsBlocked = notificationsBlocked,
                 backupBanner = { if (asTab) RootBackupBanner(navigator::open) },
+                onScan =
+                    if (canScan) {
+                        { navigator.open(AppNavKey.Scanner(ScanPurpose.PRODUCT_SEARCH)) }
+                    } else {
+                        null
+                    },
             )
         }
     }

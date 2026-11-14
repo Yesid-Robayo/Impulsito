@@ -453,6 +453,7 @@ private fun Sheet(sheet: LabelSheet, uiState: LabelsUiState, onAction: (LabelsAc
                     onCheckedChange = { onAction(LabelsAction.TogglePicked(product.id)) },
                 )
             },
+            resultsCount = R.plurals.a11y_search_results,
         )
 
         LabelSheet.CATEGORY -> SelectionSheet(

@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductMovement
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
@@ -69,6 +70,8 @@ object ProductDetailSamples {
         cost: Long = 3_800_00L,
         mode: ProductStockMode = ProductStockMode.TRACKED,
         archived: Boolean = false,
+        usage: ProductUsage = ProductUsage.SALE,
+        replacementCost: Long = 0L,
     ): Product = Product(
         id = 1L,
         details = ProductDetails(
@@ -93,14 +96,15 @@ object ProductDetailSamples {
             referenceCost = null,
             referencePrice = null,
             expiryNoticeDays = null,
+            usage = usage,
         ),
         salePrice = Money(price),
         initialCost = Money(3_000_00L),
         averageCost = if (mode == ProductStockMode.TRACKED) Money(cost) else Money.ZERO,
         stockValue = Money(maxOf(0L, onHand) / 1_000 * cost),
         onHand = QuantityMilli(onHand),
-        replacementCost = Money.ZERO,
-        replacementCostAt = null,
+        replacementCost = Money(replacementCost),
+        replacementCostAt = AT.takeIf { replacementCost > 0L },
         priceReviewSince = null,
         archivedAt = if (archived) AT else null,
         createdAt = AT,

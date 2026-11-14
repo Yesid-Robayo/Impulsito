@@ -26,6 +26,7 @@
     <string name="empty_inventory_action">Criar produto</string>
     <string name="empty_low_stock_title">Nada acabando</string>
     <string name="empty_low_stock_body">Todos os produtos estão acima do mínimo.</string>
+    <string name="inventory_search_empty_body">É possível buscar pelo nome ou pelo código completo, ou tentar outro filtro.</string>
     <string name="notice_inventory_no_cost">Há produtos sem custo: o valor real do estoque pode ser maior.</string>
     <string name="inventory_archived_value">Inclui %1$s de produtos arquivados.</string>
     <string name="home_shortcut_purchase">Compra</string>

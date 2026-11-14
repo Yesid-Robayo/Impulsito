@@ -32,6 +32,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.localization.SeedText
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
@@ -435,10 +436,25 @@ private fun rowDataOf(item: ProductListItem): ProductRowData {
     return ProductRowData(
         name = item.name,
         stock = stock,
-        trailing = item.trailing,
+        // Un insumo puro no se vende: su costo en vez de precio y margen.
+        trailing =
+            if (item.usage == ProductUsage.INPUT) {
+                ProductRowTrailing.InputCost(item.cost)
+            } else {
+                item.trailing
+            },
         archived = item.archived,
+        tag = usageTagText(item.usage),
     )
 }
+
+/**
+ * La etiqueta de un insumo en una fila: `Insumo` o `Las dos cosas`, como en su detalle, y nada
+ * en lo que solo se vende. Va dentro de la fila, así que TalkBack la lee con el nombre.
+ */
+@Composable
+internal fun usageTagText(usage: ProductUsage): String? =
+    if (usage == ProductUsage.SALE) null else stringResource(usageLabel(usage))
 
 /**
  * Cómo se escribe la unidad junto a una cantidad: su símbolo, o su nombre si no tiene. Una unidad
@@ -517,6 +533,27 @@ private fun previewItems(): List<ProductListItem> {
             s.TOOL_NAME,
             ProductListStock.NoStock,
             ProductRowTrailing.Catalog(Money(8_000L), Margin.Defined(BasisPoints(10_000L)), false),
+        ),
+        // Un insumo puro, con su costo, y uno que también se vende, con precio y margen.
+        ProductListItem(
+            6L,
+            s.SECOND_NAME,
+            ProductListStock.Normal(s.STOCK),
+            unit,
+            ProductRowTrailing.Catalog(null, Margin.NoData, hasCost = true),
+            archived = false,
+            usage = ProductUsage.INPUT,
+            cost = s.PRICE,
+        ),
+        ProductListItem(
+            7L,
+            s.THIRD_NAME,
+            ProductListStock.Low(s.LOW_STOCK),
+            unit,
+            ProductRowTrailing.Catalog(s.PRICE, Margin.Defined(BasisPoints(1_500L)), true),
+            archived = false,
+            usage = ProductUsage.BOTH,
+            cost = s.SECOND_PRICE,
         ),
     )
 }

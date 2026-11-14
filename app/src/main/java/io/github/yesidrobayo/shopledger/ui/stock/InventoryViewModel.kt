@@ -2,9 +2,12 @@ package io.github.yesidrobayo.shopledger.ui.stock
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReview
 import io.github.yesidrobayo.shopledger.domain.model.stock.ExpiringLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductSearch
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LocationRules
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.DismissPriceReviewResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
@@ -47,6 +50,11 @@ import kotlinx.coroutines.launch
  * @param observeAt el inventario de una ubicación: lo que hay en ella, y lo que allí se acaba.
  * @param expiring los lotes por vencer, ya ordenados. No dependen de la ubicación elegida: el aviso
  *   es del lote. Sin ellos, el chip `Por vencer` no aparece.
+ * @param hasCodes si algún producto tiene código: sin ninguno, la búsqueda no ofrece el escáner.
+ *
+ * La búsqueda filtra las filas del chip elegido por nombre, sin mayúsculas ni tildes, o por código
+ * completo, como la lista de productos. No cambia las cifras de arriba ni qué chips aparecen: solo
+ * lo que se lista.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class InventoryViewModel(
@@ -59,8 +67,20 @@ class InventoryViewModel(
     locations: () -> Flow<List<Location>> = { flowOf(emptyList()) },
     observeAt: (Long) -> Flow<InventoryOverview> = { observe() },
     expiring: () -> Flow<List<ExpiringLot>> = { flowOf(emptyList()) },
+    hasCodes: Flow<Boolean> = flowOf(false),
 ) : ViewModel() {
+    /** Si algún producto tiene código: sin ninguno, la búsqueda no ofrece el escáner. */
+    val canScan: StateFlow<Boolean> =
+        hasCodes
+            .catch { emit(false) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), false)
+
     private val chip = MutableStateFlow(initialChip)
+    private val query = MutableStateFlow("")
+
+    // El chip y la búsqueda van juntos: los dos eligen qué filas se ven.
+    private val choice: Flow<Pair<InventoryChip, String>> =
+        combine(chip, query) { chosen, typed -> chosen to typed }
     private val attempts = MutableStateFlow(0)
     private val message = MutableStateFlow<InventoryMessage?>(null)
     private val location = MutableStateFlow<Long?>(null)
@@ -104,7 +124,8 @@ class InventoryViewModel(
         }
 
     val uiState: StateFlow<InventoryUiState> =
-        combine(chip, overview, lists, message, place) { chosen, read, both, shownMessage, at ->
+        combine(choice, overview, lists, message, place) { picked, read, both, shownMessage, at ->
+            val (chosen, typed) = picked
             val (shownLocations, locationId) = at
             val (pending, lots) = both
             if (read == null) {
@@ -114,6 +135,7 @@ class InventoryViewModel(
                     shownMessage,
                     shownLocations,
                     locationId,
+                    typed,
                 )
             }
             val empty = when (chosen) {
@@ -125,10 +147,11 @@ class InventoryViewModel(
             val shown = if (empty) InventoryChip.LOW_STOCK else chosen
             InventoryUiState(
                 shown,
-                contentOf(read, shown, pending, lots),
+                contentOf(read, shown, pending, lots, typed),
                 shownMessage,
                 shownLocations,
                 locationId,
+                typed,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -141,6 +164,8 @@ class InventoryViewModel(
         when (action) {
             is InventoryAction.ChipChanged -> chip.value = action.chip
 
+            is InventoryAction.QueryChange -> query.value = action.query
+
             is InventoryAction.LocationChanged -> location.value = action.locationId
 
             InventoryAction.Retry -> attempts.update { it + 1 }
@@ -149,7 +174,9 @@ class InventoryViewModel(
 
             InventoryAction.MessageShown -> message.value = null
 
-            is InventoryAction.OpenProduct, is InventoryAction.Restock, is InventoryAction.Adjust,
+            is InventoryAction.OpenProduct,
+            is InventoryAction.Restock,
+            is InventoryAction.Adjust,
             is InventoryAction.ChangePrice,
             InventoryAction.ReviewAll,
             InventoryAction.CreateProduct,
@@ -178,6 +205,7 @@ class InventoryViewModel(
         shown: InventoryChip,
         pending: List<PriceReview>,
         lots: List<ExpiringLot>,
+        query: String,
     ): InventoryContent {
         if (!overview.hasProducts) return InventoryContent.EmptyCatalog
         val products = when (shown) {
@@ -190,6 +218,7 @@ class InventoryViewModel(
             // `Revisar` y `Por vencer` llevan sus propias filas.
             InventoryChip.REVIEW, InventoryChip.EXPIRING -> emptyList()
         }
+        val found = matching(overview, pending, query)
         return InventoryContent.Ready(
             lowStockCount = overview.lowStock.size,
             negativeCount = overview.negative.size,
@@ -197,27 +226,65 @@ class InventoryViewModel(
             archivedValue = overview.archivedValue,
             hasStockWithoutCost = overview.hasStockWithoutCost,
             items = if (shown == InventoryChip.ALL) {
-                groupedItems(overview)
+                groupedItems(overview, found)
             } else {
-                products.map { inventoryItemOf(it, overview.units) }
+                products.filter { found == null || it.id in found }
+                    .map { inventoryItemOf(it, overview.units) }
             },
-            reviewItems = pending.map(::reviewItemOf),
-            expiringItems = lots.map { expiringItemOf(it, overview) },
+            reviewItems = pending.filter { found == null || it.product.id in found }
+                .map(::reviewItemOf),
+            expiringItems = lots.filter { lot -> lotMatches(lot, found, query) }
+                .map { expiringItemOf(it, overview) },
+            query = query,
+            showsReview = pending.isNotEmpty(),
+            showsExpiring = lots.isNotEmpty(),
         )
     }
 
     /**
-     * Todos los productos con stock, en orden de nombre, con cada producto con variantes como una
-     * fila con la suma de las suyas, seguida de ellas.
+     * Los id de los productos que coinciden con [query], por nombre o por código completo, con la
+     * misma búsqueda que la lista de productos; `null` si no se busca nada.
      */
-    private fun groupedItems(overview: InventoryOverview): List<InventoryItem> {
+    private fun matching(
+        overview: InventoryOverview,
+        pending: List<PriceReview>,
+        query: String,
+    ): Set<Long>? {
+        if (TextNormalizer.normalize(query).isEmpty()) return null
+        val searchable: List<Product> =
+            overview.tracked + overview.families.map { it.parent } + pending.map { it.product }
+        return ProductSearch.filter(searchable, query).mapTo(mutableSetOf()) { it.id }
+    }
+
+    /**
+     * Un lote se encuentra por su producto. Si el producto ya no está entre los que llevan stock,
+     * como uno archivado, se busca por el nombre que trae el lote.
+     */
+    private fun lotMatches(lot: ExpiringLot, found: Set<Long>?, query: String): Boolean =
+        found == null ||
+            lot.lot.productId in found ||
+            TextNormalizer.normalize(lot.lot.productName)
+                .contains(TextNormalizer.normalize(query))
+
+    /**
+     * Todos los productos con stock, en orden de nombre, con cada producto con variantes como una
+     * fila con la suma de las suyas, seguida de ellas. Con búsqueda, un principal que coincide
+     * trae todas sus variantes, y uno que no, solo las que coinciden, bajo su fila de la suma.
+     */
+    private fun groupedItems(overview: InventoryOverview, found: Set<Long>?): List<InventoryItem> {
         val parents = overview.families.mapTo(mutableSetOf()) { it.parent.id }
-        val singles = overview.tracked.filter { it.details.parentProductId !in parents }
+        val singles = overview.tracked
+            .filter { it.details.parentProductId !in parents && (found == null || it.id in found) }
             .map { it.details.normalizedName to listOf(inventoryItemOf(it, overview.units)) }
-        val families = overview.families.map { family ->
+        val families = overview.families.mapNotNull { family ->
+            val variants = if (found == null || family.parent.id in found) {
+                family.variants
+            } else {
+                family.variants.filter { it.id in found }.ifEmpty { return@mapNotNull null }
+            }
             val total = inventoryItemOf(family.parent.copy(onHand = family.onHand), overview.units)
             family.parent.details.normalizedName to
-                listOf(total) + family.variants.map { inventoryItemOf(it, overview.units) }
+                listOf(total) + variants.map { inventoryItemOf(it, overview.units) }
         }
         return (singles + families).sortedBy { it.first }.flatMap { it.second }
     }
