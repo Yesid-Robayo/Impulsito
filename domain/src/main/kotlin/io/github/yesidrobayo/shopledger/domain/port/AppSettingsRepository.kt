@@ -83,6 +83,18 @@ interface AppSettingsRepository {
      */
     suspend fun updateExpiryNoticeDays(days: Int, updatedAt: Instant)
 
+    /**
+     * Guarda la plantilla del comprobante: el logo, los datos del negocio y el pie, cada uno o
+     * ninguno. La dirección del portal de trámites no cambia. Solo dentro de
+     * [TransactionRunner.write]: es un dato del negocio y cuenta como cambio.
+     */
+    suspend fun updateReceiptTemplate(
+        logoMediaId: Long?,
+        businessDetails: String?,
+        footerText: String?,
+        updatedAt: Instant,
+    )
+
     /** Marca el fin del primer uso. Fuera de [TransactionRunner.write]: no cuenta como cambio. */
     suspend fun markOnboardingCompleted(completedAt: Instant)
 }

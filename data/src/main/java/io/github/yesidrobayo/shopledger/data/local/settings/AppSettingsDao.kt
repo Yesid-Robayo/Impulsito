@@ -140,6 +140,19 @@ internal interface AppSettingsDao {
     )
     suspend fun updateExpiryNoticeDays(days: Long, updatedAt: Long): Int
 
+    /** La plantilla del comprobante, sin tocar la dirección del portal de trámites. */
+    @Query(
+        "UPDATE app_settings SET receipt_logo_media_id = :logoMediaId, " +
+            "receipt_business_details = :businessDetails, receipt_footer_text = :footerText, " +
+            "updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateReceiptTemplate(
+        logoMediaId: Long?,
+        businessDetails: String?,
+        footerText: String?,
+        updatedAt: Long,
+    ): Int
+
     /**
      * La moneda de referencia y sus decimales, o las dos en nulo para quitarla. Las cotizaciones
      * de cada moneda se conservan en su libro.

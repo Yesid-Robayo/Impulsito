@@ -96,6 +96,24 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
         }
     }
 
+    override suspend fun updateReceiptTemplate(
+        logoMediaId: Long?,
+        businessDetails: String?,
+        footerText: String?,
+        updatedAt: Instant,
+    ) {
+        writes.inTransaction {
+            requireOneRow(
+                settings.updateReceiptTemplate(
+                    logoMediaId = logoMediaId,
+                    businessDetails = businessDetails,
+                    footerText = footerText,
+                    updatedAt = updatedAt.toStoredMillis(),
+                ),
+            )
+        }
+    }
+
     override suspend fun updateReferenceCurrency(
         reference: ReferenceCurrency?,
         updatedAt: Instant,

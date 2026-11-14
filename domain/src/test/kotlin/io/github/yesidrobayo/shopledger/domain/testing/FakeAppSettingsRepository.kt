@@ -211,6 +211,25 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
         )
     }
 
+    /** Cada plantilla de comprobante escrita, en orden. */
+    val receiptTemplateWrites = mutableListOf<ReceiptSettings>()
+
+    override suspend fun updateReceiptTemplate(
+        logoMediaId: Long?,
+        businessDetails: String?,
+        footerText: String?,
+        updatedAt: Instant,
+    ) {
+        val current = settings.value
+        val receipt = current.receipt.copy(
+            logoMediaId = logoMediaId,
+            businessDetails = businessDetails,
+            footerText = footerText,
+        )
+        receiptTemplateWrites += receipt
+        settings.value = current.copy(updatedAt = updatedAt, receipt = receipt)
+    }
+
     /** Cada cambio de preferencia escrito, en orden. */
     val preferenceWrites = mutableListOf<PreferenceChange>()
 

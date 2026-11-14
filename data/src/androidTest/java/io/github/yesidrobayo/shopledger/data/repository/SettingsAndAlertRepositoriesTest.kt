@@ -189,6 +189,24 @@ internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
     }
 
     @Test
+    fun theReceiptTemplateIsSavedWithoutTouchingThePortalAddress() = runBlocking {
+        execute("UPDATE app_settings SET fiscal_portal_url = '$PORTAL' WHERE id = 1")
+
+        commit {
+            settings.updateReceiptTemplate(null, "Calle Mayor 8", "Gracias por venir", LATER_AT)
+        }
+
+        val read = settings.get()
+        assertEquals(
+            ReceiptSettings(null, "Calle Mayor 8", "Gracias por venir", PORTAL),
+            read.receipt,
+        )
+        assertEquals(LATER_AT, read.updatedAt)
+        commit { settings.updateReceiptTemplate(null, null, null, LATER_AT) }
+        assertEquals(ReceiptSettings(null, null, null, PORTAL), settings.get().receipt)
+    }
+
+    @Test
     fun aRejectedPreferenceComesOutTypedWithoutText() = runBlocking {
         // Una guarda propia de esta conexión, que rechaza todo cambio de los ajustes.
         execute(
@@ -351,5 +369,6 @@ internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
     private companion object {
         const val MISSING_ID = 999L
         val TEST_CURRENCY = requireNotNull(CurrencyCode.of("XTS"))
+        const val PORTAL = "https://example.com/portal"
     }
 }

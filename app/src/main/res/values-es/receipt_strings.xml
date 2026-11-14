@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Textos del comprobante en papel, PDF e imagen. Nunca lo llaman factura. -->
+<!-- Textos del comprobante y de su plantilla. Nunca lo llaman factura. -->
 <resources>
     <string name="receipt_doc_title">Comprobante de venta</string>
     <string name="receipt_doc_sale_number">Venta %1$s</string>
@@ -19,4 +19,21 @@
     <string name="receipt_doc_change">Cambio</string>
     <string name="receipt_doc_balance_due">Saldo pendiente</string>
     <string name="receipt_doc_return">Devolución %1$s</string>
+    <string name="receipt_sample_note">Ejemplo con datos de muestra</string>
+    <string name="receipt_logo_label">Logo</string>
+    <string name="receipt_logo_choose_action">Elegir imagen</string>
+    <string name="receipt_logo_change_action">Cambiar imagen</string>
+    <string name="receipt_logo_remove_action">Quitar logo</string>
+    <string name="receipt_business_name">Nombre del negocio</string>
+    <string name="receipt_business_details">Datos del negocio</string>
+    <string name="receipt_footer">Pie del comprobante</string>
+    <string name="receipt_fixed_legend">Leyenda fija</string>
+    <string name="receipt_fixed_legend_help">Esta leyenda siempre aparece y no se puede quitar.</string>
+    <string name="receipt_save_action">Guardar plantilla</string>
+    <string name="receipt_saved">Plantilla guardada</string>
+    <string name="receipt_error_image">No se pudo usar esa imagen. Probar con otra.</string>
+    <string name="receipt_error_length">Usar máximo %1$d caracteres</string>
+    <string name="receipt_sample_product_first">Arroz 1 kg</string>
+    <string name="receipt_sample_product_second">Aceite 900 ml</string>
+    <string name="a11y_receipt_preview">Vista previa del comprobante. %1$s</string>
 </resources>

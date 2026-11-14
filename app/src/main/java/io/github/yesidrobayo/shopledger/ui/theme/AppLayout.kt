@@ -208,6 +208,12 @@ class AppSizes internal constructor() {
 
     /** Ancho del panel del escáner junto a la cámara, en una ventana horizontal ancha. */
     val scannerSidePanel: Dp = 360.dp
+
+    /**
+     * El ancho máximo de `ReceiptPreview`: la columna del comprobante con su margen, a un punto
+     * por dp. Más ancha, el papel se agranda sin mostrar nada más.
+     */
+    val receiptPreviewMaxWidth: Dp = 408.dp
 }
 
 /**

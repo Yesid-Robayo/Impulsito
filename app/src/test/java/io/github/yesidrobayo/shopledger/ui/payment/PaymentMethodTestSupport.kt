@@ -249,6 +249,13 @@ internal object NoSettings : AppSettingsRepository {
     override suspend fun updateExpiryNoticeDays(days: Int, updatedAt: Instant) =
         error("Solo lectura")
 
+    override suspend fun updateReceiptTemplate(
+        logoMediaId: Long?,
+        businessDetails: String?,
+        footerText: String?,
+        updatedAt: Instant,
+    ) = error("Solo lectura")
+
     override suspend fun updateReferenceCurrency(
         reference: ReferenceCurrency?,
         updatedAt: Instant,

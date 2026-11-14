@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Textos del comprobante en papel, PDF e imagen. Nunca lo llaman factura. -->
+<!-- Textos del comprobante y de su plantilla. Nunca lo llaman factura. -->
 <resources>
     <string name="receipt_doc_title">Sales receipt</string>
     <string name="receipt_doc_sale_number">Sale %1$s</string>
@@ -19,4 +19,21 @@
     <string name="receipt_doc_change">Change</string>
     <string name="receipt_doc_balance_due">Balance due</string>
     <string name="receipt_doc_return">Return %1$s</string>
+    <string name="receipt_sample_note">Example with sample data</string>
+    <string name="receipt_logo_label">Logo</string>
+    <string name="receipt_logo_choose_action">Choose image</string>
+    <string name="receipt_logo_change_action">Change image</string>
+    <string name="receipt_logo_remove_action">Remove logo</string>
+    <string name="receipt_business_name">Business name</string>
+    <string name="receipt_business_details">Business details</string>
+    <string name="receipt_footer">Receipt footer</string>
+    <string name="receipt_fixed_legend">Fixed notice</string>
+    <string name="receipt_fixed_legend_help">This notice always appears and cannot be removed.</string>
+    <string name="receipt_save_action">Save template</string>
+    <string name="receipt_saved">Template saved</string>
+    <string name="receipt_error_image">That image could not be used. Try another one.</string>
+    <string name="receipt_error_length">Use at most %1$d characters</string>
+    <string name="receipt_sample_product_first">Rice 1 kg</string>
+    <string name="receipt_sample_product_second">Cooking oil 900 ml</string>
+    <string name="a11y_receipt_preview">Receipt preview. %1$s</string>
 </resources>
