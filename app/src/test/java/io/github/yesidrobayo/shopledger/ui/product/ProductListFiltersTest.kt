@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductCatalogUseCase
 import kotlin.time.Instant
@@ -47,6 +48,8 @@ class ProductListFiltersTest {
 
     private fun Product.archived() = copy(archivedAt = ARCHIVED_AT)
 
+    private fun Product.used(usage: ProductUsage) = copy(details = details.copy(usage = usage))
+
     @Test
     fun `category and usual supplier narrow the list, and the status picks archived`() {
         val rice = product(1L, "Arroz").inCategory(7L).fromSupplier(3L)
@@ -81,6 +84,63 @@ class ProductListFiltersTest {
             ProductListContent.FilteredOut,
             ProductListItems.build(archived, units, "", ProductListFilters()),
         )
+    }
+
+    @Test
+    fun `the inputs filter shows what is an input, also what is sold too`() {
+        val flour = product(1L, "Harina").used(ProductUsage.INPUT)
+        val sugar = product(2L, "Azúcar").used(ProductUsage.BOTH)
+        val bread = product(3L, "Pan")
+        val catalog = listOf(sugar, flour, bread)
+
+        assertEquals(
+            listOf(2L, 1L),
+            ids(ProductListItems.build(catalog, units, "", ProductListFilters(inputsOnly = true))),
+        )
+        // Sin el filtro, los insumos están en la lista como cualquier producto.
+        assertEquals(
+            listOf(2L, 1L, 3L),
+            ids(ProductListItems.build(catalog, units, "", ProductListFilters())),
+        )
+        assertEquals(
+            ProductListContent.FilteredOut,
+            ProductListItems.build(
+                listOf(bread),
+                units,
+                "",
+                ProductListFilters(inputsOnly = true),
+            ),
+        )
+        assertEquals(1, ProductListFilters(inputsOnly = true).activeCount)
+    }
+
+    @Test
+    fun `the sheet offers the inputs filter only when there is an input`() = runTest(dispatcher) {
+        val catalog = FakeCatalog()
+        catalog.products.value = listOf(product(1L, "Pan"))
+        val model = ProductListViewModel(
+            ObserveProductCatalogUseCase(catalog, FakeUnits()),
+            dispatcher,
+            FixedChoices,
+        )
+        model.uiState.test {
+            skipItems(1)
+            assertFalse(awaitItem().showsUsageFilter)
+
+            catalog.products.value =
+                listOf(product(1L, "Pan"), product(2L, "Harina").used(ProductUsage.INPUT))
+            var item = awaitItem()
+            while (!item.showsUsageFilter) item = awaitItem()
+
+            model.onAction(ProductListAction.FilterInputs(true))
+            val inputs = expectContent {
+                it is ProductListContent.Products && ids(it) == listOf(2L)
+            }
+            assertTrue(inputs.filters.inputsOnly)
+            model.onAction(ProductListAction.FilterInputs(false))
+            expectContent { it is ProductListContent.Products && ids(it) == listOf(2L, 1L) }
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

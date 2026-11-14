@@ -204,4 +204,10 @@ enum class LineRejection {
      * solo hay un nivel, y la principal se guarda primero para darle su id.
      */
     INVALID_EXTRA,
+
+    /**
+     * El producto es un insumo: no se vende. Pasa si cambió de uso mientras se vendía, o con una
+     * venta armada antes del cambio. Como componente de un combo sí sale: eso no es venderlo.
+     */
+    PRODUCT_NOT_SOLD,
 }

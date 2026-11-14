@@ -138,6 +138,31 @@ internal class CatalogGuardsTest : GuardProbeTest() {
     }
 
     @Test
+    fun aProductUsageIsOneOfThreeAndChangesEvenWithHistory() = runBlocking {
+        for ((index, usage) in listOf("SALE", "INPUT", "BOTH").withIndex()) {
+            insert("products", productRow("uso $index").with("usage" to usage))
+        }
+        for (broken in listOf(
+            productRow("otro uso").with("usage" to "SUPPLY"),
+            productRow("minusculas").with("usage" to "input"),
+            productRow("sin uso").with("usage" to null),
+            productRow("numero").with("usage" to 1L),
+        )) {
+            rejected(PRODUCTS, broken.insertInto("products"))
+        }
+        // Con historia, el uso sigue cambiando: no es historia, y lo guardado queda como estaba.
+        val flour = insert("products", productRow("harina"))
+        execute(movementRow(flour).insertInto("stock_movements"))
+        execute(update("products", flour, "usage" to "INPUT"))
+        execute(update("products", flour, "usage" to "BOTH"))
+        rejected(PRODUCTS, update("products", flour, "usage" to "OTHER"))
+        assertEquals(
+            1L,
+            count("SELECT COUNT(*) FROM products WHERE id = $flour AND usage = 'BOTH'"),
+        )
+    }
+
+    @Test
     fun priceHistoryKeepsTheColumnsOfItsSource() = runBlocking {
         val valid = priceChangeRow(productId, priceListId)
         val bulk =

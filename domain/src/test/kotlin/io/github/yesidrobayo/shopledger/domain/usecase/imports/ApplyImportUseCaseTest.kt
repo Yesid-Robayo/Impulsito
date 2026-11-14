@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.imports.ImportApplyResult
 import io.github.yesidrobayo.shopledger.domain.model.imports.ImportDraft
 import io.github.yesidrobayo.shopledger.domain.model.imports.ImportExistingPolicy
@@ -289,6 +290,32 @@ class ApplyImportUseCaseTest {
         assertEquals(ProductStockMode.UNTRACKED, service.details.stockMode)
         assertEquals(Money(500_000L), service.details.fixedUnitCost)
         assertEquals(Money.ZERO, service.initialCost)
+    }
+
+    @Test
+    fun `the usage column marks inputs, and without it nothing changes`() = runTest {
+        val importer = Importer()
+        importer.fixture.seedProduct(1L, "Arroz", salePrice = Money(250_000L))
+        importer.fixture.seedProduct(2L, "Sal", salePrice = Money(10_000L))
+        val preview = importer.preview(
+            ImportTarget.PRODUCTS,
+            listOf("name", "usage"),
+            listOf("Harina", "INPUT"),
+            listOf("Azucar", ""),
+            listOf("arroz", "BOTH"),
+            listOf("sal", ""),
+        )
+
+        val result = importer.apply(preview, ImportExistingPolicy.UPDATE)
+
+        assertEquals(ImportApplyResult.Applied(created = 2, updated = 2, skipped = 0), result)
+        val byName = importer.fixture.tables.products.values.associateBy { it.details.name }
+        assertEquals(ProductUsage.INPUT, byName.getValue("Harina").details.usage)
+        // Un producto nuevo sin uso se vende.
+        assertEquals(ProductUsage.SALE, byName.getValue("Azucar").details.usage)
+        assertEquals(ProductUsage.BOTH, importer.fixture.product(1L).details.usage)
+        // Sin uso escrito, el existente queda como estaba.
+        assertEquals(ProductUsage.SALE, importer.fixture.product(2L).details.usage)
     }
 
     @Test

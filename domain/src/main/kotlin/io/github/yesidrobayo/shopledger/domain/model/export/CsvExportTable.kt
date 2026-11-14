@@ -35,6 +35,7 @@ enum class CsvExportTable(
             "on_hand",
             "min_stock",
             "archived",
+            "usage",
         ),
     ),
     SUPPLIERS(

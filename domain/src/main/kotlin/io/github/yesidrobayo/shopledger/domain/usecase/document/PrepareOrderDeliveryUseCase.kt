@@ -14,6 +14,8 @@ import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
  * favor del cliente, que la venta consume a crédito.
  *
  * - [archivedLines] cuenta las líneas de productos archivados, que quedan por fuera.
+ * - [notSoldLines] cuenta las de productos que hoy son insumos, que también quedan por fuera: el
+ *   pedido guardado no cambia, pero la venta no puede llevarlos.
  * - [credit] es lo que el cliente tiene a favor, cero si no tiene: con anticipo, es lo que pagó.
  */
 data class OrderDelivery(
@@ -24,6 +26,7 @@ data class OrderDelivery(
     val shippingAmount: Money,
     val archivedLines: Int,
     val credit: Money,
+    val notSoldLines: Int = 0,
 )
 
 /** Resultado de [PrepareOrderDeliveryUseCase]. */
@@ -35,7 +38,7 @@ sealed interface OrderDeliveryResult {
     /** Ya se entregó o se canceló: un pedido se entrega una sola vez. */
     data class NotOpen(val status: OrderStatus) : OrderDeliveryResult
 
-    /** Todas sus líneas son de productos archivados. */
+    /** Todas sus líneas son de productos archivados o de insumos. */
     data object NothingToDeliver : OrderDeliveryResult
 }
 
@@ -62,7 +65,8 @@ class PrepareOrderDeliveryUseCase(
         val lines = orders.findLines(orderId)
         val byId = products.findByIds(lines.map { it.content.productId }.toSet())
             .associateBy { it.id }
-        val kept = lines.filter { byId[it.content.productId]?.isArchived == false }
+        val active = lines.filter { byId[it.content.productId]?.isArchived == false }
+        val kept = active.filter { byId.getValue(it.content.productId).details.usage.isSold }
         if (kept.isEmpty()) return OrderDeliveryResult.NothingToDeliver
         val customer = order.customerId?.let { customers.findById(it) }
         val balance = customer?.balance ?: Money.ZERO
@@ -73,8 +77,9 @@ class PrepareOrderDeliveryUseCase(
                 priceListId = customer?.priceListId,
                 lines = kept.map { DocumentLines.requestOf(it) },
                 shippingAmount = order.shippingAmount,
-                archivedLines = lines.size - kept.size,
+                archivedLines = lines.size - active.size,
                 credit = if (balance < Money.ZERO) -balance else Money.ZERO,
+                notSoldLines = active.size - kept.size,
             ),
         )
     }

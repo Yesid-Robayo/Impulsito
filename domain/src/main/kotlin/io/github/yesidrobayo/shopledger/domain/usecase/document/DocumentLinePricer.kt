@@ -71,6 +71,9 @@ enum class DocumentLineRejection {
      * entregar, y si no, sale el que vence antes.
      */
     LOT_NOT_SUPPORTED,
+
+    /** El producto es un insumo: no se vende, así que tampoco se cotiza ni se pide. */
+    PRODUCT_NOT_SOLD,
 }
 
 /** Cómo resultó calcular las líneas de un documento. */
@@ -163,6 +166,7 @@ internal class DocumentLinePricer(
         taxByRate: MutableMap<Long, Pair<BasisPoints, String?>>,
     ): LineResult {
         if (product.isArchived) return rejected(DocumentLineRejection.PRODUCT_ARCHIVED)
+        if (!product.details.usage.isSold) return rejected(DocumentLineRejection.PRODUCT_NOT_SOLD)
         // El producto principal de unas variantes no tiene stock propio: se ofrece una de ellas.
         if (CatalogLink.VARIANT_PARENT in products.catalogLinks(product.id)) {
             return rejected(DocumentLineRejection.PRODUCT_HAS_VARIANTS)

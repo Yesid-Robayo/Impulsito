@@ -9,7 +9,7 @@ package io.github.yesidrobayo.shopledger.data.local.guard
  */
 internal fun schemaCatalogVersion1(): SchemaVersionCatalog = SchemaVersionCatalog(
     version = 1,
-    identityHash = "dd612ac04dfc6998fb6fe52bf0e12d54",
+    identityHash = "54d9ab688a172d05f6dc4f3a802f73ca",
     tables =
         listOf(
             appSettingsTable(),
@@ -1565,6 +1565,7 @@ private fun productsTable(): CatalogTable = CatalogTable(
             column("tax_rate_id", "INTEGER", notNull = false),
             column("tracks_lots", "INTEGER", notNull = true),
             column("updated_at", "INTEGER", notNull = true),
+            column("usage", "TEXT", notNull = true),
             column("variant_axis_1", "TEXT", notNull = false),
             column("variant_axis_2", "TEXT", notNull = false),
             column("variant_value_1", "TEXT", notNull = false),
@@ -4600,6 +4601,7 @@ private fun triggers(): List<CatalogTrigger> = listOf(
                   AND (NEW.price_review_since IS NULL OR (typeof(NEW.price_review_since) = 'integer'))
                   AND NEW.tracks_lots IN (0, 1)
                   AND (NEW.expiry_notice_days IS NULL OR (typeof(NEW.expiry_notice_days) = 'integer' AND NEW.expiry_notice_days BETWEEN 0 AND 36500))
+                  AND NEW.usage IN ('SALE', 'INPUT', 'BOTH')
                   AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
                   AND typeof(NEW.created_at) = 'integer'
                   AND typeof(NEW.updated_at) = 'integer'
@@ -4645,6 +4647,7 @@ private fun triggers(): List<CatalogTrigger> = listOf(
                   AND (NEW.price_review_since IS NULL OR (typeof(NEW.price_review_since) = 'integer'))
                   AND NEW.tracks_lots IN (0, 1)
                   AND (NEW.expiry_notice_days IS NULL OR (typeof(NEW.expiry_notice_days) = 'integer' AND NEW.expiry_notice_days BETWEEN 0 AND 36500))
+                  AND NEW.usage IN ('SALE', 'INPUT', 'BOTH')
                   AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
                   AND typeof(NEW.created_at) = 'integer'
                   AND typeof(NEW.updated_at) = 'integer'

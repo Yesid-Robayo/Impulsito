@@ -60,6 +60,8 @@ import kotlinx.coroutines.flow.map
  *   ellas, un combo no dice cuántos alcanzan.
  * - Los extras de cada producto, de [modifiers]: la hoja de la línea los ofrece. Sin ellos, ningún
  *   producto ofrece extras.
+ * - Un insumo no se ofrece: ni en la búsqueda, ni en los más vendidos, ni entre los archivados que
+ *   se ofrece reactivar, ni como extra. Sí cuenta para saber cuántos combos alcanzan.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObserveSaleCatalogUseCase(
@@ -141,6 +143,8 @@ class ObserveSaleCatalogUseCase(
             .combine(locationsOf()) { sale, (active, last) ->
                 sale.copy(locations = active, lastSaleLocationId = last)
             }
+            // Al final: los combos ya contaron el stock de sus insumos.
+            .map { it.forSale() }
     }
 
     /** Las ubicaciones vigentes y la de la última venta, o ninguna si la venta no las lee. */

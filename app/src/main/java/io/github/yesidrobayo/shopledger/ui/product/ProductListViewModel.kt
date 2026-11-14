@@ -97,15 +97,18 @@ class ProductListViewModel(
             filters,
             tags,
         ) { (archived, read), typed, chosen, index ->
+            // Si lo leído tiene algún insumo: sin ninguno, la hoja no ofrece el filtro `Insumos`.
+            // Mientras llega otra lectura vale la anterior, para que la hoja no parpadee.
+            val inputs = read.products.any { it.details.usage.isInput }
             if (archived != chosen.archived) {
-                ProductListContent.Loading
+                ProductListContent.Loading to inputs
             } else {
-                ProductListItems.build(read.products, read.units, typed, chosen, index)
+                ProductListItems.build(read.products, read.units, typed, chosen, index) to inputs
             }
         }
             .flowOn(computation)
             // Una falla de lectura no cierra la pantalla: muestra el error y deja reintentar.
-            .catch { emit(ProductListContent.ReadError) }
+            .catch { emit(ProductListContent.ReadError to false) }
     }
 
     private val lists =
@@ -118,11 +121,12 @@ class ProductListViewModel(
         combine(query, content, filters, filtersOpen, lists) { typed, shown, chosen, open, sheet ->
             ProductListUiState(
                 query = typed,
-                content = shown,
+                content = shown.first,
                 filters = chosen,
                 filtersOpen = open,
                 categories = sheet.first,
                 suppliers = sheet.second,
+                showsUsageFilter = shown.second || chosen.inputsOnly,
             )
         }
             .stateIn(
@@ -150,6 +154,9 @@ class ProductListViewModel(
 
             is ProductListAction.FilterArchived ->
                 filters.update { it.copy(archived = action.archived) }
+
+            is ProductListAction.FilterInputs ->
+                filters.update { it.copy(inputsOnly = action.inputsOnly) }
 
             is ProductListAction.SortBy -> filters.update { it.copy(sort = action.sort) }
 

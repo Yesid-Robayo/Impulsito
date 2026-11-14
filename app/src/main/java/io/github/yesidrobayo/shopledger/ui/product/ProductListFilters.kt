@@ -17,7 +17,9 @@ enum class ProductSort {
 
 /**
  * Los filtros y el orden de la lista de productos. [categoryId] y [supplierId] en `null` no
- * filtran. [archived] muestra solo los archivados, que de otro modo no aparecen.
+ * filtran. [archived] muestra solo los archivados, que de otro modo no aparecen. [inputsOnly]
+ * muestra solo los insumos, los que no se venden y los que también van en recetas: así se ven
+ * aparte, sin una sección propia.
  */
 @Immutable
 data class ProductListFilters(
@@ -25,16 +27,18 @@ data class ProductListFilters(
     val supplierId: Long? = null,
     val archived: Boolean = false,
     val sort: ProductSort = ProductSort.NAME,
+    val inputsOnly: Boolean = false,
 ) {
     /** Cuántos filtros están puestos, para el botón. El orden no cuenta: no quita productos. */
     val activeCount: Int
-        get() = listOf(categoryId != null, supplierId != null, archived).count { it }
+        get() = listOf(categoryId != null, supplierId != null, archived, inputsOnly).count { it }
 
     /** Si [product] pasa los filtros. */
     fun matches(product: Product): Boolean {
         val details = product.details
         return product.isArchived == archived &&
             (categoryId == null || details.categoryId == categoryId) &&
-            (supplierId == null || details.defaultSupplierId == supplierId)
+            (supplierId == null || details.defaultSupplierId == supplierId) &&
+            (!inputsOnly || details.usage.isInput)
     }
 }

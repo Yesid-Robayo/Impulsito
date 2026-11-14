@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 
 /** Lo que la persona hace en el formulario de un producto. */
 sealed interface ProductEditAction {
@@ -25,6 +26,9 @@ sealed interface ProductEditAction {
 
     /** Encendió o apagó el control por lotes del producto. */
     data class TracksLotsChange(val enabled: Boolean) : ProductEditAction
+
+    /** Eligió si el producto se vende, es un insumo o las dos cosas. */
+    data class UsageChange(val usage: ProductUsage) : ProductEditAction
 
     /** Quiere crear una unidad sin salir del formulario. */
     data object NewUnit : ProductEditAction

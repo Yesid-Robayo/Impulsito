@@ -45,6 +45,7 @@ class ImportHeaderNamingTest {
                 ColumnMatch.Field("on_hand"),
                 ColumnMatch.Field("min_stock"),
                 ColumnMatch.Ignored("archived"),
+                ColumnMatch.Field("usage"),
             ),
             matches,
         )

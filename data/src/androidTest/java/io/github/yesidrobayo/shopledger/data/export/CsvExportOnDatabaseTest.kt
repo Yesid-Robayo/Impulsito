@@ -143,6 +143,8 @@ internal class CsvExportOnDatabaseTest : RepositoryTest() {
         // Diez compradas, dos vendidas: ocho, con tres decimales.
         assertEquals("8,000", formulaRow[10])
         assertEquals("", formulaRow[12])
+        // El uso sale por su nombre guardado, al final: un producto nuevo se vende.
+        assertEquals("\"SALE\"", formulaRow[13])
         assertEquals("\"Maçã ñandú; \"\"grande\"\"\"", csvCells(productLines[3])[0])
         assertTrue(accented > formula)
 

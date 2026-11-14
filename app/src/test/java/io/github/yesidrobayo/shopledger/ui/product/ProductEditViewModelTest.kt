@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductPhotoChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductTag
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
@@ -231,6 +232,54 @@ class ProductEditViewModelTest {
         assertEquals(7L, model.uiState.value.savedProductId)
         assertFalse(model.uiState.value.dirty)
     }
+
+    @Test
+    fun `a new product is sold, and choosing input saves it as an input`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+        assertEquals(ProductUsage.SALE, model.uiState.value.form.usage)
+        // Un producto nuevo no avisa nada: no tiene cotizaciones ni pedidos.
+        model.onAction(ProductEditAction.UsageChange(ProductUsage.INPUT))
+        assertFalse(model.uiState.value.warnsInputChange)
+        assertTrue(model.uiState.value.dirty)
+        model.onAction(ProductEditAction.NameChange("Harina"))
+
+        model.onAction(ProductEditAction.Save)
+        advanceUntilIdle()
+
+        assertEquals(ProductUsage.INPUT, operations.created.single().first.usage)
+    }
+
+    @Test
+    fun `a sold product turned into an input warns about its open quotes and orders`() =
+        runTest(dispatcher) {
+            val stored = product(5L, "Azúcar", salePrice = 2_000L)
+            operations.editing = ProductForEdit(
+                product = stored.copy(details = stored.details.copy(usage = ProductUsage.BOTH)),
+                lockedFields = emptySet(),
+                costLocked = false,
+            )
+            val model = ProductEditViewModel(
+                operations,
+                numbers,
+                productId = 5L,
+                prefillName = null,
+                unitNames = NAMES,
+            )
+            advanceUntilIdle()
+            assertEquals(ProductUsage.BOTH, model.uiState.value.form.usage)
+            assertFalse(model.uiState.value.warnsInputChange)
+
+            model.onAction(ProductEditAction.UsageChange(ProductUsage.INPUT))
+            assertTrue(model.uiState.value.warnsInputChange)
+            model.onAction(ProductEditAction.UsageChange(ProductUsage.SALE))
+            assertFalse(model.uiState.value.warnsInputChange)
+            model.onAction(ProductEditAction.UsageChange(ProductUsage.INPUT))
+
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+            assertEquals(ProductUsage.INPUT, operations.edited.single().second.usage)
+        }
 
     @Test
     fun `fields that cannot be read are marked and nothing is sent`() = runTest(dispatcher) {

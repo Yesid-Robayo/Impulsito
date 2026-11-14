@@ -10,6 +10,8 @@ import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 /**
  * El estado de la lista de productos. [query] es lo que la persona escribió en la búsqueda, tal
  * cual: sobrevive a cualquier cambio del contenido, y el contenido se arma con ella.
+ * [showsUsageFilter] dice si la hoja ofrece el filtro `Insumos`: solo si hay alguno, o si ya está
+ * puesto, porque lo que no se usa no estorba.
  */
 @Immutable
 data class ProductListUiState(
@@ -19,6 +21,7 @@ data class ProductListUiState(
     val filtersOpen: Boolean = false,
     val categories: List<Category> = emptyList(),
     val suppliers: List<Supplier> = emptyList(),
+    val showsUsageFilter: Boolean = false,
 )
 
 /** Lo que muestra la lista debajo de la búsqueda. */

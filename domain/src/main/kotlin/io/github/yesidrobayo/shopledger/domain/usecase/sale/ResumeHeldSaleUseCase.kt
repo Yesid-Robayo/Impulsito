@@ -15,9 +15,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.ExtraLines
  * Una venta en espera lista para seguir en la venta nueva.
  *
  * [lines] son las que todavía se pueden vender. [removedProducts] cuenta las que quedaron fuera
- * porque su producto ya no existe o está archivado. [changedPrices] cuenta las que toman el precio
- * vigente y cuyo precio cambió desde que se guardó la espera. [priceListId] es la lista con que se
- * sigue, `null` para la inicial.
+ * porque su producto ya no existe, está archivado o hoy es un insumo. [changedPrices] cuenta las
+ * que toman el precio vigente y cuyo precio cambió desde que se guardó la espera. [priceListId] es
+ * la lista con que se sigue, `null` para la inicial.
  */
 data class ResumedSale(
     val heldSaleId: Long,
@@ -73,7 +73,8 @@ class ResumeHeldSaleUseCase(
         val listDropped = held.priceListId != null && listId == null
         // Un extra cuya línea principal queda fuera se va con ella, y cuenta como quitado.
         val kept = ExtraLines.retain(held.lines, { it.parentIndex }) { line ->
-            byId[line.productId]?.isArchived == false
+            // Un insumo tampoco se vende: queda fuera como un archivado.
+            byId[line.productId]?.let { !it.isArchived && it.details.usage.isSold } == true
         }
         val lines = ArrayList<SaleLineRequest>(kept.size)
         var changed = 0

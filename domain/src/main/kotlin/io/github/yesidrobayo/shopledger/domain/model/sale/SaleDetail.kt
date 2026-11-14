@@ -12,6 +12,9 @@ import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturn
  *
  * [returns] son sus devoluciones, activas y anuladas, en el orden en que se registraron, y
  * [returned] lo que ya devolvieron las activas de cada línea, por id de línea.
+ *
+ * [notSoldProductIds] son los productos de sus líneas que hoy son insumos. La venta guardada no
+ * cambia, pero una corrección no puede volver a venderlos.
  */
 data class SaleDetail(
     val sale: Sale,
@@ -20,6 +23,7 @@ data class SaleDetail(
     val archivedProductIds: Set<Long>,
     val returns: List<SaleReturn> = emptyList(),
     val returned: Map<Long, LineAmounts> = emptyMap(),
+    val notSoldProductIds: Set<Long> = emptySet(),
 ) {
     /** Si alguna devolución sigue activa: entonces la venta no se anula, y se devuelve el resto. */
     val hasActiveReturns: Boolean

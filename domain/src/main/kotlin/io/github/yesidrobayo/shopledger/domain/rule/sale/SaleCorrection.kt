@@ -18,7 +18,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
  * toma el costo de hoy al confirmarse.
  *
  * [leftOut] cuenta las líneas que no se trajeron porque su producto hoy está archivado: no se
- * puede vender, y la venta nueva lo dice.
+ * puede vender, y la venta nueva lo dice. [notSoldLeftOut] cuenta aparte las que no se trajeron
+ * porque su producto hoy es un insumo, que tampoco se vende.
  */
 data class SaleCorrection(
     val lines: List<SaleLineRequest>,
@@ -26,6 +27,7 @@ data class SaleCorrection(
     val date: BusinessDate,
     val note: String?,
     val leftOut: Int,
+    val notSoldLeftOut: Int = 0,
 )
 
 /** Arma la corrección de una venta guardada. No escribe nada. */
@@ -40,7 +42,7 @@ object SaleCorrections {
      *   precio guardado es por una unidad entera de esa unidad, así que cantidad y precio deben ir
      *   en la misma.
      * - Una línea de un producto hoy archivado queda por fuera y se cuenta, con los extras que
-     *   llevaba.
+     *   llevaba. Una de un producto que hoy es un insumo también, y se cuenta aparte.
      * - Un producto en dos líneas llega en una sola, con las cantidades y los descuentos sumados y
      *   el precio de la primera, porque la venta en pantalla lleva una línea por producto. Si las
      *   dos iban en la misma unidad, llega en esa unidad; si iban en unidades distintas, llega en
@@ -53,17 +55,22 @@ object SaleCorrections {
      */
     fun of(detail: SaleDetail): SaleCorrection {
         val archived = detail.archivedProductIds
+        val notSold = detail.notSoldProductIds
         val productOfLine = detail.lines.associate { it.id to it.content.productId }
         val mains = Merged()
         // Por producto principal, sus extras por producto, en el orden de la venta.
         val extras = LinkedHashMap<Long, Merged>()
         var leftOut = 0
+        var notSoldLeftOut = 0
         for (line in detail.lines) {
             val content = line.content
             val parentProduct = content.parentLineId?.let { productOfLine[it] }
             when {
                 content.productId in archived ||
                     (parentProduct != null && parentProduct in archived) -> leftOut++
+
+                content.productId in notSold ||
+                    (parentProduct != null && parentProduct in notSold) -> notSoldLeftOut++
 
                 parentProduct == null -> mains.add(content)
 
@@ -85,6 +92,7 @@ object SaleCorrections {
             date = content.businessDate,
             note = content.note,
             leftOut = leftOut,
+            notSoldLeftOut = notSoldLeftOut,
         )
     }
 

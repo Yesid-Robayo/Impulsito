@@ -25,6 +25,9 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  * [tracksLots] controla el producto por lotes, solo con stock propio: cada fila de su libro lleva
  * un lote. `null` lo deja como está, y con historia ya no cambia.
  *
+ * [usage] dice si se vende, si es un insumo o las dos cosas. `null` lo deja como está, y un
+ * producto nuevo se vende.
+ *
  * Lo que no está aquí, como las variantes o el impuesto, lo conserva la edición tal como estaba.
  */
 data class ProductForm(
@@ -41,4 +44,5 @@ data class ProductForm(
     val referencePrice: Money? = null,
     val photo: ProductPhotoChange = ProductPhotoChange.Keep,
     val tracksLots: Boolean? = null,
+    val usage: ProductUsage? = null,
 )

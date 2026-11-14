@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnSettlement
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturnRequest
@@ -70,6 +71,31 @@ class ObserveSaleDetailUseCaseTest {
 
         assertEquals(DocumentStatus.VOIDED, detail.sale.status)
         assertEquals(VoidReason.CUSTOMER_RETURN, detail.sale.voiding?.reason)
+        assertEquals(setOf(2L), detail.archivedProductIds)
+    }
+
+    @Test
+    fun `the products of its lines that are now inputs are named apart`() = runTest {
+        val saleId = sell()
+        val active = MutableStateFlow(
+            listOf(
+                product(1L, usage = ProductUsage.INPUT),
+                product(7L, usage = ProductUsage.INPUT),
+            ),
+        )
+        archived.value = listOf(product(2L, archived = true, usage = ProductUsage.BOTH))
+        val byFilter = object : ProductRepository by world.products {
+            override fun observe(filter: ArchiveFilter): Flow<List<Product>> =
+                if (filter == ArchiveFilter.ACTIVE) active else archived
+        }
+
+        val detail = requireNotNull(
+            ObserveSaleDetailUseCase(world.sales, world.payments, byFilter)(saleId).first(),
+        )
+
+        // La venta guardada no cambia: solo se dice qué productos ya no se venden.
+        assertEquals(listOf(1L, 2L), detail.lines.map { it.content.productId })
+        assertEquals(setOf(1L), detail.notSoldProductIds)
         assertEquals(setOf(2L), detail.archivedProductIds)
     }
 

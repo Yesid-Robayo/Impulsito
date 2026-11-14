@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
@@ -2021,6 +2022,7 @@ internal fun product(
     archived: Boolean = false,
     taxRateId: Long? = null,
     minStockMilli: Long = 0L,
+    usage: ProductUsage = ProductUsage.SALE,
 ): Product = Product(
     id = id,
     details = ProductDetails(
@@ -2045,6 +2047,7 @@ internal fun product(
         referenceCost = null,
         referencePrice = null,
         expiryNoticeDays = null,
+        usage = usage,
     ),
     salePrice = Money(salePrice),
     initialCost = Money(initialCost),

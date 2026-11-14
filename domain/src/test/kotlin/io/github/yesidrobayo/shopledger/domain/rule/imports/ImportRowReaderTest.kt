@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.imports.ImportCatalog
 import io.github.yesidrobayo.shopledger.domain.model.imports.ImportChoice
 import io.github.yesidrobayo.shopledger.domain.model.imports.ImportDraft
@@ -113,6 +114,31 @@ class ImportRowReaderTest {
         // `Granos` ya existe; `Distribuidora Norte` no.
         assertEquals(0, preview.newCategories)
         assertEquals(1, preview.newSuppliers)
+    }
+
+    @Test
+    fun `the usage is read by its stored name, and without the column nothing changes`() {
+        val columns = listOf("name", "usage")
+        val preview = ImportRowReader(ImportTarget.PRODUCTS, columns, commaCsv, catalog).read(
+            sheet(
+                listOf("Harina", "input"),
+                listOf("Azucar", " BOTH "),
+                listOf("Pan", ""),
+                listOf("Sal", "insumo"),
+            ),
+        )
+
+        assertEquals(
+            listOf(ImportRowIssue(5, "usage", ImportIssue.INVALID_VALUE)),
+            preview.issues,
+        )
+        assertEquals(
+            listOf(ProductUsage.INPUT, ProductUsage.BOTH, null),
+            preview.ready.map { (it as ImportDraft.Product).usage },
+        )
+        // Sin la columna, un producto no dice su uso: el nuevo se vende y el existente no cambia.
+        val plain = products(productRow()).ready.single() as ImportDraft.Product
+        assertEquals(null, plain.usage)
     }
 
     @Test

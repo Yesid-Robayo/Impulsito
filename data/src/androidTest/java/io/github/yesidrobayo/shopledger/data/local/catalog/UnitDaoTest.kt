@@ -239,6 +239,7 @@ internal class UnitDaoTest : LedgerDatabaseTest() {
                 referenceCost = null,
                 referencePrice = null,
                 expiryNoticeDays = null,
+                usage = "SALE",
                 updatedAt = LATER,
             )
         }

@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerContact
@@ -199,6 +200,7 @@ class ApplyImportUseCase(
                 referenceCost = null,
                 referencePrice = null,
                 expiryNoticeDays = null,
+                usage = draft.usage ?: ProductUsage.SALE,
             )
             val initialCost = if (tracked) cost else Money.ZERO
             val productId = w.products.insert(
@@ -262,6 +264,7 @@ class ApplyImportUseCase(
                     ?: current.defaultSupplierId,
                 barcode = draft.barcode ?: current.barcode,
                 minStock = draft.minStock ?: current.minStock,
+                usage = draft.usage ?: current.usage,
             )
             val price = draft.salePrice
             val priceChanged = price != null && price != product.salePrice

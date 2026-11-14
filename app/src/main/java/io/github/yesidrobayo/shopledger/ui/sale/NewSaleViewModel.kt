@@ -1236,11 +1236,20 @@ class NewSaleViewModel(
                     prefilled = true,
                 )
             }
-            val leftOut = conversion.archivedLines
-            if (leftOut > 0) {
-                overlay.update { it.copy(notice = SaleNotice.LINES_LEFT_OUT, leftOut = leftOut) }
-            }
+            noticeLeftOut(conversion.archivedLines, conversion.notSoldLines)
         }
+    }
+
+    /**
+     * Dice cuántas líneas quedaron por fuera al traer una cotización, un pedido o una corrección:
+     * [archived] de productos archivados y [notSold] de productos que hoy son insumos. Con algún
+     * insumo, el aviso nombra los dos motivos; sin ninguno, solo el archivado, como siempre.
+     */
+    private fun noticeLeftOut(archived: Int, notSold: Int) {
+        val leftOut = archived + notSold
+        if (leftOut == 0) return
+        val notice = if (notSold > 0) SaleNotice.LINES_NOT_SOLD else SaleNotice.LINES_LEFT_OUT
+        overlay.update { it.copy(notice = notice, leftOut = leftOut) }
     }
 
     /** Abre la hoja de `Guardar cotización` con el cliente, la vigencia y la nota que hay. */
@@ -1408,10 +1417,7 @@ class NewSaleViewModel(
                     prefilled = true,
                 )
             }
-            val leftOut = delivery.archivedLines
-            if (leftOut > 0) {
-                overlay.update { it.copy(notice = SaleNotice.LINES_LEFT_OUT, leftOut = leftOut) }
-            }
+            noticeLeftOut(delivery.archivedLines, delivery.notSoldLines)
         }
     }
 
@@ -1603,10 +1609,7 @@ class NewSaleViewModel(
                     )
                 }
             }
-            val leftOut = correction?.leftOut ?: 0
-            if (leftOut > 0) {
-                overlay.update { it.copy(notice = SaleNotice.LINES_LEFT_OUT, leftOut = leftOut) }
-            }
+            noticeLeftOut(correction?.leftOut ?: 0, correction?.notSoldLeftOut ?: 0)
         }
     }
 

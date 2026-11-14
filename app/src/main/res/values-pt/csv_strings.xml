@@ -23,6 +23,7 @@
     <string name="csv_header_stock_value">Valor do estoque</string>
     <string name="csv_header_on_hand">Estoque</string>
     <string name="csv_header_min_stock">Estoque mínimo</string>
+    <string name="csv_header_usage">Uso</string>
     <string name="csv_header_archived">Arquivado</string>
     <string name="csv_header_phone">Telefone</string>
     <string name="csv_header_email">E-mail</string>

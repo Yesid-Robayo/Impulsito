@@ -33,6 +33,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationStatus
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewLowStockAlert
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
@@ -154,7 +155,7 @@ internal class ProductRepositoryTest : RepositoryTest() {
         val details = productDetails(
             "Café molido",
             minStock = 1_000,
-        ).copy(taxRateId = null, expiryNoticeDays = 30)
+        ).copy(taxRateId = null, expiryNoticeDays = 30, usage = ProductUsage.BOTH)
 
         commit {
             products.updateDetails(productId, details, LATER_AT)
@@ -173,6 +174,18 @@ internal class ProductRepositoryTest : RepositoryTest() {
 
         commit { products.setPriceReviewSince(productId, null, LATER_AT) }
         assertNull(products.findById(productId)?.priceReviewSince)
+    }
+
+    @Test
+    fun aProductIsBornWithItsUsageAndAnInputIsReadBack() = runBlocking {
+        val details = productDetails("Harina").copy(usage = ProductUsage.INPUT)
+        val flour = commit { products.insert(newProduct("Harina", details)) }
+
+        assertEquals(ProductUsage.INPUT, products.findById(flour)?.details?.usage)
+        // El producto de la base nació sin decir su uso: se vende.
+        assertEquals(ProductUsage.SALE, products.findById(productId)?.details?.usage)
+        // En la base va por su nombre, como cualquier enum.
+        assertEquals("INPUT", database.productDao().findById(flour)?.usage)
     }
 
     @Test

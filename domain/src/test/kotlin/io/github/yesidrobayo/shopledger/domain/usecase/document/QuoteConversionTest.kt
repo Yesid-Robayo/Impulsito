@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.document
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.document.QuoteStatus
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
@@ -114,6 +115,26 @@ class QuoteConversionTest {
 
         world.addProduct(product(1, salePrice = 2_500, archived = true))
         assertEquals(QuoteConversionResult.NothingToConvert, prepare(id))
+    }
+
+    @Test
+    fun aProductThatIsNowAnInputIsLeftOutAndCountedApart() = runTest {
+        // Se cotizó cuando se vendía; después pasó a insumo. La cotización guardada no cambia.
+        val id = quote(line(1, 1_000), line(2, 1_000))
+        world.addProduct(product(2, salePrice = 500, usage = ProductUsage.INPUT))
+
+        val conversion = ready(id)
+
+        assertEquals(0, conversion.archivedLines)
+        assertEquals(1, conversion.notSoldLines)
+        assertEquals(listOf(1L), conversion.lines.map { it.quoted.productId })
+        assertEquals(2, world.tables.quoteLines.size)
+        assertTrue(sell(conversion.requests(false), id, CUSTOMER) is RegisterSaleResult.Registered)
+
+        // Con todo archivado o insumo no queda nada que vender.
+        val other = quote(line(1, 1_000))
+        world.addProduct(product(1, salePrice = 2_500, usage = ProductUsage.INPUT))
+        assertEquals(QuoteConversionResult.NothingToConvert, prepare(other))
     }
 
     @Test

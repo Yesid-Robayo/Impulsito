@@ -593,7 +593,7 @@ private val SUPPLIERS_GUARDS =
     )
 
 /** Los productos: nombre y código únicos entre los vigentes, y el modo de stock, la unidad
- * base y los lotes fijos una vez que hay historial.
+ * base y los lotes fijos una vez que hay historial. El uso cambia libremente: no es historia.
  *
  * Un registro con dinero exige la moneda confirmada y bloqueada en los ajustes: sin moneda, un
  * monto no tendría unidad. */
@@ -625,6 +625,7 @@ private val PRODUCTS_GUARDS =
           AND (NEW.price_review_since IS NULL OR (typeof(NEW.price_review_since) = 'integer'))
           AND NEW.tracks_lots IN (0, 1)
           AND (NEW.expiry_notice_days IS NULL OR (typeof(NEW.expiry_notice_days) = 'integer' AND NEW.expiry_notice_days BETWEEN 0 AND 36500))
+          AND NEW.usage IN ('SALE', 'INPUT', 'BOTH')
           AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
           AND typeof(NEW.created_at) = 'integer'
           AND typeof(NEW.updated_at) = 'integer'
@@ -664,6 +665,7 @@ private val PRODUCTS_GUARDS =
           AND (NEW.price_review_since IS NULL OR (typeof(NEW.price_review_since) = 'integer'))
           AND NEW.tracks_lots IN (0, 1)
           AND (NEW.expiry_notice_days IS NULL OR (typeof(NEW.expiry_notice_days) = 'integer' AND NEW.expiry_notice_days BETWEEN 0 AND 36500))
+          AND NEW.usage IN ('SALE', 'INPUT', 'BOTH')
           AND (NEW.archived_at IS NULL OR (typeof(NEW.archived_at) = 'integer'))
           AND typeof(NEW.created_at) = 'integer'
           AND typeof(NEW.updated_at) = 'integer'

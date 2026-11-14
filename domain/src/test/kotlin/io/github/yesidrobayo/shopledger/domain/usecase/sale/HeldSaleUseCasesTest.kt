@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewPriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSaleLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
@@ -231,6 +232,22 @@ class HeldSaleUseCasesTest {
     @Test
     fun anArchivedProductIsLeftOutAndCounted() = runTest {
         val id = held(line(1, 1_000), line(3, 1_000))
+
+        val sale = (resume()(id) as ResumeHeldSaleResult.Resumed).sale
+
+        assertEquals(listOf(1L), sale.lines.map { it.productId })
+        assertEquals(1, sale.removedProducts)
+    }
+
+    @Test
+    fun aProductThatIsNowAnInputIsLeftOutAndCounted() = runTest {
+        val id = held(line(1, 1_000), line(2, 1_000))
+        database.seed { tables ->
+            tables.copy(
+                products = tables.products +
+                    (2L to product(2, salePrice = 900, usage = ProductUsage.INPUT)),
+            )
+        }
 
         val sale = (resume()(id) as ResumeHeldSaleResult.Resumed).sale
 

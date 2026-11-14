@@ -38,12 +38,12 @@ data class CatalogOptions(
 /**
  * Arma el catálogo con los productos vigentes y lo que eligió la persona.
  *
- * Quedan fuera los archivados y los que no tienen precio en la lista elegida, o un precio que no
- * se puede calcular. Sin [CatalogOptions.includeOutOfStock], quedan fuera también los agotados: un
- * producto que lleva stock y no tiene nada. Uno que no lleva stock, como un servicio, nunca está
- * agotado. Las variantes van bajo su producto, con su propio precio; un producto cuyas variantes
- * quedan todas fuera no aparece. Todo va por nombre, y por categoría si se pidió, con los que no
- * tienen categoría al final.
+ * Quedan fuera los archivados, los insumos, que no se venden, y los que no tienen precio en la
+ * lista elegida, o un precio que no se puede calcular. Sin [CatalogOptions.includeOutOfStock],
+ * quedan fuera también los agotados: un producto que lleva stock y no tiene nada. Uno que no
+ * lleva stock, como un servicio, nunca está agotado. Las variantes van bajo su producto, con su
+ * propio precio; un producto cuyas variantes quedan todas fuera no aparece. Todo va por nombre, y
+ * por categoría si se pidió, con los que no tienen categoría al final.
  */
 object CatalogBuilder {
     fun of(
@@ -53,7 +53,7 @@ object CatalogBuilder {
         header: ReceiptHeader,
         pricesOn: BusinessDate,
     ): CatalogDocument {
-        val active = products.filterNot { it.isArchived }
+        val active = products.filter { it.offered() }
         // Con las archivadas: un producto con variantes lo sigue siendo aunque todas lo estén.
         val children = products.filter { it.details.parentProductId != null }
             .groupBy { it.details.parentProductId }
@@ -64,7 +64,7 @@ object CatalogBuilder {
             .mapNotNull { product ->
                 val variants = children[product.id]
                 val item = if (variants != null) {
-                    variantItem(product, variants.filterNot { it.isArchived }, options)
+                    variantItem(product, variants.filter { it.offered() }, options)
                 } else {
                     plainItem(product, options)
                 }
@@ -94,6 +94,9 @@ object CatalogBuilder {
             sections = sections,
         )
     }
+
+    /** Si el producto va en un catálogo: vigente y que se venda. */
+    private fun Product.offered(): Boolean = !isArchived && details.usage.isSold
 
     private fun matches(product: Product, filter: CatalogFilter): Boolean = when (filter) {
         CatalogFilter.All -> true

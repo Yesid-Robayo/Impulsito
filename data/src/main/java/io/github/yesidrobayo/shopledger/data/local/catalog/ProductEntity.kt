@@ -25,6 +25,9 @@ import io.github.yesidrobayo.shopledger.data.local.tax.TaxRateEntity
  *   algún producto.
  * - Al borrar su foto, el producto queda sin ella: la imagen no es historia del producto.
  * - Al eliminar su tasa de impuesto, el producto queda sin tasa, y sus ventas guardan su copia.
+ * - `usage` dice si se vende, si es un insumo o las dos cosas. Un insumo no se ofrece al vender,
+ *   pero se compra, se cuenta y entra en recetas como cualquier otro. Cambia libremente: no es
+ *   historia, y lo guardado con el uso anterior queda como estaba.
  */
 @Entity(
     tableName = "products",
@@ -109,6 +112,8 @@ internal data class ProductEntity(
     // 0 o 1: SQLite no tiene booleanos.
     @ColumnInfo(name = "tracks_lots") val tracksLots: Long,
     @ColumnInfo(name = "expiry_notice_days") val expiryNoticeDays: Long?,
+    // `ProductUsage` por su nombre. Sin `DEFAULT` en la base: el valor inicial lo pone el código.
+    @ColumnInfo(name = "usage") val usage: String = "SALE",
     @ColumnInfo(name = "archived_at") val archivedAt: Long?,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,

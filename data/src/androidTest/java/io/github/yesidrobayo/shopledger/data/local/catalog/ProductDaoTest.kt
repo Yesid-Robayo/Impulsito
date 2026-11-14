@@ -205,6 +205,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
                 referenceCost = 80,
                 referencePrice = 150,
                 expiryNoticeDays = 20,
+                usage = "BOTH",
                 updatedAt = MUCH_LATER,
             )
 
@@ -226,6 +227,7 @@ internal class ProductDaoTest : CatalogDatabaseTest() {
                 referenceCost = 80,
                 referencePrice = 150,
                 expiryNoticeDays = 20,
+                usage = "BOTH",
                 updatedAt = MUCH_LATER,
             )
         assertEquals(expected, products.findById(id))

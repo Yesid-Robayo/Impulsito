@@ -28,6 +28,7 @@ enum class ImportTarget(
             ImportField("initial_cost", ImportFieldKind.AMOUNT),
             ImportField("on_hand", ImportFieldKind.QUANTITY),
             ImportField("min_stock", ImportFieldKind.QUANTITY),
+            ImportField("usage", ImportFieldKind.TEXT),
         ),
         listOf("stock_value", "archived"),
     ),

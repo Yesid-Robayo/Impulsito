@@ -105,6 +105,7 @@ class CsvExportNaming(private val resources: () -> Resources) : CsvNaming {
             "on_hand" -> R.string.csv_header_on_hand
             "min_stock" -> R.string.csv_header_min_stock
             "archived" -> R.string.csv_header_archived
+            "usage" -> R.string.csv_header_usage
             "phone" -> R.string.csv_header_phone
             "email" -> R.string.csv_header_email
             "notes" -> R.string.csv_header_notes

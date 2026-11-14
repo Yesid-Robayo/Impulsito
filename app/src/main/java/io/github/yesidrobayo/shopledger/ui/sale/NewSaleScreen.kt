@@ -124,6 +124,11 @@ fun NewSaleScreen(
         uiState.leftOut,
         uiState.leftOut,
     )
+    val notSold = pluralStringResource(
+        R.plurals.notice_lines_not_sold,
+        uiState.leftOut,
+        uiState.leftOut,
+    )
     LaunchedEffect(uiState.notice) {
         val notice = uiState.notice ?: return@LaunchedEffect
         val text = when (notice) {
@@ -131,6 +136,7 @@ fun NewSaleScreen(
             SaleNotice.REACTIVATE_FAILED -> saveFailed
             SaleNotice.LINES_LEFT_OUT -> leftOut
             SaleNotice.CORRECTION_FAILED -> readFailed
+            SaleNotice.LINES_NOT_SOLD -> notSold
         }
         onAction(NewSaleAction.NoticeShown)
         notices.showSnackbar(AppSnackbarVisuals(text, SnackbarVariant.INFO))

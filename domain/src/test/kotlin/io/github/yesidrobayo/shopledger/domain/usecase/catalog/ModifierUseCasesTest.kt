@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.catalog
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ModifierIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductModifier
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.port.ProductModifierRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
@@ -119,6 +120,32 @@ class ModifierUseCasesTest {
     }
 
     @Test
+    fun anInputIsNotAnExtraButWhatIsAlsoSoldIs() = runTest {
+        database.seed {
+            it.copy(
+                products = it.products +
+                    listOf(
+                        product(FLOUR, name = "Harina", usage = ProductUsage.INPUT),
+                        product(SUGAR, name = "Azucar", usage = ProductUsage.BOTH),
+                    ).associateBy { product -> product.id },
+            )
+        }
+
+        assertEquals(invalid(ModifierIssue.UNAVAILABLE), save(AREPA, listOf(FLOUR)))
+        assertEquals(SaveModifiersResult.Saved, save(AREPA, listOf(SUGAR)))
+        assertEquals(
+            false,
+            ModifierRules.canOffer(AREPA, product(FLOUR, usage = ProductUsage.INPUT), emptySet()),
+        )
+        assertEquals(
+            true,
+            ModifierRules.canOffer(AREPA, product(SUGAR, usage = ProductUsage.BOTH), emptySet()),
+        )
+        val editor = ObserveModifierEditorUseCase(products, modifiers)(AREPA).first()
+        assertEquals(false, requireNotNull(editor).candidates.any { it.id == FLOUR })
+    }
+
+    @Test
     fun aStorageFailureIsAResult() = runTest {
         modifiers.failing = true
 
@@ -209,5 +236,7 @@ class ModifierUseCasesTest {
         const val SHIRT = 6L
         const val RED_SHIRT = 7L
         const val MISSING = 99L
+        const val FLOUR = 8L
+        const val SUGAR = 9L
     }
 }

@@ -118,6 +118,7 @@ internal fun productRow(name: String = "arroz"): Row = row(
     "price_review_since" to null,
     "tracks_lots" to 0L,
     "expiry_notice_days" to null,
+    "usage" to "SALE",
     "archived_at" to null,
     "created_at" to CREATED_AT,
     "updated_at" to CREATED_AT,

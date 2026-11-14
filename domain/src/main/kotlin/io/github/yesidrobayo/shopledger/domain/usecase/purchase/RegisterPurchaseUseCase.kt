@@ -267,7 +267,10 @@ class RegisterPurchaseUseCase(
         return priced.costChanges.map { change ->
             val subject = subjects.getValue(change.productId)
             val product = subject.product
-            if (change.costRose && product.priceReviewSince == null) {
+            // Un insumo no se vende: no hay precio que revisar.
+            if (change.costRose && product.priceReviewSince == null &&
+                product.details.usage.isSold
+            ) {
                 products.setPriceReviewSince(product.id, now, now)
             }
             val target = product.details.targetMargin

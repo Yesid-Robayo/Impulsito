@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.sale
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.returns.LineAmounts
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturn
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleDetail
@@ -29,12 +30,15 @@ class ObserveSaleDetailUseCase(
         sales.observeById(saleId),
         sales.observeLines(saleId),
         payments.observeBySale(saleId),
-        products.observe(ArchiveFilter.ARCHIVED),
+        catalogOf(),
         returnsOf(saleId),
-    ) { sale, lines, salePayments, archived, saleReturns ->
+    ) { sale, lines, salePayments, (archived, all), saleReturns ->
         sale?.let {
             val used = lines.map { line -> line.content.productId }.toSet()
             val archivedIds = archived.map { product -> product.id }.filter { id -> id in used }
+            val notSold = all.filter { product -> product.id in used }
+                .filterNot { product -> product.details.usage.isSold }
+                .map { product -> product.id }
             SaleDetail(
                 it,
                 lines,
@@ -42,9 +46,16 @@ class ObserveSaleDetailUseCase(
                 archivedIds.toSet(),
                 saleReturns.first,
                 saleReturns.second,
+                notSold.toSet(),
             )
         }
     }
+
+    /** Los productos archivados y, aparte, todos: de ellos salen los archivados y los insumos. */
+    private fun catalogOf(): Flow<Pair<List<Product>, List<Product>>> = combine(
+        products.observe(ArchiveFilter.ARCHIVED),
+        products.observe(ArchiveFilter.ACTIVE),
+    ) { archived, active -> archived to archived + active }
 
     /** Las devoluciones de la venta y lo que ya devolvió cada línea, juntas. */
     private fun returnsOf(saleId: Long): Flow<Pair<List<SaleReturn>, Map<Long, LineAmounts>>> {

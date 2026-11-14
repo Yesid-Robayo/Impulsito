@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.document.QuoteStatus
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
@@ -174,10 +175,13 @@ class SaveQuoteUseCaseTest {
                 it.copy(details = it.details.copy(parentProductId = 6))
             },
         )
+        world.addProduct(product(8, salePrice = 100, usage = ProductUsage.INPUT))
 
         val cases = mapOf(
             line(99, 1_000) to DocumentLineRejection.PRODUCT_NOT_FOUND,
             line(5, 1_000) to DocumentLineRejection.PRODUCT_ARCHIVED,
+            // Un insumo no se vende, así que tampoco se cotiza.
+            line(8, 1_000) to DocumentLineRejection.PRODUCT_NOT_SOLD,
             line(6, 1_000) to DocumentLineRejection.PRODUCT_HAS_VARIANTS,
             line(1, 1_500) to DocumentLineRejection.FRACTION_NOT_ALLOWED,
             line(1, 0) to DocumentLineRejection.INVALID_QUANTITY,

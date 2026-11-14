@@ -49,6 +49,8 @@ data class ConvertibleLine(val quoted: SaleLineRequest, val currentPrice: Money?
  * - [customerId] es nulo si la cotización no tenía cliente, o si se archivó o se anonimizó:
  *   [customerDropped] lo dice, y la venta sale sin cliente.
  * - [archivedLines] cuenta las líneas de productos archivados, que quedan por fuera.
+ * - [notSoldLines] cuenta las de productos que hoy son insumos, que también quedan por fuera: la
+ *   cotización guardada no cambia, pero la venta no puede llevarlos.
  * - [expiredOn] es la vigencia si ya pasó: se puede convertir igual, tras avisarlo.
  */
 data class QuoteConversion(
@@ -59,6 +61,7 @@ data class QuoteConversion(
     val lines: List<ConvertibleLine>,
     val archivedLines: Int,
     val expiredOn: BusinessDate?,
+    val notSoldLines: Int = 0,
 ) {
     /** Cuántas líneas cambiaron de precio desde que se cotizó. */
     val changedPrices: Int get() = lines.count { it.priceChanged }
@@ -78,7 +81,7 @@ sealed interface QuoteConversionResult {
     /** Ya se convirtió o se canceló: una cotización se convierte una sola vez. */
     data class NotOpen(val status: QuoteStatus) : QuoteConversionResult
 
-    /** Todas sus líneas son de productos archivados: no queda nada que vender. */
+    /** Todas sus líneas son de productos archivados o de insumos: no queda nada que vender. */
     data object NothingToConvert : QuoteConversionResult
 
     /** Este teléfono no conoce la zona del negocio: no hay cómo saber si venció. */
@@ -124,7 +127,8 @@ class PrepareQuoteConversionUseCase(
         val byId = products.findByIds(lines.map { it.content.productId }.toSet())
             .associateBy { it.id }
         val list = priceListOf(customer?.priceListId, lines)
-        val kept = lines.filter { byId[it.content.productId]?.isArchived == false }
+        val active = lines.filter { byId[it.content.productId]?.isArchived == false }
+        val kept = active.filter { byId.getValue(it.content.productId).details.usage.isSold }
         if (kept.isEmpty()) return QuoteConversionResult.NothingToConvert
         val convertible = kept.map { line ->
             val product = requireNotNull(byId[line.content.productId])
@@ -137,8 +141,9 @@ class PrepareQuoteConversionUseCase(
                 priceListId = list?.listId,
                 customerDropped = quote.customerId != null && customer == null,
                 lines = convertible,
-                archivedLines = lines.size - kept.size,
+                archivedLines = lines.size - active.size,
                 expiredOn = quote.validUntil?.takeIf { it < today },
+                notSoldLines = active.size - kept.size,
             ),
         )
     }

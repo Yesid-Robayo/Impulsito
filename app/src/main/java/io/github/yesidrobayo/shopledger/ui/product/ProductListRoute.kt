@@ -95,7 +95,7 @@ fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = 
                         ProductListAction.OpenFilters, ProductListAction.CloseFilters,
                         is ProductListAction.FilterCategory, is ProductListAction.FilterSupplier,
                         is ProductListAction.FilterArchived, is ProductListAction.SortBy,
-                        ProductListAction.ClearFilters,
+                        ProductListAction.ClearFilters, is ProductListAction.FilterInputs,
                         -> viewModel.onAction(action)
                     }
                 },

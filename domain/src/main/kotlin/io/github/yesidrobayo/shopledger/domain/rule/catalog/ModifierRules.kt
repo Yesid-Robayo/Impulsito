@@ -5,8 +5,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 
 /**
  * Qué productos pueden ser extras de otro. Un extra se vende como una línea normal, así que debe
- * poder venderse solo: vigente y sin variantes. Un producto no es extra de sí mismo, y cada extra
- * aparece una vez.
+ * poder venderse solo: vigente, sin variantes y que se venda, no un insumo. Un producto no es
+ * extra de sí mismo, y cada extra aparece una vez.
  */
 object ModifierRules {
     /**
@@ -29,10 +29,9 @@ object ModifierRules {
         if (wanted.size > MAX_MODIFIERS) return ModifierIssue.TOO_MANY
         if (wanted.toSet().size != wanted.size) return ModifierIssue.DUPLICATE
         for (id in wanted) {
-            val product = products[id]
             when {
                 id == productId -> return ModifierIssue.SAME_PRODUCT
-                product == null || product.isArchived -> return ModifierIssue.UNAVAILABLE
+                !offered(products[id]) -> return ModifierIssue.UNAVAILABLE
                 id in withVariants -> return ModifierIssue.HAS_VARIANTS
             }
         }
@@ -40,9 +39,13 @@ object ModifierRules {
     }
 
     /**
-     * Si [candidate] se puede ofrecer como extra de [productId]: vigente, otro producto y sin
-     * variantes. [withVariants] son los productos que tienen variantes.
+     * Si [candidate] se puede ofrecer como extra de [productId]: vigente, otro producto, sin
+     * variantes y que se venda. [withVariants] son los productos que tienen variantes.
      */
     fun canOffer(productId: Long, candidate: Product, withVariants: Set<Long>): Boolean =
-        candidate.id != productId && !candidate.isArchived && candidate.id !in withVariants
+        candidate.id != productId && offered(candidate) && candidate.id !in withVariants
+
+    /** Si [product] existe, está vigente y se vende: un insumo no se ofrece como extra. */
+    private fun offered(product: Product?): Boolean =
+        product != null && !product.isArchived && product.details.usage.isSold
 }

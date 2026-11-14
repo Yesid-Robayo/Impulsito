@@ -44,6 +44,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomValueIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductTag
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
@@ -226,7 +227,8 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
         mutableStateOf(
             form.barcode.isNotEmpty() || form.replacementCost.isNotEmpty() ||
                 form.referencePrice.isNotEmpty() || !uiState.tracksStock ||
-                form.photo != EditPhoto.None || form.tracksLots,
+                form.photo != EditPhoto.None || form.tracksLots ||
+                form.usage != ProductUsage.SALE,
         )
     }
     LaunchedEffect(uiState.conversions.isNotEmpty()) {
@@ -368,6 +370,7 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
             onClick = { onAction(ProductEditAction.OpenRecipe) },
         )
     }
+    ProductUsageField(uiState, onAction)
     if (uiState.tracksStock) ReplacementCostField(uiState, onAction)
     if (uiState.tracksStock) ProductLotsRow(uiState, onAction)
     uiState.reference?.let { ReferencePriceField(uiState, it, onAction) }
@@ -392,6 +395,50 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
     if (!uiState.isNew && uiState.listPrices.isNotEmpty()) ProductListPrices(uiState, onAction)
     // Al final, los campos propios y las etiquetas, si el negocio tiene alguno.
     if (uiState.extras.visible) ProductExtrasSection(uiState.extras, onAction)
+}
+
+/**
+ * `Uso`: si el producto se vende, es un insumo o las dos cosas, con una ayuda que dice qué cambia.
+ * Un insumo no aparece al vender, pero sí en compras, conteos, recetas y producción. Si un
+ * producto guardado que se vendía pasa a insumo, se avisa que sus cotizaciones y pedidos abiertos
+ * lo dejarán por fuera; lo guardado no cambia.
+ */
+@Composable
+private fun ProductUsageField(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
+    val usage = uiState.form.usage
+    Text(
+        stringResource(R.string.product_usage_label),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = AppTheme.spacing.s8),
+    )
+    CompactChipRow(
+        options = ProductUsage.entries,
+        label = { stringResource(usageLabel(it)) },
+        selected = setOf(usage),
+        onToggle = { onAction(ProductEditAction.UsageChange(it)) },
+        multiple = false,
+    )
+    Text(
+        stringResource(
+            when (usage) {
+                ProductUsage.SALE -> R.string.product_usage_sale_help
+                ProductUsage.INPUT -> R.string.product_usage_input_help
+                ProductUsage.BOTH -> R.string.product_usage_both_help
+            },
+        ),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = AppTheme.spacing.s16),
+    )
+    if (uiState.warnsInputChange) {
+        Text(
+            stringResource(R.string.product_usage_input_notice),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = AppTheme.spacing.s16),
+        )
+    }
 }
 
 /**
@@ -648,6 +695,13 @@ private fun ProductConversions(uiState: ProductEditUiState, onAction: (ProductEd
         text = stringResource(R.string.unit_add_conversion_action),
         onClick = { onAction(ProductEditAction.NewConversion) },
     )
+}
+
+/** El nombre de cada uso del producto, el mismo en el formulario y en el detalle. */
+internal fun usageLabel(usage: ProductUsage): Int = when (usage) {
+    ProductUsage.SALE -> R.string.product_usage_sale
+    ProductUsage.INPUT -> R.string.product_usage_input
+    ProductUsage.BOTH -> R.string.product_usage_both
 }
 
 private fun stockModeLabel(mode: ProductStockMode): Int = when (mode) {

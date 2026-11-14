@@ -193,7 +193,7 @@ internal object CsvTableQueries {
             """
             SELECT p.name, c.name, s.name, u.system_key, u.name, p.stock_mode, p.barcode,
                 p.sale_price, p.average_cost, p.initial_cost, p.stock_value, p.on_hand_milli,
-                p.min_stock_milli, p.archived_at
+                p.min_stock_milli, p.archived_at, p.usage
             FROM products p
             LEFT JOIN categories c ON c.id = p.category_id
             LEFT JOIN suppliers s ON s.id = p.default_supplier_id
@@ -215,6 +215,7 @@ internal object CsvTableQueries {
                 row.quantity(),
                 row.quantity(),
                 row.moment(),
+                row.code(),
             )
         }
 

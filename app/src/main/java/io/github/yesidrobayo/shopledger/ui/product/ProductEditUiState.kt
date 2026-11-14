@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
@@ -96,7 +97,8 @@ sealed interface ProductEditNotice {
  * [replacementCost] vacío es sin dato: la pantalla no pone ninguna cifra en su lugar.
  * [referencePrice] va en la moneda de referencia, con sus decimales; vacío también es sin dato.
  * [photo] es la foto, elegida o guardada. [tracksLots] controla el producto por lotes, y solo
- * cuenta con stock propio.
+ * cuenta con stock propio. [usage] dice si se vende, si es un insumo o las dos cosas: un producto
+ * nuevo se vende.
  */
 @Immutable
 data class ProductEditForm(
@@ -113,6 +115,7 @@ data class ProductEditForm(
     val referencePrice: String = "",
     val photo: EditPhoto = EditPhoto.None,
     val tracksLots: Boolean = false,
+    val usage: ProductUsage = ProductUsage.SALE,
 )
 
 /**
@@ -178,4 +181,11 @@ data class ProductEditUiState(
 
     /** Si el producto lleva stock propio: solo entonces se cuentan y se vigilan sus existencias. */
     val tracksStock: Boolean get() = form.stockMode == ProductStockMode.TRACKED
+
+    /**
+     * Si se avisa que pasar a insumo deja por fuera sus líneas de cotizaciones y pedidos abiertos:
+     * solo en un producto guardado que se vendía y ahora se marca como insumo.
+     */
+    val warnsInputChange: Boolean
+        get() = product?.details?.usage?.isSold == true && !form.usage.isSold
 }

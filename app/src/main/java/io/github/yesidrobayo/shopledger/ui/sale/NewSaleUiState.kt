@@ -384,6 +384,13 @@ enum class SaleNotice {
 
     /** La venta que corrige a otra no pudo traer sus datos: abrió vacía, y se dice. */
     CORRECTION_FAILED,
+
+    /**
+     * La venta que sale de una cotización, de un pedido o de una corrección abrió sin las líneas
+     * de productos archivados o que hoy son insumos, y alguna era de un insumo: cuántas dice
+     * `leftOut` del estado, contando las dos.
+     */
+    LINES_NOT_SOLD,
 }
 
 /** Lo que pasó con la espera, para decirlo una vez. */

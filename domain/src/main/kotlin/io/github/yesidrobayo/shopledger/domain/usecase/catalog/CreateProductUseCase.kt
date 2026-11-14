@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
@@ -156,6 +157,7 @@ class CreateProductUseCase(
             referenceCost = null,
             referencePrice = form.referencePrice?.takeIf { it > Money.ZERO },
             expiryNoticeDays = null,
+            usage = form.usage ?: ProductUsage.SALE,
         )
         val productId = products.insert(
             NewProduct(

@@ -938,6 +938,8 @@ class RegisterSaleUseCase(
     private fun productRejection(product: Product): LineRejection? = when {
         product.isArchived -> LineRejection.PRODUCT_ARCHIVED
 
+        !product.details.usage.isSold -> LineRejection.PRODUCT_NOT_SOLD
+
         // Sin recetas ni dónde guardar sus hojas, un combo no se puede descontar.
         product.details.stockMode == ProductStockMode.COMPONENTS &&
             (recipes == null || lineComponents == null) ->

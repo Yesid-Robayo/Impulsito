@@ -138,6 +138,32 @@ class SaleCorrectionsTest {
     }
 
     @Test
+    fun `a product that is now an input is left out and counted apart, with its extras`() {
+        // La harina se vendía suelta, con un extra, y hoy es un insumo; el pan sigue vendiéndose
+        // con un extra que hoy es insumo. El café está archivado y además es insumo: cuenta como
+        // archivado.
+        val base = sampleDetail(
+            lines = listOf(
+                sampleLine(10L, 1L, "Harina", 1_000L, 3_000L),
+                sampleLine(11L, 9L, "Bolsa", 1_000L, 100L, parentLineId = 10L),
+                sampleLine(12L, 2L, "Pan", 1_000L, 2_000L),
+                sampleLine(13L, 8L, "Mantequilla", 1_000L, 500L, parentLineId = 12L),
+                sampleLine(14L, 3L, "Café", 1_000L, 6_000L),
+            ),
+            payments = listOf(samplePayment(20L, 5L, 11_600L)),
+            total = 11_600L,
+            archived = setOf(3L),
+        )
+        val detail = base.copy(notSoldProductIds = setOf(1L, 8L, 3L))
+
+        val correction = SaleCorrections.of(detail)
+
+        assertEquals(listOf(2L), correction.lines.map { it.productId })
+        assertEquals(1, correction.leftOut)
+        assertEquals(3, correction.notSoldLeftOut)
+    }
+
+    @Test
     fun `a sale without payments has no method to bring`() {
         val detail = sampleDetail(
             lines = listOf(sampleLine(10L, 1L, "Jabón", 1_000L, 3_000L)),

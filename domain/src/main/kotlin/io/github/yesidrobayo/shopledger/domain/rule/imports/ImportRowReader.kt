@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerForm
@@ -162,6 +163,7 @@ class ImportRowReader(
         val cost = cells.amount(AVERAGE_COST) ?: cells.amount(INITIAL_COST)
         val onHand = cells.quantity(ON_HAND, Limit.LINE_QUANTITY_MILLI, allowsFraction)
         val minStock = cells.quantity(MIN_STOCK, Limit.ON_HAND_MILLI, allowsFraction)
+        val usage = cells.usage()
         if (stockMode == ProductStockMode.UNTRACKED) {
             // Sin libro no hay stock que contar ni que vigilar.
             if ((onHand?.milli ?: 0L) != 0L) cells.fail(ON_HAND, ImportIssue.QUANTITY)
@@ -187,6 +189,7 @@ class ImportRowReader(
             cost = cost,
             onHand = onHand,
             minStock = minStock,
+            usage = usage,
         )
     }
 
@@ -317,6 +320,13 @@ class ImportRowReader(
             // componentes, y sin ellos no tendría costo ni stock.
             return IMPORTABLE_MODES.firstOrNull { it.name.equals(text, ignoreCase = true) }
                 ?: null.also { fail(STOCK_MODE, ImportIssue.INVALID_VALUE) }
+        }
+
+        /** El uso por su nombre guardado, como lo escribe la exportación, en mayúsculas o no. */
+        fun usage(): ProductUsage? {
+            val text = text(USAGE).ifEmpty { return null }
+            return ProductUsage.entries.firstOrNull { it.name.equals(text, ignoreCase = true) }
+                ?: null.also { fail(USAGE, ImportIssue.INVALID_VALUE) }
         }
 
         fun amount(field: String): Money? {
@@ -452,6 +462,7 @@ class ImportRowReader(
         const val INITIAL_COST = "initial_cost"
         const val ON_HAND = "on_hand"
         const val MIN_STOCK = "min_stock"
+        const val USAGE = "usage"
         const val PHONE = "phone"
         const val EMAIL = "email"
         const val NOTES = "notes"

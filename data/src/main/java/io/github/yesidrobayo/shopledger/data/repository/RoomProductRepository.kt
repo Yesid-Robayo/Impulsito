@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.NewProduct
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductVariantRepository
 import kotlin.time.Instant
@@ -109,6 +110,7 @@ internal class RoomProductRepository(database: AppDatabase) :
                 priceReviewSince = null,
                 tracksLots = details.tracksLots.toStoredFlag(),
                 expiryNoticeDays = details.expiryNoticeDays?.toLong(),
+                usage = details.usage.name,
                 archivedAt = null,
                 createdAt = at,
                 updatedAt = at,
@@ -142,6 +144,7 @@ internal class RoomProductRepository(database: AppDatabase) :
                     referenceCost = details.referenceCost?.minor,
                     referencePrice = details.referencePrice?.minor,
                     expiryNoticeDays = details.expiryNoticeDays?.toLong(),
+                    usage = details.usage.name,
                     updatedAt = updatedAt.toStoredMillis(),
                 ),
             )
@@ -241,6 +244,7 @@ internal class RoomProductRepository(database: AppDatabase) :
             referenceCost = row.referenceCost?.let(::Money),
             referencePrice = row.referencePrice?.let(::Money),
             expiryNoticeDays = row.expiryNoticeDays?.toStoredInt(),
+            usage = storedEnum<ProductUsage>(row.usage),
         ),
         salePrice = Money(row.salePrice),
         initialCost = Money(row.initialCost),

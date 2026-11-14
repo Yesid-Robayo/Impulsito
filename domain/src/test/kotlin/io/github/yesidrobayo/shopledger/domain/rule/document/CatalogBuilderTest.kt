@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.document.CatalogItem
 import io.github.yesidrobayo.shopledger.domain.model.document.CatalogSection
 import io.github.yesidrobayo.shopledger.domain.model.document.CatalogVariant
@@ -178,6 +179,35 @@ class CatalogBuilderTest {
         assertFalse(fields.any { field -> forbidden.any { it in field } })
         assertFalse(text.contains(SENTINEL_COST.toString()))
     }
+
+    @Test
+    fun `an input never reaches the catalog, but what is also sold does`() {
+        val flour = product(30L, "Harina", 2_000L, onHand = 5_000L).used(ProductUsage.INPUT)
+        val sugar = product(31L, "Azúcar", 1_800L, onHand = 5_000L).used(ProductUsage.BOTH)
+        val cake = product(32L, "Torta", 0L)
+        val small = product(33L, "Torta chica", 9_000L, 1_000L, parent = 32L, values = "S" to null)
+        val big = product(34L, "Torta grande", 15_000L, 1_000L, parent = 32L, values = "L" to null)
+            .used(ProductUsage.INPUT)
+
+        val document = CatalogBuilder.of(
+            listOf(flour, sugar, cake, small, big),
+            categories,
+            options(),
+            header,
+            DATE,
+        )
+
+        assertEquals(
+            listOf(
+                item("Azúcar", 1_800L),
+                CatalogItem("Torta", UNIT, null, null, listOf(CatalogVariant("S", Money(9_000L)))),
+            ),
+            document.sections.single().items,
+        )
+    }
+
+    private fun Product.used(usage: ProductUsage): Product =
+        copy(details = details.copy(usage = usage))
 
     private fun build(options: CatalogOptions) =
         CatalogBuilder.of(products, categories, options, header, DATE)

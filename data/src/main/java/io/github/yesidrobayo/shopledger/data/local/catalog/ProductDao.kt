@@ -123,7 +123,7 @@ internal interface ProductDao {
             "photo_media_id = :photoMediaId, tax_rate_id = :taxRateId, " +
             "target_margin_bp = :targetMarginBp, reference_cost = :referenceCost, " +
             "reference_price = :referencePrice, expiry_notice_days = :expiryNoticeDays, " +
-            "updated_at = :updatedAt WHERE id = :id",
+            "usage = :usage, updated_at = :updatedAt WHERE id = :id",
     )
     suspend fun updateDetails(
         id: Long,
@@ -148,6 +148,7 @@ internal interface ProductDao {
         referenceCost: Long?,
         referencePrice: Long?,
         expiryNoticeDays: Long?,
+        usage: String,
         updatedAt: Long,
     ): Int
 

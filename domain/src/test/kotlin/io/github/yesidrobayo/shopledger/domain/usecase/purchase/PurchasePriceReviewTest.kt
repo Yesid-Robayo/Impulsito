@@ -6,6 +6,8 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage.BOTH
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage.INPUT
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCostChange
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
@@ -120,6 +122,23 @@ class PurchasePriceReviewTest {
         assertFalse(changes.getValue(2).costRose)
         assertFalse(changes.getValue(2).marginBelowTarget)
     }
+
+    @Test
+    fun `an input is bought as any product, but its rising cost asks for no price review`() =
+        runTest {
+            world.addProduct(stocked(1).let { it.copy(details = it.details.copy(usage = INPUT)) })
+            world.addProduct(stocked(2).let { it.copy(details = it.details.copy(usage = BOTH)) })
+
+            val changes =
+                buy(atUnitCost(1, 10_000, cost = 1_400), atUnitCost(2, 10_000, cost = 1_400))
+
+            // La compra entra igual: el costo sube de 1000 a 1200 y el stock a 20.
+            assertTrue(changes.getValue(1).costRose)
+            assertEquals(20_000L, world.tables.products.getValue(1).onHand.milli)
+            // Un insumo no tiene precio que revisar; lo que también se vende, sí.
+            assertNull(world.tables.products.getValue(1).priceReviewSince)
+            assertEquals(NOW, world.tables.products.getValue(2).priceReviewSince)
+        }
 
     @Test
     fun `a first cost is not a rise, and the margin still counts`() = runTest {

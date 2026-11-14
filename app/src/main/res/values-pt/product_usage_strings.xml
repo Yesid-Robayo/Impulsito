@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Portugués: el uso del producto, si se vende, es un insumo o las dos cosas. -->
+    <string name="product_usage_label">Uso</string>
+    <string name="product_usage_sale">Para venda</string>
+    <string name="product_usage_input">Insumo</string>
+    <string name="product_usage_both">As duas coisas</string>
+    <string name="product_usage_sale_help">Aparece ao vender, em orçamentos, pedidos e no catálogo.</string>
+    <string name="product_usage_input_help">Não aparece ao vender. É comprado, contado e entra em receitas e produção.</string>
+    <string name="product_usage_both_help">É vendido e também entra em receitas e produção.</string>
+    <string name="product_usage_input_notice">Orçamentos e pedidos abertos que o incluam o deixarão de fora ao vendê-los.</string>
+    <string name="product_filter_inputs">Insumos</string>
+    <plurals name="notice_lines_not_sold">
+        <item quantity="one">%1$d linha ficou de fora porque o produto está arquivado ou não é mais vendido.</item>
+        <item quantity="many">%1$d de linhas ficaram de fora porque o produto está arquivado ou não é mais vendido.</item>
+        <item quantity="other">%1$d linhas ficaram de fora porque o produto está arquivado ou não é mais vendido.</item>
+    </plurals>
+</resources>

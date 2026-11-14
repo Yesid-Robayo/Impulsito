@@ -42,6 +42,8 @@ import kotlinx.datetime.DayOfWeek
  *   tarjeta muestra esto, y avisa si la venta pide más, sin bloquearla.
  * - [modifiers]: los extras que se ofrecen al vender cada producto, por id del producto y en su
  *   orden. Pueden nombrar un producto archivado: la venta solo ofrece los vigentes.
+ *
+ * Los insumos no están en [products], [frequent] ni [archived]: los quita [forSale].
  */
 data class SaleCatalog(
     val products: List<Product>,
@@ -87,6 +89,17 @@ data class SaleCatalog(
      */
     fun saleLocationId(chosen: Long?): Long? =
         chosen?.takeIf { id -> saleLocations.any { it.id == id } } ?: defaultLocationId
+
+    /**
+     * El catálogo sin los insumos: un producto que no se vende no se busca, no está entre los más
+     * vendidos, no se ofrece reactivar desde la venta ni se lee por su código. Lo demás no cambia,
+     * así que cuántos combos alcanzan sigue contando el stock de sus insumos.
+     */
+    fun forSale(): SaleCatalog = copy(
+        products = products.filter { it.details.usage.isSold },
+        frequent = frequent.filter { it.details.usage.isSold },
+        archived = archived.filter { it.details.usage.isSold },
+    )
 
     /** Las listas que se ofrecen al vender: las vigentes, la inicial primero. */
     val activePriceLists: List<PriceList> get() = priceLists.filterNot { it.isArchived }

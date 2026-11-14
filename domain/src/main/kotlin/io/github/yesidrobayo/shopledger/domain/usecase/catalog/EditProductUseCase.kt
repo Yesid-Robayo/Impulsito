@@ -128,6 +128,8 @@ class EditProductUseCase(
                 else -> written.takeIf { it > Money.ZERO }
             },
             photoMediaId = photoIdAfter(media, form.photo, current.photoMediaId, clock.now()),
+            // El uso no es historia: cambia libremente, y lo guardado queda como estaba.
+            usage = form.usage ?: current.usage,
         )
         val locked = ProductHistoryLock.lockedChanges(
             current,

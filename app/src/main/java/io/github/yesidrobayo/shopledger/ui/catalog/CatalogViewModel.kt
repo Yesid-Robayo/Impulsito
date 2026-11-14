@@ -218,7 +218,10 @@ class CatalogViewModel(
             categories = sources.categories.sortedBy { it.details.normalizedName },
             lists = lists,
             listId = listId,
-            hasPhotos = sources.products.any { !it.isArchived && it.details.photoMediaId != null },
+            // Un insumo no va en el catálogo: su foto no cuenta.
+            hasPhotos = sources.products.any {
+                !it.isArchived && it.details.usage.isSold && it.details.photoMediaId != null
+            },
         )
     }
 

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: el uso del producto, si se vende, es un insumo o las dos cosas. -->
+    <string name="product_usage_label">Uso</string>
+    <string name="product_usage_sale">Se vende</string>
+    <string name="product_usage_input">Insumo</string>
+    <string name="product_usage_both">Las dos cosas</string>
+    <string name="product_usage_sale_help">Aparece al vender, en cotizaciones, pedidos y el catálogo.</string>
+    <string name="product_usage_input_help">No aparece al vender. Se compra, se cuenta y va en recetas y producción.</string>
+    <string name="product_usage_both_help">Se vende y también va en recetas y producción.</string>
+    <string name="product_usage_input_notice">Las cotizaciones y los pedidos abiertos que lo lleven lo dejarán por fuera al venderlos.</string>
+    <string name="product_filter_inputs">Insumos</string>
+    <plurals name="notice_lines_not_sold">
+        <item quantity="one">%1$d línea quedó por fuera porque su producto está archivado o ya no se vende.</item>
+        <item quantity="many">%1$d de líneas quedaron por fuera porque su producto está archivado o ya no se vende.</item>
+        <item quantity="other">%1$d líneas quedaron por fuera porque su producto está archivado o ya no se vende.</item>
+    </plurals>
+</resources>

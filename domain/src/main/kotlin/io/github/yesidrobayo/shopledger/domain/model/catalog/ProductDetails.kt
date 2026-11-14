@@ -18,7 +18,8 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  * el mínimo de la alerta: cero avisa al agotarse. [parentProductId] y los ejes y valores de
  * variante describen una variante de otro producto, con un solo nivel. [targetMargin] precede al de
  * la categoría y al del negocio. [referenceCost] y [referencePrice] van en la moneda de referencia
- * que eligió la persona, nunca en la del libro.
+ * que eligió la persona, nunca en la del libro. [usage] dice si se vende, si es un insumo o las
+ * dos cosas: cambia libremente, porque no es historia.
  */
 data class ProductDetails(
     val name: String,
@@ -42,4 +43,5 @@ data class ProductDetails(
     val referenceCost: Money?,
     val referencePrice: Money?,
     val expiryNoticeDays: Int?,
+    val usage: ProductUsage = ProductUsage.SALE,
 )

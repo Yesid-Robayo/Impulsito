@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: el uso del producto, si se vende, es un insumo o las dos cosas. -->
+    <string name="product_usage_label">Use</string>
+    <string name="product_usage_sale">For sale</string>
+    <string name="product_usage_input">Input</string>
+    <string name="product_usage_both">Both</string>
+    <string name="product_usage_sale_help">Shows up when selling, in quotes, orders and the catalog.</string>
+    <string name="product_usage_input_help">Not shown when selling. It is bought, counted and used in recipes and production.</string>
+    <string name="product_usage_both_help">Sold and also used in recipes and production.</string>
+    <string name="product_usage_input_notice">Open quotes and orders that include it will leave it out when sold.</string>
+    <string name="product_filter_inputs">Inputs</string>
+    <plurals name="notice_lines_not_sold">
+        <item quantity="one">%1$d line was left out because its product is archived or no longer sold.</item>
+        <item quantity="other">%1$d lines were left out because their product is archived or no longer sold.</item>
+    </plurals>
+</resources>

@@ -247,6 +247,18 @@ private fun FiltersSheet(uiState: ProductListUiState, onAction: (ProductListActi
                 onToggle = { onAction(ProductListAction.FilterArchived(it)) },
                 multiple = false,
             )
+            if (uiState.showsUsageFilter) {
+                SheetLabel(R.string.product_usage_label)
+                val any = stringResource(R.string.filter_any)
+                val inputs = stringResource(R.string.product_filter_inputs)
+                CompactChipRow(
+                    options = listOf(false, true),
+                    label = { inputsOnly -> if (inputsOnly) inputs else any },
+                    selected = setOf(filters.inputsOnly),
+                    onToggle = { onAction(ProductListAction.FilterInputs(it)) },
+                    multiple = false,
+                )
+            }
             SheetLabel(R.string.sort_title)
             CompactChipRow(
                 options = ProductSort.entries,

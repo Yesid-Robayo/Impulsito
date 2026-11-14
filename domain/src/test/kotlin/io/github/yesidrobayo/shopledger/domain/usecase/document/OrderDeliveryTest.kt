@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.document
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.document.OrderStatus
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
@@ -188,6 +189,31 @@ class OrderDeliveryTest {
             )
             assertEquals(1, flows.list(OrderStatus.PENDING).first().size)
         }
+
+    @Test
+    fun `a product that is now an input is left out and counted apart`() = runTest {
+        world.addProduct(product(2, salePrice = 500, onHandMilli = 1_000))
+        val request = OrderRequest(
+            listOf(
+                SaleLineRequest(1, QuantityMilli(1_000)),
+                SaleLineRequest(2, QuantityMilli(1_000)),
+            ),
+            customerId = CUSTOMER,
+        )
+        val id = (world.saveOrder()(request) as SaveOrderResult.Saved).orderId
+        world.addProduct(
+            product(2, salePrice = 500, onHandMilli = 1_000, usage = ProductUsage.INPUT),
+        )
+
+        val delivery = (prepare(id) as OrderDeliveryResult.Ready).delivery
+
+        assertEquals(0, delivery.archivedLines)
+        assertEquals(1, delivery.notSoldLines)
+        assertEquals(listOf(1L), delivery.lines.map { it.productId })
+
+        world.addProduct(product(1, salePrice = 2_500, usage = ProductUsage.INPUT))
+        assertEquals(OrderDeliveryResult.NothingToDeliver, prepare(id))
+    }
 
     private companion object {
         const val CUSTOMER = 30L

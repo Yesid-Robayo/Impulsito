@@ -40,6 +40,9 @@ sealed interface ProductListAction {
     /** Muestra los archivados en vez de los vigentes. */
     data class FilterArchived(val archived: Boolean) : ProductListAction
 
+    /** Muestra solo los insumos, o todos con `false`. */
+    data class FilterInputs(val inputsOnly: Boolean) : ProductListAction
+
     data class SortBy(val sort: ProductSort) : ProductListAction
 
     /** Quita los filtros y deja el orden. */

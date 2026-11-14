@@ -48,6 +48,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductMovement
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.stock.ProductLocationStock
@@ -185,7 +186,8 @@ fun ProductDetailScreen(
                     )
             }
         }
-        if (ready != null && !ready.product.isArchived) {
+        // Un insumo no se vende: sin `Vender este`.
+        if (ready != null && !ready.product.isArchived && ready.product.details.usage.isSold) {
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -295,6 +297,19 @@ private fun DetailBody(
                     InlineTextButton(stringResource(R.string.action_reactivate), {
                         onAction(ProductDetailAction.Reactivate)
                     })
+                }
+            }
+        }
+        // Un insumo lo dice arriba: no aparece al vender.
+        if (product.details.usage != ProductUsage.SALE) {
+            item(key = "usage") {
+                Box(
+                    Modifier.fillMaxWidth().padding(
+                        horizontal = spacing.s16,
+                        vertical = spacing.s8,
+                    ),
+                ) {
+                    StatusTag(stringResource(usageLabel(product.details.usage)))
                 }
             }
         }

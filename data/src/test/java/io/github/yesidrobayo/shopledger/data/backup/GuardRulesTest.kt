@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.data.local.guard.SchemaCatalog
 import io.github.yesidrobayo.shopledger.data.local.guard.SchemaVersionCatalog
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
@@ -30,6 +31,7 @@ class GuardRulesTest {
 
         assertEquals(names(StockMovementType.entries), enumOf("stock_movements", "type"))
         assertEquals(names(ProductStockMode.entries), enumOf("products", "stock_mode"))
+        assertEquals(names(ProductUsage.entries), enumOf("products", "usage"))
         assertEquals(names(LineStockEffect.entries), enumOf("sale_lines", "stock_effect"))
         assertEquals(names(UnitKind.entries), enumOf("units", "kind"))
         assertEquals(names(LocationKind.entries), enumOf("locations", "kind"))

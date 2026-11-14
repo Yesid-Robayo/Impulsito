@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 
 /**
  * Por qué una fila del archivo no se puede importar. Cada motivo es de una celda: la fila se lista
@@ -109,6 +110,8 @@ sealed interface ImportDraft {
         /** El stock inicial, solo para un producto nuevo. */
         val onHand: QuantityMilli?,
         val minStock: QuantityMilli?,
+        /** Si se vende, es un insumo o las dos cosas; `null` deja el de siempre. */
+        val usage: ProductUsage? = null,
     ) : ImportDraft {
         override val identity: String get() = normalizedName
     }
