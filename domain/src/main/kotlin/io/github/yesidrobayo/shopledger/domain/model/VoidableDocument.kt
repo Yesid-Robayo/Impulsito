@@ -15,6 +15,7 @@ enum class VoidableDocument {
     EXPENSE,
     PURCHASE_RETURN,
     SALE_RETURN,
+    STOCK_TRANSFER,
     ;
 
     /** Si un documento de este tipo se puede anular con [reason]. */

@@ -144,7 +144,16 @@ internal class StockTransferDaoTest : LedgerDatabaseTest() {
         // Una función nueva que edite o borre una transferencia o una línea rompe esta prueba a
         // propósito: lo registrado solo se anula.
         assertEquals(
-            setOf("observeIn", "findById", "findLines", "insert", "insertLine", "markVoided"),
+            setOf(
+                "observeIn",
+                "findById",
+                "findLines",
+                // Lee las filas del libro de sus líneas: solo lee.
+                "findMovements",
+                "insert",
+                "insertLine",
+                "markVoided",
+            ),
             functionsOf(StockTransferDao::class.java),
         )
     }

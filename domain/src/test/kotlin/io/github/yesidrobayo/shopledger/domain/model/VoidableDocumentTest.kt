@@ -43,6 +43,11 @@ class VoidableDocumentTest {
                 VoidReason.UNDO,
                 VoidReason.OTHER,
             ),
+            VoidableDocument.STOCK_TRANSFER to setOf(
+                VoidReason.ENTRY_ERROR,
+                VoidReason.UNDO,
+                VoidReason.OTHER,
+            ),
         )
         for (document in VoidableDocument.entries) {
             val allowed = VoidReason.entries.filter { document.allows(it) }.toSet()

@@ -56,6 +56,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleReturnRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSalesReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomStockLedgerRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomStockTransferRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierActivitySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierRepository
@@ -121,6 +122,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalesReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockTransferRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierActivitySource
 import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
@@ -259,6 +261,9 @@ class DataPorts internal constructor(
 
     /** El stock de cada producto repartido por ubicación, desde los saldos del libro. Solo lee. */
     val locationStock: LocationStockSource = RoomLocationStockSource(database)
+
+    /** Las transferencias de stock entre ubicaciones. Sus filas del libro las escribe el libro. */
+    val stockTransfers: StockTransferRepository = RoomStockTransferRepository(database)
 
     /** La venta o la compra de cada fila del libro de un producto. Solo lee. */
     val movementDocuments: MovementDocumentSource = RoomMovementDocumentSource(database)

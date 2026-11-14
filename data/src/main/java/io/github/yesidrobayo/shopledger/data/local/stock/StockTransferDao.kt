@@ -32,6 +32,13 @@ internal interface StockTransferDao {
     @Query("SELECT * FROM stock_transfer_lines WHERE transfer_id = :transferId ORDER BY id")
     suspend fun findLines(transferId: Long): List<StockTransferLineEntity>
 
+    /** Las filas del libro que salieron de las líneas de la transferencia, por orden del libro. */
+    @Query(
+        "SELECT * FROM stock_movements WHERE transfer_line_id IN " +
+            "(SELECT id FROM stock_transfer_lines WHERE transfer_id = :transferId) ORDER BY id",
+    )
+    suspend fun findMovements(transferId: Long): List<StockMovementEntity>
+
     /** Devuelve el id nuevo. El repositorio la guarda activa y sin datos de anulación. */
     @Insert
     suspend fun insert(transfer: StockTransferEntity): Long

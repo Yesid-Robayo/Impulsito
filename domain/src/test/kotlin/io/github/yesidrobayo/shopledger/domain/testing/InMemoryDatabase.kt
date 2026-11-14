@@ -33,6 +33,8 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransfer
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferLine
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -109,6 +111,9 @@ internal data class Tables(
     val locations: Map<Long, Location> = emptyMap(),
     /** Los saldos por producto, ubicación y lote, que el libro suma en cada fila. */
     val stockBalances: Map<StockKey, QuantityMilli> = emptyMap(),
+    /** Las transferencias de stock y sus líneas, por id. */
+    val stockTransfers: Map<Long, StockTransfer> = emptyMap(),
+    val stockTransferLines: Map<Long, StockTransferLine> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

@@ -147,7 +147,8 @@ internal class RoomStockLedgerRepository(
         )
     }
 
-    private fun toRecord(row: StockMovementEntity): StockMovementRecord = StockMovementRecord(
+    /** La fila guardada [row], como la leen los casos de uso. La usan también las transferencias. */
+    internal fun toRecord(row: StockMovementEntity): StockMovementRecord = StockMovementRecord(
         movement = StockMovement(
             id = row.id,
             key = StockKey(row.productId, row.locationId, row.lotId),
