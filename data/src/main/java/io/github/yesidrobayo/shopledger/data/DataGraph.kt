@@ -62,6 +62,7 @@ import io.github.yesidrobayo.shopledger.data.backup.StartupRestoreGate
 import io.github.yesidrobayo.shopledger.data.backup.UploadUsageRecorder
 import io.github.yesidrobayo.shopledger.data.backup.UploadUsageStore
 import io.github.yesidrobayo.shopledger.data.backup.cleanUpExpiredLocalCopies
+import io.github.yesidrobayo.shopledger.data.backup.connectedOf
 import io.github.yesidrobayo.shopledger.data.backup.packEncryption
 import io.github.yesidrobayo.shopledger.data.backup.probeAccess
 import io.github.yesidrobayo.shopledger.data.backup.productionBackupEngine
@@ -107,6 +108,8 @@ import io.github.yesidrobayo.shopledger.data.local.PreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
+import io.github.yesidrobayo.shopledger.data.media.MediaCleanup
+import io.github.yesidrobayo.shopledger.data.media.MediaCleanupEvent
 import io.github.yesidrobayo.shopledger.data.media.MediaImporter
 import io.github.yesidrobayo.shopledger.data.media.MediaOpen
 import io.github.yesidrobayo.shopledger.data.media.MediaSync
@@ -123,6 +126,7 @@ import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
 import io.github.yesidrobayo.shopledger.data.work.backupNetworkOf
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
@@ -146,6 +150,7 @@ import io.github.yesidrobayo.shopledger.domain.port.RestoreDrillPort
 import io.github.yesidrobayo.shopledger.domain.port.SecondDestinationPort
 import io.github.yesidrobayo.shopledger.domain.port.SlotFilesSetupPort
 import io.github.yesidrobayo.shopledger.domain.port.WebDavConnectionPort
+import io.github.yesidrobayo.shopledger.domain.port.contain
 import io.github.yesidrobayo.shopledger.domain.port.error
 import io.github.yesidrobayo.shopledger.domain.port.failureHandler
 import io.github.yesidrobayo.shopledger.domain.port.info
@@ -403,6 +408,11 @@ class DataGraph internal constructor(
                     status == BackupStatus.WAITING_FOR_WIFI ||
                     status == BackupStatus.BLOCKED_BY_DATA_SAVER
             },
+            mediaOnMetered = {
+                val ports = (openForWork() as? DataAccess.Ready)?.ports
+                ports?.settings?.get()?.preferences?.mediaOnMetered == true
+            },
+            mediaWaiting = { mediaSyncWaiting() },
         )
     }
 
@@ -719,13 +729,55 @@ class DataGraph internal constructor(
                     webDav.openMedia(link.destinationId, folder)
                 }
             },
-            store = {
-                withContext(ioContext) { MediaSyncStore(files().noBackupDirectory, ioContext) }
-            },
-            mediaDirectory = { File(context.filesDir, StoredImage.FOLDER) },
+            store = ::mediaSyncStore,
+            mediaDirectory = ::mediaDirectory,
             mutex = backupMutex,
             log = log,
+            encryption = ::packEncryption,
+            deviceId = { deviceIdentity.deviceId() },
+            nowUtcMillis = clock::nowEpochMillis,
         )
+    }
+
+    /** La carpeta privada de las fotos. */
+    private fun mediaDirectory(): File = File(context.filesDir, StoredImage.FOLDER)
+
+    /** El estado local de `media-sync`, en `noBackupFilesDir`. Pedirlo toca el disco. */
+    private suspend fun mediaSyncStore(): MediaSyncStore =
+        withContext(ioContext) { MediaSyncStore(files().noBackupDirectory, ioContext) }
+
+    /**
+     * Si `media-sync` tiene algo que hacer, sin red: fotos en uso que faltan en el teléfono y no se
+     * sabe que el servicio no tenga, fotos en uso sin verificar en el servicio o fotos que falta
+     * borrar de él. Así abrir la app tras restaurar baja las fotos sin listar el servicio cada vez.
+     */
+    private suspend fun mediaSyncWaiting(): Boolean {
+        val ports = (openForWork() as? DataAccess.Ready)?.ports ?: return false
+        val inUse = ports.mediaAssetRows.findInUse().map { it.sha256 }
+        val states = mediaSyncStore()
+        if (states.deletions().isNotEmpty()) return true
+        if (inUse.isEmpty()) return false
+        val verified = states.verified() ?: return true
+        val unavailable = states.unavailable()
+        val directory = mediaDirectory()
+        return withContext(ioContext) {
+            inUse.any { sha ->
+                val local = File(directory, StoredImage.fileNameOf(sha)).isFile
+                if (local) sha !in verified else sha !in unavailable
+            }
+        }
+    }
+
+    /**
+     * Qué mostrar en lugar de una foto en uso cuyo archivo falta en el teléfono: `true` si todavía
+     * puede llegar del servicio WebDAV, y `false` si no hay de dónde, o si el servicio no la tiene.
+     * Solo lee archivos y la base, sin red.
+     */
+    suspend fun photoMayArrive(sha256: String): Boolean {
+        val ports = (open() as? DataAccess.Ready)?.ports ?: return false
+        val link = ports.backupState.get()?.let(::connectedOf) ?: return false
+        if (link.kind != BackupDestinationKind.WEBDAV) return false
+        return sha256 !in mediaSyncStore().unavailable()
     }
 
     /** Las precondiciones de `media-sync`: las de la sonda, más las fotos en uso y la red. */
@@ -972,6 +1024,18 @@ class DataGraph internal constructor(
             cleanUp = { now ->
                 val restoreFiles = withContext(ioContext) { RestoreFiles(files()) }
                 cleanUpExpiredLocalCopies(restoreFiles, clock, log, ioContext, now)
+                (openForWork() as? DataAccess.Ready)?.ports?.let { ports ->
+                    log.contain(MediaCleanupEvent.FAILED) {
+                        MediaCleanup(
+                            rows = ports.mediaAssetRows,
+                            transactions = ports.transactions,
+                            store = ::mediaSyncStore,
+                            mediaDirectory = ::mediaDirectory,
+                            ioContext = ioContext,
+                            log = log,
+                        ).run(now)
+                    }
+                }
             },
             recoveryCheckDue = { recoveryCustody.checkFacts().due },
         )

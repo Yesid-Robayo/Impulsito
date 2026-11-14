@@ -29,6 +29,7 @@ import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeFile
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
+import io.github.yesidrobayo.shopledger.ui.components.PhotoState
 import io.github.yesidrobayo.shopledger.ui.media.PhotoCache
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -181,9 +182,16 @@ class AppContainer(application: Application) {
 
     /**
      * Las miniaturas de las fotos ya decodificadas, una caché para todas las pantallas: así volver a
-     * una lista no lee otra vez los mismos archivos.
+     * una lista no lee otra vez los mismos archivos. Una foto que falta en el teléfono se ve
+     * pendiente si todavía puede bajar del servicio WebDAV, y no disponible si no.
      */
     val photoCache: PhotoCache by lazy {
-        PhotoCache({ File(application.filesDir, StoredImage.FOLDER) }, dispatchers.io)
+        PhotoCache(
+            directory = { File(application.filesDir, StoredImage.FOLDER) },
+            io = dispatchers.io,
+            whenMissing = { sha256 ->
+                if (data.photoMayArrive(sha256)) PhotoState.Pending else PhotoState.Unavailable
+            },
+        )
     }
 }

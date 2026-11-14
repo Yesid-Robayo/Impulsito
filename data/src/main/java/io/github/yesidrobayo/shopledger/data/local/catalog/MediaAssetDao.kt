@@ -26,6 +26,21 @@ internal interface MediaAssetDao {
     @Query("SELECT * FROM media_assets WHERE orphaned_at IS NULL ORDER BY id")
     suspend fun findInUse(): List<MediaAssetEntity>
 
+    /**
+     * Las imágenes sin marca de huérfana que ya nada usa, por `id`: un producto borrado, un método
+     * de pago que cambió de imagen o una copia vieja restaurada. La limpieza las marca.
+     */
+    @Query(
+        "SELECT m.* FROM media_assets m WHERE m.orphaned_at IS NULL " +
+            "AND NOT EXISTS (SELECT 1 FROM products p WHERE p.photo_media_id = m.id) " +
+            "AND NOT EXISTS (SELECT 1 FROM payment_methods x " +
+            "WHERE x.instructions_media_id = m.id) " +
+            "AND NOT EXISTS (SELECT 1 FROM document_attachments d WHERE d.media_asset_id = m.id) " +
+            "AND NOT EXISTS (SELECT 1 FROM app_settings a WHERE a.receipt_logo_media_id = m.id) " +
+            "ORDER BY m.id",
+    )
+    suspend fun findUnreferencedInUse(): List<MediaAssetEntity>
+
     /** La fila de la imagen con ese contenido, si ya se guardó. */
     @Query("SELECT * FROM media_assets WHERE sha256 = :sha256")
     suspend fun findBySha256(sha256: String): MediaAssetEntity?

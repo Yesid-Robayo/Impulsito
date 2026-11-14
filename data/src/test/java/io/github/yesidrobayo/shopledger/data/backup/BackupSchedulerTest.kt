@@ -279,6 +279,50 @@ class BackupSchedulerTest {
     }
 
     @Test
+    fun reconcileQueuesThePhotosOnlyWithWebDavThePolicyAndSomethingWaiting() = runBlocking {
+        val media = ArrayList<Boolean>()
+        var waiting = true
+        val recording =
+            object : BackupWorkQueue by queue {
+                override suspend fun keepMediaSync(onMetered: Boolean) {
+                    media += onMetered
+                }
+            }
+        val photos =
+            BackupScheduler(
+                { facts },
+                { restore },
+                { accepted },
+                recording,
+                Clock { now },
+                mediaOnMetered = { true },
+                mediaWaiting = { waiting },
+            )
+
+        photos.reconcile()
+        assertEquals(listOf(true), media)
+
+        waiting = false
+        photos.reconcile()
+        waiting = true
+        accepted = false
+        photos.reconcile()
+        accepted = true
+        facts = facts?.copy(connectedKind = BackupDestinationKind.DOCUMENT_SLOTS)
+        photos.reconcile()
+        facts = facts?.copy(connectedKind = null)
+        photos.reconcile()
+        restore = true
+        photos.resumeAfterRestore()
+        assertEquals(listOf(true), media)
+
+        restore = false
+        facts = facts?.copy(connectedKind = BackupDestinationKind.WEBDAV)
+        photos.resumeAfterRestore()
+        assertEquals(listOf(true, true), media)
+    }
+
+    @Test
     fun reconcileKeepsTheMaintenanceAndQueuesWhatIsPendingWithoutAnUpload() = runBlocking {
         scheduler.reconcile()
 

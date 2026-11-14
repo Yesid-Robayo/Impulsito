@@ -46,6 +46,9 @@ import kotlin.time.Instant
  *   disco. Es local: no depende del destino conectado ni de la política.
  * @param mainWaitingForNetwork si la copia principal espera red: sin red, sin Wi-Fi o con el ahorro
  *   de datos. Con `Mantener al día esta carpeta`, la carpeta no la espera.
+ * @param mediaOnMetered si la persona permite subir y bajar fotos con datos móviles.
+ * @param mediaWaiting si `media-sync` tiene algo que hacer, sin red: fotos que bajar tras restaurar,
+ *   fotos sin verificar o fotos que borrar del servicio. Lee la base y el disco.
  */
 class BackupScheduler internal constructor(
     private val facts: suspend () -> ScheduleFacts?,
@@ -56,6 +59,8 @@ class BackupScheduler internal constructor(
     private val secondDestination: suspend () -> SecondDestinationFacts? = { null },
     private val mainWaitingForNetwork: suspend () -> Boolean = { false },
     private val mediaOnMetered: suspend () -> Boolean = { false },
+    // Antes de la sonda a propósito: las pruebas pasan la sonda como última lambda.
+    private val mediaWaiting: suspend () -> Boolean = { false },
     private val probeDue: suspend () -> Boolean = { false },
 ) {
     /**
@@ -266,6 +271,8 @@ class BackupScheduler internal constructor(
             }
         }
         facts()?.connectedKind?.let { queue.keepHeadChecks(needsNetwork(it)) }
+        // Tras reemplazar la base, las fotos que faltan bajan aparte: la restauración no las espera.
+        keepMediaSyncIfWaiting()
         val current = uploadable() ?: return
         if (queue.uploadWork() != BackupUploadWork.NONE) return
         enqueueUpload(current, pastInterval = false)
@@ -314,8 +321,19 @@ class BackupScheduler internal constructor(
     /** La restauración se canceló: lo que quedó pendiente vuelve a encolarse. */
     internal suspend fun resumeAfterRestore() {
         if (restorePending()) return
+        keepMediaSyncIfWaiting()
         val current = uploadable() ?: return
         enqueueUpload(current, pastInterval = false)
+    }
+
+    /**
+     * Con WebDAV y la política aceptada, encola `media-sync` si tiene algo que hacer. Con ranuras las
+     * fotos no salen del teléfono, y sin destino no hay de dónde bajarlas.
+     */
+    private suspend fun keepMediaSyncIfWaiting() {
+        if (facts()?.connectedKind != BackupDestinationKind.WEBDAV) return
+        if (!policyAccepted() || !mediaWaiting()) return
+        queue.keepMediaSync(mediaOnMetered())
     }
 
     /**

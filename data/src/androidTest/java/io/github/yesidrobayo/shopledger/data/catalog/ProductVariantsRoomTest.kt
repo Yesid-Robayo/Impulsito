@@ -144,7 +144,7 @@ internal class ProductVariantsRoomTest : CatalogDatabaseTest() {
             CreateVariantsResult.ParentIsVariant,
             createVariants(variant, VariantAxes("Color", null), listOf(draft("Rojo"))),
         )
-        guardFailure("products") {
+        guardFailure("guard:products") {
             database.productDao().insert(
                 product("Camiseta · S · Rojo").copy(parentProductId = variant),
             )

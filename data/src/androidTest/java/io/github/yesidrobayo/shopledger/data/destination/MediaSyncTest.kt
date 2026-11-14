@@ -1,6 +1,14 @@
 package io.github.yesidrobayo.shopledger.data.destination
 
+import android.graphics.Bitmap
+import android.graphics.Color
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.yesidrobayo.shopledger.data.backup.PackEncryption
+import io.github.yesidrobayo.shopledger.data.crypto.BackupKey
+import io.github.yesidrobayo.shopledger.data.crypto.EncryptedCopy
+import io.github.yesidrobayo.shopledger.data.crypto.EncryptedReadResult
+import io.github.yesidrobayo.shopledger.data.crypto.RecoveryCode
+import io.github.yesidrobayo.shopledger.data.media.MediaForm
 import io.github.yesidrobayo.shopledger.data.media.MediaOpen
 import io.github.yesidrobayo.shopledger.data.media.MediaSync
 import io.github.yesidrobayo.shopledger.data.media.MediaSyncAccess
@@ -13,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogLevel
 import io.github.yesidrobayo.shopledger.domain.port.LogLine
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
 import kotlin.random.Random
@@ -30,9 +39,12 @@ import org.junit.Test
 /**
  * `media-sync` contra el servicio WebDAV falso en memoria: sube cada foto con su `.slmeta` a
  * `media/` y la verifica, una foto nunca aparece como copia, se detiene si en el servicio caben
- * menos de 3 copias, cede al respaldo, respeta la red medida y no hace nada con ranuras.
+ * menos de 3 copias, cede al respaldo, respeta la red medida y no hace nada con ranuras. Baja lo
+ * que falta tras restaurar, con tope y comprobado, cifra cada foto con el cifrado activo y nunca la
+ * sube en claro, la reemplaza al cambiar de código o apagarlo y borra lo que la limpieza borró.
  *
- * Las fotos son bytes inventados con su suma: aquí no hace falta decodificarlas.
+ * Casi todas las fotos son bytes inventados con su suma; las que deben decodificarse son WebP
+ * inventados.
  */
 class MediaSyncTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -183,6 +195,195 @@ class MediaSyncTest {
     }
 
     @Test
+    fun aMissingPhotoIsDownloadedCheckedAndSavedUnderItsName() = runBlocking {
+        val photo = realPhoto()
+        val bytes = localFile(photo).readBytes()
+        sync(listOf(photo)).run(TransferControl.Unbounded)
+        localFile(photo).delete()
+
+        val run =
+            sync(listOf(photo), isImage = MediaSync::decodesAsImage).run(TransferControl.Unbounded)
+
+        assertEquals(MediaSyncRun.DONE, run)
+        assertTrue(bytes.contentEquals(localFile(photo).readBytes()))
+        assertEquals(emptySet<String>(), store().unavailable())
+        assertFalse(media.listFiles().orEmpty().any { it.name.endsWith(".tmp") })
+    }
+
+    @Test
+    fun aPhotoTheServiceDoesNotHaveIsUnavailableWithoutAnError() = runBlocking {
+        val photo = photo(1)
+        localFile(photo).delete()
+
+        assertEquals(MediaSyncRun.DONE, sync(listOf(photo)).run(TransferControl.Unbounded))
+
+        assertFalse(localFile(photo).exists())
+        assertEquals(setOf(photo.sha256), store().unavailable())
+    }
+
+    @Test
+    fun aDownloadThatIsNotThePhotoOrNotAnImageIsDiscarded() = runBlocking {
+        // Con su nombre pero otro contenido, y con su contenido pero sin ser imagen.
+        val changed = photo(1)
+        val notImage = photo(2)
+        sync(listOf(changed, notImage)).run(TransferControl.Unbounded)
+        dav.files["/dav/app/media/${changed.sha256}.webp"] = ByteArray(50)
+        localFile(changed).delete()
+        localFile(notImage).delete()
+
+        sync(listOf(changed, notImage), isImage = MediaSync::decodesAsImage)
+            .run(TransferControl.Unbounded)
+
+        assertFalse(localFile(changed).exists())
+        assertFalse(localFile(notImage).exists())
+        assertEquals(setOf(changed.sha256, notImage.sha256), store().unavailable())
+    }
+
+    @Test
+    fun aDownloadIsCappedAtTwoMebibytes() = runBlocking {
+        val photo = photo(1)
+        sync(listOf(photo)).run(TransferControl.Unbounded)
+        dav.files["/dav/app/media/${photo.sha256}.webp"] = ByteArray(2 * 1024 * 1024 + 1)
+        localFile(photo).delete()
+
+        sync(listOf(photo)).run(TransferControl.Unbounded)
+
+        assertFalse(localFile(photo).exists())
+        assertEquals(setOf(photo.sha256), store().unavailable())
+    }
+
+    @Test
+    fun withEncryptionEveryPhotoUploadsSealedAndNothingGoesOutInClear() = runBlocking {
+        val photos = (1..2).map(::photo)
+
+        sync(photos, encryption = PackEncryption.Encrypt(CODE)).run(TransferControl.Unbounded)
+
+        val key = BackupKey.from(CODE)
+        for (photo in photos) {
+            val sealed = dav.files.getValue("/dav/app/media/${photo.sha256}.slmd")
+            assertTrue(sealed.copyOfRange(0, 4).contentEquals(byteArrayOf(0x53, 0x4C, 0x42, 0x4B)))
+            assertFalse(sealed.contentEquals(localFile(photo).readBytes()))
+            val meta = dav.files.getValue("/dav/app/media/${photo.sha256}.slmd.slmeta")
+            assertTrue(meta.decodeToString().contains("\"sl_key_id\":\"${key.keyIdHex}\""))
+        }
+        assertFalse(server.requests.any { it.method == "PUT" && ".webp" in it.path })
+        assertEquals(
+            photos.associate { it.sha256 to MediaForm.Sealed(key.keyIdHex) },
+            store().verifiedForms(),
+        )
+    }
+
+    @Test
+    fun withoutTheKeyNothingUploadsAndNeverInClear() = runBlocking {
+        sync(listOf(photo(1)), encryption = PackEncryption.KeyUnavailable)
+            .run(TransferControl.Unbounded)
+
+        assertEquals(0, puts())
+    }
+
+    @Test
+    fun turningEncryptionOnDeletesThePlainPhotoOnlyAfterTheSealedOneIsVerified() = runBlocking {
+        val photo = photo(1)
+        sync(listOf(photo)).run(TransferControl.Unbounded)
+        val before = server.requests.size
+
+        sync(listOf(photo), encryption = PackEncryption.Encrypt(CODE))
+            .run(TransferControl.Unbounded)
+
+        val after = server.requests.drop(before).map { it.method to it.path }
+        val verified = after.indexOfLast { it == "GET" to "/dav/app/media/${photo.sha256}.slmd" }
+        val deleted = after.indexOf("DELETE" to "/dav/app/media/${photo.sha256}.webp")
+        assertTrue(after.toString(), verified in 0 until deleted)
+        assertFalse(dav.files.containsKey("/dav/app/media/${photo.sha256}.webp"))
+        assertFalse(dav.files.containsKey("/dav/app/media/${photo.sha256}.webp.slmeta"))
+        assertTrue(dav.files.containsKey("/dav/app/media/${photo.sha256}.slmd"))
+    }
+
+    @Test
+    fun aNewCodeReplacesEachSealedPhotoAfterVerifyingTheNewOne() = runBlocking {
+        val photo = photo(1)
+        sync(listOf(photo), encryption = PackEncryption.Encrypt(CODE))
+            .run(TransferControl.Unbounded)
+
+        sync(listOf(photo), encryption = PackEncryption.Encrypt(OTHER_CODE))
+            .run(TransferControl.Unbounded)
+
+        val key = BackupKey.from(OTHER_CODE)
+        val sealed = dav.files.getValue("/dav/app/media/${photo.sha256}.slmd")
+        val read = EncryptedCopy.read(sealed.inputStream(), key, sink = null)
+        assertTrue(read.toString(), read is EncryptedReadResult.Read)
+        val meta = dav.files.getValue("/dav/app/media/${photo.sha256}.slmd.slmeta")
+        assertTrue(meta.decodeToString().contains("\"sl_key_id\":\"${key.keyIdHex}\""))
+        assertFalse(dav.files.keys.any { it.endsWith(".sltmp") })
+        assertEquals(mapOf(photo.sha256 to MediaForm.Sealed(key.keyIdHex)), store().verifiedForms())
+    }
+
+    @Test
+    fun turningEncryptionOffUploadsInClearAndThenDeletesTheSealedPhoto() = runBlocking {
+        val photo = photo(1)
+        sync(listOf(photo), encryption = PackEncryption.Encrypt(CODE))
+            .run(TransferControl.Unbounded)
+
+        sync(listOf(photo)).run(TransferControl.Unbounded)
+
+        assertTrue(dav.files.containsKey("/dav/app/media/${photo.sha256}.webp"))
+        assertFalse(dav.files.containsKey("/dav/app/media/${photo.sha256}.slmd"))
+        assertFalse(dav.files.containsKey("/dav/app/media/${photo.sha256}.slmd.slmeta"))
+        assertEquals(mapOf(photo.sha256 to MediaForm.Plain), store().verifiedForms())
+    }
+
+    @Test
+    fun aSealedMissingPhotoIsDownloadedAndDecrypted() = runBlocking {
+        val photo = realPhoto()
+        val bytes = localFile(photo).readBytes()
+        sync(listOf(photo), encryption = PackEncryption.Encrypt(CODE))
+            .run(TransferControl.Unbounded)
+        localFile(photo).delete()
+        store().forget()
+
+        sync(
+            listOf(photo),
+            encryption = PackEncryption.Encrypt(CODE),
+            isImage = MediaSync::decodesAsImage,
+        ).run(TransferControl.Unbounded)
+
+        assertTrue(bytes.contentEquals(localFile(photo).readBytes()))
+    }
+
+    @Test
+    fun aSealedPhotoWithAnotherCodeIsUnavailableAndNothingIsDeleted() = runBlocking {
+        val photo = photo(1)
+        sync(listOf(photo), encryption = PackEncryption.Encrypt(CODE))
+            .run(TransferControl.Unbounded)
+        localFile(photo).delete()
+        val files = dav.files.keys.toSet()
+
+        sync(listOf(photo), encryption = PackEncryption.Encrypt(OTHER_CODE))
+            .run(TransferControl.Unbounded)
+
+        assertFalse(localFile(photo).exists())
+        assertEquals(setOf(photo.sha256), store().unavailable())
+        assertEquals(files, dav.files.keys.toSet())
+    }
+
+    @Test
+    fun photosTheCleanupDeletedAreRemovedFromTheServiceUnlessInUseAgain() = runBlocking {
+        val gone = photo(1)
+        val back = photo(2)
+        sync(listOf(gone, back)).run(TransferControl.Unbounded)
+        localFile(gone).delete()
+        store().saveDeletions(setOf(gone.sha256, back.sha256))
+
+        sync(listOf(back)).run(TransferControl.Unbounded)
+
+        assertFalse(dav.files.containsKey("/dav/app/media/${gone.sha256}.webp"))
+        assertFalse(dav.files.containsKey("/dav/app/media/${gone.sha256}.webp.slmeta"))
+        assertTrue(dav.files.containsKey("/dav/app/media/${back.sha256}.webp"))
+        assertEquals(emptySet<String>(), store().deletions())
+        assertEquals(setOf(back.sha256), store().verified())
+    }
+
+    @Test
     fun spaceIsMeasuredInWholeCopies() {
         assertFalse(MediaSync.lacksSpace(availableBytes = null, copyBytes = 1_000))
         assertFalse(MediaSync.lacksSpace(availableBytes = 2_000, copyBytes = null))
@@ -195,6 +396,8 @@ class MediaSyncTest {
         photos: List<StoredImage>,
         onMetered: Boolean = false,
         kind: BackupDestinationKind = BackupDestinationKind.WEBDAV,
+        encryption: PackEncryption = PackEncryption.Plain,
+        isImage: (ByteArray) -> Boolean = { true },
     ) = MediaSync(
         prepare = {
             MediaSyncAccess.Ready(
@@ -210,6 +413,9 @@ class MediaSyncTest {
         mediaDirectory = { media },
         mutex = mutex,
         log = SilentLog,
+        encryption = { encryption },
+        deviceId = { DEVICE },
+        isImage = isImage,
     )
 
     private fun destination() = WebDavDestination(testClient(server), APP_FOLDER, sleep = {})
@@ -229,6 +435,25 @@ class MediaSyncTest {
         return StoredImage(sha, "image/webp", 640, 480, bytes.size.toLong())
     }
 
+    private fun localFile(photo: StoredImage) = File(media, StoredImage.fileNameOf(photo.sha256))
+
+    /** Una foto de verdad, un WebP inventado de 64 x 48, que se decodifica como imagen. */
+    private fun realPhoto(): StoredImage {
+        val bitmap = Bitmap.createBitmap(64, 48, Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(Color.rgb(200, 120, 40))
+        val out = ByteArrayOutputStream()
+        @Suppress("DEPRECATION")
+        bitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
+        bitmap.recycle()
+        val bytes = out.toByteArray()
+        val sha = sha256(bytes)
+        File(media, StoredImage.fileNameOf(sha)).writeBytes(bytes)
+        return StoredImage(sha, "image/webp", 64, 48, bytes.size.toLong())
+    }
+
+    private fun sha256(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
     private fun control(metered: Boolean) = object : TransferControl {
         override fun isStopped(): Boolean = false
 
@@ -237,6 +462,12 @@ class MediaSyncTest {
         override fun meteredStop(): Boolean = false
 
         override fun isMetered(): Boolean = metered
+    }
+
+    private companion object {
+        const val DEVICE = "00000000-0000-4000-8000-000000000001"
+        val CODE = RecoveryCode("0123456789ABCDEFGHJKMNPQRS")
+        val OTHER_CODE = RecoveryCode("SRQPNMKJHGFEDCBA9876543210")
     }
 
     private object SilentLog : EventLog {

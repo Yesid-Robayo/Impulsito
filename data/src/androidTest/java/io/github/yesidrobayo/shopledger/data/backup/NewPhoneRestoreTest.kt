@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.data.destination.DestinationOpen
 import io.github.yesidrobayo.shopledger.data.destination.DestinationOpener
 import io.github.yesidrobayo.shopledger.data.destination.DestinationResult
 import io.github.yesidrobayo.shopledger.data.destination.FakeHttpServer
+import io.github.yesidrobayo.shopledger.data.destination.FakeResponse
 import io.github.yesidrobayo.shopledger.data.destination.InMemoryWebDav
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.data.destination.WebDavDestination
@@ -46,7 +47,8 @@ import org.junit.runner.RunWith
  *
  * - **WebDAV:** el teléfono nuevo conecta el mismo servicio falso, lista las copias, restaura la más
  *   nueva por su clave y, al reiniciar, tiene los mismos datos. La copia ya está en el destino
- *   conectado: `verified_seq` alcanza a `change_seq`.
+ *   conectado: `verified_seq` alcanza a `change_seq`. Las fotos nunca la detienen: aunque el
+ *   servicio no las tenga, la base vuelve entera, con las filas de sus fotos.
  * - **Ranuras:** el teléfono nuevo no puede listar esa nube. Abre los archivos con el selector, del
  *   más nuevo al más viejo: el más nuevo quedó a medias y se rechaza sin tocar nada, y el siguiente
  *   abre. Sin destino conectado, la copia no cuenta como respaldada.
@@ -102,6 +104,38 @@ class NewPhoneRestoreTest {
         val state = newPhone.state()
         assertEquals(BackupLinkState.CONNECTED.name, state.linkState)
         assertEquals("La copia ya está en el destino", state.changeSeq, state.verifiedSeq)
+    }
+
+    @Test
+    fun aRestoreNeverWaitsForThePhotos() = runBlocking<Unit> {
+        // El servicio no tiene las fotos, y cualquier pedido a su carpeta falla.
+        val dav =
+            InMemoryWebDav(
+                override = { request ->
+                    if ("/media" in request.path) FakeResponse.status(500) else null
+                },
+            ).also { it.collections += "/dav/app/" }
+        val server = FakeHttpServer(keepAlive = true, handler = dav::handle).also { servers += it }
+        oldPhone.connect(BackupDestinationKind.WEBDAV)
+        oldPhone.addProduct("Pan de prueba")
+        // La foto del producto: su fila está en la base, y su archivo en ningún lado.
+        oldPhone.sql(
+            "INSERT INTO media_assets (sha256, kind, mime_type, width_px, height_px, " +
+                "size_bytes, created_at, orphaned_at) VALUES ('${"a".repeat(64)}', " +
+                "'PRODUCT_PHOTO', 'image/webp', 640, 480, 21000, 1767225600000, NULL)",
+        )
+        oldPhone.sql("UPDATE products SET photo_media_id = (SELECT MAX(id) FROM media_assets)")
+        assertEquals(BackupRun.Verified(1), oldPhone.runner(webDav(server)).run(control))
+
+        newPhone.connect(BackupDestinationKind.WEBDAV)
+        val listing = webDav(server).listCopies(TransferControl.Unbounded)
+        val copy = (listing as DestinationResult.Success).value.copies.single()
+        val service = service(newPhone) { webDav(server) }
+
+        assertEquals(RestoreProgress.ReadyToRestart(0), service.restoreCopy(copy.ref.value))
+        assertTrue(newPhone.reopen() is DataAccess.Ready)
+        assertEquals(1, newPhone.ports.mediaAssetRows.findInUse().size)
+        assertTrue(server.requests.none { "/media" in it.path })
     }
 
     @Test
