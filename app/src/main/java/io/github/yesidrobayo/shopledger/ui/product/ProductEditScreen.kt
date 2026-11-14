@@ -53,6 +53,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
+import io.github.yesidrobayo.shopledger.ui.components.BarcodeField
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
@@ -314,12 +315,12 @@ private fun MinStockField(
 private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
     val form = uiState.form
     ProductPhotoField(uiState, onAction)
-    AppTextField(
+    BarcodeField(
         value = form.barcode,
         onValueChange = { onAction(ProductEditAction.BarcodeChange(it)) },
+        onScan = { onAction(ProductEditAction.ScanBarcode) },
         label = stringResource(R.string.product_barcode),
         error = fieldError(uiState, ProductEditField.BARCODE),
-        imeAction = ImeAction.Done,
     )
     Text(
         stringResource(R.string.combo_stock_mode_label),

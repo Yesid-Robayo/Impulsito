@@ -140,6 +140,9 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
         back()
     }
 
+    /** Lo que pasa entre el escáner y la pantalla que lo abrió. */
+    val scans: ScanHandoff = ScanHandoff()
+
     /**
      * Vuelve a la pantalla anterior. En Inicio no hace nada y devuelve `false`: ahí atrás le toca al
      * sistema, que cierra la app.

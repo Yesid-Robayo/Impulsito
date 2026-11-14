@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +48,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  * @param onLeave se llama cuando el campo pierde el foco después de haberlo tenido.
  * @param keyboardType el teclado, como `Uri` para una dirección.
  * @param autoCorrect falso para lo que no es texto corrido, como un usuario o una dirección.
+ * @param trailingIcon una acción a la derecha del campo, como abrir el escáner.
+ * @param keyboardActions lo que hace la tecla de acción, como usar el código que dejó un lector.
  */
 @Composable
 fun AppTextField(
@@ -62,6 +65,8 @@ fun AppTextField(
     onLeave: () -> Unit = {},
     keyboardType: KeyboardType = KeyboardType.Text,
     autoCorrect: Boolean = true,
+    trailingIcon: (@Composable () -> Unit)? = null,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     var focused by remember { mutableStateOf(false) }
     OutlinedTextField(
@@ -102,7 +107,9 @@ fun AppTextField(
                 keyboardType = keyboardType,
                 imeAction = imeAction,
             ),
+        keyboardActions = keyboardActions,
         singleLine = singleLine,
+        trailingIcon = trailingIcon,
         shape = MaterialTheme.shapes.medium,
         colors = appFieldColors(),
     )

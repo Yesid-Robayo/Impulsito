@@ -51,6 +51,9 @@ sealed interface ProductEditAction {
 
     data class BarcodeChange(val text: String) : ProductEditAction
 
+    /** Quiere leer el código con la cámara: lo resuelve la navegación, que abre el escáner. */
+    data object ScanBarcode : ProductEditAction
+
     /** Corrigió a mano lo que costaría reponer una unidad. Vacío es sin dato. */
     data class ReplacementCostChange(val text: String) : ProductEditAction
 

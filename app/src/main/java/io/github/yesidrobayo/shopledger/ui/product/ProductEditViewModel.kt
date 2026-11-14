@@ -240,6 +240,8 @@ class ProductEditViewModel(
 
             ProductEditAction.OpenVariants -> Unit
 
+            ProductEditAction.ScanBarcode -> Unit
+
             is ProductEditAction.SalePriceChange ->
                 edit(ProductEditField.SALE_PRICE) { copy(salePrice = action.text) }
 

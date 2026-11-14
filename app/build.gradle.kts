@@ -136,6 +136,13 @@ dependencies {
     // La gráfica por día de las estadísticas. Vico está entre las dependencias de ejecución permitidas, sin red ni datos.
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)
+    // El escáner: CameraX entrega los cuadros de la cámara trasera y zxing-cpp los lee en memoria, sin red y sin guardar
+    // ninguno. Las dos están entre las dependencias de ejecución permitidas.
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.compose)
+    implementation(libs.zxing.cpp.android)
     testImplementation(libs.junit)
     // Los ViewModel se prueban en JVM: dispatchers de prueba en lugar del principal, y Turbine para leer cada estado.
     testImplementation(libs.kotlinx.coroutines.test)

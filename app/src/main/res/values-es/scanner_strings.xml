@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scanner_barcode_label">Código de barras</string>
+    <string name="scanner_aim">Apuntar al código</string>
+    <string name="scanner_type_code_action">Escribir el código</string>
+    <plurals name="scanner_read_count">
+        <item quantity="one">%1$d leído</item>
+        <item quantity="many">%1$d de leídos</item>
+        <item quantity="other">%1$d leídos</item>
+    </plurals>
+    <string name="scanner_finish_action">Terminar</string>
+    <string name="scanner_last">Último: %1$s</string>
+    <string name="scanner_opening">Abriendo la cámara</string>
+    <string name="scanner_denied_title">La cámara está apagada para %1$s</string>
+    <string name="scanner_denied_body">Se puede activar en los ajustes del sistema. También se puede escribir el código.</string>
+    <string name="scanner_error_title">No se pudo abrir la cámara</string>
+    <string name="scanner_slow_hint">Acercar el código o encender la linterna</string>
+
+    <string name="permission_camera_title">Leer códigos con la cámara</string>
+    <string name="permission_camera_body">La cámara se usa solo para leer códigos de barras, y solo con esta pantalla abierta. Ninguna imagen se guarda ni sale del teléfono.</string>
+    <string name="permission_camera_allow_action">Permitir cámara</string>
+
+    <string name="a11y_scanner_preview">Vista de la cámara. Apuntar al código de barras</string>
+    <string name="a11y_scanner_flash_on">Encender linterna</string>
+    <string name="a11y_scanner_flash_off">Apagar linterna</string>
+    <string name="a11y_scanner_read">Leído: %1$s</string>
+</resources>

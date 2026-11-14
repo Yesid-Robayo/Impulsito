@@ -42,6 +42,9 @@ internal object PreviewSamples {
     const val DIALOG_ACK = "Entiendo que este teléfono tiene menos registros"
     const val SEARCH_QUERY = "acite"
 
+    /** Un código inventado: el prefijo 29 es de uso interno y no apunta a ningún país. */
+    const val BARCODE = "2900000123458"
+
     val PRICE = Money(4_200L)
     val SECOND_PRICE = Money(12_500L)
     val OLD_PRICE = Money(3_900L)

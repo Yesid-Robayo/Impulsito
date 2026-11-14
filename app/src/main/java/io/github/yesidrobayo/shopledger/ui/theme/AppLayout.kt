@@ -190,6 +190,21 @@ class AppSizes internal constructor() {
 
     /** Punta redondeada de una columna del mes. */
     val chartColumnTipMonth: Dp = 3.dp
+
+    /** Ancho de la ventana del escáner, la parte de la cámara sin velo. */
+    val scannerWindowWidth: Dp = 280.dp
+
+    /** Alto de la ventana del escáner: la forma de un código de barras. */
+    val scannerWindowHeight: Dp = 160.dp
+
+    /** Ancho mínimo al que se achica la ventana del escáner con la letra grande. */
+    val scannerWindowMinWidth: Dp = 160.dp
+
+    /** Grosor de las esquinas de la ventana del escáner. */
+    val scannerCornerStroke: Dp = 3.dp
+
+    /** Ancho del panel del escáner junto a la cámara, en una ventana horizontal ancha. */
+    val scannerSidePanel: Dp = 360.dp
 }
 
 /**

@@ -29,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
+import io.github.yesidrobayo.shopledger.navigation.ScanPurpose
 import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
@@ -110,6 +111,13 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                 }
                 if (uiState.savedProductId != null || uiState.closed) navigator.back()
             }
+            // El código que dejó el escáner llega al volver a verse, como si se hubiera escrito.
+            val scanned by navigator.scans.toTake.collectAsStateWithLifecycle()
+            LaunchedEffect(scanned) {
+                navigator.scans.take(ScanPurpose.PRODUCT_BARCODE).lastOrNull()?.let {
+                    viewModel.onAction(ProductEditAction.BarcodeChange(it.code))
+                }
+            }
             // Con algo escrito, atrás pregunta antes de descartarlo.
             BackHandler(enabled = uiState.dirty) { viewModel.onAction(ProductEditAction.Close) }
             // El selector de fotos del sistema: no pide permisos, y en Android viejos abre el de
@@ -137,6 +145,9 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                                 ActivityResultContracts.PickVisualMedia.ImageOnly,
                             ),
                         )
+
+                        ProductEditAction.ScanBarcode ->
+                            navigator.open(AppNavKey.Scanner(ScanPurpose.PRODUCT_BARCODE))
 
                         else -> viewModel.onAction(action)
                     }

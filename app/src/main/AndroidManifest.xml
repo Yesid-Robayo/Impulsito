@@ -17,6 +17,19 @@
          Android lo ignora: ahí queda el filtro de toques tapados. -->
     <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
 
+    <!-- El escáner de códigos. Se pide solo al abrir el escáner por primera vez, tras explicar para qué, nunca al abrir la
+         app. La cámara corre solo con el escáner a la vista y ningún cuadro se guarda: se lee en memoria y se suelta. Sin el
+         permiso, escribir el código sigue funcionando. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Opcionales: sin esto, pedir la cámara la volvería un requisito, y la app no se instalaría en un teléfono sin ella. -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+
     <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS.
          Datos frágiles: desde Android 10, al desinstalar el sistema ofrece conservar los datos del negocio. Es una oferta del
          sistema, que no todos los fabricantes muestran: ningún texto de la app la promete. -->

@@ -7,12 +7,14 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.StrictMode
+import androidx.camera.core.CameraXConfig
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration as WorkConfiguration
 import io.github.yesidrobayo.shopledger.data.safety.AppVersions
 import io.github.yesidrobayo.shopledger.data.safety.BootGuard
 import io.github.yesidrobayo.shopledger.di.AppContainer
+import io.github.yesidrobayo.shopledger.ui.scanner.scannerCameraConfig
 import kotlinx.coroutines.launch
 
 /**
@@ -40,7 +42,8 @@ import kotlinx.coroutines.launch
  */
 class ShopLedgerApp :
     Application(),
-    WorkConfiguration.Provider {
+    WorkConfiguration.Provider,
+    CameraXConfig.Provider {
     /** Las dependencias de la app. Existe desde [onCreate] hasta que el proceso termina. */
     lateinit var container: AppContainer
         private set
@@ -86,6 +89,12 @@ class ShopLedgerApp :
 
     override val workManagerConfiguration: WorkConfiguration
         get() = WorkConfiguration.Builder().setWorkerFactory(container.workerFactory).build()
+
+    /**
+     * La cámara del escáner, solo la trasera. La pide la cámara la primera vez que el escáner la
+     * abre, nunca al arrancar.
+     */
+    override fun getCameraXConfig(): CameraXConfig = scannerCameraConfig()
 
     override fun onCreate() {
         super.onCreate()
