@@ -21,6 +21,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomCountSessionReposito
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomFieldRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomDocumentAttachmentRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomFxRateRepository
@@ -92,6 +93,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CustomFieldRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerSalesSource
+import io.github.yesidrobayo.shopledger.domain.port.DocumentAttachmentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.FxRateRepository
@@ -386,6 +388,10 @@ class DataPorts internal constructor(
     val catalogPresence: CatalogPresenceSource = RoomCatalogPresenceSource(database)
 
     val mediaAssets: MediaAssetRepository = RoomMediaAssetRepository(database)
+
+    /** Las fotos de comprobantes de gastos y compras: solo se quitan si la persona lo decide. */
+    val documentAttachments: DocumentAttachmentRepository =
+        RoomDocumentAttachmentRepository(database)
 
     /**
      * Lo que el estado del respaldo lee del teléfono, para la pantalla de inicio y la del respaldo.

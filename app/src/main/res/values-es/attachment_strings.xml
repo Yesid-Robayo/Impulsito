@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: fotos del comprobante de un gasto o una compra, que se leen en pantalla y solo se quitan por decisión de la persona. -->
+    <string name="attachment_add_action">Agregar foto del comprobante</string>
+    <string name="attachment_photo">Foto del comprobante</string>
+    <string name="attachment_remove_title">¿Quitar esta foto?</string>
+    <string name="attachment_remove_body">La foto deja de estar en este documento. El documento no cambia.</string>
+</resources>

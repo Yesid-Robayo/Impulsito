@@ -17,6 +17,23 @@ internal interface DocumentAttachmentDao {
     @Query("SELECT * FROM document_attachments WHERE purchase_id = :purchaseId ORDER BY id")
     fun observeByPurchase(purchaseId: Long): Flow<List<DocumentAttachmentEntity>>
 
+    @Query("SELECT * FROM document_attachments WHERE expense_id = :expenseId ORDER BY id")
+    suspend fun findByExpense(expenseId: Long): List<DocumentAttachmentEntity>
+
+    @Query("SELECT * FROM document_attachments WHERE purchase_id = :purchaseId ORDER BY id")
+    suspend fun findByPurchase(purchaseId: Long): List<DocumentAttachmentEntity>
+
+    @Query("SELECT * FROM document_attachments WHERE id = :id")
+    suspend fun findById(id: Long): DocumentAttachmentEntity?
+
+    /** El estado guardado del gasto [expenseId], o nulo si no existe. */
+    @Query("SELECT status FROM expenses WHERE id = :expenseId")
+    suspend fun findExpenseStatus(expenseId: Long): String?
+
+    /** El estado guardado de la compra [purchaseId], o nulo si no existe. */
+    @Query("SELECT status FROM purchases WHERE id = :purchaseId")
+    suspend fun findPurchaseStatus(purchaseId: Long): String?
+
     /** Devuelve el id nuevo. Falla si no apunta a exactamente un documento. */
     @Insert
     suspend fun insert(attachment: DocumentAttachmentEntity): Long

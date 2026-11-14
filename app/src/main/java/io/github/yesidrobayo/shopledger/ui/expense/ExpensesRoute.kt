@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.document.AttachmentTarget
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ObserveExpenseMonthUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseUseCase
@@ -31,6 +32,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.media.ReceiptPhotosRoute
 import io.github.yesidrobayo.shopledger.ui.sale.RecordsTab
 
 /**
@@ -200,6 +202,9 @@ fun ExpensesRoute(
                 },
                 asTab = asTab,
                 backupBanner = { RootBackupBanner(navigator::open) },
+                receiptPhotos = { row ->
+                    ReceiptPhotosRoute(AttachmentTarget.Expense(row.id), canAdd = !row.voided)
+                },
             )
         }
     }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- English: receipt photos of an expense or a purchase, read on screen and removed only by choice. -->
+    <string name="attachment_add_action">Add receipt photo</string>
+    <string name="attachment_photo">Receipt photo</string>
+    <string name="attachment_remove_title">Remove this photo?</string>
+    <string name="attachment_remove_body">The photo is removed from this document. The document does not change.</string>
+</resources>

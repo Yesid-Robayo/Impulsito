@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Português: fotos do comprovante de uma despesa ou compra, lidas na tela e removidas só por decisão da pessoa. -->
+    <string name="attachment_add_action">Adicionar foto do comprovante</string>
+    <string name="attachment_photo">Foto do comprovante</string>
+    <string name="attachment_remove_title">Remover esta foto?</string>
+    <string name="attachment_remove_body">A foto deixa de estar neste documento. O documento não muda.</string>
+</resources>

@@ -73,12 +73,15 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * fecha, y ya no se ofrece anular.
  *
  * Los costos y el total van con modo discreto. Es pura: recibe el estado y avisa cada acción.
+ *
+ * @param receiptPhotos las fotos del comprobante de la compra: las da la ruta.
  */
 @Composable
 fun PurchaseDetailScreen(
     uiState: PurchaseDetailUiState,
     onAction: (PurchaseDetailAction) -> Unit,
     modifier: Modifier = Modifier,
+    receiptPhotos: @Composable () -> Unit = {},
 ) {
     val notices = remember { SnackbarHostState() }
     val voidedText = stringResource(R.string.confirm_purchase_voided)
@@ -114,7 +117,8 @@ fun PurchaseDetailScreen(
                         PurchaseDetailUiState.NotFound, PurchaseDetailUiState.ReadError ->
                             ReadProblem(uiState == PurchaseDetailUiState.ReadError, onAction)
 
-                        is PurchaseDetailUiState.Ready -> DetailBody(uiState, onAction)
+                        is PurchaseDetailUiState.Ready ->
+                            DetailBody(uiState, onAction, receiptPhotos)
                     }
                 }
             }
@@ -151,6 +155,7 @@ private fun titleOf(ready: PurchaseDetailUiState.Ready?): String {
 private fun DetailBody(
     ready: PurchaseDetailUiState.Ready,
     onAction: (PurchaseDetailAction) -> Unit,
+    receiptPhotos: @Composable () -> Unit,
 ) {
     val spacing = AppTheme.spacing
     LazyColumn(
@@ -168,6 +173,12 @@ private fun DetailBody(
                 CreditBlock(content.total, ready.creditBalance) {
                     onAction(PurchaseDetailAction.OpenPayable(supplierId))
                 }
+            }
+        }
+        // Las fotos del comprobante: se leen aquí, y anular la compra las conserva.
+        item(key = PHOTOS) {
+            Box(Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8)) {
+                receiptPhotos()
             }
         }
         if (ready.returns.isNotEmpty()) {
@@ -500,3 +511,4 @@ private const val TOTAL = "total"
 private const val ACTIONS = "actions"
 private const val CREDIT = "credit"
 private const val RETURNS = "returns"
+private const val PHOTOS = "photos"

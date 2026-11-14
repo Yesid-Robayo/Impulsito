@@ -110,6 +110,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  *   `Gasto` en Inicio: con atrás, el título `Gastos` y sin segmentos.
  * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
  *   atención.
+ * @param receiptPhotos las fotos del comprobante de un gasto, en su hoja: las da la ruta.
  */
 @Composable
 fun ExpensesScreen(
@@ -118,6 +119,7 @@ fun ExpensesScreen(
     modifier: Modifier = Modifier,
     asTab: Boolean = true,
     backupBanner: @Composable () -> Unit = {},
+    receiptPhotos: @Composable (ExpenseListRow) -> Unit = {},
 ) {
     val sizes = AppTheme.sizes
     // Como segmento, el botón y el final de la lista dejan libre la barra inferior y Vender.
@@ -187,12 +189,12 @@ fun ExpensesScreen(
                                 .fillMaxHeight()
                                 .consumeWindowInsets(WindowInsets.statusBars),
                         ) {
-                            SidePanel(uiState, onAction)
+                            SidePanel(uiState, onAction, receiptPhotos)
                         }
                     }
                 }
             }
-            if (!wide) Sheets(uiState, onAction)
+            if (!wide) Sheets(uiState, onAction, receiptPhotos)
         }
     }
     if (uiState.categorySheet) CategoryFilterSheet(uiState, onAction)
@@ -431,7 +433,11 @@ private fun ExpenseAmount(row: ExpenseListRow, size: MoneySize) {
 
 /** En una ventana estrecha, el detalle y el gasto nuevo van en hojas. */
 @Composable
-private fun Sheets(uiState: ExpensesUiState, onAction: (ExpensesAction) -> Unit) {
+private fun Sheets(
+    uiState: ExpensesUiState,
+    onAction: (ExpensesAction) -> Unit,
+    receiptPhotos: @Composable (ExpenseListRow) -> Unit,
+) {
     val form = uiState.form
     val detail = uiState.detail
     val category = uiState.newCategory
@@ -448,7 +454,7 @@ private fun Sheets(uiState: ExpensesUiState, onAction: (ExpensesAction) -> Unit)
             onDismissRequest = { onAction(ExpensesAction.CloseDetail) },
             title = detailTitle(detail),
             action = detailAction(detail, onAction),
-        ) { ExpenseDetailFields(detail, onAction) }
+        ) { ExpenseDetailFields(detail, onAction, receiptPhotos) }
     }
 }
 
@@ -496,7 +502,11 @@ private fun NewCategorySheet(draft: NewExpenseCategory, onAction: (ExpensesActio
  * abajo, sobre el teclado.
  */
 @Composable
-private fun SidePanel(uiState: ExpensesUiState, onAction: (ExpensesAction) -> Unit) {
+private fun SidePanel(
+    uiState: ExpensesUiState,
+    onAction: (ExpensesAction) -> Unit,
+    receiptPhotos: @Composable (ExpenseListRow) -> Unit,
+) {
     val form = uiState.form
     val detail = uiState.detail
     val spacing = AppTheme.spacing
@@ -513,7 +523,7 @@ private fun SidePanel(uiState: ExpensesUiState, onAction: (ExpensesAction) -> Un
         detail != null -> {
             title = detailTitle(detail)
             action = detailAction(detail, onAction)
-            fields = { ExpenseDetailFields(detail, onAction) }
+            fields = { ExpenseDetailFields(detail, onAction, receiptPhotos) }
         }
 
         else -> return
@@ -603,6 +613,7 @@ private fun detailAction(
 private fun ColumnScope.ExpenseDetailFields(
     detail: ExpenseDetailSheet,
     onAction: (ExpensesAction) -> Unit,
+    receiptPhotos: @Composable (ExpenseListRow) -> Unit,
 ) {
     val formats = LocalAppFormats.current
     val row = detail.row
@@ -616,6 +627,8 @@ private fun ColumnScope.ExpenseDetailFields(
             color = muted,
         )
         row.description?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
+        // Las fotos del comprobante: se leen aquí, y anular el gasto las conserva.
+        receiptPhotos(row)
         if (detail.status == ExpenseSheetStatus.FAILED) {
             NoticeCard(stringResource(R.string.error_expense_void), NoticeVariant.ERROR)
         }

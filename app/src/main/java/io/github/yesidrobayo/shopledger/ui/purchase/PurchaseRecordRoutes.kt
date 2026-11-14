@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
+import io.github.yesidrobayo.shopledger.domain.model.document.AttachmentTarget
 import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.ObserveOpenCreditPurchasesUseCase
@@ -21,6 +22,7 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
+import io.github.yesidrobayo.shopledger.ui.media.ReceiptPhotosRoute
 import io.github.yesidrobayo.shopledger.ui.sale.RecordsTab
 import kotlinx.coroutines.flow.combine
 
@@ -197,6 +199,10 @@ fun PurchaseDetailRoute(
 
                         else -> viewModel.onAction(action)
                     }
+                },
+                receiptPhotos = {
+                    val active = (uiState as? PurchaseDetailUiState.Ready)?.canVoid == true
+                    ReceiptPhotosRoute(AttachmentTarget.Purchase(key.purchaseId), canAdd = active)
                 },
             )
         }
