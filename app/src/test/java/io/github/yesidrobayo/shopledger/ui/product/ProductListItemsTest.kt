@@ -77,6 +77,26 @@ class ProductListItemsTest {
     }
 
     @Test
+    fun `the name of a tag finds the products that carry it`() {
+        val catalog = listOf(product(1L, "Arroz"), product(2L, "Aceite"), product(3L, "Panela"))
+        // El índice trae el nombre normalizado de cada etiqueta, sin mayúsculas ni tildes.
+        val tags = mapOf(1L to listOf("temporada"), 3L to listOf("temporada", "regalo"))
+
+        assertEquals(
+            listOf(1L, 3L),
+            items(ProductListItems.build(catalog, units, "Temporáda", tags = tags)).map { it.id },
+        )
+        assertEquals(
+            listOf(3L),
+            items(ProductListItems.build(catalog, units, "regal", tags = tags)).map { it.id },
+        )
+        assertEquals(
+            ProductListContent.NoResults("temporada"),
+            ProductListItems.build(catalog, units, "temporada"),
+        )
+    }
+
+    @Test
     fun `a result carries the search it was built for`() {
         val catalog = listOf(product(1L, "Arroz"))
 

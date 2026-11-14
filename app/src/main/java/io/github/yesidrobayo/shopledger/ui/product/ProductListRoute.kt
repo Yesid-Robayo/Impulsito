@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveBulkPriceChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductCatalogUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveTagSearchIndexUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
@@ -52,6 +53,7 @@ fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = 
                         dependencies.ports.settings,
                     ),
                 ),
+                tagIndex = ObserveTagSearchIndexUseCase(dependencies.ports.tags)(),
             )
         }
     when (model) {

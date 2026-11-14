@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Campos propios y etiquetas de los productos, y su sección en el formulario del producto. -->
+    <string name="field_tab_fields">Fields</string>
+    <string name="tag_tab_tags">Tags</string>
+    <string name="field_archived_group">Archived</string>
+    <plurals name="field_product_count">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+    <string name="field_new_action">New field</string>
+    <string name="tag_new_action">New tag</string>
+    <string name="field_edit_title">Edit field</string>
+    <string name="tag_edit_title">Edit tag</string>
+    <string name="field_name_label">Name</string>
+    <string name="field_type_label">Type</string>
+    <string name="field_type_text">Text</string>
+    <string name="field_type_number">Number</string>
+    <string name="field_type_date">Date</string>
+    <string name="field_type_boolean">Yes or no</string>
+    <string name="field_save_action">Save field</string>
+    <string name="tag_name_label">Name</string>
+    <string name="tag_save_action">Save tag</string>
+    <string name="field_manage_action">Manage fields</string>
+    <string name="tag_manage_action">Manage tags</string>
+    <string name="field_empty_title">Your own details for each product</string>
+    <string name="field_empty_body">For example: brand, warranty or size</string>
+    <string name="tag_empty_title">Groups across categories</string>
+    <string name="field_error_name_empty">Enter the field name</string>
+    <string name="field_error_name_repeated">A field with that name already exists</string>
+    <string name="tag_error_name_empty">Enter the tag name</string>
+    <string name="tag_error_name_repeated">A tag with that name already exists</string>
+    <string name="field_type_locked">It already has values: the type does not change</string>
+    <string name="field_archive_confirm_title">Archive %1$s?</string>
+    <string name="field_archive_confirm_body">It is no longer asked for on products. Values are kept and appear in exports.</string>
+    <string name="field_archive_confirm_action">Archive field</string>
+    <string name="field_delete_confirm_title">Delete %1$s?</string>
+    <string name="field_delete_confirm_body">No product has a value in this field.</string>
+    <string name="field_delete_confirm_action">Delete field</string>
+    <string name="tag_delete_confirm_title">Delete %1$s?</string>
+    <plurals name="tag_delete_confirm_body">
+        <item quantity="one">%1$d product loses this tag. Sales and stock do not change.</item>
+        <item quantity="other">%1$d products lose this tag. Sales and stock do not change.</item>
+    </plurals>
+    <string name="tag_delete_confirm_action">Delete tag</string>
+    <string name="field_error_date">Choose a date</string>
+    <string name="field_saved">Field saved</string>
+    <string name="tag_saved">Tag saved</string>
+    <string name="field_move_up">Move up</string>
+    <string name="field_move_down">Move down</string>
+    <string name="hub_tool_fields">Fields and tags</string>
+    <string name="hub_tool_fields_desc">Custom data for products</string>
+</resources>

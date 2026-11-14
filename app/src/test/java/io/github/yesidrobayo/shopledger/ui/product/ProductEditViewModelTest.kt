@@ -9,16 +9,21 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDraft
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomField
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomFieldType
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomValueIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductExtras
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForEdit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductPhotoChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductTag
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
@@ -36,6 +41,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.GenerateOwnBarcod
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.OwnBarcodeClash
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductExtrasResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitResult
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
@@ -829,6 +835,125 @@ class ProductEditViewModelTest {
         assertEquals(0, calls)
     }
 
+    @Test
+    fun `custom values arrive in the regional format and are saved neutral after the product`() =
+        runTest(dispatcher) {
+            operations.extras.value =
+                ProductExtras(
+                    EXTRA_FIELDS,
+                    mapOf(WARRANTY.id to "12.5"),
+                    listOf(SEASON),
+                    emptySet(),
+                )
+            val model = newProduct(prefill = "Arroz")
+            advanceUntilIdle()
+
+            val shown = model.uiState.value.extras
+            assertTrue(shown.visible)
+            assertEquals("12,5", shown.values[WARRANTY.id])
+
+            model.onAction(ProductEditAction.ExtraValueChange(BRAND.id, "Del valle"))
+            model.onAction(ProductEditAction.ExtraValueChange(WARRANTY.id, "-1,250"))
+            model.onAction(ProductEditAction.ExtraValueChange(EXPIRY.id, "2026-12-31"))
+            model.onAction(ProductEditAction.ExtraValueChange(GIFT.id, "true"))
+            model.onAction(ProductEditAction.ExtraTagToggle(SEASON.id))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            assertEquals(1, operations.created.size)
+            assertEquals(
+                listOf(
+                    Triple(
+                        7L,
+                        mapOf(
+                            BRAND.id to "Del valle",
+                            WARRANTY.id to "-1.25",
+                            EXPIRY.id to "2026-12-31",
+                            GIFT.id to "true",
+                        ),
+                        setOf(SEASON.id),
+                    ),
+                ),
+                operations.extrasSaved,
+            )
+            assertEquals(7L, model.uiState.value.savedProductId)
+        }
+
+    @Test
+    fun `a custom value that does not fit its type stops the save before the product`() =
+        runTest(dispatcher) {
+            operations.extras.value =
+                ProductExtras(EXTRA_FIELDS, emptyMap(), emptyList(), emptySet())
+            val model = newProduct(prefill = "Arroz")
+            advanceUntilIdle()
+
+            model.onAction(ProductEditAction.ExtraValueChange(WARRANTY.id, "-"))
+            model.onAction(ProductEditAction.ExtraValueChange(BRAND.id, "x".repeat(201)))
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            assertTrue(operations.created.isEmpty())
+            assertTrue(operations.extrasSaved.isEmpty())
+            assertEquals(
+                mapOf(
+                    WARRANTY.id to CustomValueIssue.NOT_A_NUMBER,
+                    BRAND.id to CustomValueIssue.TOO_LONG,
+                ),
+                model.uiState.value.extras.errors,
+            )
+            // Escribir de nuevo borra el error de ese campo, y lo escrito sigue ahí.
+            model.onAction(ProductEditAction.ExtraValueChange(WARRANTY.id, "3"))
+            assertEquals(setOf(BRAND.id), model.uiState.value.extras.errors.keys)
+            assertEquals("x".repeat(201), model.uiState.value.extras.values[BRAND.id])
+        }
+
+    @Test
+    fun `when only the custom values fail, the form stays and retrying does not create again`() =
+        runTest(dispatcher) {
+            operations.extras.value =
+                ProductExtras(EXTRA_FIELDS, emptyMap(), listOf(SEASON), emptySet())
+            operations.extrasResult =
+                SaveProductExtrasResult.StorageFailed(StorageFailure.DISK_FULL)
+            val model = newProduct(prefill = "Arroz")
+            advanceUntilIdle()
+            model.onAction(ProductEditAction.ExtraTagToggle(SEASON.id))
+
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            val failed = model.uiState.value
+            assertEquals(ProductEditNotice.SaveFailed(outOfSpace = true), failed.notice)
+            assertNull(failed.savedProductId)
+            assertEquals(setOf(SEASON.id), failed.extras.tagIds)
+            assertEquals(1, operations.created.size)
+
+            operations.extrasResult = SaveProductExtrasResult.Saved
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            // El producto ya estaba: no se crea ni se edita otra vez, solo se guarda lo propio.
+            assertEquals(1, operations.created.size)
+            assertTrue(operations.edited.isEmpty())
+            assertEquals(listOf(7L, 7L), operations.extrasSaved.map { it.first })
+            assertEquals(7L, model.uiState.value.savedProductId)
+        }
+
+    @Test
+    fun `without touching the custom values only the product is saved`() = runTest(dispatcher) {
+        operations.extras.value =
+            ProductExtras(EXTRA_FIELDS, mapOf(BRAND.id to "Del valle"), listOf(SEASON), setOf(1L))
+        val model = newProduct(prefill = "Arroz")
+        advanceUntilIdle()
+        assertTrue(model.uiState.value.extras.hasData)
+
+        model.onAction(ProductEditAction.Save)
+        advanceUntilIdle()
+
+        assertEquals(1, operations.created.size)
+        assertTrue(operations.extrasSaved.isEmpty())
+        assertEquals(7L, model.uiState.value.savedProductId)
+    }
+
     private class FakeOperations : ProductEditOperations {
         val choices = MutableStateFlow(CatalogChoices(listOf(GRAINS), listOf(COUNT, KILO)))
         var editing: ProductForEdit? = null
@@ -908,6 +1033,25 @@ class ProductEditViewModelTest {
             photosImported += source
             return nextPhoto
         }
+
+        /** Sin campos propios ni etiquetas, salvo que una prueba los ponga. */
+        val extras =
+            MutableStateFlow(ProductExtras(emptyList(), emptyMap(), emptyList(), emptySet()))
+        var extrasResult: SaveProductExtrasResult = SaveProductExtrasResult.Saved
+        val extrasSaved = mutableListOf<Triple<Long, Map<Long, String>, Set<Long>>>()
+
+        override fun extras(productId: Long?): Flow<ProductExtras> = extras
+
+        override suspend fun saveExtras(
+            productId: Long,
+            values: Map<Long, String>,
+            tagIds: Set<Long>,
+        ): SaveProductExtrasResult {
+            extrasSaved += Triple(productId, values, tagIds)
+            return extrasResult
+        }
+
+        override fun calendar(): Flow<FieldCalendar?> = MutableStateFlow(null)
     }
 
     @Test
@@ -978,6 +1122,12 @@ class ProductEditViewModelTest {
             }
         val SYMBOLS = NumberSymbols(decimalSeparator = ',', minusSign = '-', grouping = null)
         val COUNT = MeasureUnit(1L, "UNIT", null, null, UnitKind.COUNT, false, null)
+        val BRAND = CustomField(1L, "Marca", CustomFieldType.TEXT, 0L, false, 0)
+        val WARRANTY = CustomField(2L, "Garantía", CustomFieldType.NUMBER, 1L, false, 1)
+        val EXPIRY = CustomField(3L, "Vence", CustomFieldType.DATE, 2L, false, 0)
+        val GIFT = CustomField(4L, "Para regalo", CustomFieldType.BOOLEAN, 3L, false, 0)
+        val EXTRA_FIELDS = listOf(BRAND, WARRANTY, EXPIRY, GIFT)
+        val SEASON = ProductTag(9L, "Temporada", 0)
         val KILO = MeasureUnit(2L, "KILOGRAM", null, null, UnitKind.MASS, true, null)
         val GRAINS = Category(
             id = 3L,

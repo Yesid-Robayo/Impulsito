@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomCashSessionRepositor
 import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCollectionReportRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomCustomFieldRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
@@ -56,6 +57,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierActivitySour
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSupplierRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSystemRowRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomTagRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomTaxRateRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomTaxReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomTaxSettingsRepository
@@ -73,6 +75,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CatalogPresenceSource
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.CollectionReportRepository
+import io.github.yesidrobayo.shopledger.domain.port.CustomFieldRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerSalesSource
@@ -116,6 +119,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SupplierActivitySource
 import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
+import io.github.yesidrobayo.shopledger.domain.port.TagRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxSettingsRepository
@@ -230,6 +234,12 @@ class DataPorts internal constructor(
     /** Las hojas que consumió cada línea de combo, congeladas al vender. */
     val saleLineComponents: SaleLineComponentRepository =
         RoomSaleLineComponentRepository(database)
+
+    /** Los campos propios de los productos y sus valores. Nunca entran en un cálculo. */
+    val customFields: CustomFieldRepository = RoomCustomFieldRepository(database)
+
+    /** Las etiquetas que agrupan productos, y el índice con que la búsqueda las encuentra. */
+    val tags: TagRepository = RoomTagRepository(database)
 
     val systemRows: SystemRowRepository = RoomSystemRowRepository(database)
 

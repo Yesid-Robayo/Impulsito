@@ -50,6 +50,9 @@ private const val PERCENT_DECIMALS = 2
 /** Decimales de una cotización en millonésimas. */
 private const val RATE_DECIMALS = 6
 
+/** Decimales que admite por defecto un número cualquiera, como el de un campo propio. */
+const val DECIMAL_FIELD_DECIMALS = 6
+
 /**
  * Un campo de monto. El símbolo va antes o después de las cifras según el formato del negocio, en su
  * propia fuente, y los separadores de miles aparecen mientras se escribe.
@@ -200,6 +203,42 @@ fun RateField(
         error = error,
         imeAction = imeAction,
         prefix = prefix?.let { AnnotatedString("$it ") },
+        suffix = null,
+    )
+}
+
+/**
+ * Un campo de número cualquiera, que no es un monto ni una cantidad de una unidad: el valor de
+ * un campo propio, como una garantía en meses o una talla. Admite un signo menos al principio y
+ * hasta [maxDecimals] decimales, con los separadores de la región, y dibuja los de grupos
+ * mientras se escribe.
+ *
+ * Guarda el texto limpio, con el separador decimal y el signo de la región: quien lo lee lo pasa
+ * a la forma en que se guarda.
+ */
+@Composable
+fun DecimalField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    maxDecimals: Int = DECIMAL_FIELD_DECIMALS,
+    error: String? = null,
+    imeAction: ImeAction = ImeAction.Next,
+) {
+    val symbols = LocalAppFormats.current.quantity.inputSymbols
+    NumberField(
+        value = value,
+        onValueChange = {
+            onValueChange(cleanSignedNumberInput(it, symbols, maxDecimals, allowNegative = true))
+        },
+        label = label,
+        symbols = symbols,
+        keyboardType = KeyboardType.Decimal,
+        modifier = modifier,
+        error = error,
+        imeAction = imeAction,
+        prefix = null,
         suffix = null,
     )
 }
@@ -363,6 +402,7 @@ private fun NumberFieldsPreview() {
                 error = stringResource(R.string.state_error_read),
             )
             WholeNumberField("30", {}, stringResource(R.string.form_amount))
+            DecimalField("-1234,5", {}, stringResource(R.string.form_amount))
         }
     }
 }

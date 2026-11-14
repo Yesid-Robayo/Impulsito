@@ -7,8 +7,10 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomValueIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductExtras
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductPhotoChange
@@ -20,12 +22,15 @@ import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogName
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogText
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.CustomFieldRules
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.CustomValueCheck
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceResult
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.GenerateOwnBarcodesResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductExtrasResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.SetListPriceResult
@@ -43,6 +48,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -54,6 +60,11 @@ import kotlinx.coroutines.launch
  * ganancia y al guardar, con los símbolos del formato regional de [numbers]. Un error de un campo
  * aparece al salir del nombre o al intentar guardar, nunca mientras se escribe, y lo escrito nunca
  * se pierde por un error. Guardar corre una sola vez a la vez.
+ *
+ * Los campos propios y las etiquetas se guardan después del producto, en su propia transacción.
+ * Un valor que no sirve para su campo se dice antes de guardar nada. Si el producto quedó
+ * guardado y lo propio no, el error se dice en su lugar, lo escrito sigue, y el siguiente
+ * `Guardar` ya no crea otro producto: edita el que quedó.
  *
  * @param productId el producto que se edita, o `null` para crear uno.
  * @param prefillName el nombre con que empieza un producto nuevo, el de una búsqueda sin resultados.
@@ -145,6 +156,16 @@ class ProductEditViewModel(
      */
     private val reads = ScreenReads()
 
+    /** Si la persona ya tocó lo propio: entonces una lectura nueva no pisa lo que escribió. */
+    private var extrasTouched = false
+
+    /**
+     * El producto que este formulario ya guardó cuando lo propio no se pudo guardar, y el
+     * formulario con que se guardó: así reintentar no crea otro.
+     */
+    private var savedId: Long? = null
+    private var savedForm: ProductEditForm? = null
+
     init {
         viewModelScope.launch {
             reads.guard { useCases.choices() }.collect { choices ->
@@ -195,6 +216,15 @@ class ProductEditViewModel(
                 reads.guard { listPrices(productId) }.collect { list ->
                     state.update { it.copy(listPrices = list) }
                 }
+            }
+        }
+        viewModelScope.launch {
+            reads.guard { useCases.extras(productId) }.collect(::showExtras)
+        }
+        viewModelScope.launch {
+            // Sin calendario no se elige una fecha, pero el resto del formulario sigue.
+            useCases.calendar().catch { emit(null) }.collect { calendar ->
+                state.update { it.copy(extras = it.extras.copy(calendar = calendar)) }
             }
         }
         viewModelScope.launch {
@@ -332,6 +362,23 @@ class ProductEditViewModel(
                 state.update { it.copy(photoProblem = null) }
                 edit(null) { copy(photo = EditPhoto.None) }
             }
+
+            is ProductEditAction.ExtraValueChange ->
+                editExtras {
+                    copy(
+                        values = values + (action.fieldId to action.text),
+                        errors = errors - action.fieldId,
+                    )
+                }
+
+            is ProductEditAction.ExtraTagToggle ->
+                editExtras {
+                    val id = action.tagId
+                    copy(tagIds = if (id in tagIds) tagIds - id else tagIds + id)
+                }
+
+            // La pantalla abre la de campos y etiquetas; aquí no cambia nada.
+            ProductEditAction.ManageExtras -> Unit
         }
     }
 
@@ -356,6 +403,64 @@ class ProductEditViewModel(
                     state.update { it.copy(photoProblem = ImageProblem.OUT_OF_SPACE) }
             }
         }
+    }
+
+    /**
+     * Los campos vigentes y las etiquetas que llegan de la base. Hasta que la persona toca lo
+     * propio, también trae lo que ya tiene el producto; después, lo escrito no se pisa.
+     */
+    private fun showExtras(read: ProductExtras) {
+        state.update { current ->
+            val extras = current.extras
+            val types = read.fields.associate { it.id to it.type }
+            val symbols = numbers.quantitySymbols
+            current.copy(
+                extras =
+                    if (extrasTouched) {
+                        extras.copy(fields = read.fields, tags = read.tags)
+                    } else {
+                        extras.copy(
+                            fields = read.fields,
+                            tags = read.tags,
+                            values = read.values.mapValues { (id, stored) ->
+                                CustomValueText.shown(types[id], stored, symbols)
+                            },
+                            tagIds = read.tagIds,
+                        )
+                    },
+            )
+        }
+    }
+
+    private fun editExtras(change: ProductExtrasForm.() -> ProductExtrasForm) {
+        extrasTouched = true
+        state.update { it.copy(extras = it.extras.change(), dirty = true, notice = null) }
+    }
+
+    /** Lo propio leído para guardar: [values] en forma neutra, o los [issues] de cada campo. */
+    private class ReadExtras(
+        val values: Map<Long, String>,
+        val issues: Map<Long, CustomValueIssue>,
+    )
+
+    /**
+     * Lo propio, en la forma en que se guarda, o los problemas de cada campo. Solo van los campos
+     * vigentes de un tipo conocido: uno de un tipo que esta versión no conoce no se escribe.
+     */
+    private fun readExtras(extras: ProductExtrasForm): ReadExtras {
+        val values = mutableMapOf<Long, String>()
+        val issues = mutableMapOf<Long, CustomValueIssue>()
+        val symbols = numbers.quantitySymbols
+        for (field in extras.fields) {
+            val type = field.type ?: continue
+            val written = CustomValueText.stored(type, extras.values[field.id].orEmpty(), symbols)
+            when (val check = CustomFieldRules.value(type, written)) {
+                CustomValueCheck.Blank -> values[field.id] = ""
+                is CustomValueCheck.Valid -> values[field.id] = check.stored
+                is CustomValueCheck.Invalid -> issues[field.id] = check.issue
+            }
+        }
+        return ReadExtras(values, issues)
     }
 
     /**
@@ -569,21 +674,63 @@ class ProductEditViewModel(
         val current = state.value
         if (current.saving || current.loading) return
         val read = readForm(current)
-        if (read.errors.isNotEmpty()) {
-            state.update { it.copy(errors = read.errors, notice = null) }
+        val extras = readExtras(current.extras)
+        if (read.errors.isNotEmpty() || extras.issues.isNotEmpty()) {
+            state.update {
+                it.copy(
+                    errors = read.errors,
+                    extras = it.extras.copy(errors = extras.issues),
+                    notice = null,
+                )
+            }
             return
         }
         state.update { it.copy(saving = true, notice = null) }
         viewModelScope.launch {
             val form = requireNotNull(read.form)
+            val pending = savedId
             val result =
-                if (productId == null) {
-                    useCases.create(form, read.initialStock)
-                } else {
-                    useCases.edit(productId, form)
+                when {
+                    // El producto ya quedó guardado así: solo falta lo propio.
+                    pending != null && current.form == savedForm ->
+                        SaveProductResult.Saved(pending)
+
+                    pending != null -> useCases.edit(pending, form)
+
+                    productId == null -> useCases.create(form, read.initialStock)
+
+                    else -> useCases.edit(productId, form)
                 }
-            state.update { it.copy(saving = false).withResult(result) }
+            if (result is SaveProductResult.Saved && extrasTouched) {
+                savedId = result.productId
+                savedForm = current.form
+                val saved =
+                    useCases.saveExtras(result.productId, extras.values, current.extras.tagIds)
+                state.update { it.copy(saving = false).withExtrasResult(result.productId, saved) }
+            } else {
+                state.update { it.copy(saving = false).withResult(result) }
+            }
         }
+    }
+
+    /**
+     * Cómo terminó guardar lo propio de [savedProductId], que ya quedó guardado. Si falló, el
+     * formulario sigue abierto con lo escrito y el error en su lugar.
+     */
+    private fun ProductEditUiState.withExtrasResult(
+        savedProductId: Long,
+        result: SaveProductExtrasResult,
+    ): ProductEditUiState = when (result) {
+        SaveProductExtrasResult.Saved -> copy(savedProductId = savedProductId, dirty = false)
+
+        is SaveProductExtrasResult.Invalid -> copy(extras = extras.copy(errors = result.issues))
+
+        // Lo borraron mientras se guardaba: no hay dónde guardar lo propio.
+        SaveProductExtrasResult.NotFound ->
+            copy(notice = ProductEditNotice.SaveFailed(outOfSpace = false))
+
+        is SaveProductExtrasResult.StorageFailed ->
+            copy(notice = ProductEditNotice.SaveFailed(result.failure.isOutOfSpace))
     }
 
     private fun ProductEditUiState.withResult(result: SaveProductResult): ProductEditUiState =

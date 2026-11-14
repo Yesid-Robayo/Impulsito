@@ -21,7 +21,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveCatalogCho
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductConversionsUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductExtrasUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductExtrasUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
@@ -136,6 +138,17 @@ class ProductCreateFlowTest {
             pricingUseCase =
                 ObservePricingContextUseCase(ports.settings, ports.categories, ports.taxRates),
             importPhotoUseCase = ImportProductPhotoUseCase { _, _ -> ImageImport.Unreadable },
+            extrasUseCase = ObserveProductExtrasUseCase(ports.customFields, ports.tags),
+            saveExtrasUseCase =
+                SaveProductExtrasUseCase(
+                    ports.transactions,
+                    ports.products,
+                    ports.customFields,
+                    ports.tags,
+                    clock,
+                ),
+            calendarSource = calendar,
+            now = clock::now,
         )
     }
 

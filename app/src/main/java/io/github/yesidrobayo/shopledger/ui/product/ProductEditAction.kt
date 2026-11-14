@@ -101,4 +101,13 @@ sealed interface ProductEditAction {
 
     /** Quita la foto. Al guardar, si nada más la usa, queda marcada para borrarse. */
     data object RemovePhoto : ProductEditAction
+
+    /** Escribió en el campo propio [fieldId], tal como se ve; vacío lo deja sin valor. */
+    data class ExtraValueChange(val fieldId: Long, val text: String) : ProductEditAction
+
+    /** Puso o quitó la etiqueta [tagId]. */
+    data class ExtraTagToggle(val tagId: Long) : ProductEditAction
+
+    /** Quiere administrar los campos propios o las etiquetas: lo resuelve la navegación. */
+    data object ManageExtras : ProductEditAction
 }

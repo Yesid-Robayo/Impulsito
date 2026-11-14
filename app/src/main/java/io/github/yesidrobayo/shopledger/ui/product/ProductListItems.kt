@@ -24,7 +24,8 @@ object ProductListItems {
     /**
      * El contenido para [products], que llegan en el orden de su nombre normalizado, con
      * [filters] aplicados antes que la búsqueda. [units] trae todas las unidades, también las
-     * archivadas, por id.
+     * archivadas, por id. [tags] trae, por producto, el nombre normalizado de cada etiqueta que
+     * lleva: la búsqueda también encuentra por ellas.
      *
      * Por nombre, con más de 50 productos, la lista va por inicial. Por stock o por margen va en
      * una sola sección, porque la inicial ya no ayuda a encontrar; los empates conservan el orden
@@ -35,13 +36,14 @@ object ProductListItems {
         units: Map<Long, MeasureUnit>,
         query: String,
         filters: ProductListFilters = ProductListFilters(),
+        tags: Map<Long, Collection<String>> = emptyMap(),
     ): ProductListContent {
         val narrowed = products.filter(filters::matches)
         if (narrowed.isEmpty()) {
             val filtered = filters.activeCount > 0 || products.isNotEmpty()
             return if (filtered) ProductListContent.FilteredOut else ProductListContent.EmptyCatalog
         }
-        val matches = ProductSearch.filter(narrowed, query)
+        val matches = ProductSearch.filter(narrowed, query, tags)
         if (matches.isEmpty()) return ProductListContent.NoResults(query.trim())
         val rows = matches.map { it to itemOf(it, units[it.details.baseUnitId]) }
         val sections = when (filters.sort) {

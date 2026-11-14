@@ -129,7 +129,8 @@ data class ProductEditForm(
  * si no hay de dónde sugerirlo, y [suggestion] la hoja de la sugerencia, si está abierta.
  * [reference] es la moneda de referencia elegida, o `null` sin ella: entonces no se pide precio de
  * referencia. [importingPhoto] mientras se recodifica la foto elegida, y [photoProblem] si no se
- * pudo traer: la que había sigue igual.
+ * pudo traer: la que había sigue igual. [extras] son los campos propios y las etiquetas del
+ * producto, que se guardan después del producto, en su propia transacción.
  */
 @Immutable
 data class ProductEditUiState(
@@ -163,6 +164,7 @@ data class ProductEditUiState(
     val reference: ReferenceCurrency? = null,
     val importingPhoto: Boolean = false,
     val photoProblem: ImageProblem? = null,
+    val extras: ProductExtrasForm = ProductExtrasForm(),
 ) {
     /** La categoría elegida, o `null` si es sin categoría. */
     val category: Category? get() = categories.firstOrNull { it.id == form.categoryId }

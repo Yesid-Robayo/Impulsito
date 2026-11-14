@@ -31,14 +31,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionEntry
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomField
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomFieldType
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomValueIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductTag
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
@@ -68,6 +73,7 @@ import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PhotoThumb
 import io.github.yesidrobayo.shopledger.ui.components.PhotoThumbSize
 import io.github.yesidrobayo.shopledger.ui.components.PickerField
+import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.ProductRow
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowData
@@ -108,6 +114,7 @@ import io.github.yesidrobayo.shopledger.ui.unit.UnitEditor
 import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorAction
 import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorSheet
 import kotlin.time.Instant
+import kotlinx.datetime.DayOfWeek
 
 /**
  * Crear o editar un producto: nombre, categoría, unidad, precio y costo con la ganancia en vivo, y el
@@ -224,6 +231,10 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
     }
     LaunchedEffect(uiState.conversions.isNotEmpty()) {
         if (uiState.conversions.isNotEmpty()) moreDetails = true
+    }
+    // Los valores propios llegan después de abrir: con alguno, también se abre sola.
+    LaunchedEffect(uiState.extras.hasData) {
+        if (uiState.extras.hasData) moreDetails = true
     }
 
     AppTextField(
@@ -371,6 +382,8 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
         )
     }
     if (!uiState.isNew && uiState.listPrices.isNotEmpty()) ProductListPrices(uiState, onAction)
+    // Al final, los campos propios y las etiquetas, si el negocio tiene alguno.
+    if (uiState.extras.visible) ProductExtrasSection(uiState.extras, onAction)
 }
 
 /**
@@ -951,5 +964,44 @@ private fun ProductEditLockedPreview() {
 private fun ProductEditEmptyPreview() {
     PreviewTheme {
         ProductEditScreen(previewState(ProfitPreview.NoPrice, ProductEditForm(unitId = 1L)), {})
+    }
+}
+
+/** Un producto con campos propios de cada tipo, uno con error, y etiquetas: se abre solo. */
+@ThemePreviews
+@Composable
+private fun ProductEditExtrasPreview() {
+    PreviewTheme {
+        ProductEditScreen(
+            previewState(ProfitPreview.NoCost).copy(
+                extras =
+                    ProductExtrasForm(
+                        fields =
+                            listOf(
+                                CustomField(1L, "Marca", CustomFieldType.TEXT, 0L, false, 3),
+                                CustomField(2L, "Garantía", CustomFieldType.NUMBER, 1L, false, 1),
+                                CustomField(3L, "Vence", CustomFieldType.DATE, 2L, false, 1),
+                                CustomField(
+                                    4L,
+                                    PreviewSamples.LONG_NAME,
+                                    CustomFieldType.BOOLEAN,
+                                    3L,
+                                    false,
+                                    1,
+                                ),
+                            ),
+                        tags = listOf(ProductTag(1L, "Temporada", 4), ProductTag(2L, "Nuevo", 0)),
+                        values = mapOf(1L to "Del valle", 2L to "12,5", 3L to "2026-12-31"),
+                        tagIds = setOf(1L),
+                        errors = mapOf(2L to CustomValueIssue.NOT_A_NUMBER),
+                        calendar =
+                            FieldCalendar(
+                                BusinessDate.parse("2026-11-13") ?: return@PreviewTheme,
+                                DayOfWeek.MONDAY,
+                            ),
+                    ),
+            ),
+            {},
+        )
     }
 }

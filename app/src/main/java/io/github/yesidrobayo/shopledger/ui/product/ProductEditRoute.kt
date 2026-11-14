@@ -20,7 +20,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.LoadProductForEdi
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveCatalogChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductConversionsUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductExtrasUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductExtrasUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObserveProductListPricesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObserveReferenceRateUseCase
@@ -154,6 +156,8 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
 
                         ProductEditAction.ManageUnits -> navigator.open(AppNavKey.Units)
 
+                        ProductEditAction.ManageExtras -> navigator.open(AppNavKey.CustomFields)
+
                         ProductEditAction.OpenVariants ->
                             uiState.product?.let { navigator.open(AppNavKey.Variants(it.id)) }
 
@@ -230,5 +234,16 @@ private fun useCasesOf(dependencies: ScreenDependencies): ProductEditUseCases {
             ObservePricingContextUseCase(ports.settings, ports.categories, ports.taxRates),
         importPhotoUseCase =
             ImportProductPhotoUseCase(dependencies.container.data.imageImporter),
+        extrasUseCase = ObserveProductExtrasUseCase(ports.customFields, ports.tags),
+        saveExtrasUseCase =
+            SaveProductExtrasUseCase(
+                ports.transactions,
+                ports.products,
+                ports.customFields,
+                ports.tags,
+                clock,
+            ),
+        calendarSource = calendar,
+        now = clock::now,
     )
 }

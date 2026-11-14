@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Campos propios y etiquetas de los productos, y su sección en el formulario del producto. -->
+    <string name="field_tab_fields">Campos</string>
+    <string name="tag_tab_tags">Marcadores</string>
+    <string name="field_archived_group">Arquivados</string>
+    <plurals name="field_product_count">
+        <item quantity="one">%1$d produto</item>
+        <item quantity="many">%1$d de produtos</item>
+        <item quantity="other">%1$d produtos</item>
+    </plurals>
+    <string name="field_new_action">Novo campo</string>
+    <string name="tag_new_action">Novo marcador</string>
+    <string name="field_edit_title">Editar campo</string>
+    <string name="tag_edit_title">Editar marcador</string>
+    <string name="field_name_label">Nome</string>
+    <string name="field_type_label">Tipo</string>
+    <string name="field_type_text">Texto</string>
+    <string name="field_type_number">Número</string>
+    <string name="field_type_date">Data</string>
+    <string name="field_type_boolean">Sim ou não</string>
+    <string name="field_save_action">Salvar campo</string>
+    <string name="tag_name_label">Nome</string>
+    <string name="tag_save_action">Salvar marcador</string>
+    <string name="field_manage_action">Gerenciar campos</string>
+    <string name="tag_manage_action">Gerenciar marcadores</string>
+    <string name="field_empty_title">Dados próprios para cada produto</string>
+    <string name="field_empty_body">Por exemplo: marca, garantia ou tamanho</string>
+    <string name="tag_empty_title">Grupos que cruzam categorias</string>
+    <string name="field_error_name_empty">Escrever o nome do campo</string>
+    <string name="field_error_name_repeated">Já existe um campo com esse nome</string>
+    <string name="tag_error_name_empty">Escrever o nome do marcador</string>
+    <string name="tag_error_name_repeated">Já existe um marcador com esse nome</string>
+    <string name="field_type_locked">Já tem valores: o tipo não muda</string>
+    <string name="field_archive_confirm_title">Arquivar %1$s?</string>
+    <string name="field_archive_confirm_body">Deixa de ser pedido nos produtos. Os valores são mantidos e saem na exportação.</string>
+    <string name="field_archive_confirm_action">Arquivar campo</string>
+    <string name="field_delete_confirm_title">Excluir %1$s?</string>
+    <string name="field_delete_confirm_body">Nenhum produto tem valor neste campo.</string>
+    <string name="field_delete_confirm_action">Excluir campo</string>
+    <string name="tag_delete_confirm_title">Excluir %1$s?</string>
+    <plurals name="tag_delete_confirm_body">
+        <item quantity="one">%1$d produto perde este marcador. As vendas e o estoque não mudam.</item>
+        <item quantity="many">%1$d de produtos perdem este marcador. As vendas e o estoque não mudam.</item>
+        <item quantity="other">%1$d produtos perdem este marcador. As vendas e o estoque não mudam.</item>
+    </plurals>
+    <string name="tag_delete_confirm_action">Excluir marcador</string>
+    <string name="field_error_date">Escolher uma data</string>
+    <string name="field_saved">Campo salvo</string>
+    <string name="tag_saved">Marcador salvo</string>
+    <string name="field_move_up">Mover para cima</string>
+    <string name="field_move_down">Mover para baixo</string>
+    <string name="hub_tool_fields">Campos e etiquetas</string>
+    <string name="hub_tool_fields_desc">Dados próprios para os produtos</string>
+</resources>

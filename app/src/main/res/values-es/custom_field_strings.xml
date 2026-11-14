@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Campos propios y etiquetas de los productos, y su sección en el formulario del producto. -->
+    <string name="field_tab_fields">Campos</string>
+    <string name="tag_tab_tags">Etiquetas</string>
+    <string name="field_archived_group">Archivados</string>
+    <plurals name="field_product_count">
+        <item quantity="one">%1$d producto</item>
+        <item quantity="many">%1$d de productos</item>
+        <item quantity="other">%1$d productos</item>
+    </plurals>
+    <string name="field_new_action">Nuevo campo</string>
+    <string name="tag_new_action">Nueva etiqueta</string>
+    <string name="field_edit_title">Editar campo</string>
+    <string name="tag_edit_title">Editar etiqueta</string>
+    <string name="field_name_label">Nombre</string>
+    <string name="field_type_label">Tipo</string>
+    <string name="field_type_text">Texto</string>
+    <string name="field_type_number">Número</string>
+    <string name="field_type_date">Fecha</string>
+    <string name="field_type_boolean">Sí o no</string>
+    <string name="field_save_action">Guardar campo</string>
+    <string name="tag_name_label">Nombre</string>
+    <string name="tag_save_action">Guardar etiqueta</string>
+    <string name="field_manage_action">Administrar campos</string>
+    <string name="tag_manage_action">Administrar etiquetas</string>
+    <string name="field_empty_title">Datos propios para cada producto</string>
+    <string name="field_empty_body">Por ejemplo: marca, garantía o talla</string>
+    <string name="tag_empty_title">Grupos que cruzan categorías</string>
+    <string name="field_error_name_empty">Escribir el nombre del campo</string>
+    <string name="field_error_name_repeated">Ya hay un campo con ese nombre</string>
+    <string name="tag_error_name_empty">Escribir el nombre de la etiqueta</string>
+    <string name="tag_error_name_repeated">Ya hay una etiqueta con ese nombre</string>
+    <string name="field_type_locked">Ya tiene valores: el tipo no cambia</string>
+    <string name="field_archive_confirm_title">¿Archivar %1$s?</string>
+    <string name="field_archive_confirm_body">Deja de pedirse en productos. Los valores se conservan y salen en la exportación.</string>
+    <string name="field_archive_confirm_action">Archivar campo</string>
+    <string name="field_delete_confirm_title">¿Eliminar %1$s?</string>
+    <string name="field_delete_confirm_body">Ningún producto tiene un valor en este campo.</string>
+    <string name="field_delete_confirm_action">Eliminar campo</string>
+    <string name="tag_delete_confirm_title">¿Eliminar %1$s?</string>
+    <plurals name="tag_delete_confirm_body">
+        <item quantity="one">%1$d producto pierde esta etiqueta. Las ventas y el stock no cambian.</item>
+        <item quantity="many">%1$d de productos pierden esta etiqueta. Las ventas y el stock no cambian.</item>
+        <item quantity="other">%1$d productos pierden esta etiqueta. Las ventas y el stock no cambian.</item>
+    </plurals>
+    <string name="tag_delete_confirm_action">Eliminar etiqueta</string>
+    <string name="field_error_date">Elegir una fecha</string>
+    <string name="field_saved">Campo guardado</string>
+    <string name="tag_saved">Etiqueta guardada</string>
+    <string name="field_move_up">Mover arriba</string>
+    <string name="field_move_down">Mover abajo</string>
+    <string name="hub_tool_fields">Campos y etiquetas</string>
+    <string name="hub_tool_fields_desc">Datos propios para los productos</string>
+</resources>

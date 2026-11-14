@@ -57,6 +57,7 @@ import io.github.yesidrobayo.shopledger.ui.destination.SlotSetupRoute
 import io.github.yesidrobayo.shopledger.ui.encryption.EncryptionRoute
 import io.github.yesidrobayo.shopledger.ui.expense.ExpensesRoute
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
+import io.github.yesidrobayo.shopledger.ui.extras.CustomFieldsRoute
 import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.label.LabelsRoute
@@ -323,6 +324,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.PriceLists -> PriceListsRoute(navigator)
 
         AppNavKey.Units -> UnitsRoute(navigator)
+
+        AppNavKey.CustomFields -> CustomFieldsRoute(navigator)
 
         is AppNavKey.Variants -> VariantsRoute(key, navigator)
 

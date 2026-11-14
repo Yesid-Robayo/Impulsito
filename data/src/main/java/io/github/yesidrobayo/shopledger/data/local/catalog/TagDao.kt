@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.data.local.catalog
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Dao
+import androidx.room3.Embedded
 import androidx.room3.Insert
 import androidx.room3.Query
 import kotlinx.coroutines.flow.Flow
@@ -57,4 +59,41 @@ internal interface TagDao {
     /** Quita la etiqueta del producto. Devuelve las filas borradas. */
     @Query("DELETE FROM product_tags WHERE product_id = :productId AND tag_id = :tagId")
     suspend fun unlink(productId: Long, tagId: Long): Int
+
+    /** Todas, por nombre normalizado, con cuántos productos las llevan. */
+    @Query(TAGS_WITH_COUNT + " ORDER BY t.normalized_name")
+    fun observeAllWithCount(): Flow<List<TagWithCount>>
+
+    @Query(TAGS_WITH_COUNT + " WHERE t.id = :id")
+    suspend fun findWithCount(id: Long): TagWithCount?
+
+    /** Los ids de las etiquetas del producto. */
+    @Query("SELECT tag_id FROM product_tags WHERE product_id = :productId ORDER BY tag_id")
+    fun observeTagIdsOf(productId: Long): Flow<List<Long>>
+
+    @Query("SELECT tag_id FROM product_tags WHERE product_id = :productId ORDER BY tag_id")
+    suspend fun findTagIdsOf(productId: Long): List<Long>
+
+    /** Cada vínculo con el nombre normalizado de su etiqueta: el índice de la búsqueda. */
+    @Query(
+        "SELECT pt.product_id AS product_id, t.normalized_name AS normalized_name " +
+            "FROM product_tags pt JOIN tags t ON t.id = pt.tag_id ORDER BY pt.product_id, t.id",
+    )
+    fun observeSearchIndex(): Flow<List<ProductTagName>>
 }
+
+/** Una etiqueta con cuántos productos la llevan. */
+internal data class TagWithCount(
+    @Embedded val tag: TagEntity,
+    @ColumnInfo(name = "product_count") val productCount: Int,
+)
+
+/** Un producto y el nombre normalizado de una etiqueta que lleva. */
+internal data class ProductTagName(
+    @ColumnInfo(name = "product_id") val productId: Long,
+    @ColumnInfo(name = "normalized_name") val normalizedName: String,
+)
+
+private const val TAGS_WITH_COUNT =
+    "SELECT t.*, (SELECT COUNT(*) FROM product_tags pt WHERE pt.tag_id = t.id) AS product_count " +
+        "FROM tags t"

@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.data.local.catalog
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Dao
+import androidx.room3.Embedded
 import androidx.room3.Insert
 import androidx.room3.Query
 import kotlinx.coroutines.flow.Flow
@@ -89,4 +91,54 @@ internal interface CustomFieldDao {
 
     @Query("DELETE FROM product_custom_values WHERE id = :id")
     suspend fun deleteValue(id: Long): Int
+
+    /** Todos, vigentes y archivados, con cuántos productos tienen valor, por su orden y su id. */
+    @Query(FIELDS_WITH_COUNT + " ORDER BY f.sort_order, f.id")
+    fun observeFieldsWithCount(): Flow<List<CustomFieldWithCount>>
+
+    @Query(FIELDS_WITH_COUNT + " WHERE f.id = :id")
+    suspend fun findFieldWithCount(id: Long): CustomFieldWithCount?
+
+    /** El orden después del último campo, o 0 si no hay ninguno. */
+    @Query("SELECT COALESCE(MAX(sort_order) + 1, 0) FROM custom_field_definitions")
+    suspend fun nextSortOrder(): Long
+
+    /** Cambia el nombre y el tipo. El caso de uso solo cambia el tipo sin valores. */
+    @Query(
+        "UPDATE custom_field_definitions SET name = :name, normalized_name = :normalizedName, " +
+            "field_type = :fieldType, updated_at = :updatedAt WHERE id = :id",
+    )
+    suspend fun updateNameAndType(
+        id: Long,
+        name: String,
+        normalizedName: String,
+        fieldType: String,
+        updatedAt: Long,
+    ): Int
+
+    @Query(
+        "UPDATE custom_field_definitions SET sort_order = :sortOrder, updated_at = :updatedAt " +
+            "WHERE id = :id",
+    )
+    suspend fun setSortOrder(id: Long, sortOrder: Long, updatedAt: Long): Int
+
+    @Query(
+        "SELECT * FROM product_custom_values WHERE product_id = :productId AND field_id = :fieldId",
+    )
+    suspend fun findValue(productId: Long, fieldId: Long): ProductCustomValueEntity?
+
+    @Query(
+        "DELETE FROM product_custom_values WHERE product_id = :productId AND field_id = :fieldId",
+    )
+    suspend fun deleteValueOf(productId: Long, fieldId: Long): Int
 }
+
+/** Un campo propio con cuántos productos tienen un valor en él. */
+internal data class CustomFieldWithCount(
+    @Embedded val field: CustomFieldDefinitionEntity,
+    @ColumnInfo(name = "product_count") val productCount: Int,
+)
+
+private const val FIELDS_WITH_COUNT =
+    "SELECT f.*, (SELECT COUNT(*) FROM product_custom_values v WHERE v.field_id = f.id) " +
+        "AS product_count FROM custom_field_definitions f"

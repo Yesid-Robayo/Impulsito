@@ -56,6 +56,9 @@ interface ProductFilterChoices {
  *
  * Abrir un producto o crear uno lo resuelve la pantalla con la navegación: aquí no hay estado que
  * cambie por eso.
+ *
+ * @param tagIndex el nombre normalizado de las etiquetas de cada producto, para que la búsqueda
+ *   también encuentre por ellas. Si no se puede leer, se busca sin etiquetas.
  */
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class ProductListViewModel(
@@ -63,12 +66,15 @@ class ProductListViewModel(
     computation: CoroutineDispatcher,
     choices: ProductFilterChoices = ProductFilterChoices.NONE,
     hasCodes: Flow<Boolean> = flowOf(false),
+    tagIndex: Flow<Map<Long, List<String>>> = flowOf(emptyMap()),
 ) : ViewModel() {
     /** Si algún producto tiene código: sin ninguno, la búsqueda no ofrece el escáner. */
     val canScan: StateFlow<Boolean> =
         hasCodes
             .catch { emit(false) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), false)
+
+    private val tags = tagIndex.catch { emit(emptyMap()) }
 
     private val query = MutableStateFlow("")
     private val attempts = MutableStateFlow(0)
@@ -89,11 +95,12 @@ class ProductListViewModel(
             catalog,
             query.debounce { if (it.isBlank()) 0L else SEARCH_PAUSE_MILLIS },
             filters,
-        ) { (archived, read), typed, chosen ->
+            tags,
+        ) { (archived, read), typed, chosen, index ->
             if (archived != chosen.archived) {
                 ProductListContent.Loading
             } else {
-                ProductListItems.build(read.products, read.units, typed, chosen)
+                ProductListItems.build(read.products, read.units, typed, chosen, index)
             }
         }
             .flowOn(computation)
