@@ -134,6 +134,12 @@ internal interface AppSettingsDao {
     )
     suspend fun updateCostStaleDays(days: Long, updatedAt: Long): Int
 
+    /** Los días antes del vencimiento de un lote en que se avisa, si el producto no fija otros. */
+    @Query(
+        "UPDATE app_settings SET expiry_notice_days = :days, updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateExpiryNoticeDays(days: Long, updatedAt: Long): Int
+
     /**
      * La moneda de referencia y sus decimales, o las dos en nulo para quitarla. Las cotizaciones
      * de cada moneda se conservan en su libro.

@@ -215,12 +215,7 @@ private fun DetailBody(
                         variant = ActionVariant.TONAL,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    if (ready.status == PurchaseVoidStatus.FAILED && ready.sheet == null) {
-                        NoticeCard(
-                            stringResource(R.string.error_purchase_void),
-                            NoticeVariant.ERROR,
-                        )
-                    }
+                    if (ready.sheet == null) PurchaseVoidProblem(ready.status)
                 }
             }
         }
@@ -455,10 +450,19 @@ private fun VoidSheet(
                 null
             },
         )
-        if (ready.status == PurchaseVoidStatus.FAILED) {
-            NoticeCard(stringResource(R.string.error_purchase_void), NoticeVariant.ERROR)
-        }
+        PurchaseVoidProblem(ready.status)
     }
+}
+
+/** Por qué no se anuló: un lote que ya salió en parte, o una falla que se puede reintentar. */
+@Composable
+private fun PurchaseVoidProblem(status: PurchaseVoidStatus) {
+    val text = when (status) {
+        PurchaseVoidStatus.FAILED -> stringResource(R.string.error_purchase_void)
+        PurchaseVoidStatus.LOT_USED -> stringResource(R.string.error_void_lot_already_used)
+        PurchaseVoidStatus.IDLE, PurchaseVoidStatus.WORKING -> return
+    }
+    NoticeCard(text, NoticeVariant.ERROR)
 }
 
 @Composable

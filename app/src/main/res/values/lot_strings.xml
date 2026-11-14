@@ -41,4 +41,53 @@
     </plurals>
     <string name="notif_lot_many_body">Tap to view.</string>
     <string name="notif_lot_public_title">A product is about to expire</string>
+    <!-- Pantalla de lotes, selector de lote y avisos de la venta. -->
+    <string name="lot_expiring_label">Expiring soon</string>
+    <string name="lot_expiring_value_label">Value expiring soon</string>
+    <string name="lot_filter_expired">Expired</string>
+    <string name="lot_filter_all">All</string>
+    <string name="lot_filter_unassigned">Unassigned</string>
+    <string name="lot_unassigned_name">Unassigned batch</string>
+    <string name="lot_notice_sheet_title">Expiry alert</string>
+    <string name="lot_notice_days_label">Days before</string>
+    <string name="lot_origin_label">Original purchase</string>
+    <string name="lot_by_location_label">Quantity by location</string>
+    <string name="lot_movements_label">Latest movements</string>
+    <string name="lot_take_out_action">Remove from stock</string>
+    <string name="lot_fix_expiry_action">Correct expiry date</string>
+    <string name="lot_fix_code_action">Correct code</string>
+    <string name="lot_view_action">View batches</string>
+    <string name="lot_change_action">Change batch</string>
+    <string name="lot_picker_title">Choose batch</string>
+    <string name="lot_empty_title">No batches yet</string>
+    <string name="lot_empty_body">They are turned on per product and received when recording a purchase</string>
+    <string name="lot_empty_action">View products</string>
+    <string name="lot_unassigned_help">More was sold than was received with a batch</string>
+    <string name="lot_warning_expired_sale">Batch expired on %1$s</string>
+    <string name="lot_saved">Batch saved</string>
+    <string name="hub_tool_lots">Batches and expiry dates</string>
+    <string name="hub_tool_lots_desc">Know what expires first</string>
+    <string name="product_tab_lots">Batches</string>
+    <string name="lot_picker_label">Batch</string>
+    <string name="lot_picker_auto">Assign automatically</string>
+    <string name="lot_picker_auto_help">What expires first goes out first</string>
+    <string name="lot_expiry_location">%1$s · %2$s</string>
+    <string name="lot_error_code_blank">The batch code is missing</string>
+    <string name="lot_notice_saved">Alert saved</string>
+    <plurals name="lot_count">
+        <item quantity="one">%1$d batch</item>
+        <item quantity="other">%1$d batches</item>
+    </plurals>
+    <plurals name="lot_notice_row">
+        <item quantity="one">Alert %1$d day before</item>
+        <item quantity="other">Alert %1$d days before</item>
+    </plurals>
+    <plurals name="lot_locations_count">
+        <item quantity="one">In %1$d location</item>
+        <item quantity="other">In %1$d locations</item>
+    </plurals>
+    <string name="lot_none_expired">Nothing expired</string>
+    <string name="lot_none_unassigned">Everything sold came out of a batch</string>
+    <string name="lot_error_above_stock">This batch only has %1$s</string>
+    <string name="error_void_lot_already_used">Part of what came in with a batch has already gone out. Voiding would leave that batch negative.</string>
 </resources>

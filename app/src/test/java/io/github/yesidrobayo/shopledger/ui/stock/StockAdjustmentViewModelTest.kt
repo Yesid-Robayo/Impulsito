@@ -7,6 +7,9 @@ import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.model.stock.LocationDetails
 import io.github.yesidrobayo.shopledger.domain.model.stock.LocationKind
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoice
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentRequest
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
@@ -304,6 +307,74 @@ class StockAdjustmentViewModelTest {
             assertEquals(null, operations.requests.single().locationId)
         }
 
+    @Test
+    fun `taking out an expired lot opens on the expired exit with that lot and saves from it`() =
+        runTest(dispatcher) {
+            operations.lots = LotChoices(
+                listOf(choice(5L, "A-1", 2_000L), choice(6L, "A-2", 4_000L)),
+                LotStock(9L, null, null, isUnassigned = true, onHand = QuantityMilli.ZERO),
+            )
+            val model = StockAdjustmentViewModel(
+                operations,
+                numbers,
+                productId = 1L,
+                initialLotId = 6L,
+                expiredOut = true,
+            )
+            advanceUntilIdle()
+
+            val state = model.uiState.value
+            assertEquals(AdjustmentMode.CHANGE, state.mode)
+            assertEquals(StockAdjustmentReason.EXPIRED, state.reason)
+            assertEquals(6L, state.lotId)
+            assertTrue(state.showsLots)
+
+            model.onAction(StockAdjustmentAction.QuantityChanged("1"))
+            model.onAction(StockAdjustmentAction.Save)
+            advanceUntilIdle()
+            val request = operations.requests.single() as StockAdjustmentRequest.Change
+            assertEquals(6L, request.lotId)
+        }
+
+    @Test
+    fun `an exit proposes the lot that expires first, and a lot short of stock says how much`() =
+        runTest(dispatcher) {
+            operations.lots = LotChoices(listOf(choice(5L, "A-1", 2_000L)), null)
+            operations.result = StockAdjustmentResult.AboveLotStock(QuantityMilli(2_000L))
+            val model = viewModel()
+            advanceUntilIdle()
+            model.onAction(StockAdjustmentAction.ModeChanged(AdjustmentMode.CHANGE))
+            assertEquals(5L, model.uiState.value.lotId)
+
+            model.onAction(StockAdjustmentAction.QuantityChanged("3"))
+            model.onAction(StockAdjustmentAction.Save)
+            advanceUntilIdle()
+
+            assertEquals(
+                AdjustmentProblem.AboveLotStock(QuantityMilli(2_000L)),
+                model.uiState.value.errors[AdjustmentField.QUANTITY],
+            )
+            assertEquals("3", model.uiState.value.quantityText)
+        }
+
+    @Test
+    fun `a count or an entry never names a lot`() = runTest(dispatcher) {
+        operations.lots = LotChoices(listOf(choice(5L, "A-1", 2_000L)), null)
+        val model = viewModel()
+        advanceUntilIdle()
+        assertFalse(model.uiState.value.showsLots)
+        model.onAction(StockAdjustmentAction.QuantityChanged("10"))
+        model.onAction(StockAdjustmentAction.Save)
+        advanceUntilIdle()
+
+        assertTrue(operations.requests.single() is StockAdjustmentRequest.Count)
+    }
+
+    private fun choice(id: Long, code: String, onHand: Long) = LotChoice(
+        LotStock(id, code, null, isUnassigned = false, onHand = QuantityMilli(onHand)),
+        null,
+    )
+
     private fun location(id: Long, systemKey: String?) = Location(
         id = id,
         systemKey = systemKey,
@@ -346,6 +417,10 @@ class StockAdjustmentViewModelTest {
             }
 
         override fun locations(): Flow<List<Location>> = locations
+
+        var lots: LotChoices? = null
+
+        override suspend fun lotChoices(productId: Long, locationId: Long?): LotChoices? = lots
 
         override suspend fun adjust(request: StockAdjustmentRequest): StockAdjustmentResult {
             requests += request

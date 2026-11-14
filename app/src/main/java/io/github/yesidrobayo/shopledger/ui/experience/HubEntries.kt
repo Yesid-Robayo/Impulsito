@@ -108,6 +108,12 @@ val HUB_ENTRIES: List<HubEntry> =
             AppNavKey.Production,
         ),
         HubEntry(
+            BusinessTool.LOTS,
+            R.string.hub_tool_lots,
+            R.string.hub_tool_lots_desc,
+            AppNavKey.Lots(),
+        ),
+        HubEntry(
             BusinessTool.LOCATIONS,
             R.string.hub_tool_locations,
             R.string.hub_tool_locations_desc,

@@ -82,6 +82,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotHolding
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationStatus
@@ -784,6 +785,12 @@ internal class SaleWorld(
         override fun observeDated(): Flow<List<DatedLotStock>> = unused()
 
         override suspend fun markExpiryNotified(lotIds: List<Long>, notifiedAt: Instant) = unused()
+
+        // La venta tampoco mira la pantalla de lotes ni corrige un lote.
+        override fun observeHoldings(): Flow<List<LotHolding>> = unused()
+
+        override suspend fun correct(lotId: Long, code: String, expiryDate: BusinessDate?) =
+            unused()
 
         private fun lotsOf(tables: SaleTables, productId: Long): List<StockLot> =
             tables.lots.values.filter { it.productId == productId }.sortedBy { it.id }

@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleCatalogUs
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleDetailUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ResumeHeldSaleUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.LoadLotChoicesUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppMessages
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -165,6 +166,14 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     lineComponents = ports.saleLineComponents,
                 )
             val exchangeSale = ExchangeSaleUseCase(ports.transactions, register, registerReturn)
+            val loadLots = LoadLotChoicesUseCase(
+                ports.stockLots,
+                ports.products,
+                ports.systemRows,
+                calendar,
+                ports.settings,
+                container.clock,
+            )
             NewSaleViewModel(
                 catalogSource = { observe() },
                 registerSale = { register(it) },
@@ -191,6 +200,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                 exchange = key.exchange,
                 exchangeSale = { exchangeSale(it) },
                 exchangeNote = { key.exchange?.let { exchangeNotes.noteFor(it.saleId) } },
+                lotChoices = { productId, locationId -> loadLots(productId, locationId) },
             )
         }
     when (model) {

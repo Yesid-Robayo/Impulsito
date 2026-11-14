@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotsOverview
 import io.github.yesidrobayo.shopledger.domain.model.stock.ProductLocationStock
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductUseCase
@@ -26,6 +27,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSo
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveLotsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveProductLocationStockUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.VoidAdjustmentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.VoidStockAdjustmentUseCase
@@ -104,6 +106,9 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
 
                         ProductDetailAction.OpenRecipe ->
                             navigator.open(AppNavKey.Components(key.productId))
+
+                        is ProductDetailAction.OpenLots ->
+                            navigator.open(AppNavKey.Lots(key.productId, action.lotId))
 
                         is ProductDetailAction.OpenDocument ->
                             when (val document = action.document) {
@@ -199,7 +204,11 @@ class ProductDetailUseCases(
     private val voidUseCase: VoidStockAdjustmentUseCase,
     private val pricingUseCase: ObservePricingContextUseCase,
     private val locationStockUseCase: ObserveProductLocationStockUseCase? = null,
+    private val lotsUseCase: ObserveLotsUseCase? = null,
 ) : ProductDetailOperations {
+    override fun lots(productId: Long): Flow<LotsOverview?> =
+        lotsUseCase?.invoke(productId) ?: super.lots(productId)
+
     override fun locationStock(productId: Long): Flow<ProductLocationStock> =
         locationStockUseCase?.invoke(productId) ?: super.locationStock(productId)
 
@@ -289,6 +298,13 @@ class ProductDetailUseCases(
                     ObservePricingContextUseCase(ports.settings, ports.categories, ports.taxRates),
                 locationStockUseCase =
                     ObserveProductLocationStockUseCase(ports.locations, ports.locationStock),
+                lotsUseCase = ObserveLotsUseCase(
+                    ports.stockLots,
+                    ports.products,
+                    calendar,
+                    ports.settings,
+                    clock,
+                ),
             )
         }
     }

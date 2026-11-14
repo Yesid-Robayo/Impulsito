@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentSubject
 
@@ -40,6 +41,9 @@ sealed interface AdjustmentProblem {
     data object NoteRequired : AdjustmentProblem
 
     data class TooLong(val maxLength: Int) : AdjustmentProblem
+
+    /** El lote elegido solo tiene [available] en la ubicación: no puede quedar negativo. */
+    data class AboveLotStock(val available: QuantityMilli) : AdjustmentProblem
 }
 
 /**
@@ -102,10 +106,20 @@ data class StockAdjustmentUiState(
     val closed: Boolean = false,
     val locations: List<Location> = emptyList(),
     val locationId: Long? = null,
+    val lots: LotChoices? = null,
+    val lotId: Long? = null,
 ) {
     /** Si la persona ya escribió algo: cerrar pregunta antes de descartarlo. */
     val dirty: Boolean
         get() = quantityText.isNotBlank() || unitCostText.isNotBlank() || noteText.isNotBlank()
+
+    /**
+     * Si la salida elige lote: solo una salida de un producto con lotes, que tenga de dónde sacar.
+     * Lo que entra por un ajuste no trae lote.
+     */
+    val showsLots: Boolean
+        get() = mode == AdjustmentMode.CHANGE && !(showsDirection && increase) &&
+            lots != null && (lots.lots.isNotEmpty() || lots.unassigned != null)
 
     /** Si el motivo elegido admite una entrada: entonces se elige el sentido. */
     val showsDirection: Boolean
@@ -119,6 +133,9 @@ sealed interface StockAdjustmentAction {
 
     /** Eligió la ubicación que se ajusta. */
     data class LocationChanged(val locationId: Long) : StockAdjustmentAction
+
+    /** Eligió el lote del que sale. */
+    data class LotChanged(val lotId: Long) : StockAdjustmentAction
 
     data class ModeChanged(val mode: AdjustmentMode) : StockAdjustmentAction
 

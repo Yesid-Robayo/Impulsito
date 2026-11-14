@@ -8,6 +8,8 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentRequest
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
@@ -20,6 +22,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.AdjustStockUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentSubject
 import io.github.yesidrobayo.shopledger.ui.ScreenReads
+import io.github.yesidrobayo.shopledger.ui.components.lotOptionsOf
 import io.github.yesidrobayo.shopledger.ui.product.ProductNumberFormat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +32,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -49,8 +53,20 @@ class StockAdjustmentViewModel(
     private val operations: StockAdjustmentOperations,
     private val numbers: ProductNumberFormat,
     private val productId: Long,
+    private val initialLotId: Long? = null,
+    private val expiredOut: Boolean = false,
 ) : ViewModel() {
-    private val state = MutableStateFlow(StockAdjustmentUiState())
+    // `Dar salida` desde un lote abre en la salida por vencido, con ese lote.
+    private val state = MutableStateFlow(
+        if (expiredOut) {
+            StockAdjustmentUiState(
+                mode = AdjustmentMode.CHANGE,
+                reason = StockAdjustmentReason.EXPIRED,
+            )
+        } else {
+            StockAdjustmentUiState()
+        },
+    )
     val uiState: StateFlow<StockAdjustmentUiState> = state.asStateFlow()
 
     /** Si ya llegó el producto una vez: el modo inicial se elige solo entonces. */
@@ -82,6 +98,12 @@ class StockAdjustmentViewModel(
             reads.guard { location.flatMapLatest { (_, id) -> operations.subject(productId, id) } }
                 .collect { subject -> state.update { current -> current.withSubject(subject) } }
         }
+        // Los lotes de la ubicación elegida. Sin lotes que leer, la salida sigue sin selector.
+        viewModelScope.launch {
+            location.flatMapLatest { (_, id) ->
+                flow { emit(operations.lotChoices(productId, id)) }.catch { emit(null) }
+            }.collect { choices -> state.update { it.withLots(choices) } }
+        }
         viewModelScope.launch {
             reads.failed.collect { failed ->
                 if (failed) state.update { it.copy(content = StockAdjustmentContent.ReadFailed) }
@@ -97,6 +119,9 @@ class StockAdjustmentViewModel(
             }
 
             is StockAdjustmentAction.LocationChanged -> chosenLocation.value = action.locationId
+
+            is StockAdjustmentAction.LotChanged ->
+                edit(AdjustmentField.QUANTITY) { copy(lotId = action.lotId) }
 
             is StockAdjustmentAction.ModeChanged ->
                 edit { copy(mode = action.mode, errors = emptyMap()) }
@@ -157,7 +182,11 @@ class StockAdjustmentViewModel(
         ) {
             return copy(content = StockAdjustmentContent.Unavailable, preview = null)
         }
-        val firstMode = if (subject.acceptsOpeningBalance) AdjustmentMode.OPENING else mode
+        val firstMode = when {
+            expiredOut -> AdjustmentMode.CHANGE
+            subject.acceptsOpeningBalance -> AdjustmentMode.OPENING
+            else -> mode
+        }
         val chosen = if (loaded) mode else firstMode
         loaded = true
         val shown =
@@ -167,6 +196,20 @@ class StockAdjustmentViewModel(
                 chosen
             }
         return copy(content = StockAdjustmentContent.Ready(subject), mode = shown).withPreview()
+    }
+
+    /**
+     * Los lotes leídos, con el elegido: el que ya estaba, si sigue; si no, el que pidió quien
+     * abrió el ajuste; si no, el primero del orden de salida, que es el que vence antes; y sin
+     * lotes con stock, el sin asignar.
+     */
+    private fun StockAdjustmentUiState.withLots(choices: LotChoices?): StockAdjustmentUiState {
+        val ids = choices?.let { lotOptionsOf(it, withUnassigned = true).map { o -> o.lotId } }
+            .orEmpty()
+        val chosen = lotId?.takeIf { it in ids }
+            ?: initialLotId?.takeIf { it in ids }
+            ?: ids.firstOrNull()
+        return copy(lots = choices, lotId = chosen)
     }
 
     /** El resultado en vivo de lo escrito, o ninguno si todavía no es una cantidad. */
@@ -243,6 +286,7 @@ class StockAdjustmentViewModel(
                     increase = form.showsDirection && form.increase,
                     note = form.noteText,
                     locationId = form.locationId,
+                    lotId = form.lotId.takeIf { form.showsLots },
                 )
         }
 
@@ -362,13 +406,16 @@ class StockAdjustmentViewModel(
         is StockAdjustmentResult.NoteTooLong ->
             fieldError(AdjustmentField.NOTE, AdjustmentProblem.TooLong(result.maxLength))
 
-        // La pantalla nunca pide una entrada con un motivo que solo resta, ni elige lote todavía;
-        // si pasara, no guarda.
+        // Otra salida se llevó parte del lote mientras se escribía: se dice en la cantidad.
+        is StockAdjustmentResult.AboveLotStock ->
+            fieldError(AdjustmentField.QUANTITY, AdjustmentProblem.AboveLotStock(result.available))
+
+        // La pantalla nunca pide una entrada con un motivo que solo resta, y solo ofrece lotes del
+        // producto; si pasara, no guarda.
         // Una ubicación archivada mientras se ajustaba: el error deja elegir otra y reintentar.
         StockAdjustmentResult.LocationUnavailable,
         StockAdjustmentResult.IncreaseNotAllowed,
         StockAdjustmentResult.LotNotFound,
-        is StockAdjustmentResult.AboveLotStock,
         StockAdjustmentResult.UnknownTimeZone,
         StockAdjustmentResult.CurrencyUnconfirmed,
         is StockAdjustmentResult.StorageFailed,

@@ -78,6 +78,11 @@ interface AppSettingsRepository {
      */
     suspend fun updateCostStaleDays(days: Int, updatedAt: Instant)
 
+    /**
+     * Los días antes del vencimiento de un lote en que se avisa, salvo que el producto fije otros.
+     */
+    suspend fun updateExpiryNoticeDays(days: Int, updatedAt: Instant)
+
     /** Marca el fin del primer uso. Fuera de [TransactionRunner.write]: no cuenta como cambio. */
     suspend fun markOnboardingCompleted(completedAt: Instant)
 }

@@ -5,8 +5,10 @@ import io.github.yesidrobayo.shopledger.data.local.stock.DatedLotRow
 import io.github.yesidrobayo.shopledger.data.local.stock.LotStockRow
 import io.github.yesidrobayo.shopledger.data.local.stock.StockLotEntity
 import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotHolding
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
@@ -78,6 +80,22 @@ internal class RoomStockLotRepository(
         val stored = notifiedAt.toStoredMillis()
         // Una sentencia por lote: si una falla, las anteriores quedan y ese lote se avisa otra vez.
         for (id in lotIds) standalone.write { requireOneRow(lots.setExpiryNotifiedAt(id, stored)) }
+    }
+
+    override fun observeHoldings(): Flow<List<LotHolding>> = lots.observeHoldings()
+        .map { rows ->
+            rows.map { LotHolding(it.lotId, it.locationId, QuantityMilli(it.onHandMilli)) }
+        }
+        .distinctUntilChanged()
+
+    override suspend fun correct(lotId: Long, code: String, expiryDate: BusinessDate?) {
+        writes.inTransaction {
+            val before = checkNotNull(lots.findById(lotId)) { "El lote no existe" }
+            val stored = expiryDate?.toStored()
+            requireOneRow(lots.updateCodeAndExpiry(lotId, code, stored))
+            // Con otra fecha, el aviso vuelve a quedar pendiente: el anterior era por otro día.
+            if (before.expiryDate != stored) requireOneRow(lots.setExpiryNotifiedAt(lotId, null))
+        }
     }
 
     private fun toDated(row: DatedLotRow): DatedLotStock = DatedLotStock(

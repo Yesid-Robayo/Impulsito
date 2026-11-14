@@ -66,6 +66,7 @@ import io.github.yesidrobayo.shopledger.ui.label.LabelsRoute
 import io.github.yesidrobayo.shopledger.ui.localcopies.LocalCopiesRoute
 import io.github.yesidrobayo.shopledger.ui.location.LocationsRoute
 import io.github.yesidrobayo.shopledger.ui.location.NewTransferRoute
+import io.github.yesidrobayo.shopledger.ui.lot.LotsRoute
 import io.github.yesidrobayo.shopledger.ui.money.MoneyAccountsRoute
 import io.github.yesidrobayo.shopledger.ui.onboarding.OnboardingRoute
 import io.github.yesidrobayo.shopledger.ui.payable.PayableDetailRoute
@@ -381,6 +382,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.Labels -> LabelsRoute(key, navigator)
 
         AppNavKey.Locations -> LocationsRoute(navigator)
+
+        is AppNavKey.Lots -> LotsRoute(key, navigator)
 
         is AppNavKey.NewStockTransfer -> NewTransferRoute(key, navigator)
 

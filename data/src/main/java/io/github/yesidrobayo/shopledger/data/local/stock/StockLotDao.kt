@@ -81,6 +81,16 @@ internal interface StockLotDao {
     )
     fun observeDated(): Flow<List<DatedLotRow>>
 
+    /**
+     * Lo que tiene cada lote en cada ubicación, sin las partes en cero ni el stock sin lote, que
+     * se guarda con la clave de lote 0.
+     */
+    @Query(
+        "SELECT lot_key, location_id, on_hand_milli FROM stock_balances " +
+            "WHERE lot_key <> 0 AND on_hand_milli <> 0 ORDER BY lot_key, location_id",
+    )
+    fun observeHoldings(): Flow<List<LotHoldingRow>>
+
     /** Devuelve el id nuevo. Falla si el producto ya tiene ese código o ya tiene lote sin asignar. */
     @Insert
     suspend fun insert(lot: StockLotEntity): Long
@@ -130,5 +140,12 @@ internal data class LotStockRow(
     @ColumnInfo(name = "lot_code") val lotCode: String?,
     @ColumnInfo(name = "expiry_date") val expiryDate: String?,
     @ColumnInfo(name = "is_unassigned") val isUnassigned: Long,
+    @ColumnInfo(name = "on_hand_milli") val onHandMilli: Long,
+)
+
+/** Lo que tiene un lote en una ubicación, tal como lo lee [StockLotDao.observeHoldings]. */
+internal data class LotHoldingRow(
+    @ColumnInfo(name = "lot_key") val lotId: Long,
+    @ColumnInfo(name = "location_id") val locationId: Long,
     @ColumnInfo(name = "on_hand_milli") val onHandMilli: Long,
 )

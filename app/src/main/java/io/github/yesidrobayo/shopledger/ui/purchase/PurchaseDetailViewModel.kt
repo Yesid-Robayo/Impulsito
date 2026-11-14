@@ -91,6 +91,12 @@ enum class PurchaseVoidStatus {
 
     /** No se pudo anular. La compra sigue activa, y se puede reintentar. */
     FAILED,
+
+    /**
+     * No se anuló porque parte de lo que entró con lote ya salió: el lote quedaría en negativo.
+     * La compra sigue activa.
+     */
+    LOT_USED,
 }
 
 /** Lo que la persona hace en el detalle de una compra. */
@@ -270,9 +276,11 @@ class PurchaseDetailViewModel(
                     VoidPurchaseResult.NoteTooLong,
                     is VoidPurchaseResult.UnknownTimeZone,
                     VoidPurchaseResult.LedgerDamaged,
-                    is VoidPurchaseResult.LotAlreadyUsed,
                     is VoidPurchaseResult.StorageFailed,
                     -> it.copy(status = PurchaseVoidStatus.FAILED)
+
+                    is VoidPurchaseResult.LotAlreadyUsed ->
+                        it.copy(status = PurchaseVoidStatus.LOT_USED)
                 }
             }
         }
@@ -300,9 +308,11 @@ class PurchaseDetailViewModel(
                     VoidPurchaseResult.NoteTooLong,
                     is VoidPurchaseResult.UnknownTimeZone,
                     VoidPurchaseResult.LedgerDamaged,
-                    is VoidPurchaseResult.LotAlreadyUsed,
                     is VoidPurchaseResult.StorageFailed,
                     -> it.copy(status = PurchaseVoidStatus.FAILED)
+
+                    is VoidPurchaseResult.LotAlreadyUsed ->
+                        it.copy(status = PurchaseVoidStatus.LOT_USED)
                 }
             }
         }

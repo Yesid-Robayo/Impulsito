@@ -71,6 +71,7 @@ import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LotRow
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
@@ -180,6 +181,7 @@ fun ProductDetailScreen(
                         uiState.tab,
                         onAction,
                         uiState.locationStock,
+                        uiState.lots,
                     )
             }
         }
@@ -264,6 +266,7 @@ private fun DetailBody(
     tab: ProductDetailTab,
     onAction: (ProductDetailAction) -> Unit,
     locationStock: ProductLocationStock = ProductLocationStock.Hidden,
+    lots: List<ProductLotItem> = emptyList(),
 ) {
     val spacing = AppTheme.spacing
     val product = overview.product
@@ -314,7 +317,10 @@ private fun DetailBody(
             }
         }
         item(key = "tabs") {
-            val tabs = ProductDetailTab.entries
+            // `Lotes` solo en un producto que se controla por lotes.
+            val tabs = ProductDetailTab.entries.filter {
+                it != ProductDetailTab.LOTS || product.details.tracksLots
+            }
             SegmentedTabs(
                 options = tabs.map { stringResource(tabLabel(it)) },
                 selectedIndex = tabs.indexOf(tab),
@@ -326,7 +332,50 @@ private fun DetailBody(
             ProductDetailTab.MOVEMENTS -> movementRows(overview, unit, onAction)
             ProductDetailTab.PRICES -> priceRows(overview.prices)
             ProductDetailTab.SUPPLIERS -> lastCostRows(overview, onAction)
+            ProductDetailTab.LOTS -> lotRows(lots, unit, onAction)
         }
+    }
+}
+
+/**
+ * Los lotes con stock, del que vence antes al que vence después; tocar uno abre su hoja en la
+ * pantalla de lotes. Sin lotes con stock, lo dice. Al final, `Ver lotes` abre todos.
+ */
+private fun LazyListScope.lotRows(
+    lots: List<ProductLotItem>,
+    unit: UnitLabel?,
+    onAction: (ProductDetailAction) -> Unit,
+) {
+    if (lots.isEmpty()) {
+        item(key = "lots-empty") {
+            EmptyStateInline(
+                title = stringResource(R.string.lot_empty_title),
+                modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
+            )
+        }
+    }
+    val shown = unit ?: return
+    items(lots, key = { "lot-${it.lotId}" }) { lot ->
+        LotRow(
+            code = lot.code,
+            expiry = lot.expiry,
+            onHand = lot.onHand,
+            unit = shown,
+            onClick = { onAction(ProductDetailAction.OpenLots(lot.lotId)) },
+            name = if (lot.unassigned) stringResource(R.string.lot_unassigned_name) else null,
+            note = if (lot.unassigned && lot.onHand < QuantityMilli.ZERO) {
+                stringResource(R.string.lot_unassigned_help)
+            } else {
+                null
+            },
+        )
+    }
+    item(key = "lots-all") {
+        InlineTextButton(
+            stringResource(R.string.lot_view_action),
+            { onAction(ProductDetailAction.OpenLots()) },
+            modifier = Modifier.padding(horizontal = AppTheme.spacing.s8),
+        )
     }
 }
 
@@ -754,7 +803,7 @@ private fun MovementRow(
 
 /** La cantidad con su signo: `+` para lo que entra; lo que sale ya trae el suyo. */
 @Composable
-private fun signedQuantity(quantity: QuantityMilli, unit: UnitLabel): String {
+internal fun signedQuantity(quantity: QuantityMilli, unit: UnitLabel): String {
     val text = quantityText(quantity, unit)
     return if (quantity > QuantityMilli.ZERO) PLUS + text else text
 }
@@ -1055,6 +1104,7 @@ private fun tabLabel(tab: ProductDetailTab): Int = when (tab) {
     ProductDetailTab.MOVEMENTS -> R.string.product_tab_movements
     ProductDetailTab.PRICES -> R.string.product_tab_prices
     ProductDetailTab.SUPPLIERS -> R.string.product_tab_suppliers
+    ProductDetailTab.LOTS -> R.string.product_tab_lots
 }
 
 @StringRes

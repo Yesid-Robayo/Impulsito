@@ -89,8 +89,16 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data class Inventory(val filter: InventoryFilter = InventoryFilter.LOW_STOCK) : AppNavKey
 
+    /**
+     * El ajuste de stock de un producto. Con [lotId], la salida sale de ese lote; con
+     * [expiredOut], abre en `Salida` con el motivo `Vencido`, como `Dar salida` desde un lote.
+     */
     @Serializable
-    data class StockAdjustment(val productId: Long) : AppNavKey
+    data class StockAdjustment(
+        val productId: Long,
+        val lotId: Long? = null,
+        val expiredOut: Boolean = false,
+    ) : AppNavKey
 
     @Serializable
     data object Suppliers : AppNavKey
@@ -233,8 +241,11 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data class Labels(val onlyRepriced: Boolean = false) : AppNavKey
 
+    /**
+     * Los lotes y vencimientos; con [productId], solo los de ese producto, y [lotId] abre su hoja.
+     */
     @Serializable
-    data class Lots(val productId: Long? = null) : AppNavKey
+    data class Lots(val productId: Long? = null, val lotId: Long? = null) : AppNavKey
 
     @Serializable
     data object Locations : AppNavKey

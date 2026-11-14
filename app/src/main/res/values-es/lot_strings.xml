@@ -34,4 +34,56 @@
     </plurals>
     <string name="notif_lot_many_body">Tocar para ver.</string>
     <string name="notif_lot_public_title">Un producto está por vencer</string>
+    <!-- Pantalla de lotes, selector de lote y avisos de la venta. -->
+    <string name="lot_expiring_label">Por vencer</string>
+    <string name="lot_expiring_value_label">Valor por vencer</string>
+    <string name="lot_filter_expired">Vencidos</string>
+    <string name="lot_filter_all">Todos</string>
+    <string name="lot_filter_unassigned">Sin asignar</string>
+    <string name="lot_unassigned_name">Lote sin asignar</string>
+    <string name="lot_notice_sheet_title">Aviso de vencimiento</string>
+    <string name="lot_notice_days_label">Días antes</string>
+    <string name="lot_origin_label">Compra de origen</string>
+    <string name="lot_by_location_label">Cantidad por ubicación</string>
+    <string name="lot_movements_label">Últimos movimientos</string>
+    <string name="lot_take_out_action">Dar salida</string>
+    <string name="lot_fix_expiry_action">Corregir vencimiento</string>
+    <string name="lot_fix_code_action">Corregir código</string>
+    <string name="lot_view_action">Ver lotes</string>
+    <string name="lot_change_action">Cambiar lote</string>
+    <string name="lot_picker_title">Elegir lote</string>
+    <string name="lot_empty_title">Sin lotes todavía</string>
+    <string name="lot_empty_body">Se activan en cada producto y se reciben al registrar una compra</string>
+    <string name="lot_empty_action">Ver productos</string>
+    <string name="lot_unassigned_help">Se vendió más de lo recibido con lote</string>
+    <string name="lot_warning_expired_sale">Lote vencido el %1$s</string>
+    <string name="lot_saved">Lote guardado</string>
+    <string name="hub_tool_lots">Lotes y vencimientos</string>
+    <string name="hub_tool_lots_desc">Saber qué vence primero</string>
+    <string name="product_tab_lots">Lotes</string>
+    <string name="lot_picker_label">Lote</string>
+    <string name="lot_picker_auto">Asignar automático</string>
+    <string name="lot_picker_auto_help">Sale primero lo que vence antes</string>
+    <string name="lot_expiry_location">%1$s · %2$s</string>
+    <string name="lot_error_code_blank">Falta el código del lote</string>
+    <string name="lot_notice_saved">Aviso guardado</string>
+    <plurals name="lot_count">
+        <item quantity="one">%1$d lote</item>
+        <item quantity="many">%1$d de lotes</item>
+        <item quantity="other">%1$d lotes</item>
+    </plurals>
+    <plurals name="lot_notice_row">
+        <item quantity="one">Avisar %1$d día antes</item>
+        <item quantity="many">Avisar %1$d de días antes</item>
+        <item quantity="other">Avisar %1$d días antes</item>
+    </plurals>
+    <plurals name="lot_locations_count">
+        <item quantity="one">En %1$d ubicación</item>
+        <item quantity="many">En %1$d de ubicaciones</item>
+        <item quantity="other">En %1$d ubicaciones</item>
+    </plurals>
+    <string name="lot_none_expired">Nada vencido</string>
+    <string name="lot_none_unassigned">Todo lo vendido salió de un lote</string>
+    <string name="lot_error_above_stock">Este lote solo tiene %1$s</string>
+    <string name="error_void_lot_already_used">Parte de lo que entró con lote ya salió. Anular dejaría ese lote en negativo.</string>
 </resources>

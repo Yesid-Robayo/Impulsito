@@ -57,6 +57,9 @@ sealed interface NewSaleAction {
     /** Vender la línea en otra unidad del producto, como una caja. */
     data class LineUnitChange(val unitId: Long) : NewSaleAction
 
+    /** Eligió el lote de la línea abierta, o `null` para que salga por vencimiento. */
+    data class LineLotChange(val lotId: Long?) : NewSaleAction
+
     /** Pone o quita el extra [productId] en la línea abierta. */
     data class ToggleExtra(val productId: Long) : NewSaleAction
 

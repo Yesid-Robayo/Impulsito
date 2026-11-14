@@ -1,7 +1,9 @@
 package io.github.yesidrobayo.shopledger.domain.testing
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotHolding
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
@@ -98,6 +100,31 @@ internal class FakeStockLotRepository(private val database: InMemoryDatabase) :
             }
             tables.copy(lots = tables.lots + marked)
         }
+    }
+
+    override fun observeHoldings(): Flow<List<LotHolding>> = database.tables.map { tables ->
+        tables.movements.values
+            .map { it.movement }
+            .filter { it.key.lotId != null }
+            .groupBy { checkNotNull(it.key.lotId) to it.key.locationId }
+            .map { (key, rows) ->
+                LotHolding(
+                    key.first,
+                    key.second,
+                    rows.fold(QuantityMilli.ZERO) { sum, movement -> sum + movement.quantity },
+                )
+            }
+            .filter { it.onHand != QuantityMilli.ZERO }
+            .sortedWith(compareBy({ it.lotId }, { it.locationId }))
+    }
+
+    override suspend fun correct(lotId: Long, code: String, expiryDate: BusinessDate?) {
+        val lot = checkNotNull(database.read().lots[lotId]) { "El lote no existe" }
+        val repeated = findByCode(lot.productId, code)
+        check(repeated == null || repeated.id == lotId) { "El código ya existe en el producto" }
+        val notified = lot.expiryNotifiedAt.takeIf { lot.expiryDate == expiryDate }
+        val corrected = lot.copy(code = code, expiryDate = expiryDate, expiryNotifiedAt = notified)
+        database.write { it.copy(lots = it.lots + (lotId to corrected)) }
     }
 
     private fun ofProduct(tables: Tables, productId: Long): List<StockLot> =

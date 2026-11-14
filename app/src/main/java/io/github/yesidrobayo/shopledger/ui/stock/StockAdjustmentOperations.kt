@@ -3,10 +3,12 @@ package io.github.yesidrobayo.shopledger.ui.stock
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.OpeningBalanceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.RegisterOpeningBalanceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.AdjustStockUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.LoadLotChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveStockAdjustmentSubjectUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentSubject
@@ -27,6 +29,12 @@ interface StockAdjustmentOperations {
     /** Las ubicaciones vigentes. Sin ubicaciones conectadas, ninguna: no hay selector. */
     fun locations(): Flow<List<Location>> = flowOf(emptyList())
 
+    /**
+     * Los lotes de los que puede salir el producto en [locationId], o `null` si no se controla
+     * por lotes. Sin lotes conectados, ninguno: no hay selector.
+     */
+    suspend fun lotChoices(productId: Long, locationId: Long?): LotChoices? = null
+
     suspend fun adjust(request: StockAdjustmentRequest): StockAdjustmentResult
 
     suspend fun registerOpening(
@@ -42,6 +50,7 @@ class StockAdjustmentUseCases(
     private val adjustUseCase: AdjustStockUseCase,
     private val openingUseCase: RegisterOpeningBalanceUseCase,
     private val locationsSource: (() -> Flow<List<Location>>)? = null,
+    private val lotChoicesUseCase: LoadLotChoicesUseCase? = null,
 ) : StockAdjustmentOperations {
     override fun subject(productId: Long): Flow<StockAdjustmentSubject?> = observeUseCase(productId)
 
@@ -49,6 +58,9 @@ class StockAdjustmentUseCases(
         observeUseCase(productId, locationId)
 
     override fun locations(): Flow<List<Location>> = locationsSource?.invoke() ?: super.locations()
+
+    override suspend fun lotChoices(productId: Long, locationId: Long?): LotChoices? =
+        lotChoicesUseCase?.invoke(productId, locationId)
 
     override suspend fun adjust(request: StockAdjustmentRequest): StockAdjustmentResult =
         adjustUseCase(request)

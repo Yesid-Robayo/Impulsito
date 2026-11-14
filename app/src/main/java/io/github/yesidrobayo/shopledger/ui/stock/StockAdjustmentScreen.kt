@@ -40,6 +40,7 @@ import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.LocationSwitcher
+import io.github.yesidrobayo.shopledger.ui.components.LotPicker
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
@@ -51,6 +52,7 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
+import io.github.yesidrobayo.shopledger.ui.components.lotOptionsOf
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
@@ -173,7 +175,7 @@ private fun AdjustmentForm(
                 value = uiState.noteText,
                 onValueChange = { onAction(StockAdjustmentAction.NoteChanged(it)) },
                 label = stringResource(R.string.form_note),
-                error = uiState.errors[AdjustmentField.NOTE]?.let { problemText(it) },
+                error = uiState.errors[AdjustmentField.NOTE]?.let { problemText(it, unit) },
                 imeAction = ImeAction.Done,
             )
         }
@@ -224,7 +226,7 @@ private fun ModeFields(
     unit: UnitLabel,
     onAction: (StockAdjustmentAction) -> Unit,
 ) {
-    val quantityError = uiState.errors[AdjustmentField.QUANTITY]?.let { problemText(it) }
+    val quantityError = uiState.errors[AdjustmentField.QUANTITY]?.let { problemText(it, unit) }
     when (uiState.mode) {
         AdjustmentMode.COUNT ->
             QuantityField(
@@ -254,6 +256,18 @@ private fun ModeFields(
                     multiple = false,
                 )
             }
+            // Con lotes, la salida sale de uno, el que vence antes si nadie elige otro.
+            uiState.lots?.takeIf { uiState.showsLots }?.let { choices ->
+                LotPicker(
+                    options = lotOptionsOf(choices, withUnassigned = true),
+                    selectedId = uiState.lotId,
+                    unit = unit,
+                    onSelect = { id ->
+                        id?.let { onAction(StockAdjustmentAction.LotChanged(it)) }
+                    },
+                    allowAuto = false,
+                )
+            }
             QuantityField(
                 value = uiState.quantityText,
                 onValueChange = { onAction(StockAdjustmentAction.QuantityChanged(it)) },
@@ -275,7 +289,7 @@ private fun ModeFields(
                 value = uiState.unitCostText,
                 onValueChange = { onAction(StockAdjustmentAction.UnitCostChanged(it)) },
                 label = stringResource(R.string.form_unit_cost),
-                error = uiState.errors[AdjustmentField.UNIT_COST]?.let { problemText(it) },
+                error = uiState.errors[AdjustmentField.UNIT_COST]?.let { problemText(it, unit) },
                 imeAction = ImeAction.Done,
             )
         }
@@ -421,7 +435,7 @@ internal fun reasonLabel(reason: StockAdjustmentReason): String = stringResource
 )
 
 @Composable
-private fun problemText(problem: AdjustmentProblem): String = when (problem) {
+private fun problemText(problem: AdjustmentProblem, unit: UnitLabel): String = when (problem) {
     AdjustmentProblem.NotANumber -> stringResource(R.string.field_error_number)
 
     AdjustmentProblem.TooHigh -> stringResource(R.string.error_value_high)
@@ -437,6 +451,9 @@ private fun problemText(problem: AdjustmentProblem): String = when (problem) {
 
     is AdjustmentProblem.TooLong ->
         pluralStringResource(R.plurals.error_text_long, problem.maxLength, problem.maxLength)
+
+    is AdjustmentProblem.AboveLotStock ->
+        stringResource(R.string.lot_error_above_stock, quantityText(problem.available, unit))
 }
 
 /** Los motivos de una salida: el conteo tiene su propio modo. */

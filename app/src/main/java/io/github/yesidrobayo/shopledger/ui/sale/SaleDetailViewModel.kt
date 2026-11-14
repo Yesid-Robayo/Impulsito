@@ -259,9 +259,11 @@ class SaleDetailViewModel(
                     VoidSaleReturnResult.NoteTooLong,
                     is VoidSaleReturnResult.UnknownTimeZone,
                     VoidSaleReturnResult.LedgerDamaged,
-                    is VoidSaleReturnResult.LotAlreadyUsed,
                     is VoidSaleReturnResult.StorageFailed,
                     -> it.copy(returnVoidStatus = VoidStatus.FAILED)
+
+                    is VoidSaleReturnResult.LotAlreadyUsed ->
+                        it.copy(returnVoidStatus = VoidStatus.LOT_USED)
                 }
             }
         }

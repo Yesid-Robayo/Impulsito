@@ -797,6 +797,9 @@ private fun ReturnVoidStep(
     if (status == VoidStatus.FAILED) {
         NoticeCard(stringResource(R.string.error_sale_return_void), NoticeVariant.ERROR)
     }
+    if (status == VoidStatus.LOT_USED) {
+        NoticeCard(stringResource(R.string.error_void_lot_already_used), NoticeVariant.ERROR)
+    }
 }
 
 /** El detalle de una devolución en su hoja, y por qué no se anula si es parte de un cambio. */

@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.contentDescription
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotDue
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -40,6 +41,15 @@ sealed interface LotExpiry {
 }
 
 /**
+ * Cómo se dibuja el vencimiento de [due]: sin fecha, sin marca. Sin saber qué día es hoy no se
+ * cuentan días: la fila dice la fecha, sin marca.
+ */
+fun lotExpiryOf(due: LotDue?): LotExpiry = when (due) {
+    null -> LotExpiry.None
+    else -> LotExpiry.Dated(due.date, due.daysLeft ?: Int.MAX_VALUE, due.soon)
+}
+
+/**
  * Una fila de lote: el código, o `Sin código`, en `titleSmall`; el vencimiento en `bodySmall`; y la
  * cantidad a la derecha. Con [productName] arriba, como en la lista `Por vencer` del inventario.
  *
@@ -50,6 +60,9 @@ sealed interface LotExpiry {
  * @param code el código del lote, o `null` sin código.
  * @param unit la unidad en que se cuenta [onHand].
  * @param onClick tocar la fila; `null` si no hace nada.
+ * @param name el nombre que reemplaza al código, como `Lote sin asignar`.
+ * @param location la ubicación del lote, cuando hay más de una.
+ * @param note el texto que reemplaza al vencimiento, como el del lote sin asignar.
  */
 @Composable
 fun LotRow(
@@ -61,11 +74,18 @@ fun LotRow(
     productName: String? = null,
     onClick: (() -> Unit)? = null,
     divider: Boolean = true,
+    name: String? = null,
+    location: String? = null,
+    note: String? = null,
 ) {
     val spacing = AppTheme.spacing
-    val lot = code?.let { stringResource(R.string.lot_name, it) }
+    val lot = name
+        ?: code?.let { stringResource(R.string.lot_name, it) }
         ?: stringResource(R.string.lot_no_code)
-    val expiryText = lotExpiryText(expiry)
+    val dated = lotExpiryText(expiry)
+    val expiryText = note
+        ?: location?.let { stringResource(R.string.lot_expiry_location, dated, it) }
+        ?: dated
     val quantity = quantityText(onHand, unit)
     val description = stringResource(R.string.a11y_lot_row, lot, expiryText, quantity)
     val mark = lotExpiryMark(expiry)
@@ -115,7 +135,12 @@ fun LotRow(
             Text(
                 text = quantity,
                 style = AppTheme.amounts.row,
-                color = MaterialTheme.colorScheme.onSurface,
+                // Un saldo negativo, solo posible en el lote sin asignar, va en pérdida.
+                color = if (onHand < QuantityMilli.ZERO) {
+                    AppTheme.colors.loss
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
                 maxLines = 1,
                 softWrap = false,
                 modifier = Modifier.clearAndSetSemantics {},

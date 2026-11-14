@@ -246,6 +246,9 @@ internal object NoSettings : AppSettingsRepository {
 
     override suspend fun updateCostStaleDays(days: Int, updatedAt: Instant) = error("Solo lectura")
 
+    override suspend fun updateExpiryNoticeDays(days: Int, updatedAt: Instant) =
+        error("Solo lectura")
+
     override suspend fun updateReferenceCurrency(
         reference: ReferenceCurrency?,
         updatedAt: Instant,

@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotHolding
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
@@ -50,4 +52,17 @@ interface StockLotRepository {
 
     /** Anota que ya se avisó el vencimiento de [lotIds], para no repetirlo. */
     suspend fun markExpiryNotified(lotIds: List<Long>, notifiedAt: Instant)
+
+    /**
+     * Lo que tiene cada lote en cada ubicación, sin las partes en cero, también el sin asignar.
+     * Vuelve a emitir con cada cambio de saldos.
+     */
+    fun observeHoldings(): Flow<List<LotHolding>>
+
+    /**
+     * Corrige el código y el vencimiento de un lote con código. Si el vencimiento cambió, borra la
+     * marca del aviso, para avisar de nuevo por la fecha nueva. Solo dentro de
+     * [TransactionRunner.write]; falla si el producto ya tiene ese código.
+     */
+    suspend fun correct(lotId: Long, code: String, expiryDate: BusinessDate?)
 }

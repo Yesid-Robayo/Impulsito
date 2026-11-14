@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,14 +22,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartLineIssue
 import io.github.yesidrobayo.shopledger.domain.rule.sale.HeldSaleRules
 import io.github.yesidrobayo.shopledger.localization.SeedText
@@ -39,9 +44,12 @@ import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DateField
+import io.github.yesidrobayo.shopledger.ui.components.LotPicker
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
+import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
+import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PaymentMethodChips
 import io.github.yesidrobayo.shopledger.ui.components.PercentField
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
@@ -50,6 +58,7 @@ import io.github.yesidrobayo.shopledger.ui.components.QuantityStepper
 import io.github.yesidrobayo.shopledger.ui.components.UnitPicker
 import io.github.yesidrobayo.shopledger.ui.components.UnitPickerSheet
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
+import io.github.yesidrobayo.shopledger.ui.components.lotOptionsOf
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -77,7 +86,8 @@ internal fun SaleSheets(
             ) { CartContent(uiState.cart, onAction) }
         }
 
-        is SaleSheet.Line -> LineSheet(sheet.editor, uiState.cart, onAction)
+        is SaleSheet.Line ->
+            LineSheet(sheet.editor, uiState.cart, uiState.lots[sheet.editor.productId], onAction)
 
         is SaleSheet.Quantity -> QuantitySheet(sheet, onAction)
 
@@ -347,6 +357,32 @@ private fun CartExtraRow(
     }
 }
 
+/**
+ * El aviso de una línea cuyo lote ya venció: icono y texto, nunca solo color. No frena la venta.
+ */
+@Composable
+private fun ExpiredLotLine(date: BusinessDate) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_block),
+            contentDescription = null,
+            tint = AppTheme.colors.loss,
+            modifier = Modifier.size(AppTheme.spacing.s16),
+        )
+        Text(
+            stringResource(
+                R.string.lot_warning_expired_sale,
+                LocalAppFormats.current.date.dayMonthYear(date),
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = AppTheme.colors.loss,
+        )
+    }
+}
+
 /** Una línea: nombre, `cantidad × precio`, su total y el selector de cantidad. Tocarla la abre. */
 @Composable
 private fun CartLineRow(line: CartLine, onAction: (NewSaleAction) -> Unit) {
@@ -384,6 +420,7 @@ private fun CartLineRow(line: CartLine, onAction: (NewSaleAction) -> Unit) {
                 color = MaterialTheme.colorScheme.error,
             )
         }
+        line.expiredLot?.let { ExpiredLotLine(it) }
         QuantityStepper(
             quantity = line.quantity,
             unit = unit,
@@ -416,7 +453,12 @@ private fun lineProblem(issue: CartLineIssue?): String? = when (issue) {
  * el total al momento. Sin costo, ganancia ni margen: quien compra puede estar viendo la pantalla.
  */
 @Composable
-private fun LineSheet(editor: LineEditor, cart: SaleCartState, onAction: (NewSaleAction) -> Unit) {
+private fun LineSheet(
+    editor: LineEditor,
+    cart: SaleCartState,
+    lots: LotChoices?,
+    onAction: (NewSaleAction) -> Unit,
+) {
     val line = cart.lines.firstOrNull {
         it.parentProductId == null && it.productId == editor.productId
     }
@@ -461,6 +503,26 @@ private fun LineSheet(editor: LineEditor, cart: SaleCartState, onAction: (NewSal
                     onDismiss = { picking = false },
                 )
             }
+        }
+        // Solo con lotes: la línea sale por el vencimiento más cercano, salvo que se elija otro.
+        lots?.let { choices ->
+            LotPicker(
+                options = lotOptionsOf(choices, withUnassigned = false),
+                selectedId = line?.lotId,
+                unit = unit,
+                onSelect = { onAction(NewSaleAction.LineLotChange(it)) },
+                label = stringResource(R.string.lot_change_action),
+            )
+        }
+        line?.expiredLot?.let { date ->
+            NoticeCard(
+                text = stringResource(
+                    R.string.lot_warning_expired_sale,
+                    LocalAppFormats.current.date.dayMonthYear(date),
+                ),
+                variant = NoticeVariant.WARNING,
+                icon = R.drawable.ic_block,
+            )
         }
         MoneyField(
             value = editor.priceText,

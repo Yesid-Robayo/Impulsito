@@ -78,6 +78,7 @@ internal object SaleContentBuilder {
                 removesLine = SaleCart.decrementRemoves(request.quantity),
                 canIncrement = SaleCart.canIncrement(request.quantity),
                 parentProductId = parent,
+                lotId = request.lotId,
             )
         }
         return SaleCartState(

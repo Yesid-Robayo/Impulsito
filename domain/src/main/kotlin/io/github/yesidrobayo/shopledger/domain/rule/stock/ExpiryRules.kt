@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.rule.stock
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.ExpiringLot
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotDue
 import kotlinx.datetime.daysUntil
 
 /**
@@ -16,6 +17,18 @@ object ExpiryRules {
 
     /** Los días que faltan desde [today] hasta [expiry]: cero vence hoy, negativo ya venció. */
     fun daysLeft(expiry: BusinessDate, today: BusinessDate): Int = today.date.daysUntil(expiry.date)
+
+    /**
+     * Cuándo vence un lote con fecha [expiry], visto desde [today], o `null` si no vence. Sin
+     * [today], porque no se sabe la zona del negocio, el lote no se marca: ni pronto ni vencido.
+     * [noticeDays] son los días de aviso que valen para su producto.
+     */
+    fun dueOf(expiry: BusinessDate?, today: BusinessDate?, noticeDays: Int): LotDue? {
+        if (expiry == null) return null
+        if (today == null) return LotDue(expiry, daysLeft = null, soon = false)
+        val left = daysLeft(expiry, today)
+        return LotDue(expiry, left, soon = left <= noticeDays)
+    }
 
     /**
      * El lote dentro de su aviso, con los días que le faltan, o `null` si todavía no le toca. Con

@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.RegisterOpeningBa
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.AdjustStockUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.LoadLotChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveStockAdjustmentSubjectUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -43,7 +44,13 @@ fun StockAdjustmentRoute(key: AppNavKey.StockAdjustment, navigator: AppNavigator
         )
     val model =
         rememberAppViewModel { dependencies ->
-            StockAdjustmentViewModel(useCasesOf(dependencies), numbers, key.productId)
+            StockAdjustmentViewModel(
+                useCasesOf(dependencies),
+                numbers,
+                key.productId,
+                initialLotId = key.lotId,
+                expiredOut = key.expiredOut,
+            )
         }
     when (model) {
         ScreenModel.Opening -> StockAdjustmentScreen(StockAdjustmentUiState(), {})
@@ -118,5 +125,13 @@ private fun useCasesOf(dependencies: ScreenDependencies): StockAdjustmentOperati
                 ports.stockLedger, ports.lowStockAlerts, calendar, currencyLock, clock,
             ),
         locationsSource = { ports.locations.observe(ArchiveFilter.ACTIVE) },
+        lotChoicesUseCase = LoadLotChoicesUseCase(
+            ports.stockLots,
+            ports.products,
+            ports.systemRows,
+            calendar,
+            ports.settings,
+            clock,
+        ),
     )
 }

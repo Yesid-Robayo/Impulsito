@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogCodeLookup
@@ -50,7 +51,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -121,6 +124,8 @@ class NewSaleViewModel(
         ExchangeResult.SaleRejected(RegisterSaleResult.EmptySale)
     },
     private val exchangeNote: () -> String? = { null },
+    // Sin lotes conectados, como en una vista previa, ninguna línea elige lote ni avisa.
+    private val lotChoices: suspend (Long, Long?) -> LotChoices? = { _, _ -> null },
 ) : ViewModel() {
     private val draft = MutableStateFlow(SaleDraftStore.read(savedState))
 
@@ -155,6 +160,25 @@ class NewSaleViewModel(
     // Una falla al leer la espera no frena la venta: solo deja de contar las que hay.
     private val held: Flow<List<HeldSale>> = heldSales().catch { emit(emptyList()) }
 
+    // Los lotes de los productos con lotes de la venta, en su ubicación. Se releen cuando cambian
+    // esos productos o la ubicación; una falla solo quita el selector y el aviso.
+    private val lotInfo: Flow<Map<Long, LotChoices>> = combine(catalog, draft) { load, current ->
+        val ready = (load as? CatalogLoad.Ready)?.catalog ?: return@combine null
+        val lotted = ready.products.filter { it.details.tracksLots }.map { it.id }.toSet()
+        val ids = current.lines.filter { it.parentIndex == null && it.productId in lotted }
+            .map { it.productId }.toSet()
+        ids to ready.saleLocationId(current.locationId)
+    }.distinctUntilChanged().flatMapLatest { wanted ->
+        if (wanted == null || wanted.first.isEmpty()) {
+            flowOf(emptyMap())
+        } else {
+            flow {
+                val (ids, location) = wanted
+                emit(ids.mapNotNull { id -> lotChoices(id, location)?.let { id to it } }.toMap())
+            }.catch { emit(emptyMap()) }
+        }
+    }.flowOn(computation)
+
     val uiState: StateFlow<NewSaleUiState> = combine(
         catalog,
         draft,
@@ -166,6 +190,7 @@ class NewSaleViewModel(
             // La venta que se edita no cuenta: ya está a la vista.
             state.copy(heldCount = list.count { it.id != state.heldSaleId })
         }
+        .combine(lotInfo) { state, info -> withLots(state, info) }
         .flowOn(computation)
         .stateIn(
             viewModelScope,
@@ -219,6 +244,8 @@ class NewSaleViewModel(
             is NewSaleAction.LineDiscountChange -> lineDiscount(null, action.text)
 
             is NewSaleAction.LineUnitChange -> lineUnit(action.unitId)
+
+            is NewSaleAction.LineLotChange -> lineLot(action.lotId)
 
             is NewSaleAction.ToggleExtra -> toggleExtra(action.productId)
 
@@ -489,6 +516,15 @@ class NewSaleViewModel(
             )
         }
         openLine(product.id, focusPrice = false)
+    }
+
+    /**
+     * Elige el lote de la línea abierta, o lo deja en automático con `null`: entonces sale por el
+     * vencimiento más cercano. Elegir un lote nunca frena la venta.
+     */
+    private fun lineLot(lotId: Long?) {
+        val sheet = overlay.value.sheet as? SaleSheet.Line ?: return
+        setLine(sheet.editor.productId) { it.copy(lotId = lotId) }
     }
 
     /**
@@ -1198,6 +1234,24 @@ class NewSaleViewModel(
     private fun editLine(change: (LineEditor) -> LineEditor) = overlay.update { shown ->
         val sheet = shown.sheet as? SaleSheet.Line ?: return@update shown
         shown.copy(sheet = SaleSheet.Line(change(sheet.editor)))
+    }
+
+    /**
+     * Los lotes de cada producto con lotes de la venta, y en cada línea la fecha del lote vencido
+     * que saldría: el elegido, o el primero del orden de salida. Avisa, nunca bloquea.
+     */
+    private fun withLots(state: NewSaleUiState, info: Map<Long, LotChoices>): NewSaleUiState {
+        if (info.isEmpty()) return state
+        val lines = state.cart.lines.map { line ->
+            val choices = info[line.productId]
+            if (line.parentProductId != null || choices == null) return@map line
+            val chosen = line.lotId?.let { id ->
+                choices.lots.firstOrNull { it.stock.lotId == id }
+            }
+            val out = chosen ?: choices.proposed.takeIf { line.lotId == null }
+            line.copy(expiredLot = out?.due?.takeIf { it.isExpired }?.date)
+        }
+        return state.copy(lots = info, cart = state.cart.copy(lines = lines))
     }
 
     private fun setLine(productId: Long, change: (SaleLineRequest) -> SaleLineRequest) =

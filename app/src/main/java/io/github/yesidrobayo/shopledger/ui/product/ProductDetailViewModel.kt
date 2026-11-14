@@ -5,14 +5,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotFilter
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotsOverview
 import io.github.yesidrobayo.shopledger.domain.model.stock.ProductLocationStock
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotListRules
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteProductResult
@@ -20,6 +24,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProduct
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.VoidAdjustmentResult
+import io.github.yesidrobayo.shopledger.ui.components.LotExpiry
+import io.github.yesidrobayo.shopledger.ui.components.lotExpiryOf
 import io.github.yesidrobayo.shopledger.ui.unit.SaveFailure
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -66,6 +72,9 @@ interface ProductDetailOperations {
      */
     fun locationStock(productId: Long): Flow<ProductLocationStock> =
         flowOf(ProductLocationStock.Hidden)
+
+    /** Los lotes del producto. Sin lotes conectados, ninguno: el segmento queda vacío. */
+    fun lots(productId: Long): Flow<LotsOverview?> = flowOf(null)
 }
 
 /** Lo que muestra el detalle de un producto. */
@@ -93,7 +102,23 @@ enum class ProductDetailTab {
 
     /** Lo último que se pagó a cada proveedor por el producto. */
     SUPPLIERS,
+
+    /** Sus lotes con stock, por vencimiento. Solo en un producto que se controla por lotes. */
+    LOTS,
 }
+
+/**
+ * Un lote del producto en su segmento: el código, cuándo vence y lo que tiene en todas las
+ * ubicaciones. [code] es `null` en el lote sin asignar.
+ */
+@Immutable
+data class ProductLotItem(
+    val lotId: Long,
+    val code: String?,
+    val unassigned: Boolean,
+    val expiry: LotExpiry,
+    val onHand: QuantityMilli,
+)
 
 /**
  * La hoja de corregir el costo mientras se escribe: el costo nuevo como texto, la nota, el problema
@@ -178,6 +203,7 @@ data class ProductDetailUiState(
     val closed: Boolean = false,
     val priceSheet: PriceSheet? = null,
     val locationStock: ProductLocationStock = ProductLocationStock.Hidden,
+    val lots: List<ProductLotItem> = emptyList(),
 )
 
 /** Lo que la persona hace en el detalle. */
@@ -194,6 +220,11 @@ sealed interface ProductDetailAction {
 
     /** Abrir la receta con que se produce el producto: lo resuelve la navegación. */
     data object OpenRecipe : ProductDetailAction
+
+    /**
+     * Abrir los lotes del producto, con la hoja de [lotId] si se tocó uno. Lo resuelve la ruta.
+     */
+    data class OpenLots(val lotId: Long? = null) : ProductDetailAction
 
     data class OpenDocument(val document: MovementDocument) : ProductDetailAction
 
@@ -301,9 +332,16 @@ class ProductDetailViewModel(
         operations.locationStock(productId).catch { emit(ProductLocationStock.Hidden) }
     }
 
+    // Los lotes que no se pudieron leer no cierran el detalle: el segmento queda vacío.
+    private val lotItems = attempts.flatMapLatest {
+        operations.lots(productId).map { overview -> lotItemsOf(overview) }
+            .catch { emit(emptyList()) }
+    }
+
     val uiState: StateFlow<ProductDetailUiState> =
-        combine(content, extra, byLocation) { shown, more, locations ->
+        combine(content, extra, byLocation, lotItems) { shown, more, locations, lots ->
             ProductDetailUiState(
+                lots = lots,
                 locationStock = locations,
                 content = shown,
                 tab = more.tab,
@@ -318,6 +356,26 @@ class ProductDetailViewModel(
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             initialValue = ProductDetailUiState(),
         )
+
+    /**
+     * Los lotes con stock, del que vence antes al que vence después, y al final el sin asignar si
+     * tiene algo distinto de cero. Los agotados quedan en la pantalla de lotes, en `Todos`.
+     */
+    private fun lotItemsOf(overview: LotsOverview?): List<ProductLotItem> {
+        val entries = overview?.entries.orEmpty()
+        val coded = LotListRules.grouped(entries, LotFilter.ALL).flatMap { it.entries }
+            .filter { it.hasStock }
+        val unassigned = LotListRules.grouped(entries, LotFilter.UNASSIGNED).flatMap { it.entries }
+        return (coded + unassigned).map {
+            ProductLotItem(
+                lotId = it.lot.id,
+                code = it.lot.code,
+                unassigned = it.lot.isUnassigned,
+                expiry = lotExpiryOf(it.due),
+                onHand = it.onHand,
+            )
+        }
+    }
 
     fun onAction(action: ProductDetailAction) {
         when (action) {
@@ -411,6 +469,7 @@ class ProductDetailViewModel(
             ProductDetailAction.Back, ProductDetailAction.Edit, ProductDetailAction.Sell,
             ProductDetailAction.RegisterPurchase, ProductDetailAction.AdjustStock,
             is ProductDetailAction.OpenDocument, ProductDetailAction.OpenRecipe,
+            is ProductDetailAction.OpenLots,
             -> Unit
         }
     }

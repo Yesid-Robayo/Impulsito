@@ -111,4 +111,37 @@ internal class ExpiringLotsOnDatabaseTest : RepositoryTest() {
         assertEquals(AT, dated.getValue(lotA).expiryNotifiedAt)
         assertNull(dated.getValue(lotB).expiryNotifiedAt)
     }
+
+    @Test
+    fun holdingsLeaveOutEmptyPartsAndCorrectingTheDateNoticesAgain() = runBlocking {
+        val cheese = lotProduct("Queso inventado")
+        val kept = lot(cheese, "Q-1", "2026-11-20")
+        val emptied = lot(cheese, "Q-2", "2026-11-21")
+        receive(cheese, kept, units = 3, balanceAfter = 3)
+        receive(cheese, emptied, units = 2, balanceAfter = 5)
+        receive(cheese, emptied, units = -2, balanceAfter = 3)
+
+        val holdings = ports.stockLots.observeHoldings().first()
+        assertEquals(listOf(kept), holdings.map { it.lotId })
+        assertEquals(QuantityMilli.ofUnits(3), holdings.single().onHand)
+
+        ports.stockLots.markExpiryNotified(listOf(kept), AT)
+        val sameDay = requireNotNull(BusinessDate.parse("2026-11-20"))
+        commit { ports.stockLots.correct(kept, "Q-1b", sameDay) }
+        val renamed = requireNotNull(ports.stockLots.findById(kept))
+        assertEquals("Q-1b", renamed.code)
+        assertEquals(AT, renamed.expiryNotifiedAt)
+
+        commit { ports.stockLots.correct(kept, "Q-1b", null) }
+        val undated = requireNotNull(ports.stockLots.findById(kept))
+        assertNull(undated.expiryDate)
+        assertNull(undated.expiryNotifiedAt)
+    }
+
+    @Test
+    fun theSettingsNoticeDaysAreSaved() = runBlocking {
+        commit { ports.settings.updateExpiryNoticeDays(12, AT) }
+
+        assertEquals(12, ports.settings.get().notices.expiryNoticeDays)
+    }
 }

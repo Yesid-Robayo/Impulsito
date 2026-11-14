@@ -65,9 +65,10 @@ internal object SaleDraftStore {
     private const val PRICE_LIST = "sale.priceList"
     private const val LOCATION = "sale.location"
 
-    private const val FIELDS = 8
+    private const val FIELDS = 9
     private const val UNIT = 6
     private const val PARENT = 7
+    private const val LOT = 8
     private const val NO_DISCOUNT = 0L
     private const val AMOUNT = 1L
     private const val PERCENT = 2L
@@ -120,6 +121,7 @@ internal object SaleDraftStore {
             values[base + 5] = value
             values[base + UNIT] = line.unitId ?: NONE
             values[base + PARENT] = line.parentIndex?.toLong() ?: NONE
+            values[base + LOT] = line.lotId ?: NONE
         }
         return values
     }
@@ -140,6 +142,7 @@ internal object SaleDraftStore {
                 },
                 unitId = values[base + UNIT].takeIf { it != NONE },
                 parentIndex = values[base + PARENT].takeIf { it in 0L until index }?.toInt(),
+                lotId = values[base + LOT].takeIf { it != NONE },
             )
         }
     }

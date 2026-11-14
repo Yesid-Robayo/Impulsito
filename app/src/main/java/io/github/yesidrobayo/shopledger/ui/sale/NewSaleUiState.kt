@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartLineIssue
 import kotlinx.datetime.DayOfWeek
 
@@ -41,6 +42,7 @@ data class NewSaleUiState(
     val heldNotice: HeldNotice? = null,
     val exchange: ExchangeBand? = null,
     val canScan: Boolean = false,
+    val lots: Map<Long, LotChoices> = emptyMap(),
 )
 
 /**
@@ -187,6 +189,8 @@ data class CartLine(
     val removesLine: Boolean,
     val canIncrement: Boolean,
     val parentProductId: Long? = null,
+    val lotId: Long? = null,
+    val expiredLot: BusinessDate? = null,
 )
 
 /** Un extra que ofrece la hoja de una línea, con su nombre y si ya va en la línea. */

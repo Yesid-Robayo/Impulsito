@@ -225,6 +225,12 @@ enum class VoidStatus {
 
     /** No se pudo anular. La venta sigue activa, y se puede reintentar. */
     FAILED,
+
+    /**
+     * No se anuló una devolución porque lo que volvió a un lote ya salió otra vez: el lote
+     * quedaría en negativo. La devolución sigue activa.
+     */
+    LOT_USED,
 }
 
 /** Lo que la persona hace en el detalle de una venta. */

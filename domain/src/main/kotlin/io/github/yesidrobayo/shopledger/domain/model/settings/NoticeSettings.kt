@@ -22,5 +22,8 @@ data class NoticeSettings(
     companion object {
         /** Lo más que admite la base para [costStaleDays]: cien años. */
         const val MAX_COST_STALE_DAYS: Int = 36_500
+
+        /** Lo más que admite la base para [expiryNoticeDays]: también cien años. */
+        const val MAX_EXPIRY_NOTICE_DAYS: Int = 36_500
     }
 }
