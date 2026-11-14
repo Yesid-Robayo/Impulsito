@@ -233,7 +233,12 @@ fun SettingsEntryScreen(
                             onOpen = { rangeOpen = true },
                             onObscured = { onCsvExportAction(CsvExportAction.ObscuredTouch) },
                         )
+                        CsvSpreadsheetRow(csvExport, onCsvExportAction)
                     }
+                    SettingsRow(
+                        title = stringResource(R.string.import_title),
+                        action = SettingsRowAction.Navigation { onOpen(AppNavKey.ImportData) },
+                    )
                     SettingsRow(
                         title = stringResource(R.string.offsite_title),
                         action = SettingsRowAction.Navigation { onOpen(AppNavKey.LocalCopies) },

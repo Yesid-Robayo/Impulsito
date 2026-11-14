@@ -190,7 +190,12 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 }
             val naming = CsvExportNaming { container.localizedContext.context().resources }
             CsvExportViewModel(
-                export = { uri, range, progress -> exportCsv(uri, naming, range, progress) },
+                export = { uri, range, progress ->
+                    exportCsv(uri, naming, range, progress = progress)
+                },
+                exportSpreadsheet = { uri, progress ->
+                    exportCsv(uri, naming, spreadsheet = true, progress = progress)
+                },
                 zone = {
                     val current = BusinessCalendarSource(settings).current()
                     (current as? BusinessCalendarResult.Ready)?.calendar?.zone
@@ -210,6 +215,12 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(ZIP_TYPE)) { uri ->
             uri?.let { export?.onAction(CsvExportAction.DocumentCreated(it.toString())) }
         }
+    val sheetPicker =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument(XLSX_TYPE),
+        ) { uri ->
+            uri?.let { export?.onAction(CsvExportAction.DocumentCreated(it.toString())) }
+        }
     // Con el bloqueo encendido, exportar pide de nuevo la verificación del sistema: el archivo lleva
     // todos los datos del negocio.
     val sensitive = rememberSensitiveCheck()
@@ -225,7 +236,11 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 if (sensitive.confirm(exportTitle)) {
                     // Sin una app que cree documentos no hay selector: es como cancelar.
                     try {
-                        csvPicker.launch(name)
+                        if (request == CsvExportAction.ExportSpreadsheet) {
+                            sheetPicker.launch(name)
+                        } else {
+                            csvPicker.launch(name)
+                        }
                     } catch (_: ActivityNotFoundException) {
                         Unit
                     }
@@ -350,8 +365,10 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 csvExport = exportState,
                 onCsvExportAction = { action ->
                     when (action) {
-                        CsvExportAction.Export, is CsvExportAction.ExportRange ->
-                            startExport(action)
+                        CsvExportAction.Export,
+                        is CsvExportAction.ExportRange,
+                        CsvExportAction.ExportSpreadsheet,
+                        -> startExport(action)
 
                         is CsvExportAction.DocumentCreated,
                         CsvExportAction.ObscuredTouch,
@@ -435,3 +452,4 @@ private fun CsvExportMessages(
 
 /** El tipo del archivo exportado: un `.zip` con un CSV por archivo. */
 private const val ZIP_TYPE = "application/zip"
+private const val XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

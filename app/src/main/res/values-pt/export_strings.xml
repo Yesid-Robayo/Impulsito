@@ -3,6 +3,8 @@
     <!-- Ajustes: datos del negocio y exportar a CSV. Textos de la guía de redacción. -->
     <string name="settings_export">Exportar para CSV</string>
     <string name="settings_export_summary">Um arquivo .zip com um CSV para cada tipo de dado</string>
+    <string name="settings_export_spreadsheet">Exportar para planilha</string>
+    <string name="settings_export_spreadsheet_summary">Um arquivo .xlsx com uma planilha para cada tipo de dado</string>
     <string name="settings_export_working">Exportando</string>
     <string name="settings_export_saved">Dados exportados para o arquivo</string>
     <string name="settings_export_error">Não foi possível exportar. Os dados não mudaram.</string>

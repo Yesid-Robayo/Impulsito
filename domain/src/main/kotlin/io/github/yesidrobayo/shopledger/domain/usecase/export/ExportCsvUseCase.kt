@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CsvExportPort
 import io.github.yesidrobayo.shopledger.domain.port.CsvExportRequest
 import io.github.yesidrobayo.shopledger.domain.port.CsvNaming
 import io.github.yesidrobayo.shopledger.domain.rule.export.CsvRowWriter
+import io.github.yesidrobayo.shopledger.domain.rule.export.SheetCellWriter
 import io.github.yesidrobayo.shopledger.domain.rule.region.CsvFormat
 
 /**
@@ -23,6 +24,10 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.CsvFormat
  *
  * Con un rango, solo entran los documentos y movimientos de esas fechas de negocio; los catálogos van
  * completos.
+ *
+ * Con `spreadsheet`, la exportación es un `.xlsx` con una hoja por archivo: los números van como
+ * celdas numéricas con punto, que la hoja muestra con la región de quien la abre, y el texto como
+ * texto neutralizado. Los encabezados y los nombres de las hojas salen en el idioma activo.
  */
 class ExportCsvUseCase(
     private val settings: AppSettingsRepository,
@@ -33,6 +38,7 @@ class ExportCsvUseCase(
         documentUri: String,
         naming: CsvNaming,
         range: CsvDateRange? = null,
+        spreadsheet: Boolean = false,
         progress: (CsvExportProgress) -> Unit,
     ): CsvExport {
         val regional = settings.get().regional
@@ -44,7 +50,17 @@ class ExportCsvUseCase(
                 regional.currency.decimals,
             )
         return export.export(
-            CsvExportRequest(documentUri, CsvRowWriter(format, zone), naming, range),
+            CsvExportRequest(
+                documentUri = documentUri,
+                rows = CsvRowWriter(format, zone),
+                naming = naming,
+                range = range,
+                spreadsheet = if (spreadsheet) {
+                    SheetCellWriter(regional.currency.decimals, zone)
+                } else {
+                    null
+                },
+            ),
             progress,
         )
     }

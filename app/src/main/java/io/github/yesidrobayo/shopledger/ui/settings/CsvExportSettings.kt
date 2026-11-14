@@ -101,6 +101,12 @@ sealed interface CsvExportAction {
      */
     data class ExportRange(val range: CsvDateRange) : CsvExportAction
 
+    /**
+     * Toca `Exportar a hoja de cálculo`: como [Export], pero un `.xlsx` con una hoja por archivo,
+     * siempre con todo.
+     */
+    data object ExportSpreadsheet : CsvExportAction
+
     /** El selector creó el documento: la exportación se escribe ahí. */
     data class DocumentCreated(val uri: String) : CsvExportAction
 
@@ -125,6 +131,7 @@ sealed interface CsvExportAction {
  * @param now el instante actual.
  * @param appName el nombre de la app, que encabeza el nombre sugerido.
  * @param computation el hilo donde se exporta, fuera del principal.
+ * @param exportSpreadsheet escribe la exportación a hoja de cálculo en el documento.
  */
 class CsvExportViewModel(
     private val export: suspend (String, CsvDateRange?, (CsvExportProgress) -> Unit) -> CsvExport,
@@ -133,6 +140,8 @@ class CsvExportViewModel(
     private val now: () -> Instant,
     private val appName: String,
     private val computation: CoroutineContext,
+    private val exportSpreadsheet: suspend (String, (CsvExportProgress) -> Unit) -> CsvExport =
+        { _, _ -> CsvExport.Failed },
 ) : ViewModel() {
     private val state = MutableStateFlow(CsvExportUiState())
     val uiState: StateFlow<CsvExportUiState> = state.asStateFlow()
@@ -141,6 +150,9 @@ class CsvExportViewModel(
 
     /** El rango de la exportación pedida, o `null` para exportar todo. */
     private var pendingRange: CsvDateRange? = null
+
+    /** Si la exportación pedida es la de hoja de cálculo. */
+    private var pendingSpreadsheet = false
 
     init {
         // Sin zona, que solo falta antes de configurar la región o con una lectura fallida, el nombre
@@ -163,11 +175,19 @@ class CsvExportViewModel(
             // La navegación abre la verificación y el selector; aquí solo se limpia el aviso viejo.
             CsvExportAction.Export -> {
                 pendingRange = null
+                pendingSpreadsheet = false
                 state.update { it.copy(message = null) }
             }
 
             is CsvExportAction.ExportRange -> {
                 pendingRange = action.range
+                pendingSpreadsheet = false
+                state.update { it.copy(message = null) }
+            }
+
+            CsvExportAction.ExportSpreadsheet -> {
+                pendingRange = null
+                pendingSpreadsheet = true
                 state.update { it.copy(message = null) }
             }
 
@@ -181,7 +201,11 @@ class CsvExportViewModel(
     }
 
     /** El nombre que el selector sugiere para el archivo. */
-    fun suggestedName(): String = CsvExportFileName.of(appName, now(), businessZone)
+    fun suggestedName(): String = if (pendingSpreadsheet) {
+        CsvExportFileName.spreadsheetOf(appName, now(), businessZone)
+    } else {
+        CsvExportFileName.of(appName, now(), businessZone)
+    }
 
     private fun exportTo(uri: String) {
         if (state.value.working) return
@@ -189,8 +213,13 @@ class CsvExportViewModel(
         viewModelScope.launch {
             val result =
                 safely {
-                    export(uri, pendingRange) { progress ->
+                    val onProgress: (CsvExportProgress) -> Unit = { progress ->
                         state.update { it.copy(progress = progress) }
+                    }
+                    if (pendingSpreadsheet) {
+                        exportSpreadsheet(uri, onProgress)
+                    } else {
+                        export(uri, pendingRange, onProgress)
                     }
                 } ?: CsvExport.Failed
             val message =
@@ -251,6 +280,23 @@ fun CsvExportRow(state: CsvExportUiState, onAction: (CsvExportAction) -> Unit) {
             )
         }
     }
+}
+
+/**
+ * `Exportar a hoja de cálculo`, bajo `Exportar a CSV`: un `.xlsx` con una hoja por archivo, en el
+ * idioma activo. Como exportar a CSV, pide la verificación del bloqueo, abre el selector y rechaza
+ * los toques tapados por otra app. Mientras otra exportación trabaja no aparece: la fila de arriba
+ * ya muestra el avance.
+ */
+@Composable
+fun CsvSpreadsheetRow(state: CsvExportUiState, onAction: (CsvExportAction) -> Unit) {
+    if (state.working) return
+    SettingsRow(
+        title = stringResource(R.string.settings_export_spreadsheet),
+        summary = stringResource(R.string.settings_export_spreadsheet_summary),
+        action = SettingsRowAction.Navigation { onAction(CsvExportAction.ExportSpreadsheet) },
+        modifier = Modifier.rejectObscuredTouches { onAction(CsvExportAction.ObscuredTouch) },
+    )
 }
 
 /**

@@ -40,6 +40,7 @@ data class CsvExportProgress(val done: Int, val total: Int)
 object CsvExportFileName {
     private const val MIDDLE = "-export-"
     private const val SUFFIX = ".zip"
+    private const val SPREADSHEET_SUFFIX = ".xlsx"
     private const val YEAR_DIGITS = 4
 
     /**
@@ -60,4 +61,8 @@ object CsvExportFileName {
             append(SUFFIX)
         }
     }
+
+    /** El nombre para la exportación a hoja de cálculo: el mismo, terminado en `.xlsx`. */
+    fun spreadsheetOf(appName: String, at: Instant, zone: BusinessTimeZone?): String =
+        of(appName, at, zone).removeSuffix(SUFFIX) + SPREADSHEET_SUFFIX
 }

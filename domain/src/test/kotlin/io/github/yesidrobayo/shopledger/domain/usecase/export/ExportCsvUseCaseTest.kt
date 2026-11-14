@@ -84,6 +84,26 @@ class ExportCsvUseCaseTest {
     }
 
     @Test
+    fun `a spreadsheet export carries its cells with the currency decimals`() = runTest {
+        val settings =
+            FakeAppSettingsRepository(appSettings(regionalSettings("Etc/GMT+5", DayOfWeek.MONDAY)))
+        val port = RecordingPort(CsvExport.Saved(files = 9, rows = 1L))
+
+        ExportCsvUseCase(settings, port) { DecimalSeparator.COMMA }(
+            "uri",
+            naming,
+            spreadsheet = true,
+        ) {}
+
+        val sheet = requireNotNull(requireNotNull(port.request).spreadsheet)
+        // Con coma decimal en la región, la hoja recibe el número con punto.
+        assertEquals(
+            io.github.yesidrobayo.shopledger.domain.rule.export.SheetValue.Number("12.34"),
+            sheet.cell(CsvCell.Amount(Money(1234L))),
+        )
+    }
+
+    @Test
     fun `an unknown business zone does not export`() = runTest {
         val regional = regionalSettings("Etc/GMT+5", DayOfWeek.MONDAY)
         val settings =

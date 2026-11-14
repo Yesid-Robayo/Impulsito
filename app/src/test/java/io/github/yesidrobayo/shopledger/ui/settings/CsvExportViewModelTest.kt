@@ -62,6 +62,11 @@ class CsvExportViewModelTest {
                 now = { now },
                 appName = "App",
                 computation = dispatcher,
+                exportSpreadsheet = { uri, progress ->
+                    exported += "sheet:$uri"
+                    progress(CsvExportProgress(1, 9))
+                    result
+                },
             )
         advanceUntilIdle()
         return model
@@ -185,4 +190,18 @@ class CsvExportViewModelTest {
 
             assertEquals(listOf(range, null), ranges)
         }
+
+    @Test
+    fun `the spreadsheet export has its own name and path`() = runTest(dispatcher) {
+        val model = viewModel()
+
+        model.onAction(CsvExportAction.ExportSpreadsheet)
+        assertEquals("App-export-20261111-2207.xlsx", model.suggestedName())
+        model.onAction(CsvExportAction.DocumentCreated("content://prueba/hoja"))
+        advanceUntilIdle()
+        model.onAction(CsvExportAction.Export)
+
+        assertEquals(listOf("sheet:content://prueba/hoja"), exported)
+        assertEquals("App-export-20261111-2207.zip", model.suggestedName())
+    }
 }

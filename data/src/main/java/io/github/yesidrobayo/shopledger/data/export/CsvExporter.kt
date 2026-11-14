@@ -25,6 +25,7 @@ import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogEvent
 import io.github.yesidrobayo.shopledger.domain.port.warn
 import io.github.yesidrobayo.shopledger.domain.rule.export.CsvRowWriter
+import io.github.yesidrobayo.shopledger.domain.rule.export.SheetCellWriter
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.FilterOutputStream
@@ -126,13 +127,18 @@ internal class CsvExporter(
         CsvExport.Failed
     }
 
-    /** Escribe el `.zip` en [output] y devuelve las filas de datos escritas. */
+    /**
+     * Escribe el `.zip` en [output], o el `.xlsx` si la petición trae celdas de hoja, y devuelve las
+     * filas de datos escritas.
+     */
     private suspend fun writeArchive(
         source: CsvRowSource,
         output: OutputStream,
         request: CsvExportRequest,
         progress: (CsvExportProgress) -> Unit,
     ): Long {
+        val sheet = request.spreadsheet
+        if (sheet != null) return writeWorkbook(source, output, request, sheet, progress)
         val tables = CsvExportTable.entries
         val zip = ZipOutputStream(output)
         // El escritor no cierra el .zip al terminar cada archivo: solo vacía lo pendiente.
@@ -157,6 +163,36 @@ internal class CsvExporter(
         return total
     }
 
+    /** Escribe el `.xlsx` en [output], una hoja por archivo y en la misma lectura que el CSV. */
+    private suspend fun writeWorkbook(
+        source: CsvRowSource,
+        output: OutputStream,
+        request: CsvExportRequest,
+        cells: SheetCellWriter,
+        progress: (CsvExportProgress) -> Unit,
+    ): Long {
+        val tables = CsvExportTable.entries
+        val zip = ZipOutputStream(output)
+        val names = tables.map { request.naming.fileName(it).removeSuffix(CSV_EXTENSION) }
+        val workbook = XlsxWorkbookWriter(zip, names)
+        workbook.start()
+        var total = 0L
+        source.snapshot { reader ->
+            tables.forEachIndexed { done, table ->
+                workbook.startSheet(table.columns.map(request.naming::header))
+                total +=
+                    reader.forEachRow(table, request.naming::seedName, request.range) { row ->
+                        workbook.row(row.map(cells::cell))
+                    }
+                workbook.endSheet()
+                progress(CsvExportProgress(done + 1, tables.size))
+            }
+        }
+        zip.finish()
+        zip.flush()
+        return total
+    }
+
     private fun measure(input: InputStream): Pair<Long, String> {
         val digest = newSha256()
         val buffer = ByteArray(BUFFER_BYTES)
@@ -173,6 +209,7 @@ internal class CsvExporter(
     private companion object {
         const val BUFFER_BYTES = 64 * 1024
         const val WRITER_BUFFER_CHARS = 64 * 1024
+        const val CSV_EXTENSION = ".csv"
     }
 }
 

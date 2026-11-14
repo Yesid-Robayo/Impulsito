@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.export.CsvExport
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportProgress
 import io.github.yesidrobayo.shopledger.domain.model.export.CsvExportTable
 import io.github.yesidrobayo.shopledger.domain.rule.export.CsvRowWriter
+import io.github.yesidrobayo.shopledger.domain.rule.export.SheetCellWriter
 
 /**
  * Exportar los datos del negocio a un `.zip` con un CSV por cada archivo de [CsvExportTable], en el
@@ -27,12 +28,15 @@ interface CsvExportPort {
  * @property rows escribe cada línea con el formato regional del negocio.
  * @property naming los nombres de archivos, columnas y filas iniciales.
  * @property range las fechas que entran, o `null` para exportar todo.
+ * @property spreadsheet con un valor, la exportación es un `.xlsx` con una hoja por archivo, y estas
+ *   son sus celdas; `null` es el `.zip` de CSV.
  */
 class CsvExportRequest(
     val documentUri: String,
     val rows: CsvRowWriter,
     val naming: CsvNaming,
     val range: CsvDateRange? = null,
+    val spreadsheet: SheetCellWriter? = null,
 )
 
 /**
