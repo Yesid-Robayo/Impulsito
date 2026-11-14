@@ -271,6 +271,9 @@ class ProductEditViewModel(
                     ).withProfit()
                 }
 
+            is ProductEditAction.TracksLotsChange ->
+                if (!state.value.lotsLocked) edit(null) { copy(tracksLots = action.enabled) }
+
             ProductEditAction.NewUnit -> unitEditor.openNew()
 
             is ProductEditAction.EditConversion ->
@@ -557,6 +560,7 @@ class ProductEditViewModel(
                 barcode = details.barcode.orEmpty(),
                 replacementCost = moneyText(product.replacementCost),
                 photo = details.photoMediaId?.let(EditPhoto::Saved) ?: EditPhoto.None,
+                tracksLots = details.tracksLots,
                 referencePrice =
                     current.reference
                         ?.let { referenceText(details.referencePrice, it) }
@@ -567,6 +571,7 @@ class ProductEditViewModel(
                 form = form,
                 unitLocked = HistoryLockedField.BASE_UNIT in editing.lockedFields,
                 stockModeLocked = HistoryLockedField.STOCK_MODE in editing.lockedFields,
+                lotsLocked = HistoryLockedField.TRACKS_LOTS in editing.lockedFields,
                 product = product,
                 costLocked = editing.costLocked,
                 averageCost = catalogCost,
@@ -870,6 +875,8 @@ class ProductEditViewModel(
             replacementCost = replacement,
             referencePrice = reference,
             photo = photoChangeOf(current),
+            // Solo un producto con stock propio lleva lotes; el caso de uso lo vuelve a exigir.
+            tracksLots = text.tracksLots && text.stockMode == ProductStockMode.TRACKED,
         )
         return ReadForm(form, if (current.isNew) initial else QuantityMilli.ZERO, emptyMap())
     }

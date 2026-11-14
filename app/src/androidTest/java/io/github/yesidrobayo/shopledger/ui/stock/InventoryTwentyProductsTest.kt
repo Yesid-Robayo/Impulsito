@@ -521,6 +521,7 @@ class InventoryTwentyProductsTest {
                     adjust = AdjustStockUseCase(
                         ports.transactions, ports.products, ports.units, ports.systemRows,
                         ports.stockLedger, ports.lowStockAlerts, calendar, currencyLock, clock,
+                        ports.stockLots,
                     ),
                     changePrice = ChangePriceUseCase(
                         ports.transactions,

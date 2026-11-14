@@ -226,7 +226,7 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
         mutableStateOf(
             form.barcode.isNotEmpty() || form.replacementCost.isNotEmpty() ||
                 form.referencePrice.isNotEmpty() || !uiState.tracksStock ||
-                form.photo != EditPhoto.None,
+                form.photo != EditPhoto.None || form.tracksLots,
         )
     }
     LaunchedEffect(uiState.conversions.isNotEmpty()) {
@@ -369,6 +369,7 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
         )
     }
     if (uiState.tracksStock) ReplacementCostField(uiState, onAction)
+    if (uiState.tracksStock) ProductLotsRow(uiState, onAction)
     uiState.reference?.let { ReferencePriceField(uiState, it, onAction) }
     if (!uiState.isNew) ProductConversions(uiState, onAction)
     // Un producto guardado puede tener variantes, salvo una variante o un combo.
@@ -391,6 +392,32 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
     if (!uiState.isNew && uiState.listPrices.isNotEmpty()) ProductListPrices(uiState, onAction)
     // Al final, los campos propios y las etiquetas, si el negocio tiene alguno.
     if (uiState.extras.visible) ProductExtrasSection(uiState.extras, onAction)
+}
+
+/**
+ * `Controlar por lotes`, solo con stock propio. Sin historia es un interruptor; con historia ya no
+ * cambia, porque el libro no mezcla filas con lote y sin lote: si lleva lotes se dice para leer, y
+ * si no, la fila no aparece, porque no hay nada que hacer con ella.
+ */
+@Composable
+private fun ProductLotsRow(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
+    val title = stringResource(R.string.lot_tracks_label)
+    when {
+        !uiState.lotsLocked ->
+            SettingsRow(
+                title = title,
+                action = SettingsRowAction.Toggle(uiState.form.tracksLots) {
+                    onAction(ProductEditAction.TracksLotsChange(it))
+                },
+            )
+
+        uiState.form.tracksLots ->
+            SettingsRow(
+                title = title,
+                summary = stringResource(R.string.lot_tracks_locked),
+                action = SettingsRowAction.Value { },
+            )
+    }
 }
 
 /**

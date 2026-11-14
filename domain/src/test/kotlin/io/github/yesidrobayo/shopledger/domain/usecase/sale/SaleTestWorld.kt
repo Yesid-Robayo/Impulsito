@@ -77,10 +77,14 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationStatus
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewLowStockAlert
+import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRate
@@ -106,6 +110,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
@@ -169,6 +174,8 @@ internal data class SaleTables(
     val recipes: Map<Long, RecipeComponent> = emptyMap(),
     /** Las hojas guardadas de las líneas de combo, por id: solo crecen. */
     val lineComponents: Map<Long, SaleLineComponent> = emptyMap(),
+    /** Los lotes de los productos que se controlan por lotes, por id. */
+    val lots: Map<Long, StockLot> = emptyMap(),
 )
 
 /** Una falla inyectada a propósito en una escritura. */
@@ -686,6 +693,19 @@ internal class SaleWorld(
         override suspend fun isCompensated(movementId: Long): Boolean =
             read().movements.values.any { it.movement.reversesMovementId == movementId }
 
+        override suspend fun onHandAt(key: StockKey): QuantityMilli = read().movements.values
+            .filter { it.movement.key == key }
+            .fold(QuantityMilli.ZERO) { sum, row -> sum + row.movement.quantity }
+
+        override suspend fun unassignedLot(productId: Long, createdAt: Instant): Long {
+            read().lots.values.firstOrNull { it.productId == productId && it.isUnassigned }
+                ?.let { return it.id }
+            val id = nextId("stock_lots")
+            val lot = StockLot(id, productId, null, true, null, null, null, createdAt, null)
+            write { it.copy(lots = it.lots + (id to lot)) }
+            return id
+        }
+
         override suspend fun append(movement: NewStockMovement): Long {
             val draft = movement.movement
             val product = read().products[draft.key.productId] ?: brokenRule()
@@ -705,6 +725,39 @@ internal class SaleWorld(
             }
             return id
         }
+    }
+
+    /** Los lotes con código, con su saldo por ubicación sumado desde el libro. */
+    val lotRepository: StockLotRepository = object : StockLotRepository {
+        override fun observeByProduct(productId: Long): Flow<List<StockLot>> =
+            committed.map { tables -> lotsOf(tables, productId) }
+
+        override suspend fun findById(id: Long): StockLot? = read().lots[id]
+
+        override suspend fun findByCode(productId: Long, code: String): StockLot? =
+            lotsOf(read(), productId).firstOrNull { it.code == code }
+
+        override suspend fun findStock(productId: Long, locationId: Long): List<LotStock> {
+            val tables = read()
+            return lotsOf(tables, productId).map { lot ->
+                val onHand = ledger.onHandAt(StockKey(productId, locationId, lot.id))
+                LotStock(lot.id, lot.code, lot.expiryDate, lot.isUnassigned, onHand)
+            }
+        }
+
+        override suspend fun insert(lot: NewStockLot): Long {
+            if (findByCode(lot.productId, lot.code) != null) brokenRule()
+            val id = nextId("stock_lots")
+            val row = StockLot(
+                id, lot.productId, lot.code, false, lot.expiryDate, lot.purchaseLineId, null,
+                lot.createdAt, null,
+            )
+            write { it.copy(lots = it.lots + (id to row)) }
+            return id
+        }
+
+        private fun lotsOf(tables: SaleTables, productId: Long): List<StockLot> =
+            tables.lots.values.filter { it.productId == productId }.sortedBy { it.id }
     }
 
     /** Las ventas en espera: solo se borran al confirmar la venta que se retomó de ellas. */

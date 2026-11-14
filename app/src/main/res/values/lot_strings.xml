@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: lotes, vencimientos y series. -->
+    <string name="lot_tracks_label">Track by batch</string>
+    <string name="lot_tracks_locked">It has movements: batch tracking does not change</string>
+</resources>

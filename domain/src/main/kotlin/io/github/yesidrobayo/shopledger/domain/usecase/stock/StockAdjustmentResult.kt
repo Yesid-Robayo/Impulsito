@@ -40,6 +40,15 @@ sealed interface StockAdjustmentResult {
     /** Dejaría la cantidad, el stock o su valor por encima de [limit]. */
     data class AboveLimit(val limit: Limit) : StockAdjustmentResult
 
+    /** El lote elegido no existe o es de otro producto. */
+    data object LotNotFound : StockAdjustmentResult
+
+    /**
+     * Del lote elegido sale más de los [available] que tiene. Solo el lote sin asignar puede
+     * quedar negativo: un lote con código nunca da más de lo que recibió.
+     */
+    data class AboveLotStock(val available: QuantityMilli) : StockAdjustmentResult
+
     /** La zona del negocio no se reconoce, y sin ella no hay fecha de negocio que guardar. */
     data object UnknownTimeZone : StockAdjustmentResult
 

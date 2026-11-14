@@ -26,6 +26,7 @@ import io.github.yesidrobayo.shopledger.domain.testing.FakeProductComponentRepos
 import io.github.yesidrobayo.shopledger.domain.testing.FakeProductRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeProductVariantRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeStockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeStockLotRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeSupplierRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeSystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeTransactionRunner
@@ -63,6 +64,7 @@ internal class CatalogFixture(zoneId: String = "UTC", currencyConfirmed: Boolean
     val systemRows = FakeSystemRowRepository(database)
     val priceHistory = FakePriceHistoryRepository(database)
     val ledger = FakeStockLedgerRepository(database)
+    val lots = FakeStockLotRepository(database)
     val alerts = FakeLowStockAlertRepository(database)
     val components = FakeProductComponentRepository(database)
     val media = FakeMediaAssetRepository(database)
@@ -146,10 +148,12 @@ internal class CatalogFixture(zoneId: String = "UTC", currencyConfirmed: Boolean
         barcode: String? = null,
         baseUnitId: Long = UNIT_ID,
         defaultSupplierId: Long? = null,
+        tracksLots: Boolean = false,
     ) {
         val stored = Product(
             id = id,
-            details = details(name, stockMode, minStock, barcode, baseUnitId, defaultSupplierId),
+            details = details(name, stockMode, minStock, barcode, baseUnitId, defaultSupplierId)
+                .copy(tracksLots = tracksLots),
             salePrice = salePrice,
             initialCost = initialCost,
             averageCost = initialCost,

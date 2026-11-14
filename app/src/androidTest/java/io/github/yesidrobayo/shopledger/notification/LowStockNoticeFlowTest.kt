@@ -122,7 +122,7 @@ class LowStockNoticeFlowTest {
         AdjustStockUseCase(
             ports.transactions, ports.products, ports.units, ports.systemRows, ports.stockLedger,
             ports.lowStockAlerts, BusinessCalendarSource(ports.settings),
-            CurrencyLock(ports.settings), app.container.clock,
+            CurrencyLock(ports.settings), app.container.clock, ports.stockLots,
         )(StockAdjustmentRequest.Count(productId, QuantityMilli.ofUnits(counted)))
     }
 

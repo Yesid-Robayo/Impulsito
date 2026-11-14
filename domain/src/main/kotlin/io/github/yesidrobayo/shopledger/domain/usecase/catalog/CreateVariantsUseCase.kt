@@ -272,7 +272,7 @@ class CreateVariantsUseCase(
             val location = systemRows.requireId(SystemRow.MAIN_LOCATION)
             val quantity = draft.initialStock
             ledger.append(
-                openingMovement(productId, location, quantity, initialCost, opening, time),
+                openingMovement(productId, location, null, quantity, initialCost, opening, time),
             )
             opening.after.onHand
         }

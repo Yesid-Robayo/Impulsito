@@ -4,6 +4,8 @@ import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductDao
 import io.github.yesidrobayo.shopledger.data.local.stock.StockBalanceDao
 import io.github.yesidrobayo.shopledger.data.local.stock.StockBalanceEntity
+import io.github.yesidrobayo.shopledger.data.local.stock.StockLotDao
+import io.github.yesidrobayo.shopledger.data.local.stock.StockLotEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementDao
 import io.github.yesidrobayo.shopledger.data.local.stock.StockMovementEntity
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -16,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -35,12 +38,14 @@ internal class RoomStockLedgerRepository(
     private val products: ProductDao,
     private val balances: StockBalanceDao,
     private val writes: RepositoryWrites,
+    private val lots: StockLotDao,
 ) : StockLedgerRepository {
     constructor(database: AppDatabase) : this(
         database.stockMovementDao(),
         database.productDao(),
         database.stockBalanceDao(),
         RepositoryWrites(database),
+        database.stockLotDao(),
     )
 
     override fun observeByProduct(productId: Long): Flow<List<StockMovementRecord>> = movements
@@ -73,6 +78,32 @@ internal class RoomStockLedgerRepository(
 
     override suspend fun isCompensated(movementId: Long): Boolean =
         movements.isCompensated(movementId)
+
+    override suspend fun onHandAt(key: StockKey): QuantityMilli = QuantityMilli(
+        balances.find(key.productId, key.locationId, StockBalanceEntity.lotKeyOf(key.lotId))
+            ?.onHandMilli ?: 0L,
+    )
+
+    /**
+     * Lee el lote sin asignar del producto y, si no existe, lo inserta en la transacción en curso.
+     * Las escrituras nunca corren a la vez, así que entre leer e insertar nadie crea otro; si una
+     * base dañada ya tuviera uno, la guarda de la tabla rechaza el segundo.
+     */
+    override suspend fun unassignedLot(productId: Long, createdAt: Instant): Long =
+        writes.inTransaction {
+            lots.findUnassigned(productId)?.id ?: lots.insert(
+                StockLotEntity(
+                    productId = productId,
+                    lotCode = null,
+                    isUnassigned = 1L,
+                    expiryDate = null,
+                    purchaseLineId = null,
+                    expiryNotifiedAt = null,
+                    createdAt = createdAt.toStoredMillis(),
+                    closedAt = null,
+                ),
+            )
+        }
 
     /**
      * Agrega la fila y mueve sus dos copias, en este orden:

@@ -38,7 +38,7 @@ internal class ProductionFixture(zoneId: String = "UTC", currencyConfirmed: Bool
     val adjust = with(catalog) {
         AdjustStockUseCase(
             transactions, products, units, systemRows, ledger, alerts, calendar, currencyLock,
-            clock,
+            clock, lots,
         )
     }
 

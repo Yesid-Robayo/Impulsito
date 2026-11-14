@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.port.LocationStockSource
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
@@ -48,6 +49,10 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
  *
  * En la misma transacción evalúa la alerta de stock bajo: la crea si el ajuste cruza el mínimo
  * hacia abajo, y la resuelve si deja el producto por encima.
+ *
+ * En un producto que se controla por lotes, la fila lleva lote. Una salida con lote elegido sale
+ * de él, y nunca más de lo que tiene. Lo demás, lo que entra, lo contado y lo que sale sin lote,
+ * va al lote sin asignar, el único que puede quedar negativo.
  */
 class AdjustStockUseCase(
     private val transactions: TransactionRunner,
@@ -59,6 +64,7 @@ class AdjustStockUseCase(
     private val calendar: BusinessCalendarSource,
     private val currencyLock: CurrencyLock,
     private val clock: Clock,
+    private val lots: StockLotRepository,
     private val locations: LocationRepository? = null,
     private val locationStock: LocationStockSource? = null,
 ) {
@@ -94,8 +100,13 @@ class AdjustStockUseCase(
             is ChangeRead.Rejected -> return reject(read.result)
         }
         if (change == QuantityMilli.ZERO) return reject(StockAdjustmentResult.NoDifference)
+        // El lote se busca y se reparte en la ubicación que se ajusta, no en la inicial.
+        val chosenLot = when (val read = chosenLotOf(request, product, location, change)) {
+            is LotRead.Chosen -> read.lotId
+            is LotRead.Rejected -> return reject(read.result)
+        }
         val draft = StockMovementDraft(
-            key = StockKey(product.id, location, lotId = null),
+            key = StockKey(product.id, location, chosenLot),
             type = StockMovementType.ADJUSTMENT,
             quantity = change,
             reversesMovementId = null,
@@ -120,8 +131,15 @@ class AdjustStockUseCase(
         if (value.totalCost != Money.ZERO && !currencyLock.lock(time.occurredAt)) {
             return reject(StockAdjustmentResult.CurrencyUnconfirmed)
         }
-        val movementId = ledger.append(movementOf(draft, request, product, value, note, time))
-        alerts.applyAfterMovement(product, listOf(draft), time)
+        // Sin lote elegido, la fila de un producto con lotes va al lote sin asignar.
+        val lotted = if (chosenLot == null && product.details.tracksLots) {
+            val unassigned = ledger.unassignedLot(product.id, time.occurredAt)
+            draft.copy(key = draft.key.copy(lotId = unassigned))
+        } else {
+            draft
+        }
+        val movementId = ledger.append(movementOf(lotted, request, product, value, note, time))
+        alerts.applyAfterMovement(product, listOf(lotted), time)
         return TxResult.Commit(StockAdjustmentResult.Adjusted(movementId, value.after.onHand))
     }
 
@@ -180,6 +198,34 @@ class AdjustStockUseCase(
         }
     }
 
+    /**
+     * El lote con código del que sale el ajuste, `null` si no eligió ninguno, o el motivo por el
+     * que no se puede: el lote no es del producto, o no tiene tanto en [location].
+     */
+    private suspend fun chosenLotOf(
+        request: StockAdjustmentRequest,
+        product: Product,
+        location: Long,
+        change: QuantityMilli,
+    ): LotRead {
+        val lotId = when (request) {
+            is StockAdjustmentRequest.Change -> request.lotId
+            is StockAdjustmentRequest.Count -> null
+        } ?: return LotRead.Chosen(null)
+        val lot = lots.findById(lotId)
+        if (!product.details.tracksLots || lot == null || lot.productId != product.id) {
+            return LotRead.Rejected(StockAdjustmentResult.LotNotFound)
+        }
+        if (lot.isUnassigned) return LotRead.Chosen(lot.id)
+        val available = ledger.onHandAt(StockKey(product.id, location, lot.id))
+        // Una salida con lote elegido siempre resta: el lote no puede quedar negativo.
+        return if (available + change < QuantityMilli.ZERO) {
+            LotRead.Rejected(StockAdjustmentResult.AboveLotStock(available))
+        } else {
+            LotRead.Chosen(lot.id)
+        }
+    }
+
     private fun movementOf(
         draft: StockMovementDraft,
         request: StockAdjustmentRequest,
@@ -211,6 +257,13 @@ class AdjustStockUseCase(
         data class Change(val quantity: QuantityMilli) : ChangeRead
 
         data class Rejected(val result: StockAdjustmentResult) : ChangeRead
+    }
+
+    /** El lote que eligió la solicitud, o el motivo por el que no vale. */
+    private sealed interface LotRead {
+        data class Chosen(val lotId: Long?) : LotRead
+
+        data class Rejected(val result: StockAdjustmentResult) : LotRead
     }
 
     companion object {

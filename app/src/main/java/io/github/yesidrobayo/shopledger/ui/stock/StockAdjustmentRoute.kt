@@ -110,7 +110,7 @@ private fun useCasesOf(dependencies: ScreenDependencies): StockAdjustmentOperati
             AdjustStockUseCase(
                 ports.transactions, ports.products, ports.units, ports.systemRows,
                 ports.stockLedger, ports.lowStockAlerts, calendar, currencyLock, clock,
-                ports.locations, ports.locationStock,
+                ports.stockLots, ports.locations, ports.locationStock,
             ),
         openingUseCase =
             RegisterOpeningBalanceUseCase(

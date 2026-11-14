@@ -36,6 +36,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.CountSessionLine
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransfer
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferLine
@@ -124,6 +125,8 @@ internal data class Tables(
     /** Las producciones y sus insumos, por id. */
     val productionBatches: Map<Long, ProductionBatch> = emptyMap(),
     val productionLines: Map<Long, ProductionBatchLine> = emptyMap(),
+    /** Los lotes de los productos que se controlan por lotes, por id. */
+    val lots: Map<Long, StockLot> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

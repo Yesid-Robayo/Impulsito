@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: lotes, vencimientos y series. -->
+    <string name="lot_tracks_label">Controlar por lotes</string>
+    <string name="lot_tracks_locked">Tiene movimientos: el control por lotes no cambia</string>
+</resources>

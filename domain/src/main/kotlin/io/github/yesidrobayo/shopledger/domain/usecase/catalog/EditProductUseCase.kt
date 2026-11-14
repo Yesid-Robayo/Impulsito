@@ -112,7 +112,8 @@ class EditProductUseCase(
             baseUnitId = unit.id,
             stockMode = form.stockMode,
             // Solo un producto con stock propio lleva lotes.
-            tracksLots = current.tracksLots && form.stockMode == ProductStockMode.TRACKED,
+            tracksLots = (form.tracksLots ?: current.tracksLots) &&
+                form.stockMode == ProductStockMode.TRACKED,
             fixedUnitCost = if (form.stockMode ==
                 ProductStockMode.UNTRACKED
             ) {

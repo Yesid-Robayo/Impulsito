@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
@@ -24,8 +25,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLockResult
 import kotlin.time.Instant
 
 /**
- * Corre [block] y devuelve como resultado propio una falla de la base, que ya revirtió todo. Así la
- * pantalla dice qué puede hacer la persona, en vez de recibir una excepción.
+ * Corre [block] y devuelve como resultado propio una falla de la base, que ya revirtió todo. Así
+ * la pantalla dice qué puede hacer la persona, en vez de recibir una excepción.
  */
 internal suspend inline fun <T> storageSafe(onFailure: (StorageFailure) -> T, block: () -> T): T =
     try {
@@ -95,19 +96,31 @@ internal suspend fun LowStockAlertRepository.applyWithoutNotice(
 }
 
 /**
+ * El lote de una fila que entra o sale sin lote elegido: ninguno en un producto sin lotes, y el
+ * lote sin asignar en uno que se controla por lotes, que se crea aquí si todavía no existe.
+ */
+internal suspend fun StockLedgerRepository.defaultLot(
+    productId: Long,
+    tracksLots: Boolean,
+    at: Instant,
+): Long? = if (tracksLots) unassignedLot(productId, at) else null
+
+/**
  * La fila del inventario inicial: entra [quantity] a [unitCost] por unidad entera en la ubicación
- * [locationId], y deja al producto como dice [entry]. No sale de ningún documento.
+ * [locationId] y el lote [lotId], y deja al producto como dice [entry]. No sale de ningún
+ * documento.
  */
 internal fun openingMovement(
     productId: Long,
     locationId: Long,
+    lotId: Long?,
     quantity: QuantityMilli,
     unitCost: Money,
     entry: OpeningBalanceEntry,
     time: RecordTime,
 ): NewStockMovement = NewStockMovement(
     movement = StockMovementDraft(
-        key = StockKey(productId, locationId, lotId = null),
+        key = StockKey(productId, locationId, lotId),
         type = StockMovementType.OPENING_BALANCE,
         quantity = quantity,
         reversesMovementId = null,

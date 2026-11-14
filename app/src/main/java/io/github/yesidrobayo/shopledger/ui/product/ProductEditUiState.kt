@@ -95,7 +95,8 @@ sealed interface ProductEditNotice {
  * stock, el costo es el costo fijo de cada unidad vendida y no hay stock que contar ni vigilar.
  * [replacementCost] vacío es sin dato: la pantalla no pone ninguna cifra en su lugar.
  * [referencePrice] va en la moneda de referencia, con sus decimales; vacío también es sin dato.
- * [photo] es la foto, elegida o guardada.
+ * [photo] es la foto, elegida o guardada. [tracksLots] controla el producto por lotes, y solo
+ * cuenta con stock propio.
  */
 @Immutable
 data class ProductEditForm(
@@ -111,18 +112,20 @@ data class ProductEditForm(
     val replacementCost: String = "",
     val referencePrice: String = "",
     val photo: EditPhoto = EditPhoto.None,
+    val tracksLots: Boolean = false,
 )
 
 /**
  * El estado del formulario de un producto.
  *
- * [loading] mientras se lee el producto que se edita. [notFound] si ya no existe, y [readFailed] si
- * una lectura falló: se dice, con `Reintentar`, y lo escrito sigue aquí. Con [costLocked],
- * el costo lo lleva el libro y se muestra [averageCost] solo para leer. Con [unitLocked] y
+ * [loading] mientras se lee el producto que se edita. [notFound] si ya no existe, y [readFailed]
+ * si una lectura falló: se dice, con `Reintentar`, y lo escrito sigue aquí. Con [costLocked], el
+ * costo lo lleva el libro y se muestra [averageCost] solo para leer. Con [unitLocked] y
  * [stockModeLocked], la unidad base y el modo de stock ya no cambian, porque el producto tiene
- * historia. [product] es el producto guardado, y [conversions] sus conversiones de compra y venta:
- * un producto nuevo no tiene, porque una conversión necesita el producto. [savedProductId] avisa a
- * la pantalla que puede cerrar porque se guardó, y [closed], que la persona cerró sin guardar.
+ * historia, y con [lotsLocked] tampoco el control por lotes. [product] es el producto guardado, y
+ * [conversions] sus conversiones de compra y venta: un producto nuevo no tiene, porque una
+ * conversión necesita el producto. [savedProductId] avisa a la pantalla que puede cerrar porque se
+ * guardó, y [closed], que la persona cerró sin guardar.
  *
  * [pricing] es lo que el negocio fija para medir márgenes y sugerir precios, o `null` mientras se
  * lee. [suggestTarget] es el margen objetivo con que la tarjeta ofrece sugerir un precio, o `null`
@@ -143,6 +146,7 @@ data class ProductEditUiState(
     val units: List<MeasureUnit> = emptyList(),
     val unitLocked: Boolean = false,
     val stockModeLocked: Boolean = false,
+    val lotsLocked: Boolean = false,
     val product: Product? = null,
     val conversions: List<ProductConversion> = emptyList(),
     val costLocked: Boolean = false,

@@ -122,7 +122,9 @@ class RegisterOpeningBalanceUseCase(
             is Checked.AboveLimit -> return reject(OpeningBalanceResult.AboveLimit(checked.limit))
         }
         val location = systemRows.requireId(SystemRow.MAIN_LOCATION)
-        val movement = openingMovement(productId, location, quantity, unitCost, entry, time)
+        // Sin lote elegido, el inventario inicial de un producto con lotes va al lote sin asignar.
+        val lot = ledger.defaultLot(productId, details.tracksLots, time.occurredAt)
+        val movement = openingMovement(productId, location, lot, quantity, unitCost, entry, time)
         val movementId = ledger.append(movement)
         val activeAlert = alerts.findActiveByProducts(listOf(productId)).firstOrNull()
         val subject = LowStockSubject(

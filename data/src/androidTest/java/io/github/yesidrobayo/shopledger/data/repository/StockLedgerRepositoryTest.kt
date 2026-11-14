@@ -470,7 +470,13 @@ internal class StockLedgerRepositoryTest : RepositoryTest() {
                     switch.after(AppendStep.PART)
                 }
             }
-        return RoomStockLedgerRepository(movements, products, balances, RepositoryWrites(database))
+        return RoomStockLedgerRepository(
+            movements,
+            products,
+            balances,
+            RepositoryWrites(database),
+            database.stockLotDao(),
+        )
     }
 
     private companion object {

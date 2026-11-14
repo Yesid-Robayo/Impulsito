@@ -23,6 +23,9 @@ sealed interface ProductEditAction {
     /** Eligió el modo de stock: con stock propio o sin stock, para un servicio. */
     data class StockModeChange(val mode: ProductStockMode) : ProductEditAction
 
+    /** Encendió o apagó el control por lotes del producto. */
+    data class TracksLotsChange(val enabled: Boolean) : ProductEditAction
+
     /** Quiere crear una unidad sin salir del formulario. */
     data object NewUnit : ProductEditAction
 

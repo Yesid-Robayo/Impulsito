@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.LocationDetails
 import io.github.yesidrobayo.shopledger.domain.model.stock.LocationKind
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentRequest
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.testing.FakeLocationRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeLocationStockSource
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture
@@ -30,7 +31,7 @@ class StockAtLocationTest {
     private val adjust = AdjustStockUseCase(
         catalog.transactions, catalog.products, catalog.units, catalog.systemRows, catalog.ledger,
         catalog.alerts, BusinessCalendarSource(catalog.settings), CurrencyLock(catalog.settings),
-        catalog.clock, locations, stock,
+        catalog.clock, catalog.lots, locations, stock,
     )
     private val inventory = ObserveInventoryUseCase(catalog.products, catalog.units, stock)
     private val subject = ObserveStockAdjustmentSubjectUseCase(
@@ -41,9 +42,15 @@ class StockAtLocationTest {
         stock,
     )
 
-    private suspend fun seeded() {
+    private suspend fun seeded(tracksLots: Boolean = false) {
         // Diez en la inicial, a 100 cada una: el inventario inicial siempre entra allí.
-        fixture.seedStock(id = 1L, units = 10_000L, unitCost = 100L, minStock = 3_000L)
+        fixture.seedStock(
+            id = 1L,
+            units = 10_000L,
+            unitCost = 100L,
+            minStock = 3_000L,
+            tracksLots = tracksLots,
+        )
         catalog.database.seed {
             it.copy(
                 locations = it.locations +
@@ -152,6 +159,56 @@ class StockAtLocationTest {
             QuantityMilli(10_000L),
             subject(1L, CatalogFixture.MAIN_LOCATION_ID).first()?.here,
         )
+    }
+
+    @Test
+    fun aTakeOutFromALotAtTheStallReadsAndLeavesTheLotAtTheStall() = runTest {
+        seeded(tracksLots = true)
+        val lot = fixture.seedLot(1L, "P-7")
+        // Cuatro del lote en la inicial y uno solo en el puesto.
+        fixture.receiveIntoLot(1L, lot, units = 4_000L, unitCost = 100L)
+        fixture.receiveIntoLot(1L, lot, units = 1_000L, unitCost = 100L, locationId = STALL)
+        val takeOut = { units: Long ->
+            StockAdjustmentRequest.Change(
+                1L,
+                StockAdjustmentReason.EXPIRED,
+                QuantityMilli(units),
+                locationId = STALL,
+                lotId = lot,
+            )
+        }
+
+        // En el puesto el lote tiene uno, aunque en la inicial tenga cuatro.
+        val tooMany = adjust(takeOut(2_000L))
+        assertEquals(StockAdjustmentResult.AboveLotStock(QuantityMilli(1_000L)), tooMany)
+        assertTrue(adjust(takeOut(1_000L)) is StockAdjustmentResult.Adjusted)
+
+        val row = fixture.movementsOf(1L).last().movement.key
+        assertEquals(StockKey(1L, STALL, lot), row)
+        assertEquals(QuantityMilli.ZERO, catalog.ledger.onHandAt(StockKey(1L, STALL, lot)))
+        assertEquals(
+            QuantityMilli(4_000L),
+            catalog.ledger.onHandAt(StockKey(1L, CatalogFixture.MAIN_LOCATION_ID, lot)),
+        )
+    }
+
+    @Test
+    fun aTakeOutWithoutLotAtTheStallGoesToTheUnassignedLotAtTheStall() = runTest {
+        seeded(tracksLots = true)
+
+        adjust(
+            StockAdjustmentRequest.Change(
+                1L,
+                StockAdjustmentReason.DAMAGED,
+                QuantityMilli(2_000L),
+                locationId = STALL,
+            ),
+        )
+
+        val unassigned = catalog.tables.lots.values.single { it.isUnassigned }.id
+        val key = StockKey(1L, STALL, unassigned)
+        assertEquals(key, fixture.movementsOf(1L).last().movement.key)
+        assertEquals(QuantityMilli(-2_000L), catalog.ledger.onHandAt(key))
     }
 
     private companion object {

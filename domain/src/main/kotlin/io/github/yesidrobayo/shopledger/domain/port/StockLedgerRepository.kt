@@ -1,7 +1,10 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -43,10 +46,21 @@ interface StockLedgerRepository {
     /**
      * Agrega la fila al libro y devuelve su id, que fija su lugar en el orden.
      *
-     * En la misma transacción deja al producto con el saldo, el costo promedio y el valor del stock
-     * que la fila dice tener después, y suma su cantidad al saldo de su parte del stock: producto,
-     * ubicación y lote. Así el saldo de cada producto sigue siendo la suma de sus filas. El caso de
-     * uso calcula esos valores antes, con el producto que leyó dentro de la misma transacción.
+     * En la misma transacción deja al producto con el saldo, el costo promedio y el valor del
+     * stock que la fila dice tener después, y suma su cantidad al saldo de su parte del stock:
+     * producto, ubicación y lote. Así el saldo de cada producto sigue siendo la suma de sus filas.
+     * El caso de uso calcula esos valores antes, con el producto que leyó dentro de la misma
+     * transacción.
      */
     suspend fun append(movement: NewStockMovement): Long
+
+    /** Cuánto hay en una parte del stock: producto, ubicación y lote. Cero si nunca se movió. */
+    suspend fun onHandAt(key: StockKey): QuantityMilli
+
+    /**
+     * El id del lote sin asignar de [productId], que recibe las filas sin lote de un producto que
+     * se controla por lotes. Si todavía no existe, lo crea con [createdAt], en la transacción en
+     * curso: hay uno por producto como máximo. Solo se llama dentro de [TransactionRunner.write].
+     */
+    suspend fun unassignedLot(productId: Long, createdAt: Instant): Long
 }

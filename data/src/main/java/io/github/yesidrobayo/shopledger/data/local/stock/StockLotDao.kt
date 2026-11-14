@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.data.local.stock
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
@@ -44,6 +45,20 @@ internal interface StockLotDao {
     )
     suspend fun isInUse(id: Long): Boolean
 
+    /**
+     * Cada lote del producto con lo que tiene en la ubicación, también el sin asignar. Un lote que
+     * nunca se movió en esa ubicación sale con cero: su parte no existe todavía.
+     */
+    @Query(
+        "SELECT l.id, l.lot_code, l.expiry_date, l.is_unassigned, " +
+            "COALESCE(b.on_hand_milli, 0) AS on_hand_milli " +
+            "FROM stock_lots l " +
+            "LEFT JOIN stock_balances b ON b.product_id = l.product_id " +
+            "AND b.location_id = :locationId AND b.lot_key = l.id " +
+            "WHERE l.product_id = :productId ORDER BY l.id",
+    )
+    suspend fun findStock(productId: Long, locationId: Long): List<LotStockRow>
+
     /** Devuelve el id nuevo. Falla si el producto ya tiene ese código o ya tiene lote sin asignar. */
     @Insert
     suspend fun insert(lot: StockLotEntity): Long
@@ -69,3 +84,12 @@ internal interface StockLotDao {
     @Query("DELETE FROM stock_lots WHERE id = :id")
     suspend fun delete(id: Long): Int
 }
+
+/** Un lote con su saldo en una ubicación, tal como lo lee [StockLotDao.findStock]. */
+internal data class LotStockRow(
+    @ColumnInfo(name = "id") val id: Long,
+    @ColumnInfo(name = "lot_code") val lotCode: String?,
+    @ColumnInfo(name = "expiry_date") val expiryDate: String?,
+    @ColumnInfo(name = "is_unassigned") val isUnassigned: Long,
+    @ColumnInfo(name = "on_hand_milli") val onHandMilli: Long,
+)

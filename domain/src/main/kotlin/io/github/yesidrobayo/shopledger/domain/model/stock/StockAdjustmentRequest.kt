@@ -32,6 +32,10 @@ sealed interface StockAdjustmentRequest {
     /**
      * Sale o entra [quantity] milésimas, siempre positivas, por [reason]. [increase] dice el
      * sentido: solo un conteo y otro motivo admiten una entrada.
+     *
+     * [lotId] es el lote del que sale, en un producto que se controla por lotes. Solo una salida
+     * lo lleva: lo que entra por un ajuste no trae lote y va al lote sin asignar. Sin él, la
+     * salida también sale del lote sin asignar.
      */
     data class Change(
         override val productId: Long,
@@ -40,5 +44,10 @@ sealed interface StockAdjustmentRequest {
         val increase: Boolean = false,
         override val note: String? = null,
         override val locationId: Long? = null,
-    ) : StockAdjustmentRequest
+        val lotId: Long? = null,
+    ) : StockAdjustmentRequest {
+        init {
+            require(!increase || lotId == null) { "Una entrada por ajuste no elige lote" }
+        }
+    }
 }

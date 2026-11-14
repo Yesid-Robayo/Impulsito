@@ -44,6 +44,7 @@ internal class StockAdjustmentOnDatabaseTest : RepositoryTest() {
         adjust = AdjustStockUseCase(
             runner, ports.products, ports.units, ports.systemRows, ports.stockLedger,
             ports.lowStockAlerts, calendar, CurrencyLock(ports.settings), FIXED_CLOCK,
+            ports.stockLots,
         )
         void = VoidStockAdjustmentUseCase(
             runner,

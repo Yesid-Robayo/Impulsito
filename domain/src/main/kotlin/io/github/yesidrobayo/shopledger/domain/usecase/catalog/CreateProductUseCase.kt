@@ -135,7 +135,7 @@ class CreateProductUseCase(
             defaultSupplierId = form.defaultSupplierId,
             baseUnitId = unit.id,
             stockMode = form.stockMode,
-            tracksLots = false,
+            tracksLots = form.tracksLots == true && tracked,
             fixedUnitCost = if (form.stockMode ==
                 ProductStockMode.UNTRACKED
             ) {
@@ -180,8 +180,9 @@ class CreateProductUseCase(
                 businessDate = time.businessDate,
             ),
         )
-        val onHand = opening?.let { appendOpening(productId, initialStock, initialCost, it, time) }
-            ?: QuantityMilli.ZERO
+        val onHand = opening?.let {
+            appendOpening(productId, details.tracksLots, initialStock, initialCost, it, time)
+        } ?: QuantityMilli.ZERO
         val transition = LowStockEvaluator.evaluateWithoutMovement(
             stockMode = form.stockMode,
             isArchived = false,
@@ -195,13 +196,16 @@ class CreateProductUseCase(
 
     private suspend fun appendOpening(
         productId: Long,
+        tracksLots: Boolean,
         quantity: QuantityMilli,
         unitCost: Money,
         entry: OpeningBalanceEntry,
         time: RecordTime,
     ): QuantityMilli {
         val location = systemRows.requireId(SystemRow.MAIN_LOCATION)
-        ledger.append(openingMovement(productId, location, quantity, unitCost, entry, time))
+        // Sin lote elegido, el inventario inicial de un producto con lotes va al lote sin asignar.
+        val lot = ledger.defaultLot(productId, tracksLots, time.occurredAt)
+        ledger.append(openingMovement(productId, location, lot, quantity, unitCost, entry, time))
         return entry.after.onHand
     }
 

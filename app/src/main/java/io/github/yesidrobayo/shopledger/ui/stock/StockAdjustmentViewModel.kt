@@ -362,10 +362,13 @@ class StockAdjustmentViewModel(
         is StockAdjustmentResult.NoteTooLong ->
             fieldError(AdjustmentField.NOTE, AdjustmentProblem.TooLong(result.maxLength))
 
-        // La pantalla nunca pide una entrada con un motivo que solo resta; si pasara, no guarda.
+        // La pantalla nunca pide una entrada con un motivo que solo resta, ni elige lote todavía;
+        // si pasara, no guarda.
         // Una ubicación archivada mientras se ajustaba: el error deja elegir otra y reintentar.
         StockAdjustmentResult.LocationUnavailable,
         StockAdjustmentResult.IncreaseNotAllowed,
+        StockAdjustmentResult.LotNotFound,
+        is StockAdjustmentResult.AboveLotStock,
         StockAdjustmentResult.UnknownTimeZone,
         StockAdjustmentResult.CurrencyUnconfirmed,
         is StockAdjustmentResult.StorageFailed,

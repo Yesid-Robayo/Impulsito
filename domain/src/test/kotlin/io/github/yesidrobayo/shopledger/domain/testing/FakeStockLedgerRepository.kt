@@ -2,8 +2,11 @@ package io.github.yesidrobayo.shopledger.domain.testing
 
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -72,10 +75,34 @@ internal class FakeStockLedgerRepository(private val database: InMemoryDatabase)
         return id
     }
 
+    override suspend fun onHandAt(key: StockKey): QuantityMilli = database.read().movements.values
+        .filter { it.movement.key == key }
+        .fold(QuantityMilli.ZERO) { sum, row -> sum + row.movement.quantity }
+
+    override suspend fun unassignedLot(productId: Long, createdAt: Instant): Long {
+        database.read().lots.values.firstOrNull { it.productId == productId && it.isUnassigned }
+            ?.let { return it.id }
+        val id = database.nextId(LOTS)
+        val lot = StockLot(
+            id = id,
+            productId = productId,
+            code = null,
+            isUnassigned = true,
+            expiryDate = null,
+            purchaseLineId = null,
+            expiryNotifiedAt = null,
+            createdAt = createdAt,
+            closedAt = null,
+        )
+        database.write { it.copy(lots = it.lots + (id to lot)) }
+        return id
+    }
+
     private fun ofProduct(tables: Tables, productId: Long): List<StockMovementRecord> =
         tables.movements.values.filter { it.movement.key.productId == productId }.sortedBy { it.id }
 
     private companion object {
         const val TABLE = "stock_movements"
+        const val LOTS = "stock_lots"
     }
 }
