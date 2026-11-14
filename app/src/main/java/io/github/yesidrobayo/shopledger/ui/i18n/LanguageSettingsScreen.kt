@@ -1,6 +1,5 @@
 package io.github.yesidrobayo.shopledger.ui.i18n
 
-import android.content.res.Resources
 import android.icu.text.DisplayContext
 import android.icu.text.LocaleDisplayNames
 import android.icu.util.ULocale
@@ -35,6 +34,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
 import io.github.yesidrobayo.shopledger.localization.InstalledLanguages
+import io.github.yesidrobayo.shopledger.localization.SystemLocales
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
@@ -203,17 +203,22 @@ fun LanguageSettingsRoute(onBack: () -> Unit, onOpenFormat: (() -> Unit)?) {
         )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val uiTag = stringResource(R.string.resources_language)
-    val facts = remember(uiState.installed, uiTag) { languageFacts(uiState.installed, uiTag) }
+    val facts = remember(uiState.installed, uiTag) {
+        languageFacts(uiState.installed, uiTag, SystemLocales.first(context))
+    }
     LanguageSettingsScreen(uiState, facts, viewModel::onAction, onBack, onOpenFormat)
 }
 
 /**
- * Los nombres de los idiomas: cada uno en su propio idioma, y el del teléfono en el de la interfaz
- * [uiTag]. El idioma del teléfono sale de la configuración del sistema, nunca del idioma por
- * defecto del proceso, que cambia con el elegido en la app.
+ * Los nombres de los idiomas: cada uno en su propio idioma, y el del teléfono, [phone], en el
+ * de la interfaz [uiTag]. [phone] sale de [SystemLocales], nunca del idioma por defecto del
+ * proceso ni de `Resources.getSystem()`, que desde Android 13 cambian con el de la app.
  */
-internal fun languageFacts(installed: List<String>, uiTag: String): LanguageScreenFacts {
-    val phone = Resources.getSystem().configuration.locales.get(0) ?: Locale.ROOT
+internal fun languageFacts(
+    installed: List<String>,
+    uiTag: String,
+    phone: Locale,
+): LanguageScreenFacts {
     val ui = ULocale.forLanguageTag(uiTag)
     val phoneName =
         LocaleDisplayNames

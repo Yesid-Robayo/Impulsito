@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.ShopLedgerApp
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import io.github.yesidrobayo.shopledger.localization.InstalledLanguages
+import io.github.yesidrobayo.shopledger.localization.SystemLocales
 import io.github.yesidrobayo.shopledger.lock.DeviceCredentialCheck
 import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
 import io.github.yesidrobayo.shopledger.ui.backup.BackupAction
@@ -202,7 +203,9 @@ private fun RescueLanguageSheet(onDismiss: () -> Unit) {
         )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val uiTag = stringResource(R.string.resources_language)
-    val facts = remember(uiState.installed, uiTag) { languageFacts(uiState.installed, uiTag) }
+    val facts = remember(uiState.installed, uiTag) {
+        languageFacts(uiState.installed, uiTag, SystemLocales.first(context))
+    }
     AppBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.language_title)) {
         LanguagePicker(
             options = facts.options,

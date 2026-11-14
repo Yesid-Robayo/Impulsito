@@ -176,6 +176,22 @@ class LanguageDeviceTest {
     }
 
     @Test
+    fun fromAndroid13ALanguageForTheAppLeavesThePhoneLanguageAlone() {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        clearAndroidLanguage()
+        val phone = SystemLocales.first(app)
+        val other = if (phone.language == "pt") "es" else "pt"
+
+        localeManager().applicationLocales = LocaleList.forLanguageTags(other)
+        awaitSettled(chosen(other))
+
+        // El proceso ya está en el idioma de la app, y el del teléfono sigue siendo el mismo: la
+        // opción de seguir al teléfono no puede leer el idioma de la app.
+        assertEquals(other, app.resources.configuration.locales[0].language)
+        assertEquals(phone, SystemLocales.first(app))
+    }
+
+    @Test
     fun fromAndroid13ChoosingGoesThroughAndroid() {
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         val language = languageInTestFolder()

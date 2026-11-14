@@ -34,6 +34,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.onboarding.ResumeOnboardi
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceUseCase
 import io.github.yesidrobayo.shopledger.localization.InstalledLanguages
+import io.github.yesidrobayo.shopledger.localization.SystemLocales
 import io.github.yesidrobayo.shopledger.lock.AuthPurpose
 import io.github.yesidrobayo.shopledger.lock.LocalDeviceAuthenticator
 import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
@@ -248,7 +249,9 @@ private fun LanguageStep(onContinue: () -> Unit) {
         )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val uiTag = stringResource(R.string.resources_language)
-    val facts = remember(uiState.installed, uiTag) { languageFacts(uiState.installed, uiTag) }
+    val facts = remember(uiState.installed, uiTag) {
+        languageFacts(uiState.installed, uiTag, SystemLocales.first(context))
+    }
     OnboardingStep(
         step = 1,
         totalSteps = ONBOARDING_STEPS,

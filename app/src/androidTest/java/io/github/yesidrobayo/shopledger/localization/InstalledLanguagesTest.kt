@@ -88,7 +88,7 @@ class InstalledLanguagesTest {
     @Test
     fun theChosenLanguageIsTheSelectedOption() {
         val installed = InstalledLanguages.tags(context.resources)
-        val facts = languageFacts(installed, "en")
+        val facts = languageFacts(installed, "en", SystemLocales.first(context))
         val spanish = requireNotNull(facts.options.firstOrNull { it.tag == "es" }).name
         val portuguese = requireNotNull(facts.options.firstOrNull { it.tag == "pt" }).name
         compose.setContent {
@@ -105,5 +105,37 @@ class InstalledLanguagesTest {
 
         compose.onNodeWithText(spanish).assertIsSelected()
         compose.onNodeWithText(portuguese).assertIsNotSelected()
+    }
+
+    @Test
+    fun followingThePhoneShowsThePhoneLanguageNotTheAppOne() {
+        // La app en español en un teléfono en francés: la opción del teléfono dice francés.
+        val installed = InstalledLanguages.tags(context.resources)
+        val facts = languageFacts(installed, "es", Locale.FRENCH)
+        compose.setContent {
+            PreviewTheme {
+                LanguageSettingsScreen(
+                    uiState = LanguageSettingsUiState(selected = "es", installed = installed),
+                    facts = facts,
+                    onAction = {},
+                    onBack = {},
+                    onOpenFormat = null,
+                )
+            }
+        }
+
+        assertEquals("francés", facts.phoneLanguage)
+        assertFalse(facts.phoneLanguageInstalled)
+        compose.onNodeWithText(context.getString(R.string.language_current, "francés"))
+            .assertExists()
+    }
+
+    @Test
+    fun aPhoneInAnInstalledLanguageIsMarkedAsInstalled() {
+        val installed = InstalledLanguages.tags(context.resources)
+
+        val facts = languageFacts(installed, "es", Locale.forLanguageTag("pt-BR"))
+
+        assertTrue(facts.phoneLanguageInstalled)
     }
 }

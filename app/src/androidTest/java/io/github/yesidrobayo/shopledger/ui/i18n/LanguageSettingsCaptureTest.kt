@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.localization.InstalledLanguages
+import io.github.yesidrobayo.shopledger.localization.SystemLocales
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import java.io.File
 import org.junit.Assume.assumeTrue
@@ -42,7 +43,8 @@ class LanguageSettingsCaptureTest {
         val dir = captureDir
         assumeTrue("Sin captureDir no hay capturas", dir != null)
         val installed = InstalledLanguages.tags(instrumentation.targetContext.resources)
-        val facts = languageFacts(installed, "en")
+        val phone = SystemLocales.first(instrumentation.targetContext)
+        val facts = languageFacts(installed, "en", phone)
         val states =
             mapOf(
                 "system" to LanguageSettingsUiState(selected = null, installed = installed),
