@@ -366,29 +366,30 @@ class NewTransferViewModel(
         text: String,
         allowsFraction: Boolean,
         showMissing: Boolean,
-    ): LineRead =
-        when (
-            val read = NumberInputParser.quantity(text, quantitySymbols, Limit.LINE_QUANTITY_MILLI)
-        ) {
-            NumberInput.Blank -> if (showMissing) {
-                LineRead.Invalid(TransferLineError.NOT_A_NUMBER)
-            } else {
-                LineRead.Empty
-            }
-
-            is NumberInput.Value -> when {
-                read.value.milli <= 0L -> LineRead.Invalid(TransferLineError.ZERO)
-                !allowsFraction && read.value.milli % MILLI_PER_UNIT != 0L ->
-                    LineRead.Invalid(TransferLineError.DECIMALS)
-                else -> LineRead.Valid(read.value)
-            }
-
-            NumberInput.Malformed -> LineRead.Invalid(TransferLineError.NOT_A_NUMBER)
-
-            is NumberInput.TooManyDecimals -> LineRead.Invalid(TransferLineError.DECIMALS)
-
-            is NumberInput.TooLarge -> LineRead.Invalid(TransferLineError.TOO_HIGH)
+    ): LineRead = when (
+        val read = NumberInputParser.quantity(text, quantitySymbols, Limit.LINE_QUANTITY_MILLI)
+    ) {
+        NumberInput.Blank -> if (showMissing) {
+            LineRead.Invalid(TransferLineError.NOT_A_NUMBER)
+        } else {
+            LineRead.Empty
         }
+
+        is NumberInput.Value -> when {
+            read.value.milli <= 0L -> LineRead.Invalid(TransferLineError.ZERO)
+
+            !allowsFraction && read.value.milli % MILLI_PER_UNIT != 0L ->
+                LineRead.Invalid(TransferLineError.DECIMALS)
+
+            else -> LineRead.Valid(read.value)
+        }
+
+        NumberInput.Malformed -> LineRead.Invalid(TransferLineError.NOT_A_NUMBER)
+
+        is NumberInput.TooManyDecimals -> LineRead.Invalid(TransferLineError.DECIMALS)
+
+        is NumberInput.TooLarge -> LineRead.Invalid(TransferLineError.TOO_HIGH)
+    }
 
     private fun changeDraft(change: (TransferDraft) -> TransferDraft) {
         val next = change(draft.value ?: TransferDraft())
@@ -402,7 +403,9 @@ class NewTransferViewModel(
 
         fun rejectionError(reason: StockTransferLineRejection): TransferLineError = when (reason) {
             StockTransferLineRejection.INVALID_QUANTITY -> TransferLineError.NOT_A_NUMBER
+
             StockTransferLineRejection.QUANTITY_TOO_LARGE -> TransferLineError.TOO_HIGH
+
             StockTransferLineRejection.PRODUCT_NOT_FOUND,
             StockTransferLineRejection.PRODUCT_ARCHIVED,
             StockTransferLineRejection.NOT_TRACKED,

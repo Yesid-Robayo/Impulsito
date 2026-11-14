@@ -198,7 +198,9 @@ class LocationsViewModel(private val operations: LocationsOperations) : ViewMode
             combine(location, operations.stockAt(id), query) { found, stock, text ->
                 when (found) {
                     LocationLookup.Waiting -> LocationDetailContent.Loading
+
                     LocationLookup.Missing -> LocationDetailContent.Missing
+
                     is LocationLookup.Found -> {
                         val stocked = stock.tracked.filter { it.onHand != QuantityMilli.ZERO }
                         LocationDetailContent.Ready(
@@ -397,6 +399,7 @@ class LocationsViewModel(private val operations: LocationsOperations) : ViewMode
 
         fun transfersOf(read: StockTransfersRead): TransfersContent = when (read) {
             StockTransfersRead.UnknownZone -> TransfersContent.UnknownZone
+
             is StockTransfersRead.Ready -> TransfersContent.Ready(
                 days = read.transfers
                     .groupBy { it.transfer.content.businessDate }
@@ -408,7 +411,9 @@ class LocationsViewModel(private val operations: LocationsOperations) : ViewMode
 
         fun locationOf(content: LocationsContent, id: Long): LocationLookup = when (content) {
             LocationsContent.Loading -> LocationLookup.Waiting
+
             LocationsContent.ReadError -> LocationLookup.Missing
+
             is LocationsContent.Ready -> {
                 val overview = content.overview
                 val found = overview.active.firstOrNull { it.location.id == id }?.location

@@ -98,6 +98,7 @@ internal fun LocationEditorSheet(editor: LocationEditor, onAction: (LocationsAct
 @Composable
 private fun editorErrorText(error: LocationEditorError): String = when (error) {
     LocationEditorError.NAME_EMPTY -> stringResource(R.string.location_error_name_empty)
+
     LocationEditorError.NAME_TOO_LONG -> pluralStringResource(
         R.plurals.error_text_long,
         LocationRules.NAME_MAX,
