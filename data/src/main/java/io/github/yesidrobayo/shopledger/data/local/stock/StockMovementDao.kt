@@ -47,6 +47,12 @@ internal interface StockMovementDao {
     )
     suspend fun findByPurchase(purchaseId: Long): List<StockMovementEntity>
 
+    /** Las filas de una producción, con sus compensatorios: la llevan todas en su columna. */
+    @Query(
+        "SELECT * FROM stock_movements WHERE production_batch_id = :productionBatchId ORDER BY id",
+    )
+    suspend fun findByProductionBatch(productionBatchId: Long): List<StockMovementEntity>
+
     /** Las filas que salieron de las líneas de una devolución a proveedor, con sus compensatorios. */
     @Query(
         "SELECT * FROM stock_movements WHERE purchase_return_line_id IN " +

@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.OpeningBalanceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.AdjustStockUseCase
 import org.junit.Assert.assertTrue
 
 /**
@@ -27,6 +28,17 @@ internal class ProductionFixture(zoneId: String = "UTC", currencyConfirmed: Bool
         RegisterProductionUseCase(
             transactions, products, units, components, batches, systemRows, ledger, alerts,
             calendar, currencyLock, clock,
+        )
+    }
+
+    val void = with(catalog) {
+        VoidProductionUseCase(transactions, products, batches, ledger, alerts, calendar, clock)
+    }
+
+    val adjust = with(catalog) {
+        AdjustStockUseCase(
+            transactions, products, units, systemRows, ledger, alerts, calendar, currencyLock,
+            clock,
         )
     }
 

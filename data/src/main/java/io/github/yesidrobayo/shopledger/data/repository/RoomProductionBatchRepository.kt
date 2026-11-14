@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.data.local.stock.ProductionBatchLineEnti
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.production.NewProductionBatch
 import io.github.yesidrobayo.shopledger.domain.model.production.NewProductionBatchLine
 import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatch
@@ -58,6 +59,23 @@ internal class RoomProductionBatchRepository(database: AppDatabase) : Production
                 ),
             )
         }
+
+    /**
+     * Una producción que no existe o ya estaba anulada no cambia, y la transacción se deshace como
+     * regla rota: anularla dos veces duplicaría sus compensatorios.
+     */
+    override suspend fun markVoided(id: Long, voiding: Voiding) {
+        writes.inTransaction {
+            requireOneRow(
+                batches.markVoided(
+                    id,
+                    voiding.voidedAt.toStoredMillis(),
+                    voiding.reason.name,
+                    voiding.note,
+                ),
+            )
+        }
+    }
 
     private fun toBatch(row: ProductionBatchEntity): ProductionBatch = ProductionBatch(
         id = row.id,

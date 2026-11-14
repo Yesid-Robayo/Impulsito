@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.data.local.texts
 import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
 import io.github.yesidrobayo.shopledger.domain.rule.production.ProductionInput
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.OpeningBalanceResult
@@ -20,6 +21,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveRecipeUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.VoidProductionResult
+import io.github.yesidrobayo.shopledger.domain.usecase.production.VoidProductionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +41,7 @@ internal class ProductionOnDatabaseTest : CatalogDatabaseTest() {
     private lateinit var ports: DataPorts
     private lateinit var opening: RegisterOpeningBalanceUseCase
     private lateinit var register: RegisterProductionUseCase
+    private lateinit var void: VoidProductionUseCase
 
     @Before
     fun connectUseCases() {
@@ -52,6 +56,15 @@ internal class ProductionOnDatabaseTest : CatalogDatabaseTest() {
             ports.transactions, ports.products, ports.units, ports.productComponents,
             ports.productionBatches, ports.systemRows, ports.stockLedger, ports.lowStockAlerts,
             calendar, currencyLock, FIXED_CLOCK,
+        )
+        void = VoidProductionUseCase(
+            ports.transactions,
+            ports.products,
+            ports.productionBatches,
+            ports.stockLedger,
+            ports.lowStockAlerts,
+            calendar,
+            FIXED_CLOCK,
         )
     }
 
@@ -109,6 +122,64 @@ internal class ProductionOnDatabaseTest : CatalogDatabaseTest() {
         )
         assertEquals(
             listOf("${candles.wax}|3000", "${candles.wick}|90000", "${candles.candle}|10000"),
+            texts(
+                "SELECT b.product_id || '|' || b.on_hand_milli FROM stock_balances b " +
+                    "JOIN locations l ON l.id = b.location_id " +
+                    "WHERE l.system_key = 'MAIN' ORDER BY b.product_id",
+            ),
+        )
+        assertInvariantsHold()
+    }
+
+    @Test
+    fun voidingCompensatesEachRowOnceAndReproducesTheCost() = runBlocking {
+        val candles = arrangeCandles()
+        val result = register(
+            ProductionRequest(
+                candles.candle,
+                QuantityMilli(10_000),
+                listOf(
+                    ProductionInput(candles.wax, QuantityMilli(2_000)),
+                    ProductionInput(candles.wick, QuantityMilli(10_000)),
+                ),
+                note = null,
+            ),
+        )
+        val batchId = (result as RegisterProductionResult.Registered).batchId
+
+        assertEquals(VoidProductionResult.Voided, void(batchId, VoidReason.ENTRY_ERROR, null))
+        assertEquals(
+            VoidProductionResult.AlreadyVoided,
+            void(batchId, VoidReason.ENTRY_ERROR, null),
+        )
+
+        assertEquals(
+            listOf("VOIDED|ENTRY_ERROR"),
+            texts("SELECT status || '|' || void_reason FROM production_batches"),
+        )
+        assertEquals(
+            listOf(
+                "PRODUCTION_VOID|2000|16000",
+                "PRODUCTION_VOID|10000|1500",
+                "PRODUCTION_VOID|-10000|-17500",
+            ),
+            texts(
+                "SELECT type || '|' || quantity_milli || '|' || total_cost FROM stock_movements " +
+                    "WHERE production_batch_id = $batchId AND reverses_movement_id IS NOT NULL " +
+                    "ORDER BY id",
+            ),
+        )
+        assertEquals(
+            listOf("5000|8000|40000", "100000|150|15000", "0|1200|0"),
+            listOf(candles.wax, candles.wick, candles.candle).map { id ->
+                texts(
+                    "SELECT on_hand_milli || '|' || average_cost || '|' || stock_value " +
+                        "FROM products WHERE id = $id",
+                ).single()
+            },
+        )
+        assertEquals(
+            listOf("${candles.wax}|5000", "${candles.wick}|100000", "${candles.candle}|0"),
             texts(
                 "SELECT b.product_id || '|' || b.on_hand_milli FROM stock_balances b " +
                     "JOIN locations l ON l.id = b.location_id " +

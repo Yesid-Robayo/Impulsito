@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.testing
 
+import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.production.NewProductionBatch
 import io.github.yesidrobayo.shopledger.domain.model.production.NewProductionBatchLine
 import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatch
@@ -35,5 +36,12 @@ internal class FakeProductionBatchRepository(private val database: InMemoryDatab
         val row = ProductionBatchLine(id, productionBatchId, line)
         database.write { it.copy(productionLines = it.productionLines + (id to row)) }
         return id
+    }
+
+    override suspend fun markVoided(id: Long, voiding: Voiding) {
+        val batch = checkNotNull(database.read().productionBatches[id]) { "La fila no existe" }
+        check(batch.voiding == null) { "guard:production_batches_void_only" }
+        val voided = batch.copy(voiding = voiding)
+        database.write { it.copy(productionBatches = it.productionBatches + (id to voided)) }
     }
 }

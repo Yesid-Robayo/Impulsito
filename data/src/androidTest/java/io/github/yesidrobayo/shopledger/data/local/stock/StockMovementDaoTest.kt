@@ -415,6 +415,8 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
                 "findByPurchase",
                 "findByPurchaseReturn",
                 "findBySaleReturn",
+                // Las filas de una producción, para anularla.
+                "findByProductionBatch",
                 "isCompensated",
                 "insert",
                 // Solo lee: de qué venta o compra salió cada fila.

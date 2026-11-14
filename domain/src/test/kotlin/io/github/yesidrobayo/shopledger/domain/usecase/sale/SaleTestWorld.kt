@@ -678,6 +678,11 @@ internal class SaleWorld(
             return movementsOf(tables) { it.source.saleReturnLineId in lineIds }
         }
 
+        override suspend fun findByProductionBatch(
+            productionBatchId: Long,
+        ): List<StockMovementRecord> =
+            movementsOf(read()) { it.source.productionBatchId == productionBatchId }
+
         override suspend fun isCompensated(movementId: Long): Boolean =
             read().movements.values.any { it.movement.reversesMovementId == movementId }
 

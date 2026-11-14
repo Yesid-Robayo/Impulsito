@@ -66,6 +66,11 @@ internal class RoomStockLedgerRepository(
     override suspend fun findBySaleReturn(saleReturnId: Long): List<StockMovementRecord> =
         movements.findBySaleReturn(saleReturnId).map(::toRecord)
 
+    override suspend fun findByProductionBatch(
+        productionBatchId: Long,
+    ): List<StockMovementRecord> =
+        movements.findByProductionBatch(productionBatchId).map(::toRecord)
+
     override suspend fun isCompensated(movementId: Long): Boolean =
         movements.isCompensated(movementId)
 

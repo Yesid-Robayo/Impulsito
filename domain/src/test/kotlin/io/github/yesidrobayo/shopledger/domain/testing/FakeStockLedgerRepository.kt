@@ -40,6 +40,12 @@ internal class FakeStockLedgerRepository(private val database: InMemoryDatabase)
     override suspend fun findBySaleReturn(saleReturnId: Long): List<StockMovementRecord> =
         error("Este caso de uso falso no devuelve ventas")
 
+    override suspend fun findByProductionBatch(
+        productionBatchId: Long,
+    ): List<StockMovementRecord> = database.read().movements.values
+        .filter { it.source.productionBatchId == productionBatchId }
+        .sortedBy { it.id }
+
     override suspend fun isCompensated(movementId: Long): Boolean =
         database.read().movements.values.any { it.movement.reversesMovementId == movementId }
 
