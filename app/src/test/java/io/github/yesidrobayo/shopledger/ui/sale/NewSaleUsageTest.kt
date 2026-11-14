@@ -131,17 +131,16 @@ class NewSaleUsageTest {
         get() = (state.content as SaleContent.Products).tiles.map { it.productId }
 
     @Test
-    fun `an input is neither offered nor found, but what is also sold is`() =
-        runTest(dispatcher) {
-            val model = viewModel()
+    fun `an input is neither offered nor found, but what is also sold is`() = runTest(dispatcher) {
+        val model = viewModel()
 
-            assertEquals(listOf(oil.id, sugar.id), model.tileIds)
+        assertEquals(listOf(oil.id, sugar.id), model.tileIds)
 
-            model.act(this, NewSaleAction.QueryChange("Harina"))
-            assertTrue(model.state.content is SaleContent.NoResults)
-            model.act(this, NewSaleAction.QueryChange("Azúcar"))
-            assertEquals(listOf(sugar.id), model.tileIds)
-        }
+        model.act(this, NewSaleAction.QueryChange("Harina"))
+        assertTrue(model.state.content is SaleContent.NoResults)
+        model.act(this, NewSaleAction.QueryChange("Azúcar"))
+        assertEquals(listOf(sugar.id), model.tileIds)
+    }
 
     @Test
     fun `the code of an input adds nothing, typed or scanned`() = runTest(dispatcher) {
@@ -175,21 +174,20 @@ class NewSaleUsageTest {
         }
 
     @Test
-    fun `a correction with only archived lines keeps the archived notice`() =
-        runTest(dispatcher) {
-            val correction = SaleCorrection(
-                lines = listOf(oilLine()),
-                paymentMethodId = 10L,
-                date = BusinessDate(LocalDate(2026, 11, 2)),
-                note = null,
-                leftOut = 2,
-            )
+    fun `a correction with only archived lines keeps the archived notice`() = runTest(dispatcher) {
+        val correction = SaleCorrection(
+            lines = listOf(oilLine()),
+            paymentMethodId = 10L,
+            date = BusinessDate(LocalDate(2026, 11, 2)),
+            note = null,
+            leftOut = 2,
+        )
 
-            val model = viewModel(correctsSale = 5L, correction = correction)
+        val model = viewModel(correctsSale = 5L, correction = correction)
 
-            assertEquals(SaleNotice.LINES_LEFT_OUT, model.state.notice)
-            assertEquals(2, model.state.leftOut)
-        }
+        assertEquals(SaleNotice.LINES_LEFT_OUT, model.state.notice)
+        assertEquals(2, model.state.leftOut)
+    }
 
     private companion object {
         const val CODE = "2900000111116"
