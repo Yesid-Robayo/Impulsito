@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.DataGraph
 import io.github.yesidrobayo.shopledger.data.UserTextPort
 import io.github.yesidrobayo.shopledger.domain.model.backup.AppOpenUpload
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
@@ -28,6 +29,8 @@ import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeFile
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
+import io.github.yesidrobayo.shopledger.ui.media.PhotoCache
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -175,4 +178,12 @@ class AppContainer(application: Application) {
      * que arrancó el teléfono: cambiar la hora no lo engaña.
      */
     val appLock: AppLock = AppLock { android.os.SystemClock.elapsedRealtime() }
+
+    /**
+     * Las miniaturas de las fotos ya decodificadas, una caché para todas las pantallas: así volver a
+     * una lista no lee otra vez los mismos archivos.
+     */
+    val photoCache: PhotoCache by lazy {
+        PhotoCache({ File(application.filesDir, StoredImage.FOLDER) }, dispatchers.io)
+    }
 }

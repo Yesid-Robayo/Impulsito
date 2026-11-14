@@ -54,6 +54,7 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TonalFabDefaults
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
+import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -360,6 +361,7 @@ private fun ProductListRows(
                 ProductRow(
                     data = rowDataOf(item),
                     onClick = { onAction(ProductListAction.OpenProduct(item.id)) },
+                    photo = item.photoMediaId?.let { id -> { ProductPhoto(id) } },
                 )
             }
         }

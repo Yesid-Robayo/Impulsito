@@ -4,6 +4,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MediaKind
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import kotlin.time.Instant
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /** La fila de una imagen en [InMemoryDatabase]. */
 internal data class MediaAssetRow(
@@ -44,6 +46,9 @@ internal class FakeMediaAssetRepository(private val database: InMemoryDatabase) 
             it.copy(mediaAssets = it.mediaAssets + (id to row.copy(orphanedAt = orphanedAt)))
         }
     }
+
+    override fun observeImages(): Flow<Map<Long, StoredImage>> =
+        database.tables.map { tables -> tables.mediaAssets.mapValues { it.value.image } }
 
     private companion object {
         const val TABLE = "media_assets"

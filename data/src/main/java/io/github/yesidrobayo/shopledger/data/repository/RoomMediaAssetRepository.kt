@@ -6,6 +6,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MediaKind
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import kotlin.time.Instant
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Las filas de las imágenes sobre `media_assets`: sus metadatos, nunca su ruta. El archivo vive
@@ -17,15 +19,18 @@ internal class RoomMediaAssetRepository(database: AppDatabase) : MediaAssetRepos
 
     override suspend fun findIdBySha256(sha256: String): Long? = assets.findBySha256(sha256)?.id
 
-    override suspend fun findImage(id: Long): StoredImage? = assets.findById(id)?.let { row ->
-        StoredImage(
-            sha256 = row.sha256,
-            mimeType = row.mimeType,
-            widthPx = row.widthPx.toStoredInt(),
-            heightPx = row.heightPx.toStoredInt(),
-            sizeBytes = row.sizeBytes,
-        )
-    }
+    override suspend fun findImage(id: Long): StoredImage? = assets.findById(id)?.toImage()
+
+    override fun observeImages(): Flow<Map<Long, StoredImage>> =
+        assets.observeAll().map { rows -> rows.associate { it.id to it.toImage() } }
+
+    private fun MediaAssetEntity.toImage(): StoredImage = StoredImage(
+        sha256 = sha256,
+        mimeType = mimeType,
+        widthPx = widthPx.toStoredInt(),
+        heightPx = heightPx.toStoredInt(),
+        sizeBytes = sizeBytes,
+    )
 
     override suspend fun insert(image: StoredImage, kind: MediaKind, createdAt: Instant): Long =
         writes.inTransaction {

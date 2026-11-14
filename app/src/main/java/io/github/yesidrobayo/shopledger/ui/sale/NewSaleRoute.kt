@@ -37,6 +37,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.media.ProvidePhotos
 import io.github.yesidrobayo.shopledger.ui.returns.rememberExchangeNoteHandoff
 import kotlinx.coroutines.flow.first
 
@@ -188,7 +189,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
 
         ScreenModel.Unavailable -> PlaceholderRoute(key, navigator)
 
-        is ScreenModel.Ready -> {
+        is ScreenModel.Ready -> ProvidePhotos {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val messages = LocalAppMessages.current

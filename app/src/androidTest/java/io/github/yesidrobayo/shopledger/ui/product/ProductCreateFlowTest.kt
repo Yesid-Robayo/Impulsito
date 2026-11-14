@@ -5,6 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.DataPorts
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CreateCategoryUseCase
@@ -14,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteProductResu
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.EditProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.FindProductNameClashUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ImportProductPhotoUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.LoadProductForEditUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveCatalogChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
@@ -133,6 +135,7 @@ class ProductCreateFlowTest {
             saveUnitUseCase = SaveUnitUseCase(ports.transactions, ports.unitCatalog, clock),
             pricingUseCase =
                 ObservePricingContextUseCase(ports.settings, ports.categories, ports.taxRates),
+            importPhotoUseCase = ImportProductPhotoUseCase { _, _ -> ImageImport.Unreadable },
         )
     }
 

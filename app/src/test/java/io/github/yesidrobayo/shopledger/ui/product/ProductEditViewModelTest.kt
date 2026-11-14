@@ -10,13 +10,16 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForEdit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductPhotoChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
@@ -35,6 +38,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveUnitResult
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.SetListPriceResult
+import io.github.yesidrobayo.shopledger.ui.payment.ImageProblem
 import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorAction
 import io.github.yesidrobayo.shopledger.ui.unit.ConversionEditorAction
 import io.github.yesidrobayo.shopledger.ui.unit.UnitEditorAction
@@ -806,9 +810,75 @@ class ProductEditViewModelTest {
         )
 
         override fun pricing(): Flow<PricingContext> = pricing
+
+        var nextPhoto: ImageImport = ImageImport.Imported(PHOTO)
+        val photosImported = mutableListOf<String>()
+
+        override suspend fun importPhoto(source: String): ImageImport {
+            photosImported += source
+            return nextPhoto
+        }
+    }
+
+    @Test
+    fun `a chosen photo is imported and saved with the new product`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+        model.onAction(ProductEditAction.NameChange("Pan de queso"))
+
+        model.onAction(ProductEditAction.PickPhoto("content://picker/7"))
+        assertTrue(model.uiState.value.importingPhoto)
+        advanceUntilIdle()
+
+        assertEquals(listOf("content://picker/7"), operations.photosImported)
+        assertEquals(EditPhoto.Picked(PHOTO), model.uiState.value.form.photo)
+        assertFalse(model.uiState.value.importingPhoto)
+        model.onAction(ProductEditAction.Save)
+        advanceUntilIdle()
+        assertEquals(ProductPhotoChange.Use(PHOTO), operations.created.single().first.photo)
+    }
+
+    @Test
+    fun `an unreadable photo keeps the one there was and says why`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+        model.onAction(ProductEditAction.PickPhoto("content://picker/1"))
+        advanceUntilIdle()
+
+        operations.nextPhoto = ImageImport.Unreadable
+        model.onAction(ProductEditAction.PickPhoto("content://picker/2"))
+        advanceUntilIdle()
+        assertEquals(EditPhoto.Picked(PHOTO), model.uiState.value.form.photo)
+        assertEquals(ImageProblem.UNREADABLE, model.uiState.value.photoProblem)
+
+        operations.nextPhoto = ImageImport.OutOfSpace
+        model.onAction(ProductEditAction.PickPhoto("content://picker/3"))
+        advanceUntilIdle()
+        assertEquals(ImageProblem.OUT_OF_SPACE, model.uiState.value.photoProblem)
+        model.onAction(ProductEditAction.RemovePhoto)
+        assertEquals(EditPhoto.None, model.uiState.value.form.photo)
+        assertEquals(null, model.uiState.value.photoProblem)
+    }
+
+    @Test
+    fun `a new product without a photo keeps none`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+        model.onAction(ProductEditAction.NameChange("Pan de queso"))
+        // Abrir el selector lo resuelve la ruta: el formulario no cambia.
+        model.onAction(ProductEditAction.ChoosePhoto)
+        assertEquals(EditPhoto.None, model.uiState.value.form.photo)
+
+        model.onAction(ProductEditAction.Save)
+        advanceUntilIdle()
+
+        assertEquals(ProductPhotoChange.Keep, operations.created.single().first.photo)
     }
 
     private companion object {
+        /** Una foto ya recodificada, con una suma inventada. */
+        val PHOTO = StoredImage("c".repeat(64), "image/webp", 640, 480, 21_000L)
+
         /** Los nombres de las unidades, sin recursos: la clave hace de nombre traducido. */
         val NAMES =
             object : UnitNames {

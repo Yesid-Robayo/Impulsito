@@ -134,6 +134,7 @@ internal object SaleContentBuilder {
             stock = familyStockOf(product, catalog) ?: stockOf(product),
             unit = catalog.units[product.details.baseUnitId],
             line = line,
+            photoMediaId = product.details.photoMediaId,
         )
     }
 

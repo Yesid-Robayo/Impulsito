@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.port
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MediaKind
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import kotlin.time.Instant
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Las filas de las imágenes: sus metadatos, nunca la imagen ni su ruta. Las funciones que escriben
@@ -23,4 +24,10 @@ interface MediaAssetRepository {
 
     /** La marca desde [orphanedAt] como sin uso, o con `null` como usada otra vez. */
     suspend fun setOrphanedAt(id: Long, orphanedAt: Instant?)
+
+    /**
+     * Todas las imágenes anotadas, por su id, y otra vez cada vez que cambian. Las listas la usan
+     * para hallar el archivo de cada foto sin leer una fila por producto.
+     */
+    fun observeImages(): Flow<Map<Long, StoredImage>>
 }

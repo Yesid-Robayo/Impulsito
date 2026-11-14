@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
+import io.github.yesidrobayo.shopledger.ui.media.ProvidePhotos
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -50,7 +51,7 @@ fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = 
 
         ScreenModel.Unavailable -> PlaceholderRoute(AppNavKey.ProductList, navigator)
 
-        is ScreenModel.Ready -> {
+        is ScreenModel.Ready -> ProvidePhotos {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             ProductListScreen(

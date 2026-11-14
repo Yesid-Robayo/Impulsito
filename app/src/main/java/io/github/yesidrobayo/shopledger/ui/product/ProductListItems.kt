@@ -96,6 +96,7 @@ object ProductListItems {
         unit = unit,
         trailing = trailingOf(product),
         archived = product.isArchived,
+        photoMediaId = product.details.photoMediaId,
     )
 
     private fun stockOf(product: Product): ProductListStock {

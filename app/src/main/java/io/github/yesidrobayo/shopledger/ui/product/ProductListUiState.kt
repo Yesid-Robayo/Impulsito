@@ -59,7 +59,8 @@ data class ProductListSection(val initial: String?, val items: List<ProductListI
  * Una fila de la lista, ya calculada: lo que dice su stock, su precio y su margen.
  *
  * La unidad va como la guardó la base, sin texto: su símbolo sale de los recursos del idioma de la
- * interfaz al dibujarla, y así cambiar de idioma no obliga a releer el catálogo.
+ * interfaz al dibujarla, y así cambiar de idioma no obliga a releer el catálogo. [photoMediaId] es
+ * la foto del producto, o `null` sin foto: la fila la busca al dibujarse.
  */
 @Immutable
 data class ProductListItem(
@@ -69,6 +70,7 @@ data class ProductListItem(
     val unit: MeasureUnit?,
     val trailing: ProductRowTrailing.Catalog,
     val archived: Boolean,
+    val photoMediaId: Long? = null,
 )
 
 /** Lo que dice la segunda línea de una fila sobre el stock del producto. */

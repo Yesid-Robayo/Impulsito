@@ -86,6 +86,7 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -667,6 +668,7 @@ private fun ProductTile(tile: SaleTile, onAction: (NewSaleAction) -> Unit) {
         stockText = stockText(tile.stock, unit),
         unit = unit,
         onClick = { onAction(NewSaleAction.AddProduct(tile.productId)) },
+        photo = tile.photoMediaId?.let { id -> { ProductPhoto(id) } },
         line =
             line?.let {
                 SaleTileLine(

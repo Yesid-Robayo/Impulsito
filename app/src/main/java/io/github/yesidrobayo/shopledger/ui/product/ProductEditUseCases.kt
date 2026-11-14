@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.product
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogChoices
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDraft
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForEdit
@@ -14,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteConversionR
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteConversionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.EditProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.FindProductNameClashUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ImportProductPhotoUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.LoadProductForEditUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveCatalogChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
@@ -55,6 +57,9 @@ interface ProductEditOperations {
 
     /** Lo que el negocio fija para medir márgenes y sugerir precios. */
     fun pricing(): Flow<PricingContext>
+
+    /** Trae la foto elegida, recodificada y sin EXIF. Se anota al guardar el producto. */
+    suspend fun importPhoto(source: String): ImageImport
 }
 
 /** Las operaciones del formulario sobre los casos de uso de catálogo. */
@@ -70,6 +75,7 @@ class ProductEditUseCases(
     private val deleteConversionUseCase: DeleteConversionUseCase,
     private val saveUnitUseCase: SaveUnitUseCase,
     private val pricingUseCase: ObservePricingContextUseCase,
+    private val importPhotoUseCase: ImportProductPhotoUseCase,
 ) : ProductEditOperations {
     override suspend fun load(productId: Long): ProductForEdit? = loadUseCase(productId)
 
@@ -101,4 +107,6 @@ class ProductEditUseCases(
     override suspend fun saveUnit(draft: UnitDraft): SaveUnitResult = saveUnitUseCase(null, draft)
 
     override fun pricing(): Flow<PricingContext> = pricingUseCase()
+
+    override suspend fun importPhoto(source: String): ImageImport = importPhotoUseCase(source)
 }

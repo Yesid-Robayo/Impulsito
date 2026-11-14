@@ -91,6 +91,7 @@ sealed interface SaleContent {
 /**
  * La tarjeta de un producto en la venta. [price] falta si vale cero: el producto no tiene precio, y
  * tocarlo abre la línea con el precio enfocado. [line] es lo que lleva de él la venta, o `null`.
+ * [photoMediaId] es su foto, o `null` sin foto.
  */
 @Immutable
 data class SaleTile(
@@ -100,6 +101,7 @@ data class SaleTile(
     val stock: TileStock,
     val unit: MeasureUnit?,
     val line: TileLine?,
+    val photoMediaId: Long? = null,
 )
 
 /** La cantidad de un producto en la venta, como la ve su tarjeta. */

@@ -77,6 +77,7 @@ import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
 import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
+import io.github.yesidrobayo.shopledger.ui.components.PhotoThumbSize
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SegmentedTabs
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
@@ -95,6 +96,7 @@ import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
 import io.github.yesidrobayo.shopledger.ui.stock.reasonLabel
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -250,6 +252,16 @@ private fun DetailBody(
     val tracked = product.details.stockMode == ProductStockMode.TRACKED
     val unit = overview.unit?.let { unitLabel(it) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = spacing.s16)) {
+        // La foto, solo si el producto la tiene: sin foto no hay ningún relleno.
+        product.details.photoMediaId?.let { photo ->
+            item(key = "photo") {
+                ProductPhoto(
+                    photo,
+                    Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
+                    PhotoThumbSize.DETAIL,
+                )
+            }
+        }
         if (product.isArchived) {
             item(key = "archived") {
                 Row(

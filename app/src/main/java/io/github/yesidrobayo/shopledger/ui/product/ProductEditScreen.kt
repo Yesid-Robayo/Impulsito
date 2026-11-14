@@ -64,6 +64,8 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
+import io.github.yesidrobayo.shopledger.ui.components.PhotoThumb
+import io.github.yesidrobayo.shopledger.ui.components.PhotoThumbSize
 import io.github.yesidrobayo.shopledger.ui.components.PickerField
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.ProductRow
@@ -84,7 +86,12 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.media.LocalPhotoSource
+import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
+import io.github.yesidrobayo.shopledger.ui.media.photoDescription
+import io.github.yesidrobayo.shopledger.ui.media.rememberPhoto
 import io.github.yesidrobayo.shopledger.ui.money.ProvideAccountCurrency
+import io.github.yesidrobayo.shopledger.ui.payment.ImageProblem
 import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditor
 import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorAction
 import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorSheet
@@ -210,7 +217,8 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
     var moreDetails by rememberSaveable {
         mutableStateOf(
             form.barcode.isNotEmpty() || form.replacementCost.isNotEmpty() ||
-                form.referencePrice.isNotEmpty() || !uiState.tracksStock,
+                form.referencePrice.isNotEmpty() || !uiState.tracksStock ||
+                form.photo != EditPhoto.None,
         )
     }
     LaunchedEffect(uiState.conversions.isNotEmpty()) {
@@ -305,6 +313,7 @@ private fun MinStockField(
 @Composable
 private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
     val form = uiState.form
+    ProductPhotoField(uiState, onAction)
     AppTextField(
         value = form.barcode,
         onValueChange = { onAction(ProductEditAction.BarcodeChange(it)) },
@@ -350,6 +359,73 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
         )
     }
     if (!uiState.isNew && uiState.listPrices.isNotEmpty()) ProductListPrices(uiState, onAction)
+}
+
+/**
+ * La foto del producto: su miniatura con `Cambiar foto` y `Quitar foto`, o solo `Elegir foto`. Se
+ * recodifica sin EXIF al elegirla y se anota al guardar el producto. Si no se pudo leer, la que
+ * había sigue igual y se dice debajo.
+ */
+@Composable
+private fun ProductPhotoField(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
+    val spacing = AppTheme.spacing
+    val photo = uiState.form.photo
+    val choosing = if (uiState.importingPhoto) ActionState.WORKING else ActionState.IDLE
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+        Text(
+            stringResource(R.string.product_photo),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (photo == EditPhoto.None) {
+            PrimaryActionButton(
+                stringResource(R.string.product_photo_choose_action),
+                { onAction(ProductEditAction.ChoosePhoto) },
+                ActionVariant.OUTLINED,
+                state = choosing,
+            )
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                when (photo) {
+                    is EditPhoto.Saved -> ProductPhoto(photo.mediaId, size = PhotoThumbSize.DETAIL)
+
+                    is EditPhoto.Picked -> {
+                        val cache = LocalPhotoSource.current.cache
+                        rememberPhoto(photo.image, PhotoThumbSize.DETAIL, cache)?.let { state ->
+                            PhotoThumb(state, photoDescription(state), size = PhotoThumbSize.DETAIL)
+                        }
+                    }
+
+                    EditPhoto.None -> Unit
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.s4)) {
+                    InlineTextButton(
+                        stringResource(R.string.product_photo_change_action),
+                        { onAction(ProductEditAction.ChoosePhoto) },
+                    )
+                    InlineTextButton(
+                        stringResource(R.string.product_photo_remove_action),
+                        { onAction(ProductEditAction.RemovePhoto) },
+                    )
+                }
+            }
+        }
+        uiState.photoProblem?.let { problem ->
+            Text(
+                stringResource(
+                    when (problem) {
+                        ImageProblem.UNREADABLE -> R.string.product_photo_error
+                        ImageProblem.OUT_OF_SPACE -> R.string.error_device_storage
+                    },
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
 }
 
 /**

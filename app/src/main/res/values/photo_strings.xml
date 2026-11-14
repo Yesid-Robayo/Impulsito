@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fotos de producto: su fila en el formulario y su estado en listas, venta y detalle. -->
+<resources>
+    <string name="product_photo">Photo</string>
+    <string name="media_pending">Photo pending</string>
+    <string name="media_unavailable">Photo unavailable</string>
+    <string name="product_photo_choose_action">Choose photo</string>
+    <string name="product_photo_change_action">Change photo</string>
+    <string name="product_photo_remove_action">Remove photo</string>
+    <string name="product_photo_error">That photo could not be read. Choose another.</string>
+</resources>

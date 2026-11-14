@@ -38,6 +38,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.media.ProvidePhotos
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -70,7 +71,7 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
 
         ScreenModel.Unavailable -> PlaceholderRoute(key, navigator)
 
-        is ScreenModel.Ready -> {
+        is ScreenModel.Ready -> ProvidePhotos {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             ShowMessage(uiState.message) { viewModel.onAction(ProductDetailAction.MessageShown) }

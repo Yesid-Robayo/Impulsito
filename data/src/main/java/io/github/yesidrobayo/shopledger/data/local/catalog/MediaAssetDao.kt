@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.local.catalog
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Lecturas y escrituras de `media_assets`, los metadatos de las imágenes. Las escrituras solo se
@@ -16,6 +17,10 @@ import androidx.room3.Query
 internal interface MediaAssetDao {
     @Query("SELECT * FROM media_assets WHERE id = :id")
     suspend fun findById(id: Long): MediaAssetEntity?
+
+    /** Todas las filas, de nuevo cada vez que cambia la tabla. */
+    @Query("SELECT * FROM media_assets ORDER BY id")
+    fun observeAll(): Flow<List<MediaAssetEntity>>
 
     /** La fila de la imagen con ese contenido, si ya se guardó. */
     @Query("SELECT * FROM media_assets WHERE sha256 = :sha256")

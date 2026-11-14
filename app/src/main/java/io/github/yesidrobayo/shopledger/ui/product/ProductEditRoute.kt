@@ -1,6 +1,9 @@
 package io.github.yesidrobayo.shopledger.ui.product
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CreateProductUseC
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteConversionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.EditProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.FindProductNameClashUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ImportProductPhotoUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.LoadProductForEditUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveCatalogChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
@@ -29,6 +33,7 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.media.ProvidePhotos
 import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
 import io.github.yesidrobayo.shopledger.ui.unit.ResourceUnitNames
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -91,7 +96,7 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
 
         ScreenModel.Unavailable -> PlaceholderRoute(key, navigator)
 
-        is ScreenModel.Ready -> {
+        is ScreenModel.Ready -> ProvidePhotos {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val unitEditor by viewModel.unitEditor.editor.collectAsStateWithLifecycle()
@@ -107,6 +112,14 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
             }
             // Con algo escrito, atrás pregunta antes de descartarlo.
             BackHandler(enabled = uiState.dirty) { viewModel.onAction(ProductEditAction.Close) }
+            // El selector de fotos del sistema: no pide permisos, y en Android viejos abre el de
+            // documentos. Lo elegido solo se lee una vez, al recodificarlo.
+            val picker =
+                rememberLauncherForActivityResult(
+                    ActivityResultContracts.PickVisualMedia(),
+                ) { uri ->
+                    if (uri != null) viewModel.onAction(ProductEditAction.PickPhoto(uri.toString()))
+                }
             ProductEditScreen(
                 uiState = uiState,
                 onAction = { action ->
@@ -118,6 +131,12 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
 
                         ProductEditAction.OpenVariants ->
                             uiState.product?.let { navigator.open(AppNavKey.Variants(it.id)) }
+
+                        ProductEditAction.ChoosePhoto -> picker.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly,
+                            ),
+                        )
 
                         else -> viewModel.onAction(action)
                     }
@@ -178,5 +197,7 @@ private fun useCasesOf(dependencies: ScreenDependencies): ProductEditUseCases {
         saveUnitUseCase = SaveUnitUseCase(ports.transactions, ports.unitCatalog, clock),
         pricingUseCase =
             ObservePricingContextUseCase(ports.settings, ports.categories, ports.taxRates),
+        importPhotoUseCase =
+            ImportProductPhotoUseCase(dependencies.container.data.imageImporter),
     )
 }

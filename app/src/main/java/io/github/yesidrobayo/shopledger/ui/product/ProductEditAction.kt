@@ -80,4 +80,13 @@ sealed interface ProductEditAction {
     data object UseSuggestedPrice : ProductEditAction
 
     data object DismissSuggestion : ProductEditAction
+
+    /** Abre el selector de fotos del sistema. Lo resuelve la ruta. */
+    data object ChoosePhoto : ProductEditAction
+
+    /** La persona eligió una foto en el selector: [source] es el documento, que no se guarda. */
+    data class PickPhoto(val source: String) : ProductEditAction
+
+    /** Quita la foto. Al guardar, si nada más la usa, queda marcada para borrarse. */
+    data object RemovePhoto : ProductEditAction
 }

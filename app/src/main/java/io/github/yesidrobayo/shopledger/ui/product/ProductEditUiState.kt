@@ -10,8 +10,10 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
+import io.github.yesidrobayo.shopledger.ui.payment.ImageProblem
 
 /** Los campos del formulario de un producto que pueden llevar un error. */
 enum class ProductEditField {
@@ -67,6 +69,18 @@ sealed interface ProfitPreview {
     data class Loss(val loss: Money) : ProfitPreview
 }
 
+/** La foto del formulario, tal como la persona la dejó. */
+sealed interface EditPhoto {
+    /** Sin foto. */
+    data object None : EditPhoto
+
+    /** La que el producto ya tiene guardada, por su id. */
+    data class Saved(val mediaId: Long) : EditPhoto
+
+    /** Una elegida ahora, ya recodificada en su archivo: se anota al guardar el producto. */
+    data class Picked(val image: StoredImage) : EditPhoto
+}
+
 /** Un aviso del formulario sobre el guardado, arriba del botón. Lo escrito siempre se conserva. */
 sealed interface ProductEditNotice {
     /** No se pudo guardar; [outOfSpace] si fue por falta de espacio. */
@@ -81,6 +95,7 @@ sealed interface ProductEditNotice {
  * stock, el costo es el costo fijo de cada unidad vendida y no hay stock que contar ni vigilar.
  * [replacementCost] vacío es sin dato: la pantalla no pone ninguna cifra en su lugar.
  * [referencePrice] va en la moneda de referencia, con sus decimales; vacío también es sin dato.
+ * [photo] es la foto, elegida o guardada.
  */
 @Immutable
 data class ProductEditForm(
@@ -95,6 +110,7 @@ data class ProductEditForm(
     val barcode: String = "",
     val replacementCost: String = "",
     val referencePrice: String = "",
+    val photo: EditPhoto = EditPhoto.None,
 )
 
 /**
@@ -112,7 +128,8 @@ data class ProductEditForm(
  * lee. [suggestTarget] es el margen objetivo con que la tarjeta ofrece sugerir un precio, o `null`
  * si no hay de dónde sugerirlo, y [suggestion] la hoja de la sugerencia, si está abierta.
  * [reference] es la moneda de referencia elegida, o `null` sin ella: entonces no se pide precio de
- * referencia.
+ * referencia. [importingPhoto] mientras se recodifica la foto elegida, y [photoProblem] si no se
+ * pudo traer: la que había sigue igual.
  */
 @Immutable
 data class ProductEditUiState(
@@ -142,6 +159,8 @@ data class ProductEditUiState(
     val suggestion: PriceSuggestionDraft? = null,
     val listPrices: List<ProductListPrice> = emptyList(),
     val reference: ReferenceCurrency? = null,
+    val importingPhoto: Boolean = false,
+    val photoProblem: ImageProblem? = null,
 ) {
     /** La categoría elegida, o `null` si es sin categoría. */
     val category: Category? get() = categories.firstOrNull { it.id == form.categoryId }

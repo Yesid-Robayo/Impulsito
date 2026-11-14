@@ -177,6 +177,8 @@ internal class FakePaymentMethods :
         if (orphanedAt == null) orphaned -= id else orphaned += id
     }
 
+    override fun observeImages(): Flow<Map<Long, StoredImage>> = flowOf(images.toMap())
+
     private fun ordered(all: Collection<PaymentMethodRecord>, filter: ArchiveFilter) = all
         .filter { it.isArchived == (filter == ArchiveFilter.ARCHIVED) }
         .sortedWith(compareBy<PaymentMethodRecord> { it.sortOrder }.thenBy { it.id })

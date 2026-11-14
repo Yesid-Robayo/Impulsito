@@ -8,8 +8,10 @@ import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductPhotoChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
@@ -29,6 +31,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.pricing.SetListPriceResul
 import io.github.yesidrobayo.shopledger.ui.ReadOutcome
 import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
+import io.github.yesidrobayo.shopledger.ui.payment.ImageProblem
 import io.github.yesidrobayo.shopledger.ui.pricing.ListPriceEditorModel
 import io.github.yesidrobayo.shopledger.ui.pricing.ListProductRow
 import io.github.yesidrobayo.shopledger.ui.pricing.PriceListNumberFormat
@@ -296,6 +299,39 @@ class ProductEditViewModel(
             ProductEditAction.UseSuggestedPrice -> useSuggestedPrice()
 
             ProductEditAction.DismissSuggestion -> state.update { it.copy(suggestion = null) }
+
+            // El selector lo abre la ruta: aquí solo llega lo elegido.
+            ProductEditAction.ChoosePhoto -> Unit
+
+            is ProductEditAction.PickPhoto -> importPhoto(action.source)
+
+            ProductEditAction.RemovePhoto -> {
+                state.update { it.copy(photoProblem = null) }
+                edit(null) { copy(photo = EditPhoto.None) }
+            }
+        }
+    }
+
+    /**
+     * Trae la foto elegida. Mientras se recodifica no se elige otra; si no se puede leer, la que
+     * había sigue igual y se dice por qué.
+     */
+    private fun importPhoto(source: String) {
+        if (state.value.importingPhoto) return
+        state.update { it.copy(importingPhoto = true, photoProblem = null) }
+        viewModelScope.launch {
+            val result = useCases.importPhoto(source)
+            state.update { it.copy(importingPhoto = false) }
+            when (result) {
+                is ImageImport.Imported ->
+                    edit(null) { copy(photo = EditPhoto.Picked(result.image)) }
+
+                ImageImport.Unreadable ->
+                    state.update { it.copy(photoProblem = ImageProblem.UNREADABLE) }
+
+                ImageImport.OutOfSpace ->
+                    state.update { it.copy(photoProblem = ImageProblem.OUT_OF_SPACE) }
+            }
         }
     }
 
@@ -390,6 +426,7 @@ class ProductEditViewModel(
                 minStock = quantityText(details.minStock),
                 barcode = details.barcode.orEmpty(),
                 replacementCost = moneyText(product.replacementCost),
+                photo = details.photoMediaId?.let(EditPhoto::Saved) ?: EditPhoto.None,
                 referencePrice =
                     current.reference
                         ?.let { referenceText(details.referencePrice, it) }
@@ -610,11 +647,27 @@ class ProductEditViewModel(
             barcode = barcode,
             replacementCost = replacement,
             referencePrice = reference,
+            photo = photoChangeOf(current),
         )
         return ReadForm(form, if (current.isNew) initial else QuantityMilli.ZERO, emptyMap())
     }
 
     private fun initialCostOf(current: ProductEditUiState): Money = money(current.form.cost) {}
+
+    /** Qué pasa con la foto al guardar: la elegida, quitar la que tenía o dejarla como está. */
+    private fun photoChangeOf(current: ProductEditUiState): ProductPhotoChange =
+        when (val photo = current.form.photo) {
+            is EditPhoto.Picked -> ProductPhotoChange.Use(photo.image)
+
+            is EditPhoto.Saved -> ProductPhotoChange.Keep
+
+            EditPhoto.None ->
+                if (current.product?.details?.photoMediaId != null) {
+                    ProductPhotoChange.Remove
+                } else {
+                    ProductPhotoChange.Keep
+                }
+        }
 
     /**
      * El precio de referencia escrito, en la moneda de referencia: `null` lo deja como está, sin
