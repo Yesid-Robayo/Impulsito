@@ -41,6 +41,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodReposit
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodBreakdownRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomPriceIndexRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceListRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductComponentRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductModifierRepository
@@ -111,6 +112,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PeriodBreakdownRepository
 import io.github.yesidrobayo.shopledger.domain.port.PeriodReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
+import io.github.yesidrobayo.shopledger.domain.port.PriceIndexRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductModifierRepository
@@ -406,6 +408,9 @@ class DataPorts internal constructor(
 
     /** Los pedidos y sus líneas: reservan sin tocar el libro de stock hasta entregarse. */
     val orders: OrderRepository = RoomOrderRepository(database)
+
+    /** El índice de precios mensual que escribe o importa la persona. */
+    val priceIndex: PriceIndexRepository = RoomPriceIndexRepository(database)
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()

@@ -6,7 +6,9 @@ import android.content.res.Configuration
 import android.content.res.Resources
 import android.os.LocaleList
 import androidx.annotation.StringRes
+import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.port.ImportHeaderLabels
+import io.github.yesidrobayo.shopledger.domain.port.ImportSeedLabels
 
 /**
  * Los encabezados con que puede llegar cada columna de un archivo para importar: el de la
@@ -23,12 +25,17 @@ import io.github.yesidrobayo.shopledger.domain.port.ImportHeaderLabels
  * cubren un archivo exportado, y un alias solo se agrega si aparece un encabezado que esos dos no
  * cubren.
  *
+ * Con las filas iniciales pasa lo mismo: una unidad o la lista inicial se reconocen por su nombre
+ * y su símbolo en cualquiera de los idiomas instalados, como salen en un archivo exportado.
+ *
  * Lint pide descargar de Google Play un idioma antes de usarlo, lo que solo hace falta con un
  * paquete de Play dividido por idioma: la app se instala como APK universal, con todos sus
  * idiomas.
  */
 @SuppressLint("AppBundleLocaleChanges")
-class ImportHeaderNaming(private val context: Context) : ImportHeaderLabels {
+class ImportHeaderNaming(private val context: Context) :
+    ImportHeaderLabels,
+    ImportSeedLabels {
     private val languages: List<Resources> by lazy {
         InstalledLanguages.tags(context.resources).map(::resourcesIn)
     }
@@ -44,6 +51,22 @@ class ImportHeaderNaming(private val context: Context) : ImportHeaderLabels {
             .filter(String::isNotEmpty)
             .distinct()
     }
+
+    override fun names(table: SeedTable, systemKey: String): List<String> = languages
+        .flatMap { resources ->
+            val symbol =
+                if (table == SeedTable.UNITS) {
+                    SeedText.unitSymbol(resources, systemKey, symbol = null)
+                } else {
+                    null
+                }
+            listOfNotNull(
+                SeedText.displayName(resources, table, systemKey, name = null),
+                symbol,
+            )
+        }.map(String::trim)
+        .filter(String::isNotEmpty)
+        .distinct()
 
     private fun resourcesIn(tag: String): Resources {
         val configuration =

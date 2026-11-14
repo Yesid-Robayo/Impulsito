@@ -127,6 +127,8 @@ internal data class Tables(
     val productionLines: Map<Long, ProductionBatchLine> = emptyMap(),
     /** Los lotes de los productos que se controlan por lotes, por id. */
     val lots: Map<Long, StockLot> = emptyMap(),
+    /** El índice de precios: la variación de cada mes `AAAA-MM`, en puntos básicos. */
+    val priceIndex: Map<String, Long> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )
