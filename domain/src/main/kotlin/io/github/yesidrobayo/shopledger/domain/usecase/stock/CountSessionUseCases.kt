@@ -1,0 +1,352 @@
+package io.github.yesidrobayo.shopledger.domain.usecase.stock
+
+import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
+import io.github.yesidrobayo.shopledger.domain.model.Checked
+import io.github.yesidrobayo.shopledger.domain.model.Limit
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.model.stock.CountSessionStatus
+import io.github.yesidrobayo.shopledger.domain.model.stock.NewCountSession
+import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
+import io.github.yesidrobayo.shopledger.domain.model.stock.OpenCountRequest
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
+import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
+import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CountSessionRepository
+import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
+import io.github.yesidrobayo.shopledger.domain.port.LocationStockSource
+import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
+import io.github.yesidrobayo.shopledger.domain.port.TxResult
+import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
+import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
+import io.github.yesidrobayo.shopledger.domain.rule.stock.StockAdjustmentRules
+import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementCheck
+import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.lock
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.stamp
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.storageSafe
+import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
+import kotlinx.coroutines.flow.first
+
+/** Cómo termina abrir un conteo. Salvo [Opened], no se escribió nada. */
+sealed interface OpenCountResult {
+    data class Opened(val sessionId: Long) : OpenCountResult
+
+    /** La ubicación ya tiene un conteo abierto: se sigue ese, o se cancela antes. */
+    data class AlreadyOpen(val sessionId: Long) : OpenCountResult
+
+    /** La ubicación ya no existe o se archivó. */
+    data object LocationUnavailable : OpenCountResult
+
+    /** La categoría elegida ya no existe. */
+    data object CategoryNotFound : OpenCountResult
+
+    /** No hay ningún producto con stock propio que contar en ese alcance. */
+    data object NothingToCount : OpenCountResult
+
+    /** La nota pasa de 200 caracteres. */
+    data object NoteTooLong : OpenCountResult
+
+    /** Este teléfono no reconoce la zona del negocio: no hay fecha que darle. */
+    data object UnknownTimeZone : OpenCountResult
+
+    data class StorageFailed(val failure: StorageFailure) : OpenCountResult
+}
+
+/**
+ * Abre una sesión de conteo de una ubicación, y de una categoría si se elige, en una transacción:
+ * una línea por producto vigente con stock propio, con lo que el libro dice de esa ubicación
+ * congelado como esperado. A ciegas por defecto.
+ *
+ * Una ubicación tiene a lo sumo un conteo abierto: dos a la vez contarían lo mismo dos veces. Los
+ * productos con lotes y el principal de unas variantes, que no tiene stock propio, no entran: los
+ * lotes llegan con su propia tarea.
+ */
+class OpenCountSessionUseCase(
+    private val transactions: TransactionRunner,
+    private val sessions: CountSessionRepository,
+    private val products: ProductRepository,
+    private val categories: CategoryRepository,
+    private val locations: LocationRepository,
+    private val stock: LocationStockSource,
+    private val calendar: BusinessCalendarSource,
+    private val clock: Clock,
+) {
+    suspend operator fun invoke(request: OpenCountRequest): OpenCountResult =
+        storageSafe(OpenCountResult::StorageFailed) {
+            transactions.write { open(request) }
+        }
+
+    private suspend fun open(request: OpenCountRequest): TxResult<OpenCountResult> {
+        val note = request.note?.trim()?.takeIf { it.isNotEmpty() }
+        if (note != null && note.length > NOTE_MAX) return reject(OpenCountResult.NoteTooLong)
+        if (locations.findById(request.locationId)?.isArchived != false) {
+            return reject(OpenCountResult.LocationUnavailable)
+        }
+        sessions.findOpenAt(request.locationId)?.let {
+            return reject(OpenCountResult.AlreadyOpen(it.id))
+        }
+        val categoryId = request.categoryId
+        if (categoryId != null && categories.findById(categoryId) == null) {
+            return reject(OpenCountResult.CategoryNotFound)
+        }
+        val active = products.observe(ArchiveFilter.ACTIVE).first()
+        val parents = active.mapNotNullTo(mutableSetOf()) { it.details.parentProductId }
+        val counted = active.filter {
+            it.details.stockMode == ProductStockMode.TRACKED &&
+                !it.details.tracksLots &&
+                it.id !in parents &&
+                (categoryId == null || it.details.categoryId == categoryId)
+        }.sortedWith(compareBy({ it.details.normalizedName }, { it.id }))
+        if (counted.isEmpty()) return reject(OpenCountResult.NothingToCount)
+        val time = calendar.stamp(clock.now()) ?: return reject(OpenCountResult.UnknownTimeZone)
+        val sessionId = sessions.insert(
+            NewCountSession(
+                isBlind = request.isBlind,
+                locationId = request.locationId,
+                categoryId = categoryId,
+                note = note,
+                startedAt = time.occurredAt,
+                businessDate = time.businessDate,
+            ),
+        )
+        for (product in counted) {
+            val expected = stock.onHandAt(product.id, request.locationId)
+            sessions.insertLine(sessionId, product.id, lotId = null, expected = expected)
+        }
+        return TxResult.Commit(OpenCountResult.Opened(sessionId))
+    }
+
+    private fun reject(result: OpenCountResult): TxResult<OpenCountResult> =
+        TxResult.Rollback(result)
+
+    private companion object {
+        const val NOTE_MAX = 200
+    }
+}
+
+/** Cómo termina anotar lo contado en una línea. Salvo [Recorded], no se escribió nada. */
+sealed interface RecordCountResult {
+    data object Recorded : RecordCountResult
+
+    data object NotFound : RecordCountResult
+
+    /** La sesión ya se aplicó o se canceló: sus líneas no cambian. */
+    data object SessionClosed : RecordCountResult
+
+    /** La cantidad no vale para la unidad del producto, por [check]. */
+    data class InvalidQuantity(val check: UnitQuantityCheck) : RecordCountResult
+
+    /** Pasa del tope del stock de un producto. */
+    data object AboveLimit : RecordCountResult
+
+    data class StorageFailed(val failure: StorageFailure) : RecordCountResult
+}
+
+/**
+ * Anota lo contado en una línea de una sesión abierta, o lo borra con `null`. Se guarda al
+ * escribirlo: cerrar la app no pierde el conteo. No toca el libro ni cuenta un cambio del negocio
+ * sin respaldar hasta aplicar.
+ */
+class RecordCountUseCase(
+    private val transactions: TransactionRunner,
+    private val sessions: CountSessionRepository,
+    private val products: ProductRepository,
+    private val units: UnitRepository,
+) {
+    suspend operator fun invoke(
+        sessionId: Long,
+        lineId: Long,
+        counted: QuantityMilli?,
+    ): RecordCountResult = storageSafe(RecordCountResult::StorageFailed) {
+        transactions.write { record(sessionId, lineId, counted) }
+    }
+
+    private suspend fun record(
+        sessionId: Long,
+        lineId: Long,
+        counted: QuantityMilli?,
+    ): TxResult<RecordCountResult> {
+        val session = sessions.findById(sessionId) ?: return reject(RecordCountResult.NotFound)
+        if (session.status != CountSessionStatus.OPEN) {
+            return reject(RecordCountResult.SessionClosed)
+        }
+        val line = sessions.findLines(sessionId).firstOrNull { it.id == lineId }
+            ?: return reject(RecordCountResult.NotFound)
+        if (counted != null) {
+            val product = checkNotNull(products.findById(line.productId)) {
+                "Una línea siempre tiene su producto"
+            }
+            val unit = checkNotNull(units.findById(product.details.baseUnitId)) {
+                "Falta la unidad base"
+            }
+            val check = StockAdjustmentRules.checkCount(counted, unit.allowsFraction)
+            if (check != UnitQuantityCheck.Valid) {
+                return reject(RecordCountResult.InvalidQuantity(check))
+            }
+            if (!Limit.ON_HAND_MILLI.allows(counted.milli)) {
+                return reject(RecordCountResult.AboveLimit)
+            }
+        }
+        if (line.counted == counted) return TxResult.Rollback(RecordCountResult.Recorded)
+        sessions.setCounted(lineId, counted)
+        // Cuenta como cambio sin respaldar: lo contado a mano no se debe perder.
+        return TxResult.Commit(RecordCountResult.Recorded)
+    }
+
+    private fun reject(result: RecordCountResult): TxResult<RecordCountResult> =
+        TxResult.Rollback(result)
+}
+
+/** Cómo termina aplicar o cancelar un conteo. Salvo [Applied] y [Cancelled], no se escribió nada. */
+sealed interface FinishCountResult {
+    /** Quedó aplicada, con [adjustments] ajustes en el libro, uno por diferencia. */
+    data class Applied(val adjustments: Int) : FinishCountResult
+
+    data object Cancelled : FinishCountResult
+
+    data object NotFound : FinishCountResult
+
+    /** Ya estaba aplicada o cancelada: no se aplica dos veces. */
+    data object AlreadyFinished : FinishCountResult
+
+    /** Un ajuste dejaría el stock o su valor por encima de [limit]. */
+    data class AboveLimit(val limit: Limit) : FinishCountResult
+
+    /** Este teléfono no reconoce la zona del negocio: no hay fecha que darle a los ajustes. */
+    data object UnknownTimeZone : FinishCountResult
+
+    /** Algún ajuste tiene valor, y la moneda del negocio sigue sin confirmar. */
+    data object CurrencyUnconfirmed : FinishCountResult
+
+    data class StorageFailed(val failure: StorageFailure) : FinishCountResult
+}
+
+/**
+ * Aplica un conteo abierto, en una sola transacción: por cada línea contada con diferencia, un
+ * `ADJUSTMENT` de corrección por conteo con la sesión como origen, en la ubicación de la sesión,
+ * por lo contado menos lo esperado al abrir. Esperado 12 y contado 10 dan −2000. Las líneas sin
+ * contar no cambian. Luego la marca aplicada, y evalúa las alertas de stock bajo una vez por producto.
+ *
+ * Lo esperado es lo que había al abrir, aunque algo se haya movido después: la pantalla lo avisa
+ * antes de aplicar, con [CountSessionRepository.productsMovedSinceOpen].
+ */
+class ApplyCountSessionUseCase(
+    private val transactions: TransactionRunner,
+    private val sessions: CountSessionRepository,
+    private val products: ProductRepository,
+    ledger: StockLedgerRepository,
+    private val alerts: LowStockAlertRepository,
+    private val calendar: BusinessCalendarSource,
+    private val currencyLock: CurrencyLock,
+    private val clock: Clock,
+) {
+    private val ledger = StockChangeRecorder(ledger)
+
+    suspend operator fun invoke(sessionId: Long): FinishCountResult =
+        storageSafe(FinishCountResult::StorageFailed) {
+            transactions.write {
+                ledger.start()
+                apply(sessionId)
+            }
+        }
+
+    private suspend fun apply(sessionId: Long): TxResult<FinishCountResult> {
+        val session = sessions.findById(sessionId) ?: return reject(FinishCountResult.NotFound)
+        if (session.status != CountSessionStatus.OPEN) {
+            return reject(FinishCountResult.AlreadyFinished)
+        }
+        val time = calendar.stamp(clock.now()) ?: return reject(FinishCountResult.UnknownTimeZone)
+        var written = 0
+        var locked = false
+        for (line in sessions.findLines(sessionId)) {
+            val change = line.difference?.takeIf { it != QuantityMilli.ZERO } ?: continue
+            val product = checkNotNull(products.findById(line.productId)) {
+                "Una línea siempre tiene su producto"
+            }
+            val draft = StockMovementDraft(
+                key = StockKey(product.id, session.locationId, lotId = null),
+                type = StockMovementType.ADJUSTMENT,
+                quantity = change,
+                reversesMovementId = null,
+            )
+            if (StockMovementRules.check(draft, product.onHand, null, false) ==
+                StockMovementCheck.AboveOnHandLimit
+            ) {
+                return reject(FinishCountResult.AboveLimit(Limit.ON_HAND_MILLI))
+            }
+            val before = CostState(product.onHand, product.averageCost, product.stockValue)
+            val value = when (val checked = StockAdjustmentRules.value(before, change)) {
+                is Checked.Value -> checked.value
+                Checked.Overflow -> return reject(FinishCountResult.AboveLimit(Limit.STOCK_VALUE))
+                is Checked.AboveLimit -> return reject(FinishCountResult.AboveLimit(checked.limit))
+            }
+            // Un ajuste sin valor no es dinero: no fija ninguna moneda.
+            if (!locked && value.totalCost != Money.ZERO) {
+                if (!currencyLock.lock(time.occurredAt)) {
+                    return reject(FinishCountResult.CurrencyUnconfirmed)
+                }
+                locked = true
+            }
+            ledger.append(
+                NewStockMovement(
+                    movement = draft,
+                    reason = StockAdjustmentReason.COUNT_CORRECTION,
+                    unitCost = product.averageCost,
+                    totalCost = value.totalCost,
+                    balanceAfter = value.after.onHand,
+                    averageCostAfter = value.after.averageCost,
+                    stockValueAfter = value.after.stockValue,
+                    source = StockMovementSource(countSessionId = sessionId),
+                    note = null,
+                    occurredAt = time.occurredAt,
+                    businessDate = time.businessDate,
+                    createdAt = time.occurredAt,
+                ),
+            )
+            written++
+        }
+        sessions.finish(sessionId, CountSessionStatus.APPLIED, time.occurredAt)
+        ledger.applyAlerts(alerts, products, time)
+        return TxResult.Commit(FinishCountResult.Applied(written))
+    }
+
+    private fun reject(result: FinishCountResult): TxResult<FinishCountResult> =
+        TxResult.Rollback(result)
+}
+
+/** Cancela un conteo abierto: lo contado se conserva en sus líneas, y el libro no cambia. */
+class CancelCountSessionUseCase(
+    private val transactions: TransactionRunner,
+    private val sessions: CountSessionRepository,
+    private val clock: Clock,
+) {
+    suspend operator fun invoke(sessionId: Long): FinishCountResult =
+        storageSafe(FinishCountResult::StorageFailed) {
+            transactions.write {
+                val session = sessions.findById(sessionId)
+                when {
+                    session == null -> TxResult.Rollback(FinishCountResult.NotFound)
+
+                    session.status != CountSessionStatus.OPEN ->
+                        TxResult.Rollback(FinishCountResult.AlreadyFinished)
+
+                    else -> {
+                        sessions.finish(sessionId, CountSessionStatus.CANCELLED, clock.now())
+                        TxResult.Commit(FinishCountResult.Cancelled)
+                    }
+                }
+            }
+        }
+}

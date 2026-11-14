@@ -29,6 +29,8 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
+import io.github.yesidrobayo.shopledger.domain.model.stock.CountSession
+import io.github.yesidrobayo.shopledger.domain.model.stock.CountSessionLine
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
@@ -114,6 +116,9 @@ internal data class Tables(
     /** Las transferencias de stock y sus líneas, por id. */
     val stockTransfers: Map<Long, StockTransfer> = emptyMap(),
     val stockTransferLines: Map<Long, StockTransferLine> = emptyMap(),
+    /** Las sesiones de conteo y sus líneas, por id. */
+    val countSessions: Map<Long, CountSession> = emptyMap(),
+    val countLines: Map<Long, CountSessionLine> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )
