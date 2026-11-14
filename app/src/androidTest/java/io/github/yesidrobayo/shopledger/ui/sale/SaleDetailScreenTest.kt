@@ -132,11 +132,15 @@ class SaleDetailScreenTest {
     }
 
     @Test
-    fun aSaleWithoutReceiptHasNoMenu() {
+    fun aVoidedSaleOnlyOffersItsPaperReceipt() {
         show(SaleDetailUiState.Ready(saleDetailView(voided = true)))
 
-        val menus = compose.onAllNodesWithContentDescription(text(R.string.a11y_more_options))
-        assertEquals(0, menus.fetchSemanticsNodes().size)
+        // El comprobante en papel dice que la venta se anuló; compartir el texto y marcarla en
+        // los pendientes de facturar son solo de una venta activa.
+        compose.onNodeWithContentDescription(text(R.string.a11y_more_options)).performClick()
+        compose.onNodeWithText(text(R.string.receipt_view_title)).assertExists()
+        compose.onNodeWithText(text(R.string.action_share)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.fiscal_mark_title)).assertDoesNotExist()
         val corrects = compose.onAllNodesWithText(text(R.string.dialog_correct_action))
         assertEquals(0, corrects.fetchSemanticsNodes().size)
     }

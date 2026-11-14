@@ -343,7 +343,7 @@ class SettingsScreenTest {
         compose.onNodeWithText(text(R.string.settings_theme_title)).performScrollTo()
         compose.onNodeWithText(text(R.string.settings_theme_dark)).assertIsSelected()
         compose.onNodeWithText(text(R.string.settings_theme_system)).assertIsNotSelected()
-        compose.onNodeWithText(text(R.string.settings_theme_light)).performClick()
+        compose.onNodeWithText(text(R.string.settings_theme_light)).performScrollTo().performClick()
         assertEquals(listOf<UsageAction>(UsageAction.Theme(ThemeMode.LIGHT)), usageActions)
     }
 
