@@ -73,6 +73,7 @@ import io.github.yesidrobayo.shopledger.ui.components.PeriodSelector
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SegmentedTabs
+import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
@@ -135,6 +136,7 @@ fun StatisticsScreen(
                                 ),
                             )
                         }
+                        SettingsButton()
                     },
                 )
                 backupBanner()

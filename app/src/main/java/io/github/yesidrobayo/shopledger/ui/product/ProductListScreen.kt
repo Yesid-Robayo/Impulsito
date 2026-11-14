@@ -49,6 +49,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ProductRowData
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 import io.github.yesidrobayo.shopledger.ui.components.ProductStock
 import io.github.yesidrobayo.shopledger.ui.components.SearchField
+import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TonalFabDefaults
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
@@ -106,6 +107,7 @@ fun ProductListScreen(
                         ),
                     )
                 }
+                SettingsButton()
             }
             backupBanner()
             // Sin detalle a la derecha, la lista queda centrada a su ancho de lectura.

@@ -54,6 +54,7 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
 import io.github.yesidrobayo.shopledger.ui.components.PeriodSelector
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
@@ -101,7 +102,7 @@ fun SaleHistoryScreen(
                     navigation = TopBarNavigation.NONE,
                     onNavigate = {},
                     navigationLabel = null,
-                )
+                ) { SettingsButton() }
                 backupBanner()
                 RecordsSegments(selected = SALES_SEGMENT) { index ->
                     when (index) {

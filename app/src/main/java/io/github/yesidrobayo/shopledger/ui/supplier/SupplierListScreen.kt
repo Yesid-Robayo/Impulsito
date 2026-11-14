@@ -47,6 +47,7 @@ import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SearchField
+import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
@@ -90,7 +91,9 @@ fun SupplierListScreen(
                 navigation = navigation,
                 onNavigate = onBack,
                 navigationLabel = if (isRoot) null else stringResource(R.string.a11y_back),
-            )
+            ) {
+                if (isRoot) SettingsButton()
+            }
             Column(
                 Modifier
                     .weight(1f)

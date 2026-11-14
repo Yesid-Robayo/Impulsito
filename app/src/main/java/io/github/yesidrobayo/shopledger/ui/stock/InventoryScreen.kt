@@ -54,6 +54,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ProductRow
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowData
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 import io.github.yesidrobayo.shopledger.ui.components.ProductStock
+import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.StatTile
 import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
@@ -142,7 +143,10 @@ private fun InventoryBody(
                 } else {
                     stringResource(R.string.a11y_back)
                 },
-        )
+        ) {
+            // Como pestaña de Productos es una raíz, con los ajustes al borde como las demás.
+            if (navigation == TopBarNavigation.NONE) SettingsButton()
+        }
         backupBanner()
         Column(
             Modifier

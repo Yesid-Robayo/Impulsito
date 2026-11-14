@@ -40,6 +40,7 @@ import io.github.yesidrobayo.shopledger.ui.category.CategoriesRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
+import io.github.yesidrobayo.shopledger.ui.components.LocalSettingsOpener
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.customer.CustomerDetailRoute
@@ -133,6 +134,8 @@ fun AppNavHost(
         onOpenHandled()
     }
     val density = LocalDensity.current
+    // El engranaje de cada pestaña abre los ajustes encima de ella.
+    val openSettings = remember(navigator) { { navigator.open(AppNavKey.Settings) } }
     val messageScope = rememberCoroutineScope()
     val messages = remember(messageScope) { AppMessages(messageScope) }
     val container = (LocalContext.current.applicationContext as ShopLedgerApp).container
@@ -166,6 +169,7 @@ fun AppNavHost(
             LocalAppMessages provides messages,
             LocalPolicyPrompt provides policy,
             LocalNotificationPermission provides notificationPermission,
+            LocalSettingsOpener provides openSettings,
         ) {
             NavDisplay(
                 backStack = backStack,
@@ -397,6 +401,8 @@ internal fun PlaceholderRoute(key: AppNavKey, navigator: AppNavigator) {
         }
     val (empty, emptyTarget) = emptyOf(key, title)
     val isHome = key == AppNavKey.Home
+    // Las cuatro raíces llevan el engranaje, también sin base: los ajustes se abren igual.
+    val isRoot = TopLevelDestination.ofRoot(key) != null
     PlaceholderScreen(
         content =
             PlaceholderContent(
@@ -405,8 +411,8 @@ internal fun PlaceholderRoute(key: AppNavKey, navigator: AppNavigator) {
                 navigationLabel = navigationLabel,
                 icon = spec.icon,
                 empty = empty,
-                withBottomBar = TopLevelDestination.ofRoot(key) != null,
-                settingsLabel = if (isHome) stringResource(R.string.a11y_settings) else null,
+                withBottomBar = isRoot,
+                settingsLabel = if (isRoot) stringResource(R.string.a11y_settings) else null,
                 businessAction = if (isHome) stringResource(R.string.hub_entry_action) else null,
             ),
         uiState = PlaceholderUiState.Empty,
