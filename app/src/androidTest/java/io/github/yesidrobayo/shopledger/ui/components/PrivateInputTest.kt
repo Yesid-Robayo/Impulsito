@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.performClick
@@ -40,7 +41,18 @@ class PrivateInputTest {
     private val clipboard: ClipboardManager
         get() = compose.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
+    /**
+     * El sistema solo deja leer el portapapeles a la app que tiene el foco: sin él, pegar no trae
+     * nada y leer da vacío. Recién abierta la actividad, en un equipo cargado, el foco tarda.
+     */
+    private fun awaitWindowFocus() {
+        compose.waitUntil(FOCUS_TIMEOUT_MS) {
+            compose.runOnUiThread { compose.activity.hasWindowFocus() }
+        }
+    }
+
     private fun clipboardText(): String? {
+        awaitWindowFocus()
         var text: String? = null
         compose.runOnUiThread { text = clipboard.primaryClip?.getItemAt(0)?.text?.toString() }
         return text
@@ -50,10 +62,19 @@ class PrivateInputTest {
         compose.runOnUiThread { clipboard.setPrimaryClip(ClipData.newPlainText(LABEL, text)) }
     }
 
+    /** Pega en [field] lo que haya en el portapapeles, como el menú del sistema. */
+    private fun pasteInto(field: SemanticsNodeInteraction) {
+        field.performClick()
+        awaitWindowFocus()
+        field.performSemanticsAction(SemanticsActions.PasteText)
+        compose.waitForIdle()
+    }
+
     /** Selecciona todo el texto del campo [index] y pide copiarlo, como el menú del sistema. */
     private fun copyField(index: Int, length: Int) {
         val field = compose.onAllNodes(hasSetTextAction())[index]
         field.performClick()
+        awaitWindowFocus()
         field.performTextInputSelection(TextRange(0, length))
         field.performSemanticsAction(SemanticsActions.CopyText)
         compose.waitForIdle()
@@ -121,10 +142,7 @@ class PrivateInputTest {
             }
         }
 
-        val first = compose.onAllNodes(hasSetTextAction())[0]
-        first.performClick()
-        first.performSemanticsAction(SemanticsActions.PasteText)
-        compose.waitForIdle()
+        pasteInto(compose.onAllNodes(hasSetTextAction())[0])
 
         assertEquals(CODE, groups)
     }
@@ -137,10 +155,7 @@ class PrivateInputTest {
             PreviewTheme { AppTextField(typed, { typed = it }, LABEL) }
         }
 
-        val field = compose.onAllNodes(hasSetTextAction())[0]
-        field.performClick()
-        field.performSemanticsAction(SemanticsActions.PasteText)
-        compose.waitForIdle()
+        pasteInto(compose.onAllNodes(hasSetTextAction())[0])
 
         assertEquals(PASSWORD, typed)
     }
@@ -153,10 +168,7 @@ class PrivateInputTest {
             PreviewTheme { PrivateInput { AppTextField(typed, { typed = it }, LABEL) } }
         }
 
-        val field = compose.onAllNodes(hasSetTextAction())[0]
-        field.performClick()
-        field.performSemanticsAction(SemanticsActions.PasteText)
-        compose.waitForIdle()
+        pasteInto(compose.onAllNodes(hasSetTextAction())[0])
 
         assertEquals(PASSWORD, typed)
     }
@@ -179,10 +191,7 @@ class PrivateInputTest {
             }
         }
 
-        val field = compose.onAllNodes(hasSetTextAction())[0]
-        field.performClick()
-        field.performSemanticsAction(SemanticsActions.PasteText)
-        compose.waitForIdle()
+        pasteInto(compose.onAllNodes(hasSetTextAction())[0])
 
         assertEquals(PASSWORD, typed)
     }
@@ -220,6 +229,7 @@ class PrivateInputTest {
         const val LABEL = "Campo de prueba"
         const val BEFORE = "texto anterior de prueba"
         const val PASSWORD = "inventada-123"
+        const val FOCUS_TIMEOUT_MS = 10_000L
         val CODE = listOf("7KQ2", "M9XA", "R4TB", "W8ZC", "1PQ0", "HJ5N", "D3EF")
     }
 }
