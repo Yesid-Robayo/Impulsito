@@ -144,6 +144,11 @@ class NewPurchaseViewModel(
 
             is NewPurchaseAction.AddProduct -> addProduct(action.productId)
 
+            is NewPurchaseAction.AddScanned -> addScanned(action.productId, action.unitId)
+
+            // Lo resuelve la ruta, que abre el escáner.
+            NewPurchaseAction.Scan -> overlay.update { it.copy(sheet = null, query = "") }
+
             is NewPurchaseAction.CreateProduct -> awaitCreatedProduct()
 
             is NewPurchaseAction.SelectSupplier -> {
@@ -308,6 +313,21 @@ class NewPurchaseViewModel(
         }
         overlay.update { it.copy(sheet = null, query = "") }
         appendLine(catalog, productId)
+    }
+
+    /**
+     * Agrega la línea de un producto que trajo el escáner, en la unidad del código si era el de una
+     * presentación de compra.
+     */
+    private fun addScanned(productId: Long, unitId: Long?) {
+        val catalog = readyCatalog() ?: return
+        val before = draft.value.nextKey
+        addProduct(productId)
+        val product = catalog.products.firstOrNull { it.id == productId } ?: return
+        val buysInUnit = catalog.conversions[productId]?.get(unitId)?.forPurchase == true
+        if (unitId == null || unitId == product.details.baseUnitId || !buysInUnit) return
+        // Solo la línea que se acaba de agregar.
+        if (draft.value.nextKey > before) editLine(before) { it.copy(unitId = unitId) }
     }
 
     /**
@@ -521,6 +541,8 @@ class NewPurchaseViewModel(
             registered = shown.registered,
             closed = shown.closed,
             payment = paymentOf(catalog, current, lines.total, shown.accounts),
+            canScan = catalog.products.any { it.details.barcode != null } ||
+                catalog.conversions.values.any { units -> units.values.any { it.barcode != null } },
         )
     }
 

@@ -38,7 +38,7 @@ class ScannerViewModelTest {
 
     private fun model(continuous: Boolean) = ScannerViewModel(
         continuous = continuous,
-        deliver = { delivered += it },
+        deliver = { delivered += it.code },
         telemetry = ScannerTelemetryLog(log),
         nanoTime = { now },
     )
@@ -137,6 +137,7 @@ class ScannerViewModelTest {
         model.onAction(ScannerAction.TypeCode)
         assertTrue(model.uiState.value.typingCode)
         model.onAction(ScannerAction.CodeTyped("  P00000042 "))
+        runCurrent()
 
         assertEquals(listOf("P00000042"), delivered)
         assertFalse(model.uiState.value.typingCode)

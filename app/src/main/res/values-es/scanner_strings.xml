@@ -16,6 +16,13 @@
     <string name="scanner_error_title">No se pudo abrir la cámara</string>
     <string name="scanner_slow_hint">Acercar el código o encender la linterna</string>
 
+    <string name="scanner_unknown_title">Código sin producto</string>
+    <string name="scanner_unknown_code">Código %1$s</string>
+    <string name="scanner_create_product_action">Crear producto</string>
+    <string name="scanner_assign_action">Asignar a un producto</string>
+    <string name="scanner_archived_title">%1$s está archivado</string>
+    <string name="a11y_scanner_unknown">Código sin producto: %1$s</string>
+
     <string name="permission_camera_title">Leer códigos con la cámara</string>
     <string name="permission_camera_body">La cámara se usa solo para leer códigos de barras, y solo con esta pantalla abierta. Ninguna imagen se guarda ni sale del teléfono.</string>
     <string name="permission_camera_allow_action">Permitir cámara</string>

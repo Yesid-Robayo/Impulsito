@@ -44,6 +44,7 @@ data class NewPurchaseUiState(
     val registered: PurchaseSummary? = null,
     val closed: Boolean = false,
     val payment: PurchasePaymentUi = PurchasePaymentUi(),
+    val canScan: Boolean = false,
 ) {
     /** Si hay algo escrito que se perdería al salir. */
     val hasLines: Boolean get() = lines.isNotEmpty()
@@ -225,6 +226,15 @@ sealed interface NewPurchaseAction {
     data object CloseSheet : NewPurchaseAction
 
     data class AddProduct(val productId: Long) : NewPurchaseAction
+
+    /**
+     * Un producto que trajo el escáner: agrega su línea. Con [unitId], el código era el de esa
+     * presentación, y la línea se compra en ella.
+     */
+    data class AddScanned(val productId: Long, val unitId: Long?) : NewPurchaseAction
+
+    /** Abrir el escáner: lo resuelve la navegación. */
+    data object Scan : NewPurchaseAction
 
     /** Crear un producto que la búsqueda no encontró, con lo escrito como nombre. */
     data class CreateProduct(val name: String) : NewPurchaseAction

@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.DocumentUndoTexts
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
+import io.github.yesidrobayo.shopledger.navigation.ScanPurpose
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
 import io.github.yesidrobayo.shopledger.navigation.rememberPurchaseUndo
@@ -157,6 +158,16 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                 // El aviso ofrece `Deshacer` mientras se ve, también después de cerrar el resumen.
                 messages.showUndoable(registeredText, registered.purchaseId, undo, undoTexts)
             }
+            // Lo que trajo el escáner llega al volver a verse, en el orden en que se leyó.
+            LaunchedEffect(viewModel) {
+                navigator.scans.toTake.collect { pending ->
+                    if (pending.none { it.purpose == ScanPurpose.PURCHASE }) return@collect
+                    for (scanned in navigator.scans.take(ScanPurpose.PURCHASE)) {
+                        val productId = scanned.productId ?: continue
+                        viewModel.onAction(NewPurchaseAction.AddScanned(productId, scanned.unitId))
+                    }
+                }
+            }
             LaunchedEffect(uiState.closed) {
                 if (uiState.closed) navigator.back()
             }
@@ -177,6 +188,9 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
 
                         is NewPurchaseAction.ReviewPrice ->
                             navigator.open(AppNavKey.ProductEdit(productId = action.productId))
+
+                        NewPurchaseAction.Scan ->
+                            navigator.open(AppNavKey.Scanner(ScanPurpose.PURCHASE))
 
                         else -> Unit
                     }

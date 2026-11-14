@@ -48,7 +48,7 @@ class ScannerCameraDeviceTest {
         val model =
             ScannerViewModel(
                 continuous = false,
-                deliver = { delivered += it },
+                deliver = { delivered += it.code },
                 telemetry = telemetry,
             )
 

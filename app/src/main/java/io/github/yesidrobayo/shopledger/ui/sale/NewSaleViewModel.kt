@@ -186,6 +186,11 @@ class NewSaleViewModel(
 
             is NewSaleAction.PickVariantValue -> pickVariantValue(action.axis, action.value)
 
+            is NewSaleAction.AddScanned -> addScanned(action.productId, action.unitId)
+
+            // Lo resuelve la ruta, que abre el escáner.
+            NewSaleAction.Scan -> Unit
+
             is NewSaleAction.Increment -> add(action.productId, SaleCart.STEP)
 
             is NewSaleAction.Decrement -> editLines { SaleCart.decrement(it, action.productId) }
@@ -330,6 +335,21 @@ class NewSaleViewModel(
         }
         overlay.update { it.copy(sheet = null) }
         addProduct(variant.id)
+    }
+
+    /**
+     * Agrega un producto que trajo el escáner. Una línea nueva toma la unidad del código leído, si
+     * era el de una presentación; una que ya estaba suma uno en la unidad que tiene.
+     */
+    private fun addScanned(productId: Long, unitId: Long?) {
+        val catalog = readyCatalog() ?: return
+        val product = catalog.products.firstOrNull { it.id == productId } ?: return
+        val isNew = SaleCart.quantityOf(draft.value.lines, productId) == QuantityMilli.ZERO
+        if (unitId == null || unitId == product.details.baseUnitId || !isNew) {
+            addProduct(productId)
+            return
+        }
+        if (add(productId, SaleCart.STEP)) setLine(productId) { it.copy(unitId = unitId) }
     }
 
     /** Agrega [quantity] de [productId]. Devuelve si la venta cambió. */
@@ -1023,8 +1043,13 @@ class NewSaleViewModel(
             heldSaleId = current.heldSaleId,
             heldNotice = shown.heldNotice,
             exchange = exchange?.let { bandOf(it, cart.total, !cart.isEmpty) },
+            canScan = (load as? CatalogLoad.Ready)?.catalog?.hasCodes() == true,
         )
     }
+
+    /** Si algún producto o presentación tiene código: sin ninguno, el escáner no se ofrece. */
+    private fun SaleCatalog.hasCodes(): Boolean = products.any { it.details.barcode != null } ||
+        conversions.values.any { units -> units.values.any { it.barcode != null } }
 
     /** Un descuento mayor que la línea se marca en su campo, aunque se haya leído bien. */
     private fun withLineIssue(sheet: SaleSheet, cart: SaleCartState): SaleSheet {

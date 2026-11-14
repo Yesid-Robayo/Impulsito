@@ -14,6 +14,15 @@ sealed interface NewSaleAction {
     /** Elige [value] en el eje [axis] del selector de variantes abierto. */
     data class PickVariantValue(val axis: Int, val value: String) : NewSaleAction
 
+    /**
+     * Un producto que trajo el escáner: agrega uno, como al tocarlo. Con [unitId], el código era el
+     * de esa presentación, y una línea nueva se vende en ella.
+     */
+    data class AddScanned(val productId: Long, val unitId: Long?) : NewSaleAction
+
+    /** Abrir el escáner: lo resuelve la navegación. */
+    data object Scan : NewSaleAction
+
     data class Increment(val productId: Long) : NewSaleAction
 
     data class Decrement(val productId: Long) : NewSaleAction

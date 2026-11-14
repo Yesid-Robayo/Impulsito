@@ -117,6 +117,7 @@ fun ScannerScreen(
                 }
         }
         if (uiState.typingCode) TypeCodeSheet(onAction)
+        uiState.sheet?.let { CodeSheet(it, onAction) }
     }
 }
 
@@ -158,8 +159,10 @@ private fun CameraLayout(
 @Composable
 private fun overlayLabel(uiState: ScannerUiState): String {
     val lastRead = uiState.lastRead
+    val sheet = uiState.sheet
     return when {
         uiState.camera == CameraPhase.OPENING -> stringResource(R.string.scanner_opening)
+        sheet is ScanSheet.Unknown -> stringResource(R.string.a11y_scanner_unknown, sheet.code)
         uiState.slowHint -> stringResource(R.string.scanner_slow_hint)
         lastRead != null -> stringResource(R.string.a11y_scanner_read, lastRead)
         else -> stringResource(R.string.scanner_aim)

@@ -50,11 +50,15 @@ sealed interface AppNavKey : NavKey {
 
     /**
      * Crear un producto si [productId] es nulo, o editarlo. [prefillName] es lo que la persona ya
-     * escribió en una búsqueda sin resultados, para no escribirlo dos veces.
+     * escribió en una búsqueda sin resultados, para no escribirlo dos veces. [prefillBarcode] es el
+     * código que el escáner leyó y ningún producto tenía.
      */
     @Serializable
-    data class ProductEdit(val productId: Long? = null, val prefillName: String? = null) :
-        AppNavKey
+    data class ProductEdit(
+        val productId: Long? = null,
+        val prefillName: String? = null,
+        val prefillBarcode: String? = null,
+    ) : AppNavKey
 
     /**
      * El detalle de un producto; con [openCostSheet], abre de una vez la hoja de corregir el costo, y

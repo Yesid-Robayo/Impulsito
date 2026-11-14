@@ -605,6 +605,7 @@ private fun PurchaseSheets(uiState: NewPurchaseUiState, onAction: (NewPurchaseAc
                 )
             },
             onCreate = { onAction(NewPurchaseAction.CreateProduct(it)) },
+            onScan = if (uiState.canScan) ({ onAction(NewPurchaseAction.Scan) }) else null,
         )
 
         is PurchaseSheet.Suppliers -> SelectionSheet(

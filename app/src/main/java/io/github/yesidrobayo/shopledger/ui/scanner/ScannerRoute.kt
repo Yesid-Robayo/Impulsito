@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yesidrobayo.shopledger.di.PortsScanCatalog
 import io.github.yesidrobayo.shopledger.di.ScannerTelemetryLog
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -38,8 +39,14 @@ fun ScannerRoute(key: AppNavKey.Scanner, navigator: AppNavigator) {
         rememberAppViewModel { dependencies ->
             ScannerViewModel(
                 continuous = key.purpose.isContinuous,
-                deliver = { code -> navigator.scans.deliver(ScanDelivery(key.purpose, code)) },
+                deliver = { taken -> navigator.scans.deliver(deliveryOf(key.purpose, taken)) },
                 telemetry = ScannerTelemetryLog(dependencies.container.log),
+                catalog =
+                    if (key.purpose.findsProducts) {
+                        PortsScanCatalog(dependencies.ports, dependencies.container.clock)
+                    } else {
+                        null
+                    },
             )
         }
     when (model) {
@@ -57,6 +64,7 @@ fun ScannerRoute(key: AppNavKey.Scanner, navigator: AppNavigator) {
                 }
             LifecycleResumeEffect(viewModel) {
                 viewModel.onPermissionChecked(context.hasCamera())
+                viewModel.onResumed()
                 onPauseOrDispose {}
             }
             LaunchedEffect(uiState.closed) {
@@ -67,7 +75,14 @@ fun ScannerRoute(key: AppNavKey.Scanner, navigator: AppNavigator) {
                 onAction = { action ->
                     when (action) {
                         ScannerAction.AllowCamera -> permission.launch(Manifest.permission.CAMERA)
+
                         ScannerAction.OpenSettings -> context.openAppSettings()
+
+                        is ScannerAction.CreateProduct -> {
+                            viewModel.onAction(action)
+                            navigator.open(AppNavKey.ProductEdit(prefillBarcode = action.code))
+                        }
+
                         else -> viewModel.onAction(action)
                     }
                 },
@@ -78,6 +93,25 @@ fun ScannerRoute(key: AppNavKey.Scanner, navigator: AppNavigator) {
         }
     }
 }
+
+/** Lo que la pantalla de [purpose] recibe de un código tomado. */
+private fun deliveryOf(purpose: ScanPurpose, taken: ScanTake): ScanDelivery = ScanDelivery(
+    purpose = purpose,
+    code = taken.code,
+    productId = taken.match?.product?.id,
+    unitId = taken.match?.conversion?.details?.unitId,
+)
+
+/**
+ * Si el escáner busca el producto de cada código. Al llenar el código de un producto no: devuelve
+ * el texto tal cual, aunque otro producto lo tenga, y el formulario lo revisa al guardar.
+ */
+internal val ScanPurpose.findsProducts: Boolean
+    get() = when (this) {
+        ScanPurpose.SALE, ScanPurpose.PURCHASE, ScanPurpose.STOCK_COUNT -> true
+        ScanPurpose.PRODUCT_SEARCH -> true
+        ScanPurpose.PRODUCT_BARCODE -> false
+    }
 
 /** Si el escáner sigue leyendo después del primer código. */
 internal val ScanPurpose.isContinuous: Boolean

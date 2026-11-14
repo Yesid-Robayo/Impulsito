@@ -39,6 +39,7 @@ data class NewSaleUiState(
     val heldSaleId: Long? = null,
     val heldNotice: HeldNotice? = null,
     val exchange: ExchangeBand? = null,
+    val canScan: Boolean = false,
 )
 
 /**

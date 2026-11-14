@@ -15,6 +15,13 @@
     <string name="scanner_error_title">Could not open the camera</string>
     <string name="scanner_slow_hint">Move closer or turn on the flashlight</string>
 
+    <string name="scanner_unknown_title">Code without a product</string>
+    <string name="scanner_unknown_code">Code %1$s</string>
+    <string name="scanner_create_product_action">Create product</string>
+    <string name="scanner_assign_action">Assign to a product</string>
+    <string name="scanner_archived_title">%1$s is archived</string>
+    <string name="a11y_scanner_unknown">Code without a product: %1$s</string>
+
     <string name="permission_camera_title">Read codes with the camera</string>
     <string name="permission_camera_body">The camera is used only to read barcodes, and only while this screen is open. No image is saved or leaves the phone.</string>
     <string name="permission_camera_allow_action">Allow camera</string>

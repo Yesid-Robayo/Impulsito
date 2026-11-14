@@ -29,6 +29,7 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
+import io.github.yesidrobayo.shopledger.navigation.ScanPurpose
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.TopLevelDestination
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
@@ -247,6 +248,16 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     }
                 }
             }
+            // Lo que trajo el escáner llega al volver a verse, en el orden en que se leyó.
+            LaunchedEffect(viewModel) {
+                navigator.scans.toTake.collect { pending ->
+                    if (pending.none { it.purpose == ScanPurpose.SALE }) return@collect
+                    for (scanned in navigator.scans.take(ScanPurpose.SALE)) {
+                        val productId = scanned.productId ?: continue
+                        viewModel.onAction(NewSaleAction.AddScanned(productId, scanned.unitId))
+                    }
+                }
+            }
             LaunchedEffect(uiState.closed) {
                 if (uiState.closed) navigator.back()
             }
@@ -272,6 +283,8 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                             }
 
                         NewSaleAction.OpenHeldSales -> navigator.open(AppNavKey.HeldSales)
+
+                        NewSaleAction.Scan -> navigator.open(AppNavKey.Scanner(ScanPurpose.SALE))
 
                         else -> Unit
                     }

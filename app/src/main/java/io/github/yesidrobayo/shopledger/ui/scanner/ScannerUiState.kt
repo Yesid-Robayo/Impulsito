@@ -40,6 +40,8 @@ enum class CameraPhase {
  * @property readPulse sube con cada código tomado: la ventana se cierra un poco y el teléfono
  *   vibra.
  * @property typingCode si está abierta la hoja para escribir el código a mano.
+ * @property sheet la hoja de un código que no se pudo tomar: sin producto o archivado. Mientras
+ *   está abierta, la cámara sigue a la vista, pero no se toma otro código.
  * @property closed si el escáner terminó y la navegación debe volver.
  */
 data class ScannerUiState(
@@ -54,8 +56,43 @@ data class ScannerUiState(
     val lastRead: String? = null,
     val readPulse: Int = 0,
     val typingCode: Boolean = false,
+    val sheet: ScanSheet? = null,
     val closed: Boolean = false,
 )
+
+/** La hoja de un código que no se pudo tomar, con lo que se puede hacer con él. */
+sealed interface ScanSheet {
+    val code: String
+
+    /**
+     * Ningún producto tiene [code]: crear uno con el código puesto o asignarlo a uno. Con
+     * [problem], el último intento de asignarlo falló.
+     */
+    data class Unknown(override val code: String, val problem: ScanProblem? = null) : ScanSheet
+
+    /** El producto [productId], [name], tiene el código y está archivado: se puede reactivar. */
+    data class Archived(
+        override val code: String,
+        val productId: Long,
+        val name: String,
+        val problem: ScanProblem? = null,
+    ) : ScanSheet
+
+    /** Elegir a qué producto sin código se le da [code]. */
+    data class Assign(override val code: String, val candidates: List<ScanCandidate>) : ScanSheet
+}
+
+/** Por qué no se pudo asignar un código o reactivar un producto. */
+sealed interface ScanProblem {
+    /** Otro producto, [name], ya usa el código. */
+    data class CodeTaken(val name: String) : ScanProblem
+
+    /** Otro producto sin archivar ya usa el nombre o el código del que se reactiva. */
+    data object Duplicate : ScanProblem
+
+    /** No se pudo guardar. Nada cambió. */
+    data object SaveFailed : ScanProblem
+}
 
 /** Lo que la persona hace en el escáner. */
 sealed interface ScannerAction {
@@ -74,4 +111,17 @@ sealed interface ScannerAction {
 
     /** El código escrito a mano, o `null` si la hoja se cerró sin usarlo. */
     data class CodeTyped(val code: String?) : ScannerAction
+
+    /** Crear un producto con el código de la hoja: la navegación abre el formulario. */
+    data class CreateProduct(val code: String) : ScannerAction
+
+    /** Elegir a qué producto se le da el código de la hoja. */
+    data object StartAssign : ScannerAction
+
+    data class AssignTo(val productId: Long) : ScannerAction
+
+    data class Reactivate(val productId: Long) : ScannerAction
+
+    /** Cerrar la hoja de un código sin hacer nada: la lectura sigue. */
+    data object DismissSheet : ScannerAction
 }

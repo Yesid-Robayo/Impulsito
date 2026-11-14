@@ -89,6 +89,7 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                         .map { it.reference }
                         .distinctUntilChanged()
                 },
+                prefillBarcode = key.prefillBarcode,
             )
         }
     when (model) {

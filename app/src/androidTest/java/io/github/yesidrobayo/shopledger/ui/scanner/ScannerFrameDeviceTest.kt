@@ -78,7 +78,7 @@ class ScannerFrameDeviceTest {
         val model =
             ScannerViewModel(
                 continuous = true,
-                deliver = { delivered += it },
+                deliver = { delivered += it.code },
                 telemetry = ScannerTelemetryLog(NoLog),
                 nanoTime = { now },
             )

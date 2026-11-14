@@ -40,6 +40,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  * @param pinned unos pocos elementos que van arriba, bajo su propio título, mientras no se busca
  *   nada: los recientes, por ejemplo. La lista completa sigue debajo, con [itemsTitle].
  * @param footer una acción fija bajo la lista, siempre a la vista aunque la lista sea larga.
+ * @param onScan abre el escáner desde la búsqueda, o `null` si no se ofrece.
  */
 @Composable
 fun <T> SelectionSheet(
@@ -54,6 +55,7 @@ fun <T> SelectionSheet(
     onCreate: ((String) -> Unit)? = null,
     pinned: SelectionPinned<T>? = null,
     footer: SelectionFooter? = null,
+    onScan: (() -> Unit)? = null,
 ) {
     AppBottomSheet(onDismissRequest = onDismissRequest, title = title, scrollable = false) {
         SelectionSheetContent(
@@ -66,6 +68,7 @@ fun <T> SelectionSheet(
             onCreate,
             pinned,
             footer,
+            onScan,
         )
     }
 }
@@ -95,8 +98,9 @@ fun <T> ColumnScope.SelectionSheetContent(
     onCreate: ((String) -> Unit)? = null,
     pinned: SelectionPinned<T>? = null,
     footer: SelectionFooter? = null,
+    onScan: (() -> Unit)? = null,
 ) {
-    SearchField(query, onQueryChange, searchHint)
+    SearchField(query, onQueryChange, searchHint, onScan = onScan)
     if (query.isNotBlank()) {
         // Lo lee TalkBack al cambiar; no ocupa lugar en pantalla más allá de una línea discreta.
         Text(

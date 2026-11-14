@@ -283,6 +283,7 @@ private fun SaleSearch(
         onQueryChange = { onAction(NewSaleAction.QueryChange(it)) },
         placeholder = stringResource(R.string.sale_search_hint),
         modifier = modifier.padding(vertical = AppTheme.spacing.s8),
+        onScan = if (uiState.canScan) ({ onAction(NewSaleAction.Scan) }) else null,
     )
 }
 
@@ -323,6 +324,7 @@ private fun SalePanel(
                         query = uiState.query,
                         onQueryChange = { onAction(NewSaleAction.QueryChange(it)) },
                         placeholder = stringResource(R.string.sale_search_hint),
+                        onScan = if (uiState.canScan) ({ onAction(NewSaleAction.Scan) }) else null,
                     )
                 }
                 if (!cart.isEmpty) {

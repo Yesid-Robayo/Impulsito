@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
  *
  * @param productId el producto que se edita, o `null` para crear uno.
  * @param prefillName el nombre con que empieza un producto nuevo, el de una búsqueda sin resultados.
+ * @param prefillBarcode el código con que empieza un producto nuevo, el que leyó el escáner.
  * @param unitNames los nombres de las unidades en el idioma de la interfaz, para no crear una con el
  *   nombre de otra.
  * @param listPrices los precios del producto en las demás listas, que se editan aquí con la hoja de
@@ -73,13 +74,18 @@ class ProductEditViewModel(
         SetListPriceResult.ListNotFound
     },
     private val referenceCurrency: () -> Flow<ReferenceCurrency?> = { flowOf(null) },
+    prefillBarcode: String? = null,
 ) : ViewModel() {
     private val state =
         MutableStateFlow(
             ProductEditUiState(
                 isNew = productId == null,
                 loading = productId != null,
-                form = ProductEditForm(name = prefillName.orEmpty()),
+                form =
+                    ProductEditForm(
+                        name = prefillName.orEmpty(),
+                        barcode = prefillBarcode.orEmpty(),
+                    ),
             ),
         )
     val uiState: StateFlow<ProductEditUiState> = state.asStateFlow()

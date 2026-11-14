@@ -81,6 +81,7 @@ fun ProductListScreen(
     floatingAction: @Composable () -> Unit = {},
     tabs: (@Composable () -> Unit)? = null,
     backupBanner: @Composable () -> Unit = {},
+    onScan: (() -> Unit)? = null,
 ) {
     val spacing = AppTheme.spacing
     val sizes = AppTheme.sizes
@@ -130,6 +131,7 @@ fun ProductListScreen(
                             horizontal = spacing.s16,
                             vertical = spacing.s8,
                         ),
+                        onScan = onScan,
                     )
                     FiltersButton(uiState.filters) { onAction(ProductListAction.OpenFilters) }
                 }

@@ -62,7 +62,14 @@ class ProductListViewModel(
     observeCatalog: ObserveProductCatalogUseCase,
     computation: CoroutineDispatcher,
     choices: ProductFilterChoices = ProductFilterChoices.NONE,
+    hasCodes: Flow<Boolean> = flowOf(false),
 ) : ViewModel() {
+    /** Si algún producto tiene código: sin ninguno, la búsqueda no ofrece el escáner. */
+    val canScan: StateFlow<Boolean> =
+        hasCodes
+            .catch { emit(false) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), false)
+
     private val query = MutableStateFlow("")
     private val attempts = MutableStateFlow(0)
     private val filters = MutableStateFlow(ProductListFilters())
