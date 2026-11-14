@@ -26,6 +26,8 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
  *   cobro lo trae elegido.
  * @param priceListId la lista de precios elegida, o `null` para la inicial. Al abrir la venta desde
  *   un cliente con lista propia, es la suya.
+ * @param locationId la ubicación elegida, o `null` para la que propone la venta: donde se hizo la
+ *   última. Solo se elige con más de una ubicación.
  */
 data class SaleDraft(
     val lines: List<SaleLineRequest> = emptyList(),
@@ -38,6 +40,7 @@ data class SaleDraft(
     val heldLabel: String? = null,
     val customerId: Long? = null,
     val priceListId: Long? = null,
+    val locationId: Long? = null,
 )
 
 /**
@@ -60,6 +63,7 @@ internal object SaleDraftStore {
     private const val HELD_LABEL = "sale.heldLabel"
     private const val CUSTOMER = "sale.customer"
     private const val PRICE_LIST = "sale.priceList"
+    private const val LOCATION = "sale.location"
 
     private const val FIELDS = 8
     private const val UNIT = 6
@@ -82,6 +86,7 @@ internal object SaleDraftStore {
         heldLabel = state.get<String>(HELD_LABEL),
         customerId = state.get<Long>(CUSTOMER),
         priceListId = state.get<Long>(PRICE_LIST),
+        locationId = state.get<Long>(LOCATION),
     )
 
     fun write(state: SavedStateHandle, draft: SaleDraft) {
@@ -95,6 +100,7 @@ internal object SaleDraftStore {
         state[HELD_LABEL] = draft.heldLabel
         state[CUSTOMER] = draft.customerId
         state[PRICE_LIST] = draft.priceListId
+        state[LOCATION] = draft.locationId
     }
 
     private fun encode(lines: List<SaleLineRequest>): LongArray {

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de las ubicaciones del stock, copiados de la guía de redacción. -->
+<resources>
+    <string name="location_switcher_all">Todas las ubicaciones</string>
+    <string name="location_manage_action">Administrar ubicaciones</string>
+    <string name="a11y_location_switcher">Ubicación: %1$s. Cambiar</string>
+    <string name="product_stock_by_location">Stock por ubicación</string>
+</resources>

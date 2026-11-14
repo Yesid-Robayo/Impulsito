@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.port.LocationStockSource
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
@@ -19,6 +20,9 @@ import kotlinx.coroutines.flow.map
  * [acceptsOpeningBalance] dice si todavía se puede registrar el stock con que empezó: solo mientras
  * su libro efectivo esté vacío, sin filas o con todas anuladas. Después, lo que entra es una compra
  * o una corrección por conteo.
+ *
+ * [here] es lo que el libro dice de la ubicación que se ajusta: contra eso se compara un conteo. Con
+ * una sola ubicación es el stock del producto. El costo y su valor siguen siendo uno solo.
  */
 data class StockAdjustmentSubject(
     val productId: Long,
@@ -29,6 +33,7 @@ data class StockAdjustmentSubject(
     val minStock: QuantityMilli,
     val cost: CostState,
     val acceptsOpeningBalance: Boolean,
+    val here: QuantityMilli = cost.onHand,
 )
 
 /**
@@ -41,8 +46,10 @@ class ObserveStockAdjustmentSubjectUseCase(
     private val products: ProductRepository,
     private val units: UnitRepository,
     private val ledger: StockLedgerRepository,
+    private val locationStock: LocationStockSource? = null,
 ) {
-    operator fun invoke(productId: Long): Flow<StockAdjustmentSubject?> =
+    /** El producto, con [here] leído en [locationId], o el stock de todo con `null`. */
+    operator fun invoke(productId: Long, locationId: Long? = null): Flow<StockAdjustmentSubject?> =
         products.observeById(productId).map { product ->
             product ?: return@map null
             transactions.read {
@@ -59,6 +66,8 @@ class ObserveStockAdjustmentSubjectUseCase(
                     minStock = product.details.minStock,
                     cost = CostState(product.onHand, product.averageCost, product.stockValue),
                     acceptsOpeningBalance = StockLedger.effective(movements).isEmpty(),
+                    here = locationId?.let { locationStock?.onHandAt(productId, it) }
+                        ?: product.onHand,
                 )
             }
         }

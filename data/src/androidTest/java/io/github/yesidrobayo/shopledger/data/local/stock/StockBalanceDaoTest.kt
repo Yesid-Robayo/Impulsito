@@ -212,6 +212,8 @@ internal class StockBalanceDaoTest : LedgerDatabaseTest() {
                 "observeProductByLocation",
                 "observeStockedProductCounts",
                 "hasNonZeroAt",
+                "observeLocation",
+                "sumAt",
             ),
             functionsOf(StockBalanceDao::class.java),
         )

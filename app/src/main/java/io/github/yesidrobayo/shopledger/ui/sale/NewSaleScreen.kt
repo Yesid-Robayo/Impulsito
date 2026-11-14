@@ -67,6 +67,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LocationSwitcher
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
@@ -87,6 +88,7 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
+import io.github.yesidrobayo.shopledger.ui.stock.locationChoices
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -161,6 +163,13 @@ fun NewSaleScreen(
                     actions = { HeldSaleActions(uiState, onAction) },
                 )
                 uiState.exchange?.let { ExchangeBanner(it) }
+                // Solo con más de una ubicación: con una sola, la venta no pregunta dónde.
+                LocationSwitcher(
+                    locations = locationChoices(uiState.cart.locations),
+                    selectedId = uiState.cart.locationId,
+                    onSelect = { id -> id?.let { onAction(NewSaleAction.SelectLocation(it)) } },
+                    modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
+                )
                 if (twoPane) {
                     TwoPaneSale(uiState, onAction, wide)
                 } else {

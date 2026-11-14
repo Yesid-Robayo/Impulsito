@@ -76,6 +76,9 @@ sealed interface NewSaleAction {
     /** Elige la lista de precios de la venta: las líneas sin precio escrito toman el de ella. */
     data class SelectPriceList(val listId: Long) : NewSaleAction
 
+    /** Elige la ubicación de donde sale el stock de la venta. */
+    data class SelectLocation(val locationId: Long) : NewSaleAction
+
     data object ClearSale : NewSaleAction
 
     data object ConfirmClear : NewSaleAction

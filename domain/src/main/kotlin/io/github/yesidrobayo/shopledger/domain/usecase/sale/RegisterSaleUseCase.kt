@@ -49,6 +49,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
+import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
@@ -227,6 +228,7 @@ class RegisterSaleUseCase(
     private val productPrices: ProductPriceRepository? = null,
     private val recipes: ProductComponentRepository? = null,
     private val lineComponents: SaleLineComponentRepository? = null,
+    private val locations: LocationRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -282,6 +284,8 @@ class RegisterSaleUseCase(
 
         val choice = priceListOf(request)
             ?: return TxResult.Rollback(RegisterSaleResult.PriceListUnavailable)
+        val locationId = locationOf(request)
+            ?: return TxResult.Rollback(RegisterSaleResult.LocationUnavailable)
         val priced = when (val result = priceLines(request.lines, current.taxes, choice.prices)) {
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
@@ -317,7 +321,14 @@ class RegisterSaleUseCase(
                 return TxResult.Rollback(RegisterSaleResult.CurrencyNotConfirmed)
         }
         val plan = moneyPlanOf(settled.payments, currency)
-        val written = write(settled, plan, request.customerId, choice.listId, note, time, now)
+        val written = write(
+            settled,
+            plan,
+            Placement(request.customerId, choice.listId, locationId),
+            note,
+            time,
+            now,
+        )
         val saleId = written.saleId
         chargeOnAccount(saleId, request, settled.payments, time)?.let {
             return TxResult.Rollback(it)
@@ -711,6 +722,18 @@ class RegisterSaleUseCase(
             LoyaltyEntryOutcome.NotReversible,
             -> error("Agregar puntos no compensa ninguna fila")
         }
+    }
+
+    /**
+     * La ubicación de donde sale el stock: la elegida, si sigue vigente, o la inicial sin elegir.
+     * `null` si la elegida ya no existe o se archivó mientras se vendía: el stock no puede salir de
+     * un lugar que ya no se ve. Sin ubicaciones conectadas solo se acepta la inicial.
+     */
+    private suspend fun locationOf(request: SaleRequest): Long? {
+        val initial = systemRows.findId(SystemRow.MAIN_LOCATION) ?: damaged()
+        val chosen = request.locationId ?: return initial
+        if (chosen == initial) return initial
+        return locations?.findById(chosen)?.takeUnless { it.isArchived }?.id
     }
 
     /**
@@ -1214,15 +1237,14 @@ class RegisterSaleUseCase(
     private suspend fun write(
         settled: Settled.Payments,
         plan: MoneyPlan,
-        customerId: Long?,
-        priceListId: Long,
+        placement: Placement,
         note: String?,
         time: RecordTime,
         now: Instant,
     ): Written {
         val priced = settled.priced
         val salePayments = plan.payments
-        val locationId = systemRows.findId(SystemRow.MAIN_LOCATION) ?: damaged()
+        val (customerId, priceListId, locationId) = placement
         val totals = priced.totals
         val saleId = sales.insert(
             NewSale(
@@ -1338,6 +1360,9 @@ class RegisterSaleUseCase(
 
     /** La venta guardada y los ids de sus pagos, en el orden en que se guardaron. */
     private class Written(val saleId: Long, val paymentIds: List<Long>)
+
+    /** A quién, con qué lista y desde qué ubicación se vende: lo que la venta guarda de su lugar. */
+    private data class Placement(val customerId: Long?, val priceListId: Long, val locationId: Long)
 
     /**
      * Los pagos tal como se guardan, con la cuenta solo si su dinero entra en ella; la caja abierta

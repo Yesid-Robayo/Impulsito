@@ -29,6 +29,8 @@ internal object PreviewSamples {
     const val CATEGORY_A = "Granos"
     const val CATEGORY_B = "Lácteos"
     const val CATEGORY_C = "Aseo"
+    const val LOCATION_MAIN = "Local centro"
+    const val LOCATION_SECOND = "Puesto de feria"
     const val PERIOD_LABEL = "octubre"
     const val TOOL_NAME = "Clientes"
     const val TOOL_DETAIL = "Datos, ventas a crédito y abonos"

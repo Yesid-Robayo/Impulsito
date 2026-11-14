@@ -38,6 +38,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DateField
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LocationSwitcher
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
@@ -56,6 +57,7 @@ import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.money.PayingAccountChips
+import io.github.yesidrobayo.shopledger.ui.stock.locationChoices
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -230,6 +232,12 @@ private fun PurchaseHeader(uiState: NewPurchaseUiState, onAction: (NewPurchaseAc
             onValueChange = { onAction(NewPurchaseAction.ReferenceChange(it)) },
             label = stringResource(R.string.purchase_invoice_ref),
             error = stringResource(R.string.error_value_high).takeIf { uiState.referenceTooLong },
+        )
+        // Solo con más de una ubicación: con una sola, todo entra en la inicial sin preguntar.
+        LocationSwitcher(
+            locations = locationChoices(uiState.locations),
+            selectedId = uiState.locationId,
+            onSelect = { id -> id?.let { onAction(NewPurchaseAction.LocationChange(it)) } },
         )
     }
 }

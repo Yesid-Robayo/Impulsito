@@ -11,6 +11,9 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReview
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.LocationDetails
+import io.github.yesidrobayo.shopledger.domain.model.stock.LocationKind
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
@@ -267,6 +270,56 @@ class InventoryViewModelTest {
         costSince: BusinessDate? = null,
         margin: Margin = Margin.NoData,
     ) = PriceReview(product, reasons, margin, BasisPoints(3_000L), costSince)
+
+    @Test
+    fun `with two locations one is chosen and its stock is shown`() = runTest(dispatcher) {
+        products.value = listOf(product(1L, "Arroz", 9_000L))
+        val stall = MutableStateFlow(listOf(product(1L, "Arroz", -1_000L)))
+        val locations = MutableStateFlow(listOf(location(1L, "MAIN"), location(2L, null)))
+        val model = InventoryViewModel(
+            observe = { products.toOverview() },
+            computation = dispatcher,
+            initialChip = InventoryChip.ALL,
+            locations = { locations },
+            observeAt = { id -> if (id == 2L) stall.toOverview() else products.toOverview() },
+        )
+        model.uiState.test {
+            skipItems(1)
+            val all = awaitItem()
+            assertEquals(listOf(1L, 2L), all.locations.map { it.id })
+            assertNull(all.locationId)
+            val first = all.content as InventoryContent.Ready
+            assertEquals(QuantityMilli(9_000L), first.items.single().onHand)
+
+            model.onAction(InventoryAction.LocationChanged(2L))
+            advanceUntilIdle()
+            val atStall = expectMostRecentItem()
+            assertEquals(2L, atStall.locationId)
+            val ready = atStall.content as InventoryContent.Ready
+            assertEquals(QuantityMilli(-1_000L), ready.items.single().onHand)
+            assertEquals(1, ready.negativeCount)
+
+            // Archivada la del puesto, queda una sola: el selector desaparece y vuelve a todo.
+            locations.value = listOf(location(1L, "MAIN"))
+            advanceUntilIdle()
+            val single = expectMostRecentItem()
+            assertTrue(single.locations.isEmpty())
+            assertNull(single.locationId)
+        }
+    }
+
+    private fun location(id: Long, systemKey: String?) = Location(
+        id = id,
+        systemKey = systemKey,
+        details = LocationDetails(
+            if (systemKey == null) "Puesto" else null,
+            if (systemKey == null) "puesto" else null,
+            LocationKind.STALL,
+        ),
+        archivedAt = null,
+        createdAt = AT,
+        updatedAt = AT,
+    )
 
     private fun MutableStateFlow<List<Product>>.toOverview() = flow {
         collect { emit(overviewOf(it)) }

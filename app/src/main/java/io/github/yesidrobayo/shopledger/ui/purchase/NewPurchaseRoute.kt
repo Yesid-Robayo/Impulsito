@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
@@ -83,6 +84,7 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                     categories = ports.categories,
                     supplierLedger = ports.supplierLedger,
                     money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
+                    locations = ports.locations,
                 )
             val reactivate =
                 ReactivateProductUseCase(
@@ -126,6 +128,7 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                     ports.settings,
                     ports.moneyAccounts,
                 )(),
+                locations = ports.locations.observe(ArchiveFilter.ACTIVE),
             )
         }
     when (model) {

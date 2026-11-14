@@ -33,6 +33,9 @@ sealed interface RegisterPurchaseResult {
     /** El proveedor está archivado: no se elige en compras nuevas hasta reactivarlo. */
     data object SupplierArchived : RegisterPurchaseResult
 
+    /** La ubicación elegida ya no existe o se archivó mientras se compraba: hay que elegir otra. */
+    data object LocationUnavailable : RegisterPurchaseResult
+
     /** La línea número [index], desde cero, no se puede registrar, por [reason]. */
     data class LineRejected(val index: Int, val reason: PurchaseLineRejection) :
         RegisterPurchaseResult

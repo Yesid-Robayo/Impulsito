@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.stock.ProductLocationStock
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
@@ -57,6 +59,13 @@ interface ProductDetailOperations {
 
     /** Anula el ajuste o el inventario inicial [movementId] con su fila compensatoria. */
     suspend fun voidAdjustment(movementId: Long): VoidAdjustmentResult
+
+    /**
+     * El stock del producto en cada ubicación, o nada con una sola. Sin ubicaciones conectadas,
+     * como en una vista previa, no hay nada que repartir.
+     */
+    fun locationStock(productId: Long): Flow<ProductLocationStock> =
+        flowOf(ProductLocationStock.Hidden)
 }
 
 /** Lo que muestra el detalle de un producto. */
@@ -168,6 +177,7 @@ data class ProductDetailUiState(
     val message: ProductDetailMessage? = null,
     val closed: Boolean = false,
     val priceSheet: PriceSheet? = null,
+    val locationStock: ProductLocationStock = ProductLocationStock.Hidden,
 )
 
 /** Lo que la persona hace en el detalle. */
@@ -283,9 +293,15 @@ class ProductDetailViewModel(
             }
     }
 
+    // Un reparto que no se pudo leer no cierra el detalle: solo no se muestra.
+    private val byLocation = attempts.flatMapLatest {
+        operations.locationStock(productId).catch { emit(ProductLocationStock.Hidden) }
+    }
+
     val uiState: StateFlow<ProductDetailUiState> =
-        combine(content, extra) { shown, more ->
+        combine(content, extra, byLocation) { shown, more, locations ->
             ProductDetailUiState(
+                locationStock = locations,
                 content = shown,
                 tab = more.tab,
                 costSheet = more.costSheet,

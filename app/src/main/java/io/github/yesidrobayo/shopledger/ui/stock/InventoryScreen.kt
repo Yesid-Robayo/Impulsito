@@ -45,6 +45,7 @@ import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LocationSwitcher
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
@@ -183,7 +184,7 @@ private fun InventoryBody(
                     }
 
                 is InventoryContent.Ready ->
-                    InventoryList(uiState.chip, content, notificationsBlocked, onAction)
+                    InventoryList(uiState, content, notificationsBlocked, onAction)
             }
         }
     }
@@ -191,11 +192,12 @@ private fun InventoryBody(
 
 @Composable
 private fun InventoryList(
-    chip: InventoryChip,
+    uiState: InventoryUiState,
     content: InventoryContent.Ready,
     notificationsBlocked: Boolean,
     onAction: (InventoryAction) -> Unit,
 ) {
+    val chip = uiState.chip
     val spacing = AppTheme.spacing
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -217,6 +219,19 @@ private fun InventoryList(
                 multiple = false,
                 modifier = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
             )
+        }
+        // Solo con más de una ubicación. Mirar una cambia las cantidades, no el valor del
+        // inventario, que es uno solo por producto.
+        if (uiState.locations.isNotEmpty()) {
+            item(key = "location") {
+                LocationSwitcher(
+                    locations = locationChoices(uiState.locations),
+                    selectedId = uiState.locationId,
+                    onSelect = { onAction(InventoryAction.LocationChanged(it)) },
+                    allowAll = true,
+                    modifier = Modifier.padding(horizontal = spacing.s16),
+                )
+            }
         }
         if (chip == InventoryChip.REVIEW) {
             item(key = "review-all") {

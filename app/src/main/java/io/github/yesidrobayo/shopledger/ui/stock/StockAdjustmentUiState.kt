@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.stock
 import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentSubject
 
@@ -99,6 +100,8 @@ data class StockAdjustmentUiState(
     val outcome: AdjustmentOutcome? = null,
     val confirmingDiscard: Boolean = false,
     val closed: Boolean = false,
+    val locations: List<Location> = emptyList(),
+    val locationId: Long? = null,
 ) {
     /** Si la persona ya escribió algo: cerrar pregunta antes de descartarlo. */
     val dirty: Boolean
@@ -113,6 +116,9 @@ data class StockAdjustmentUiState(
 sealed interface StockAdjustmentAction {
     /** Vuelve a leer el producto tras una falla de lectura. */
     data object Retry : StockAdjustmentAction
+
+    /** Eligió la ubicación que se ajusta. */
+    data class LocationChanged(val locationId: Long) : StockAdjustmentAction
 
     data class ModeChanged(val mode: AdjustmentMode) : StockAdjustmentAction
 

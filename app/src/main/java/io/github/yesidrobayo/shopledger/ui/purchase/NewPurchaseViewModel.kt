@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineReject
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
@@ -27,6 +28,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchasePricingResu
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseSubject
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseUnit
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LocationRules
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import io.github.yesidrobayo.shopledger.ui.ReadOutcome
 import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
@@ -92,6 +94,7 @@ class NewPurchaseViewModel(
     private val prefillFromPurchaseId: Long? = null,
     private val loadCorrection: suspend (Long) -> PurchaseCorrection? = { null },
     payingAccounts: Flow<List<MoneyAccount>> = flowOf(emptyList()),
+    locations: Flow<List<Location>> = flowOf(emptyList()),
 ) : ViewModel() {
     private val draft = MutableStateFlow(PurchaseDraftStore.read(savedState))
     private val overlay = MutableStateFlow(Overlay())
@@ -119,6 +122,12 @@ class NewPurchaseViewModel(
             // Sin cuentas legibles, la compra no ofrece ninguna: se guarda sin dinero.
             payingAccounts.catch { emit(emptyList()) }.collect { accounts ->
                 overlay.update { it.copy(accounts = accounts) }
+            }
+        }
+        viewModelScope.launch {
+            // Sin ubicaciones legibles, todo entra en la inicial y no hay selector.
+            locations.catch { emit(emptyList()) }.collect { list ->
+                overlay.update { it.copy(locations = list) }
             }
         }
         viewModelScope.launch {
@@ -157,6 +166,9 @@ class NewPurchaseViewModel(
             }
 
             is NewPurchaseAction.DateChange -> changeDraft { it.copy(date = action.date) }
+
+            is NewPurchaseAction.LocationChange ->
+                changeDraft { it.copy(locationId = action.locationId) }
 
             is NewPurchaseAction.ReferenceChange -> changeDraft { it.copy(reference = action.text) }
 
@@ -429,6 +441,8 @@ class NewPurchaseViewModel(
             dueDate = if (current.onCredit) payment.dueDate else null,
             // Una cuenta que dejó de ofrecerse mientras tanto no se usa.
             moneyAccountId = payment.accountId,
+            // La que se ve en el selector, si sigue ofreciéndose; si no, la inicial.
+            locationId = locationOf(current, overlay.value.locations),
         )
         overlay.update { it.copy(registering = true, notice = null) }
         viewModelScope.launch {
@@ -481,6 +495,8 @@ class NewPurchaseViewModel(
             RegisterPurchaseResult.InvoiceReferenceTooLong,
             RegisterPurchaseResult.FutureDate,
             is RegisterPurchaseResult.UnknownTimeZone,
+            // Una ubicación archivada entre medio sale del selector: el reintento usa otra.
+            RegisterPurchaseResult.LocationUnavailable,
             -> notice(PurchaseNotice.RegisterFailed(outOfSpace = false))
 
             // La pantalla ya revisa lo pagado, el proveedor y el vencimiento antes de registrar; si
@@ -543,8 +559,18 @@ class NewPurchaseViewModel(
             payment = paymentOf(catalog, current, lines.total, shown.accounts),
             canScan = catalog.products.any { it.details.barcode != null } ||
                 catalog.conversions.values.any { units -> units.values.any { it.barcode != null } },
+            locations = shown.locations.takeIf { LocationRules.showsLocations(it.size) }.orEmpty(),
+            locationId = locationOf(current, shown.locations),
         )
     }
+
+    /**
+     * Dónde entra la compra: la elegida, si sigue vigente, o la inicial. `null` sin ubicaciones
+     * leídas, y entonces el caso de uso usa la inicial.
+     */
+    private fun locationOf(current: PurchaseDraft, locations: List<Location>): Long? =
+        current.locationId?.takeIf { id -> locations.any { it.id == id } }
+            ?: locations.firstOrNull { it.isInitial }?.id
 
     /**
      * Cómo se paga la compra, con lo que impide registrarla a plazo. El vencimiento es el elegido o
@@ -897,6 +923,7 @@ class NewPurchaseViewModel(
         val rejected: Pair<Int, PurchaseLineRejection>? = null,
         val closed: Boolean = false,
         val accounts: List<MoneyAccount> = emptyList(),
+        val locations: List<Location> = emptyList(),
     )
 
     private class BuiltLines(

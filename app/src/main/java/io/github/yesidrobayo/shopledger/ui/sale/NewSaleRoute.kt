@@ -89,6 +89,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     productPrices = ports.productPrices,
                     recipes = ports.productComponents,
                     modifiers = ports.productModifiers,
+                    locations = ports.locations,
                 )
             val register =
                 RegisterSaleUseCase(
@@ -115,6 +116,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     productPrices = ports.productPrices,
                     recipes = ports.productComponents,
                     lineComponents = ports.saleLineComponents,
+                    locations = ports.locations,
                 )
             val hold =
                 HoldSaleUseCase(

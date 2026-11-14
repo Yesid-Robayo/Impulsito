@@ -83,6 +83,20 @@ internal interface StockBalanceDao {
     )
     fun observeStockedProductCounts(): Flow<List<LocationProductCountRow>>
 
+    /** Cuánto hay de cada producto en una ubicación, sumando sus lotes, por id de producto. */
+    @Query(
+        "SELECT product_id, SUM(on_hand_milli) AS on_hand_milli FROM stock_balances " +
+            "WHERE location_id = :locationId GROUP BY product_id ORDER BY product_id",
+    )
+    fun observeLocation(locationId: Long): Flow<List<ProductQuantityRow>>
+
+    /** Cuánto hay de un producto en una ubicación, sumando sus lotes. Sin saldos, 0. */
+    @Query(
+        "SELECT COALESCE(SUM(on_hand_milli), 0) FROM stock_balances " +
+            "WHERE product_id = :productId AND location_id = :locationId",
+    )
+    suspend fun sumAt(productId: Long, locationId: Long): Long
+
     /** Si en la ubicación queda algún saldo distinto de cero, de cualquier producto o lote. */
     @Query(
         "SELECT EXISTS (SELECT 1 FROM stock_balances " +
@@ -94,6 +108,12 @@ internal interface StockBalanceDao {
 /** Cuánto hay de un producto en una ubicación, tal como lo lee [StockBalanceDao]. */
 internal data class LocationQuantityRow(
     @ColumnInfo(name = "location_id") val locationId: Long,
+    @ColumnInfo(name = "on_hand_milli") val onHandMilli: Long,
+)
+
+/** Cuánto hay de un producto en una ubicación, sumando sus lotes. */
+internal data class ProductQuantityRow(
+    @ColumnInfo(name = "product_id") val productId: Long,
     @ColumnInfo(name = "on_hand_milli") val onHandMilli: Long,
 )
 

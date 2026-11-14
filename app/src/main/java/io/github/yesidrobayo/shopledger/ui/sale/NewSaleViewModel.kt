@@ -237,6 +237,9 @@ class NewSaleViewModel(
             is NewSaleAction.SelectPriceList ->
                 changeDraft { it.copy(priceListId = action.listId) }
 
+            is NewSaleAction.SelectLocation ->
+                changeDraft { it.copy(locationId = action.locationId) }
+
             NewSaleAction.ClearSale -> askClear()
 
             NewSaleAction.ConfirmClear -> clear()
@@ -715,6 +718,8 @@ class NewSaleViewModel(
                 heldSaleId = current.heldSaleId,
                 // La misma lista con que se calcularon los precios que se ven.
                 priceListId = catalog.salePriceList(current.priceListId)?.listId,
+                // La ubicación que se ve en el selector, si sigue ofreciéndose.
+                locationId = catalog.saleLocationId(current.locationId),
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> {
@@ -759,6 +764,7 @@ class NewSaleViewModel(
                 is RegisterSaleResult.NotEnoughPoints,
                 RegisterSaleResult.PointsAboveSale,
                 RegisterSaleResult.PriceListUnavailable,
+                RegisterSaleResult.LocationUnavailable,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }
@@ -810,6 +816,7 @@ class NewSaleViewModel(
                     note = current.note.takeIf { it.isNotBlank() },
                     payments = payments,
                     priceListId = catalog.salePriceList(current.priceListId)?.listId,
+                    locationId = catalog.saleLocationId(current.locationId),
                 ),
                 refundAccountId = creditMethod.details.moneyAccountId,
                 note = exchangeNote(),

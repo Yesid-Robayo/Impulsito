@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MovementDocument
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
+import io.github.yesidrobayo.shopledger.domain.model.stock.ProductLocationStock
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ArchiveProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
@@ -25,6 +26,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSo
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveProductLocationStockUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.VoidAdjustmentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.VoidStockAdjustmentUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -193,7 +195,11 @@ class ProductDetailUseCases(
     private val deleteUseCase: DeleteProductUseCase,
     private val voidUseCase: VoidStockAdjustmentUseCase,
     private val pricingUseCase: ObservePricingContextUseCase,
+    private val locationStockUseCase: ObserveProductLocationStockUseCase? = null,
 ) : ProductDetailOperations {
+    override fun locationStock(productId: Long): Flow<ProductLocationStock> =
+        locationStockUseCase?.invoke(productId) ?: super.locationStock(productId)
+
     override fun overview(productId: Long): Flow<ProductOverview?> = observe(productId)
 
     override fun pricing(): Flow<PricingContext> = pricingUseCase()
@@ -278,6 +284,8 @@ class ProductDetailUseCases(
                 ),
                 pricingUseCase =
                     ObservePricingContextUseCase(ports.settings, ports.categories, ports.taxRates),
+                locationStockUseCase =
+                    ObserveProductLocationStockUseCase(ports.locations, ports.locationStock),
             )
         }
     }

@@ -97,6 +97,9 @@ internal object SaleContentBuilder {
             priceLists = catalog.activePriceLists.takeIf { it.size > 1 }.orEmpty(),
             priceListId = catalog.salePriceList(draft.priceListId)?.listId
                 ?: catalog.activePriceLists.firstOrNull { it.isDefault }?.id,
+            // Con una sola ubicación no hay nada que elegir: el selector no aparece.
+            locations = catalog.saleLocations,
+            locationId = catalog.saleLocationId(draft.locationId),
         )
     }
 

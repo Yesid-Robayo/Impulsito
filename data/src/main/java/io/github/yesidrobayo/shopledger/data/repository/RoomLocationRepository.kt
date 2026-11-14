@@ -77,6 +77,9 @@ internal class RoomLocationRepository(
                 ),
             )
         }
+
+    override fun observeLastSaleLocationId(): Flow<Long?> =
+        locations.observeLastSaleLocationId().distinctUntilChanged()
 }
 
 /** El stock por ubicación, leído de `stock_balances`, que el libro mantiene en cada escritura. */
@@ -94,7 +97,15 @@ internal class RoomLocationStockSource(private val balances: StockBalanceDao) :
             .map { rows -> rows.associate { it.locationId to Math.toIntExact(it.products) } }
             .distinctUntilChanged()
 
+    override fun observeLocation(locationId: Long): Flow<Map<Long, QuantityMilli>> =
+        balances.observeLocation(locationId)
+            .map { rows -> rows.associate { it.productId to QuantityMilli(it.onHandMilli) } }
+            .distinctUntilChanged()
+
     override suspend fun hasStock(locationId: Long): Boolean = balances.hasNonZeroAt(locationId)
+
+    override suspend fun onHandAt(productId: Long, locationId: Long): QuantityMilli =
+        QuantityMilli(balances.sumAt(productId, locationId))
 }
 
 /** La ubicación guardada en [row]. Una clase que su guarda no admite es una fila rota. */

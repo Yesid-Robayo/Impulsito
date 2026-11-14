@@ -15,6 +15,8 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
+import io.github.yesidrobayo.shopledger.domain.port.LocationStockSource
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -57,6 +59,8 @@ class AdjustStockUseCase(
     private val calendar: BusinessCalendarSource,
     private val currencyLock: CurrencyLock,
     private val clock: Clock,
+    private val locations: LocationRepository? = null,
+    private val locationStock: LocationStockSource? = null,
 ) {
     suspend operator fun invoke(request: StockAdjustmentRequest): StockAdjustmentResult =
         storageSafe(StockAdjustmentResult::StorageFailed) {
@@ -80,12 +84,16 @@ class AdjustStockUseCase(
         val unit = checkNotNull(units.findById(product.details.baseUnitId)) {
             "Falta la unidad base"
         }
-        val change = when (val read = changeOf(request, product, unit.allowsFraction)) {
+        val location = locationOf(request)
+            ?: return reject(StockAdjustmentResult.LocationUnavailable)
+        // Un conteo se compara con lo que el libro dice de la ubicación contada, no con el total:
+        // con una sola ubicación son lo mismo.
+        val here = locationStock?.onHandAt(product.id, location) ?: product.onHand
+        val change = when (val read = changeOf(request, here, unit.allowsFraction)) {
             is ChangeRead.Change -> read.quantity
             is ChangeRead.Rejected -> return reject(read.result)
         }
         if (change == QuantityMilli.ZERO) return reject(StockAdjustmentResult.NoDifference)
-        val location = systemRows.requireId(SystemRow.MAIN_LOCATION)
         val draft = StockMovementDraft(
             key = StockKey(product.id, location, lotId = null),
             type = StockMovementType.ADJUSTMENT,
@@ -117,10 +125,24 @@ class AdjustStockUseCase(
         return TxResult.Commit(StockAdjustmentResult.Adjusted(movementId, value.after.onHand))
     }
 
-    /** El cambio con signo que pide [request], o el motivo por el que no se puede hacer. */
+    /**
+     * La ubicación que se ajusta: la elegida, si sigue vigente, o la inicial sin elegir. `null` si
+     * la elegida ya no existe o se archivó. Sin ubicaciones conectadas solo se acepta la inicial.
+     */
+    private suspend fun locationOf(request: StockAdjustmentRequest): Long? {
+        val initial = systemRows.requireId(SystemRow.MAIN_LOCATION)
+        val chosen = request.locationId ?: return initial
+        if (chosen == initial) return initial
+        return locations?.findById(chosen)?.takeUnless { it.isArchived }?.id
+    }
+
+    /**
+     * El cambio con signo que pide [request], o el motivo por el que no se puede hacer. [here] es lo
+     * que el libro dice de la ubicación que se ajusta.
+     */
     private fun changeOf(
         request: StockAdjustmentRequest,
-        product: Product,
+        here: QuantityMilli,
         allowsFraction: Boolean,
     ): ChangeRead = when (request) {
         is StockAdjustmentRequest.Count -> {
@@ -134,7 +156,7 @@ class AdjustStockUseCase(
 
                 else ->
                     ChangeRead.Change(
-                        StockAdjustmentRules.countDifference(product.onHand, request.counted),
+                        StockAdjustmentRules.countDifference(here, request.counted),
                     )
             }
         }

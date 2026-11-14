@@ -69,6 +69,12 @@ internal class FakeLocationRepository(private val database: InMemoryDatabase) :
         }
     }
 
+    /** La última venta no se modela aquí: la siembra la prueba que la necesita. */
+    var lastSaleLocationId: Long? = null
+
+    override fun observeLastSaleLocationId(): Flow<Long?> =
+        database.tables.map { lastSaleLocationId }.distinctUntilChanged()
+
     /** Siembra la ubicación inicial, sin nombre propio, como la crea la base al nacer. */
     fun seedInitial(at: Instant): Long {
         val id = 1L
@@ -122,6 +128,19 @@ internal class FakeLocationStockSource(private val database: InMemoryDatabase) :
                 .groupingBy { (location, _) -> location }
                 .eachCount()
         }.distinctUntilChanged()
+
+    override fun observeLocation(locationId: Long): Flow<Map<Long, QuantityMilli>> =
+        database.tables.map { tables ->
+            tables.stockBalances.entries
+                .filter { it.key.locationId == locationId }
+                .groupBy({ it.key.productId }, { it.value })
+                .mapValues { (_, parts) -> parts.fold(QuantityMilli.ZERO, QuantityMilli::plus) }
+        }.distinctUntilChanged()
+
+    override suspend fun onHandAt(productId: Long, locationId: Long): QuantityMilli =
+        database.read().stockBalances.entries
+            .filter { it.key.productId == productId && it.key.locationId == locationId }
+            .fold(QuantityMilli.ZERO) { sum, part -> sum + part.value }
 
     override suspend fun hasStock(locationId: Long): Boolean =
         database.read().stockBalances.any { (key, onHand) ->

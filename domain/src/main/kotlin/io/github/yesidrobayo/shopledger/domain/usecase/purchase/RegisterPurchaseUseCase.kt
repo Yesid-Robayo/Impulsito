@@ -29,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -131,6 +132,7 @@ class RegisterPurchaseUseCase(
     private val categories: CategoryRepository? = null,
     private val supplierLedger: SupplierLedgerRepository? = null,
     private val money: DocumentMoney? = null,
+    private val locations: LocationRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -161,6 +163,8 @@ class RegisterPurchaseUseCase(
             if (found.isArchived) return reject(RegisterPurchaseResult.SupplierArchived)
             found
         }
+        val location = locationOf(request)
+            ?: return reject(RegisterPurchaseResult.LocationUnavailable)
         val subjects = subjectsOf(request.lines, current.taxes)
         val priced = when (
             val result = PurchasePricing.price(request.lines, subjects, current.taxes)
@@ -198,6 +202,7 @@ class RegisterPurchaseUseCase(
             documentMoney
         }
         val purchaseId = write(
+            location,
             request.supplierId,
             reference,
             priced.lines,
@@ -451,7 +456,22 @@ class RegisterPurchaseUseCase(
         return found
     }
 
+    /**
+     * La ubicación donde entra lo comprado: la elegida, si sigue vigente, o la inicial sin elegir.
+     * `null` si la elegida ya no existe o se archivó. Sin ubicaciones conectadas solo se acepta la
+     * inicial.
+     */
+    private suspend fun locationOf(request: PurchaseRequest): Long? {
+        val initial = checkNotNull(systemRows.findId(SystemRow.MAIN_LOCATION)) {
+            "Falta una fila inicial de la base"
+        }
+        val chosen = request.locationId ?: return initial
+        if (chosen == initial) return initial
+        return locations?.findById(chosen)?.takeUnless { it.isArchived }?.id
+    }
+
     private suspend fun write(
+        location: Long,
         supplierId: Long?,
         reference: String?,
         lines: List<PricedPurchaseLine>,
@@ -460,9 +480,6 @@ class RegisterPurchaseUseCase(
         time: RecordTime,
         now: Instant,
     ): Long {
-        val location = checkNotNull(systemRows.findId(SystemRow.MAIN_LOCATION)) {
-            "Falta una fila inicial de la base"
-        }
         val purchaseId = purchases.insert(
             NewPurchase(
                 supplierId = supplierId,

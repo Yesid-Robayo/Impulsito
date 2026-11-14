@@ -1165,6 +1165,8 @@ class CheckoutViewModel(
                 pointsRedeemed = redeemed,
                 // La misma lista con que se calcularon los precios que se ven.
                 priceListId = catalog.salePriceList(written.priceListId)?.listId,
+                // La ubicación que se veía en la venta nueva, si sigue ofreciéndose.
+                locationId = catalog.saleLocationId(current.locationId),
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> overlay.update {
@@ -1216,6 +1218,7 @@ class CheckoutViewModel(
                 RegisterSaleResult.TipNotAccepted,
                 RegisterSaleResult.PointsNotAvailable,
                 RegisterSaleResult.PriceListUnavailable,
+                RegisterSaleResult.LocationUnavailable,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }

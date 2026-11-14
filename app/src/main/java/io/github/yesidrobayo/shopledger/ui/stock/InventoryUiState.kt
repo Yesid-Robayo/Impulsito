@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
@@ -98,11 +99,17 @@ sealed interface InventoryContent {
     data object ReadError : InventoryContent
 }
 
+/**
+ * El inventario en pantalla. [locations] son las ubicaciones vigentes, solo si hay más de una, y
+ * [locationId] la que se mira, o `null` para todas.
+ */
 @Immutable
 data class InventoryUiState(
     val chip: InventoryChip = InventoryChip.LOW_STOCK,
     val content: InventoryContent = InventoryContent.Loading,
     val message: InventoryMessage? = null,
+    val locations: List<Location> = emptyList(),
+    val locationId: Long? = null,
 )
 
 /** Un aviso breve del inventario. */
@@ -114,6 +121,9 @@ sealed interface InventoryMessage {
 /** Lo que la persona puede hacer en el inventario. La navegación la resuelve la ruta. */
 sealed interface InventoryAction {
     data class ChipChanged(val chip: InventoryChip) : InventoryAction
+
+    /** Eligió una ubicación en el selector, o `null` para ver todas. */
+    data class LocationChanged(val locationId: Long?) : InventoryAction
 
     /** Tocó la fila: se abre el detalle del producto. */
     data class OpenProduct(val productId: Long) : InventoryAction

@@ -22,6 +22,9 @@ sealed interface StockAdjustmentResult {
     /** El producto no lleva stock propio: no tiene libro que ajustar. */
     data object NotTracked : StockAdjustmentResult
 
+    /** La ubicación elegida ya no existe o se archivó: hay que elegir otra. */
+    data object LocationUnavailable : StockAdjustmentResult
+
     /** La cantidad no vale para la unidad del producto, por [check]. */
     data class InvalidQuantity(val check: UnitQuantityCheck) : StockAdjustmentResult
 

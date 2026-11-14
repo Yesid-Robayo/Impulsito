@@ -88,6 +88,7 @@ import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
+import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
@@ -1172,6 +1173,7 @@ internal class SaleWorld(
         alerts = alertRepository.takeIf { withAlerts },
         supplierLedger = supplierLedger,
         money = DocumentMoney(moneyAccountRepository, moneyLedger),
+        locations = locationRepository,
     )
 
     fun voidPurchase(): VoidPurchaseUseCase = VoidPurchaseUseCase(
@@ -1410,6 +1412,7 @@ internal class SaleWorld(
         productPrices = productPriceRepository,
         recipes = recipeRepository.takeIf { withCombos },
         lineComponents = lineComponentRepository.takeIf { withCombos },
+        locations = locationRepository,
     )
 
     /** Las recetas de los combos: la venta solo las lee. */
@@ -1483,6 +1486,9 @@ internal class SaleWorld(
     /** Las listas de precios de la venta, si la prueba las usa; sin ellas, solo la inicial. */
     var priceListRepository: PriceListRepository? = null
     var productPriceRepository: ProductPriceRepository? = null
+
+    /** Las ubicaciones de la venta, si la prueba las usa; sin ellas, solo la inicial. */
+    var locationRepository: LocationRepository? = null
 
     fun registerSaleReturn(): RegisterSaleReturnUseCase = RegisterSaleReturnUseCase(
         transactions = transactions,

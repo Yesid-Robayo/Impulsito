@@ -38,6 +38,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  * [priceListId] es la lista de precios de la venta: la del cliente o la que eligió la persona. Nula
  * es la inicial. El precio de cada línea sin precio escrito sale de esa lista, y la venta y cada
  * línea la guardan, así que cambiar la lista después no toca la venta.
+ *
+ * [locationId] es la ubicación de donde sale el stock, que la venta guarda. Nula es la inicial:
+ * mientras haya una sola, nadie pregunta dónde.
  */
 data class SaleRequest(
     val lines: List<SaleLineRequest>,
@@ -52,4 +55,5 @@ data class SaleRequest(
     val creditDueDate: BusinessDate? = null,
     val pointsRedeemed: Long = 0L,
     val priceListId: Long? = null,
+    val locationId: Long? = null,
 )

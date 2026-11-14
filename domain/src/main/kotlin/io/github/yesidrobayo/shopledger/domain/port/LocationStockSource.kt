@@ -21,8 +21,20 @@ interface LocationStockSource {
     fun observeStockedProductCounts(): Flow<Map<Long, Int>>
 
     /**
+     * Cuánto hay de cada producto en [locationId], por id de producto, sumando sus lotes. Un
+     * producto sin filas del libro en ella no aparece: tiene cero allí.
+     */
+    fun observeLocation(locationId: Long): Flow<Map<Long, QuantityMilli>>
+
+    /**
      * Si en [locationId] queda algún saldo distinto de cero, de cualquier producto o lote. Un
      * negativo también cuenta: archivarla lo escondería sin resolverlo.
      */
     suspend fun hasStock(locationId: Long): Boolean
+
+    /**
+     * Cuánto hay de [productId] en [locationId], sumando sus lotes, leído dentro de la transacción
+     * que lo va a usar. Cero si ninguna fila del libro cayó allí.
+     */
+    suspend fun onHandAt(productId: Long, locationId: Long): QuantityMilli
 }

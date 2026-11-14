@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReques
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LocationRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.OpeningBalanceRule
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockAdjustmentRules
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.OpeningBalanceResult
@@ -20,9 +21,15 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResu
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentSubject
 import io.github.yesidrobayo.shopledger.ui.ScreenReads
 import io.github.yesidrobayo.shopledger.ui.product.ProductNumberFormat
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -37,6 +44,7 @@ import kotlinx.coroutines.launch
  * Un producto sin movimientos vigentes abre en el inventario inicial: lo que ya tenía al empezar
  * no es un sobrante de conteo. Si después deja de admitirlo, pasa al conteo.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class StockAdjustmentViewModel(
     private val operations: StockAdjustmentOperations,
     private val numbers: ProductNumberFormat,
@@ -51,9 +59,27 @@ class StockAdjustmentViewModel(
     /** El producto: una falla se dice con `Reintentar`, y lo escrito sigue en el estado. */
     private val reads = ScreenReads()
 
+    /** La ubicación que eligió la persona, o `null` mientras no elige: entonces, la inicial. */
+    private val chosenLocation = MutableStateFlow<Long?>(null)
+
     init {
+        // Sin ubicaciones que leer, el ajuste sigue: solo no hay selector.
+        val choices = operations.locations()
+            .catch { emit(emptyList()) }
+            .map { list -> list.takeIf { LocationRules.showsLocations(it.size) }.orEmpty() }
+        // Con más de una, siempre se ajusta una ubicación concreta, y el conteo se compara con lo
+        // que hay en ella. Una elegida que se archiva vuelve a la inicial.
+        val location = combine(chosenLocation, choices) { chosen, list ->
+            val initial = list.firstOrNull { it.isInitial }?.id
+            list to (chosen?.takeIf { id -> list.any { it.id == id } } ?: initial)
+        }.distinctUntilChanged()
         viewModelScope.launch {
-            reads.guard { operations.subject(productId) }
+            location.collect { (list, id) ->
+                state.update { it.copy(locations = list, locationId = id).withPreview() }
+            }
+        }
+        viewModelScope.launch {
+            reads.guard { location.flatMapLatest { (_, id) -> operations.subject(productId, id) } }
                 .collect { subject -> state.update { current -> current.withSubject(subject) } }
         }
         viewModelScope.launch {
@@ -69,6 +95,8 @@ class StockAdjustmentViewModel(
                 state.update { it.copy(content = StockAdjustmentContent.Loading) }
                 reads.retry()
             }
+
+            is StockAdjustmentAction.LocationChanged -> chosenLocation.value = action.locationId
 
             is StockAdjustmentAction.ModeChanged ->
                 edit { copy(mode = action.mode, errors = emptyMap()) }
@@ -147,7 +175,8 @@ class StockAdjustmentViewModel(
             ?: return copy(preview = null)
         val quantity = (readQuantity(quantityText, mode) as? NumberInput.Value)?.value
             ?: return copy(preview = null)
-        val onHand = subject.cost.onHand
+        // El conteo se compara con lo que hay en la ubicación que se ajusta.
+        val onHand = subject.here
         val change = changeOf(this, onHand, quantity)
         val value = when {
             change == QuantityMilli.ZERO -> Money.ZERO
@@ -204,7 +233,7 @@ class StockAdjustmentViewModel(
     private fun requestOf(form: StockAdjustmentUiState, quantity: QuantityMilli) =
         when (form.mode) {
             AdjustmentMode.COUNT ->
-                StockAdjustmentRequest.Count(productId, quantity, form.noteText)
+                StockAdjustmentRequest.Count(productId, quantity, form.noteText, form.locationId)
 
             AdjustmentMode.CHANGE, AdjustmentMode.OPENING ->
                 StockAdjustmentRequest.Change(
@@ -213,6 +242,7 @@ class StockAdjustmentViewModel(
                     quantity = quantity,
                     increase = form.showsDirection && form.increase,
                     note = form.noteText,
+                    locationId = form.locationId,
                 )
         }
 
@@ -333,6 +363,8 @@ class StockAdjustmentViewModel(
             fieldError(AdjustmentField.NOTE, AdjustmentProblem.TooLong(result.maxLength))
 
         // La pantalla nunca pide una entrada con un motivo que solo resta; si pasara, no guarda.
+        // Una ubicación archivada mientras se ajustaba: el error deja elegir otra y reintentar.
+        StockAdjustmentResult.LocationUnavailable,
         StockAdjustmentResult.IncreaseNotAllowed,
         StockAdjustmentResult.UnknownTimeZone,
         StockAdjustmentResult.CurrencyUnconfirmed,

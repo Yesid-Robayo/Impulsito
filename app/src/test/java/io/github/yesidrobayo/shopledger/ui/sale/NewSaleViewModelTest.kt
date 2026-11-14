@@ -20,6 +20,9 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.LocationDetails
+import io.github.yesidrobayo.shopledger.domain.model.stock.LocationKind
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrection
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
@@ -235,6 +238,49 @@ class NewSaleViewModelTest {
             assertTrue(model.state.cart.priceLists.isEmpty())
             assertNull(requests.single().priceListId)
         }
+
+    @Test
+    fun `the sale proposes where the last one was made and keeps the chosen location`() =
+        runTest(dispatcher) {
+            catalog.value = catalog.value.copy(
+                locations = listOf(saleLocation(1L, "MAIN"), saleLocation(2L, null)),
+                lastSaleLocationId = 2L,
+            )
+            val model = viewModel()
+            assertEquals(listOf(1L, 2L), model.state.cart.locations.map { it.id })
+            assertEquals(2L, model.state.cart.locationId)
+
+            model.act(this, NewSaleAction.SelectLocation(1L))
+            model.act(this, NewSaleAction.AddProduct(rice.id))
+            model.act(this, NewSaleAction.Register)
+
+            assertEquals(1L, requests.single().locationId)
+        }
+
+    @Test
+    fun `with a single location nothing is asked and the sale goes to it`() = runTest(dispatcher) {
+        catalog.value = catalog.value.copy(locations = listOf(saleLocation(1L, "MAIN")))
+        val model = viewModel()
+
+        model.act(this, NewSaleAction.AddProduct(rice.id))
+        model.act(this, NewSaleAction.Register)
+
+        assertTrue(model.state.cart.locations.isEmpty())
+        assertEquals(1L, requests.single().locationId)
+    }
+
+    private fun saleLocation(id: Long, systemKey: String?) = Location(
+        id = id,
+        systemKey = systemKey,
+        details = LocationDetails(
+            if (systemKey == null) "Puesto" else null,
+            if (systemKey == null) "puesto" else null,
+            LocationKind.STALL,
+        ),
+        archivedAt = null,
+        createdAt = CREATED,
+        updatedAt = CREATED,
+    )
 
     @Test
     fun `a correction is brought once, also after the process is closed`() = runTest(dispatcher) {

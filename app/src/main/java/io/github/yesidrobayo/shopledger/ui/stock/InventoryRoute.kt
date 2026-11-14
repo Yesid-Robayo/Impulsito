@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.DismissPriceReviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceReviewUseCase
@@ -39,7 +40,7 @@ fun InventoryRoute(
     val model =
         rememberAppViewModel { dependencies ->
             val ports = dependencies.ports
-            val observe = ObserveInventoryUseCase(ports.products, ports.units)
+            val observe = ObserveInventoryUseCase(ports.products, ports.units, ports.locationStock)
             val review =
                 ObservePriceReviewUseCase(
                     products = ports.products,
@@ -65,6 +66,8 @@ fun InventoryRoute(
                 initialChip = initialChip,
                 review = { review() },
                 dismissReview = { dismiss(it) },
+                locations = { ports.locations.observe(ArchiveFilter.ACTIVE) },
+                observeAt = { observe(it) },
             )
         }
     val navigation = if (asTab) TopBarNavigation.NONE else TopBarNavigation.BACK
@@ -111,6 +114,7 @@ fun InventoryRoute(
                             NotificationPermissionPrompt.openSettings(context)
 
                         is InventoryAction.ChipChanged, InventoryAction.Retry,
+                        is InventoryAction.LocationChanged,
                         is InventoryAction.DismissReview, InventoryAction.MessageShown,
                         -> viewModel.onAction(action)
                     }

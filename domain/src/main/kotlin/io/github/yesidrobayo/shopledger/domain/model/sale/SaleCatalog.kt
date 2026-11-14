@@ -10,7 +10,9 @@ import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.SalePriceList
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LocationRules
 import kotlinx.datetime.DayOfWeek
 
 /**
@@ -60,7 +62,32 @@ data class SaleCatalog(
     val ownPrices: Map<Long, Map<Long, Money>> = emptyMap(),
     val comboAvailability: Map<Long, Long?> = emptyMap(),
     val modifiers: Map<Long, List<Long>> = emptyMap(),
+    val locations: List<Location> = emptyList(),
+    val lastSaleLocationId: Long? = null,
 ) {
+    /**
+     * Las ubicaciones que se ofrecen al vender: las vigentes, en el orden en que se crearon, o
+     * ninguna mientras haya una sola. Entonces no se pregunta dónde y todo va a la inicial.
+     */
+    val saleLocations: List<Location>
+        get() = locations.takeIf { LocationRules.showsLocations(it.size) }.orEmpty()
+
+    /**
+     * Dónde se vende si la persona no elige: donde se hizo la última venta, si esa ubicación sigue
+     * vigente, o la inicial. `null` solo sin ubicaciones leídas, como en una vista previa.
+     */
+    val defaultLocationId: Long?
+        get() = locations.firstOrNull { it.id == lastSaleLocationId }?.id
+            ?: locations.firstOrNull { it.isInitial }?.id
+            ?: locations.firstOrNull()?.id
+
+    /**
+     * Dónde se vende con [chosen] elegida: ella, si se sigue ofreciendo, o [defaultLocationId]. Una
+     * elegida que se archivó, o que dejó de ofrecerse porque quedó una sola, no se usa.
+     */
+    fun saleLocationId(chosen: Long?): Long? =
+        chosen?.takeIf { id -> saleLocations.any { it.id == id } } ?: defaultLocationId
+
     /** Las listas que se ofrecen al vender: las vigentes, la inicial primero. */
     val activePriceLists: List<PriceList> get() = priceLists.filterNot { it.isArchived }
 

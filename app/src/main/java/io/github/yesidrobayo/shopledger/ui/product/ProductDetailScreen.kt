@@ -50,6 +50,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductOverview
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.purchase.SupplierLastCost
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.stock.ProductLocationStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.MarginCalculator
@@ -79,6 +80,7 @@ import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
 import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
 import io.github.yesidrobayo.shopledger.ui.components.PhotoThumbSize
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SegmentedTabs
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.StatTile
@@ -97,6 +99,7 @@ import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
+import io.github.yesidrobayo.shopledger.ui.stock.locationName
 import io.github.yesidrobayo.shopledger.ui.stock.reasonLabel
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -171,7 +174,13 @@ fun ProductDetailScreen(
                     }
 
                 is ProductDetailContent.Ready ->
-                    DetailBody(content.overview, content.pricing, uiState.tab, onAction)
+                    DetailBody(
+                        content.overview,
+                        content.pricing,
+                        uiState.tab,
+                        onAction,
+                        uiState.locationStock,
+                    )
             }
         }
         if (ready != null && !ready.product.isArchived) {
@@ -246,6 +255,7 @@ private fun DetailBody(
     pricing: ProductPricing,
     tab: ProductDetailTab,
     onAction: (ProductDetailAction) -> Unit,
+    locationStock: ProductLocationStock = ProductLocationStock.Hidden,
 ) {
     val spacing = AppTheme.spacing
     val product = overview.product
@@ -285,6 +295,16 @@ private fun DetailBody(
         item(key = "figures") { Figures(product, pricing) }
         item(key = "replacement") { ReplacementFigures(product, pricing) }
         item(key = "notices") { Notices(product) }
+        // Solo con más de una ubicación: con una sola, el stock de arriba ya es todo.
+        val byLocation = locationStock as? ProductLocationStock.Shown
+        if (tracked && unit != null && byLocation != null) {
+            item(key = "by-location") {
+                SectionHeader(stringResource(R.string.product_stock_by_location))
+            }
+            items(byLocation.rows, key = { "location-${it.location.id}" }) { row ->
+                LocationStockRow(locationName(row.location), row.onHand, unit)
+            }
+        }
         item(key = "tabs") {
             val tabs = ProductDetailTab.entries
             SegmentedTabs(
@@ -299,6 +319,34 @@ private fun DetailBody(
             ProductDetailTab.PRICES -> priceRows(overview.prices)
             ProductDetailTab.SUPPLIERS -> lastCostRows(overview, onAction)
         }
+    }
+}
+
+/** Lo que hay en una ubicación: su nombre a la izquierda y la cantidad a la derecha. */
+@Composable
+private fun LocationStockRow(name: String, onHand: QuantityMilli, unit: UnitLabel) {
+    val spacing = AppTheme.spacing
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = AppTheme.sizes.listRowSingle)
+            .padding(horizontal = spacing.s16, vertical = spacing.s8)
+            .semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+    ) {
+        Text(name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            quantityText(onHand, unit),
+            style = AppTheme.amounts.row,
+            color = if (onHand < QuantityMilli.ZERO) {
+                AppTheme.colors.loss
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 

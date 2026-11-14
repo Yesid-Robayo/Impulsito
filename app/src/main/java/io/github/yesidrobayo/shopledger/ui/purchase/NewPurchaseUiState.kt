@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import kotlinx.datetime.DayOfWeek
 
 /**
@@ -45,6 +46,8 @@ data class NewPurchaseUiState(
     val closed: Boolean = false,
     val payment: PurchasePaymentUi = PurchasePaymentUi(),
     val canScan: Boolean = false,
+    val locations: List<Location> = emptyList(),
+    val locationId: Long? = null,
 ) {
     /** Si hay algo escrito que se perdería al salir. */
     val hasLines: Boolean get() = lines.isNotEmpty()
@@ -242,6 +245,9 @@ sealed interface NewPurchaseAction {
     data class SelectSupplier(val supplierId: Long?) : NewPurchaseAction
 
     data class DateChange(val date: BusinessDate) : NewPurchaseAction
+
+    /** Elige la ubicación donde entra lo comprado. */
+    data class LocationChange(val locationId: Long) : NewPurchaseAction
 
     data class ReferenceChange(val text: String) : NewPurchaseAction
 

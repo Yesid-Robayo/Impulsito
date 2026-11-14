@@ -20,6 +20,8 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
  * @param dueDate el vencimiento que eligió la persona, o `null` para proponerlo con el plazo habitual
  *   del proveedor.
  * @param accountId la cuenta de la que sale lo pagado, o `null` si no se eligió ninguna.
+ * @param locationId la ubicación donde entra lo comprado, o `null` para la inicial. Solo se elige
+ *   con más de una ubicación.
  * @param paidNowText lo que se paga al registrar una compra a plazo, tal como se escribió; vacío es
  *   nada.
  */
@@ -36,6 +38,7 @@ data class PurchaseDraft(
     val dueDate: BusinessDate? = null,
     val paidNowText: String = "",
     val accountId: Long? = null,
+    val locationId: Long? = null,
 )
 
 /**
@@ -70,6 +73,7 @@ internal object PurchaseDraftStore {
     private const val DUE_DATE = "purchase.dueDate"
     private const val PAID_NOW = "purchase.paidNow"
     private const val ACCOUNT = "purchase.accountId"
+    private const val LOCATION = "purchase.locationId"
 
     private const val FIELDS = 4
 
@@ -93,6 +97,7 @@ internal object PurchaseDraftStore {
         dueDate = state.get<String>(DUE_DATE)?.let(BusinessDate::parse),
         paidNowText = state.get<String>(PAID_NOW).orEmpty(),
         accountId = state.get<Long>(ACCOUNT),
+        locationId = state.get<Long>(LOCATION),
     )
 
     fun write(state: SavedStateHandle, draft: PurchaseDraft) {
@@ -118,6 +123,7 @@ internal object PurchaseDraftStore {
         state[DUE_DATE] = draft.dueDate?.toString()
         state[PAID_NOW] = draft.paidNowText
         state[ACCOUNT] = draft.accountId
+        state[LOCATION] = draft.locationId
     }
 
     /** Lo guardado; si las tres partes no cuadran entre sí, se descarta entero. */

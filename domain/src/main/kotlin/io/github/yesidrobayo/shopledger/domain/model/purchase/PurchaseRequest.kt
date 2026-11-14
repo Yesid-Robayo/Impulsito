@@ -17,6 +17,9 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  *
  * [moneyAccountId] es la cuenta de la que sale lo pagado al confirmar, o `null` si la persona no usa
  * cuentas. Sin nada pagado no se usa.
+ *
+ * [locationId] es la ubicación donde entra lo comprado, o `null` para la inicial: mientras haya una
+ * sola, nadie pregunta dónde.
  */
 data class PurchaseRequest(
     val lines: List<PurchaseLineRequest>,
@@ -26,6 +29,7 @@ data class PurchaseRequest(
     val amountPaid: Money? = null,
     val dueDate: BusinessDate? = null,
     val moneyAccountId: Long? = null,
+    val locationId: Long? = null,
 )
 
 /**

@@ -32,4 +32,10 @@ interface LocationRepository {
 
     /** La archiva en [archivedAt], o la reactiva con `null`. La inicial nunca se archiva. */
     suspend fun setArchivedAt(id: Long, archivedAt: Instant?, updatedAt: Instant)
+
+    /**
+     * La ubicación de la última venta registrada, anulada o no, o `null` sin ventas. La venta
+     * siguiente la propone: quien vende todo el día en un puesto no tiene que elegirlo cada vez.
+     */
+    fun observeLastSaleLocationId(): Flow<Long?>
 }

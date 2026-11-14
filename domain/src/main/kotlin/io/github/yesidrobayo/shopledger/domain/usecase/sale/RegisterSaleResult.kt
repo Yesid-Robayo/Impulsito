@@ -78,6 +78,12 @@ sealed interface RegisterSaleResult {
     data object PriceListUnavailable : RegisterSaleResult
 
     /**
+     * La ubicación elegida ya no existe o se archivó mientras se vendía: el stock no saldría de un
+     * lugar que se ve. Hay que elegir otra.
+     */
+    data object LocationUnavailable : RegisterSaleResult
+
+    /**
      * El total, el costo o la reposición de la venta, la comisión de un pago o la suma de los
      * pagos pasan del tope.
      */

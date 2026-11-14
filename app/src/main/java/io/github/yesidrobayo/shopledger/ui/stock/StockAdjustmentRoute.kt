@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.RegisterOpeningBalanceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
@@ -103,16 +104,19 @@ private fun useCasesOf(dependencies: ScreenDependencies): StockAdjustmentOperati
                 ports.products,
                 ports.units,
                 ports.stockLedger,
+                ports.locationStock,
             ),
         adjustUseCase =
             AdjustStockUseCase(
                 ports.transactions, ports.products, ports.units, ports.systemRows,
                 ports.stockLedger, ports.lowStockAlerts, calendar, currencyLock, clock,
+                ports.locations, ports.locationStock,
             ),
         openingUseCase =
             RegisterOpeningBalanceUseCase(
                 ports.transactions, ports.products, ports.units, ports.systemRows,
                 ports.stockLedger, ports.lowStockAlerts, calendar, currencyLock, clock,
             ),
+        locationsSource = { ports.locations.observe(ArchiveFilter.ACTIVE) },
     )
 }

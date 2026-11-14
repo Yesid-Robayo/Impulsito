@@ -58,6 +58,10 @@ internal interface LocationDao {
     )
     suspend fun isInUse(id: Long): Boolean
 
+    /** La ubicación de la última venta, anulada o no, o `null` sin ventas. */
+    @Query("SELECT location_id FROM sales ORDER BY id DESC LIMIT 1")
+    fun observeLastSaleLocationId(): Flow<Long?>
+
     /** Devuelve el id nuevo. Falla si la clave ya existe, o si el nombre ya es de una vigente. */
     @Insert
     suspend fun insert(location: LocationEntity): Long

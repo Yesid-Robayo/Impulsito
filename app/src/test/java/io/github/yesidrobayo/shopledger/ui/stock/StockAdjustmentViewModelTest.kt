@@ -4,6 +4,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.LocationDetails
+import io.github.yesidrobayo.shopledger.domain.model.stock.LocationKind
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentRequest
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
@@ -11,11 +14,13 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.OpeningBalanceRes
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentSubject
 import io.github.yesidrobayo.shopledger.ui.product.ProductNumberFormat
+import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -264,8 +269,60 @@ class StockAdjustmentViewModelTest {
         assertTrue(model.uiState.value.closed)
     }
 
+    @Test
+    fun `with two locations the count is compared with the chosen one and saved there`() =
+        runTest(dispatcher) {
+            operations.locations.value = listOf(location(1L, "MAIN"), location(2L, null))
+            operations.here = mapOf(2L to QuantityMilli(3_000L))
+            val model = viewModel()
+            advanceUntilIdle()
+            // Sin elegir, se ajusta la inicial: el conteo se compara con lo que hay en ella.
+            assertEquals(1L, model.uiState.value.locationId)
+            assertEquals(listOf(1L, 2L), model.uiState.value.locations.map { it.id })
+
+            model.onAction(StockAdjustmentAction.LocationChanged(2L))
+            model.onAction(StockAdjustmentAction.QuantityChanged("10"))
+            advanceUntilIdle()
+
+            assertEquals(QuantityMilli(7_000L), model.uiState.value.preview?.difference)
+            model.onAction(StockAdjustmentAction.Save)
+            advanceUntilIdle()
+            assertEquals(2L, operations.requests.single().locationId)
+        }
+
+    @Test
+    fun `with a single location nothing is offered and the request names none`() =
+        runTest(dispatcher) {
+            operations.locations.value = listOf(location(1L, "MAIN"))
+            val model = viewModel()
+            advanceUntilIdle()
+            model.onAction(StockAdjustmentAction.QuantityChanged("10"))
+            model.onAction(StockAdjustmentAction.Save)
+            advanceUntilIdle()
+
+            assertTrue(model.uiState.value.locations.isEmpty())
+            assertEquals(null, operations.requests.single().locationId)
+        }
+
+    private fun location(id: Long, systemKey: String?) = Location(
+        id = id,
+        systemKey = systemKey,
+        details = LocationDetails(
+            if (systemKey == null) "Bodega" else null,
+            if (systemKey == null) "bodega" else null,
+            LocationKind.WAREHOUSE,
+        ),
+        archivedAt = null,
+        createdAt = Instant.fromEpochMilliseconds(0),
+        updatedAt = Instant.fromEpochMilliseconds(0),
+    )
+
     private class FakeOperations : StockAdjustmentOperations {
         val subject = MutableStateFlow<StockAdjustmentSubject?>(previewSubject())
+        val locations = MutableStateFlow<List<Location>>(emptyList())
+
+        /** Lo que hay en cada ubicación; sin dato, el stock del producto. */
+        var here: Map<Long, QuantityMilli> = emptyMap()
         val requests = mutableListOf<StockAdjustmentRequest>()
         var result: StockAdjustmentResult =
             StockAdjustmentResult.Adjusted(movementId = 7L, onHandAfter = QuantityMilli(9_000L))
@@ -281,6 +338,14 @@ class StockAdjustmentViewModelTest {
             } else {
                 subject
             }
+
+        override fun subject(productId: Long, locationId: Long?): Flow<StockAdjustmentSubject?> =
+            subject(productId).map { read ->
+                val at = locationId?.let { here[it] }
+                if (read == null || at == null) read else read.copy(here = at)
+            }
+
+        override fun locations(): Flow<List<Location>> = locations
 
         override suspend fun adjust(request: StockAdjustmentRequest): StockAdjustmentResult {
             requests += request

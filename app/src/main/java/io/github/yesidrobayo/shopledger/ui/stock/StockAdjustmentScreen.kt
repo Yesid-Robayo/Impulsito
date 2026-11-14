@@ -39,6 +39,7 @@ import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LocationSwitcher
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
@@ -145,6 +146,16 @@ private fun AdjustmentForm(
         verticalArrangement = Arrangement.spacedBy(spacing.s16),
     ) {
         ProductBlock(subject, unit)
+        // Solo con más de una ubicación. El inventario inicial siempre entra en la inicial.
+        if (uiState.mode != AdjustmentMode.OPENING) {
+            LocationSwitcher(
+                locations = locationChoices(uiState.locations),
+                selectedId = uiState.locationId,
+                onSelect = { id ->
+                    id?.let { onAction(StockAdjustmentAction.LocationChanged(it)) }
+                },
+            )
+        }
         val modes = buildList {
             add(AdjustmentMode.COUNT)
             add(AdjustmentMode.CHANGE)
@@ -189,10 +200,10 @@ private fun ProductBlock(subject: StockAdjustmentSubject, unit: UnitLabel) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = quantityText(subject.cost.onHand, unit),
+                text = quantityText(subject.here, unit),
                 style = AppTheme.amounts.title,
                 color =
-                    if (subject.cost.onHand < QuantityMilli.ZERO) {
+                    if (subject.here < QuantityMilli.ZERO) {
                         AppTheme.colors.loss
                     } else {
                         MaterialTheme.colorScheme.onSurface

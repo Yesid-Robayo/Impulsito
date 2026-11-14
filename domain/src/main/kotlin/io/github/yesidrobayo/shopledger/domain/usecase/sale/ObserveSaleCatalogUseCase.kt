@@ -11,7 +11,9 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
 import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
@@ -77,6 +79,7 @@ class ObserveSaleCatalogUseCase(
     private val productPrices: ProductPriceRepository? = null,
     private val recipes: ProductComponentRepository? = null,
     private val modifiers: ProductModifierRepository? = null,
+    private val locations: LocationRepository? = null,
 ) {
     operator fun invoke(): Flow<SaleCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = result as? BusinessCalendarResult.Ready
@@ -135,6 +138,18 @@ class ObserveSaleCatalogUseCase(
                 sale.copy(comboAvailability = combos(sale, stored))
             }
             .combine(modifiersOf()) { sale, extras -> sale.copy(modifiers = extras) }
+            .combine(locationsOf()) { sale, (active, last) ->
+                sale.copy(locations = active, lastSaleLocationId = last)
+            }
+    }
+
+    /** Las ubicaciones vigentes y la de la última venta, o ninguna si la venta no las lee. */
+    private fun locationsOf(): Flow<Pair<List<Location>, Long?>> {
+        val source = locations ?: return flowOf(emptyList<Location>() to null)
+        return combine(
+            source.observe(ArchiveFilter.ACTIVE),
+            source.observeLastSaleLocationId(),
+        ) { active, last -> active to last }
     }
 
     /** Los extras de cada producto, en su orden, o ninguno si la venta no los lee. */

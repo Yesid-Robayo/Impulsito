@@ -74,6 +74,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     priceLists = ports.priceLists,
                     productPrices = ports.productPrices,
                     recipes = ports.productComponents,
+                    locations = ports.locations,
                 )
             val register =
                 RegisterSaleUseCase(
@@ -100,6 +101,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     productPrices = ports.productPrices,
                     recipes = ports.productComponents,
                     lineComponents = ports.saleLineComponents,
+                    locations = ports.locations,
                 )
             val images = FindPaymentImagesUseCase(ports.transactions, ports.mediaAssets)
             val createCustomer =

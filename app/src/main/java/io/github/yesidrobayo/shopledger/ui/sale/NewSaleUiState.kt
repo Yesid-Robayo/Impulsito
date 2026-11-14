@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartLineIssue
 import kotlinx.datetime.DayOfWeek
 
@@ -141,7 +142,8 @@ data class ArchivedMatch(val productId: Long, val name: String)
  * [cashRounding] si se cobra en efectivo; falta si una línea tiene un problema o si pasa del tope
  * de un documento. [tax] es el impuesto que lleva, solo si el negocio cobra impuesto. [date] es la fecha elegida, o `null` para hoy; [today] falta si el
  * teléfono no conoce la zona del negocio. [priceLists] son las listas vigentes, solo si hay más de
- * una, y [priceListId] la elegida.
+ * una, y [priceListId] la elegida. [locations] son las ubicaciones vigentes, solo si hay más de una,
+ * y [locationId] la ubicación de donde sale el stock.
  */
 @Immutable
 data class SaleCartState(
@@ -158,6 +160,8 @@ data class SaleCartState(
     val full: Boolean = false,
     val priceLists: List<PriceList> = emptyList(),
     val priceListId: Long? = null,
+    val locations: List<Location> = emptyList(),
+    val locationId: Long? = null,
 ) {
     val isEmpty: Boolean get() = lines.isEmpty()
 
