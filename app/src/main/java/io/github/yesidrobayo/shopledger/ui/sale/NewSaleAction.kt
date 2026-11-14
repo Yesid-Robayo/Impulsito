@@ -125,6 +125,30 @@ sealed interface NewSaleAction {
 
     data object ConfirmHold : NewSaleAction
 
+    /** Abre la hoja de `Guardar cotización`, con las líneas de la venta. */
+    data object OpenSaveQuote : NewSaleAction
+
+    data class QuoteValidUntilChange(val date: BusinessDate?) : NewSaleAction
+
+    data class QuoteNoteChange(val note: String) : NewSaleAction
+
+    data object QuoteOpenCustomers : NewSaleAction
+
+    data object QuoteCloseCustomers : NewSaleAction
+
+    data class QuoteCustomerQuery(val query: String) : NewSaleAction
+
+    data class QuotePickCustomer(val customerId: Long) : NewSaleAction
+
+    data object QuoteRemoveCustomer : NewSaleAction
+
+    /** Crear un cliente que no está: lo resuelve la ruta, que abre Clientes. */
+    data class QuoteNewCustomer(val name: String) : NewSaleAction
+
+    data object ConfirmSaveQuote : NewSaleAction
+
+    data object QuoteSavedShown : NewSaleAction
+
     /** Ir a las ventas en espera. */
     data object OpenHeldSales : NewSaleAction
 

@@ -1167,6 +1167,8 @@ class CheckoutViewModel(
                 priceListId = catalog.salePriceList(written.priceListId)?.listId,
                 // La ubicación que se veía en la venta nueva, si sigue ofreciéndose.
                 locationId = catalog.saleLocationId(current.locationId),
+                // Una venta de una cotización la deja convertida, también desde aquí.
+                quoteId = current.quoteId,
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> overlay.update {

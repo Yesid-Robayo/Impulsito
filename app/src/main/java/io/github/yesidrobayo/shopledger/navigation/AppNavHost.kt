@@ -108,6 +108,8 @@ import io.github.yesidrobayo.shopledger.ui.sale.HeldSalesRoute
 import io.github.yesidrobayo.shopledger.ui.sale.NewSaleRoute
 import io.github.yesidrobayo.shopledger.ui.sale.RecordsRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
+import io.github.yesidrobayo.shopledger.ui.quote.QuoteDetailRoute
+import io.github.yesidrobayo.shopledger.ui.quote.QuotesRoute
 import io.github.yesidrobayo.shopledger.ui.scanner.ScannerRoute
 import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryRoute
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
@@ -305,6 +307,10 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.Categories -> CategoriesRoute(key, navigator)
 
         is AppNavKey.SaleDetail -> SaleDetailRoute(key, navigator)
+
+        AppNavKey.Quotes -> QuotesRoute(navigator, asTab = false)
+
+        is AppNavKey.QuoteDetail -> QuoteDetailRoute(key, navigator)
 
         is AppNavKey.SaleReturn -> SaleReturnRoute(key, navigator)
 

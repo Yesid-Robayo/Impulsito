@@ -23,6 +23,9 @@ import kotlinx.datetime.DayOfWeek
  *
  * Con [exchange], es la venta nueva de un cambio: lo devuelto la paga, y la banda dice el crédito y
  * la diferencia.
+ *
+ * Con [quote], la pantalla arma una cotización: sin pagos y con `Guardar cotización`. [quoteSaved]
+ * llega una sola vez, con el número de la cotización que se guardó.
  */
 @Immutable
 data class NewSaleUiState(
@@ -43,6 +46,8 @@ data class NewSaleUiState(
     val exchange: ExchangeBand? = null,
     val canScan: Boolean = false,
     val lots: Map<Long, LotChoices> = emptyMap(),
+    val quote: QuoteEditing? = null,
+    val quoteSaved: Long? = null,
 )
 
 /**
@@ -164,6 +169,7 @@ data class SaleCartState(
     val priceListId: Long? = null,
     val locations: List<Location> = emptyList(),
     val locationId: Long? = null,
+    val forQuote: Boolean = false,
 ) {
     val isEmpty: Boolean get() = lines.isEmpty()
 
@@ -254,6 +260,8 @@ sealed interface SaleSheet {
      * Elegir una variante de [parentId]: un eje por fila. [chosen] es el valor elegido de cada
      * eje, en orden. Al completar los ejes se agrega la línea y la hoja se cierra, sin botón extra.
      */
+    data class SaveQuote(val form: QuoteSaveSheet) : SaleSheet
+
     data class VariantPick(
         val parentId: Long,
         val parentName: String,

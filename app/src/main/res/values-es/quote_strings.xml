@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de las cotizaciones, copiados de la guía de redacción. -->
+<resources>
+    <string name="quote_tab">Cotizaciones</string>
+    <string name="quote_filter_open">Abiertas</string>
+    <string name="quote_filter_converted">Convertidas</string>
+    <string name="quote_filter_cancelled">Canceladas</string>
+    <string name="quote_status_converted">Convertida</string>
+    <string name="quote_status_cancelled">Cancelada</string>
+    <string name="quote_status_expired">Vencida</string>
+    <string name="quote_no_customer">Sin cliente</string>
+    <string name="quote_valid_until_row">Vigente hasta %1$s</string>
+    <string name="quote_new_action">Nueva cotización</string>
+    <string name="quote_new_title">Nueva cotización</string>
+    <string name="quote_edit_title">Editar cotización</string>
+    <string name="quote_save_action">Guardar cotización</string>
+    <string name="quote_save_from_sale_action">Guardar como cotización</string>
+    <string name="quote_customer_label">Cliente</string>
+    <string name="quote_valid_until_label">Vigente hasta</string>
+    <string name="quote_note_label">Nota</string>
+    <string name="quote_detail_title">Cotización %1$s</string>
+    <string name="quote_share_action">Compartir cotización</string>
+    <string name="quote_cancel_action">Cancelar cotización</string>
+    <string name="quote_no_effect_note">Una cotización no cambia el stock ni los números.</string>
+    <string name="quote_convert_action">Convertir en venta</string>
+    <plurals name="quote_price_changed_title">
+        <item quantity="one">Cambió el precio de %1$d producto</item>
+        <item quantity="many">Cambió el precio de %1$d de productos</item>
+        <item quantity="other">Cambió el precio de %1$d productos</item>
+    </plurals>
+    <string name="quote_use_saved_price_action">Usar precio de la cotización</string>
+    <string name="quote_use_current_price_action">Usar precio actual</string>
+    <string name="quote_view_sale_action">Ver venta</string>
+    <string name="quote_empty_title">Sin cotizaciones todavía</string>
+    <string name="quote_empty_body">Sirve para ofrecer precios a un cliente y convertirlos en venta.</string>
+    <string name="quote_filter_empty">Sin cotizaciones con estos filtros</string>
+    <string name="quote_error_save">No se pudo guardar la cotización. Lo escrito sigue aquí.</string>
+    <string name="quote_error_convert">No se pudo convertir. La cotización sigue abierta.</string>
+    <string name="quote_error_no_lines">Agregar al menos un producto</string>
+    <string name="quote_error_past_date">Elegir hoy o una fecha posterior</string>
+    <string name="quote_error_extras">Una cotización no lleva extras. Agregarlos como productos aparte.</string>
+    <string name="quote_expired_notice">Esta cotización venció el %1$s.</string>
+    <string name="quote_cancel_confirm_title">¿Cancelar esta cotización?</string>
+    <string name="quote_cancel_confirm_body">Queda en el historial y ya no se puede convertir ni reabrir.</string>
+    <string name="quote_saved">Cotización %1$s guardada</string>
+    <string name="quote_cancelled">Cotización cancelada</string>
+    <string name="quote_doc_title">Cotización %1$s</string>
+    <string name="quote_doc_valid_until">Vigente hasta %1$s</string>
+    <string name="quote_doc_legend">Esta cotización no es un comprobante de venta ni una factura.</string>
+    <string name="hub_tool_quotes">Cotizaciones</string>
+    <string name="hub_tool_quotes_desc">Ofertas de precios que se convierten en venta</string>
+</resources>

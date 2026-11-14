@@ -35,10 +35,18 @@ sealed interface AppNavKey : NavKey {
         val prefillProductId: Long? = null,
         val prefillCustomerId: Long? = null,
         val exchange: SaleExchange? = null,
+        val document: SaleDocumentMode? = null,
     ) : AppNavKey
 
     @Serializable
     data class SaleDetail(val saleId: Long) : AppNavKey
+
+    /** Las cotizaciones abiertas desde el centro `Negocio`, fuera de Registros. */
+    @Serializable
+    data object Quotes : AppNavKey
+
+    @Serializable
+    data class QuoteDetail(val quoteId: Long) : AppNavKey
 
     /** Registros: raíz de su pestaña, con ventas, gastos y compras. */
     @Serializable
@@ -410,3 +418,23 @@ data class PurchasePrefillLine(
     val quantityMilli: Long,
     val unitId: Long? = null,
 )
+
+/**
+ * Para qué se abre la venta nueva, si no es para vender sin más.
+ *
+ * - [NewQuote] arma una cotización nueva: la misma pantalla, sin pagos y con `Guardar cotización`.
+ * - [EditQuote] abre una cotización abierta con sus líneas, para guardarla encima.
+ * - [FromQuote] abre una venta con las líneas de una cotización: al registrarla, la cotización queda
+ *   convertida en la misma transacción. Con [useCurrentPrices], las líneas toman el precio de hoy.
+ */
+@Serializable
+sealed interface SaleDocumentMode {
+    @Serializable
+    data object NewQuote : SaleDocumentMode
+
+    @Serializable
+    data class EditQuote(val quoteId: Long) : SaleDocumentMode
+
+    @Serializable
+    data class FromQuote(val quoteId: Long, val useCurrentPrices: Boolean) : SaleDocumentMode
+}

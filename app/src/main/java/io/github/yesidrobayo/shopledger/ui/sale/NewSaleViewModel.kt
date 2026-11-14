@@ -4,6 +4,14 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerSearch
+import io.github.yesidrobayo.shopledger.domain.usecase.document.DocumentLineRejection
+import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteConversionResult
+import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteRequest
+import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveQuoteResult
+import io.github.yesidrobayo.shopledger.navigation.SaleDocumentMode
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -126,8 +134,25 @@ class NewSaleViewModel(
     private val exchangeNote: () -> String? = { null },
     // Sin lotes conectados, como en una vista previa, ninguna línea elige lote ni avisa.
     private val lotChoices: suspend (Long, Long?) -> LotChoices? = { _, _ -> null },
+    private val document: SaleDocumentMode? = null,
+    private val documents: SaleDocumentOperations = SaleDocumentOperations.None,
 ) : ViewModel() {
     private val draft = MutableStateFlow(SaleDraftStore.read(savedState))
+
+    /** La cotización que se arma, o `null` si se vende. */
+    private val quoteMode: QuoteEditing? = when (document) {
+        SaleDocumentMode.NewQuote -> QuoteEditing(editingId = null)
+        is SaleDocumentMode.EditQuote -> QuoteEditing(editingId = document.quoteId)
+        is SaleDocumentMode.FromQuote, null -> null
+    }
+
+    // Los clientes que se pueden elegir para una cotización. Una falla solo deja la lista vacía.
+    private val quoteCustomers: StateFlow<List<Customer>> = documents.customers()
+        .catch { emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** La vigencia de la cotización que se edita, leída al abrirla. */
+    private var quoteValidUntil: BusinessDate? = null
 
     init {
         // El cliente se pone una sola vez: si Android recrea la pantalla, la marca sigue guardada,
@@ -204,6 +229,16 @@ class NewSaleViewModel(
         }
     }
 
+    init {
+        // Lo que trae la cotización se pone una sola vez: la marca queda en el estado guardado.
+        if (!draft.value.prefilled) {
+            when (document) {
+                is SaleDocumentMode.EditQuote -> prefillQuote(document.quoteId)
+                is SaleDocumentMode.FromQuote -> prefillConversion(document)
+                SaleDocumentMode.NewQuote, null -> Unit
+            }
+        }
+    }
     fun onAction(action: NewSaleAction) {
         when (action) {
             is NewSaleAction.QueryChange -> query.value = action.query
@@ -308,6 +343,51 @@ class NewSaleViewModel(
 
             // Abrir la lista de ventas en espera es navegación: la resuelve la ruta.
             NewSaleAction.OpenHeldSales -> Unit
+
+            NewSaleAction.OpenSaveQuote -> openSaveQuote()
+
+            is NewSaleAction.QuoteValidUntilChange -> editQuoteForm {
+                it.copy(validUntil = action.date, pastDate = false, failed = false)
+            }
+
+            is NewSaleAction.QuoteNoteChange -> changeDraft { it.copy(note = action.note) }
+
+            NewSaleAction.QuoteOpenCustomers -> editQuoteForm {
+                it.copy(choosingCustomer = true, customerQuery = "")
+            }
+
+            NewSaleAction.QuoteCloseCustomers -> editQuoteForm {
+                it.copy(choosingCustomer = false, customerQuery = "")
+            }
+
+            is NewSaleAction.QuoteCustomerQuery -> editQuoteForm {
+                it.copy(customerQuery = action.query)
+            }
+
+            is NewSaleAction.QuotePickCustomer -> {
+                changeDraft { it.copy(customerId = action.customerId) }
+                editQuoteForm {
+                    it.copy(
+                        customerId = action.customerId,
+                        choosingCustomer = false,
+                        failed = false,
+                    )
+                }
+            }
+
+            NewSaleAction.QuoteRemoveCustomer -> {
+                changeDraft { it.copy(customerId = null) }
+                editQuoteForm { it.copy(customerId = null) }
+            }
+
+            // Crear un cliente es otra pantalla: la ruta la abre y la hoja queda como estaba.
+            is NewSaleAction.QuoteNewCustomer -> editQuoteForm {
+                it.copy(choosingCustomer = false, customerQuery = "")
+            }
+
+            NewSaleAction.ConfirmSaveQuote -> confirmSaveQuote()
+
+            NewSaleAction.QuoteSavedShown -> overlay.update { it.copy(quoteSaved = null) }
         }
     }
 
@@ -712,6 +792,11 @@ class NewSaleViewModel(
 
     private fun register(zeroConfirmed: Boolean) {
         if (overlay.value.status == RegisterStatus.WORKING) return
+        // Una cotización no se registra como venta: se guarda con su hoja.
+        if (quoteMode != null) {
+            openSaveQuote()
+            return
+        }
         val catalog = readyCatalog() ?: return
         val current = draft.value
         val preview = previewOf(catalog, current)
@@ -756,6 +841,9 @@ class NewSaleViewModel(
                 priceListId = catalog.salePriceList(current.priceListId)?.listId,
                 // La ubicación que se ve en el selector, si sigue ofreciéndose.
                 locationId = catalog.saleLocationId(current.locationId),
+                // Una venta de una cotización la deja convertida, con el cliente cotizado.
+                quoteId = current.quoteId,
+                customerId = current.customerId.takeIf { current.quoteId != null },
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> {
@@ -1000,8 +1088,168 @@ class NewSaleViewModel(
 
     private fun fits(label: String): Boolean = HeldSaleRules.fits(HeldSaleRules.labelOf(label))
 
-    // ------------------------------------------------------------------ catálogo
+    // ------------------------------------------------------------------ cotizaciones
 
+    /**
+     * Abre la cotización guardada [quoteId] para editarla: sus líneas con el precio cotizado
+     * escrito, su cliente y su nota. Si ya no se puede leer, abre vacía y lo dice.
+     */
+    private fun prefillQuote(quoteId: Long) {
+        viewModelScope.launch {
+            val view = (readOutcome { documents.quote(quoteId) } as? ReadOutcome.Read)?.value
+            if (view == null) {
+                changeDraft { it.copy(prefilled = true) }
+                overlay.update { it.copy(notice = SaleNotice.CORRECTION_FAILED) }
+                return@launch
+            }
+            quoteValidUntil = view.quote.validUntil
+            changeDraft {
+                it.copy(
+                    lines = QuoteLines.requestsOf(view.lines),
+                    customerId = view.quote.customerId,
+                    note = view.quote.note.orEmpty(),
+                    prefilled = true,
+                )
+            }
+        }
+    }
+
+    /**
+     * Abre la venta con las líneas de la cotización que se convierte, con su cliente y su lista. Las
+     * líneas de productos archivados quedan fuera, y se dice cuántas.
+     */
+    private fun prefillConversion(mode: SaleDocumentMode.FromQuote) {
+        viewModelScope.launch {
+            val result = readOrNull { documents.conversion(mode.quoteId) }
+            val conversion = (result as? QuoteConversionResult.Ready)?.conversion
+            if (conversion == null) {
+                changeDraft { it.copy(prefilled = true) }
+                overlay.update { it.copy(notice = SaleNotice.CORRECTION_FAILED) }
+                return@launch
+            }
+            changeDraft {
+                it.copy(
+                    lines = conversion.requests(mode.useCurrentPrices),
+                    customerId = conversion.customerId,
+                    priceListId = conversion.priceListId,
+                    quoteId = conversion.quoteId,
+                    prefilled = true,
+                )
+            }
+            val leftOut = conversion.archivedLines
+            if (leftOut > 0) {
+                overlay.update { it.copy(notice = SaleNotice.LINES_LEFT_OUT, leftOut = leftOut) }
+            }
+        }
+    }
+
+    /** Abre la hoja de `Guardar cotización` con el cliente, la vigencia y la nota que hay. */
+    private fun openSaveQuote() {
+        val current = draft.value
+        if (current.lines.isEmpty()) return
+        showSheet(
+            SaleSheet.SaveQuote(
+                QuoteSaveSheet(
+                    customerId = current.customerId,
+                    validUntil = quoteValidUntil,
+                    note = current.note,
+                    today = readyCatalog()?.today,
+                ),
+            ),
+        )
+    }
+
+    private fun editQuoteForm(change: (QuoteSaveSheet) -> QuoteSaveSheet) =
+        overlay.update { shown ->
+            val sheet = shown.sheet as? SaleSheet.SaveQuote ?: return@update shown
+            shown.copy(sheet = SaleSheet.SaveQuote(change(sheet.form)))
+        }
+
+    /**
+     * Guarda la cotización. Con la venta en modo cotización, la pantalla se cierra con el aviso; con
+     * una venta, la venta se vacía: sus líneas quedaron en la cotización. Si no se guardó, la hoja
+     * sigue abierta con lo escrito y dice por qué.
+     */
+    private fun confirmSaveQuote() {
+        val sheet = overlay.value.sheet as? SaleSheet.SaveQuote ?: return
+        val form = sheet.form
+        if (form.working) return
+        val catalog = readyCatalog() ?: return
+        val current = draft.value
+        editQuoteForm { it.copy(working = true, failed = false, pastDate = false, extras = false) }
+        viewModelScope.launch {
+            val request = QuoteRequest(
+                // El lote se elige al vender: una cotización no lo guarda.
+                lines = current.lines.map { it.copy(lotId = null) },
+                customerId = form.customerId,
+                validUntil = form.validUntil,
+                note = current.note.takeIf { it.isNotBlank() },
+                priceListId = catalog.salePriceList(current.priceListId)?.listId,
+                quoteId = quoteMode?.editingId,
+            )
+            val result = readOrNull { documents.saveQuote(request) }
+            when (result) {
+                is SaveQuoteResult.Saved -> {
+                    changeDraft { SaleDraft(methodId = it.methodId, prefilled = true) }
+                    quoteValidUntil = null
+                    overlay.update {
+                        it.copy(
+                            sheet = null,
+                            quoteSaved = result.quoteId,
+                            closed = quoteMode != null,
+                        )
+                    }
+                }
+
+                SaveQuoteResult.CurrencyNotConfirmed -> showSheet(SaleSheet.CurrencyRequired)
+
+                SaveQuoteResult.EmptyQuote -> editQuoteForm {
+                    it.copy(working = false, noLines = true)
+                }
+
+                SaveQuoteResult.ValidUntilInPast -> editQuoteForm {
+                    it.copy(working = false, pastDate = true)
+                }
+
+                is SaveQuoteResult.LineRejected -> editQuoteForm {
+                    val extra = result.reason == DocumentLineRejection.EXTRA_NOT_SUPPORTED
+                    it.copy(working = false, extras = extra, failed = !extra)
+                }
+
+                null,
+                SaveQuoteResult.TooManyLines,
+                SaveQuoteResult.NoteTooLong,
+                SaveQuoteResult.CustomerUnavailable,
+                SaveQuoteResult.PriceListUnavailable,
+                SaveQuoteResult.TotalTooLarge,
+                SaveQuoteResult.QuoteNotOpen,
+                is SaveQuoteResult.UnknownTimeZone,
+                is SaveQuoteResult.StorageFailed,
+                -> editQuoteForm { it.copy(working = false, failed = true) }
+            }
+        }
+    }
+
+    /** La hoja de la cotización con el nombre del cliente elegido y, si se busca, la lista. */
+    private fun withQuoteCustomers(sheet: SaleSheet): SaleSheet {
+        if (sheet !is SaleSheet.SaveQuote) return sheet
+        val form = sheet.form
+        val all = quoteCustomers.value
+        val chosen = all.firstOrNull { it.id == form.customerId }
+        return SaleSheet.SaveQuote(
+            form.copy(
+                customerName = chosen?.contact?.name,
+                customerBalance = chosen?.balance ?: Money.ZERO,
+                customerChoices = if (form.choosingCustomer) {
+                    CustomerSearch.filter(all, form.customerQuery)
+                } else {
+                    emptyList()
+                },
+            ),
+        )
+    }
+
+    // ------------------------------------------------------------------ catálogo
     private fun onCatalog(catalog: SaleCatalog) {
         val current = draft.value
         if (prefillFromSaleId != null && !current.prefilled) prefillCorrection(prefillFromSaleId)
@@ -1105,7 +1353,10 @@ class NewSaleViewModel(
                     catalog.salePriceList(current.priceListId),
                 )
                 cart = SaleContentBuilder.cart(catalog, current, previewOf(catalog, current))
-                    .copy(noteTooLong = current.note.length > MAX_NOTE_LENGTH)
+                    .copy(
+                        noteTooLong = current.note.length > MAX_NOTE_LENGTH,
+                        forQuote = quoteMode != null,
+                    )
                 payment = SalePaymentState(
                     methods = catalog.methods.map {
                         SaleMethod(
@@ -1125,7 +1376,9 @@ class NewSaleViewModel(
             query = typed,
             cart = cart,
             payment = payment,
-            sheet = shown.sheet?.let { withLineExtras(withLineIssue(it, cart), load, current) },
+            sheet = shown.sheet?.let {
+                withQuoteCustomers(withLineExtras(withLineIssue(it, cart), load, current))
+            },
             dialog = shown.dialog,
             status = shown.status,
             notice = shown.notice,
@@ -1136,6 +1389,8 @@ class NewSaleViewModel(
             heldNotice = shown.heldNotice,
             exchange = exchange?.let { bandOf(it, cart.total, !cart.isEmpty) },
             canScan = (load as? CatalogLoad.Ready)?.catalog?.hasCodes() == true,
+            quote = quoteMode,
+            quoteSaved = shown.quoteSaved,
         )
     }
 
@@ -1300,6 +1555,7 @@ class NewSaleViewModel(
         val registered: RegisteredSale? = null,
         val closed: Boolean = false,
         val heldNotice: HeldNotice? = null,
+        val quoteSaved: Long? = null,
     )
 
     companion object {

@@ -46,6 +46,10 @@ internal object PreviewSamples {
 
     /** Un código inventado: el prefijo 29 es de uso interno y no apunta a ningún país. */
     const val BARCODE = "2900000123458"
+    const val DOCUMENT_TITLE = "Cotización 41"
+    const val DOCUMENT_DETAIL = "Vigente hasta 28 oct"
+    const val DOCUMENT_STATUS = "Vencida"
+    const val CUSTOMER_NAME = "Ana Ríos"
 
     val PRICE = Money(4_200L)
     val SECOND_PRICE = Money(12_500L)

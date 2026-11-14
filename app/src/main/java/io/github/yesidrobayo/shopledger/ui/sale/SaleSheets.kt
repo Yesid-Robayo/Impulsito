@@ -107,6 +107,8 @@ internal fun SaleSheets(
 
         is SaleSheet.Hold -> HoldSheet(sheet, onAction)
 
+        is SaleSheet.SaveQuote -> QuoteSaveSheetView(sheet.form, uiState.cart, onAction)
+
         is SaleSheet.VariantPick -> VariantPickerSheet(sheet, onAction)
 
         SaleSheet.CurrencyRequired -> AppBottomSheet(
@@ -191,7 +193,8 @@ internal fun CartContent(cart: SaleCartState, onAction: (NewSaleAction) -> Unit)
         }
         val today = cart.today
         val weekStart = cart.weekStartDay
-        if (today != null && weekStart != null) {
+        // Una cotización no tiene fecha de venta: su vigencia se elige al guardarla.
+        if (today != null && weekStart != null && !cart.forQuote) {
             DateField(
                 label = stringResource(R.string.form_date),
                 date = cart.date ?: today,
@@ -217,11 +220,13 @@ internal fun CartContent(cart: SaleCartState, onAction: (NewSaleAction) -> Unit)
                     null
                 },
         )
-        PrimaryActionButton(
-            text = stringResource(R.string.draft_hold_action),
-            onClick = { onAction(NewSaleAction.OpenHold) },
-            variant = ActionVariant.OUTLINED,
-        )
+        if (!cart.forQuote) {
+            PrimaryActionButton(
+                text = stringResource(R.string.draft_hold_action),
+                onClick = { onAction(NewSaleAction.OpenHold) },
+                variant = ActionVariant.OUTLINED,
+            )
+        }
         PrimaryActionButton(
             text = stringResource(R.string.sale_clear),
             onClick = { onAction(NewSaleAction.ClearSale) },

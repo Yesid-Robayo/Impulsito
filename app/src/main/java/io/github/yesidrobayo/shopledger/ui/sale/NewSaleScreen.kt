@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.sale
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -156,7 +157,7 @@ fun NewSaleScreen(
             val compact = isLargeText() || maxHeight < SHORT_HEIGHT
             Column(Modifier.fillMaxSize()) {
                 AppTopBar(
-                    title = stringResource(R.string.sale_new_title),
+                    title = stringResource(titleOf(uiState.quote)),
                     navigation = TopBarNavigation.CLOSE,
                     onNavigate = { onAction(NewSaleAction.Close) },
                     navigationLabel = stringResource(R.string.a11y_close),
@@ -339,13 +340,15 @@ private fun SalePanel(
                     )
                 }
                 if (!cart.isEmpty) {
-                    PaymentChoice(uiState.payment, onAction, compact)
+                    val quoting = uiState.quote != null
+                    // Una cotización no se cobra: sin métodos ni más opciones de cobro.
+                    if (!quoting) PaymentChoice(uiState.payment, onAction, compact)
                     SaleSummary(cart, onAction, opensCart)
                     val exchange = uiState.exchange
-                    if (exchange == null) {
-                        CheckoutActions(uiState, onAction)
-                    } else {
-                        exchange.difference?.let { ExchangeDifferenceText(it) }
+                    when {
+                        quoting -> Unit
+                        exchange == null -> CheckoutActions(uiState, onAction)
+                        else -> exchange.difference?.let { ExchangeDifferenceText(it) }
                     }
                     if (uiState.status == RegisterStatus.FAILED) {
                         NoticeCard(
@@ -357,13 +360,17 @@ private fun SalePanel(
                     }
                     PrimaryActionButton(
                         text = stringResource(
-                            if (uiState.exchange == null) {
-                                R.string.sale_register
-                            } else {
-                                R.string.sale_return_exchange_register_action
+                            when {
+                                quoting -> R.string.quote_save_action
+                                uiState.exchange == null -> R.string.sale_register
+                                else -> R.string.sale_return_exchange_register_action
                             },
                         ),
-                        onClick = { onAction(NewSaleAction.Register) },
+                        onClick = {
+                            onAction(
+                                if (quoting) NewSaleAction.OpenSaveQuote else NewSaleAction.Register,
+                            )
+                        },
                         variant = ActionVariant.PRIMARY,
                         enabled = cart.canRegister,
                         state =
@@ -849,8 +856,9 @@ private const val ARCHIVED = "archived"
  */
 @Composable
 private fun HeldSaleActions(uiState: NewSaleUiState, onAction: (NewSaleAction) -> Unit) {
-    // Un cambio no se pone en espera: su devolución vive en la pantalla de debajo.
-    if (uiState.exchange != null) return
+    // Un cambio no se pone en espera: su devolución vive en la pantalla de debajo. Una cotización
+    // tampoco: ya se guarda como cotización.
+    if (uiState.exchange != null || uiState.quote != null) return
     if (uiState.heldCount > 0) {
         InlineTextButton(
             text = stringResource(R.string.draft_badge, uiState.heldCount),
@@ -864,9 +872,21 @@ private fun HeldSaleActions(uiState: NewSaleUiState, onAction: (NewSaleAction) -
                     label = stringResource(R.string.draft_hold_action),
                     onClick = { onAction(NewSaleAction.OpenHold) },
                 ),
+                OverflowAction(
+                    label = stringResource(R.string.quote_save_from_sale_action),
+                    onClick = { onAction(NewSaleAction.OpenSaveQuote) },
+                ),
             ),
         )
     }
+}
+
+/** El título de la pantalla: la venta, o la cotización nueva o editada. */
+@StringRes
+private fun titleOf(quote: QuoteEditing?): Int = when {
+    quote == null -> R.string.sale_new_title
+    quote.editingId == null -> R.string.quote_new_title
+    else -> R.string.quote_edit_title
 }
 
 /** Los mensajes de [notice], en orden, con su tipo. */

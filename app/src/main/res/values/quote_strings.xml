@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de las cotizaciones, copiados de la guía de redacción. -->
+<resources>
+    <string name="quote_tab">Quotes</string>
+    <string name="quote_filter_open">Open</string>
+    <string name="quote_filter_converted">Converted</string>
+    <string name="quote_filter_cancelled">Cancelled</string>
+    <string name="quote_status_converted">Converted</string>
+    <string name="quote_status_cancelled">Cancelled</string>
+    <string name="quote_status_expired">Expired</string>
+    <string name="quote_no_customer">No customer</string>
+    <string name="quote_valid_until_row">Valid until %1$s</string>
+    <string name="quote_new_action">New quote</string>
+    <string name="quote_new_title">New quote</string>
+    <string name="quote_edit_title">Edit quote</string>
+    <string name="quote_save_action">Save quote</string>
+    <string name="quote_save_from_sale_action">Save as quote</string>
+    <string name="quote_customer_label">Customer</string>
+    <string name="quote_valid_until_label">Valid until</string>
+    <string name="quote_note_label">Note</string>
+    <string name="quote_detail_title">Quote %1$s</string>
+    <string name="quote_share_action">Share quote</string>
+    <string name="quote_cancel_action">Cancel quote</string>
+    <string name="quote_no_effect_note">A quote does not change stock or the numbers.</string>
+    <string name="quote_convert_action">Convert to sale</string>
+    <plurals name="quote_price_changed_title">
+        <item quantity="one">The price of %1$d product changed</item>
+        <item quantity="other">The price of %1$d products changed</item>
+    </plurals>
+    <string name="quote_use_saved_price_action">Use the quote price</string>
+    <string name="quote_use_current_price_action">Use the current price</string>
+    <string name="quote_view_sale_action">View sale</string>
+    <string name="quote_empty_title">No quotes yet</string>
+    <string name="quote_empty_body">Use it to offer prices to a customer and turn them into a sale.</string>
+    <string name="quote_filter_empty">No quotes with these filters</string>
+    <string name="quote_error_save">The quote could not be saved. What was typed is still here.</string>
+    <string name="quote_error_convert">The quote could not be converted. It is still open.</string>
+    <string name="quote_error_no_lines">Add at least one product</string>
+    <string name="quote_error_past_date">Choose today or a later date</string>
+    <string name="quote_error_extras">A quote does not keep add-ons. Add them as separate products.</string>
+    <string name="quote_expired_notice">This quote expired on %1$s.</string>
+    <string name="quote_cancel_confirm_title">Cancel this quote?</string>
+    <string name="quote_cancel_confirm_body">It stays in the history and can no longer be converted or reopened.</string>
+    <string name="quote_saved">Quote %1$s saved</string>
+    <string name="quote_cancelled">Quote cancelled</string>
+    <string name="quote_doc_title">Quote %1$s</string>
+    <string name="quote_doc_valid_until">Valid until %1$s</string>
+    <string name="quote_doc_legend">This quote is not a sales receipt or an invoice.</string>
+    <string name="hub_tool_quotes">Quotes</string>
+    <string name="hub_tool_quotes_desc">Price offers that turn into sales</string>
+</resources>

@@ -72,6 +72,8 @@ import io.github.yesidrobayo.shopledger.ui.sale.FilterSheetLabel
 import io.github.yesidrobayo.shopledger.ui.sale.HistoryFilterBar
 import io.github.yesidrobayo.shopledger.ui.sale.HistoryFilterSheet
 import io.github.yesidrobayo.shopledger.ui.sale.HistoryPeriodSheet
+import io.github.yesidrobayo.shopledger.ui.sale.LocalRecordsExtraSegments
+import io.github.yesidrobayo.shopledger.ui.sale.RecordsTab
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -215,19 +217,36 @@ internal fun RecordsTopBar(
     }
 }
 
-/** Los segmentos de Registros: `Ventas`, `Compras` y `Gastos`. */
+/**
+ * Los segmentos de Registros: `Ventas`, `Compras` y `Gastos`, y detrás los que solo aparecen con su
+ * herramienta en uso, como `Cotizaciones`. Elegir uno de los tres de siempre avisa su posición a
+ * [onSelect]; uno de los de detrás lo elige Registros directamente.
+ */
 @Composable
 internal fun RecordsSegments(selected: Int, onSelect: (Int) -> Unit) {
+    val extra = LocalRecordsExtraSegments.current
+    val base = listOf(
+        stringResource(R.string.records_tab_sales),
+        stringResource(R.string.records_tab_purchases),
+        stringResource(R.string.records_tab_expenses),
+    )
     SegmentedTabs(
-        options = listOf(
-            stringResource(R.string.records_tab_sales),
-            stringResource(R.string.records_tab_purchases),
-            stringResource(R.string.records_tab_expenses),
-        ),
+        options = base + extra.tabs.map { stringResource(recordsTabLabel(it)) },
         selectedIndex = selected,
-        onSelect = onSelect,
+        onSelect = { index ->
+            if (index < base.size) onSelect(index) else extra.select(extra.tabs[index - base.size])
+        },
         modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
     )
+}
+
+/** El nombre de un segmento de Registros. */
+@StringRes
+internal fun recordsTabLabel(tab: RecordsTab): Int = when (tab) {
+    RecordsTab.SALES -> R.string.records_tab_sales
+    RecordsTab.PURCHASES -> R.string.records_tab_purchases
+    RecordsTab.EXPENSES -> R.string.records_tab_expenses
+    RecordsTab.QUOTES -> R.string.quote_tab
 }
 
 /**
