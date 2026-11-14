@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.rule.catalog
 
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
@@ -30,6 +31,17 @@ sealed interface RecipeCheck {
 object RecipeRules {
     /** Los saltos que admite un combo desde el de más arriba hasta la última hoja. */
     const val MAX_LEVELS: Int = 2
+
+    /**
+     * Si un producto en modo [mode] puede tener receta. Un combo la usa al venderse, y un producto
+     * con stock propio, al producirlo por adelantado. Un servicio no tiene stock que fabricar, así
+     * que no la tiene. Las dos recetas comparten tabla, niveles y ciclos: un mismo producto no
+     * puede entrar en un combo y en una receta que lo contenga.
+     */
+    fun allowsRecipe(mode: ProductStockMode): Boolean = when (mode) {
+        ProductStockMode.COMPONENTS, ProductStockMode.TRACKED -> true
+        ProductStockMode.UNTRACKED -> false
+    }
 
     /**
      * Revisa la receta [lines] del combo [parentId].

@@ -241,4 +241,11 @@ class RecipeRulesTest {
     private fun assertIssues(expected: List<RecipeIssue>, actual: RecipeCheck) {
         assertEquals(RecipeCheck.Invalid(expected), actual)
     }
+
+    @Test
+    fun `a combo and a product with stock have a recipe, and a service does not`() {
+        assertEquals(true, RecipeRules.allowsRecipe(ProductStockMode.COMPONENTS))
+        assertEquals(true, RecipeRules.allowsRecipe(ProductStockMode.TRACKED))
+        assertEquals(false, RecipeRules.allowsRecipe(ProductStockMode.UNTRACKED))
+    }
 }

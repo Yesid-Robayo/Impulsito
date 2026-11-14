@@ -69,7 +69,7 @@ internal class FakeProductComponentRepository(private val database: InMemoryData
         check(
             quantity.milli in 1L..1_000_000_000L &&
                 parentId != componentId &&
-                parentMode == ProductStockMode.COMPONENTS &&
+                parentMode != null && parentMode != ProductStockMode.UNTRACKED &&
                 !componentHasGrandchild &&
                 !(parentIsComponent && componentHasChild),
         ) { "guard:product_components" }

@@ -118,9 +118,33 @@ class RecipeUseCasesTest {
     }
 
     @Test
-    fun `a product that is not a combo has no recipe`() = runTest {
-        assertEquals(SaveRecipeResult.NotCombo, save(TEA, listOf(line(CUP, 1000))))
+    fun `a service has no recipe`() = runTest {
+        assertEquals(SaveRecipeResult.NotCombo, save(SERVICE, listOf(line(CUP, 1000))))
         assertEquals(0L, changes)
+    }
+
+    @Test
+    fun `a product with its own stock saves the recipe it is produced with`() = runTest {
+        val result = save(TEA, listOf(line(CUP, 1000), line(KIT, 500)))
+
+        assertEquals(SaveRecipeResult.Saved, result)
+        assertEquals(
+            listOf(CUP to 1000L, KIT to 500L),
+            recipeOf(TEA).map { it.componentProductId to it.quantity.milli },
+        )
+    }
+
+    @Test
+    fun `a produced product shares the levels and cycles of the combos`() = runTest {
+        save(KIT, listOf(line(TEA, 1000)))
+
+        val result = save(TEA, listOf(line(KIT, 1000)))
+
+        assertEquals(
+            SaveRecipeResult.Invalid(listOf(RecipeIssue.Line(0, RecipeLineProblem.CYCLE))),
+            result,
+        )
+        assertEquals(emptyList<RecipeComponent>(), recipeOf(TEA))
     }
 
     @Test
@@ -151,19 +175,29 @@ class RecipeUseCasesTest {
     }
 
     @Test
-    fun `a combo that stops being one loses its recipe with the same edit`() = runTest {
+    fun `a combo that becomes a service loses its recipe with the same edit`() = runTest {
         save(KIT, listOf(line(TEA, 2000), line(CUP, 1000)))
         save(BOX, listOf(line(TEA, 1000)))
 
-        val result = fixture.edit(KIT, form("Kit de té", ProductStockMode.TRACKED))
+        val result = fixture.edit(KIT, form("Kit de té", ProductStockMode.UNTRACKED))
 
         assertEquals(SaveProductResult.Saved(KIT), result)
         assertEquals(emptyList<RecipeComponent>(), recipeOf(KIT))
         assertEquals(1, recipeOf(BOX).size)
         assertEquals(
-            ProductStockMode.TRACKED,
+            ProductStockMode.UNTRACKED,
             fixture.tables.products.getValue(KIT).details.stockMode,
         )
+    }
+
+    @Test
+    fun `a combo that starts carrying stock keeps its recipe to produce it`() = runTest {
+        save(KIT, listOf(line(TEA, 2000), line(CUP, 1000)))
+
+        val result = fixture.edit(KIT, form("Kit de té", ProductStockMode.TRACKED))
+
+        assertEquals(SaveProductResult.Saved(KIT), result)
+        assertEquals(2, recipeOf(KIT).size)
     }
 
     @Test

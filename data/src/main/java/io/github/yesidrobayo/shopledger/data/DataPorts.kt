@@ -45,6 +45,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomProductComponentRepo
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductModifierRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductUnitRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomProductionBatchRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseHistorySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseReturnRepository
@@ -112,6 +113,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductVariantRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductionBatchRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
@@ -381,6 +383,9 @@ class DataPorts internal constructor(
      * copia ni cambia lo que cuenta como respaldado.
      */
     val humanCheck: HumanCheckRecorder = RoomHumanCheckRecorder(database.backupStateDao())
+
+    /** Las producciones y sus insumos. Solo se anulan, nunca se editan. */
+    val productionBatches: ProductionBatchRepository = RoomProductionBatchRepository(database)
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()

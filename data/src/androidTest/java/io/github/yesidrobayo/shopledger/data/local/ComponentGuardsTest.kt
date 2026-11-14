@@ -18,6 +18,7 @@ internal class ComponentGuardsTest : GuardProbeTest() {
     @Test
     fun aComponentBelongsToAComboAndKeepsItsQuantity() = runBlocking {
         val combo = insert("products", comboRow("desayuno"))
+        val service = insert("products", productRow("envío").with("stock_mode" to "UNTRACKED"))
         val valid = componentRow(combo, productId)
         for (broken in listOf(
             valid.with("quantity_milli" to 0L),
@@ -25,9 +26,9 @@ internal class ComponentGuardsTest : GuardProbeTest() {
             valid.with("quantity_milli" to 1_500.5),
             valid.with("created_at" to null),
             valid.with("updated_at" to "hoy"),
-            // Un combo no se contiene a sí mismo, y solo un combo tiene receta.
+            // Un combo no se contiene a sí mismo, y un servicio no tiene receta.
             componentRow(combo, combo),
-            componentRow(productId, combo),
+            componentRow(service, combo),
         )) {
             rejected(COMPONENTS, broken.insertInto("product_components"))
         }
@@ -37,6 +38,13 @@ internal class ComponentGuardsTest : GuardProbeTest() {
         rejected(COMPONENTS, update("product_components", id, "component_product_id" to combo))
         execute(update("product_components", id, "quantity_milli" to 1L, "updated_at" to LATER))
         assertEquals(1L, count("SELECT quantity_milli FROM product_components WHERE id = $id"))
+        // Un producto con stock propio guarda la receta con que se produce.
+        val wax = insert("products", productRow("cera"))
+        insert("product_components", componentRow(productId, wax))
+        assertEquals(
+            1L,
+            count("SELECT COUNT(*) FROM product_components WHERE parent_product_id = $productId"),
+        )
     }
 
     @Test

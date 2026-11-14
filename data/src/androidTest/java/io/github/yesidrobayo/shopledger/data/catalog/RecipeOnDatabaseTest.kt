@@ -112,7 +112,20 @@ internal class RecipeOnDatabaseTest : CatalogDatabaseTest() {
     }
 
     @Test
-    fun aComboThatStopsBeingOneLosesItsRecipeInTheSameEdit() = runBlocking {
+    fun aProductWithStockSavesTheRecipeItIsProducedWith() = runBlocking {
+        val wax = insertProduct("Cera de abeja", "TRACKED")
+        val wick = insertProduct("Mecha de algodón", "TRACKED")
+        val candle = insertProduct("Vela de cera", "TRACKED")
+
+        val result = save(candle, listOf(line(wax, 200), line(wick, 1000)))
+
+        assertEquals(SaveRecipeResult.Saved, result)
+        assertEquals(listOf("$wax|200", "$wick|1000"), recipeOf(candle))
+        assertEquals(emptyList<String>(), invariantRows())
+    }
+
+    @Test
+    fun aComboThatBecomesAServiceLosesItsRecipeInTheSameEdit() = runBlocking {
         val tea = insertProduct("Té de frutas", "TRACKED")
         val kit = insertProduct("Kit de frutas", "COMPONENTS")
         assertEquals(SaveRecipeResult.Saved, save(kit, listOf(line(tea, 1000))))
@@ -124,12 +137,12 @@ internal class RecipeOnDatabaseTest : CatalogDatabaseTest() {
             ports.mediaAssets,
         )
 
-        val form = ProductForm(name = "Kit de frutas", stockMode = ProductStockMode.TRACKED)
+        val form = ProductForm(name = "Kit de frutas", stockMode = ProductStockMode.UNTRACKED)
         val result = edit(kit, form)
 
         assertEquals(SaveProductResult.Saved(kit), result)
         assertEquals(emptyList<String>(), recipeOf(kit))
-        assertEquals("TRACKED", database.productDao().findById(kit)?.stockMode)
+        assertEquals("UNTRACKED", database.productDao().findById(kit)?.stockMode)
     }
 
     private suspend fun insertProduct(name: String, mode: String): Long =

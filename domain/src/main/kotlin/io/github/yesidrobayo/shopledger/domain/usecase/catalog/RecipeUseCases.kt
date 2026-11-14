@@ -1,6 +1,5 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.catalog
 
-import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -12,7 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.RecipeCheck
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.RecipeRules
 
-/** Cómo terminó guardar la receta de un combo. */
+/** Cómo terminó guardar la receta de un combo o de un producto que se produce. */
 sealed interface SaveRecipeResult {
     /** Quedó guardada, o ya estaba exactamente así. */
     data object Saved : SaveRecipeResult
@@ -20,7 +19,9 @@ sealed interface SaveRecipeResult {
     /** El combo ya no existe. */
     data object NotFound : SaveRecipeResult
 
-    /** El producto ya no se arma con componentes: su receta no se vende. */
+    /**
+     * El producto no admite receta: no es un combo ni lleva stock propio que se pueda producir.
+     */
     data object NotCombo : SaveRecipeResult
 
     /** No se guardó nada: [issues] dice qué corregir, y lo armado se conserva. */
@@ -31,8 +32,8 @@ sealed interface SaveRecipeResult {
 }
 
 /**
- * Guarda la receta entera de un combo en una sola transacción: la que armó la persona reemplaza a
- * la guardada.
+ * Guarda la receta entera de un combo, o de un producto con stock que se produce, en una sola
+ * transacción: la que armó la persona reemplaza a la guardada.
  *
  * Solo escribe lo que cambió: quita las filas que ya no están, cambia la cantidad de las que
  * siguen y agrega las nuevas, en ese orden, para que la guarda de la tabla nunca vea a la vez una
@@ -53,7 +54,7 @@ class SaveRecipeUseCase(
 
     private suspend fun save(parentId: Long, lines: List<RecipeLine>): TxResult<SaveRecipeResult> {
         val parent = products.findById(parentId) ?: return reject(SaveRecipeResult.NotFound)
-        if (parent.details.stockMode != ProductStockMode.COMPONENTS) {
+        if (!RecipeRules.allowsRecipe(parent.details.stockMode)) {
             return reject(SaveRecipeResult.NotCombo)
         }
         val stored = components.findAll()

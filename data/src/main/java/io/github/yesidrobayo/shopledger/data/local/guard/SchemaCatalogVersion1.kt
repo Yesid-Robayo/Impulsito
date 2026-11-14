@@ -4264,7 +4264,7 @@ private fun triggers(): List<CatalogTrigger> = listOf(
                   AND typeof(NEW.created_at) = 'integer'
                   AND typeof(NEW.updated_at) = 'integer'
                   AND NEW.parent_product_id <> NEW.component_product_id
-                  AND EXISTS (SELECT 1 FROM products p WHERE p.id = NEW.parent_product_id AND p.stock_mode = 'COMPONENTS')
+                  AND EXISTS (SELECT 1 FROM products p WHERE p.id = NEW.parent_product_id AND p.stock_mode IN ('COMPONENTS', 'TRACKED'))
                   AND NOT EXISTS (SELECT 1 FROM product_components a JOIN product_components b ON b.parent_product_id = a.component_product_id WHERE a.parent_product_id = NEW.component_product_id)
                   AND NOT (EXISTS (SELECT 1 FROM product_components a WHERE a.component_product_id = NEW.parent_product_id) AND EXISTS (SELECT 1 FROM product_components b WHERE b.parent_product_id = NEW.component_product_id))
                 ), 0)
@@ -4282,7 +4282,7 @@ private fun triggers(): List<CatalogTrigger> = listOf(
                   AND typeof(NEW.created_at) = 'integer'
                   AND typeof(NEW.updated_at) = 'integer'
                   AND NEW.parent_product_id <> NEW.component_product_id
-                  AND EXISTS (SELECT 1 FROM products p WHERE p.id = NEW.parent_product_id AND p.stock_mode = 'COMPONENTS')
+                  AND EXISTS (SELECT 1 FROM products p WHERE p.id = NEW.parent_product_id AND p.stock_mode IN ('COMPONENTS', 'TRACKED'))
                   AND NOT EXISTS (SELECT 1 FROM product_components a JOIN product_components b ON b.parent_product_id = a.component_product_id WHERE a.parent_product_id = NEW.component_product_id)
                   AND NOT (EXISTS (SELECT 1 FROM product_components a WHERE a.component_product_id = NEW.parent_product_id) AND EXISTS (SELECT 1 FROM product_components b WHERE b.parent_product_id = NEW.component_product_id))
                 ), 0)

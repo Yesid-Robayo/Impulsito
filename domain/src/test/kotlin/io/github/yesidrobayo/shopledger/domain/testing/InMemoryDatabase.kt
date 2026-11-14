@@ -24,6 +24,8 @@ import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
+import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatch
+import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatchLine
 import io.github.yesidrobayo.shopledger.domain.model.purchase.Purchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
@@ -119,6 +121,9 @@ internal data class Tables(
     /** Las sesiones de conteo y sus líneas, por id. */
     val countSessions: Map<Long, CountSession> = emptyMap(),
     val countLines: Map<Long, CountSessionLine> = emptyMap(),
+    /** Las producciones y sus insumos, por id. */
+    val productionBatches: Map<Long, ProductionBatch> = emptyMap(),
+    val productionLines: Map<Long, ProductionBatchLine> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

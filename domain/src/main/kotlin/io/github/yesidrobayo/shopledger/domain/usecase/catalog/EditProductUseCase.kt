@@ -27,6 +27,7 @@ import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductFormCheck
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductFormRules
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductHistoryLock
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.RecipeRules
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ReplacementCostRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockEvaluator
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LowStockTransition
@@ -45,9 +46,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
  * - **Unidad, modo de stock y lotes.** Con historia ya no cambian: el libro no mezcla unidades.
  * - **Reposición.** Se corrige a mano sin tocar el costo promedio, y se fecha al guardarla. Un
  *   producto que deja de llevar stock propio la pierde, porque ya no se compra.
- * - **Receta.** Un producto que deja de armarse con componentes pierde su receta en la misma
- *   transacción: sin historia no hay venta que la necesite, y una receta que no se vende solo
- *   estorbaría al revisar los niveles de los demás combos.
+ * - **Receta.** Un producto que pasa a ser un servicio pierde su receta en la misma transacción:
+ *   un servicio no se arma ni se produce, y una receta que no se usa solo estorbaría al revisar
+ *   los niveles de los demás. Un combo que pasa a llevar stock la conserva, para producirlo.
  * - **Mínimo.** Si el producto queda bajo, crea su alerta callada; si deja de estarlo, la resuelve.
  * - **Foto.** Una nueva se anota en la misma transacción; la que deja de usarse queda marcada para
  *   que la limpieza la borre más adelante.
@@ -198,8 +199,10 @@ class EditProductUseCase(
             null
         }
         products.updateDetails(product.id, requested, now)
-        if (current.stockMode == ProductStockMode.COMPONENTS &&
-            requested.stockMode != ProductStockMode.COMPONENTS
+        // Un combo que pasa a llevar stock conserva su receta para producirlo; uno que pasa a ser
+        // un servicio la pierde, porque un servicio no tiene receta.
+        if (RecipeRules.allowsRecipe(current.stockMode) &&
+            !RecipeRules.allowsRecipe(requested.stockMode)
         ) {
             components.findByParent(product.id).forEach { components.delete(it.id) }
         }
