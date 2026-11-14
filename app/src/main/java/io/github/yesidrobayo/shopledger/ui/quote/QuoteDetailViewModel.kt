@@ -13,8 +13,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.document.CancelQuoteResul
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteConversion
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteView
-import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
-import kotlinx.coroutines.CancellationException
+import io.github.yesidrobayo.shopledger.ui.ReadOutcome
+import io.github.yesidrobayo.shopledger.ui.readOutcome
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -218,13 +218,12 @@ class QuoteDetailViewModel(
         if (overlay.value.working) return
         overlay.update { it.copy(working = true) }
         viewModelScope.launch {
-            val result = try {
-                operations.conversion(quoteId)
-            } catch (failure: CancellationException) {
-                throw failure
-            } catch (failure: StorageFailureException) {
-                null
-            }
+            // Una falla de lectura se dice como una conversión que no se pudo hacer.
+            val result = (
+                readOutcome {
+                    operations.conversion(quoteId)
+                } as? ReadOutcome.Read
+                )?.value
             overlay.update { it.copy(working = false) }
             when (result) {
                 is QuoteConversionResult.Ready -> {
@@ -267,13 +266,7 @@ class QuoteDetailViewModel(
     private fun cancel() {
         overlay.update { it.copy(dialog = null, working = true) }
         viewModelScope.launch {
-            val result = try {
-                operations.cancel(quoteId)
-            } catch (failure: CancellationException) {
-                throw failure
-            } catch (failure: StorageFailureException) {
-                null
-            }
+            val result = (readOutcome { operations.cancel(quoteId) } as? ReadOutcome.Read)?.value
             val notice = when (result) {
                 CancelQuoteResult.Cancelled -> QuoteDetailNotice.CANCELLED
 

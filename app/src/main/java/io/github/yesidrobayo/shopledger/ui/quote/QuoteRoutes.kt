@@ -13,7 +13,6 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.document.QuoteStatus
 import io.github.yesidrobayo.shopledger.domain.model.experience.BusinessTool
-import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.CancelQuoteResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.CancelQuoteUseCase
@@ -46,18 +45,14 @@ import kotlinx.coroutines.flow.map
  * @param onSegment elige otro segmento de Registros, que se dibuja ahí mismo.
  */
 @Composable
-fun QuotesRoute(
-    navigator: AppNavigator,
-    asTab: Boolean,
-    onSegment: (RecordsTab) -> Unit = {},
-) {
+fun QuotesRoute(navigator: AppNavigator, asTab: Boolean, onSegment: (RecordsTab) -> Unit = {}) {
     val model = rememberAppViewModel { dependencies ->
         QuotesViewModel(QuoteListUseCases(dependencies))
     }
     when (model) {
         ScreenModel.Opening -> QuotesScreen(QuotesUiState(), onAction = {}, asTab = asTab)
 
-        ScreenModel.Unavailable -> PlaceholderRoute(AppNavKey.Quotes, navigator)
+        ScreenModel.Unavailable -> PlaceholderRoute(AppNavKey.Quotes(), navigator)
 
         is ScreenModel.Ready -> BoxWithConstraints {
             val viewModel = model.viewModel
@@ -71,7 +66,7 @@ fun QuotesRoute(
                             if (wide) {
                                 viewModel.onAction(action)
                             } else {
-                                navigator.open(AppNavKey.QuoteDetail(action.quoteId))
+                                navigator.open(AppNavKey.Quotes(action.quoteId))
                             }
 
                         QuotesAction.New ->
@@ -87,7 +82,7 @@ fun QuotesRoute(
                 backupBanner = { RootBackupBanner(navigator::open) },
                 detail = { quoteId ->
                     QuoteDetailRoute(
-                        AppNavKey.QuoteDetail(quoteId),
+                        quoteId,
                         navigator,
                         onBack = { viewModel.onAction(QuotesAction.CloseDetail) },
                     )
@@ -104,17 +99,17 @@ fun QuotesRoute(
  */
 @Composable
 fun QuoteDetailRoute(
-    key: AppNavKey.QuoteDetail,
+    quoteId: Long,
     navigator: AppNavigator,
     onBack: () -> Unit = { navigator.back() },
 ) {
-    val model = rememberAppViewModel(key = "quote-${key.quoteId}") { dependencies ->
-        QuoteDetailViewModel(key.quoteId, QuoteDetailUseCases(dependencies))
+    val model = rememberAppViewModel(key = "quote-$quoteId") { dependencies ->
+        QuoteDetailViewModel(quoteId, QuoteDetailUseCases(dependencies))
     }
     when (model) {
         ScreenModel.Opening -> QuoteDetailScreen(QuoteDetailUiState(), onAction = {})
 
-        ScreenModel.Unavailable -> PlaceholderRoute(key, navigator)
+        ScreenModel.Unavailable -> PlaceholderRoute(AppNavKey.Quotes(quoteId), navigator)
 
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
@@ -139,7 +134,7 @@ fun QuoteDetailRoute(
                         QuoteDetailAction.Back -> onBack()
 
                         QuoteDetailAction.Edit -> navigator.open(
-                            AppNavKey.NewSale(document = SaleDocumentMode.EditQuote(key.quoteId)),
+                            AppNavKey.NewSale(document = SaleDocumentMode.EditQuote(quoteId)),
                         )
 
                         QuoteDetailAction.Share -> if (quote != null) {
@@ -160,17 +155,17 @@ fun QuoteDetailRoute(
 }
 
 /** La lista sobre los casos de uso de la base abierta. */
-private class QuoteListUseCases(dependencies: ScreenDependencies) : QuoteListOperations {
+private class QuoteListUseCases(private val dependencies: ScreenDependencies) :
+    QuoteListOperations {
     private val ports = dependencies.ports
     private val observe = ObserveQuotesUseCase(ports.quotes, ports.customers)
-    private val clock = dependencies.container.clock
 
     override fun list(status: QuoteStatus): Flow<List<QuoteRow>> = observe.list(status)
 
     override fun hasAny(): Flow<Boolean> =
         ports.moduleUsage.observe().map { BusinessTool.QUOTES in it }.distinctUntilChanged()
 
-    override fun today(): Flow<BusinessDate?> = todayOf(dependencies, clock)
+    override fun today(): Flow<BusinessDate?> = todayOf(dependencies)
 }
 
 /** El detalle sobre los casos de uso de la base abierta. */
@@ -197,7 +192,7 @@ private class QuoteDetailUseCases(private val dependencies: ScreenDependencies) 
     override fun units(): Flow<Map<Long, MeasureUnit>> =
         ports.units.observeAll().map { all -> all.associateBy { it.id } }
 
-    override fun today(): Flow<BusinessDate?> = todayOf(dependencies, clock)
+    override fun today(): Flow<BusinessDate?> = todayOf(dependencies)
 
     override suspend fun conversion(quoteId: Long): QuoteConversionResult = prepare(quoteId)
 
@@ -205,10 +200,12 @@ private class QuoteDetailUseCases(private val dependencies: ScreenDependencies) 
 }
 
 /** Hoy en la zona del negocio, o `null` si el teléfono no la conoce. */
-private fun todayOf(dependencies: ScreenDependencies, clock: Clock): Flow<BusinessDate?> =
+private fun todayOf(dependencies: ScreenDependencies): Flow<BusinessDate?> =
     BusinessCalendarSource(dependencies.ports.settings).observe().map { result ->
         when (result) {
-            is BusinessCalendarResult.Ready -> result.calendar.stamp(clock.now()).businessDate
+            is BusinessCalendarResult.Ready ->
+                result.calendar.stamp(dependencies.container.clock.now()).businessDate
+
             is BusinessCalendarResult.UnknownZone -> null
         }
     }.distinctUntilChanged()

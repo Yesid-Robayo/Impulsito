@@ -12,6 +12,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrections
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.ObserveQuotesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.PrepareQuoteConversionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteConversionResult
@@ -19,11 +22,6 @@ import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteView
 import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveQuoteResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveQuoteUseCase
-import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
-import kotlinx.coroutines.flow.Flow
-import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrections
-import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
-import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveTipsEnabledUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
@@ -42,6 +40,7 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScanPurpose
+import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.TopLevelDestination
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
@@ -52,6 +51,7 @@ import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.media.ProvidePhotos
 import io.github.yesidrobayo.shopledger.ui.returns.rememberExchangeNoteHandoff
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
 /**

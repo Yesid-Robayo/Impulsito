@@ -341,6 +341,8 @@ private fun SalePanel(
                 }
                 if (!cart.isEmpty) {
                     val quoting = uiState.quote != null
+                    val primary =
+                        if (quoting) NewSaleAction.OpenSaveQuote else NewSaleAction.Register
                     // Una cotización no se cobra: sin métodos ni más opciones de cobro.
                     if (!quoting) PaymentChoice(uiState.payment, onAction, compact)
                     SaleSummary(cart, onAction, opensCart)
@@ -366,11 +368,7 @@ private fun SalePanel(
                                 else -> R.string.sale_return_exchange_register_action
                             },
                         ),
-                        onClick = {
-                            onAction(
-                                if (quoting) NewSaleAction.OpenSaveQuote else NewSaleAction.Register,
-                            )
-                        },
+                        onClick = { onAction(primary) },
                         variant = ActionVariant.PRIMARY,
                         enabled = cart.canRegister,
                         state =

@@ -94,6 +94,8 @@ import io.github.yesidrobayo.shopledger.ui.production.ProductionsRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.NewPurchaseRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.PurchaseDetailRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.PurchaseHistoryRoute
+import io.github.yesidrobayo.shopledger.ui.quote.QuoteDetailRoute
+import io.github.yesidrobayo.shopledger.ui.quote.QuotesRoute
 import io.github.yesidrobayo.shopledger.ui.receipt.ReceiptTemplateRoute
 import io.github.yesidrobayo.shopledger.ui.receipt.SaleReceiptRoute
 import io.github.yesidrobayo.shopledger.ui.reference.ReferenceCurrencyRoute
@@ -109,8 +111,6 @@ import io.github.yesidrobayo.shopledger.ui.sale.HeldSalesRoute
 import io.github.yesidrobayo.shopledger.ui.sale.NewSaleRoute
 import io.github.yesidrobayo.shopledger.ui.sale.RecordsRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
-import io.github.yesidrobayo.shopledger.ui.quote.QuoteDetailRoute
-import io.github.yesidrobayo.shopledger.ui.quote.QuotesRoute
 import io.github.yesidrobayo.shopledger.ui.scanner.ScannerRoute
 import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryRoute
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
@@ -309,9 +309,10 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         is AppNavKey.SaleDetail -> SaleDetailRoute(key, navigator)
 
-        AppNavKey.Quotes -> QuotesRoute(navigator, asTab = false)
-
-        is AppNavKey.QuoteDetail -> QuoteDetailRoute(key, navigator)
+        is AppNavKey.Quotes -> when (val quoteId = key.quoteId) {
+            null -> QuotesRoute(navigator, asTab = false)
+            else -> QuoteDetailRoute(quoteId, navigator)
+        }
 
         is AppNavKey.SaleReturn -> SaleReturnRoute(key, navigator)
 

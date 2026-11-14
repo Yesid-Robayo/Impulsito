@@ -41,13 +41,6 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data class SaleDetail(val saleId: Long) : AppNavKey
 
-    /** Las cotizaciones abiertas desde el centro `Negocio`, fuera de Registros. */
-    @Serializable
-    data object Quotes : AppNavKey
-
-    @Serializable
-    data class QuoteDetail(val quoteId: Long) : AppNavKey
-
     /** Registros: raíz de su pestaña, con ventas, gastos y compras. */
     @Serializable
     data object SaleHistory : AppNavKey

@@ -74,7 +74,13 @@ internal fun QuoteSaveSheetView(
                     weekStartDay = weekStart,
                     // La vigencia mira hacia adelante: no tiene fecha máxima.
                     latest = null,
-                    error = if (form.pastDate) stringResource(R.string.quote_error_past_date) else null,
+                    error = if (form.pastDate) {
+                        stringResource(
+                            R.string.quote_error_past_date,
+                        )
+                    } else {
+                        null
+                    },
                 )
             }
             AppTextField(

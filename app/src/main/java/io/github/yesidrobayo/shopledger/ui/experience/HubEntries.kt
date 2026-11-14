@@ -75,7 +75,7 @@ val HUB_ENTRIES: List<HubEntry> =
             BusinessTool.QUOTES,
             R.string.hub_tool_quotes,
             R.string.hub_tool_quotes_desc,
-            AppNavKey.Quotes,
+            AppNavKey.Quotes(),
         ),
         HubEntry(
             BusinessTool.LABELS,

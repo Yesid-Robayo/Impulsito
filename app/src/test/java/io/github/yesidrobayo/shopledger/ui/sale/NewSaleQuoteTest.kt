@@ -76,30 +76,29 @@ class NewSaleQuoteTest {
     fun resetTestMain() = Dispatchers.resetMain()
 
     @Test
-    fun `a new quote saves its lines with the chosen customer and closes`() =
-        runTest(dispatcher) {
-            val model = viewModel(SaleDocumentMode.NewQuote)
-            assertEquals(QuoteEditing(editingId = null), model.state.quote)
-            model.act(this, NewSaleAction.AddProduct(oil.id))
+    fun `a new quote saves its lines with the chosen customer and closes`() = runTest(dispatcher) {
+        val model = viewModel(SaleDocumentMode.NewQuote)
+        assertEquals(QuoteEditing(editingId = null), model.state.quote)
+        model.act(this, NewSaleAction.AddProduct(oil.id))
 
-            // Registrar no vende: abre la hoja de la cotización.
-            model.act(this, NewSaleAction.Register)
-            assertTrue(model.state.sheet is SaleSheet.SaveQuote)
-            model.act(this, NewSaleAction.QuoteOpenCustomers)
-            assertEquals(1, (model.state.sheet as SaleSheet.SaveQuote).form.customerChoices.size)
-            model.act(this, NewSaleAction.QuotePickCustomer(CUSTOMER.id))
-            model.act(this, NewSaleAction.QuoteValidUntilChange(VALID_UNTIL))
-            model.act(this, NewSaleAction.ConfirmSaveQuote)
+        // Registrar no vende: abre la hoja de la cotización.
+        model.act(this, NewSaleAction.Register)
+        assertTrue(model.state.sheet is SaleSheet.SaveQuote)
+        model.act(this, NewSaleAction.QuoteOpenCustomers)
+        assertEquals(1, (model.state.sheet as SaleSheet.SaveQuote).form.customerChoices.size)
+        model.act(this, NewSaleAction.QuotePickCustomer(CUSTOMER.id))
+        model.act(this, NewSaleAction.QuoteValidUntilChange(VALID_UNTIL))
+        model.act(this, NewSaleAction.ConfirmSaveQuote)
 
-            val request = saved.single()
-            assertEquals(listOf(SaleLineRequest(oil.id, QuantityMilli(1_000L))), request.lines)
-            assertEquals(CUSTOMER.id, request.customerId)
-            assertEquals(VALID_UNTIL, request.validUntil)
-            assertNull(request.quoteId)
-            assertTrue(sold.isEmpty())
-            assertEquals(41L, model.state.quoteSaved)
-            assertTrue(model.state.closed)
-        }
+        val request = saved.single()
+        assertEquals(listOf(SaleLineRequest(oil.id, QuantityMilli(1_000L))), request.lines)
+        assertEquals(CUSTOMER.id, request.customerId)
+        assertEquals(VALID_UNTIL, request.validUntil)
+        assertNull(request.quoteId)
+        assertTrue(sold.isEmpty())
+        assertEquals(41L, model.state.quoteSaved)
+        assertTrue(model.state.closed)
+    }
 
     @Test
     fun `saving from a sale empties the sale and stays`() = runTest(dispatcher) {
