@@ -99,6 +99,7 @@ import io.github.yesidrobayo.shopledger.data.destination.slots.SlotPendingStore
 import io.github.yesidrobayo.shopledger.data.export.ContentCsvDocument
 import io.github.yesidrobayo.shopledger.data.export.CsvExporter
 import io.github.yesidrobayo.shopledger.data.export.recordCsvExported
+import io.github.yesidrobayo.shopledger.data.imports.DocumentImportReader
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.DatabaseGate
@@ -150,6 +151,7 @@ import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.FullCopyExportPort
 import io.github.yesidrobayo.shopledger.domain.port.FullVerifyPort
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
+import io.github.yesidrobayo.shopledger.domain.port.ImportFileReader
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.PhotoBackupPort
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
@@ -255,6 +257,14 @@ class DataGraph internal constructor(
             mediaDirectory = { File(context.filesDir, StoredImage.FOLDER) },
             ioContext = ioContext,
         )
+    }
+
+    /**
+     * Lee el archivo que la persona eligió para importar, como entrada no confiable y con sus
+     * topes. No escribe en la base ni copia el archivo.
+     */
+    val importFileReader: ImportFileReader by lazy {
+        DocumentImportReader(resolver = context.contentResolver, ioContext = ioContext)
     }
 
     /**
