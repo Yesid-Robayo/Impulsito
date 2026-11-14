@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -56,7 +57,6 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
-import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DateField
@@ -77,7 +77,6 @@ import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.StatTile
 import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
-import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
@@ -87,6 +86,7 @@ import io.github.yesidrobayo.shopledger.ui.money.PayingAccountChips
 import io.github.yesidrobayo.shopledger.ui.purchase.EXPENSES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.PURCHASES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.RecordsSegments
+import io.github.yesidrobayo.shopledger.ui.purchase.RecordsTopBar
 import io.github.yesidrobayo.shopledger.ui.purchase.SALES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.sale.reasonLabel
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -104,13 +104,24 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * - Un gasto no revela costo de productos ni ganancia: el modo discreto no lo cambia.
  *
  * Es pura: recibe el estado y avisa cada acción.
+ *
+ * @param asTab si va como segmento de la raíz de Registros: con la misma barra de arriba que
+ *   `Ventas`, los segmentos y la barra inferior libre. Si no, es un destino propio, como desde
+ *   `Gasto` en Inicio: con atrás, el título `Gastos` y sin segmentos.
+ * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
+ *   atención.
  */
 @Composable
 fun ExpensesScreen(
     uiState: ExpensesUiState,
     onAction: (ExpensesAction) -> Unit,
     modifier: Modifier = Modifier,
+    asTab: Boolean = true,
+    backupBanner: @Composable () -> Unit = {},
 ) {
+    val sizes = AppTheme.sizes
+    // Como segmento, el botón y el final de la lista dejan libre la barra inferior y Vender.
+    val barClearance = if (asTab) sizes.bottomBar + sizes.sellButtonOverhang else 0.dp
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
@@ -119,26 +130,28 @@ fun ExpensesScreen(
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val wide = maxWidth >= EXPANDED_WIDTH
             Column(Modifier.fillMaxSize()) {
-                AppTopBar(
-                    title = stringResource(R.string.nav_records),
-                    navigation = TopBarNavigation.BACK,
-                    onNavigate = { onAction(ExpensesAction.ShowSales) },
-                    navigationLabel = stringResource(R.string.a11y_back),
-                    actions = {
-                        OverflowMenu(
-                            listOf(
-                                OverflowAction(
-                                    stringResource(R.string.recurring_title),
-                                    { onAction(ExpensesAction.OpenRecurring) },
-                                ),
+                RecordsTopBar(
+                    asTab = asTab,
+                    title = R.string.records_tab_expenses,
+                    onBack = { onAction(ExpensesAction.ShowSales) },
+                ) {
+                    OverflowMenu(
+                        listOf(
+                            OverflowAction(
+                                stringResource(R.string.recurring_title),
+                                { onAction(ExpensesAction.OpenRecurring) },
                             ),
-                        )
-                    },
-                )
-                RecordsSegments(selected = EXPENSES_SEGMENT) { index ->
-                    when (index) {
-                        SALES_SEGMENT -> onAction(ExpensesAction.ShowSales)
-                        PURCHASES_SEGMENT -> onAction(ExpensesAction.ShowPurchases)
+                        ),
+                    )
+                }
+                // El mismo banner que Ventas y Compras: cambiar de segmento no mueve la lista.
+                backupBanner()
+                if (asTab) {
+                    RecordsSegments(selected = EXPENSES_SEGMENT) { index ->
+                        when (index) {
+                            SALES_SEGMENT -> onAction(ExpensesAction.ShowSales)
+                            PURCHASES_SEGMENT -> onAction(ExpensesAction.ShowPurchases)
+                        }
                     }
                 }
                 Row(Modifier.weight(1f)) {
@@ -150,13 +163,14 @@ fun ExpensesScreen(
                     Box(listWidth.fillMaxHeight()) {
                         Column(Modifier.fillMaxSize()) {
                             MonthHeader(uiState, onAction)
-                            ExpenseList(uiState, onAction, Modifier.weight(1f))
+                            ExpenseList(uiState, onAction, barClearance, Modifier.weight(1f))
                         }
                         TonalFab(
                             text = stringResource(R.string.empty_expenses_action),
                             onClick = { onAction(ExpensesAction.NewExpense) },
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
+                                .padding(bottom = barClearance)
                                 .navigationBarsPadding()
                                 .padding(AppTheme.spacing.s16)
                                 .keepsMessagesAbove(),
@@ -240,10 +254,12 @@ private fun MonthHeader(uiState: ExpensesUiState, onAction: (ExpensesAction) -> 
 private fun ExpenseList(
     uiState: ExpensesUiState,
     onAction: (ExpensesAction) -> Unit,
+    barClearance: Dp,
     modifier: Modifier = Modifier,
 ) {
-    // Deja libre lo que ocupa el botón flotante, para que no tape la última fila.
-    val bottom = AppTheme.sizes.touchTarget + AppTheme.spacing.s40
+    // Deja libre lo que ocupa el botón flotante, para que no tape la última fila, y la barra
+    // inferior si se ve.
+    val bottom = AppTheme.sizes.touchTarget + AppTheme.spacing.s40 + barClearance
     Box(modifier.fillMaxWidth()) {
         when (val content = uiState.content) {
             ExpensesContent.Loading -> DelayedSkeleton { ListSkeleton() }

@@ -42,7 +42,6 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
-import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CheckboxRow
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
@@ -54,14 +53,13 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
 import io.github.yesidrobayo.shopledger.ui.components.PeriodSelector
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
-import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
-import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.purchase.EXPENSES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.PURCHASES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.RecordsSegments
+import io.github.yesidrobayo.shopledger.ui.purchase.RecordsTopBar
 import io.github.yesidrobayo.shopledger.ui.purchase.SALES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -97,12 +95,7 @@ fun SaleHistoryScreen(
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val wide = detail != null && maxWidth >= EXPANDED_WIDTH
             Column(Modifier.fillMaxSize()) {
-                AppTopBar(
-                    title = stringResource(R.string.nav_records),
-                    navigation = TopBarNavigation.NONE,
-                    onNavigate = {},
-                    navigationLabel = null,
-                ) { SettingsButton() }
+                RecordsTopBar(asTab = true, title = R.string.nav_records, onBack = {})
                 backupBanner()
                 RecordsSegments(selected = SALES_SEGMENT) { index ->
                     when (index) {

@@ -26,21 +26,33 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.navigation.rememberExpenseUndo
 import io.github.yesidrobayo.shopledger.navigation.showUndoable
+import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.sale.RecordsTab
 
 /**
  * Los gastos en la navegación: arma su ViewModel con los casos de uso y resuelve adónde se va.
  *
- * Desde el atajo `Gasto` de Inicio abre con la hoja del gasto nuevo, y guardar vuelve a Inicio.
- * `Ventas` vuelve a la raíz de Registros y `Compras` abre las compras sobre ella: los segmentos no se
- * apilan. Confirmar la moneda abre la región y, al volver, la hoja sigue con lo escrito. Guardar o
- * anular deja su aviso en la navegación. Si la base va al rescate, la pantalla no lee nada.
+ * Como segmento de Registros, con [onSegment], `Ventas` y `Compras` cambian el contenido ahí
+ * mismo, sin abrir otra pantalla. Como destino propio, como desde el atajo `Gasto` de Inicio, va
+ * sin segmentos y atrás vuelve; desde ese atajo abre con la hoja del gasto nuevo, y guardar
+ * vuelve a Inicio. Confirmar la moneda abre la región y, al volver, la hoja sigue con lo
+ * escrito. Guardar o anular deja su aviso en la navegación. Si la base va al rescate, la pantalla
+ * no lee nada.
+ *
+ * @param onSegment elige otro segmento de Registros, o `null` si los gastos van como destino
+ *   propio.
  */
 @Composable
-fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
+fun ExpensesRoute(
+    key: AppNavKey.Expenses,
+    navigator: AppNavigator,
+    onSegment: ((RecordsTab) -> Unit)? = null,
+) {
+    val asTab = onSegment != null
     val formats = LocalAppFormats.current
     val numbers = ExpenseNumberFormat(formats.money.inputSymbols, formats.money.currencyDecimals)
     val model =
@@ -88,7 +100,7 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
             )
         }
     when (model) {
-        ScreenModel.Opening -> ExpensesScreen(ExpensesUiState(), onAction = {})
+        ScreenModel.Opening -> ExpensesScreen(ExpensesUiState(), onAction = {}, asTab = asTab)
 
         ScreenModel.Unavailable -> PlaceholderRoute(key, navigator)
 
@@ -142,12 +154,13 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                 onAction = { action ->
                     viewModel.onAction(action)
                     when (action) {
-                        ExpensesAction.ShowSales -> navigator.open(AppNavKey.SaleHistory)
-
-                        ExpensesAction.ShowPurchases -> {
-                            navigator.open(AppNavKey.SaleHistory)
-                            navigator.open(AppNavKey.PurchaseHistory())
+                        // Sin segmentos, la flecha de atrás también llega como `Ventas`.
+                        ExpensesAction.ShowSales -> when (onSegment) {
+                            null -> navigator.back()
+                            else -> onSegment(RecordsTab.SALES)
                         }
+
+                        ExpensesAction.ShowPurchases -> onSegment?.invoke(RecordsTab.PURCHASES)
 
                         ExpensesAction.OpenRecurring -> navigator.open(AppNavKey.RecurringExpenses)
 
@@ -185,6 +198,8 @@ fun ExpensesRoute(key: AppNavKey.Expenses, navigator: AppNavigator) {
                         -> Unit
                     }
                 },
+                asTab = asTab,
+                backupBanner = { RootBackupBanner(navigator::open) },
             )
         }
     }

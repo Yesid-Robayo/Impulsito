@@ -86,8 +86,8 @@ import io.github.yesidrobayo.shopledger.ui.safety.PolicyPromptHost
 import io.github.yesidrobayo.shopledger.ui.sale.CheckoutRoute
 import io.github.yesidrobayo.shopledger.ui.sale.HeldSalesRoute
 import io.github.yesidrobayo.shopledger.ui.sale.NewSaleRoute
+import io.github.yesidrobayo.shopledger.ui.sale.RecordsRoute
 import io.github.yesidrobayo.shopledger.ui.sale.SaleDetailRoute
-import io.github.yesidrobayo.shopledger.ui.sale.SaleHistoryRoute
 import io.github.yesidrobayo.shopledger.ui.settings.SettingsEntryRoute
 import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.stats.StatisticsRoute
@@ -277,7 +277,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         AppNavKey.Checkout -> CheckoutRoute(navigator)
 
-        AppNavKey.SaleHistory -> SaleHistoryRoute(navigator)
+        // Ventas, Compras y Gastos, en la misma pantalla.
+        AppNavKey.SaleHistory -> RecordsRoute(navigator)
 
         is AppNavKey.ProductEdit -> ProductEditRoute(key, navigator)
 

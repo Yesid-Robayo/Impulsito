@@ -21,15 +21,27 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
+import io.github.yesidrobayo.shopledger.ui.sale.RecordsTab
 import kotlinx.coroutines.flow.combine
 
 /**
  * El historial de compras en la navegación. Abrir una compra va a su detalle, o en una ventana ancha
- * la abre a la derecha, sin salir de la lista. `Ventas` vuelve al historial de ventas, y `Nueva
- * compra` abre la compra nueva.
+ * la abre a la derecha, sin salir de la lista. `Nueva compra` abre la compra nueva.
+ *
+ * Como segmento de Registros, con [onSegment], `Ventas` y `Gastos` cambian el contenido ahí
+ * mismo, sin abrir otra pantalla. Como destino propio, como desde un proveedor, va sin segmentos y
+ * atrás vuelve.
+ *
+ * @param onSegment elige otro segmento de Registros, o `null` si las compras van como destino
+ *   propio.
  */
 @Composable
-fun PurchaseHistoryRoute(key: AppNavKey.PurchaseHistory, navigator: AppNavigator) {
+fun PurchaseHistoryRoute(
+    key: AppNavKey.PurchaseHistory,
+    navigator: AppNavigator,
+    onSegment: ((RecordsTab) -> Unit)? = null,
+) {
+    val asTab = onSegment != null
     val model =
         rememberAppViewModel(
             key = "purchases-${key.supplierId}-${key.withoutSupplier}",
@@ -54,7 +66,8 @@ fun PurchaseHistoryRoute(key: AppNavKey.PurchaseHistory, navigator: AppNavigator
             )
         }
     when (model) {
-        ScreenModel.Opening -> PurchaseHistoryScreen(PurchaseHistoryUiState(), onAction = {})
+        ScreenModel.Opening ->
+            PurchaseHistoryScreen(PurchaseHistoryUiState(), onAction = {}, asTab = asTab)
 
         ScreenModel.Unavailable -> PlaceholderRoute(key, navigator)
 
@@ -75,13 +88,14 @@ fun PurchaseHistoryRoute(key: AppNavKey.PurchaseHistory, navigator: AppNavigator
 
                         PurchaseHistoryAction.NewPurchase -> navigator.open(AppNavKey.Purchase())
 
-                        PurchaseHistoryAction.ShowSales -> navigator.back()
-
-                        // Los segmentos no se apilan: gastos va sobre ventas, no sobre compras.
-                        PurchaseHistoryAction.ShowExpenses -> {
-                            navigator.open(AppNavKey.SaleHistory)
-                            navigator.open(AppNavKey.Expenses())
+                        // Sin segmentos, la flecha de atrás también llega como `Ventas`.
+                        PurchaseHistoryAction.ShowSales -> when (onSegment) {
+                            null -> navigator.back()
+                            else -> onSegment(RecordsTab.SALES)
                         }
+
+                        PurchaseHistoryAction.ShowExpenses ->
+                            onSegment?.invoke(RecordsTab.EXPENSES)
 
                         else -> viewModel.onAction(action)
                     }
@@ -93,6 +107,7 @@ fun PurchaseHistoryRoute(key: AppNavKey.PurchaseHistory, navigator: AppNavigator
                         onBack = { viewModel.onAction(PurchaseHistoryAction.ClosePurchase) },
                     )
                 },
+                asTab = asTab,
                 backupBanner = { RootBackupBanner(navigator::open) },
             )
         }

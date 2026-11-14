@@ -19,9 +19,11 @@ import kotlinx.coroutines.flow.combine
 /**
  * El historial de ventas en la navegación. En un teléfono, tocar una venta abre su detalle encima;
  * en una ventana ancha, a la derecha, sin salir de la lista, y atrás en el detalle lo cierra.
+ *
+ * @param onSegment elige otro segmento de Registros, que se dibuja ahí mismo.
  */
 @Composable
-fun SaleHistoryRoute(navigator: AppNavigator) {
+fun SaleHistoryRoute(navigator: AppNavigator, onSegment: (RecordsTab) -> Unit) {
     val model =
         rememberAppViewModel { dependencies ->
             val ports = dependencies.ports
@@ -67,10 +69,9 @@ fun SaleHistoryRoute(navigator: AppNavigator) {
 
                         SaleHistoryAction.Sell -> navigator.sell()
 
-                        SaleHistoryAction.ShowPurchases ->
-                            navigator.open(AppNavKey.PurchaseHistory())
+                        SaleHistoryAction.ShowPurchases -> onSegment(RecordsTab.PURCHASES)
 
-                        SaleHistoryAction.ShowExpenses -> navigator.open(AppNavKey.Expenses())
+                        SaleHistoryAction.ShowExpenses -> onSegment(RecordsTab.EXPENSES)
 
                         else -> viewModel.onAction(action)
                     }

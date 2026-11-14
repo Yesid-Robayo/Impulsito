@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.purchase
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -38,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
@@ -57,6 +60,7 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
 import io.github.yesidrobayo.shopledger.ui.components.PeriodSelector
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SegmentedTabs
+import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.StatusTone
@@ -86,6 +90,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  *
  * Es pura: recibe el estado y avisa cada acción.
  *
+ * @param asTab si va como segmento de la raíz de Registros: con la misma barra de arriba que
+ *   `Ventas`, los segmentos y la barra inferior libre. Si no, es un destino propio, como desde un
+ *   proveedor: con atrás, el título `Compras` y sin segmentos.
  * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
  *   atención.
  */
@@ -95,8 +102,12 @@ fun PurchaseHistoryScreen(
     onAction: (PurchaseHistoryAction) -> Unit,
     modifier: Modifier = Modifier,
     detail: (@Composable (Long) -> Unit)? = null,
+    asTab: Boolean = true,
     backupBanner: @Composable () -> Unit = {},
 ) {
+    val sizes = AppTheme.sizes
+    // Como segmento, el botón y el final de la lista dejan libre la barra inferior y Vender.
+    val barClearance = if (asTab) sizes.bottomBar + sizes.sellButtonOverhang else 0.dp
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
@@ -105,17 +116,18 @@ fun PurchaseHistoryScreen(
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val wide = detail != null && maxWidth >= EXPANDED_WIDTH
             Column(Modifier.fillMaxSize()) {
-                AppTopBar(
-                    title = stringResource(R.string.nav_records),
-                    navigation = TopBarNavigation.BACK,
-                    onNavigate = { onAction(PurchaseHistoryAction.ShowSales) },
-                    navigationLabel = stringResource(R.string.a11y_back),
+                RecordsTopBar(
+                    asTab = asTab,
+                    title = R.string.records_tab_purchases,
+                    onBack = { onAction(PurchaseHistoryAction.ShowSales) },
                 )
                 backupBanner()
-                RecordsSegments(selected = PURCHASES_SEGMENT) { index ->
-                    when (index) {
-                        SALES_SEGMENT -> onAction(PurchaseHistoryAction.ShowSales)
-                        EXPENSES_SEGMENT -> onAction(PurchaseHistoryAction.ShowExpenses)
+                if (asTab) {
+                    RecordsSegments(selected = PURCHASES_SEGMENT) { index ->
+                        when (index) {
+                            SALES_SEGMENT -> onAction(PurchaseHistoryAction.ShowSales)
+                            EXPENSES_SEGMENT -> onAction(PurchaseHistoryAction.ShowExpenses)
+                        }
                     }
                 }
                 Row(Modifier.weight(1f)) {
@@ -127,13 +139,14 @@ fun PurchaseHistoryScreen(
                     Box(listWidth.fillMaxHeight()) {
                         Column(Modifier.fillMaxSize()) {
                             Filters(uiState, onAction)
-                            HistoryList(uiState, onAction, Modifier.weight(1f))
+                            HistoryList(uiState, onAction, barClearance, Modifier.weight(1f))
                         }
                         TonalFab(
                             text = stringResource(R.string.empty_purchases_action),
                             onClick = { onAction(PurchaseHistoryAction.NewPurchase) },
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
+                                .padding(bottom = barClearance)
                                 .navigationBarsPadding()
                                 .padding(AppTheme.spacing.s16),
                         )
@@ -165,6 +178,41 @@ fun PurchaseHistoryScreen(
         )
     }
     if (uiState.filterSheet) FilterSheet(uiState.filters, onAction)
+}
+
+/**
+ * La barra de arriba de un segmento de Registros. Como segmento es la de la raíz: `Registros`,
+ * sin atrás y con los ajustes al borde, igual en los tres, para que cambiar de segmento no mueva
+ * nada. Como destino propio lleva atrás y el nombre del segmento, [title].
+ *
+ * @param actions las acciones propias del segmento, antes de los ajustes.
+ */
+@Composable
+internal fun RecordsTopBar(
+    asTab: Boolean,
+    @StringRes title: Int,
+    onBack: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    if (asTab) {
+        AppTopBar(
+            title = stringResource(R.string.nav_records),
+            navigation = TopBarNavigation.NONE,
+            onNavigate = {},
+            navigationLabel = null,
+        ) {
+            actions()
+            SettingsButton()
+        }
+    } else {
+        AppTopBar(
+            title = stringResource(title),
+            navigation = TopBarNavigation.BACK,
+            onNavigate = onBack,
+            navigationLabel = stringResource(R.string.a11y_back),
+            actions = actions,
+        )
+    }
 }
 
 /** Los segmentos de Registros: `Ventas`, `Compras` y `Gastos`. */
@@ -226,10 +274,12 @@ private fun Filters(uiState: PurchaseHistoryUiState, onAction: (PurchaseHistoryA
 private fun HistoryList(
     uiState: PurchaseHistoryUiState,
     onAction: (PurchaseHistoryAction) -> Unit,
+    barClearance: Dp,
     modifier: Modifier = Modifier,
 ) {
-    // Deja libre lo que ocupa el botón flotante, para que no tape la última fila.
-    val bottom = AppTheme.sizes.touchTarget + AppTheme.spacing.s40
+    // Deja libre lo que ocupa el botón flotante, para que no tape la última fila, y la barra
+    // inferior si se ve.
+    val bottom = AppTheme.sizes.touchTarget + AppTheme.spacing.s40 + barClearance
     Box(modifier.fillMaxWidth()) {
         when (val content = uiState.content) {
             PurchaseHistoryContent.Loading -> DelayedSkeleton { HistorySkeleton() }
