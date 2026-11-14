@@ -229,7 +229,30 @@ sealed interface SaleSheet {
         val tooLong: Boolean = false,
         val working: Boolean = false,
     ) : SaleSheet
+
+    /**
+     * Elegir una variante de [parentId]: un eje por fila. [chosen] es el valor elegido de cada
+     * eje, en orden. Al completar los ejes se agrega la línea y la hoja se cierra, sin botón extra.
+     */
+    data class VariantPick(
+        val parentId: Long,
+        val parentName: String,
+        val axes: List<VariantAxisChoice>,
+        val chosen: List<String?>,
+    ) : SaleSheet
 }
+
+/**
+ * Un eje del selector de variantes: su nombre y los valores que tienen variante, con los que
+ * están sin stock en [outOfStock]. Uno sin stock se ve tachado y se puede elegir: vender nunca se
+ * bloquea por falta de stock.
+ */
+@Immutable
+data class VariantAxisChoice(
+    val name: String,
+    val values: List<String>,
+    val outOfStock: Set<String>,
+)
 
 /** Cómo se escribe el descuento de una línea. */
 enum class DiscountMode {

@@ -53,6 +53,34 @@ class ObserveInventoryUseCaseTest {
     }
 
     @Test
+    fun `a product with variants is a family with their sum, never a low row`() = runTest {
+        fixture.catalog.seedProduct(id = 1L, name = "Camiseta")
+        fixture.catalog.seedProduct(id = 2L, name = "Camiseta · S", onHand = QuantityMilli(4_000L))
+        fixture.catalog.seedProduct(id = 3L, name = "Camiseta · M", onHand = QuantityMilli(0L))
+        fixture.catalog.database.seed { tables ->
+            tables.copy(
+                products = tables.products.mapValues { (id, product) ->
+                    if (id == 1L) {
+                        product
+                    } else {
+                        product.copy(details = product.details.copy(parentProductId = 1L))
+                    }
+                },
+            )
+        }
+
+        val overview = observe().first()
+
+        // El principal no tiene stock propio: no sale agotado. Su variante agotada sí.
+        assertEquals(listOf(3L, 2L), overview.tracked.map { it.id })
+        assertEquals(listOf(3L), overview.lowStock.map { it.id })
+        val family = overview.families.single()
+        assertEquals(1L, family.parent.id)
+        assertEquals(listOf(3L, 2L), family.variants.map { it.id })
+        assertEquals(QuantityMilli(4_000L), family.onHand)
+    }
+
+    @Test
     fun `archived stock counts in the value and is told apart`() = runTest {
         fixture.seedStock(id = 1L, units = 2_000L, unitCost = 100L)
         fixture.seedStock(id = 2L, units = 3_000L, unitCost = 1_000L)

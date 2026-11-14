@@ -436,6 +436,23 @@ class RegisterSaleUseCaseTest {
     }
 
     @Test
+    fun theMainProductOfSomeVariantsIsNotSoldButEachVariantIs() = runTest {
+        val parent = product(10, name = "Camiseta", salePrice = 100)
+        val variant = product(11, name = "Camiseta · M", salePrice = 100)
+        world.addProduct(parent)
+        world.addProduct(
+            variant.copy(details = variant.details.copy(parentProductId = parent.id)),
+        )
+
+        assertEquals(
+            rejected(0, LineRejection.PRODUCT_HAS_VARIANTS),
+            lineRejectionOf(line(10, 1_000)),
+        )
+        val sold = world.registerSale()(SaleRequest(listOf(line(11, 1_000)), SaleWorld.CASH))
+        assertTrue(sold is RegisterSaleResult.Registered)
+    }
+
+    @Test
     fun theQuantityFollowsItsUnitAndTheLineLimit() = runTest {
         world.addProduct(product(1, salePrice = 100, stockMode = ProductStockMode.UNTRACKED))
         world.addProduct(

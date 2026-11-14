@@ -138,9 +138,29 @@ class InventoryViewModel(
             value = overview.value,
             archivedValue = overview.archivedValue,
             hasStockWithoutCost = overview.hasStockWithoutCost,
-            items = products.map { inventoryItemOf(it, overview.units) },
+            items = if (shown == InventoryChip.ALL) {
+                groupedItems(overview)
+            } else {
+                products.map { inventoryItemOf(it, overview.units) }
+            },
             reviewItems = pending.map(::reviewItemOf),
         )
+    }
+
+    /**
+     * Todos los productos con stock, en orden de nombre, con cada producto con variantes como una
+     * fila con la suma de las suyas, seguida de ellas.
+     */
+    private fun groupedItems(overview: InventoryOverview): List<InventoryItem> {
+        val parents = overview.families.mapTo(mutableSetOf()) { it.parent.id }
+        val singles = overview.tracked.filter { it.details.parentProductId !in parents }
+            .map { it.details.normalizedName to listOf(inventoryItemOf(it, overview.units)) }
+        val families = overview.families.map { family ->
+            val total = inventoryItemOf(family.parent.copy(onHand = family.onHand), overview.units)
+            family.parent.details.normalizedName to
+                listOf(total) + family.variants.map { inventoryItemOf(it, overview.units) }
+        }
+        return (singles + families).sortedBy { it.first }.flatMap { it.second }
     }
 
     /**

@@ -27,6 +27,7 @@
     <string name="variant_error_parent_stock">Este producto tiene stock propio. Se debe ajustar a cero antes de crear variantes.</string>
     <string name="variant_error_parent">Este producto no admite variantes.</string>
     <string name="variant_error_nothing_checked">Se debe marcar al menos una combinación nueva.</string>
+    <string name="variant_picker_title">Elegir variante</string>
     <plurals name="variant_create_action">
         <item quantity="one">Crear %1$d variante</item>
         <item quantity="many">Crear %1$d de variantes</item>

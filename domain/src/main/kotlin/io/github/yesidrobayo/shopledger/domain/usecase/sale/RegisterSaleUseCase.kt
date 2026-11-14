@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
@@ -721,6 +722,10 @@ class RegisterSaleUseCase(
             val product = byId[request.productId]
                 ?: return rejected(index, LineRejection.PRODUCT_NOT_FOUND)
             productRejection(product)?.let { return rejected(index, it) }
+            // El producto principal de unas variantes no se vende: se vende una de ellas.
+            if (CatalogLink.VARIANT_PARENT in products.catalogLinks(product.id)) {
+                return rejected(index, LineRejection.PRODUCT_HAS_VARIANTS)
+            }
             val allowsFraction = fractionByUnit.getOrPut(product.details.baseUnitId) {
                 // La unidad base de un producto siempre existe: su llave no deja borrarla.
                 val unit = units.findById(product.details.baseUnitId) ?: damaged()

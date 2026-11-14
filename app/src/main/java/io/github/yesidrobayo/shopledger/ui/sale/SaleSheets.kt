@@ -97,6 +97,8 @@ internal fun SaleSheets(
 
         is SaleSheet.Hold -> HoldSheet(sheet, onAction)
 
+        is SaleSheet.VariantPick -> VariantPickerSheet(sheet, onAction)
+
         SaleSheet.CurrencyRequired -> AppBottomSheet(
             onDismissRequest = close,
             title = stringResource(R.string.region_required_title),
@@ -207,6 +209,41 @@ internal fun CartContent(cart: SaleCartState, onAction: (NewSaleAction) -> Unit)
             onClick = { onAction(NewSaleAction.ClearSale) },
             variant = ActionVariant.OUTLINED,
         )
+    }
+}
+
+/**
+ * El selector de variantes: un eje por fila, con los valores sin stock tachados y elegibles.
+ * Completar los ejes agrega la línea y cierra la hoja, sin botón extra.
+ */
+@Composable
+private fun VariantPickerSheet(sheet: SaleSheet.VariantPick, onAction: (NewSaleAction) -> Unit) {
+    val spacing = AppTheme.spacing
+    AppBottomSheet(
+        onDismissRequest = { onAction(NewSaleAction.CloseSheet) },
+        title = stringResource(R.string.variant_picker_title),
+    ) {
+        Text(
+            text = sheet.parentName,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        sheet.axes.forEachIndexed { index, axis ->
+            Text(
+                text = axis.name,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = spacing.s12, bottom = spacing.s4),
+            )
+            CompactChipRow(
+                options = axis.values,
+                label = { it },
+                selected = setOfNotNull(sheet.chosen.getOrNull(index)),
+                onToggle = { onAction(NewSaleAction.PickVariantValue(index, it)) },
+                multiple = false,
+                struck = { it in axis.outOfStock },
+            )
+        }
     }
 }
 

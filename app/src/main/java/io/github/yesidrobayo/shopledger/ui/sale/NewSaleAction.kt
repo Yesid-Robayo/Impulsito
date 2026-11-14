@@ -11,6 +11,9 @@ sealed interface NewSaleAction {
     /** Tocar la tarjeta de un producto: agrega uno, o abre su hoja si hace falta. */
     data class AddProduct(val productId: Long) : NewSaleAction
 
+    /** Elige [value] en el eje [axis] del selector de variantes abierto. */
+    data class PickVariantValue(val axis: Int, val value: String) : NewSaleAction
+
     data class Increment(val productId: Long) : NewSaleAction
 
     data class Decrement(val productId: Long) : NewSaleAction

@@ -300,7 +300,13 @@ internal class SaleWorld(
 
         override suspend fun hasHistory(id: Long): Boolean = unused()
 
-        override suspend fun catalogLinks(id: Long): Set<CatalogLink> = unused()
+        // Solo el vínculo de variantes, que la venta revisa: los demás no la cambian.
+        override suspend fun catalogLinks(id: Long): Set<CatalogLink> =
+            if (read().products.values.any { it.details.parentProductId == id }) {
+                setOf(CatalogLink.VARIANT_PARENT)
+            } else {
+                emptySet()
+            }
 
         override suspend fun insert(product: NewProduct): Long = unused()
 

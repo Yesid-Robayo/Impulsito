@@ -184,6 +184,8 @@ class NewSaleViewModel(
 
             is NewSaleAction.AddProduct -> addProduct(action.productId)
 
+            is NewSaleAction.PickVariantValue -> pickVariantValue(action.axis, action.value)
+
             is NewSaleAction.Increment -> add(action.productId, SaleCart.STEP)
 
             is NewSaleAction.Decrement -> editLines { SaleCart.decrement(it, action.productId) }
@@ -288,6 +290,11 @@ class NewSaleViewModel(
     private fun addProduct(productId: Long) {
         val catalog = readyCatalog() ?: return
         val product = catalog.products.firstOrNull { it.id == productId } ?: return
+        // El principal de unas variantes no se vende: se elige una de ellas.
+        if (VariantChoices.variantsOf(catalog, productId).isNotEmpty()) {
+            showSheet(VariantChoices.sheet(catalog, product, emptyList()))
+            return
+        }
         if (allowsFraction(catalog, product)) {
             openQuantity(productId, adding = true)
             return
@@ -305,6 +312,24 @@ class NewSaleViewModel(
             // Sin precio, la línea se abre con el precio enfocado; dejarlo en cero también vale.
             openLine(productId, focusPrice = true)
         }
+    }
+
+    /**
+     * Elige [value] en el eje [axis] del selector abierto. Con todos los ejes elegidos, cierra la
+     * hoja y agrega la variante como si se hubiera tocado su tarjeta.
+     */
+    private fun pickVariantValue(axis: Int, value: String) {
+        val catalog = readyCatalog() ?: return
+        val sheet = overlay.value.sheet as? SaleSheet.VariantPick ?: return
+        val parent = catalog.products.firstOrNull { it.id == sheet.parentId } ?: return
+        val chosen = sheet.chosen.take(axis) + value
+        val variant = VariantChoices.match(catalog, parent.id, chosen, sheet.axes.size)
+        if (variant == null) {
+            showSheet(VariantChoices.sheet(catalog, parent, chosen))
+            return
+        }
+        overlay.update { it.copy(sheet = null) }
+        addProduct(variant.id)
     }
 
     /** Agrega [quantity] de [productId]. Devuelve si la venta cambió. */

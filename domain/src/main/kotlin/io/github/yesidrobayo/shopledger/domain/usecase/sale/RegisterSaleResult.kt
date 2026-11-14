@@ -163,4 +163,10 @@ enum class LineRejection {
      * venta después de elegirla.
      */
     UNIT_UNAVAILABLE,
+
+    /**
+     * El producto tiene variantes: no se vende directo, porque no tiene stock propio. Se elige una
+     * de sus variantes.
+     */
+    PRODUCT_HAS_VARIANTS,
 }

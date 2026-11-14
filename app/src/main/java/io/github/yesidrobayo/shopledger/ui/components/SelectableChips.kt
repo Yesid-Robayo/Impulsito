@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import io.github.yesidrobayo.shopledger.R
@@ -51,6 +52,7 @@ private fun SelectChip(
     modifier: Modifier = Modifier,
     trailingIcon: Int? = null,
     trailingLabel: String? = null,
+    struck: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val sizes = AppTheme.sizes
@@ -94,7 +96,12 @@ private fun SelectChip(
                     modifier = Modifier.size(sizes.iconTag),
                 )
             }
-            Text(label, style = MaterialTheme.typography.labelMedium, color = content)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = content,
+                textDecoration = if (struck) TextDecoration.LineThrough else null,
+            )
             if (trailingIcon != null) {
                 Icon(
                     painter = painterResource(trailingIcon),
@@ -120,6 +127,7 @@ fun <T> CompactChipRow(
     onToggle: (T) -> Unit,
     multiple: Boolean,
     modifier: Modifier = Modifier,
+    struck: (T) -> Boolean = { false },
 ) {
     FlowRow(
         modifier = modifier.selectableGroup(),
@@ -132,6 +140,7 @@ fun <T> CompactChipRow(
                 onClick = { onToggle(option) },
                 role = if (multiple) Role.Checkbox else Role.RadioButton,
                 minHeight = AppTheme.sizes.compactChip,
+                struck = struck(option),
             )
         }
     }

@@ -131,10 +131,27 @@ internal object SaleContentBuilder {
             // El precio de la lista elegida, el mismo que tomará la línea.
             price = (if (priceList == null) product.salePrice else priceList.priceOf(product).price)
                 ?.takeIf { it > Money.ZERO },
-            stock = stockOf(product),
+            stock = familyStockOf(product, catalog) ?: stockOf(product),
             unit = catalog.units[product.details.baseUnitId],
             line = line,
         )
+    }
+
+    /**
+     * El stock de un producto con variantes: la suma de las suyas, porque el principal no tiene
+     * stock propio. `null` si no tiene variantes.
+     */
+    private fun familyStockOf(product: Product, catalog: SaleCatalog): TileStock? {
+        val family = VariantChoices.variantsOf(catalog, product.id)
+            .filter { it.details.stockMode == ProductStockMode.TRACKED }
+        if (VariantChoices.variantsOf(catalog, product.id).isEmpty()) return null
+        if (family.isEmpty()) return TileStock.None
+        val onHand = QuantityMilli(family.sumOf { it.onHand.milli })
+        return when {
+            onHand < QuantityMilli.ZERO -> TileStock.Negative(onHand)
+            onHand == QuantityMilli.ZERO -> TileStock.Out
+            else -> TileStock.Normal(onHand)
+        }
     }
 
     private fun stockOf(product: Product): TileStock {

@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.stock
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
@@ -31,6 +32,17 @@ data class InventoryOverview(
     val archivedValue: Money?,
     val hasStockWithoutCost: Boolean,
     val units: Map<Long, MeasureUnit>,
+    val families: List<VariantFamily> = emptyList(),
+)
+
+/**
+ * Un producto con variantes en el inventario: no tiene stock propio, y su stock es la suma de las
+ * suyas. [variants] son las vigentes con stock propio, en el orden de su nombre.
+ */
+data class VariantFamily(
+    val parent: Product,
+    val variants: List<Product>,
+    val onHand: QuantityMilli,
 )
 
 /**
@@ -47,9 +59,17 @@ class ObserveInventoryUseCase(
         products.observe(ArchiveFilter.ARCHIVED),
         units.observeAll(),
     ) { active, archived, allUnits ->
+        // El principal de unas variantes no tiene stock propio: sale como familia, no como fila.
+        val parentIds = active.mapNotNullTo(mutableSetOf()) { it.details.parentProductId }
         val tracked = active
-            .filter { it.details.stockMode == ProductStockMode.TRACKED }
+            .filter { it.details.stockMode == ProductStockMode.TRACKED && it.id !in parentIds }
             .sortedWith(compareBy({ it.details.normalizedName }, { it.id }))
+        val families = active.filter { it.id in parentIds }
+            .sortedWith(compareBy({ it.details.normalizedName }, { it.id }))
+            .map { parent ->
+                val variants = tracked.filter { it.details.parentProductId == parent.id }
+                VariantFamily(parent, variants, QuantityMilli(variants.sumOf { it.onHand.milli }))
+            }
         val archivedValue = InventoryRules.value(archived)?.takeIf { it > Money.ZERO }
         InventoryOverview(
             hasProducts = active.isNotEmpty(),
@@ -60,6 +80,7 @@ class ObserveInventoryUseCase(
             archivedValue = archivedValue,
             hasStockWithoutCost = InventoryRules.hasStockWithoutCost(tracked),
             units = allUnits.associateBy { it.id },
+            families = families,
         )
     }
 }
