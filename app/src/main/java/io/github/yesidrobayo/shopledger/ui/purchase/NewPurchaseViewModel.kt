@@ -32,6 +32,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseUnit
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LocationRules
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
+import io.github.yesidrobayo.shopledger.navigation.PurchasePrefillLine
 import io.github.yesidrobayo.shopledger.ui.ReadOutcome
 import io.github.yesidrobayo.shopledger.ui.components.fixedPointInputText
 import io.github.yesidrobayo.shopledger.ui.readOrNull
@@ -82,6 +83,8 @@ internal sealed interface PurchaseCatalogLoad {
  * @param prefillSupplierId el proveedor con que se abrió la compra, como desde su detalle.
  * @param prefillFromPurchaseId la compra anulada que esta corrige: la nueva abre con sus datos.
  * @param loadCorrection lee lo que trae la corrección de una compra, o `null` si ya no existe.
+ * @param prefillLines las líneas con que se abrió la compra, como desde la reposición sugerida.
+ * @param prefillLocationId la ubicación adonde entra lo comprado, si se abrió con una.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewPurchaseViewModel(
@@ -97,6 +100,8 @@ class NewPurchaseViewModel(
     private val loadCorrection: suspend (Long) -> PurchaseCorrection? = { null },
     payingAccounts: Flow<List<MoneyAccount>> = flowOf(emptyList()),
     locations: Flow<List<Location>> = flowOf(emptyList()),
+    private val prefillLines: List<PurchasePrefillLine> = emptyList(),
+    private val prefillLocationId: Long? = null,
 ) : ViewModel() {
     private val draft = MutableStateFlow(PurchaseDraftStore.read(savedState))
     private val overlay = MutableStateFlow(Overlay())
@@ -257,11 +262,13 @@ class NewPurchaseViewModel(
                     prefilled = true,
                     supplierId = supplier ?: it.supplierId,
                     supplierTouched = it.supplierTouched || supplier != null,
+                    locationId = prefillLocationId ?: it.locationId,
                 )
             }
             prefillProductId?.let { id ->
                 if (catalog.products.any { it.id == id }) appendLine(catalog, id)
             }
+            if (prefillLines.isNotEmpty()) appendPrefilledLines(catalog)
         }
         val awaiting = draft.value.awaitingProductAfter ?: return
         val created = catalog.products.filter { it.id > awaiting }.minByOrNull { it.id } ?: return
@@ -317,6 +324,44 @@ class NewPurchaseViewModel(
             if (leftOut > 0 || correction.supplierLeftOut) {
                 notice(PurchaseNotice.CorrectionLeftOut(leftOut, correction.supplierLeftOut))
             }
+        }
+    }
+
+    /**
+     * Agrega las líneas con que se abrió la compra, cada una con su cantidad y sin costo: el costo
+     * lo escribe la persona con lo que le cobran. Un producto que ya no está vigente no entra. No
+     * toca el proveedor: lo eligió quien abrió la compra.
+     */
+    private fun appendPrefilledLines(catalog: PurchaseCatalog) {
+        val products = catalog.products.associateBy { it.id }
+        changeDraft { current ->
+            var key = current.nextKey
+            val room = (Limit.DOCUMENT_LINES.max - current.lines.size).toInt().coerceAtLeast(0)
+            val added = prefillLines.filter { it.productId in products }.take(room).map { line ->
+                val base = products.getValue(line.productId).details.baseUnitId
+                // Las presentaciones del catálogo de compra son solo las de compra.
+                val inUnit = line.unitId != null && line.unitId != base &&
+                    catalog.conversions[line.productId]?.get(line.unitId) != null
+                // Si su unidad ya no es de compra, la línea entra sin cantidad, para escribirla.
+                val lost = line.unitId != null && line.unitId != base && !inUnit
+                PurchaseLineDraft(
+                    key = key++,
+                    productId = line.productId,
+                    quantityText = if (lost) {
+                        ""
+                    } else {
+                        fixedPointInputText(
+                            line.quantityMilli,
+                            QUANTITY_DECIMALS,
+                            numbers.quantitySymbols,
+                        )
+                    },
+                    amountText = "",
+                    byTotal = false,
+                    unitId = line.unitId.takeIf { inUnit },
+                )
+            }
+            current.copy(lines = current.lines + added, nextKey = key)
         }
     }
 

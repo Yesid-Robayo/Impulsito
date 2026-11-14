@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- English: suggested restock, its filters, its rows and the list to share. -->
+    <string name="hub_tool_reorder">Suggested reorder</string>
+    <string name="hub_tool_reorder_desc">How much to buy based on sales</string>
+    <string name="reorder_supplier_filter">Supplier</string>
+    <string name="reorder_category_filter">Category</string>
+    <string name="reorder_cover_label">Cover</string>
+    <string name="reorder_cover_suffix">days</string>
+    <string name="reorder_no_supplier">No supplier</string>
+    <plurals name="reorder_group_products">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+    <string name="reorder_estimated_cost_label">Estimated cost</string>
+    <plurals name="reorder_row_status">
+        <item quantity="one">%1$s left · Lasts %2$d day</item>
+        <item quantity="other">%1$s left · Lasts %2$d days</item>
+    </plurals>
+    <string name="reorder_purchase_units">%1$s (%2$s)</string>
+    <string name="reorder_share_action">Share list</string>
+    <string name="reorder_create_purchase_action">Create purchase</string>
+    <string name="reorder_empty_title">Sales are needed to make a suggestion</string>
+    <string name="reorder_empty_body">The suggestion uses what is sold each day</string>
+    <string name="reorder_nothing_title">Nothing to restock for now</string>
+    <string name="reorder_no_recent_sales">No recent sales</string>
+    <string name="reorder_share_heading">Restock list</string>
+    <string name="reorder_share_line">%1$s of %2$s</string>
+    <plurals name="a11y_reorder_row">
+        <item quantity="one">%1$s, %2$s left, lasts %3$d day, buy %4$s</item>
+        <item quantity="other">%1$s, %2$s left, lasts %3$d days, buy %4$s</item>
+    </plurals>
+</resources>

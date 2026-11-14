@@ -98,11 +98,17 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data class SupplierDetail(val supplierId: Long) : AppNavKey
 
+    /**
+     * Una compra nueva. Desde la reposición sugerida llega con [prefillLines], cada una con su
+     * cantidad, y con la ubicación que se miraba en [prefillLocationId].
+     */
     @Serializable
     data class Purchase(
         val prefillProductId: Long? = null,
         val prefillFromPurchaseId: Long? = null,
         val prefillSupplierId: Long? = null,
+        val prefillLines: List<PurchasePrefillLine> = emptyList(),
+        val prefillLocationId: Long? = null,
     ) : AppNavKey
 
     @Serializable
@@ -378,3 +384,14 @@ data class SaleExchange(
 /** Una línea devuelta en un cambio. */
 @Serializable
 data class SaleExchangeLine(val saleLineId: Long, val quantityMilli: Long, val restock: Boolean)
+
+/**
+ * Una línea con que se abre una compra: el producto y la cantidad en milésimas de [unitId], o de
+ * su unidad base si es nula. El costo no viene: lo escribe la persona con lo que le cobran.
+ */
+@Serializable
+data class PurchasePrefillLine(
+    val productId: Long,
+    val quantityMilli: Long,
+    val unitId: Long? = null,
+)

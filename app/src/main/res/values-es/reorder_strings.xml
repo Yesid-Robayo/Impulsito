@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: reposición sugerida, sus filtros, sus filas y la lista para compartir. -->
+    <string name="hub_tool_reorder">Reposición sugerida</string>
+    <string name="hub_tool_reorder_desc">Cuánto comprar según lo que se vende</string>
+    <string name="reorder_supplier_filter">Proveedor</string>
+    <string name="reorder_category_filter">Categoría</string>
+    <string name="reorder_cover_label">Cubrir</string>
+    <string name="reorder_cover_suffix">días</string>
+    <string name="reorder_no_supplier">Sin proveedor</string>
+    <plurals name="reorder_group_products">
+        <item quantity="one">%1$d producto</item>
+        <item quantity="many">%1$d de productos</item>
+        <item quantity="other">%1$d productos</item>
+    </plurals>
+    <string name="reorder_estimated_cost_label">Costo estimado</string>
+    <plurals name="reorder_row_status">
+        <item quantity="one">Quedan %1$s · Alcanza para %2$d día</item>
+        <item quantity="many">Quedan %1$s · Alcanza para %2$d de días</item>
+        <item quantity="other">Quedan %1$s · Alcanza para %2$d días</item>
+    </plurals>
+    <string name="reorder_purchase_units">%1$s (%2$s)</string>
+    <string name="reorder_share_action">Compartir lista</string>
+    <string name="reorder_create_purchase_action">Crear compra</string>
+    <string name="reorder_empty_title">Hacen falta ventas para sugerir</string>
+    <string name="reorder_empty_body">La sugerencia usa lo que se vende cada día</string>
+    <string name="reorder_nothing_title">Nada que reponer por ahora</string>
+    <string name="reorder_no_recent_sales">Sin ventas recientes</string>
+    <string name="reorder_share_heading">Lista de reposición</string>
+    <string name="reorder_share_line">%1$s de %2$s</string>
+    <plurals name="a11y_reorder_row">
+        <item quantity="one">%1$s, quedan %2$s, alcanza para %3$d día, comprar %4$s</item>
+        <item quantity="many">%1$s, quedan %2$s, alcanza para %3$d de días, comprar %4$s</item>
+        <item quantity="other">%1$s, quedan %2$s, alcanza para %3$d días, comprar %4$s</item>
+    </plurals>
+</resources>

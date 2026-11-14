@@ -421,6 +421,8 @@ internal class StockMovementDaoTest : LedgerDatabaseTest() {
                 "insert",
                 // Solo lee: de qué venta o compra salió cada fila.
                 "observeDocuments",
+                // Solo lee: cuánto salió por ventas, para la reposición sugerida.
+                "observeSaleOutflow",
             )
         assertEquals(expected, functions)
     }

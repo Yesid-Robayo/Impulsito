@@ -92,6 +92,7 @@ import io.github.yesidrobayo.shopledger.ui.purchase.PurchaseDetailRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.PurchaseHistoryRoute
 import io.github.yesidrobayo.shopledger.ui.reference.ReferenceCurrencyRoute
 import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.reorder.ReorderRoute
 import io.github.yesidrobayo.shopledger.ui.returns.SaleReturnRoute
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 import io.github.yesidrobayo.shopledger.ui.safety.PolicyGated
@@ -344,6 +345,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.Production -> ProductionsRoute(navigator)
 
         is AppNavKey.ProductionForm -> ProductionFormRoute(key, navigator)
+
+        is AppNavKey.Replenishment -> ReorderRoute(key, navigator)
 
         AppNavKey.LoyaltyProgram -> LoyaltyProgramRoute(key, navigator)
 

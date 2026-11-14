@@ -120,6 +120,12 @@ val HUB_ENTRIES: List<HubEntry> =
             AppNavKey.StockCount(),
         ),
         HubEntry(
+            BusinessTool.REPLENISHMENT,
+            R.string.hub_tool_reorder,
+            R.string.hub_tool_reorder_desc,
+            AppNavKey.Replenishment(),
+        ),
+        HubEntry(
             BusinessTool.SUPPLIER_RETURNS,
             R.string.hub_tool_supplier_returns,
             R.string.hub_tool_supplier_returns_desc,

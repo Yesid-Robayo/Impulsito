@@ -53,6 +53,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomReplacementReportRep
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFrequencySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleHistorySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleLineComponentRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomSaleOutflowSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSalePaymentRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleReturnRepository
@@ -122,6 +123,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ReplacementReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.SaleLineComponentRepository
+import io.github.yesidrobayo.shopledger.domain.port.SaleOutflowSource
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
@@ -304,6 +306,9 @@ class DataPorts internal constructor(
 
     /** Cuántas veces se vendió cada producto, para los más vendidos de la venta. Solo lee. */
     val saleFrequency: SaleFrequencySource = RoomSaleFrequencySource(database)
+
+    /** Lo que salió de cada producto por ventas, para la reposición sugerida. Solo lee. */
+    val saleOutflow: SaleOutflowSource = RoomSaleOutflowSource(database)
 
     /** El historial de ventas por tramos, sin límite de años. Solo lee. */
     val saleHistory: SaleHistorySource = RoomSaleHistorySource(database)

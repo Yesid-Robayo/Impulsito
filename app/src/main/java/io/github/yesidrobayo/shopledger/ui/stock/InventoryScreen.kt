@@ -44,6 +44,7 @@ import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
+import io.github.yesidrobayo.shopledger.ui.components.FilterBar
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.LocationSwitcher
 import io.github.yesidrobayo.shopledger.ui.components.LotExpiry
@@ -224,16 +225,22 @@ private fun InventoryList(
             )
         }
         // Solo con más de una ubicación. Mirar una cambia las cantidades, no el valor del
-        // inventario, que es uno solo por producto.
-        if (uiState.locations.isNotEmpty()) {
-            item(key = "location") {
-                LocationSwitcher(
-                    locations = locationChoices(uiState.locations),
-                    selectedId = uiState.locationId,
-                    onSelect = { onAction(InventoryAction.LocationChanged(it)) },
-                    allowAll = true,
-                    onManage = { onAction(InventoryAction.ManageLocations) },
-                    modifier = Modifier.padding(horizontal = spacing.s16),
+        // inventario, que es uno solo por producto. `Reposición sugerida` va al lado como botón de
+        // texto: abre otra pantalla, y un chip aquí se leería como un filtro más.
+        item(key = "location") {
+            FilterBar(Modifier.padding(horizontal = spacing.s16)) {
+                if (uiState.locations.isNotEmpty()) {
+                    LocationSwitcher(
+                        locations = locationChoices(uiState.locations),
+                        selectedId = uiState.locationId,
+                        onSelect = { onAction(InventoryAction.LocationChanged(it)) },
+                        allowAll = true,
+                        onManage = { onAction(InventoryAction.ManageLocations) },
+                    )
+                }
+                InlineTextButton(
+                    stringResource(R.string.reorder_title),
+                    { onAction(InventoryAction.OpenReorder) },
                 )
             }
         }

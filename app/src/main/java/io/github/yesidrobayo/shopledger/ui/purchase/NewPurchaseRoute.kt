@@ -131,6 +131,8 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                     ports.moneyAccounts,
                 )(),
                 locations = ports.locations.observe(ArchiveFilter.ACTIVE),
+                prefillLines = key.prefillLines,
+                prefillLocationId = key.prefillLocationId,
             )
         }
     when (model) {

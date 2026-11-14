@@ -124,6 +124,8 @@ fun InventoryRoute(
 
                         InventoryAction.ManageLocations -> navigator.open(AppNavKey.Locations)
 
+                        InventoryAction.OpenReorder -> navigator.open(AppNavKey.Replenishment())
+
                         is InventoryAction.ChipChanged, InventoryAction.Retry,
                         is InventoryAction.LocationChanged,
                         is InventoryAction.DismissReview, InventoryAction.MessageShown,

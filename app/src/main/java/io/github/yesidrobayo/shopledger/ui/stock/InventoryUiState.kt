@@ -175,4 +175,7 @@ sealed interface InventoryAction {
 
     /** Abre la pantalla de ubicaciones desde el selector de ubicación. */
     data object ManageLocations : InventoryAction
+
+    /** Abre la reposición sugerida desde el chip `Reponer`. */
+    data object OpenReorder : InventoryAction
 }

@@ -155,6 +155,7 @@ class InventoryViewModel(
             InventoryAction.CreateProduct,
             InventoryAction.OpenNotificationSettings,
             InventoryAction.ManageLocations,
+            InventoryAction.OpenReorder,
             -> Unit
         }
     }

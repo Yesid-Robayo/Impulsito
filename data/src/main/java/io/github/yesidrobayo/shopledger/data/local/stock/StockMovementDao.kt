@@ -89,7 +89,35 @@ internal interface StockMovementDao {
             "AND (sm.sale_line_id IS NOT NULL OR sm.purchase_line_id IS NOT NULL) ORDER BY sm.id",
     )
     fun observeDocuments(productId: Long): Flow<List<MovementDocumentRow>>
+
+    /**
+     * Las milésimas que salieron de cada producto en filas `SALE` sin compensar, desde la fecha
+     * de negocio [sinceDate], incluida, como texto `YYYY-MM-DD`, y solo de [locationId] si no es
+     * nulo.
+     * Busca por el índice `(type, business_date)` y mira la compensación por el índice único de
+     * `reverses_movement_id`, sin recorrer todo el libro.
+     */
+    @Query(SALE_OUTFLOW_SQL)
+    fun observeSaleOutflow(sinceDate: String, locationId: Long?): Flow<List<ProductQuantityOut>>
 }
+
+/** Lo que salió de un producto por ventas en un período: lo que mide su velocidad. */
+internal data class ProductQuantityOut(
+    @ColumnInfo(name = "product_id") val productId: Long,
+    @ColumnInfo(name = "quantity_out_milli") val quantityOutMilli: Long,
+)
+
+/**
+ * La consulta de [StockMovementDao.observeSaleOutflow]. Vive aparte para que la prueba del plan de
+ * consulta mire la misma sentencia que corre la app.
+ */
+internal const val SALE_OUTFLOW_SQL =
+    "SELECT sm.product_id AS product_id, -SUM(sm.quantity_milli) AS quantity_out_milli " +
+        "FROM stock_movements sm " +
+        "WHERE sm.type = 'SALE' AND sm.business_date >= :sinceDate " +
+        "AND (:locationId IS NULL OR sm.location_id = :locationId) " +
+        "AND NOT EXISTS (SELECT 1 FROM stock_movements r WHERE r.reverses_movement_id = sm.id) " +
+        "GROUP BY sm.product_id ORDER BY sm.product_id"
 
 /** El documento de una fila del libro, tal como lo lee [StockMovementDao.observeDocuments]. */
 internal data class MovementDocumentRow(

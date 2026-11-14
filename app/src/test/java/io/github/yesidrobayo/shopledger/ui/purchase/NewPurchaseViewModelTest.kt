@@ -31,6 +31,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrection
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseCorrectionLine
 import io.github.yesidrobayo.shopledger.domain.usecase.money.AccountIssue
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
+import io.github.yesidrobayo.shopledger.navigation.PurchasePrefillLine
 import io.github.yesidrobayo.shopledger.ui.product.COUNT_UNIT
 import io.github.yesidrobayo.shopledger.ui.product.CREATED
 import io.github.yesidrobayo.shopledger.ui.product.product
@@ -186,6 +187,8 @@ class NewPurchaseViewModelTest {
         prefillProduct: Long? = null,
         prefillSupplier: Long? = null,
         correction: PurchaseCorrection? = null,
+        prefillLines: List<PurchasePrefillLine> = emptyList(),
+        prefillLocation: Long? = null,
     ): NewPurchaseViewModel {
         val model = NewPurchaseViewModel(
             catalogSource = source,
@@ -202,6 +205,8 @@ class NewPurchaseViewModelTest {
             prefillFromPurchaseId = correction?.let { 318L },
             loadCorrection = { correction },
             payingAccounts = payingAccounts,
+            prefillLines = prefillLines,
+            prefillLocationId = prefillLocation,
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -321,6 +326,30 @@ class NewPurchaseViewModelTest {
         assertEquals("Proveedor dos", model.state.supplierName)
         assertEquals(listOf(1L), model.state.lines.map { it.productId })
     }
+
+    @Test
+    fun `lines given on entry come with their quantity and unit, without cost`() =
+        runTest(dispatcher) {
+            val boxOf24 = ConversionDetails(box.id, 24_000L, null, null, false, true)
+            catalog.value = catalogOf(conversions = mapOf(1L to mapOf(box.id to boxOf24)))
+            val lines = listOf(
+                PurchasePrefillLine(productId = 1L, quantityMilli = 2_000L, unitId = box.id),
+                PurchasePrefillLine(productId = 2L, quantityMilli = 3_500L),
+                // Ya no es una presentación de compra: entra sin cantidad, para escribirla.
+                PurchasePrefillLine(productId = 2L, quantityMilli = 1_000L, unitId = box.id),
+                // Un producto que no está vigente no entra.
+                PurchasePrefillLine(productId = 99L, quantityMilli = 1_000L),
+            )
+
+            val model = viewModel(prefillSupplier = 6L, prefillLines = lines, prefillLocation = 4L)
+
+            assertEquals("Proveedor dos", model.state.supplierName)
+            assertEquals(listOf(1L, 2L, 2L), model.state.lines.map { it.productId })
+            assertEquals(listOf("2", "3,5", ""), model.state.lines.map { it.quantityText })
+            assertEquals(box, model.line(0).unit)
+            assertEquals(listOf("", "", ""), model.state.lines.map { it.amountText })
+            assertEquals(4L, PurchaseDraftStore.read(savedState).locationId)
+        }
 
     @Test
     fun `empty fields are marked only after trying to register`() = runTest(dispatcher) {
