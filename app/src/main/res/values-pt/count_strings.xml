@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos del conteo físico, copiados de la guía de redacción. -->
+<resources>
+    <string name="count_session_title">Contagem</string>
+    <string name="count_progress">%1$d de %2$d contados</string>
+    <string name="count_continue_action">Continuar contando</string>
+    <string name="count_previous_title">Contagens anteriores</string>
+    <plurals name="count_differences">
+        <item quantity="one">%1$d diferença</item>
+        <item quantity="many">%1$d de diferenças</item>
+        <item quantity="other">%1$d diferenças</item>
+    </plurals>
+    <string name="count_status_open">Aberta</string>
+    <string name="count_status_applied">Aplicada</string>
+    <string name="count_status_cancelled">Cancelada</string>
+    <string name="count_new_action">Nova contagem</string>
+    <string name="count_location_label">Local</string>
+    <string name="count_category_label">Categoria</string>
+    <string name="count_blind_label">Contagem às cegas</string>
+    <string name="count_blind_help">O esperado não aparece: quem conta não se deixa levar pelo número</string>
+    <string name="count_note_label">Nota</string>
+    <string name="count_start_action">Iniciar contagem</string>
+    <string name="count_cancel_action">Cancelar contagem</string>
+    <string name="count_expected">Esperado: %1$s</string>
+    <string name="count_filter_pending">Sem contar</string>
+    <string name="count_filter_done">Contados</string>
+    <string name="count_review_action">Revisar diferenças</string>
+    <string name="count_surplus">Sobra %1$s</string>
+    <string name="count_shortage">Falta %1$s</string>
+    <string name="count_expected_label">Esperado</string>
+    <string name="count_counted_label">Contado</string>
+    <string name="count_difference_label">Diferença</string>
+    <plurals name="count_apply_action">
+        <item quantity="one">Aplicar %1$d ajuste</item>
+        <item quantity="many">Aplicar %1$d de ajustes</item>
+        <item quantity="other">Aplicar %1$d ajustes</item>
+    </plurals>
+    <string name="count_empty_title">Contar o que há de verdade</string>
+    <string name="count_empty_body">Por local ou por categoria. No final, as diferenças são aplicadas</string>
+    <string name="count_scope_empty">Não há produtos com estoque nesse escopo</string>
+    <string name="count_no_differences">Sem diferenças</string>
+    <string name="count_close_action">Fechar contagem</string>
+    <plurals name="count_moved_notice">
+        <item quantity="one">%1$d produto teve movimentos depois do início</item>
+        <item quantity="many">%1$d de produtos tiveram movimentos depois do início</item>
+        <item quantity="other">%1$d produtos tiveram movimentos depois do início</item>
+    </plurals>
+    <plurals name="count_apply_confirm_title">
+        <item quantity="one">Aplicar %1$d ajuste?</item>
+        <item quantity="many">Aplicar %1$d de ajustes?</item>
+        <item quantity="other">Aplicar %1$d ajustes?</item>
+    </plurals>
+    <string name="count_apply_confirm_body">Cada diferença fica como um ajuste no histórico. Valor: %1$s.</string>
+    <string name="count_apply_confirm_action">Aplicar ajustes</string>
+    <string name="count_cancel_confirm_title">Cancelar esta contagem?</string>
+    <string name="count_cancel_confirm_body">O que foi contado não é aplicado e o estoque não muda.</string>
+    <string name="count_error_apply">Não foi possível aplicar os ajustes. A contagem continua aberta.</string>
+    <plurals name="count_applied">
+        <item quantity="one">%1$d ajuste aplicado</item>
+        <item quantity="many">%1$d de ajustes aplicados</item>
+        <item quantity="other">%1$d ajustes aplicados</item>
+    </plurals>
+    <string name="count_scope">%1$s · %2$s</string>
+    <string name="count_category_all">Todas as categorias</string>
+    <string name="count_moved_tag">Movimentado</string>
+    <string name="count_positive">+%1$s</string>
+    <string name="hub_tool_count">Contagem física</string>
+    <string name="hub_tool_count_desc">Contar o estoque e ajustar diferenças</string>
+</resources>

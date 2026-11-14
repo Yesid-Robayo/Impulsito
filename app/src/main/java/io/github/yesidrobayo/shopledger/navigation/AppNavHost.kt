@@ -49,6 +49,7 @@ import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.LocalSettingsOpener
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.count.StockCountRoute
 import io.github.yesidrobayo.shopledger.ui.customer.CustomerDetailRoute
 import io.github.yesidrobayo.shopledger.ui.customer.CustomerListRoute
 import io.github.yesidrobayo.shopledger.ui.customer.LoyaltyProgramRoute
@@ -379,6 +380,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.Locations -> LocationsRoute(navigator)
 
         is AppNavKey.NewStockTransfer -> NewTransferRoute(key, navigator)
+
+        is AppNavKey.StockCount -> StockCountRoute(key, navigator)
 
         // Ajustes: solo configuración, en grupos.
         AppNavKey.Settings ->

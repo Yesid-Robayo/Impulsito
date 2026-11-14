@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos del conteo físico, copiados de la guía de redacción. -->
+<resources>
+    <string name="count_session_title">Stock count</string>
+    <string name="count_progress">%1$d of %2$d counted</string>
+    <string name="count_continue_action">Keep counting</string>
+    <string name="count_previous_title">Previous counts</string>
+    <plurals name="count_differences">
+        <item quantity="one">%1$d difference</item>
+        <item quantity="other">%1$d differences</item>
+    </plurals>
+    <string name="count_status_open">Open</string>
+    <string name="count_status_applied">Applied</string>
+    <string name="count_status_cancelled">Cancelled</string>
+    <string name="count_new_action">New count</string>
+    <string name="count_location_label">Location</string>
+    <string name="count_category_label">Category</string>
+    <string name="count_blind_label">Blind count</string>
+    <string name="count_blind_help">The expected quantity stays hidden, so the number does not sway the count</string>
+    <string name="count_note_label">Note</string>
+    <string name="count_start_action">Start count</string>
+    <string name="count_cancel_action">Cancel count</string>
+    <string name="count_expected">Expected: %1$s</string>
+    <string name="count_filter_pending">Not counted</string>
+    <string name="count_filter_done">Counted</string>
+    <string name="count_review_action">Review differences</string>
+    <string name="count_surplus">Surplus %1$s</string>
+    <string name="count_shortage">Shortage %1$s</string>
+    <string name="count_expected_label">Expected</string>
+    <string name="count_counted_label">Counted</string>
+    <string name="count_difference_label">Difference</string>
+    <plurals name="count_apply_action">
+        <item quantity="one">Apply %1$d adjustment</item>
+        <item quantity="other">Apply %1$d adjustments</item>
+    </plurals>
+    <string name="count_empty_title">Count what is really there</string>
+    <string name="count_empty_body">By location or by category. Differences are applied at the end</string>
+    <string name="count_scope_empty">There are no products with stock in that scope</string>
+    <string name="count_no_differences">No differences</string>
+    <string name="count_close_action">Close count</string>
+    <plurals name="count_moved_notice">
+        <item quantity="one">%1$d product had movements after the count started</item>
+        <item quantity="other">%1$d products had movements after the count started</item>
+    </plurals>
+    <plurals name="count_apply_confirm_title">
+        <item quantity="one">Apply %1$d adjustment?</item>
+        <item quantity="other">Apply %1$d adjustments?</item>
+    </plurals>
+    <string name="count_apply_confirm_body">Each difference is kept as an adjustment in the history. Value: %1$s.</string>
+    <string name="count_apply_confirm_action">Apply adjustments</string>
+    <string name="count_cancel_confirm_title">Cancel this count?</string>
+    <string name="count_cancel_confirm_body">What was counted is not applied and stock does not change.</string>
+    <string name="count_error_apply">Could not apply the adjustments. The count is still open.</string>
+    <plurals name="count_applied">
+        <item quantity="one">%1$d adjustment applied</item>
+        <item quantity="other">%1$d adjustments applied</item>
+    </plurals>
+    <string name="count_scope">%1$s · %2$s</string>
+    <string name="count_category_all">All categories</string>
+    <string name="count_moved_tag">Moved</string>
+    <string name="count_positive">+%1$s</string>
+    <string name="hub_tool_count">Stock count</string>
+    <string name="hub_tool_count_desc">Count inventory and adjust differences</string>
+</resources>

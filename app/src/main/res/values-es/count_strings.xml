@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos del conteo físico, copiados de la guía de redacción. -->
+<resources>
+    <string name="count_session_title">Conteo</string>
+    <string name="count_progress">%1$d de %2$d contados</string>
+    <string name="count_continue_action">Seguir contando</string>
+    <string name="count_previous_title">Conteos anteriores</string>
+    <plurals name="count_differences">
+        <item quantity="one">%1$d diferencia</item>
+        <item quantity="many">%1$d de diferencias</item>
+        <item quantity="other">%1$d diferencias</item>
+    </plurals>
+    <string name="count_status_open">Abierto</string>
+    <string name="count_status_applied">Aplicado</string>
+    <string name="count_status_cancelled">Cancelado</string>
+    <string name="count_new_action">Nuevo conteo</string>
+    <string name="count_location_label">Ubicación</string>
+    <string name="count_category_label">Categoría</string>
+    <string name="count_blind_label">Conteo a ciegas</string>
+    <string name="count_blind_help">Lo esperado no se ve: quien cuenta no se deja llevar por el número</string>
+    <string name="count_note_label">Nota</string>
+    <string name="count_start_action">Empezar conteo</string>
+    <string name="count_cancel_action">Cancelar conteo</string>
+    <string name="count_expected">Esperado: %1$s</string>
+    <string name="count_filter_pending">Sin contar</string>
+    <string name="count_filter_done">Contados</string>
+    <string name="count_review_action">Revisar diferencias</string>
+    <string name="count_surplus">Sobrante %1$s</string>
+    <string name="count_shortage">Faltante %1$s</string>
+    <string name="count_expected_label">Esperado</string>
+    <string name="count_counted_label">Contado</string>
+    <string name="count_difference_label">Diferencia</string>
+    <plurals name="count_apply_action">
+        <item quantity="one">Aplicar %1$d ajuste</item>
+        <item quantity="many">Aplicar %1$d de ajustes</item>
+        <item quantity="other">Aplicar %1$d ajustes</item>
+    </plurals>
+    <string name="count_empty_title">Contar lo que hay de verdad</string>
+    <string name="count_empty_body">Por ubicación o por categoría. Al final se aplican las diferencias</string>
+    <string name="count_scope_empty">No hay productos con stock en ese alcance</string>
+    <string name="count_no_differences">Sin diferencias</string>
+    <string name="count_close_action">Cerrar conteo</string>
+    <plurals name="count_moved_notice">
+        <item quantity="one">%1$d producto tuvo movimientos después de empezar</item>
+        <item quantity="many">%1$d de productos tuvieron movimientos después de empezar</item>
+        <item quantity="other">%1$d productos tuvieron movimientos después de empezar</item>
+    </plurals>
+    <plurals name="count_apply_confirm_title">
+        <item quantity="one">¿Aplicar %1$d ajuste?</item>
+        <item quantity="many">¿Aplicar %1$d de ajustes?</item>
+        <item quantity="other">¿Aplicar %1$d ajustes?</item>
+    </plurals>
+    <string name="count_apply_confirm_body">Cada diferencia queda como un ajuste en el historial. Valor: %1$s.</string>
+    <string name="count_apply_confirm_action">Aplicar ajustes</string>
+    <string name="count_cancel_confirm_title">¿Cancelar este conteo?</string>
+    <string name="count_cancel_confirm_body">Lo contado no se aplica y el stock no cambia.</string>
+    <string name="count_error_apply">No se pudieron aplicar los ajustes. El conteo sigue abierto.</string>
+    <plurals name="count_applied">
+        <item quantity="one">%1$d ajuste aplicado</item>
+        <item quantity="many">%1$d de ajustes aplicados</item>
+        <item quantity="other">%1$d ajustes aplicados</item>
+    </plurals>
+    <string name="count_scope">%1$s · %2$s</string>
+    <string name="count_category_all">Todas las categorías</string>
+    <string name="count_moved_tag">Se movió</string>
+    <string name="count_positive">+%1$s</string>
+    <string name="hub_tool_count">Conteo físico</string>
+    <string name="hub_tool_count_desc">Contar el inventario y ajustar diferencias</string>
+</resources>
