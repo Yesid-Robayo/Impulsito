@@ -24,6 +24,12 @@ object AppMotion {
     /** Transición entre pantallas. */
     const val LONG = 350
 
+    /**
+     * Lo que tarda en apagarse la pantalla que sale de una transición. La que entra se enciende
+     * al terminar, en lo que queda de [LONG]: las dos nunca se ven encimadas a medio fundir.
+     */
+    const val SCREEN_EXIT = FAST
+
     /** Entrada y cambio de gráficas. */
     const val CHART = 450
 

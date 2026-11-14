@@ -1,8 +1,11 @@
 package io.github.yesidrobayo.shopledger.navigation
 
+import android.animation.ValueAnimator
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -106,9 +110,12 @@ import kotlinx.coroutines.flow.first
 /**
  * La navegación de la app: la pila de Navigation 3 y la barra inferior encima de las cuatro raíces.
  *
- * Cambiar de pestaña es un fundido corto, sin deslizamiento lateral. Abrir un detalle entra desde
- * la derecha con un fundido, y volver lo saca hacia la derecha, también con el gesto predictivo del
- * sistema. Atrás en Inicio no se intercepta: lo resuelve el sistema, que cierra la app.
+ * Cambiar de pestaña es un fundido corto, sin deslizamiento lateral. Abrir un detalle es un eje
+ * compartido: la pantalla de abajo se corre a la izquierda y se apaga, y el detalle llega desde
+ * la derecha y se enciende después, sin que las dos se vean encimadas. Volver hace lo mismo al
+ * revés, también con el gesto predictivo del sistema. Con las animaciones quitadas en el
+ * teléfono, todo cambia de golpe. Atrás en Inicio no se intercepta: lo resuelve el sistema, que
+ * cierra la app.
  *
  * @param openRequest un destino pedido desde fuera, como tocar un aviso de stock: se abre encima de
  *   lo visible, y [onOpenHandled] lo da por cumplido. Durante el primer uso no se abre nada.
@@ -187,11 +194,20 @@ fun AppNavHost(
             PolicyPromptHost(policy)
             NotificationPermissionHost(notificationPermission)
         }
+        // La barra sigue el paso de las pantallas: se apaga con la raíz que sale y vuelve cuando
+        // se enciende la que entra. Sin animaciones en el teléfono, Compose la cambia de golpe.
         AnimatedVisibility(
             visible = navigator.showsBottomBar,
             modifier = Modifier.align(Alignment.BottomCenter),
-            enter = fadeIn(tween(AppMotion.SHORT, easing = AppMotion.EnterEasing)),
-            exit = fadeOut(tween(AppMotion.SHORT / 2, easing = AppMotion.ExitEasing)),
+            enter =
+                fadeIn(
+                    tween(
+                        durationMillis = AppMotion.LONG - AppMotion.SCREEN_EXIT,
+                        delayMillis = AppMotion.SCREEN_EXIT,
+                        easing = AppMotion.EnterEasing,
+                    ),
+                ),
+            exit = fadeOut(tween(AppMotion.SCREEN_EXIT, easing = AppMotion.ExitEasing)),
         ) {
             val tabs = TopLevelDestination.entries
             AppBottomBar(
@@ -352,39 +368,68 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
 private val Scene<NavKey>.isTabRoot: Boolean get() = metadata[TAB_ROOT] == true
 
-// Cuánto se desplaza un detalle al entrar o salir: lo justo para que se lea como profundidad.
+// Cuánto se desplazan las dos pantallas al abrir o cerrar un detalle: lo justo para que se lea
+// como profundidad, sin arrastrar la vista.
 private val DetailShift = 24.dp
 
+/**
+ * Abrir: la pantalla de abajo se corre a la izquierda y se apaga primero, y la nueva llega desde
+ * la derecha y se enciende después. Las dos nunca se ven a la vez a medio fundir, que era lo que
+ * se veía mal: dos textos encimados. Con las animaciones quitadas en el teléfono, cambia de
+ * golpe.
+ */
 private fun AnimatedContentTransitionScope<Scene<NavKey>>.forward(
     density: Density,
-): ContentTransform = if (initialState.isTabRoot && targetState.isTabRoot) {
-    tabSwitch()
-} else {
-    val shift = with(density) { DetailShift.roundToPx() }
-    (
-        slideInHorizontally(tween(AppMotion.LONG, easing = AppMotion.EnterEasing)) { shift } +
-            fadeIn(tween(AppMotion.LONG, easing = AppMotion.EnterEasing))
-        ) togetherWith fadeOut(tween(AppMotion.LONG / 2, easing = AppMotion.ExitEasing))
+): ContentTransform = when {
+    !ValueAnimator.areAnimatorsEnabled() -> instant()
+    initialState.isTabRoot && targetState.isTabRoot -> tabSwitch()
+    else -> sharedAxis(with(density) { DetailShift.roundToPx() })
 }
 
+/** Volver: al revés. El detalle sale a la derecha y la de abajo entra por la izquierda. */
 private fun AnimatedContentTransitionScope<Scene<NavKey>>.backward(
     density: Density,
-): ContentTransform = if (initialState.isTabRoot && targetState.isTabRoot) {
-    tabSwitch()
-} else {
-    val shift = with(density) { DetailShift.roundToPx() }
-    fadeIn(tween(AppMotion.LONG, easing = AppMotion.EnterEasing)) togetherWith
-        (
-            slideOutHorizontally(tween(AppMotion.LONG / 2, easing = AppMotion.ExitEasing)) {
-                shift
-            } +
-                fadeOut(tween(AppMotion.LONG / 2, easing = AppMotion.ExitEasing))
-            )
+): ContentTransform = when {
+    !ValueAnimator.areAnimatorsEnabled() -> instant()
+    initialState.isTabRoot && targetState.isTabRoot -> tabSwitch()
+    else -> sharedAxis(-with(density) { DetailShift.roundToPx() })
 }
 
-private fun tabSwitch(): ContentTransform =
-    fadeIn(tween(AppMotion.SHORT, easing = AppMotion.StandardEasing)) togetherWith
-        fadeOut(tween(AppMotion.SHORT / 2, easing = AppMotion.ExitEasing))
+/**
+ * El eje compartido de una transición entre pantallas, en [AppMotion.LONG]: las dos se deslizan
+ * [shift] en el mismo sentido todo el tiempo; la que sale se apaga en [AppMotion.SCREEN_EXIT] y la
+ * que entra se enciende al terminar esa salida.
+ */
+private fun sharedAxis(shift: Int): ContentTransform {
+    val slide = tween<IntOffset>(AppMotion.LONG, easing = AppMotion.StandardEasing)
+    val enter =
+        slideInHorizontally(slide) { shift } +
+            fadeIn(
+                tween(
+                    durationMillis = AppMotion.LONG - AppMotion.SCREEN_EXIT,
+                    delayMillis = AppMotion.SCREEN_EXIT,
+                    easing = AppMotion.EnterEasing,
+                ),
+            )
+    val exit =
+        slideOutHorizontally(slide) { -shift } +
+            fadeOut(tween(AppMotion.SCREEN_EXIT, easing = AppMotion.ExitEasing))
+    return enter togetherWith exit
+}
+
+/**
+ * Cambiar de pestaña: un fundido de [AppMotion.SHORT], sin deslizamiento. La pestaña de antes se
+ * apaga en el primer tercio y la nueva se enciende después, sin verse encimadas.
+ */
+private fun tabSwitch(): ContentTransform {
+    val out = AppMotion.SHORT / 3
+    return fadeIn(
+        tween(AppMotion.SHORT - out, delayMillis = out, easing = AppMotion.EnterEasing),
+    ) togetherWith fadeOut(tween(out, easing = AppMotion.ExitEasing))
+}
+
+/** Sin animaciones en el teléfono: la pantalla cambia en el mismo cuadro. */
+private fun instant(): ContentTransform = EnterTransition.None togetherWith ExitTransition.None
 
 /**
  * La pantalla de [key] mientras no tenga contenido propio: su barra, su estado vacío y sus accesos.
