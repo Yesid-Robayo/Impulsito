@@ -450,24 +450,23 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         weight: Int,
         color: Int,
         tabular: Boolean,
-    ): Paint =
-        when (font) {
-            DocumentFont.APP -> textPaint(size, weight, color).apply {
-                if (tabular) fontFeatureSettings = TABULAR
-            }
-
-            DocumentFont.CURRENCY -> TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                this.color = color
-                textSize = size
-                typeface = if (weight >= BOLD) currencyBold else currencyMedium
-            }
-
-            DocumentFont.SYSTEM -> TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                this.color = color
-                textSize = size
-                typeface = if (weight >= BOLD) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-            }
+    ): Paint = when (font) {
+        DocumentFont.APP -> textPaint(size, weight, color).apply {
+            if (tabular) fontFeatureSettings = TABULAR
         }
+
+        DocumentFont.CURRENCY -> TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+            textSize = size
+            typeface = if (weight >= BOLD) currencyBold else currencyMedium
+        }
+
+        DocumentFont.SYSTEM -> TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+            textSize = size
+            typeface = if (weight >= BOLD) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        }
+    }
 
     /** Un trozo del documento que sabe su alto antes de dibujarse. */
     private interface Block {

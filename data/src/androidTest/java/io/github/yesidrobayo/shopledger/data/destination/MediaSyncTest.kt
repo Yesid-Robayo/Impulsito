@@ -511,11 +511,10 @@ class MediaSyncTest {
     private fun mkcols() = server.requests.filter { it.method == "MKCOL" }.map { it.path }
 
     /** Los `PROPFIND` de subcarpetas de `media/` desde la petición [from]. */
-    private fun shardListings(from: Int) =
-        server.requests.drop(from)
-            .filter { it.method == "PROPFIND" && it.path.startsWith("/dav/app/media/") }
-            .map { it.path }
-            .filter { it != "/dav/app/media/" }
+    private fun shardListings(from: Int) = server.requests.drop(from)
+        .filter { it.method == "PROPFIND" && it.path.startsWith("/dav/app/media/") }
+        .map { it.path }
+        .filter { it != "/dav/app/media/" }
 
     /** Dónde vive [name] en el servicio: en la subcarpeta de los dos primeros caracteres. */
     private fun remote(name: String) = "/dav/app/media/${name.take(2)}/$name"

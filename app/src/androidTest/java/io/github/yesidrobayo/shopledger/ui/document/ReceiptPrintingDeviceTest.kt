@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.di.ThermalReceiptPrinting
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.print.PaperWidth
 import io.github.yesidrobayo.shopledger.domain.model.print.PrintFailure
 import io.github.yesidrobayo.shopledger.domain.model.print.PrintResult
