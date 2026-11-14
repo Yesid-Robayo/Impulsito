@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.stock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReview
+import io.github.yesidrobayo.shopledger.domain.model.stock.ExpiringLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LocationRules
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.DismissPriceReviewResult
@@ -44,6 +45,8 @@ import kotlinx.coroutines.launch
  * @param locations las ubicaciones vigentes. Con más de una, el selector deja ver el inventario de
  *   una sola; empieza en todas.
  * @param observeAt el inventario de una ubicación: lo que hay en ella, y lo que allí se acaba.
+ * @param expiring los lotes por vencer, ya ordenados. No dependen de la ubicación elegida: el aviso
+ *   es del lote. Sin ellos, el chip `Por vencer` no aparece.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class InventoryViewModel(
@@ -55,6 +58,7 @@ class InventoryViewModel(
         { DismissPriceReviewResult.NotPending },
     locations: () -> Flow<List<Location>> = { flowOf(emptyList()) },
     observeAt: (Long) -> Flow<InventoryOverview> = { observe() },
+    expiring: () -> Flow<List<ExpiringLot>> = { flowOf(emptyList()) },
 ) : ViewModel() {
     private val chip = MutableStateFlow(initialChip)
     private val attempts = MutableStateFlow(0)
@@ -76,6 +80,14 @@ class InventoryViewModel(
         review().flowOn(computation).catch { emit(emptyList()) }
     }
 
+    // Igual que `Revisar`: si no se pueden leer los lotes, el chip `Por vencer` no aparece.
+    private val dated: Flow<List<ExpiringLot>> = attempts.flatMapLatest {
+        expiring().flowOn(computation).catch { emit(emptyList()) }
+    }
+
+    private val lists: Flow<Pair<List<PriceReview>, List<ExpiringLot>>> =
+        combine(queue, dated) { pending, lots -> pending to lots }
+
     private val overview: Flow<InventoryOverview?> = combine(attempts, shownLocation) { _, at ->
         at
     }.flatMapLatest { at ->
@@ -92,8 +104,9 @@ class InventoryViewModel(
         }
 
     val uiState: StateFlow<InventoryUiState> =
-        combine(chip, overview, queue, message, place) { chosen, read, pending, shownMessage, at ->
+        combine(chip, overview, lists, message, place) { chosen, read, both, shownMessage, at ->
             val (shownLocations, locationId) = at
+            val (pending, lots) = both
             if (read == null) {
                 return@combine InventoryUiState(
                     chosen,
@@ -106,12 +119,13 @@ class InventoryViewModel(
             val empty = when (chosen) {
                 InventoryChip.NEGATIVE_STOCK -> read.negative.isEmpty()
                 InventoryChip.REVIEW -> pending.isEmpty()
+                InventoryChip.EXPIRING -> lots.isEmpty()
                 InventoryChip.LOW_STOCK, InventoryChip.ALL -> false
             }
             val shown = if (empty) InventoryChip.LOW_STOCK else chosen
             InventoryUiState(
                 shown,
-                contentOf(read, shown, pending),
+                contentOf(read, shown, pending, lots),
                 shownMessage,
                 shownLocations,
                 locationId,
@@ -162,6 +176,7 @@ class InventoryViewModel(
         overview: InventoryOverview,
         shown: InventoryChip,
         pending: List<PriceReview>,
+        lots: List<ExpiringLot>,
     ): InventoryContent {
         if (!overview.hasProducts) return InventoryContent.EmptyCatalog
         val products = when (shown) {
@@ -171,8 +186,8 @@ class InventoryViewModel(
 
             InventoryChip.ALL -> overview.tracked
 
-            // `Revisar` lleva sus propias filas.
-            InventoryChip.REVIEW -> emptyList()
+            // `Revisar` y `Por vencer` llevan sus propias filas.
+            InventoryChip.REVIEW, InventoryChip.EXPIRING -> emptyList()
         }
         return InventoryContent.Ready(
             lowStockCount = overview.lowStock.size,
@@ -186,6 +201,7 @@ class InventoryViewModel(
                 products.map { inventoryItemOf(it, overview.units) }
             },
             reviewItems = pending.map(::reviewItemOf),
+            expiringItems = lots.map { expiringItemOf(it, overview) },
         )
     }
 
@@ -219,6 +235,19 @@ class InventoryViewModel(
             costSince = review.costSince,
         )
     }
+
+    /** La fila de un lote por vencer, con la unidad base de su producto. */
+    private fun expiringItemOf(expiring: ExpiringLot, overview: InventoryOverview) =
+        ExpiringLotItem(
+            lotId = expiring.lot.lotId,
+            productId = expiring.lot.productId,
+            productName = expiring.lot.productName,
+            code = expiring.lot.code,
+            expiryDate = expiring.lot.expiryDate,
+            daysLeft = expiring.daysLeft,
+            onHand = expiring.lot.onHand,
+            unit = overview.units[expiring.lot.baseUnitId],
+        )
 
     private companion object {
         /** Lo que sigue viva la lectura al rotar la pantalla, para no releer el inventario. */

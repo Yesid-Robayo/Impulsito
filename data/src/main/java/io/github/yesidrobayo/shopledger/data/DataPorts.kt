@@ -272,7 +272,7 @@ class DataPorts internal constructor(
     val stockTransfers: StockTransferRepository = RoomStockTransferRepository(database)
 
     /** Los lotes de los productos que se controlan por lotes, con su saldo por ubicación. */
-    val stockLots: StockLotRepository = RoomStockLotRepository(database)
+    val stockLots: StockLotRepository = RoomStockLotRepository(database, restoreLock)
 
     /** Las sesiones de conteo. Sus ajustes los escribe el libro, al aplicarlas. */
     val countSessions: CountSessionRepository = RoomCountSessionRepository(database)

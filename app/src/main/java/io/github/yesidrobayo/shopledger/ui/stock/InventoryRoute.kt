@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingCon
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.DismissPriceReviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceReviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveExpiringLotsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
@@ -54,6 +55,13 @@ fun InventoryRoute(
                     settings = ports.settings,
                     clock = dependencies.container.clock,
                 )
+            val expiring =
+                ObserveExpiringLotsUseCase(
+                    ports.stockLots,
+                    BusinessCalendarSource(ports.settings),
+                    ports.settings,
+                    dependencies.container.clock,
+                )
             val dismiss =
                 DismissPriceReviewUseCase(
                     ports.transactions,
@@ -68,6 +76,7 @@ fun InventoryRoute(
                 dismissReview = { dismiss(it) },
                 locations = { ports.locations.observe(ArchiveFilter.ACTIVE) },
                 observeAt = { observe(it) },
+                expiring = { expiring() },
             )
         }
     val navigation = if (asTab) TopBarNavigation.NONE else TopBarNavigation.BACK
@@ -131,9 +140,10 @@ fun InventoryRoute(
     }
 }
 
-/** El chip con que se abre cada filtro de la navegación. Los que aún no existen, lo urgente. */
+/** El chip con que se abre cada filtro de la navegación. */
 internal fun chipOf(filter: InventoryFilter): InventoryChip = when (filter) {
-    InventoryFilter.LOW_STOCK, InventoryFilter.EXPIRING -> InventoryChip.LOW_STOCK
+    InventoryFilter.LOW_STOCK -> InventoryChip.LOW_STOCK
+    InventoryFilter.EXPIRING -> InventoryChip.EXPIRING
     InventoryFilter.REVIEW -> InventoryChip.REVIEW
     InventoryFilter.NEGATIVE_STOCK -> InventoryChip.NEGATIVE_STOCK
     InventoryFilter.ALL -> InventoryChip.ALL

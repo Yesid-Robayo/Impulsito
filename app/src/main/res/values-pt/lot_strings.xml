@@ -10,4 +10,28 @@
     <string name="purchase_lot_expiry_label">Validade</string>
     <string name="purchase_lot_blank_help">Sem código, entra no lote sem atribuição</string>
     <string name="purchase_lot_existing_help">Esse lote já existe: esta entrega soma-se a ele</string>
+    <string name="lot_filter_expiring">A vencer</string>
+    <string name="lot_none_expiring">Nada a vencer</string>
+    <string name="lot_name">Lote %1$s</string>
+    <string name="lot_no_code">Sem código</string>
+    <plurals name="lot_expires_in_date">
+        <item quantity="one">Vence em %1$d dia · %2$s</item>
+        <item quantity="many">Vence em %1$d de dias · %2$s</item>
+        <item quantity="other">Vence em %1$d dias · %2$s</item>
+    </plurals>
+    <string name="lot_expires_today">Vence hoje</string>
+    <string name="lot_expired_on">Venceu em %1$s</string>
+    <string name="a11y_lot_row">%1$s, %2$s, %3$s</string>
+    <string name="notif_channel_expiry">Validades</string>
+    <string name="notif_lot_expiring_title">A vencer: %1$s</string>
+    <string name="notif_lot_expiring_body">Vence em %1$s. Restam %2$s.</string>
+    <string name="notif_lot_expired_title">Vencido: %1$s</string>
+    <string name="notif_lot_expired_body">Venceu em %1$s. Restam %2$s.</string>
+    <plurals name="notif_lot_many_title">
+        <item quantity="one">%1$d lote a vencer</item>
+        <item quantity="many">%1$d de lotes a vencer</item>
+        <item quantity="other">%1$d lotes a vencer</item>
+    </plurals>
+    <string name="notif_lot_many_body">Tocar para ver.</string>
+    <string name="notif_lot_public_title">Um produto está prestes a vencer</string>
 </resources>

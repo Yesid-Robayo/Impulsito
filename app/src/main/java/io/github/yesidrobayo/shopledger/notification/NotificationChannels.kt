@@ -52,6 +52,9 @@ class NotificationChannels(
         /** El canal de los avisos de stock bajo: un producto que llegó a su mínimo. */
         const val STOCK_CHANNEL_ID = "low_stock"
 
+        /** El canal de los avisos de vencimiento: un lote que entró en sus días de aviso. */
+        const val EXPIRY_CHANNEL_ID = "expiry"
+
         /**
          * Los canales de la app. Cada aviso suma aquí su canal cuando llega, con un ID que no cambia
          * nunca.
@@ -67,6 +70,12 @@ class NotificationChannels(
                 NotificationChannelSpec(
                     id = BACKUP_CHANNEL_ID,
                     name = R.string.notif_channel_backup,
+                    description = null,
+                    importance = ChannelImportance.DEFAULT,
+                ),
+                NotificationChannelSpec(
+                    id = EXPIRY_CHANNEL_ID,
+                    name = R.string.notif_channel_expiry,
                     description = null,
                     importance = ChannelImportance.DEFAULT,
                 ),

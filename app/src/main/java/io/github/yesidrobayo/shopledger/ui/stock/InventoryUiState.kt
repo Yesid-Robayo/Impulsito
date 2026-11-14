@@ -13,8 +13,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.stock.InventoryStatus
 import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 
 /**
- * Los chips del inventario que existen hoy. `Revisar` aparece si hay algo que revisar; `Por
- * vencer`, cuando su módulo esté en uso, y mientras tanto abrir con él muestra lo que se está
+ * Los chips del inventario que existen hoy. `Revisar` aparece si hay algo que revisar, y `Por
+ * vencer` si hay lotes en sus días de aviso; abrir con uno de ellos vacío muestra lo que se está
  * acabando.
  */
 enum class InventoryChip {
@@ -29,7 +29,26 @@ enum class InventoryChip {
 
     /** Lo que pide decidir un precio: costo nuevo sin revisar, margen bajo y costo viejo. */
     REVIEW,
+
+    /** Los lotes en sus días de aviso o ya vencidos, del que vence antes al que vence después. */
+    EXPIRING,
 }
+
+/**
+ * Una fila de `Por vencer`: el lote de un producto, con lo que tiene en todas las ubicaciones.
+ * [daysLeft] cuenta desde hoy: cero vence hoy y negativo ya venció. [code] es `null` sin código.
+ */
+@Immutable
+data class ExpiringLotItem(
+    val lotId: Long,
+    val productId: Long,
+    val productName: String,
+    val code: String?,
+    val expiryDate: BusinessDate,
+    val daysLeft: Int,
+    val onHand: QuantityMilli,
+    val unit: MeasureUnit?,
+)
 
 /**
  * Una fila de `Revisar`: el producto con su precio y su margen sin impuesto, como en su detalle, y
@@ -93,6 +112,7 @@ sealed interface InventoryContent {
         val hasStockWithoutCost: Boolean,
         val items: List<InventoryItem>,
         val reviewItems: List<PriceReviewItem> = emptyList(),
+        val expiringItems: List<ExpiringLotItem> = emptyList(),
     ) : InventoryContent
 
     /** No se pudo leer. Se puede reintentar. */

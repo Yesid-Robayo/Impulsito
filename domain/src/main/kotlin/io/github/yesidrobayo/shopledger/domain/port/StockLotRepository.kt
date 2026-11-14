@@ -1,8 +1,10 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
+import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -38,4 +40,14 @@ interface StockLotRepository {
      * misma transacción que crea los dos, después de la línea, que necesita el lote para existir.
      */
     suspend fun attachPurchaseLine(lotId: Long, purchaseLineId: Long)
+
+    /**
+     * Los lotes abiertos con vencimiento y con stock, sumado en todas las ubicaciones, con los
+     * días de aviso de su producto. Vuelve a emitir con cada cambio de lotes, saldos o
+     * productos. Un producto archivado no avisa.
+     */
+    fun observeDated(): Flow<List<DatedLotStock>>
+
+    /** Anota que ya se avisó el vencimiento de [lotIds], para no repetirlo. */
+    suspend fun markExpiryNotified(lotIds: List<Long>, notifiedAt: Instant)
 }

@@ -77,6 +77,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationStatus
@@ -767,6 +768,11 @@ internal class SaleWorld(
             val attached = lot.copy(purchaseLineId = purchaseLineId)
             write { it.copy(lots = it.lots + (lotId to attached)) }
         }
+
+        // La venta no mira los avisos de vencimiento: los prueba el inventario.
+        override fun observeDated(): Flow<List<DatedLotStock>> = unused()
+
+        override suspend fun markExpiryNotified(lotIds: List<Long>, notifiedAt: Instant) = unused()
 
         private fun lotsOf(tables: SaleTables, productId: Long): List<StockLot> =
             tables.lots.values.filter { it.productId == productId }.sortedBy { it.id }

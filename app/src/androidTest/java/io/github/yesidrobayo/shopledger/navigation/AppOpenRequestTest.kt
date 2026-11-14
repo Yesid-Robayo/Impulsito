@@ -36,6 +36,14 @@ class AppOpenRequestTest {
     }
 
     @Test
+    fun anExpiryNoticeOpensTheExpiringList() {
+        val request = readBack(AppOpenRequest.Expiring)
+
+        assertEquals(AppOpenRequest.Expiring, request)
+        assertEquals(AppNavKey.Inventory(InventoryFilter.EXPIRING), request?.key)
+    }
+
+    @Test
     fun anythingElseOpensNothing() {
         assertNull(AppOpenRequest.readFrom(null))
         assertNull(AppOpenRequest.readFrom(toMain()))

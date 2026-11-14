@@ -10,4 +10,35 @@
     <string name="purchase_lot_expiry_label">Expiry date</string>
     <string name="purchase_lot_blank_help">Without a code, it goes into the unassigned batch</string>
     <string name="purchase_lot_existing_help">That batch already exists: this delivery adds to it</string>
+    <!-- El chip del inventario con los lotes que están en sus días de aviso o ya vencieron. -->
+    <string name="lot_filter_expiring">Expiring soon</string>
+    <string name="lot_none_expiring">Nothing expiring soon</string>
+    <!-- %1$s es el código del lote. -->
+    <string name="lot_name">Batch %1$s</string>
+    <string name="lot_no_code">No code</string>
+    <!-- %1$d son los días que faltan y %2$s la fecha. -->
+    <plurals name="lot_expires_in_date">
+        <item quantity="one">Expires in %1$d day · %2$s</item>
+        <item quantity="other">Expires in %1$d days · %2$s</item>
+    </plurals>
+    <string name="lot_expires_today">Expires today</string>
+    <!-- %1$s es la fecha en que venció. -->
+    <string name="lot_expired_on">Expired on %1$s</string>
+    <!-- Lo que lee TalkBack en una fila de lote: %1$s el lote, %2$s el vencimiento y %3$s la cantidad. -->
+    <string name="a11y_lot_row">%1$s, %2$s, %3$s</string>
+    <!-- El canal de avisos de vencimiento, en los ajustes de Android. -->
+    <string name="notif_channel_expiry">Expiry dates</string>
+    <!-- Un lote que entró en sus días de aviso. %1$s es el producto: solo se ve con el teléfono desbloqueado. -->
+    <string name="notif_lot_expiring_title">Expiring soon: %1$s</string>
+    <!-- %1$s es la fecha y %2$s lo que queda, con su unidad. -->
+    <string name="notif_lot_expiring_body">Expires on %1$s. %2$s left.</string>
+    <string name="notif_lot_expired_title">Expired: %1$s</string>
+    <string name="notif_lot_expired_body">Expired on %1$s. %2$s left.</string>
+    <!-- El resumen de varios avisos: solo dice cuántos, así que se ve con el teléfono bloqueado. -->
+    <plurals name="notif_lot_many_title">
+        <item quantity="one">%1$d batch expiring soon</item>
+        <item quantity="other">%1$d batches expiring soon</item>
+    </plurals>
+    <string name="notif_lot_many_body">Tap to view.</string>
+    <string name="notif_lot_public_title">A product is about to expire</string>
 </resources>

@@ -62,6 +62,25 @@ internal interface StockLotDao {
     )
     suspend fun findStock(productId: Long, locationId: Long): List<LotStockRow>
 
+    /**
+     * Los lotes abiertos con código, vencimiento y stock, sumado en todas las ubicaciones, de
+     * productos sin archivar: lo que mira el aviso de vencimiento. Del que vence antes al que vence
+     * después, y por id entre dos del mismo día.
+     */
+    @Query(
+        "SELECT l.id, l.product_id, p.name AS product_name, l.lot_code, l.expiry_date, " +
+            "SUM(b.on_hand_milli) AS on_hand_milli, p.base_unit_id, p.expiry_notice_days, " +
+            "l.expiry_notified_at " +
+            "FROM stock_lots l " +
+            "JOIN products p ON p.id = l.product_id " +
+            "JOIN stock_balances b ON b.product_id = l.product_id AND b.lot_key = l.id " +
+            "WHERE l.expiry_date IS NOT NULL AND l.closed_at IS NULL AND l.is_unassigned = 0 " +
+            "AND p.archived_at IS NULL " +
+            "GROUP BY l.id HAVING SUM(b.on_hand_milli) > 0 " +
+            "ORDER BY l.expiry_date, l.id",
+    )
+    fun observeDated(): Flow<List<DatedLotRow>>
+
     /** Devuelve el id nuevo. Falla si el producto ya tiene ese código o ya tiene lote sin asignar. */
     @Insert
     suspend fun insert(lot: StockLotEntity): Long
@@ -91,6 +110,19 @@ internal interface StockLotDao {
     @Query("DELETE FROM stock_lots WHERE id = :id")
     suspend fun delete(id: Long): Int
 }
+
+/** Un lote con vencimiento y su saldo total, tal como lo lee [StockLotDao.observeDated]. */
+internal data class DatedLotRow(
+    @ColumnInfo(name = "id") val id: Long,
+    @ColumnInfo(name = "product_id") val productId: Long,
+    @ColumnInfo(name = "product_name") val productName: String,
+    @ColumnInfo(name = "lot_code") val lotCode: String?,
+    @ColumnInfo(name = "expiry_date") val expiryDate: String,
+    @ColumnInfo(name = "on_hand_milli") val onHandMilli: Long,
+    @ColumnInfo(name = "base_unit_id") val baseUnitId: Long,
+    @ColumnInfo(name = "expiry_notice_days") val expiryNoticeDays: Long?,
+    @ColumnInfo(name = "expiry_notified_at") val expiryNotifiedAt: Long?,
+)
 
 /** Un lote con su saldo en una ubicación, tal como lo lee [StockLotDao.findStock]. */
 internal data class LotStockRow(

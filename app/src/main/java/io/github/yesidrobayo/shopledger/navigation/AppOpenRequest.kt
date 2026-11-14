@@ -47,12 +47,25 @@ sealed interface AppOpenRequest {
         }
     }
 
+    /** La lista de lotes por vencer del inventario, desde un aviso de vencimiento. */
+    data object Expiring : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.Inventory(InventoryFilter.EXPIRING)
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_OPEN_EXPIRING
+        }
+    }
+
     companion object {
         /** Abre el detalle del producto de [EXTRA_PRODUCT_ID]. */
         const val ACTION_OPEN_PRODUCT = "io.github.yesidrobayo.shopledger.action.OPEN_PRODUCT"
 
         /** Abre la lista de lo que se está acabando. */
         const val ACTION_OPEN_LOW_STOCK = "io.github.yesidrobayo.shopledger.action.OPEN_LOW_STOCK"
+
+        /** Abre la lista de lotes por vencer. */
+        const val ACTION_OPEN_EXPIRING = "io.github.yesidrobayo.shopledger.action.OPEN_EXPIRING"
 
         /** El id del producto que abre [ACTION_OPEN_PRODUCT]. */
         const val EXTRA_PRODUCT_ID = "product_id"
@@ -72,6 +85,8 @@ sealed interface AppOpenRequest {
                             ?.let(::Product)
 
                     ACTION_OPEN_LOW_STOCK -> LowStock
+
+                    ACTION_OPEN_EXPIRING -> Expiring
 
                     else -> null
                 }

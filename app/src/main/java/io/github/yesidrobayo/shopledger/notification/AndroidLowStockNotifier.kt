@@ -124,29 +124,6 @@ class AndroidLowStockNotifier(
         .setGroup(GROUP)
         .setAutoCancel(true)
 
-    /**
-     * Una cantidad con su unidad, como en las pantallas: con su símbolo o, sin símbolo, su nombre.
-     * Una unidad de la persona no tiene plural conocido, así que va como `3 × caja`.
-     */
-    private fun quantityText(
-        quantity: QuantityMilli,
-        unit: MeasureUnit?,
-        quantities: QuantityFormatter,
-        context: Context,
-    ): String {
-        if (unit == null) return quantities.format(quantity, allowsFraction = true)
-        val number = quantities.format(quantity, unit.allowsFraction)
-        val resources = context.resources
-        val label =
-            SeedText.unitSymbol(resources, unit.systemKey, unit.symbol)
-                ?: SeedText.displayName(resources, SeedTable.UNITS, unit.systemKey, unit.name)
-        return if (unit.systemKey == null) {
-            context.getString(R.string.format_custom_unit_quantity, number, label)
-        } else {
-            number + IcuTextNormalizer.NO_BREAK_SPACE + label
-        }
-    }
-
     private fun open(request: AppOpenRequest): PendingIntent {
         val intent =
             Intent(app, MainActivity::class.java).addFlags(
@@ -175,14 +152,38 @@ class AndroidLowStockNotifier(
         manager.notify(TAG, id, notification)
     }
 
-    private companion object {
+    internal companion object {
+        /**
+         * Una cantidad con su unidad, como en las pantallas: con su símbolo o, sin símbolo, su
+         * nombre. Una unidad de la persona no tiene plural conocido, así que va como `3 × caja`.
+         * La usan también los avisos de vencimiento.
+         */
+        fun quantityText(
+            quantity: QuantityMilli,
+            unit: MeasureUnit?,
+            quantities: QuantityFormatter,
+            context: Context,
+        ): String {
+            if (unit == null) return quantities.format(quantity, allowsFraction = true)
+            val number = quantities.format(quantity, unit.allowsFraction)
+            val resources = context.resources
+            val label =
+                SeedText.unitSymbol(resources, unit.systemKey, unit.symbol)
+                    ?: SeedText.displayName(resources, SeedTable.UNITS, unit.systemKey, unit.name)
+            return if (unit.systemKey == null) {
+                context.getString(R.string.format_custom_unit_quantity, number, label)
+            } else {
+                number + IcuTextNormalizer.NO_BREAK_SPACE + label
+            }
+        }
+
         /** La etiqueta de los avisos de stock, para no chocar con los del respaldo. */
-        const val TAG = "low_stock"
+        private const val TAG = "low_stock"
 
         /** El grupo de los avisos de stock. */
-        const val GROUP = "low_stock"
+        private const val GROUP = "low_stock"
 
         /** El número fijo del resumen. Ningún producto tiene el id 0. */
-        const val SUMMARY_ID = 0
+        private const val SUMMARY_ID = 0
     }
 }

@@ -1,13 +1,17 @@
 package io.github.yesidrobayo.shopledger.data.repository
 
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.stock.DatedLotRow
 import io.github.yesidrobayo.shopledger.data.local.stock.LotStockRow
 import io.github.yesidrobayo.shopledger.data.local.stock.StockLotEntity
+import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -17,10 +21,18 @@ import kotlinx.coroutines.flow.map
  *
  * El lote sin asignar no se crea aquí: lo crea el libro de stock cuando una fila lo necesita. Un
  * código repetido en el mismo producto lo rechaza el índice único, y sale como regla rota.
+ *
+ * La marca del aviso de vencimiento no es un dato del negocio: se escribe sola, fuera de la
+ * transacción de un caso de uso, con el cerrojo de la restauración [restoreLock]. Las pruebas que
+ * no marcan avisos pueden omitirlo.
  */
-internal class RoomStockLotRepository(database: AppDatabase) : StockLotRepository {
+internal class RoomStockLotRepository(
+    database: AppDatabase,
+    restoreLock: RestoreLock = RestoreLock { false },
+) : StockLotRepository {
     private val lots = database.stockLotDao()
     private val writes = RepositoryWrites(database)
+    private val standalone = StandaloneWrites(restoreLock)
 
     // Room vuelve a emitir con cualquier cambio de la tabla: una lista igual no se repite.
     override fun observeByProduct(productId: Long): Flow<List<StockLot>> = lots
@@ -57,6 +69,29 @@ internal class RoomStockLotRepository(database: AppDatabase) : StockLotRepositor
     override suspend fun attachPurchaseLine(lotId: Long, purchaseLineId: Long) {
         writes.inTransaction { requireOneRow(lots.setPurchaseLine(lotId, purchaseLineId)) }
     }
+
+    override fun observeDated(): Flow<List<DatedLotStock>> =
+        lots.observeDated().map { rows -> rows.map(::toDated) }.distinctUntilChanged()
+
+    override suspend fun markExpiryNotified(lotIds: List<Long>, notifiedAt: Instant) {
+        if (lotIds.isEmpty()) return
+        val stored = notifiedAt.toStoredMillis()
+        // Una sentencia por lote: si una falla, las anteriores quedan y ese lote se avisa otra vez.
+        for (id in lotIds) standalone.write { requireOneRow(lots.setExpiryNotifiedAt(id, stored)) }
+    }
+
+    private fun toDated(row: DatedLotRow): DatedLotStock = DatedLotStock(
+        lotId = row.id,
+        productId = row.productId,
+        productName = row.productName,
+        code = row.lotCode,
+        expiryDate = storedDate(row.expiryDate),
+        onHand = QuantityMilli(row.onHandMilli),
+        baseUnitId = row.baseUnitId,
+        // La guarda deja de 0 a 36.500 días: cabe en un Int.
+        noticeDays = row.expiryNoticeDays?.toInt(),
+        expiryNotifiedAt = row.expiryNotifiedAt?.toInstant(),
+    )
 
     private fun toLot(row: StockLotEntity): StockLot = StockLot(
         id = row.id,

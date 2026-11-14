@@ -46,6 +46,8 @@ import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.LocationSwitcher
+import io.github.yesidrobayo.shopledger.ui.components.LotExpiry
+import io.github.yesidrobayo.shopledger.ui.components.LotRow
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
@@ -208,6 +210,7 @@ private fun InventoryList(
             val chips = buildList {
                 add(InventoryChip.LOW_STOCK)
                 if (content.reviewItems.isNotEmpty()) add(InventoryChip.REVIEW)
+                if (content.expiringItems.isNotEmpty()) add(InventoryChip.EXPIRING)
                 if (content.negativeCount > 0) add(InventoryChip.NEGATIVE_STOCK)
                 add(InventoryChip.ALL)
             }
@@ -245,6 +248,12 @@ private fun InventoryList(
             }
             items(content.reviewItems, key = { "review-${it.id}" }) { item ->
                 ReviewRow(item, onAction)
+            }
+            return@LazyColumn
+        }
+        if (chip == InventoryChip.EXPIRING) {
+            items(content.expiringItems, key = { "lot-${it.lotId}" }) { item ->
+                ExpiringRow(item, onAction)
             }
             return@LazyColumn
         }
@@ -489,8 +498,26 @@ private fun chipLabel(chip: InventoryChip): String = stringResource(
         InventoryChip.NEGATIVE_STOCK -> R.string.stock_filter_negative
         InventoryChip.ALL -> R.string.stock_filter_all
         InventoryChip.REVIEW -> R.string.review_filter
+        InventoryChip.EXPIRING -> R.string.lot_filter_expiring
     },
 )
+
+/**
+ * Una fila de `Por vencer`: el producto arriba y su lote, con lo que tiene en todas las ubicaciones.
+ * Tocarla abre el producto.
+ */
+@Composable
+private fun ExpiringRow(item: ExpiringLotItem, onAction: (InventoryAction) -> Unit) {
+    val fallback = UnitLabel(stringResource(R.string.seed_units_unit), false)
+    LotRow(
+        code = item.code,
+        expiry = LotExpiry.Dated(item.expiryDate, item.daysLeft, soon = true),
+        onHand = item.onHand,
+        unit = item.unit?.let { unitLabel(it) } ?: fallback,
+        productName = item.productName,
+        onClick = { onAction(InventoryAction.OpenProduct(item.productId)) },
+    )
+}
 
 @Composable
 private fun InventorySkeleton() {

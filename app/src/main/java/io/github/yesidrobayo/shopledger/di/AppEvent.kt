@@ -6,4 +6,5 @@ import io.github.yesidrobayo.shopledger.domain.port.LogEvent
 internal enum class AppEvent(override val text: String) : LogEvent {
     BACKGROUND_WORK_FAILED("Falló un trabajo en segundo plano"),
     LOW_STOCK_DELIVERY_FAILED("Falló la entrega de los avisos de stock bajo"),
+    EXPIRY_DELIVERY_FAILED("Falló la entrega de los avisos de vencimiento"),
 }

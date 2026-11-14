@@ -11,6 +11,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReview
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
+import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
+import io.github.yesidrobayo.shopledger.domain.model.stock.ExpiringLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.model.stock.LocationDetails
 import io.github.yesidrobayo.shopledger.domain.model.stock.LocationKind
@@ -146,9 +148,47 @@ class InventoryViewModelTest {
     @Test
     fun `every navigation filter opens a chip that exists`() {
         assertEquals(InventoryChip.REVIEW, chipOf(InventoryFilter.REVIEW))
-        assertEquals(InventoryChip.LOW_STOCK, chipOf(InventoryFilter.EXPIRING))
+        assertEquals(InventoryChip.EXPIRING, chipOf(InventoryFilter.EXPIRING))
         assertEquals(InventoryChip.ALL, chipOf(InventoryFilter.ALL))
     }
+
+    @Test
+    fun `the expiring chip lists the lots and falls back when none are left`() =
+        runTest(dispatcher) {
+            products.value = listOf(product(1L, "Arroz", 2_000L))
+            val lot = DatedLotStock(
+                lotId = 7L,
+                productId = 1L,
+                productName = "Arroz",
+                code = "A-118",
+                expiryDate = BusinessDate(LocalDate(2026, 11, 20)),
+                onHand = QuantityMilli(3_000L),
+                baseUnitId = 1L,
+                noticeDays = null,
+                expiryNotifiedAt = null,
+            )
+            val lots = MutableStateFlow(listOf(ExpiringLot(lot, daysLeft = -2)))
+            val model = InventoryViewModel(
+                observe = { products.toOverview() },
+                computation = dispatcher,
+                initialChip = InventoryChip.EXPIRING,
+                expiring = { lots },
+            )
+            model.uiState.test {
+                skipItems(1)
+                val expiring = awaitItem()
+                assertEquals(InventoryChip.EXPIRING, expiring.chip)
+                val item = (expiring.content as InventoryContent.Ready).expiringItems.single()
+                assertEquals(7L, item.lotId)
+                assertEquals(1L, item.productId)
+                assertEquals(-2, item.daysLeft)
+                assertEquals(QuantityMilli(3_000L), item.onHand)
+
+                lots.value = emptyList()
+                // Sin lotes por vencer, el chip desaparece y se ve lo que se está acabando.
+                assertEquals(InventoryChip.LOW_STOCK, awaitItem().chip)
+            }
+        }
 
     @Test
     fun `the review chip lists the queue and falls back when it empties`() = runTest(dispatcher) {

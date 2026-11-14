@@ -155,6 +155,7 @@ class MainActivity : AppCompatActivity() {
                 is DataAccess.Ready -> {
                     // Desde aquí se avisa lo que quedó pendiente y cada alerta nueva.
                     container.lowStockAlertDelivery.follow(access.ports)
+                    container.expiryNoticeDelivery.follow(access.ports)
                     lockSettings = ChangePreferenceUseCase(access.ports.settings, container.clock)
                     launch {
                         ObserveAppLockUseCase(access.ports.settings)().collect {

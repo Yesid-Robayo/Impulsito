@@ -25,6 +25,8 @@ import io.github.yesidrobayo.shopledger.localization.installedVersionOf
 import io.github.yesidrobayo.shopledger.lock.AppLock
 import io.github.yesidrobayo.shopledger.notification.AndroidBackupNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidLowStockNotifier
+import io.github.yesidrobayo.shopledger.notification.AndroidReminderNotifier
+import io.github.yesidrobayo.shopledger.notification.ExpiryNoticeDelivery
 import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeFile
@@ -112,6 +114,22 @@ class AppContainer(application: Application) {
     /** Las notificaciones del respaldo, en el idioma de la interfaz. */
     val backupNotifier: AndroidBackupNotifier =
         AndroidBackupNotifier(application, localizedContext)
+
+    /** Los avisos de vencimiento de los lotes, una vez por lote, mientras la base está abierta. */
+    val expiryNoticeDelivery: ExpiryNoticeDelivery by lazy {
+        ExpiryNoticeDelivery(
+            scope = applicationScope,
+            notifier =
+                AndroidReminderNotifier(application, localizedContext) {
+                    when (val access = data.open()) {
+                        is DataAccess.Ready -> access.ports.settings.get()
+                        is DataAccess.Rescue -> error("Sin base no hay lotes que avisar")
+                    }
+                },
+            clock = clock,
+            log = log,
+        )
+    }
 
     /**
      * Los avisos de stock bajo pendientes, mientras la base está abierta. La actividad principal
