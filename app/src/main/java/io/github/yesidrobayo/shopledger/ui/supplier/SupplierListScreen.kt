@@ -66,6 +66,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  * destino propio ([navigation] en `BACK`), vuelve atrás.
  *
  * @param selectedId el proveedor abierto en el panel derecho, en una ventana ancha.
+ * @param backupBanner el banner del respaldo bajo la barra, el mismo de las otras dos pestañas de
+ *   Productos: sin él, la lista subía de golpe al pasar a `Proveedores`.
  */
 @Composable
 fun SupplierListScreen(
@@ -76,6 +78,7 @@ fun SupplierListScreen(
     onBack: () -> Unit = {},
     tabs: (@Composable () -> Unit)? = null,
     selectedId: Long? = null,
+    backupBanner: @Composable () -> Unit = {},
 ) {
     val spacing = AppTheme.spacing
     val sizes = AppTheme.sizes
@@ -94,6 +97,7 @@ fun SupplierListScreen(
             ) {
                 if (isRoot) SettingsButton()
             }
+            backupBanner()
             Column(
                 Modifier
                     .weight(1f)

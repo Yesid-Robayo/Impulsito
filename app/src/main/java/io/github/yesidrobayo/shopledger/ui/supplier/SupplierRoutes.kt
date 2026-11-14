@@ -25,6 +25,7 @@ import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
@@ -88,6 +89,8 @@ fun SupplierListRoute(
                         onBack = { navigator.back() },
                         tabs = tabs,
                         selectedId = if (expanded) selectedId else null,
+                        // Como pestaña de Productos, con el mismo banner que las otras dos.
+                        backupBanner = { if (tabs != null) RootBackupBanner(navigator::open) },
                     )
                 }
                 if (!expanded) {
