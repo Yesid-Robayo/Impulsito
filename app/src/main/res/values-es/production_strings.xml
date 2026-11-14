@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: producción, su lista, su formulario y su detalle. -->
+    <string name="hub_tool_production">Producción</string>
+    <string name="hub_tool_production_desc">Convertir insumos en producto terminado</string>
+    <string name="production_new_action">Nueva producción</string>
+    <string name="production_total_cost_label">Costo total</string>
+    <string name="production_detail_title">Producción del %1$s</string>
+    <string name="production_product_label">Producto</string>
+    <string name="production_qty_label">Cantidad</string>
+    <string name="production_inputs_title">Insumos</string>
+    <string name="production_available">Disponible: %1$s</string>
+    <string name="production_cost_per">Costo por %1$s</string>
+    <string name="production_cost_effect">El costo promedio pasa de %1$s a %2$s</string>
+    <string name="production_note_label">Nota</string>
+    <string name="production_note_hint">Opcional</string>
+    <string name="production_register_action">Registrar producción</string>
+    <string name="production_void_action">Anular producción</string>
+    <string name="production_empty_title">Fabricar por adelantado</string>
+    <string name="production_empty_body">Los insumos bajan y el producto terminado sube</string>
+    <string name="production_empty_no_recipe_action">Crear una receta</string>
+    <string name="production_warning_negative">Quedarían %1$s</string>
+    <string name="production_warning_no_cost">Hay insumos sin costo: el costo real puede ser mayor</string>
+    <string name="production_error_stock_cap">Con esta producción, %1$s pasaría del máximo de stock. Revisar la cantidad.</string>
+    <string name="production_void_confirm_title">¿Anular esta producción?</string>
+    <string name="production_void_confirm_body">El producto terminado sale, los insumos vuelven y el costo se recalcula.</string>
+    <string name="production_void_negative">Quedarían %1$s de %2$s</string>
+    <string name="production_error_register">No se pudo registrar la producción. Lo escrito se conserva.</string>
+    <string name="production_success">Producción registrada</string>
+    <string name="production_voided">Producción anulada</string>
+    <string name="combo_add_recipe_action">Agregar receta</string>
+    <string name="combo_produce_action">Producir</string>
+    <string name="combo_save_recipe_action">Guardar receta</string>
+    <string name="combo_recipe_saved">Receta guardada</string>
+</resources>

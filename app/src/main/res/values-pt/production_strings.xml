@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Português: producción, su lista, su formulario y su detalle. -->
+    <string name="hub_tool_production">Produção</string>
+    <string name="hub_tool_production_desc">Transformar insumos em produto acabado</string>
+    <string name="production_new_action">Nova produção</string>
+    <string name="production_total_cost_label">Custo total</string>
+    <string name="production_detail_title">Produção de %1$s</string>
+    <string name="production_product_label">Produto</string>
+    <string name="production_qty_label">Quantidade</string>
+    <string name="production_inputs_title">Insumos</string>
+    <string name="production_available">Disponível: %1$s</string>
+    <string name="production_cost_per">Custo por %1$s</string>
+    <string name="production_cost_effect">O custo médio passa de %1$s para %2$s</string>
+    <string name="production_note_label">Nota</string>
+    <string name="production_note_hint">Opcional</string>
+    <string name="production_register_action">Registrar produção</string>
+    <string name="production_void_action">Anular produção</string>
+    <string name="production_empty_title">Fabricar com antecedência</string>
+    <string name="production_empty_body">Os insumos diminuem e o produto acabado aumenta</string>
+    <string name="production_empty_no_recipe_action">Criar uma receita</string>
+    <string name="production_warning_negative">Restariam %1$s</string>
+    <string name="production_warning_no_cost">Há insumos sem custo: o custo real pode ser maior</string>
+    <string name="production_error_stock_cap">Com esta produção, %1$s passaria do estoque máximo. Revisar a quantidade.</string>
+    <string name="production_void_confirm_title">Anular esta produção?</string>
+    <string name="production_void_confirm_body">O produto acabado sai, os insumos voltam e o custo é recalculado.</string>
+    <string name="production_void_negative">Restariam %1$s de %2$s</string>
+    <string name="production_error_register">Não foi possível registrar a produção. O que foi escrito foi mantido.</string>
+    <string name="production_success">Produção registrada</string>
+    <string name="production_voided">Produção anulada</string>
+    <string name="combo_add_recipe_action">Adicionar receita</string>
+    <string name="combo_produce_action">Produzir</string>
+    <string name="combo_save_recipe_action">Salvar receita</string>
+    <string name="combo_recipe_saved">A receita foi salva</string>
+</resources>

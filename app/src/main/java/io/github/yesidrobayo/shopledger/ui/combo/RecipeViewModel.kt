@@ -102,7 +102,7 @@ class RecipeViewModel(
     private val load: StateFlow<RecipeLoad> = attempts.flatMapLatest {
         editorSource()
             .map { data ->
-                if (data == null || data.combo.details.stockMode != ProductStockMode.COMPONENTS) {
+                if (data == null || !RecipeRules.allowsRecipe(data.combo.details.stockMode)) {
                     RecipeLoad.Missing
                 } else {
                     RecipeLoad.Ready(data)
@@ -173,8 +173,8 @@ class RecipeViewModel(
             RecipeAction.Retry ->
                 if (load.value == RecipeLoad.Failed) attempts.update { it + 1 } else saveNow()
 
-            // La pantalla abre el formulario del producto; aquí no cambia nada.
-            RecipeAction.EditProduct -> Unit
+            // La pantalla abre el formulario del producto o el de producción; aquí no cambia nada.
+            RecipeAction.EditProduct, RecipeAction.Produce -> Unit
 
             RecipeAction.Close -> overlay.update {
                 if (uiState.value.dirty) it.copy(discardAsked = true) else it.copy(closed = true)
@@ -293,6 +293,7 @@ class RecipeViewModel(
         return RecipeUiState(
             loading = false,
             comboName = data.combo.details.name,
+            produced = data.combo.details.stockMode == ProductStockMode.TRACKED,
             salePrice = price,
             rows = rows,
             unitCost = cost,

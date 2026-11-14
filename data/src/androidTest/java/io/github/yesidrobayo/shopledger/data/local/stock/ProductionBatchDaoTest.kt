@@ -151,7 +151,18 @@ internal class ProductionBatchDaoTest : LedgerDatabaseTest() {
     @Test
     fun theDaoOnlyAddsReadsAndVoids() {
         assertEquals(
-            setOf("observeIn", "findById", "findLines", "insert", "insertLine", "markVoided"),
+            setOf(
+                "observeIn",
+                // La lista por tramos y el detalle de una producción, que se actualizan al anular.
+                "observeRecent",
+                "observeById",
+                "observeLines",
+                "findById",
+                "findLines",
+                "insert",
+                "insertLine",
+                "markVoided",
+            ),
             functionsOf(ProductionBatchDao::class.java),
         )
     }

@@ -239,6 +239,10 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object Production : AppNavKey
 
+    /** Una producción nueva, con el producto ya elegido si llega desde su receta. */
+    @Serializable
+    data class ProductionForm(val productId: Long? = null) : AppNavKey
+
     @Serializable
     data class Replenishment(val supplierId: Long? = null) : AppNavKey
 

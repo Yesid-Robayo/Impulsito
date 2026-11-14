@@ -12,6 +12,9 @@ import io.github.yesidrobayo.shopledger.domain.model.production.NewProductionBat
 import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatch
 import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatchLine
 import io.github.yesidrobayo.shopledger.domain.port.ProductionBatchRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /**
  * Las producciones y sus insumos sobre `production_batches` y `production_batch_lines`. Una
@@ -21,6 +24,17 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductionBatchRepository
 internal class RoomProductionBatchRepository(database: AppDatabase) : ProductionBatchRepository {
     private val batches = database.productionBatchDao()
     private val writes = RepositoryWrites(database)
+
+    override fun observeRecent(limit: Int): Flow<List<ProductionBatch>> =
+        batches.observeRecent(limit).map { rows -> rows.map(::toBatch) }.distinctUntilChanged()
+
+    override fun observeById(id: Long): Flow<ProductionBatch?> =
+        batches.observeById(id).map { it?.let(::toBatch) }.distinctUntilChanged()
+
+    override fun observeLines(productionBatchId: Long): Flow<List<ProductionBatchLine>> =
+        batches.observeLines(productionBatchId)
+            .map { rows -> rows.map(::toLine) }
+            .distinctUntilChanged()
 
     override suspend fun findById(id: Long): ProductionBatch? = batches.findById(id)?.let(::toBatch)
 

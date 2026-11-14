@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- English: producción, su lista, su formulario y su detalle. -->
+    <string name="hub_tool_production">Production</string>
+    <string name="hub_tool_production_desc">Turn supplies into finished products</string>
+    <string name="production_new_action">New production</string>
+    <string name="production_total_cost_label">Total cost</string>
+    <string name="production_detail_title">Production on %1$s</string>
+    <string name="production_product_label">Product</string>
+    <string name="production_qty_label">Quantity</string>
+    <string name="production_inputs_title">Inputs</string>
+    <string name="production_available">Available: %1$s</string>
+    <string name="production_cost_per">Cost per %1$s</string>
+    <string name="production_cost_effect">Average cost goes from %1$s to %2$s</string>
+    <string name="production_note_label">Note</string>
+    <string name="production_note_hint">Optional</string>
+    <string name="production_register_action">Record production</string>
+    <string name="production_void_action">Void production</string>
+    <string name="production_empty_title">Make in advance</string>
+    <string name="production_empty_body">Inputs go down and the finished product goes up</string>
+    <string name="production_empty_no_recipe_action">Create a recipe</string>
+    <string name="production_warning_negative">%1$s would be left</string>
+    <string name="production_warning_no_cost">Some inputs have no cost: the real cost may be higher</string>
+    <string name="production_error_stock_cap">With this production, %1$s would exceed the stock limit. Check the quantity.</string>
+    <string name="production_void_confirm_title">Void this production?</string>
+    <string name="production_void_confirm_body">The finished product goes out, inputs come back and the cost is recalculated.</string>
+    <string name="production_void_negative">%1$s of %2$s would be left</string>
+    <string name="production_error_register">Could not record the production. What was entered is kept.</string>
+    <string name="production_success">Production recorded</string>
+    <string name="production_voided">Production voided</string>
+    <string name="combo_add_recipe_action">Add recipe</string>
+    <string name="combo_produce_action">Produce</string>
+    <string name="combo_save_recipe_action">Save recipe</string>
+    <string name="combo_recipe_saved">Recipe saved</string>
+</resources>

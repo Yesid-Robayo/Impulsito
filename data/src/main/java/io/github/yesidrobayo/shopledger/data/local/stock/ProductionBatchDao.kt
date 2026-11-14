@@ -29,6 +29,20 @@ internal interface ProductionBatchDao {
     @Query("SELECT * FROM production_batches WHERE id = :id")
     suspend fun findById(id: Long): ProductionBatchEntity?
 
+    /** Las [limit] más nuevas, en el mismo orden que la lista por período. */
+    @Query(
+        "SELECT * FROM production_batches ORDER BY business_date DESC, id DESC LIMIT :limit",
+    )
+    fun observeRecent(limit: Int): Flow<List<ProductionBatchEntity>>
+
+    @Query("SELECT * FROM production_batches WHERE id = :id")
+    fun observeById(id: Long): Flow<ProductionBatchEntity?>
+
+    @Query(
+        "SELECT * FROM production_batch_lines WHERE production_batch_id = :batchId ORDER BY id",
+    )
+    fun observeLines(batchId: Long): Flow<List<ProductionBatchLineEntity>>
+
     /** Los insumos de un lote, en el orden en que se registraron. */
     @Query(
         "SELECT * FROM production_batch_lines WHERE production_batch_id = :batchId ORDER BY id",

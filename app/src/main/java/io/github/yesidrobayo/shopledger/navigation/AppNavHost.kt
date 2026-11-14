@@ -82,6 +82,8 @@ import io.github.yesidrobayo.shopledger.ui.product.BulkPriceRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductDetailRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductsRoute
+import io.github.yesidrobayo.shopledger.ui.production.ProductionFormRoute
+import io.github.yesidrobayo.shopledger.ui.production.ProductionsRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.NewPurchaseRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.PurchaseDetailRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.PurchaseHistoryRoute
@@ -335,6 +337,10 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.Components -> RecipeRoute(key, navigator)
 
         is AppNavKey.Extras -> ExtrasRoute(key, navigator)
+
+        AppNavKey.Production -> ProductionsRoute(navigator)
+
+        is AppNavKey.ProductionForm -> ProductionFormRoute(key, navigator)
 
         AppNavKey.LoyaltyProgram -> LoyaltyProgramRoute(key, navigator)
 

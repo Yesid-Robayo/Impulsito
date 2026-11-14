@@ -18,6 +18,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
  * @param limitingName el componente que alcanza para menos, para nombrarlo.
  * @param hasUncosted alguna hoja cuesta cero: el margen puede verse mejor de lo que es.
  * @param canAdd todavía cabe otro componente.
+ * @param produced el producto lleva stock propio: la receta es la de producirlo, se guarda con
+ *   `Guardar receta` y ofrece `Producir`.
  */
 @Immutable
 data class RecipeUiState(
@@ -40,6 +42,7 @@ data class RecipeUiState(
     val saving: Boolean = false,
     val saved: Boolean = false,
     val dirty: Boolean = false,
+    val produced: Boolean = false,
 )
 
 /**
@@ -115,6 +118,9 @@ sealed interface RecipeAction {
 
     /** Ir al formulario del producto: lo resuelve la navegación. */
     data object EditProduct : RecipeAction
+
+    /** Producir con esta receta: lo resuelve la navegación. */
+    data object Produce : RecipeAction
 
     data object Close : RecipeAction
 

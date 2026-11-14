@@ -102,6 +102,12 @@ val HUB_ENTRIES: List<HubEntry> =
             AppNavKey.CustomFields,
         ),
         HubEntry(
+            BusinessTool.PRODUCTION,
+            R.string.hub_tool_production,
+            R.string.hub_tool_production_desc,
+            AppNavKey.Production,
+        ),
+        HubEntry(
             BusinessTool.SUPPLIER_RETURNS,
             R.string.hub_tool_supplier_returns,
             R.string.hub_tool_supplier_returns_desc,

@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.production.NewProductionBat
 import io.github.yesidrobayo.shopledger.domain.model.production.NewProductionBatchLine
 import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatch
 import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatchLine
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Las producciones y sus insumos. Una producción confirmada no se edita: solo se anula.
@@ -13,6 +14,17 @@ import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatchL
  * llaman dentro de [TransactionRunner.write].
  */
 interface ProductionBatchRepository {
+    /**
+     * Las [limit] producciones más nuevas, activas y anuladas: por fecha de negocio, y en la misma
+     * fecha la registrada después primero.
+     */
+    fun observeRecent(limit: Int): Flow<List<ProductionBatch>>
+
+    fun observeById(id: Long): Flow<ProductionBatch?>
+
+    /** Los insumos de una producción, en el orden en que se guardaron. */
+    fun observeLines(productionBatchId: Long): Flow<List<ProductionBatchLine>>
+
     suspend fun findById(id: Long): ProductionBatch?
 
     /** Los insumos de una producción, en el orden en que se guardaron. */

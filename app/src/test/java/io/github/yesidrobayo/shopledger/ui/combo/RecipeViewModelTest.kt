@@ -250,14 +250,14 @@ class RecipeViewModelTest {
     }
 
     @Test
-    fun `a product that is no longer a combo shows it is missing`() = runTest(dispatcher) {
+    fun `a product that became a service shows it is missing`() = runTest(dispatcher) {
         val model = viewModel(
             source = {
                 flow {
-                    val tracked = kit.copy(
-                        details = kit.details.copy(stockMode = ProductStockMode.TRACKED),
+                    val service = kit.copy(
+                        details = kit.details.copy(stockMode = ProductStockMode.UNTRACKED),
                     )
-                    emit(RecipeEditorData(tracked, emptyList(), mapOf(1L to tracked), emptyMap()))
+                    emit(RecipeEditorData(service, emptyList(), mapOf(1L to service), emptyMap()))
                 }
             },
         )
@@ -265,6 +265,25 @@ class RecipeViewModelTest {
         assertTrue(model.state.missing)
         model.act(this, RecipeAction.Save)
         assertTrue(saves.isEmpty())
+    }
+
+    @Test
+    fun `a product with its own stock keeps its recipe to produce it`() = runTest(dispatcher) {
+        val model = viewModel(
+            source = {
+                flow {
+                    val tracked = kit.copy(
+                        details = kit.details.copy(stockMode = ProductStockMode.TRACKED),
+                    )
+                    val products = listOf(tracked, tea, cup).associateBy { it.id }
+                    emit(RecipeEditorData(tracked, stored.value, products, emptyMap()))
+                }
+            },
+        )
+
+        assertFalse(model.state.missing)
+        assertTrue(model.state.produced)
+        assertEquals(2, model.state.rows.size)
     }
 
     private fun component(id: Long, parent: Long, child: Long, milli: Long) =

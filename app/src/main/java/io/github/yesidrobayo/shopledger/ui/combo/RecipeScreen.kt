@@ -190,6 +190,18 @@ private fun ColumnScope.RecipeForm(uiState: RecipeUiState, onAction: (RecipeActi
             }
             item(key = FIGURES) { FiguresCard(uiState) }
             item(key = AVAILABLE) { Availability(uiState) }
+            // Un producto con stock propio se produce con su receta guardada, no con la que se
+            // está armando: con cambios sin guardar, primero se guarda.
+            if (uiState.produced && !uiState.dirty && uiState.rows.isNotEmpty()) {
+                item(key = PRODUCE) {
+                    PrimaryActionButton(
+                        text = stringResource(R.string.combo_produce_action),
+                        onClick = { onAction(RecipeAction.Produce) },
+                        variant = ActionVariant.TONAL,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         }
         Column(Modifier.keepsMessagesAbove().imePadding().navigationBarsPadding()) {
             HorizontalDivider(
@@ -202,7 +214,11 @@ private fun ColumnScope.RecipeForm(uiState: RecipeUiState, onAction: (RecipeActi
             ) {
                 uiState.notice?.let { RecipeNoticeCard(it, onAction) }
                 PrimaryActionButton(
-                    text = stringResource(R.string.combo_save_action),
+                    text = if (uiState.produced) {
+                        stringResource(R.string.combo_save_recipe_action)
+                    } else {
+                        stringResource(R.string.combo_save_action)
+                    },
                     onClick = { onAction(RecipeAction.Save) },
                     variant = ActionVariant.PRIMARY,
                     modifier = Modifier.fillMaxWidth(),
@@ -393,6 +409,7 @@ private const val EMPTY = "empty"
 private const val ADD = "add"
 private const val FIGURES = "figures"
 private const val AVAILABLE = "available"
+private const val PRODUCE = "produce"
 private const val SKELETON_ROWS = 3
 
 /** Ancho máximo de la receta en una ventana ancha. */

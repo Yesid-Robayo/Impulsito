@@ -6,6 +6,8 @@ import io.github.yesidrobayo.shopledger.domain.model.production.NewProductionBat
 import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatch
 import io.github.yesidrobayo.shopledger.domain.model.production.ProductionBatchLine
 import io.github.yesidrobayo.shopledger.domain.port.ProductionBatchRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Las producciones sobre [InMemoryDatabase], con lo que exige la guarda de la tabla: una cabecera
@@ -13,6 +15,26 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductionBatchRepository
  */
 internal class FakeProductionBatchRepository(private val database: InMemoryDatabase) :
     ProductionBatchRepository {
+    override fun observeRecent(limit: Int): Flow<List<ProductionBatch>> =
+        database.tables.map { tables ->
+            tables.productionBatches.values
+                .sortedWith(
+                    compareByDescending<ProductionBatch> { it.content.businessDate }
+                        .thenByDescending { it.id },
+                )
+                .take(limit)
+        }
+
+    override fun observeById(id: Long): Flow<ProductionBatch?> =
+        database.tables.map { it.productionBatches[id] }
+
+    override fun observeLines(productionBatchId: Long): Flow<List<ProductionBatchLine>> =
+        database.tables.map { tables ->
+            tables.productionLines.values
+                .filter { it.productionBatchId == productionBatchId }
+                .sortedBy { it.id }
+        }
+
     override suspend fun findById(id: Long): ProductionBatch? =
         database.read().productionBatches[id]
 

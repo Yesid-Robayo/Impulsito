@@ -192,6 +192,9 @@ sealed interface ProductDetailAction {
 
     data object AdjustStock : ProductDetailAction
 
+    /** Abrir la receta con que se produce el producto: lo resuelve la navegación. */
+    data object OpenRecipe : ProductDetailAction
+
     data class OpenDocument(val document: MovementDocument) : ProductDetailAction
 
     data class SelectTab(val tab: ProductDetailTab) : ProductDetailAction
@@ -407,7 +410,7 @@ class ProductDetailViewModel(
             // Las resuelve la pantalla con la navegación.
             ProductDetailAction.Back, ProductDetailAction.Edit, ProductDetailAction.Sell,
             ProductDetailAction.RegisterPurchase, ProductDetailAction.AdjustStock,
-            is ProductDetailAction.OpenDocument,
+            is ProductDetailAction.OpenDocument, ProductDetailAction.OpenRecipe,
             -> Unit
         }
     }

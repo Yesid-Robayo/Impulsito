@@ -102,6 +102,9 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
                         ProductDetailAction.AdjustStock ->
                             navigator.open(AppNavKey.StockAdjustment(key.productId))
 
+                        ProductDetailAction.OpenRecipe ->
+                            navigator.open(AppNavKey.Components(key.productId))
+
                         is ProductDetailAction.OpenDocument ->
                             when (val document = action.document) {
                                 is MovementDocument.Sale ->

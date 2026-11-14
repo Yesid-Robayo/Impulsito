@@ -63,7 +63,11 @@ fun RecipeRoute(key: AppNavKey.Components, navigator: AppNavigator) {
             val closed by viewModel.closed.collectAsStateWithLifecycle()
             val haptics = LocalHapticFeedback.current
             val messages = LocalAppMessages.current
-            val savedText = stringResource(R.string.combo_saved)
+            val savedText = if (uiState.produced) {
+                stringResource(R.string.combo_recipe_saved)
+            } else {
+                stringResource(R.string.combo_saved)
+            }
             LaunchedEffect(uiState.saved) {
                 if (!uiState.saved) return@LaunchedEffect
                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -83,6 +87,9 @@ fun RecipeRoute(key: AppNavKey.Components, navigator: AppNavigator) {
                     viewModel.onAction(action)
                     if (action == RecipeAction.EditProduct) {
                         navigator.open(AppNavKey.ProductEdit(key.productId))
+                    }
+                    if (action == RecipeAction.Produce) {
+                        navigator.open(AppNavKey.ProductionForm(key.productId))
                     }
                 },
             )
