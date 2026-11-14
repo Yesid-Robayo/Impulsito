@@ -24,6 +24,8 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepos
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomFxRateRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomHeldSaleRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomLocationRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomLocationStockSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomLowStockAlertRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMediaAssetRepository
@@ -85,6 +87,8 @@ import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.FxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.HumanCheckRecorder
+import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
+import io.github.yesidrobayo.shopledger.domain.port.LocationStockSource
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
@@ -249,6 +253,12 @@ class DataPorts internal constructor(
     val systemRows: SystemRowRepository = RoomSystemRowRepository(database)
 
     val stockLedger: StockLedgerRepository = RoomStockLedgerRepository(database)
+
+    /** Las ubicaciones del stock. Con una sola vigente, la interfaz no las menciona. */
+    val locations: LocationRepository = RoomLocationRepository(database)
+
+    /** El stock de cada producto repartido por ubicación, desde los saldos del libro. Solo lee. */
+    val locationStock: LocationStockSource = RoomLocationStockSource(database)
 
     /** La venta o la compra de cada fila del libro de un producto. Solo lee. */
     val movementDocuments: MovementDocumentSource = RoomMovementDocumentSource(database)

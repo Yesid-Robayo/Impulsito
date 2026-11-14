@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.data.local.stock
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Query
 import kotlinx.coroutines.flow.Flow
@@ -58,4 +59,46 @@ internal interface StockBalanceDao {
         "SELECT COALESCE(SUM(on_hand_milli), 0) FROM stock_balances WHERE product_id = :productId",
     )
     suspend fun sumByProduct(productId: Long): Long
+
+    /**
+     * Cuánto hay de un producto en cada ubicación donde tiene saldo, sumando sus lotes, en el
+     * orden en que se crearon las ubicaciones.
+     */
+    @Query(
+        "SELECT location_id, SUM(on_hand_milli) AS on_hand_milli FROM stock_balances " +
+            "WHERE product_id = :productId GROUP BY location_id ORDER BY location_id",
+    )
+    fun observeProductByLocation(productId: Long): Flow<List<LocationQuantityRow>>
+
+    /**
+     * Cuántos productos vigentes tienen stock en cada ubicación: los que suman más de cero en
+     * ella, sumando sus lotes. Una ubicación sin ninguno no sale.
+     */
+    @Query(
+        "SELECT location_id, COUNT(*) AS products FROM (" +
+            "SELECT b.location_id, b.product_id FROM stock_balances b " +
+            "JOIN products p ON p.id = b.product_id WHERE p.archived_at IS NULL " +
+            "GROUP BY b.location_id, b.product_id HAVING SUM(b.on_hand_milli) > 0" +
+            ") GROUP BY location_id ORDER BY location_id",
+    )
+    fun observeStockedProductCounts(): Flow<List<LocationProductCountRow>>
+
+    /** Si en la ubicación queda algún saldo distinto de cero, de cualquier producto o lote. */
+    @Query(
+        "SELECT EXISTS (SELECT 1 FROM stock_balances " +
+            "WHERE location_id = :locationId AND on_hand_milli <> 0)",
+    )
+    suspend fun hasNonZeroAt(locationId: Long): Boolean
 }
+
+/** Cuánto hay de un producto en una ubicación, tal como lo lee [StockBalanceDao]. */
+internal data class LocationQuantityRow(
+    @ColumnInfo(name = "location_id") val locationId: Long,
+    @ColumnInfo(name = "on_hand_milli") val onHandMilli: Long,
+)
+
+/** Cuántos productos vigentes tienen stock en una ubicación. */
+internal data class LocationProductCountRow(
+    @ColumnInfo(name = "location_id") val locationId: Long,
+    @ColumnInfo(name = "products") val products: Long,
+)

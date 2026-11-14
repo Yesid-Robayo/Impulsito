@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.testing
 
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -44,7 +45,16 @@ internal class FakeStockLedgerRepository(private val database: InMemoryDatabase)
 
     override suspend fun append(movement: NewStockMovement): Long {
         val id = database.nextId(TABLE)
-        database.write { it.copy(movements = it.movements + (id to movement.recordedAs(id))) }
+        // La fila y el saldo de su parte van en la misma escritura, como en la base: sumar una
+        // escritura correría las fallas inyectadas de las pruebas que ya existen.
+        val key = movement.movement.key
+        database.write {
+            val part = (it.stockBalances[key] ?: QuantityMilli.ZERO) + movement.movement.quantity
+            it.copy(
+                movements = it.movements + (id to movement.recordedAs(id)),
+                stockBalances = it.stockBalances + (key to part),
+            )
+        }
         val header = ProductStockHeader(
             onHand = movement.balanceAfter,
             averageCost = movement.averageCostAfter,

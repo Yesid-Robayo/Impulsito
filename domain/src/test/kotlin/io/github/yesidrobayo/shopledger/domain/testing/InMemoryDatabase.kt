@@ -29,7 +29,9 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
+import io.github.yesidrobayo.shopledger.domain.model.stock.Location
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockAlert
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementRecord
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRate
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -103,6 +105,10 @@ internal data class Tables(
     val priceListsUsedBySales: Set<Long> = emptySet(),
     /** Las filas de las recetas de los combos, por id. */
     val productComponents: Map<Long, RecipeComponent> = emptyMap(),
+    /** Las ubicaciones del stock, por id. */
+    val locations: Map<Long, Location> = emptyMap(),
+    /** Los saldos por producto, ubicación y lote, que el libro suma en cada fila. */
+    val stockBalances: Map<StockKey, QuantityMilli> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

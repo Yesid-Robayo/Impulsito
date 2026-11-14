@@ -208,6 +208,10 @@ internal class StockBalanceDaoTest : LedgerDatabaseTest() {
                 "observeByProduct",
                 "findByLocation",
                 "sumByProduct",
+                // Las lecturas del stock por ubicación: solo leen.
+                "observeProductByLocation",
+                "observeStockedProductCounts",
+                "hasNonZeroAt",
             ),
             functionsOf(StockBalanceDao::class.java),
         )
