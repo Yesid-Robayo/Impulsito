@@ -1,12 +1,16 @@
 package io.github.yesidrobayo.shopledger.domain.rule.sale
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleDetail
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
+import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.UnitConversion
+import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 
 /**
  * Lo que trae una venta nueva que corrige otra ya anulada: sus líneas con cantidad, precio y
@@ -31,10 +35,17 @@ object SaleCorrections {
      *
      * - Cada línea trae su precio escrito y su descuento en monto, aunque el producto hoy cueste
      *   otra cosa: se corrige lo que se vendió, no se vende otra vez a precio nuevo.
+     * - Cada línea viene en la unidad en que se vendió, con la cantidad escrita en esa unidad: 3
+     *   cajas de 12 a 12000 la caja vuelven como 3 cajas a 12000, no como 36 unidades a 12000. El
+     *   precio guardado es por una unidad entera de esa unidad, así que cantidad y precio deben ir
+     *   en la misma.
      * - Una línea de un producto hoy archivado queda por fuera y se cuenta, con los extras que
      *   llevaba.
      * - Un producto en dos líneas llega en una sola, con las cantidades y los descuentos sumados y
-     *   el precio de la primera, porque la venta en pantalla lleva una línea por producto.
+     *   el precio de la primera, porque la venta en pantalla lleva una línea por producto. Si las
+     *   dos iban en la misma unidad, llega en esa unidad; si iban en unidades distintas, llega en
+     *   la unidad base, con la cantidad del libro y el precio de la primera llevado a la base con
+     *   su factor. Si ese precio no cabe, la línea toma el precio de hoy.
      * - Los extras llegan bajo la línea de su producto, uno por producto de extra, con el precio del
      *   primero y los descuentos sumados. Su cantidad la pone la venta en pantalla, que la hace
      *   seguir a su línea.
@@ -77,32 +88,58 @@ object SaleCorrections {
         )
     }
 
-    /** Las líneas de cada producto juntas: la primera, y lo que suman las demás. */
+    /**
+     * Las líneas de cada producto juntas: la primera, lo que suman todas en la unidad en que se
+     * vendieron y en la unidad base, y si alguna iba en otra unidad que la primera.
+     */
     private class Merged {
         private val first = LinkedHashMap<Long, NewSaleLine>()
-        private val quantities = HashMap<Long, QuantityMilli>()
+        private val entered = HashMap<Long, QuantityMilli>()
+        private val base = HashMap<Long, QuantityMilli>()
         private val discounts = HashMap<Long, Money>()
+        private val mixed = HashSet<Long>()
 
         fun add(line: NewSaleLine) {
-            first.getOrPut(line.productId) { line }
-            quantities[line.productId] =
-                (quantities[line.productId] ?: QuantityMilli.ZERO) + line.quantity
-            discounts[line.productId] =
-                (discounts[line.productId] ?: Money.ZERO) + line.lineDiscount
+            val product = line.productId
+            val head = first.getOrPut(product) { line }
+            if (head.unitId != line.unitId) mixed += product
+            entered[product] = (entered[product] ?: QuantityMilli.ZERO) + line.enteredQuantity
+            base[product] = (base[product] ?: QuantityMilli.ZERO) + line.quantity
+            discounts[product] = (discounts[product] ?: Money.ZERO) + line.lineDiscount
         }
 
         fun lines(): List<SaleLineRequest> = first.values.map { line ->
-            val discount = discounts.getValue(line.productId)
-            SaleLineRequest(
-                productId = line.productId,
-                quantity = quantities.getValue(line.productId),
+            val product = line.productId
+            val discount = discounts.getValue(product)
+            val request = SaleLineRequest(
+                productId = product,
+                quantity = entered.getValue(product),
                 unitPrice = line.unitPrice,
                 discount = if (discount > Money.ZERO) {
                     LineDiscount.Amount(discount)
                 } else {
                     LineDiscount.None
                 },
+                unitId = line.unitId,
             )
+            if (product in mixed) {
+                // Unidades distintas no se suman: todo pasa a la unidad base, que sí se suma.
+                request.copy(
+                    quantity = base.getValue(product),
+                    unitPrice = basePriceOf(line),
+                    unitId = null,
+                )
+            } else {
+                request
+            }
         }
+
+        /** El precio de [line] por una unidad base, o `null` si pasa del tope de un precio. */
+        private fun basePriceOf(line: NewSaleLine): Money? = mulDivRound(
+            line.unitPrice.minor,
+            UnitConversion.BASE_UNIT_FACTOR_MILLI,
+            line.unitFactor.milli,
+            Limit.UNIT_MONEY,
+        ).valueOrNull()?.let(::Money)
     }
 }

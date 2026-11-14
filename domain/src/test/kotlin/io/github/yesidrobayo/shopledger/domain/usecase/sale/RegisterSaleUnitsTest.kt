@@ -2,16 +2,20 @@ package io.github.yesidrobayo.shopledger.domain.usecase.sale
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCart
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrections
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -234,6 +238,48 @@ class RegisterSaleUnitsTest {
         assertEquals(stored.map { it.quantity }, preview.lines.map { it.baseQuantity })
         // Dos cajas son dos productos, y un producto por peso es uno.
         assertEquals(3L, preview.itemCount)
+    }
+
+    @Test
+    fun aSaleByTheBoxVoidedAndCorrectedChargesTheSameFigures() = runTest {
+        // Caja de 12 con precio propio, vendida a mano a 11000 con 500 de descuento.
+        world.addProduct(product(1, salePrice = 1_000, onHandMilli = 100_000, stockValue = 50_000))
+        world.conversions = listOf(conversion(1, BOX, 12_000, price = 12_000))
+        val first = sell(
+            SaleLineRequest(
+                1,
+                QuantityMilli(3_000),
+                Money(11_000),
+                LineDiscount.Amount(Money(500)),
+                unitId = BOX,
+            ),
+        )
+        val saleId = (first as RegisterSaleResult.Registered).saleId
+        val detail = ObserveSaleDetailUseCase(world.sales, world.payments, world.products)(saleId)
+        val voided = world.voidSale()(saleId, VoidReason.ENTRY_ERROR, null)
+        assertEquals(VoidSaleResult.Voided, voided)
+
+        val correction = SaleCorrections.of(requireNotNull(detail.first()))
+        val second = world.registerSale()(
+            SaleRequest(SaleCart.normalize(correction.lines), SaleWorld.CASH),
+        )
+
+        val newId = (second as RegisterSaleResult.Registered).saleId
+        val lines = world.tables.lines.values.sortedBy { it.id }.map { it.content }
+        val (original, corrected) = lines
+        assertEquals(BOX, corrected.unitId)
+        assertEquals(QuantityMilli(3_000), corrected.enteredQuantity)
+        assertEquals(QuantityMilli(36_000), corrected.quantity)
+        assertEquals(Money(11_000), corrected.unitPrice)
+        assertEquals(Money(32_500), corrected.lineTotal)
+        assertEquals(
+            listOf(original.enteredQuantity, original.quantity, original.lineTotal),
+            listOf(corrected.enteredQuantity, corrected.quantity, corrected.lineTotal),
+        )
+        val sales = world.tables.sales
+        assertEquals(sales.getValue(saleId).content.total, sales.getValue(newId).content.total)
+        // Anular devolvió las 36 unidades, y la corrección las saca otra vez.
+        assertEquals(QuantityMilli(64_000), world.tables.products.getValue(1).onHand)
     }
 
     private companion object {
