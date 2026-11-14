@@ -33,8 +33,8 @@ import kotlinx.coroutines.withContext
  *   la vez.
  */
 internal class WebDavDestination(
-    private val client: WebDavClient,
-    private val folder: WebDavPath,
+    internal val client: WebDavClient,
+    internal val folder: WebDavPath,
     private val usage: UploadUsageMeter = UploadUsageMeter.None,
     private val sleep: suspend (Long) -> Unit = { delay(it) },
     private val jitterMillis: () -> Long = { Random.nextLong(MAX_JITTER_MILLIS + 1) },

@@ -19,18 +19,10 @@ internal class RoomMediaAssetRepository(database: AppDatabase) : MediaAssetRepos
 
     override suspend fun findIdBySha256(sha256: String): Long? = assets.findBySha256(sha256)?.id
 
-    override suspend fun findImage(id: Long): StoredImage? = assets.findById(id)?.toImage()
+    override suspend fun findImage(id: Long): StoredImage? = assets.findById(id)?.toStoredImage()
 
     override fun observeImages(): Flow<Map<Long, StoredImage>> =
-        assets.observeAll().map { rows -> rows.associate { it.id to it.toImage() } }
-
-    private fun MediaAssetEntity.toImage(): StoredImage = StoredImage(
-        sha256 = sha256,
-        mimeType = mimeType,
-        widthPx = widthPx.toStoredInt(),
-        heightPx = heightPx.toStoredInt(),
-        sizeBytes = sizeBytes,
-    )
+        assets.observeAll().map { rows -> rows.associate { it.id to it.toStoredImage() } }
 
     override suspend fun insert(image: StoredImage, kind: MediaKind, createdAt: Instant): Long =
         writes.inTransaction {
@@ -56,3 +48,12 @@ internal class RoomMediaAssetRepository(database: AppDatabase) : MediaAssetRepos
         }
     }
 }
+
+/** La imagen de la fila, sin su id ni sus marcas: lo que hace falta para hallar su archivo. */
+internal fun MediaAssetEntity.toStoredImage(): StoredImage = StoredImage(
+    sha256 = sha256,
+    mimeType = mimeType,
+    widthPx = widthPx.toStoredInt(),
+    heightPx = heightPx.toStoredInt(),
+    sizeBytes = sizeBytes,
+)

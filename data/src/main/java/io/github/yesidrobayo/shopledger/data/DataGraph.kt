@@ -108,6 +108,11 @@ import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
 import io.github.yesidrobayo.shopledger.data.media.MediaImporter
+import io.github.yesidrobayo.shopledger.data.media.MediaOpen
+import io.github.yesidrobayo.shopledger.data.media.MediaSync
+import io.github.yesidrobayo.shopledger.data.media.MediaSyncAccess
+import io.github.yesidrobayo.shopledger.data.media.MediaSyncStore
+import io.github.yesidrobayo.shopledger.data.repository.toStoredImage
 import io.github.yesidrobayo.shopledger.data.rescue.RescueData
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
@@ -699,6 +704,47 @@ class DataGraph internal constructor(
     }
 
     /**
+     * Las fotos en el servicio WebDAV, aparte de las copias y cediéndoles el turno. Crearlo no toca
+     * el disco.
+     */
+    internal val mediaSync: MediaSync by lazy {
+        val webDav = WebDavDestinationOpener(http, webDavCredentials)
+        MediaSync(
+            prepare = ::mediaSyncAccess,
+            open = { link ->
+                val folder = link.folderUrl
+                if (folder == null) {
+                    MediaOpen.Unavailable
+                } else {
+                    webDav.openMedia(link.destinationId, folder)
+                }
+            },
+            store = {
+                withContext(ioContext) { MediaSyncStore(files().noBackupDirectory, ioContext) }
+            },
+            mediaDirectory = { File(context.filesDir, StoredImage.FOLDER) },
+            mutex = backupMutex,
+            log = log,
+        )
+    }
+
+    /** Las precondiciones de `media-sync`: las de la sonda, más las fotos en uso y la red. */
+    private suspend fun mediaSyncAccess(): MediaSyncAccess {
+        val ready =
+            when (val access = headCheckAccess()) {
+                is ProbeAccess.Ready -> access
+                ProbeAccess.Waiting -> return MediaSyncAccess.Waiting
+                ProbeAccess.Nothing -> return MediaSyncAccess.Nothing
+            }
+        val ports = (openForWork() as? DataAccess.Ready)?.ports ?: return MediaSyncAccess.Waiting
+        return MediaSyncAccess.Ready(
+            link = ready.link,
+            photos = ports.mediaAssetRows.findInUse().map { it.toStoredImage() },
+            mediaOnMetered = ports.settings.get().preferences.mediaOnMetered,
+        )
+    }
+
+    /**
      * La comprobación completa de la cabeza, una vez al mes con una red sin datos móviles. Crearla
      * no toca el disco.
      */
@@ -888,6 +934,7 @@ class DataGraph internal constructor(
                 dailyMaintenance,
                 headProbe to headDeepCheck,
                 secondDestinationJob,
+                mediaSync,
             )
         }
     }

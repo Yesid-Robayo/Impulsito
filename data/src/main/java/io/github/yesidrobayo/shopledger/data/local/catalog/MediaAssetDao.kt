@@ -22,6 +22,10 @@ internal interface MediaAssetDao {
     @Query("SELECT * FROM media_assets ORDER BY id")
     fun observeAll(): Flow<List<MediaAssetEntity>>
 
+    /** Las imágenes en uso, sin marca de huérfana, por `id`: las que `media-sync` respalda. */
+    @Query("SELECT * FROM media_assets WHERE orphaned_at IS NULL ORDER BY id")
+    suspend fun findInUse(): List<MediaAssetEntity>
+
     /** La fila de la imagen con ese contenido, si ya se guardó. */
     @Query("SELECT * FROM media_assets WHERE sha256 = :sha256")
     suspend fun findBySha256(sha256: String): MediaAssetEntity?

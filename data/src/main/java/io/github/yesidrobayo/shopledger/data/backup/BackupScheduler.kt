@@ -55,6 +55,7 @@ class BackupScheduler internal constructor(
     private val clock: Clock,
     private val secondDestination: suspend () -> SecondDestinationFacts? = { null },
     private val mainWaitingForNetwork: suspend () -> Boolean = { false },
+    private val mediaOnMetered: suspend () -> Boolean = { false },
     private val probeDue: suspend () -> Boolean = { false },
 ) {
     /**
@@ -162,6 +163,10 @@ class BackupScheduler internal constructor(
             is BackupRun.Verified -> {
                 cancelOtherUpload(workName)
                 if (run.unrestorable || paused()) return
+                // Con WebDAV, las fotos siguen a cada copia comprobada, en su propio trabajo.
+                if (facts()?.connectedKind == BackupDestinationKind.WEBDAV) {
+                    queue.keepMediaSync(mediaOnMetered())
+                }
                 if (facts()?.hasPending == true) {
                     queue.restartDebounce(BackupTimings.BACKUP_DEBOUNCE)
                 }
@@ -203,7 +208,8 @@ class BackupScheduler internal constructor(
      */
     internal suspend fun cancelForDisconnect() {
         // La copia de la carpeta local sigue: no depende del destino conectado.
-        (BackupWorkNames.MAIN + BackupWorkNames.HEAD_PROBE_ONCE).forEach { queue.cancel(it) }
+        (BackupWorkNames.MAIN + BackupWorkNames.HEAD_PROBE_ONCE + BackupWorkNames.MEDIA_SYNC)
+            .forEach { queue.cancel(it) }
     }
 
     /**
@@ -502,6 +508,12 @@ internal interface BackupWorkQueue {
 
     /** Encola la copia del segundo destino, sin red, si no espera ni corre otra. */
     suspend fun keepSecondDestination() {}
+
+    /**
+     * Encola `media-sync` si no espera ni corre otro: con red no medida, o con cualquier red si
+     * [onMetered], porque la persona permite subir fotos con datos móviles.
+     */
+    suspend fun keepMediaSync(onMetered: Boolean) {}
 
     companion object {
         /**

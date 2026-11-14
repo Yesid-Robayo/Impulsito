@@ -69,10 +69,16 @@ internal object BackupWorkNames {
     const val SECOND_DESTINATION = "second-destination"
 
     /**
-     * Los que una restauración detiene antes de leer el destino o la base: la espera, las dos
-     * subidas y la copia de la carpeta local.
+     * Las fotos, aparte de las copias: solo con WebDAV, cediendo siempre a la copia de la base.
+     * Siempre con `KEEP`: lo que no alcanzó sigue en la próxima.
      */
-    val ALL = listOf(DEBOUNCE, UPLOAD_UNMETERED, UPLOAD, SECOND_DESTINATION)
+    const val MEDIA_SYNC = "media-sync"
+
+    /**
+     * Los que una restauración detiene antes de leer el destino o la base: la espera, las dos
+     * subidas, la copia de la carpeta local y las fotos.
+     */
+    val ALL = listOf(DEBOUNCE, UPLOAD_UNMETERED, UPLOAD, SECOND_DESTINATION, MEDIA_SYNC)
 
     /**
      * Los del destino conectado: la espera y las dos subidas. Desconectarlo no toca la copia de la

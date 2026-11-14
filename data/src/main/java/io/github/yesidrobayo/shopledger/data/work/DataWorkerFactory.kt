@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.data.backup.DailyMaintenance
 import io.github.yesidrobayo.shopledger.data.backup.HeadDeepCheck
 import io.github.yesidrobayo.shopledger.data.backup.HeadProbe
 import io.github.yesidrobayo.shopledger.data.backup.SecondDestinationJob
+import io.github.yesidrobayo.shopledger.data.media.MediaSync
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 
 /**
@@ -38,6 +39,7 @@ internal class DataWorkerFactory(
     private val maintenance: DailyMaintenance? = null,
     private val headChecks: Pair<HeadProbe, HeadDeepCheck>? = null,
     private val secondDestination: SecondDestinationJob? = null,
+    private val mediaSync: MediaSync? = null,
 ) : WorkerFactory() {
     override fun createWorker(
         appContext: Context,
@@ -72,6 +74,11 @@ internal class DataWorkerFactory(
         SecondDestinationWorker::class.java.name ->
             secondDestination?.let {
                 SecondDestinationWorker(appContext, workerParameters, it, log)
+            }
+
+        MediaSyncWorker::class.java.name ->
+            mediaSync?.let {
+                MediaSyncWorker(appContext, workerParameters, it, log, { isMetered(appContext) })
             }
 
         else -> null

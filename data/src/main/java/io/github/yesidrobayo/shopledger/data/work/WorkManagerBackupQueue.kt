@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.data.work
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -161,6 +162,22 @@ internal class WorkManagerBackupQueue(private val context: Context) : BackupWork
         enqueue(BackupWorkNames.HEAD_PROBE_ONCE, ExistingWorkPolicy.KEEP, request)
     }
 
+    override suspend fun keepMediaSync(onMetered: Boolean) {
+        val network = if (onMetered) NetworkType.CONNECTED else NetworkType.UNMETERED
+        val request =
+            OneTimeWorkRequestBuilder<MediaSyncWorker>()
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(network).build())
+                // Lo que no alcanzó en una ejecución sigue pronto, desde lo ya verificado.
+                .setBackoffCriteria(
+                    BackoffPolicy.LINEAR,
+                    MEDIA_SYNC_RETRY_SECONDS,
+                    TimeUnit.SECONDS,
+                )
+                .addTag(BackupWorkNames.MEDIA_SYNC)
+                .build()
+        enqueue(BackupWorkNames.MEDIA_SYNC, ExistingWorkPolicy.KEEP, request)
+    }
+
     override suspend fun keepSecondDestination() {
         // Sin restricciones: es local, y debe correr también sin red ni cargador.
         val request =
@@ -233,3 +250,6 @@ internal class WorkManagerBackupQueue(private val context: Context) : BackupWork
         val HEAD_DEEP_CHECK_PERIOD = BackupTimings.HEAD_DEEP_CHECK
     }
 }
+
+/** La espera antes de seguir subiendo fotos tras una ejecución que agotó su tiempo. */
+private const val MEDIA_SYNC_RETRY_SECONDS = 30L

@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.data.destination
 
+import io.github.yesidrobayo.shopledger.data.media.MediaOpen
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import java.io.IOException
 import okhttp3.HttpUrl
@@ -245,6 +246,23 @@ internal class WebDavDestinationOpener(
             WebDavClient(endpoint, WebDavCredential(credential.username, credential.password), http)
         return DestinationOpen.Opened(WebDavDestination(client, folder, usage))
     }
+
+    /**
+     * El destino y su canal de fotos, sobre la misma credencial y la misma carpeta: las fotos van
+     * en su subcarpeta `media/`. Las fotos no cuentan en el uso de datos de las copias.
+     */
+    suspend fun openMedia(destinationId: String, folderUrl: String): MediaOpen =
+        when (val opened = open(destinationId, folderUrl)) {
+            is DestinationOpen.Opened -> {
+                val destination = opened.destination as WebDavDestination
+                val media = WebDavMediaChannel(destination.client, destination.folder)
+                MediaOpen.Opened(destination, media)
+            }
+
+            DestinationOpen.PermissionLost -> MediaOpen.Unavailable
+
+            DestinationOpen.RetryLater -> MediaOpen.RetryLater
+        }
 
     /** La carpeta [url] relativa a la dirección base, o `null` si no está debajo de ella. */
     private fun relativeFolder(endpoint: WebDavEndpoint, url: HttpUrl): WebDavPath? {

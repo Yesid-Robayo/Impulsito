@@ -377,6 +377,7 @@ class BackupSchedulerTest {
                 "cancel backup-upload",
                 // La copia de la carpeta local también lee la base: espera a la restauración.
                 "cancel second-destination",
+                "cancel media-sync",
                 "await none running",
                 "keep unmetered",
                 "keep upload 40m con red",
@@ -508,6 +509,7 @@ class BackupSchedulerTest {
                 "cancel backup-upload-unmetered",
                 "cancel backup-upload",
                 "cancel head-probe-once",
+                "cancel media-sync",
             ),
             queue.calls,
         )

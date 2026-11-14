@@ -17,6 +17,12 @@ internal class InMemoryWebDav(
     val collections = linkedSetOf("/dav/")
     val files = LinkedHashMap<String, ByteArray>()
 
+    /** El espacio libre que informa el servicio. Negativo es sin tope conocido. */
+    @Volatile var quota: String = "-3"
+
+    /** Si el listado de una carpeta incluye sus subcarpetas, como hace un servicio real. */
+    @Volatile var listsFolders: Boolean = false
+
     fun handle(request: RecordedRequest): FakeResponse {
         override(request)?.let { return it }
         val path = request.path
@@ -40,7 +46,14 @@ internal class InMemoryWebDav(
             // Con depth 1, también los archivos de la carpeta, en su primer nivel.
             val children =
                 if (withChildren) {
-                    files.filterKeys { parentOf(it) == path }.map { (href, body) ->
+                    val folders =
+                        if (listsFolders) {
+                            collections.filter { it != path && parentOf(it) == path }
+                                .map { Dav.folder(it) }
+                        } else {
+                            emptyList()
+                        }
+                    folders + files.filterKeys { parentOf(it) == path }.map { (href, body) ->
                         Dav.file(href, body.size.toString())
                     }
                 } else {
@@ -48,7 +61,7 @@ internal class InMemoryWebDav(
                 }
             FakeResponse.xml(
                 207,
-                Dav.multistatus(Dav.folder(path, quota = "-3"), *children.toTypedArray()),
+                Dav.multistatus(Dav.folder(path, quota = quota), *children.toTypedArray()),
             )
         }
 

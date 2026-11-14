@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.data.export.RoomCsvRowSource
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
+import io.github.yesidrobayo.shopledger.data.local.catalog.MediaAssetDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashDenominationRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashSessionRepository
@@ -342,6 +343,9 @@ class DataPorts internal constructor(
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()
+
+    /** Las filas de las imágenes, para que `media-sync` sepa qué fotos están en uso. */
+    internal val mediaAssetRows: MediaAssetDao = database.mediaAssetDao()
 
     /** El registro de auditoría, para lo que la capa de datos anota por su cuenta. */
     internal val auditEvents: AuditEventDao = database.auditEventDao()
