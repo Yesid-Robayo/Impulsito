@@ -32,6 +32,8 @@ import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteConversionResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.GenerateOwnBarcodesResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.OwnBarcodeClash
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
@@ -737,6 +739,94 @@ class ProductEditViewModelTest {
 
         assertEquals(listOf("Lácteos"), operations.categoriesCreated)
         assertEquals(42L, model.uiState.value.form.categoryId)
+    }
+
+    @Test
+    fun `a code read by the scanner starts a new product`() = runTest(dispatcher) {
+        val model = ProductEditViewModel(
+            operations,
+            numbers,
+            null,
+            null,
+            NAMES,
+            prefillBarcode = "P00000042",
+        )
+        advanceUntilIdle()
+
+        assertEquals("P00000042", model.uiState.value.form.barcode)
+    }
+
+    @Test
+    fun `an own code is generated for a saved product without one`() = runTest(dispatcher) {
+        operations.editing = ProductForEdit(product(5L, "Arroz"), emptySet(), costLocked = false)
+        val asked = mutableListOf<Long>()
+        val model =
+            ProductEditViewModel(
+                operations,
+                numbers,
+                5L,
+                null,
+                NAMES,
+                generateBarcode = { id ->
+                    asked += id
+                    val generated = mapOf(id to "P00000005")
+                    GenerateOwnBarcodesResult.Done(generated, emptyList(), emptyList())
+                },
+            )
+        advanceUntilIdle()
+
+        model.onAction(ProductEditAction.GenerateBarcode)
+        advanceUntilIdle()
+
+        assertEquals(listOf(5L), asked)
+        assertEquals("P00000005", model.uiState.value.form.barcode)
+        // Ya quedó guardado: cerrar no pregunta por cambios.
+        assertFalse(model.uiState.value.dirty)
+    }
+
+    @Test
+    fun `a generated code another product has is marked on the field`() = runTest(dispatcher) {
+        operations.editing = ProductForEdit(product(5L, "Arroz"), emptySet(), costLocked = false)
+        val model =
+            ProductEditViewModel(
+                operations,
+                numbers,
+                5L,
+                null,
+                NAMES,
+                generateBarcode = { id ->
+                    GenerateOwnBarcodesResult.Done(
+                        emptyMap(),
+                        listOf(OwnBarcodeClash(id, "P00000005", "Aceite")),
+                        emptyList(),
+                    )
+                },
+            )
+        advanceUntilIdle()
+
+        model.onAction(ProductEditAction.GenerateBarcode)
+        advanceUntilIdle()
+
+        assertEquals("", model.uiState.value.form.barcode)
+        assertEquals(
+            FieldProblem.Duplicate("Aceite"),
+            model.uiState.value.errors[ProductEditField.BARCODE],
+        )
+    }
+
+    @Test
+    fun `a new product or one with a code does not generate`() = runTest(dispatcher) {
+        var calls = 0
+        val fresh =
+            ProductEditViewModel(operations, numbers, null, null, NAMES, generateBarcode = {
+                calls++
+                GenerateOwnBarcodesResult.Done(emptyMap(), emptyList(), emptyList())
+            })
+        advanceUntilIdle()
+        fresh.onAction(ProductEditAction.GenerateBarcode)
+        advanceUntilIdle()
+
+        assertEquals(0, calls)
     }
 
     private class FakeOperations : ProductEditOperations {

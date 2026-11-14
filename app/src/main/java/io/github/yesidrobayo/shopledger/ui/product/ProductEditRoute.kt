@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CreateProductUseC
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.DeleteConversionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.EditProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.FindProductNameClashUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.GenerateOwnBarcodesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ImportProductPhotoUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.LoadProductForEditUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveCatalogChoicesUseCase
@@ -90,6 +91,15 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                         .distinctUntilChanged()
                 },
                 prefillBarcode = key.prefillBarcode,
+                generateBarcode = { id ->
+                    val ports = dependencies.ports
+                    GenerateOwnBarcodesUseCase(
+                        ports.transactions,
+                        ports.products,
+                        ports.productUnits,
+                        dependencies.container.clock,
+                    )(listOf(id))
+                },
             )
         }
     when (model) {

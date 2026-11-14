@@ -54,6 +54,12 @@ sealed interface ProductEditAction {
     /** Quiere leer el código con la cámara: lo resuelve la navegación, que abre el escáner. */
     data object ScanBarcode : ProductEditAction
 
+    /**
+     * Quiere un código propio para un producto guardado que no trae uno: `P` y su id. Se guarda en
+     * el acto, y un choque con otro producto se marca en el campo.
+     */
+    data object GenerateBarcode : ProductEditAction
+
     /** Corrigió a mano lo que costaría reponer una unidad. Vacío es sin dato. */
     data class ReplacementCostChange(val text: String) : ProductEditAction
 

@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceResult
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.GenerateOwnBarcodesResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ProductListPrice
@@ -57,6 +58,7 @@ import kotlinx.coroutines.launch
  * @param productId el producto que se edita, o `null` para crear uno.
  * @param prefillName el nombre con que empieza un producto nuevo, el de una búsqueda sin resultados.
  * @param prefillBarcode el código con que empieza un producto nuevo, el que leyó el escáner.
+ * @param generateBarcode guarda el código propio de un producto, en su propia transacción.
  * @param unitNames los nombres de las unidades en el idioma de la interfaz, para no crear una con el
  *   nombre de otra.
  * @param listPrices los precios del producto en las demás listas, que se editan aquí con la hoja de
@@ -75,6 +77,9 @@ class ProductEditViewModel(
     },
     private val referenceCurrency: () -> Flow<ReferenceCurrency?> = { flowOf(null) },
     prefillBarcode: String? = null,
+    private val generateBarcode: suspend (Long) -> GenerateOwnBarcodesResult = {
+        GenerateOwnBarcodesResult.Done(emptyMap(), emptyList(), listOf(it))
+    },
 ) : ViewModel() {
     private val state =
         MutableStateFlow(
@@ -247,6 +252,8 @@ class ProductEditViewModel(
             ProductEditAction.OpenVariants -> Unit
 
             ProductEditAction.ScanBarcode -> Unit
+
+            ProductEditAction.GenerateBarcode -> generateOwnBarcode()
 
             is ProductEditAction.SalePriceChange ->
                 edit(ProductEditField.SALE_PRICE) { copy(salePrice = action.text) }
@@ -449,6 +456,50 @@ class ProductEditViewModel(
                 costLocked = editing.costLocked,
                 averageCost = catalogCost,
             ).withProfit()
+        }
+    }
+
+    /**
+     * Genera y guarda el código propio del producto que se edita. Queda en el campo como si se
+     * hubiera escrito, sin marcar cambios: ya está guardado. Un choque lo dice en el campo.
+     */
+    private fun generateOwnBarcode() {
+        val id = productId ?: return
+        if (state.value.form.barcode.isNotBlank()) return
+        viewModelScope.launch {
+            when (val result = generateBarcode(id)) {
+                is GenerateOwnBarcodesResult.Done -> {
+                    val code = result.generated[id]
+                    val clash = result.clashes.firstOrNull { it.productId == id }
+                    state.update { current ->
+                        when {
+                            code != null ->
+                                current.copy(
+                                    form = current.form.copy(barcode = code),
+                                    errors = current.errors - ProductEditField.BARCODE,
+                                )
+
+                            clash != null ->
+                                current.copy(
+                                    errors = current.errors +
+                                        (
+                                            ProductEditField.BARCODE to
+                                                FieldProblem.Duplicate(clash.existingName)
+                                            ),
+                                )
+
+                            else -> current
+                        }
+                    }
+                }
+
+                is GenerateOwnBarcodesResult.StorageFailed ->
+                    state.update {
+                        it.copy(
+                            notice = ProductEditNotice.SaveFailed(result.failure.isOutOfSpace),
+                        )
+                    }
+            }
         }
     }
 

@@ -322,6 +322,13 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
         label = stringResource(R.string.product_barcode),
         error = fieldError(uiState, ProductEditField.BARCODE),
     )
+    // Un código propio necesita el id: solo en un producto ya guardado y sin código.
+    if (!uiState.isNew && form.barcode.isBlank()) {
+        InlineTextButton(
+            text = stringResource(R.string.product_generate_barcode),
+            onClick = { onAction(ProductEditAction.GenerateBarcode) },
+        )
+    }
     Text(
         stringResource(R.string.combo_stock_mode_label),
         style = MaterialTheme.typography.bodySmall,
