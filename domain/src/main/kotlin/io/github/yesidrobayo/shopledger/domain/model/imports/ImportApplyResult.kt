@@ -20,5 +20,8 @@ sealed interface ImportApplyResult {
     data object Outdated : ImportApplyResult
 
     /** La base no pudo escribir, por [failure]: nada cambió. */
-    data class StorageFailed(val failure: StorageFailure) : ImportApplyResult
+    data class StorageFailed(val failure: StorageFailure) : ImportApplyResult {
+        /** Si faltó espacio: la pantalla lo dice aparte, porque la persona puede liberarlo. */
+        val outOfSpace: Boolean get() = failure == StorageFailure.DISK_FULL
+    }
 }

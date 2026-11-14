@@ -90,7 +90,9 @@ fun ImportRoute(navigator: AppNavigator) {
                         ?: DecimalSeparator.POINT
                 },
                 tools = ImportTools(
-                    reader = container.data.importFileReader,
+                    reader = { source, separator, preferred, onRows ->
+                        container.data.importFileReader.read(source, separator, preferred, onRows)
+                    },
                     matcher = ImportColumnMatcher(naming),
                     prepare = { sheet, target, columns, decimal ->
                         prepare(sheet, target, columns, decimal)

@@ -12,8 +12,6 @@ import io.github.yesidrobayo.shopledger.domain.model.imports.ImportSheet
 import io.github.yesidrobayo.shopledger.domain.model.imports.ImportTarget
 import io.github.yesidrobayo.shopledger.domain.model.region.DecimalSeparator
 import io.github.yesidrobayo.shopledger.domain.model.settings.CsvSeparator
-import io.github.yesidrobayo.shopledger.domain.port.ImportFileReader
-import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.imports.ColumnMatch
 import io.github.yesidrobayo.shopledger.domain.rule.imports.ImportColumnMatcher
 import io.github.yesidrobayo.shopledger.domain.rule.imports.ImportFileFormat
@@ -35,8 +33,11 @@ import kotlinx.coroutines.withContext
  * pruebas usan dobles.
  */
 class ImportTools(
-    /** Lee el documento elegido, como entrada no confiable. */
-    val reader: ImportFileReader,
+    /**
+     * Lee el documento elegido, como entrada no confiable: el documento, el separador elegido o
+     * `null`, el de los ajustes para los empates y el aviso de filas leídas.
+     */
+    val reader: suspend (String, CsvSeparator?, CsvSeparator, (Int) -> Unit) -> ImportFileRead,
     /** Reconoce las columnas por su encabezado, en cualquier idioma. */
     val matcher: ImportColumnMatcher,
     /** Arma la vista previa con lo que ya existe en el negocio, sin escribir. */
@@ -165,7 +166,7 @@ class ImportViewModel(
         state.update { it.copy(reading = true, rowsRead = 0, fileProblem = null, notice = null) }
         readJob = viewModelScope.launch {
             val result = try {
-                tools.reader.read(chosen, separator, preferredSeparator()) { rows ->
+                tools.reader(chosen, separator, preferredSeparator()) { rows ->
                     state.update { it.copy(rowsRead = rows) }
                 }
             } catch (cancelled: CancellationException) {
@@ -363,7 +364,7 @@ class ImportViewModel(
                 }
 
                 is ImportApplyResult.StorageFailed -> failed(
-                    if (result.failure == StorageFailure.DISK_FULL) {
+                    if (result.outOfSpace) {
                         ImportNotice.APPLY_OUT_OF_SPACE
                     } else {
                         ImportNotice.APPLY_FAILED

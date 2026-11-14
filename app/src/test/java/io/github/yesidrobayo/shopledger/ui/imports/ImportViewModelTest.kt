@@ -14,7 +14,6 @@ import io.github.yesidrobayo.shopledger.domain.model.imports.ImportSheet
 import io.github.yesidrobayo.shopledger.domain.model.imports.ImportTarget
 import io.github.yesidrobayo.shopledger.domain.model.region.DecimalSeparator
 import io.github.yesidrobayo.shopledger.domain.model.settings.CsvSeparator
-import io.github.yesidrobayo.shopledger.domain.port.ImportFileReader
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.imports.ImportColumnMatcher
 import io.github.yesidrobayo.shopledger.domain.rule.imports.ImportNumberFormat
@@ -284,17 +283,10 @@ class ImportViewModelTest {
         preferredSeparator = { CsvSeparator.SEMICOLON },
         defaultDecimal = { DecimalSeparator.COMMA },
         tools = ImportTools(
-            reader = object : ImportFileReader {
-                override suspend fun read(
-                    source: String,
-                    separator: CsvSeparator?,
-                    preferred: CsvSeparator,
-                    onRows: (Int) -> Unit,
-                ): ImportFileRead {
-                    separatorsAsked += separator
-                    onRows(3)
-                    return fileRead
-                }
+            reader = { _, separator, _, onRows ->
+                separatorsAsked += separator
+                onRows(3)
+                fileRead
             },
             matcher = ImportColumnMatcher { key -> headers[key].orEmpty() },
             prepare = { sheet, target, columns, decimal ->
