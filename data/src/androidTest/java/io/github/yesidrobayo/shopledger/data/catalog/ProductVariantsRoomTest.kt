@@ -63,7 +63,7 @@ internal class ProductVariantsRoomTest : CatalogDatabaseTest() {
         val tx = ports.transactions
         create = CreateProductUseCase(
             tx, products, ports.categories, ports.suppliers, ports.units, ports.systemRows,
-            priceHistory, ledger, alerts, calendar, currencyLock, FIXED_CLOCK,
+            priceHistory, ledger, alerts, calendar, currencyLock, FIXED_CLOCK, ports.mediaAssets,
         )
         createVariants = CreateVariantsUseCase(
             tx, products, ports.productVariants, ports.units, ports.systemRows, priceHistory,
