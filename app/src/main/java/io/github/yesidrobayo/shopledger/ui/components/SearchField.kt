@@ -24,6 +24,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -34,11 +40,13 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 
 /**
  * La búsqueda: 56 dp, el papel de tarjeta con borde, y el foco en un borde de 2 dp del color de
- * acción. Filtra en cada letra, sin botón de buscar; quien la usa compara sin mayúsculas ni tildes.
+ * acción. Filtra en cada letra, sin botón de buscar; quien la usa compara sin mayúsculas ni
+ * tildes.
  *
  * Va bajo la barra superior en las listas, o sobre el panel de la venta, al alcance del pulgar: el
  * componente es el mismo. Un lector de códigos externo escribe aquí como un teclado y termina con
- * Enter, que llega a [onSubmit].
+ * Enter, que llega a [onSubmit]: el Enter de un teclado físico o de un lector vale lo mismo que la
+ * tecla de buscar del teclado en pantalla, y nunca escribe un salto de línea.
  *
  * @param onScan abre el escáner, o `null` si ningún producto tiene código: entonces no hay icono.
  */
@@ -68,7 +76,12 @@ fun SearchField(
                     width = if (focused) sizes.focusBorder else sizes.hairline,
                     color = if (focused) scheme.primary else scheme.outline,
                     shape = shape,
-                ),
+                ).onPreviewKeyEvent { event ->
+                    if (!event.isEnter()) return@onPreviewKeyEvent false
+                    // Se toma al bajar la tecla, y la subida se consume para no repetirlo.
+                    if (event.type == KeyEventType.KeyDown) onSubmit()
+                    true
+                },
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = scheme.onSurface),
         singleLine = true,
         cursorBrush = SolidColor(scheme.primary),
@@ -117,6 +130,9 @@ fun SearchField(
         },
     )
 }
+
+/** El Enter de un teclado físico o de un lector de códigos, también el del teclado numérico. */
+private fun KeyEvent.isEnter(): Boolean = key == Key.Enter || key == Key.NumPadEnter
 
 @ThemePreviews
 @Composable

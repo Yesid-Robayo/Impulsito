@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.CatalogCodeLookup
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartChange
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartLineIssue
@@ -191,6 +192,8 @@ class NewSaleViewModel(
             // Lo resuelve la ruta, que abre el escáner.
             NewSaleAction.Scan -> Unit
 
+            NewSaleAction.SubmitSearch -> submitSearch()
+
             is NewSaleAction.Increment -> add(action.productId, SaleCart.STEP)
 
             is NewSaleAction.Decrement -> editLines { SaleCart.decrement(it, action.productId) }
@@ -335,6 +338,19 @@ class NewSaleViewModel(
         }
         overlay.update { it.copy(sheet = null) }
         addProduct(variant.id)
+    }
+
+    /**
+     * Agrega el producto cuyo código quedó en la búsqueda, como lo deja un lector externo al
+     * terminar con Enter, y vacía la búsqueda para el siguiente. Un texto que no es un código no
+     * hace nada: la búsqueda sigue mostrando lo que encontró.
+     */
+    private fun submitSearch() {
+        val catalog = readyCatalog() ?: return
+        val hit =
+            CatalogCodeLookup.find(catalog.products, catalog.conversions, query.value) ?: return
+        query.value = ""
+        addScanned(hit.productId, hit.unitId)
     }
 
     /**

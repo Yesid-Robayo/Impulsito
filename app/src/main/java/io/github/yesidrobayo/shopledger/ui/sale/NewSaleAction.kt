@@ -23,6 +23,12 @@ sealed interface NewSaleAction {
     /** Abrir el escáner: lo resuelve la navegación. */
     data object Scan : NewSaleAction
 
+    /**
+     * Enter en la búsqueda, como termina un lector externo de códigos: si lo escrito es el código
+     * de un producto que se vende, se agrega y la búsqueda se vacía.
+     */
+    data object SubmitSearch : NewSaleAction
+
     data class Increment(val productId: Long) : NewSaleAction
 
     data class Decrement(val productId: Long) : NewSaleAction

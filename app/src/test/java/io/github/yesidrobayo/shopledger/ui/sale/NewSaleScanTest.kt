@@ -40,8 +40,9 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Lo que trae el escáner a la venta nueva: el producto se agrega como al tocarlo, y el código de una
- * presentación pone la línea nueva en esa unidad. Productos, códigos y montos inventados.
+ * Lo que trae el escáner a la venta nueva: el producto se agrega como al tocarlo, y el código de
+ * una presentación pone la línea nueva en esa unidad. Un lector externo escribe el código en la
+ * búsqueda y termina con Enter, y llega igual. Productos, códigos y montos inventados.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewSaleScanTest {
@@ -184,5 +185,40 @@ class NewSaleScanTest {
         advanceUntilIdle()
 
         assertEquals(false, model.state.canScan)
+    }
+
+    @Test
+    fun `a code typed by an external reader and Enter adds the product`() = runTest(dispatcher) {
+        val model = viewModel()
+
+        model.act(this, NewSaleAction.QueryChange("2900000123458"))
+        model.act(this, NewSaleAction.SubmitSearch)
+
+        assertEquals(QuantityMilli(1_000L), model.state.cart.lines.single().quantity)
+        assertEquals("", model.state.query)
+    }
+
+    @Test
+    fun `a box code from the reader sells a box`() = runTest(dispatcher) {
+        val model = viewModel()
+
+        model.act(this, NewSaleAction.QueryChange("2900000999992"))
+        model.act(this, NewSaleAction.SubmitSearch)
+
+        assertEquals(box, model.state.cart.lines.single().unit)
+    }
+
+    @Test
+    fun `Enter on a name or an unknown code keeps the search`() = runTest(dispatcher) {
+        val model = viewModel()
+
+        model.act(this, NewSaleAction.QueryChange("Aceite"))
+        model.act(this, NewSaleAction.SubmitSearch)
+        assertEquals("Aceite", model.state.query)
+        model.act(this, NewSaleAction.QueryChange("P00000042"))
+        model.act(this, NewSaleAction.SubmitSearch)
+
+        assertEquals("P00000042", model.state.query)
+        assertEquals(emptyList<Any>(), model.state.cart.lines)
     }
 }
