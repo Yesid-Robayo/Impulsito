@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewPriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChange
 import kotlin.uuid.Uuid
@@ -39,6 +40,13 @@ interface PriceHistoryRepository {
      * lo primero que emite [observeUndoableBatch].
      */
     suspend fun findUndoableBatch(): Uuid? = observeUndoableBatch().first()
+
+    /**
+     * Los productos con al menos una fila de precio en la lista [priceListId] con fecha de negocio
+     * [from] o posterior. Es lo que imprime `Solo lo que cambió de precio`: un producto nuevo
+     * también cuenta, porque su precio inicial es una fila.
+     */
+    suspend fun findProductsRepricedSince(priceListId: Long, from: BusinessDate): Set<Long>
 
     /** Agrega la fila y devuelve su id. */
     suspend fun append(change: NewPriceChange): Long

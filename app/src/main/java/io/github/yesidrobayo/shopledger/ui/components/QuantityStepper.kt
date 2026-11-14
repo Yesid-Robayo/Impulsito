@@ -72,6 +72,9 @@ private const val DISABLED_CONTAINER_ALPHA = 0.12f
  * @param canIncrement falso en el tope de cantidad de una línea.
  * @param onValueClick abre la hoja de cantidad; con unidades fraccionarias es la única forma de
  *   cambiarla.
+ * @param valueText el valor que se ve, cuando no es una cantidad con unidad, como las copias de
+ *   una etiqueta.
+ * @param valueDescription lo que TalkBack lee del valor, si dice más que [valueText].
  */
 @Composable
 fun QuantityStepper(
@@ -84,11 +87,14 @@ fun QuantityStepper(
     removesLine: Boolean = false,
     canIncrement: Boolean = true,
     onValueClick: (() -> Unit)? = null,
+    valueText: String? = null,
+    valueDescription: String? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val app = AppTheme.colors
     val stepsApply = !unit.allowsFraction
-    val value = quantityText(quantity, unit)
+    val value = valueText ?: quantityText(quantity, unit)
+    val spoken = valueDescription ?: value
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -140,7 +146,7 @@ fun QuantityStepper(
                         } else {
                             Modifier
                         },
-                    ).semantics { stateDescription = value },
+                    ).semantics { stateDescription = spoken },
         )
         if (stepsApply) {
             StepButton(

@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.data.repository
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.catalog.PriceHistoryEntity
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceAdjustment
 import io.github.yesidrobayo.shopledger.domain.model.catalog.BulkPriceMode
@@ -44,6 +45,11 @@ internal class RoomPriceHistoryRepository(database: AppDatabase) : PriceHistoryR
         .distinctUntilChanged()
 
     override suspend fun findUndoableBatch(): Uuid? = history.findUndoableBatch()?.let(::storedUuid)
+
+    override suspend fun findProductsRepricedSince(
+        priceListId: Long,
+        from: BusinessDate,
+    ): Set<Long> = history.findProductsRepricedSince(priceListId, from.toString()).toSet()
 
     override suspend fun append(change: NewPriceChange): Long = writes.inTransaction {
         val adjustment = change.bulkRule?.adjustment

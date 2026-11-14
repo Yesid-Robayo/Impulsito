@@ -99,12 +99,16 @@ fun ProductListScreen(
                 onNavigate = {},
                 navigationLabel = null,
             ) {
-                // Con productos, el menú ofrece actualizar sus precios de una vez.
+                // Con productos, el menú ofrece actualizar sus precios de una vez e imprimir sus
+                // etiquetas.
                 if (uiState.content is ProductListContent.Products) {
                     OverflowMenu(
                         listOf(
                             OverflowAction(stringResource(R.string.bulk_title), {
                                 onAction(ProductListAction.UpdatePrices)
+                            }),
+                            OverflowAction(stringResource(R.string.label_title), {
+                                onAction(ProductListAction.OpenLabels)
                             }),
                         ),
                     )

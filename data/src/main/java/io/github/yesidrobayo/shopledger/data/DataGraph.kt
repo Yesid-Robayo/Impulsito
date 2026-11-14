@@ -117,6 +117,7 @@ import io.github.yesidrobayo.shopledger.data.media.MediaSync
 import io.github.yesidrobayo.shopledger.data.media.MediaSyncAccess
 import io.github.yesidrobayo.shopledger.data.media.MediaSyncStop
 import io.github.yesidrobayo.shopledger.data.media.MediaSyncStore
+import io.github.yesidrobayo.shopledger.data.print.BluetoothPrinters
 import io.github.yesidrobayo.shopledger.data.repository.toStoredImage
 import io.github.yesidrobayo.shopledger.data.rescue.RescueData
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
@@ -255,6 +256,12 @@ class DataGraph internal constructor(
             ioContext = ioContext,
         )
     }
+
+    /**
+     * Las impresoras térmicas que la persona ya emparejó por Bluetooth. Crearlas no toca el
+     * Bluetooth: se lee al listar o al imprimir, con el permiso ya concedido.
+     */
+    val printers: BluetoothPrinters by lazy { BluetoothPrinters(context, log, ioContext) }
 
     /**
      * El código de recuperación sellado y el estado del cifrado, en `no_backup/recovery/`. Una sola

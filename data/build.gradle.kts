@@ -74,6 +74,8 @@ dependencies {
     // Las pruebas en la JVM comparan el catálogo del esquema con sus fuentes y lo generan, y prueban
     // lo del destino de copias que no necesita el analizador de XML del sistema.
     testImplementation(libs.junit)
+    // La impresora falsa y el lector de ESC/POS, los mismos que usan las pruebas de :app.
+    testImplementation(testFixtures(project(":domain")))
 
     // La base se prueba en el dispositivo, con el mismo driver que la app.
     androidTestImplementation(libs.androidx.room3.testing)

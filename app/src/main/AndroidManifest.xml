@@ -30,6 +30,19 @@
         android:name="android.hardware.camera.autofocus"
         android:required="false" />
 
+    <!-- Imprimir etiquetas en una térmica ya emparejada en los ajustes del teléfono. Desde Android 12 se pide al tocar
+         Imprimir, nunca al abrir la app; antes basta BLUETOOTH, que se concede al instalar y no muestra diálogo. La app nunca
+         busca ni empareja: por eso no pide búsqueda, administración ni ubicación. Sin el permiso queda la hoja PDF. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+
+    <!-- Opcional: la app se instala en un teléfono sin Bluetooth, y ahí imprime solo por la hoja PDF. -->
+    <uses-feature
+        android:name="android.hardware.bluetooth"
+        android:required="false" />
+
     <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS.
          Datos frágiles: desde Android 10, al desinstalar el sistema ofrece conservar los datos del negocio. Es una oferta del
          sistema, que no todos los fabricantes muestran: ningún texto de la app la promete. -->

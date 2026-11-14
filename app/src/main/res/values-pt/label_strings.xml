@@ -1,4 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="product_generate_barcode">Gerar código</string>
+    <!-- Etiquetas imprimibles: qué productos, plantilla, tamaño, avisos y TalkBack. -->
+    <string name="label_which_title">Quais produtos</string>
+    <string name="label_scope_choose">Escolher</string>
+    <string name="label_scope_category">Categoria</string>
+    <string name="label_scope_changed">Só o que mudou de preço</string>
+    <string name="label_since">Desde</string>
+    <string name="label_template_title">Modelo</string>
+    <string name="label_template_name_price">Nome e preço</string>
+    <string name="label_template_name_price_code">Nome, preço e código</string>
+    <string name="label_template_code_only">Só código</string>
+    <string name="label_size_title">Tamanho</string>
+    <string name="label_size_58">58 mm</string>
+    <string name="label_size_80">80 mm</string>
+    <string name="label_size_sheet">Folha PDF</string>
+    <plurals name="label_no_code_notice">
+        <item quantity="one">%1$d produto sem código</item>
+        <item quantity="many">%1$d de produtos sem código</item>
+        <item quantity="other">%1$d produtos sem código</item>
+    </plurals>
+    <string name="label_generate_codes_action">Gerar códigos</string>
+    <plurals name="label_print_count_action">
+        <item quantity="one">Imprimir %1$d etiqueta</item>
+        <item quantity="many">Imprimir %1$d de etiquetas</item>
+        <item quantity="other">Imprimir %1$d etiquetas</item>
+    </plurals>
+    <string name="label_create_pdf_action">Criar PDF</string>
+    <string name="label_empty_title">Escolher os produtos</string>
+    <string name="label_no_changes_since">Sem mudanças de preço desde %1$s</string>
+    <string name="label_no_printer_notice">Sem impressora configurada</string>
+    <string name="label_configure_printer_action">Configurar impressora</string>
+    <string name="label_generate_confirm_title">Gerar códigos?</string>
+    <plurals name="label_generate_confirm_body">
+        <item quantity="one">%1$d código novo será criado. Ele é único e fica salvo no produto.</item>
+        <item quantity="many">%1$d de códigos novos serão criados. Cada um é único e fica salvo no produto.</item>
+        <item quantity="other">%1$d códigos novos serão criados. Cada um é único e fica salvo no produto.</item>
+    </plurals>
+    <string name="label_code_too_long">Este código não cabe de forma legível nessa largura.</string>
+    <string name="label_use_wider_action">Usar o tamanho maior</string>
+    <plurals name="label_excluded_no_price">
+        <item quantity="one">%1$d produto sem preço fica de fora</item>
+        <item quantity="many">%1$d de produtos sem preço ficam de fora</item>
+        <item quantity="other">%1$d produtos sem preço ficam de fora</item>
+    </plurals>
+    <string name="label_error_print">Não foi possível imprimir. Nada foi perdido.</string>
+    <plurals name="a11y_label_copies">
+        <item quantity="one">%1$d cópia da etiqueta de %2$s</item>
+        <item quantity="many">%1$d de cópias da etiqueta de %2$s</item>
+        <item quantity="other">%1$d cópias da etiqueta de %2$s</item>
+    </plurals>
+    <string name="a11y_label_preview">Prévia da etiqueta de %1$s</string>
 </resources>

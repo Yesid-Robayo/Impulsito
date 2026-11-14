@@ -59,6 +59,7 @@ import io.github.yesidrobayo.shopledger.ui.expense.ExpensesRoute
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
 import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.label.LabelsRoute
 import io.github.yesidrobayo.shopledger.ui.localcopies.LocalCopiesRoute
 import io.github.yesidrobayo.shopledger.ui.money.MoneyAccountsRoute
 import io.github.yesidrobayo.shopledger.ui.onboarding.OnboardingRoute
@@ -358,6 +359,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.PaymentMethodEdit -> PaymentMethodFormRoute(key, navigator)
 
         is AppNavKey.Scanner -> ScannerRoute(key, navigator)
+
+        is AppNavKey.Labels -> LabelsRoute(key, navigator)
 
         // Ajustes: solo configuración, en grupos.
         AppNavKey.Settings ->

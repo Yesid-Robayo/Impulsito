@@ -151,7 +151,7 @@ class ProductListViewModel(
                 filters.update { ProductListFilters(sort = it.sort) }
 
             is ProductListAction.OpenProduct, is ProductListAction.CreateProduct,
-            ProductListAction.UpdatePrices,
+            ProductListAction.UpdatePrices, ProductListAction.OpenLabels,
             -> Unit
         }
     }

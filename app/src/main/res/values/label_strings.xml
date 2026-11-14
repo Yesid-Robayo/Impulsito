@@ -1,4 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="product_generate_barcode">Generate code</string>
+    <!-- Etiquetas imprimibles: qué productos, plantilla, tamaño, avisos y TalkBack. -->
+    <string name="label_which_title">Which products</string>
+    <string name="label_scope_choose">Choose</string>
+    <string name="label_scope_category">Category</string>
+    <string name="label_scope_changed">Only price changes</string>
+    <string name="label_since">Since</string>
+    <string name="label_template_title">Template</string>
+    <string name="label_template_name_price">Name and price</string>
+    <string name="label_template_name_price_code">Name, price and code</string>
+    <string name="label_template_code_only">Code only</string>
+    <string name="label_size_title">Size</string>
+    <string name="label_size_58">58 mm</string>
+    <string name="label_size_80">80 mm</string>
+    <string name="label_size_sheet">PDF sheet</string>
+    <plurals name="label_no_code_notice">
+        <item quantity="one">%1$d product without a code</item>
+        <item quantity="other">%1$d products without a code</item>
+    </plurals>
+    <string name="label_generate_codes_action">Generate codes</string>
+    <plurals name="label_print_count_action">
+        <item quantity="one">Print %1$d label</item>
+        <item quantity="other">Print %1$d labels</item>
+    </plurals>
+    <string name="label_create_pdf_action">Create PDF</string>
+    <string name="label_empty_title">Choose the products</string>
+    <string name="label_no_changes_since">No price changes since %1$s</string>
+    <string name="label_no_printer_notice">No printer set up</string>
+    <string name="label_configure_printer_action">Set up printer</string>
+    <string name="label_generate_confirm_title">Generate codes?</string>
+    <plurals name="label_generate_confirm_body">
+        <item quantity="one">%1$d new code is created. It is unique and saved on its product.</item>
+        <item quantity="other">%1$d new codes are created. Each is unique and saved on its product.</item>
+    </plurals>
+    <string name="label_code_too_long">This code does not fit legibly at that width.</string>
+    <string name="label_use_wider_action">Use the larger size</string>
+    <plurals name="label_excluded_no_price">
+        <item quantity="one">%1$d product without a price is left out</item>
+        <item quantity="other">%1$d products without a price are left out</item>
+    </plurals>
+    <string name="label_error_print">Could not print. Nothing was lost.</string>
+    <plurals name="a11y_label_copies">
+        <item quantity="one">%1$d copy of the label for %2$s</item>
+        <item quantity="other">%1$d copies of the label for %2$s</item>
+    </plurals>
+    <string name="a11y_label_preview">Preview of the label for %1$s</string>
 </resources>

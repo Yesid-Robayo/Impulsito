@@ -191,6 +191,27 @@ internal class PriceHistoryDaoTest : CatalogDatabaseTest() {
     }
 
     @Test
+    fun repricedSinceReadsEachProductOnceFromThatDayOnInOneList() = runBlocking {
+        val tea = products.insert(product("Té"))
+        val cocoa = products.insert(product("Cacao"))
+        val otherList = insertPriceList("wholesale")
+        history.insert(manualChange(productId, priceListId, 1_000, 1_100).on("2026-11-09"))
+        history.insert(manualChange(tea, priceListId, 800, 900).on("2026-11-10"))
+        history.insert(manualChange(tea, priceListId, 900, 950).on("2026-11-12"))
+        // Otra lista, el mismo día: no cuenta para la lista que se pide.
+        history.insert(manualChange(cocoa, otherList, 500, 600).on("2026-11-12"))
+
+        assertEquals(listOf(tea), history.findProductsRepricedSince(priceListId, "2026-11-10"))
+        assertEquals(
+            setOf(productId, tea),
+            history.findProductsRepricedSince(priceListId, "2026-11-01").toSet(),
+        )
+        val none = history.findProductsRepricedSince(priceListId, "2026-11-13")
+        assertEquals(emptyList<Long>(), none)
+        assertEquals(listOf(cocoa), history.findProductsRepricedSince(otherList, "2026-11-12"))
+    }
+
+    @Test
     fun theDaoOnlyAppendsAndReads() {
         // Una función nueva que edite o borre el historial rompe esta prueba a propósito: cada
         // precio pasado explica una venta pasada, y no se reescribe.
@@ -208,11 +229,14 @@ internal class PriceHistoryDaoTest : CatalogDatabaseTest() {
                 "findByBatch",
                 "observeUndoableBatch",
                 "findUndoableBatch",
+                "findProductsRepricedSince",
                 "insert",
             ),
             functions,
         )
     }
+
+    private fun PriceHistoryEntity.on(date: String): PriceHistoryEntity = copy(businessDate = date)
 
     private suspend fun rowsOf(product: Long): List<PriceHistoryEntity> =
         history.observeByProduct(product).first()

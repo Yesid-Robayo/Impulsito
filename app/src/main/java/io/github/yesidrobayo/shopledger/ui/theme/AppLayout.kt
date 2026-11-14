@@ -197,6 +197,9 @@ class AppSizes internal constructor() {
     /** Alto de la ventana del escáner: la forma de un código de barras. */
     val scannerWindowHeight: Dp = 160.dp
 
+    /** El ancho máximo de `LabelPreview`: más ancha, ya no se parece a una etiqueta en la mano. */
+    val labelPreviewMaxWidth: Dp = 360.dp
+
     /** Ancho mínimo al que se achica la ventana del escáner con la letra grande. */
     val scannerWindowMinWidth: Dp = 160.dp
 

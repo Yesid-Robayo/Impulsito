@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.testing
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
@@ -243,6 +244,14 @@ internal class FakePriceHistoryRepository(private val database: InMemoryDatabase
             ?.takeIf { it.source == PriceChangeSource.BULK }
             ?.batchId
     }
+
+    override suspend fun findProductsRepricedSince(
+        priceListId: Long,
+        from: BusinessDate,
+    ): Set<Long> = database.read().priceChanges.values
+        .filter { it.content.priceListId == priceListId && it.content.businessDate >= from }
+        .map { it.content.productId }
+        .toSet()
 
     override suspend fun append(change: NewPriceChange): Long {
         val id = database.nextId(TABLE)

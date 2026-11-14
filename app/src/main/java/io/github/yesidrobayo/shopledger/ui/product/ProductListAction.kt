@@ -20,6 +20,9 @@ sealed interface ProductListAction {
     /** Abre la actualización masiva de precios, desde el menú. */
     data object UpdatePrices : ProductListAction
 
+    /** Abre `Etiquetas imprimibles`, desde el menú. */
+    data object OpenLabels : ProductListAction
+
     /** Abre la hoja `Filtrar y ordenar`. */
     data object OpenFilters : ProductListAction
 

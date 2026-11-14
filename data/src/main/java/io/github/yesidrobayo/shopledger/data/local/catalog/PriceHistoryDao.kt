@@ -37,6 +37,16 @@ internal interface PriceHistoryDao {
     @Query(UNDOABLE_BATCH)
     suspend fun findUndoableBatch(): String?
 
+    /**
+     * Los productos con alguna fila en la lista [priceListId] con fecha de negocio [from] o
+     * posterior. La fecha se guarda como `AAAA-MM-DD`, así que comparar el texto ordena por día.
+     */
+    @Query(
+        "SELECT DISTINCT product_id FROM product_price_history " +
+            "WHERE price_list_id = :priceListId AND business_date >= :from",
+    )
+    suspend fun findProductsRepricedSince(priceListId: Long, from: String): List<Long>
+
     /** Agrega la fila y devuelve su id. Solo se llama dentro de la transacción del caso de uso. */
     @Insert
     suspend fun insert(change: PriceHistoryEntity): Long

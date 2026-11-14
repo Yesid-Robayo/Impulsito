@@ -12,6 +12,8 @@
     <string name="hub_first_use_body">As ferramentas passam para Em uso com o primeiro registro.</string>
     <string name="hub_search_empty">Sem resultados para \"%1$s\"</string>
     <string name="hub_help_row">Ajuda</string>
+    <string name="hub_tool_labels">Etiquetas para impressão</string>
+    <string name="hub_tool_labels_desc">Etiquetas com código e preço</string>
     <string name="hub_tool_price_lists">Tabelas de preços</string>
     <string name="hub_tool_price_lists_desc">Preços diferentes por tipo de cliente</string>
     <string name="hub_tool_units">Unidades e conversões</string>

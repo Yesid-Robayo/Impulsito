@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Impresoras emparejadas por Bluetooth: elegir una y los avisos al imprimir. -->
+    <string name="printer_section_bluetooth">Bluetooth</string>
+    <string name="printer_open_bluetooth_action">Abrir configurações de Bluetooth</string>
+    <string name="printer_choose_paired_title">Escolher impressora pareada</string>
+    <string name="printer_paired_empty">Não há impressoras pareadas. Primeiro é preciso parear nas configurações de Bluetooth do telefone.</string>
+    <string name="printer_error_permission">Sem esta permissão não é possível imprimir por Bluetooth.</string>
+    <string name="printer_error_bluetooth_off">O Bluetooth está desligado.</string>
+    <string name="printer_error_no_bluetooth">Este telefone não tem Bluetooth.</string>
+    <string name="printer_error_connect">Não foi possível conectar a %1$s.</string>
+    <string name="printer_error_unpaired">%1$s não está mais pareada.</string>
+    <string name="printer_status_printing">Imprimindo…</string>
+    <string name="printer_sent">Enviado a %1$s</string>
+</resources>
