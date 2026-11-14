@@ -42,10 +42,15 @@ data class SaleDraft(
 
 /**
  * Guarda la venta en edición en el estado guardado, con tipos que caben en un `Bundle`: las líneas
- * van como seis números por línea. Solo números y lo que la persona escribió en la nota.
+ * van como ocho números por línea, con su unidad y el enlace de un extra a su línea principal. Solo
+ * números y lo que la persona escribió en la nota.
+ *
+ * Antes las líneas iban en seis números, sin unidad ni enlace, y una línea vendida por caja llegaba
+ * al cobro como una unidad suelta. La clave cambió con la forma: una venta guardada con la forma
+ * vieja no se lee, en vez de leerse mal.
  */
 internal object SaleDraftStore {
-    private const val LINES = "sale.lines"
+    private const val LINES = "sale.lineValues"
     private const val METHOD = "sale.method"
     private const val DATE = "sale.date"
     private const val NOTE = "sale.note"
@@ -56,10 +61,15 @@ internal object SaleDraftStore {
     private const val CUSTOMER = "sale.customer"
     private const val PRICE_LIST = "sale.priceList"
 
-    private const val FIELDS = 6
+    private const val FIELDS = 8
+    private const val UNIT = 6
+    private const val PARENT = 7
     private const val NO_DISCOUNT = 0L
     private const val AMOUNT = 1L
     private const val PERCENT = 2L
+
+    /** Una línea en su unidad base, o una principal: los ids y las posiciones nunca son negativos. */
+    private const val NONE = -1L
 
     fun read(state: SavedStateHandle): SaleDraft = SaleDraft(
         lines = state.get<LongArray>(LINES)?.let(::decode).orEmpty(),
@@ -102,6 +112,8 @@ internal object SaleDraftStore {
             }
             values[base + 4] = kind
             values[base + 5] = value
+            values[base + UNIT] = line.unitId ?: NONE
+            values[base + PARENT] = line.parentIndex?.toLong() ?: NONE
         }
         return values
     }
@@ -120,6 +132,8 @@ internal object SaleDraftStore {
                     PERCENT -> LineDiscount.Percent(BasisPoints(values[base + 5]))
                     else -> LineDiscount.None
                 },
+                unitId = values[base + UNIT].takeIf { it != NONE },
+                parentIndex = values[base + PARENT].takeIf { it in 0L until index }?.toInt(),
             )
         }
     }

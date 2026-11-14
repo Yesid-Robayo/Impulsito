@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductModifierRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -55,6 +56,8 @@ import kotlinx.coroutines.flow.map
  *   el precio de la lista elegida. Sin ellos, solo existe el precio de venta.
  * - Cuántos alcanzan de cada combo, de [recipes], con el stock de hoy de sus componentes. Sin
  *   ellas, un combo no dice cuántos alcanzan.
+ * - Los extras de cada producto, de [modifiers]: la hoja de la línea los ofrece. Sin ellos, ningún
+ *   producto ofrece extras.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObserveSaleCatalogUseCase(
@@ -73,6 +76,7 @@ class ObserveSaleCatalogUseCase(
     private val priceLists: PriceListRepository? = null,
     private val productPrices: ProductPriceRepository? = null,
     private val recipes: ProductComponentRepository? = null,
+    private val modifiers: ProductModifierRepository? = null,
 ) {
     operator fun invoke(): Flow<SaleCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = result as? BusinessCalendarResult.Ready
@@ -130,7 +134,14 @@ class ObserveSaleCatalogUseCase(
             .combine(recipesOf()) { sale, stored ->
                 sale.copy(comboAvailability = combos(sale, stored))
             }
+            .combine(modifiersOf()) { sale, extras -> sale.copy(modifiers = extras) }
     }
+
+    /** Los extras de cada producto, en su orden, o ninguno si la venta no los lee. */
+    private fun modifiersOf(): Flow<Map<Long, List<Long>>> = modifiers?.observeAll()?.map { rows ->
+        rows.sortedWith(compareBy({ it.sortOrder }, { it.id }))
+            .groupBy({ it.productId }, { it.modifierProductId })
+    } ?: flowOf(emptyMap())
 
     /** Las recetas guardadas, o ninguna si la venta no las lee. */
     private fun recipesOf(): Flow<List<RecipeComponent>> =

@@ -176,4 +176,10 @@ enum class LineRejection {
      * nada que descontar ni que guardar. Se vende más del combo, o se ajusta la receta.
      */
     COMPONENT_ROUNDS_TO_ZERO,
+
+    /**
+     * La línea es un extra cuya línea principal no va antes en la venta, o es a su vez un extra:
+     * solo hay un nivel, y la principal se guarda primero para darle su id.
+     */
+    INVALID_EXTRA,
 }

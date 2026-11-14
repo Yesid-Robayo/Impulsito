@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.LinePriceList
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.SalePriceList
+import io.github.yesidrobayo.shopledger.domain.rule.sale.ExtraLines
 import io.github.yesidrobayo.shopledger.domain.rule.sale.HeldSaleRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleLineRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
@@ -49,6 +50,8 @@ data class HoldSaleRequest(
  *   la descartó en el intermedio, se guarda como una nueva: lo escrito nunca se pierde.
  * - **La lista de precios viaja con la espera.** Un descuento en porcentaje se convierte con el
  *   precio de esa lista, el mismo que se veía en el carrito.
+ * - **Los extras viajan con su línea.** Cada uno guarda el enlace a su línea principal, que va
+ *   antes; uno que no apunta a una principal anterior se rechaza como cualquier línea inválida.
  */
 class HoldSaleUseCase(
     private val transactions: TransactionRunner,
@@ -72,6 +75,10 @@ class HoldSaleUseCase(
         }
         val label = HeldSaleRules.labelOf(request.label)
         if (!HeldSaleRules.fits(label)) return TxResult.Rollback(HoldSaleResult.LabelTooLong)
+        // Un extra sin su principal antes no tendría a quién apuntar en la espera.
+        ExtraLines.firstInvalid(request.lines.map { it.parentIndex })?.let {
+            return TxResult.Rollback(HoldSaleResult.LineRejected(it))
+        }
         val byId = products.findByIds(request.lines.map { it.productId }.toSet())
             .associateBy { it.id }
         val saleList = salePriceListOf(request)
@@ -164,6 +171,7 @@ class HoldSaleUseCase(
             quantity = line.quantity,
             unitPrice = written,
             discount = discount,
+            parentIndex = line.parentIndex,
         )
     }
 }

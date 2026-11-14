@@ -118,25 +118,73 @@ data class CartPricing(
  * Las reglas de la venta en edición, antes de confirmar: agregar, sumar y quitar, y las mismas
  * cuentas que hará la venta al registrarse, para mostrar el total sin escribir nada.
  *
- * Hay una línea por producto, en la unidad que elija la persona: agregar otra vez el mismo producto
- * suma a su línea, en su unidad. Las cuentas de dinero son las de [SaleLineRules], así
+ * Hay una línea principal por producto, en la unidad que elija la persona: agregar otra vez el mismo
+ * producto suma a su línea, en su unidad. Las cuentas de dinero son las de [SaleLineRules], así
  * que el total que se ve es el que se guarda. Nada aquí bloquea por stock: vender de más solo se
  * avisa.
+ *
+ * **Extras.** Cada extra es una línea más, justo después de su principal y enlazada a ella con
+ * [SaleLineRequest.parentIndex]. Un extra acompaña a cada unidad de su línea: lleva la misma
+ * cantidad que la principal si es entera, y uno solo si la principal va por peso o medida con
+ * decimales. Sigue a su línea cuando su cantidad cambia, y se va con ella. Un mismo producto puede
+ * ser extra de varias líneas, y venderse además en su propia línea. Todo lo que aquí busca por
+ * producto mira solo las líneas principales.
  */
 object SaleCart {
     /** Lo que suma o resta un toque en una unidad que se cuenta entera. */
     val STEP: QuantityMilli = QuantityMilli.ofUnits(1L)
 
-    /** La cantidad de [productId] en la venta, o cero si no está. */
+    /** La cantidad de la línea principal de [productId] en la venta, o cero si no está. */
     fun quantityOf(lines: List<SaleLineRequest>, productId: Long): QuantityMilli =
-        lines.firstOrNull { it.productId == productId }?.quantity ?: QuantityMilli.ZERO
+        mainOf(lines, productId)?.quantity ?: QuantityMilli.ZERO
+
+    /** La línea principal de [productId], o `null` si no está: un extra no cuenta. */
+    fun mainOf(lines: List<SaleLineRequest>, productId: Long): SaleLineRequest? =
+        lines.firstOrNull { it.parentIndex == null && it.productId == productId }
+
+    /** Los productos que van de extra en la línea principal de [productId], en su orden. */
+    fun extrasOf(lines: List<SaleLineRequest>, productId: Long): List<Long> =
+        groupsOf(lines).firstOrNull { it.main.productId == productId }
+            ?.extras.orEmpty()
+            .map { it.productId }
+
+    /**
+     * Cuánto lleva un extra de una línea principal con [main]: lo mismo si es entera, porque cada
+     * unidad lleva el suyo, y uno solo si lleva decimales, como 1,250 kg.
+     */
+    fun extraQuantityFor(main: QuantityMilli): QuantityMilli =
+        if (main.milli % STEP.milli == 0L) main else STEP
+
+    /**
+     * Pone o quita [extraProductId] como extra de la línea principal de [productId]. Una línea que
+     * no está no cambia nada. Poner uno en una venta llena no se puede.
+     */
+    fun toggleExtra(
+        lines: List<SaleLineRequest>,
+        productId: Long,
+        extraProductId: Long,
+    ): CartChange {
+        val groups = groupsOf(lines)
+        val group = groups.firstOrNull { it.main.productId == productId }
+            ?: return CartChange.Changed(lines)
+        val present = group.extras.any { it.productId == extraProductId }
+        if (!present && lines.size >= Limit.DOCUMENT_LINES.max) return CartChange.LinesFull
+        val extras = if (present) {
+            group.extras.filterNot { it.productId == extraProductId }
+        } else {
+            group.extras + SaleLineRequest(extraProductId, group.main.quantity)
+        }
+        return CartChange.Changed(
+            flatten(groups.map { if (it === group) Group(it.main, extras) else it }),
+        )
+    }
 
     /**
      * Agrega [quantity] de [productId]: suma a su línea si ya está, o agrega una línea al final si
      * todavía cabe otra.
      */
     fun add(lines: List<SaleLineRequest>, productId: Long, quantity: QuantityMilli): CartChange {
-        val index = lines.indexOfFirst { it.productId == productId }
+        val index = lines.indexOfFirst { it.parentIndex == null && it.productId == productId }
         if (index < 0) {
             if (lines.size >= Limit.DOCUMENT_LINES.max) return CartChange.LinesFull
             if (!validQuantity(quantity)) return CartChange.InvalidQuantity
@@ -172,15 +220,68 @@ object SaleCart {
     fun canIncrement(quantity: QuantityMilli): Boolean =
         Limit.LINE_QUANTITY_MILLI.allows(quantity.milli + STEP.milli)
 
-    fun remove(lines: List<SaleLineRequest>, productId: Long): List<SaleLineRequest> =
-        lines.filterNot { it.productId == productId }
+    /**
+     * [lines] con la forma de la venta en pantalla: cada extra justo después de su principal y con
+     * la cantidad que le toca. Un extra con un enlace que no vale se quita.
+     */
+    fun normalize(lines: List<SaleLineRequest>): List<SaleLineRequest> = flatten(groupsOf(lines))
 
-    /** Reemplaza la línea de [productId] por lo que devuelva [change]. */
+    /** Quita la línea principal de [productId], con sus extras. */
+    fun remove(lines: List<SaleLineRequest>, productId: Long): List<SaleLineRequest> =
+        flatten(groupsOf(lines).filterNot { it.main.productId == productId })
+
+    /**
+     * Reemplaza la línea principal de [productId] por lo que devuelva [change]. Sus extras siguen
+     * su nueva cantidad.
+     */
     fun update(
         lines: List<SaleLineRequest>,
         productId: Long,
         change: (SaleLineRequest) -> SaleLineRequest,
-    ): List<SaleLineRequest> = lines.map { if (it.productId == productId) change(it) else it }
+    ): List<SaleLineRequest> = flatten(
+        groupsOf(lines).map {
+            if (it.main.productId == productId) Group(change(it.main), it.extras) else it
+        },
+    )
+
+    /** Una línea principal y sus extras, en el orden de la venta. */
+    private class Group(val main: SaleLineRequest, val extras: List<SaleLineRequest>)
+
+    /**
+     * Las líneas agrupadas por su principal. Un extra con un enlace que no vale no se puede vender,
+     * así que no entra en ningún grupo.
+     */
+    private fun groupsOf(lines: List<SaleLineRequest>): List<Group> {
+        val mains = ArrayList<SaleLineRequest>()
+        val extras = ArrayList<MutableList<SaleLineRequest>>()
+        val groupAt = HashMap<Int, Int>()
+        ExtraLines.retain(lines, { it.parentIndex }, { true }).forEachIndexed { index, kept ->
+            val parent = kept.parentIndex
+            if (parent == null) {
+                groupAt[index] = mains.size
+                mains.add(kept.line)
+                extras.add(ArrayList())
+            } else {
+                extras[groupAt.getValue(parent)].add(kept.line)
+            }
+        }
+        return mains.mapIndexed { index, main -> Group(main, extras[index]) }
+    }
+
+    /**
+     * Las líneas de [groups] una tras otra: cada principal seguida de sus extras, enlazados a su
+     * posición y con la cantidad que les toca.
+     */
+    private fun flatten(groups: List<Group>): List<SaleLineRequest> {
+        val lines = ArrayList<SaleLineRequest>()
+        for (group in groups) {
+            val mainIndex = lines.size
+            lines += group.main.copy(parentIndex = null)
+            val quantity = extraQuantityFor(group.main.quantity)
+            group.extras.forEach { lines += it.copy(parentIndex = mainIndex, quantity = quantity) }
+        }
+        return lines
+    }
 
     /**
      * Cuánto quedaría de [product] si se vende [inSale], solo si queda en negativo: es el aviso de
@@ -216,8 +317,9 @@ object SaleCart {
      * Cuenta los productos como los ve la persona: cada unidad entera de una línea que se cuenta, y
      * una sola vez la línea de un producto por peso o medida, que es un producto aunque lleve 1,250
      * kg, también si se vende en gramos. [fractionUnits] son las unidades que admiten decimales. Una
-     * línea en otra unidad que se cuenta cuenta en esa unidad: 2 cajas son 2 productos. [conversions] son, por producto, sus unidades de venta
-     * por id de unidad, como las da el catálogo.
+     * línea en otra unidad que se cuenta cuenta en esa unidad: 2 cajas son 2 productos. Un extra no
+     * se cuenta: va con su producto, aunque cobre como cualquier línea. [conversions] son, por
+     * producto, sus unidades de venta por id de unidad, como las da el catálogo.
      */
     fun preview(
         lines: List<SaleLineRequest>,
@@ -233,10 +335,10 @@ object SaleCart {
             val byMeasure = product == null ||
                 product.details.baseUnitId in fractionUnits ||
                 line.unitId in fractionUnits
-            itemCount += if (byMeasure) {
-                1L
-            } else {
-                line.quantity.milli / STEP.milli
+            itemCount += when {
+                line.parentIndex != null -> 0L
+                byMeasure -> 1L
+                else -> line.quantity.milli / STEP.milli
             }
             baseOf(line, product, pricing, conversions[line.productId].orEmpty())
         }

@@ -38,6 +38,8 @@ import kotlinx.datetime.DayOfWeek
  * - [comboAvailability]: cuántos combos enteros alcanzan con el stock de sus componentes, por id
  *   del combo; `null` si ningún componente lleva stock. Un combo no tiene stock propio, así que la
  *   tarjeta muestra esto, y avisa si la venta pide más, sin bloquearla.
+ * - [modifiers]: los extras que se ofrecen al vender cada producto, por id del producto y en su
+ *   orden. Pueden nombrar un producto archivado: la venta solo ofrece los vigentes.
  */
 data class SaleCatalog(
     val products: List<Product>,
@@ -57,6 +59,7 @@ data class SaleCatalog(
     val priceLists: List<PriceList> = emptyList(),
     val ownPrices: Map<Long, Map<Long, Money>> = emptyMap(),
     val comboAvailability: Map<Long, Long?> = emptyMap(),
+    val modifiers: Map<Long, List<Long>> = emptyMap(),
 ) {
     /** Las listas que se ofrecen al vender: las vigentes, la inicial primero. */
     val activePriceLists: List<PriceList> get() = priceLists.filterNot { it.isArchived }

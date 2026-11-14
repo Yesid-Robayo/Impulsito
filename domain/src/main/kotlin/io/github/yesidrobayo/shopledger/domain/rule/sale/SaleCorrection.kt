@@ -31,48 +31,78 @@ object SaleCorrections {
      *
      * - Cada línea trae su precio escrito y su descuento en monto, aunque el producto hoy cueste
      *   otra cosa: se corrige lo que se vendió, no se vende otra vez a precio nuevo.
-     * - Una línea de un producto hoy archivado queda por fuera y se cuenta.
-     * - Los extras de una línea todavía no se venden en la pantalla, así que no se traen.
+     * - Una línea de un producto hoy archivado queda por fuera y se cuenta, con los extras que
+     *   llevaba.
      * - Un producto en dos líneas llega en una sola, con las cantidades y los descuentos sumados y
      *   el precio de la primera, porque la venta en pantalla lleva una línea por producto.
+     * - Los extras llegan bajo la línea de su producto, uno por producto de extra, con el precio del
+     *   primero y los descuentos sumados. Su cantidad la pone la venta en pantalla, que la hace
+     *   seguir a su línea.
      * - El método es el del primer pago; con varios pagos, la venta nueva se cobra con ese.
      */
     fun of(detail: SaleDetail): SaleCorrection {
-        val main = detail.lines.map { it.content }.filter { it.parentLineId == null }
-        val kept = main.filter { it.productId !in detail.archivedProductIds }
-        // Por producto, la primera línea y lo que suman las demás, en el orden de la venta.
-        val first = LinkedHashMap<Long, NewSaleLine>()
-        val quantities = HashMap<Long, QuantityMilli>()
-        val discounts = HashMap<Long, Money>()
-        for (line in kept) {
+        val archived = detail.archivedProductIds
+        val productOfLine = detail.lines.associate { it.id to it.content.productId }
+        val mains = Merged()
+        // Por producto principal, sus extras por producto, en el orden de la venta.
+        val extras = LinkedHashMap<Long, Merged>()
+        var leftOut = 0
+        for (line in detail.lines) {
+            val content = line.content
+            val parentProduct = content.parentLineId?.let { productOfLine[it] }
+            when {
+                content.productId in archived ||
+                    (parentProduct != null && parentProduct in archived) -> leftOut++
+
+                parentProduct == null -> mains.add(content)
+
+                else -> extras.getOrPut(parentProduct) { Merged() }.add(content)
+            }
+        }
+        val lines = ArrayList<SaleLineRequest>()
+        for (main in mains.lines()) {
+            val mainIndex = lines.size
+            lines += main
+            for (extra in extras[main.productId]?.lines().orEmpty()) {
+                lines += extra.copy(parentIndex = mainIndex)
+            }
+        }
+        val content = detail.sale.content
+        return SaleCorrection(
+            lines = lines,
+            paymentMethodId = detail.payments.firstOrNull()?.let { it.content.paymentMethodId },
+            date = content.businessDate,
+            note = content.note,
+            leftOut = leftOut,
+        )
+    }
+
+    /** Las líneas de cada producto juntas: la primera, y lo que suman las demás. */
+    private class Merged {
+        private val first = LinkedHashMap<Long, NewSaleLine>()
+        private val quantities = HashMap<Long, QuantityMilli>()
+        private val discounts = HashMap<Long, Money>()
+
+        fun add(line: NewSaleLine) {
             first.getOrPut(line.productId) { line }
             quantities[line.productId] =
                 (quantities[line.productId] ?: QuantityMilli.ZERO) + line.quantity
             discounts[line.productId] =
                 (discounts[line.productId] ?: Money.ZERO) + line.lineDiscount
         }
-        val content = detail.sale.content
-        return SaleCorrection(
-            lines = first.values.map { line ->
-                val discount = discounts.getValue(line.productId)
-                SaleLineRequest(
-                    productId = line.productId,
-                    quantity = quantities.getValue(line.productId),
-                    unitPrice = line.unitPrice,
-                    discount =
-                        if (discount >
-                            Money.ZERO
-                        ) {
-                            LineDiscount.Amount(discount)
-                        } else {
-                            LineDiscount.None
-                        },
-                )
-            },
-            paymentMethodId = detail.payments.firstOrNull()?.let { it.content.paymentMethodId },
-            date = content.businessDate,
-            note = content.note,
-            leftOut = main.size - kept.size,
-        )
+
+        fun lines(): List<SaleLineRequest> = first.values.map { line ->
+            val discount = discounts.getValue(line.productId)
+            SaleLineRequest(
+                productId = line.productId,
+                quantity = quantities.getValue(line.productId),
+                unitPrice = line.unitPrice,
+                discount = if (discount > Money.ZERO) {
+                    LineDiscount.Amount(discount)
+                } else {
+                    LineDiscount.None
+                },
+            )
+        }
     }
 }

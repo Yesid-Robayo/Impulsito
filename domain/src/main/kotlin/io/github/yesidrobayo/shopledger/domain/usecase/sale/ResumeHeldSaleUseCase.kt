@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
+import io.github.yesidrobayo.shopledger.domain.rule.sale.ExtraLines
 
 /**
  * Una venta en espera lista para seguir en la venta nueva.
@@ -42,7 +43,8 @@ sealed interface ResumeHeldSaleResult {
  * - **Precios.** Un precio escrito a mano en la línea se respeta. Las demás líneas toman el precio
  *   vigente, y se cuenta cuántas cambiaron desde que se guardó, para decirlo al retomar.
  * - **Productos.** Un producto archivado no se puede vender, así que su línea queda fuera y se
- *   cuenta. Uno eliminado ya se llevó su línea en cascada.
+ *   cuenta, con los extras que llevaba. Uno eliminado ya se llevó su línea en cascada, y la base se
+ *   llevó con ella sus extras.
  * - **Lista de precios.** Sigue la de la espera. Si se archivó desde entonces, la venta sigue con la
  *   inicial, y cada línea sin precio escrito cuenta como un precio que cambió.
  */
@@ -69,15 +71,14 @@ class ResumeHeldSaleUseCase(
             .associateBy { it.id }
         val listId = held.priceListId?.takeIf { priceLists?.findById(it)?.isArchived == false }
         val listDropped = held.priceListId != null && listId == null
-        val lines = ArrayList<SaleLineRequest>(held.lines.size)
-        var removed = 0
+        // Un extra cuya línea principal queda fuera se va con ella, y cuenta como quitado.
+        val kept = ExtraLines.retain(held.lines, { it.parentIndex }) { line ->
+            byId[line.productId]?.isArchived == false
+        }
+        val lines = ArrayList<SaleLineRequest>(kept.size)
         var changed = 0
-        for (line in held.lines) {
-            val product = byId[line.productId]
-            if (product == null || product.isArchived) {
-                removed++
-                continue
-            }
+        for ((line, parentIndex) in kept) {
+            val product = byId.getValue(line.productId)
             if (line.unitPrice == null && (listDropped || priceChangedSince(product.id, held))) {
                 changed++
             }
@@ -92,8 +93,10 @@ class ResumeHeldSaleUseCase(
                 },
                 // La unidad base va sin unidad, como la escribe la venta.
                 unitId = line.unitId.takeIf { it != product.details.baseUnitId },
+                parentIndex = parentIndex,
             )
         }
+        val removed = held.lines.size - kept.size
         return ResumedSale(held.id, held.label, lines, removed, changed, listId)
     }
 

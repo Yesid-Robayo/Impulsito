@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSaleLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewHeldSale
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
+import io.github.yesidrobayo.shopledger.domain.rule.sale.ExtraLines
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -90,9 +91,14 @@ internal class RoomHeldSaleRepository(private val database: AppDatabase) : HeldS
 
     override suspend fun delete(id: Long): Boolean = writes.inTransaction { drafts.delete(id) == 1 }
 
+    /**
+     * Escribe las líneas en orden: una principal va antes que sus extras, así que su id ya existe
+     * cuando el extra la nombra.
+     */
     private suspend fun insertLines(draftId: Long, sale: NewHeldSale) {
+        val ids = ArrayList<Long>(sale.lines.size)
         for (line in sale.lines) {
-            drafts.insertLine(
+            ids += drafts.insertLine(
                 SaleDraftLineEntity(
                     draftId = draftId,
                     productId = line.productId,
@@ -100,27 +106,38 @@ internal class RoomHeldSaleRepository(private val database: AppDatabase) : HeldS
                     enteredQuantityMilli = line.quantity.milli,
                     unitPrice = line.unitPrice?.minor,
                     lineDiscount = line.discount.minor,
-                    parentLineId = null,
+                    parentLineId = line.parentIndex?.let { ids[it] },
                 ),
             )
         }
     }
 
-    private fun heldSaleOf(head: SaleDraftEntity, lines: List<SaleDraftLineEntity>): HeldSale =
-        HeldSale(
+    /**
+     * La espera con sus líneas en orden de `id`, que es el orden en que se armó: cada extra apunta
+     * a la posición de su principal, que va antes. Un extra cuya principal no está en la espera no
+     * tendría a quién seguir: se omite.
+     */
+    private fun heldSaleOf(head: SaleDraftEntity, lines: List<SaleDraftLineEntity>): HeldSale {
+        val positions = lines.withIndex().associate { (index, line) -> line.id to index }
+        val held = lines.map { line ->
+            HeldSaleLine(
+                productId = line.productId,
+                unitId = line.unitId,
+                quantity = QuantityMilli(line.enteredQuantityMilli),
+                unitPrice = line.unitPrice?.let(::Money),
+                discount = Money(line.lineDiscount),
+                // Una posición que no es anterior la descarta abajo, con su extra.
+                parentIndex = line.parentLineId?.let { positions[it] ?: lines.size },
+            )
+        }
+        return HeldSale(
             id = head.id,
             label = head.label,
-            lines = lines.map { line ->
-                HeldSaleLine(
-                    productId = line.productId,
-                    unitId = line.unitId,
-                    quantity = QuantityMilli(line.enteredQuantityMilli),
-                    unitPrice = line.unitPrice?.let(::Money),
-                    discount = Money(line.lineDiscount),
-                )
-            },
+            lines = ExtraLines.retain(held, { it.parentIndex }, { true })
+                .map { it.line.copy(parentIndex = it.parentIndex) },
             createdAt = head.createdAt.toInstant(),
             updatedAt = head.updatedAt.toInstant(),
             priceListId = head.priceListId,
         )
+    }
 }

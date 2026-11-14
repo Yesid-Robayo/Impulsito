@@ -126,12 +126,20 @@ internal fun SaleSheets(
 internal fun CartContent(cart: SaleCartState, onAction: (NewSaleAction) -> Unit) {
     val spacing = AppTheme.spacing
     Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
-        cart.lines.forEach { line ->
-            CartLineRow(line, onAction)
-            HorizontalDivider(
-                thickness = AppTheme.sizes.hairline,
-                color = MaterialTheme.colorScheme.outlineVariant,
-            )
+        cart.lines.forEachIndexed { index, line ->
+            val parent = line.parentProductId
+            if (parent == null) {
+                CartLineRow(line, onAction)
+            } else {
+                CartExtraRow(line, parent, onAction)
+            }
+            // Los extras van pegados a su línea: el separador cierra el grupo.
+            if (cart.lines.getOrNull(index + 1)?.parentProductId == null) {
+                HorizontalDivider(
+                    thickness = AppTheme.sizes.hairline,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+            }
         }
         if (cart.isEmpty) return@Column
         cart.tax?.let { tax ->
@@ -289,6 +297,56 @@ private fun HoldSheet(sheet: SaleSheet.Hold, onAction: (NewSaleAction) -> Unit) 
     }
 }
 
+/**
+ * Un extra, sangrado bajo la línea de su producto: `+ nombre`, `cantidad × precio` y su total, sin
+ * selector, porque sigue la cantidad de su línea. Tocarlo abre la línea de su producto, donde se
+ * quita.
+ */
+@Composable
+private fun CartExtraRow(
+    line: CartLine,
+    parentProductId: Long,
+    onAction: (NewSaleAction) -> Unit,
+) {
+    val spacing = AppTheme.spacing
+    val unit = unitLabelOf(line.unit)
+    val price = rememberMoneyDisplay(line.unitPrice, LocalAppFormats.current.money)
+    // La fila tocable junta sus textos en un solo foco: TalkBack lee el extra con su monto.
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button) { onAction(NewSaleAction.OpenLine(parentProductId)) }
+            .padding(start = spacing.s24, top = spacing.s4, bottom = spacing.s4),
+        verticalArrangement = Arrangement.spacedBy(spacing.s4),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.s12)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
+                Text(
+                    stringResource(R.string.sale_extra_line, line.name),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = formatAnnotated(
+                        stringResource(R.string.format_line_quantity_price),
+                        quantityText(line.quantity, unit),
+                        price.text,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            MoneyText(line.total, MoneySize.ROW)
+        }
+        lineProblem(line.issue)?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
 /** Una línea: nombre, `cantidad × precio`, su total y el selector de cantidad. Tocarla la abre. */
 @Composable
 private fun CartLineRow(line: CartLine, onAction: (NewSaleAction) -> Unit) {
@@ -359,7 +417,9 @@ private fun lineProblem(issue: CartLineIssue?): String? = when (issue) {
  */
 @Composable
 private fun LineSheet(editor: LineEditor, cart: SaleCartState, onAction: (NewSaleAction) -> Unit) {
-    val line = cart.lines.firstOrNull { it.productId == editor.productId }
+    val line = cart.lines.firstOrNull {
+        it.parentProductId == null && it.productId == editor.productId
+    }
     val unit = unitLabelOf(editor.unit)
     val focus = remember { FocusRequester() }
     LaunchedEffect(editor.productId, editor.focusPrice) {
@@ -440,6 +500,20 @@ private fun LineSheet(editor: LineEditor, cart: SaleCartState, onAction: (NewSal
                 label = stringResource(R.string.sale_line_discount),
                 error = fieldError(editor.discountError),
                 imeAction = ImeAction.Done,
+            )
+        }
+        // Los extras se ofrecen sin frenar: la línea ya vale sin ellos.
+        if (editor.extras.isNotEmpty()) {
+            Text(
+                stringResource(R.string.sale_extras_label),
+                style = MaterialTheme.typography.labelLarge,
+            )
+            CompactChipRow(
+                options = editor.extras,
+                label = { it.name },
+                selected = editor.extras.filter { it.selected }.toSet(),
+                onToggle = { onAction(NewSaleAction.ToggleExtra(it.productId)) },
+                multiple = true,
             )
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

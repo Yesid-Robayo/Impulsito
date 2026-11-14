@@ -16,6 +16,10 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  * Agregar dos veces el mismo producto lo suma la pantalla en una sola línea, en la unidad que tenga
  * esa línea; el caso de uso guarda las líneas tal como llegan, porque un producto sí puede repetirse
  * en otra unidad o como extra.
+ *
+ * [parentIndex] hace de la línea un extra: es la posición, contada desde cero, de su línea principal
+ * en la misma venta, que va antes y no es a su vez un extra. Un extra es una línea normal: paga
+ * impuesto, tiene costo y mueve stock como cualquier otra. `null` es una línea principal.
  */
 data class SaleLineRequest(
     val productId: Long,
@@ -23,4 +27,5 @@ data class SaleLineRequest(
     val unitPrice: Money? = null,
     val discount: LineDiscount = LineDiscount.None,
     val unitId: Long? = null,
+    val parentIndex: Int? = null,
 )

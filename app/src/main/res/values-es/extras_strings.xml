@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Español: los extras de un producto, que se ofrecen en su línea de venta. -->
+    <string name="sale_extras_label">Extras</string>
+    <string name="sale_extra_line">+ %1$s</string>
+    <string name="product_extras_row">Extras</string>
+    <string name="extras_title">Extras</string>
+    <string name="extras_add_action">Agregar extra</string>
+    <string name="extras_empty_title">Ofrecer extras al vender</string>
+    <string name="extras_empty_body">Una porción adicional, una salsa o un empaque. Se eligen en la línea de la venta.</string>
+    <string name="extras_error_save">No se pudo guardar. Los extras siguen como estaban.</string>
+</resources>

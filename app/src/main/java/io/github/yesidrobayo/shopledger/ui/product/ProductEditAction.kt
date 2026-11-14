@@ -35,6 +35,9 @@ sealed interface ProductEditAction {
     /** Quiere ver la receta del combo que edita: lo resuelve la navegación. */
     data object OpenRecipe : ProductEditAction
 
+    /** Quiere elegir los extras que se ofrecen al venderlo: lo resuelve la navegación. */
+    data object OpenExtras : ProductEditAction
+
     /** Quiere agregar una conversión de compra o venta a este producto. */
     data object NewConversion : ProductEditAction
 

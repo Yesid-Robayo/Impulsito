@@ -220,6 +220,8 @@ class NewSaleViewModel(
 
             is NewSaleAction.LineUnitChange -> lineUnit(action.unitId)
 
+            is NewSaleAction.ToggleExtra -> toggleExtra(action.productId)
+
             is NewSaleAction.RemoveLine -> removeLine(action.productId)
 
             is NewSaleAction.QuantityTextChange -> quantityText(action.text)
@@ -435,11 +437,13 @@ class NewSaleViewModel(
     // ------------------------------------------------------------------ hoja de la línea
 
     private fun openLine(productId: Long, focusPrice: Boolean) {
-        val line = draft.value.lines.firstOrNull { it.productId == productId } ?: return
+        val line = SaleCart.mainOf(draft.value.lines, productId) ?: return
         val product = readyCatalog()?.products?.firstOrNull { it.id == productId }
         // El precio de la unidad de la línea, como lo calculan las cuentas de la venta.
         val price = line.unitPrice
-            ?: currentPreview()?.lines?.firstOrNull { it.request.productId == productId }?.unitPrice
+            ?: currentPreview()?.lines?.firstOrNull {
+                it.request.parentIndex == null && it.request.productId == productId
+            }?.unitPrice
             ?: product?.salePrice
             ?: Money.ZERO
         val (mode, discountText) = when (val discount = line.discount) {
@@ -482,6 +486,28 @@ class NewSaleViewModel(
             )
         }
         openLine(product.id, focusPrice = false)
+    }
+
+    /**
+     * Pone o quita un extra en la línea abierta. Agregar el producto ya era válido: elegir extras
+     * es opcional y nunca frena la venta.
+     */
+    private fun toggleExtra(extraProductId: Long) {
+        val sheet = overlay.value.sheet as? SaleSheet.Line ?: return
+        when (
+            val change = SaleCart.toggleExtra(
+                draft.value.lines,
+                sheet.editor.productId,
+                extraProductId,
+            )
+        ) {
+            is CartChange.Changed -> editLines { change.lines }
+
+            CartChange.LinesFull -> overlay.update { it.copy(notice = SaleNotice.LINES_FULL) }
+
+            // Un extra toma la cantidad de su línea, que ya es válida.
+            CartChange.InvalidQuantity -> Unit
+        }
     }
 
     private fun lineQuantity(text: String) = editLine { editor ->
@@ -653,10 +679,13 @@ class NewSaleViewModel(
         if (current.lines.isEmpty()) return
         val total = preview.total
         if (total == null || current.note.length > MAX_NOTE_LENGTH) {
-            // Lo que impide confirmar ya está marcado; una línea con problema se abre para verlo.
+            // Lo que impide confirmar ya está marcado; una línea con problema se abre para verlo, y
+            // un extra abre la de su producto, donde se quita.
             preview.lines.firstOrNull { it.issue != null }?.let { line ->
                 if (line.issue != CartLineIssue.PRODUCT_UNAVAILABLE) {
-                    openLine(line.request.productId, focusPrice = false)
+                    val opened = line.request.parentIndex?.let { current.lines[it] }
+                        ?: line.request
+                    openLine(opened.productId, focusPrice = false)
                 }
             }
             return
@@ -964,7 +993,8 @@ class NewSaleViewModel(
                     current.copy(prefilled = true)
                 } else {
                     current.copy(
-                        lines = correction.lines,
+                        // Un extra traído sigue a su línea, como cualquier extra de la venta.
+                        lines = SaleCart.normalize(correction.lines),
                         methodId = correction.paymentMethodId,
                         date = correction.date.takeIf { it != today },
                         note = correction.note.orEmpty(),
@@ -1051,7 +1081,7 @@ class NewSaleViewModel(
             query = typed,
             cart = cart,
             payment = payment,
-            sheet = shown.sheet?.let { withLineIssue(it, cart) },
+            sheet = shown.sheet?.let { withLineExtras(withLineIssue(it, cart), load, current) },
             dialog = shown.dialog,
             status = shown.status,
             notice = shown.notice,
@@ -1073,9 +1103,33 @@ class NewSaleViewModel(
     private fun withLineIssue(sheet: SaleSheet, cart: SaleCartState): SaleSheet {
         if (sheet !is SaleSheet.Line) return sheet
         val editor = sheet.editor
-        val issue = cart.lines.firstOrNull { it.productId == editor.productId }?.issue
+        val issue = cart.lines
+            .firstOrNull { it.parentProductId == null && it.productId == editor.productId }
+            ?.issue
         if (issue != CartLineIssue.INVALID_DISCOUNT || editor.discountError != null) return sheet
         return SaleSheet.Line(editor.copy(discountError = SaleFieldError.DISCOUNT_OVER_LINE))
+    }
+
+    /**
+     * Los extras que ofrece el producto de la línea abierta, con los que ya lleva. Se arman con
+     * cada cambio, así que un chip tocado se ve marcado al momento. Solo los vigentes se ofrecen.
+     */
+    private fun withLineExtras(
+        sheet: SaleSheet,
+        load: CatalogLoad,
+        current: SaleDraft,
+    ): SaleSheet {
+        if (sheet !is SaleSheet.Line) return sheet
+        val catalog = (load as? CatalogLoad.Ready)?.catalog ?: return sheet
+        val productId = sheet.editor.productId
+        val offered = catalog.modifiers[productId].orEmpty()
+        if (offered.isEmpty()) return sheet
+        val byId = catalog.products.associateBy { it.id }
+        val chosen = SaleCart.extrasOf(current.lines, productId).toSet()
+        val extras = offered.mapNotNull { id ->
+            byId[id]?.let { ExtraChoice(id, it.details.name, id in chosen) }
+        }
+        return SaleSheet.Line(sheet.editor.copy(extras = extras))
     }
 
     private fun selectedMethodId(catalog: SaleCatalog, current: SaleDraft): Long? {
@@ -1119,7 +1173,7 @@ class NewSaleViewModel(
 
     /** La unidad en que va [product] en la venta: la de su línea, o su unidad base. */
     private fun lineUnitOf(catalog: SaleCatalog, product: Product): MeasureUnit? {
-        val line = draft.value.lines.firstOrNull { it.productId == product.id }
+        val line = SaleCart.mainOf(draft.value.lines, product.id)
         return catalog.units[line?.unitId ?: product.details.baseUnitId]
     }
 

@@ -63,6 +63,8 @@ internal object SaleContentBuilder {
         val lines = preview.lines.map { line ->
             val request = line.request
             val product = byId[request.productId]
+            // Un extra se muestra bajo la línea de su producto, que siempre va antes.
+            val parent = request.parentIndex?.let { preview.lines[it].request.productId }
             CartLine(
                 productId = request.productId,
                 // Un producto eliminado mientras estaba en la venta no tiene nombre que mostrar.
@@ -75,6 +77,7 @@ internal object SaleContentBuilder {
                 issue = line.issue,
                 removesLine = SaleCart.decrementRemoves(request.quantity),
                 canIncrement = SaleCart.canIncrement(request.quantity),
+                parentProductId = parent,
             )
         }
         return SaleCartState(
@@ -108,15 +111,19 @@ internal object SaleContentBuilder {
         priceList: SalePriceList?,
     ): SaleTile {
         val quantity = SaleCart.quantityOf(lines, product.id)
-        val request = lines.firstOrNull { it.productId == product.id }
+        val request = SaleCart.mainOf(lines, product.id)
         val line = if (request == null || quantity == QuantityMilli.ZERO) {
             null
         } else {
             // El aviso de stock va en la unidad base, la del libro: 2 cajas de 24 son 48.
             val unit = SaleUnits.of(request, product, catalog.conversions[product.id].orEmpty())
-            val sold = (unit as? SaleUnitResult.Resolved)?.let {
+            val main = (unit as? SaleUnitResult.Resolved)?.let {
                 SaleUnits.baseQuantity(quantity, it.unit)
             } ?: quantity
+            // Lo que el mismo producto sale como extra de otras líneas, en su unidad base.
+            val asExtra = lines.filter { it.parentIndex != null && it.productId == product.id }
+                .fold(QuantityMilli.ZERO) { sum, extra -> sum + extra.quantity }
+            val sold = main + asExtra
             TileLine(
                 quantity = quantity,
                 unit = request.unitId?.let { catalog.units[it] },

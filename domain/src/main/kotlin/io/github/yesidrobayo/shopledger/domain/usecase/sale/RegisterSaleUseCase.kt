@@ -93,6 +93,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.pricing.SalePriceList
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.AdjustmentSplit
+import io.github.yesidrobayo.shopledger.domain.rule.sale.ExtraLines
 import io.github.yesidrobayo.shopledger.domain.rule.sale.ForeignTenderRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.OrderAdjustmentShares
 import io.github.yesidrobayo.shopledger.domain.rule.sale.PaymentFees
@@ -191,6 +192,11 @@ import kotlin.time.Instant
  *   cuesta la suma de sus hojas, y su costo unitario es ese costo por unidad del combo. Una hoja
  *   que redondea a cero se rechaza con su motivo. Un componente archivado se sigue descontando: el
  *   combo sigue vendiéndose. Sin ellos, un combo se rechaza con su motivo.
+ *
+ * - **Un extra es una línea más.** Apunta a su línea principal, que va antes y no es otro extra, y
+ *   guarda su id: paga impuesto, tiene costo y mueve stock como cualquier línea, sin nada nuevo en
+ *   el libro. Un enlace que no cumple eso se rechaza con su motivo antes de leer la base. Un mismo
+ *   producto puede repetirse como extra de varias líneas.
  *
  * Por ahora no vende productos con lotes, tampoco como componente: los rechaza con su motivo.
  *
@@ -442,8 +448,14 @@ class RegisterSaleUseCase(
         request.tipAmount < Money.ZERO || !Limit.DOCUMENT_TOTAL.allows(request.tipAmount.minor) ->
             RegisterSaleResult.TipNotAccepted
 
-        else -> paymentRejection(request)
+        else -> extraRejection(request) ?: paymentRejection(request)
     }
+
+    /** El primer extra que no apunta a una línea principal anterior, o `null` si no hay. */
+    private fun extraRejection(request: SaleRequest): RegisterSaleResult? =
+        ExtraLines.firstInvalid(request.lines.map { it.parentIndex })?.let {
+            RegisterSaleResult.LineRejected(it, LineRejection.INVALID_EXTRA)
+        }
 
     /** El primer pago escrito que no se puede guardar, mirado sin leer la base. */
     private fun paymentRejection(request: SaleRequest): RegisterSaleResult? =
@@ -918,6 +930,7 @@ class RegisterSaleUseCase(
                 plan = plan,
                 unitReplacement = unitReplacement,
                 lineReplacement = lineReplacement,
+                parentIndex = request.parentIndex,
             ),
         )
     }
@@ -1234,8 +1247,12 @@ class RegisterSaleUseCase(
                 createdAt = now,
             ),
         )
+        // Una principal va antes que sus extras, ya revisado: su id ya existe cuando llega el extra.
+        val lineIds = ArrayList<Long>(priced.lines.size)
         for (line in priced.lines) {
-            val lineId = sales.insertLine(saleId, line.toNewLine(priceListId))
+            val parentId = line.parentIndex?.let { lineIds[it] }
+            val lineId = sales.insertLine(saleId, line.toNewLine(priceListId, parentId))
+            lineIds += lineId
             when (val plan = line.plan) {
                 is LineStockPlan.Direct -> appendSale(
                     plan.exit,
@@ -1332,7 +1349,7 @@ class RegisterSaleUseCase(
         val skipped: Boolean = false,
     )
 
-    private fun PricedLine.toNewLine(priceListId: Long) = NewSaleLine(
+    private fun PricedLine.toNewLine(priceListId: Long, parentLineId: Long?) = NewSaleLine(
         productId = product.id,
         unitId = unit.unitId,
         unitFactor = QuantityMilli(unit.factorMilli),
@@ -1352,7 +1369,7 @@ class RegisterSaleUseCase(
         lineReplacementCost = lineReplacement,
         productNameSnapshot = product.details.name,
         stockEffect = plan.stockEffect,
-        parentLineId = null,
+        parentLineId = parentLineId,
         priceListId = priceListId,
     )
 
@@ -1385,6 +1402,7 @@ class RegisterSaleUseCase(
         val plan: LineStockPlan,
         val unitReplacement: Money,
         val lineReplacement: Money,
+        val parentIndex: Int?,
         val share: Money = Money.ZERO,
     ) {
         /**
@@ -1410,6 +1428,7 @@ class RegisterSaleUseCase(
                 plan = plan,
                 unitReplacement = unitReplacement,
                 lineReplacement = lineReplacement,
+                parentIndex = parentIndex,
                 share = share,
             )
         }

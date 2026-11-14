@@ -1583,6 +1583,7 @@ private val SALE_LINES_GUARDS =
           AND NEW.stock_effect IN ('DIRECT', 'NONE', 'COMPONENTS')
           AND NEW.line_total = NEW.net_amount + NEW.tax_amount
           AND EXISTS (SELECT 1 FROM products p WHERE p.id = NEW.product_id AND ((NEW.stock_effect = 'DIRECT' AND p.stock_mode = 'TRACKED') OR (NEW.stock_effect = 'NONE' AND p.stock_mode = 'UNTRACKED') OR (NEW.stock_effect = 'COMPONENTS' AND p.stock_mode = 'COMPONENTS')))
+          AND (NEW.parent_line_id IS NULL OR EXISTS (SELECT 1 FROM sale_lines pl WHERE pl.id = NEW.parent_line_id AND pl.sale_id = NEW.sale_id AND pl.parent_line_id IS NULL))
           AND NOT EXISTS (SELECT 1 FROM sale_lines x WHERE x.id = NEW.id)
         ), 0)
         BEGIN SELECT RAISE(ABORT, 'guard:sale_lines'); END;

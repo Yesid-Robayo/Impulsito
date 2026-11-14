@@ -173,6 +173,9 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                         ProductEditAction.OpenRecipe ->
                             key.productId?.let { navigator.open(AppNavKey.Components(it)) }
 
+                        ProductEditAction.OpenExtras ->
+                            uiState.product?.let { navigator.open(AppNavKey.Extras(it.id)) }
+
                         else -> viewModel.onAction(action)
                     }
                 },

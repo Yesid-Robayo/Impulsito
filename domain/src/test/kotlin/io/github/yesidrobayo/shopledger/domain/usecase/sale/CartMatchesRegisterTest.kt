@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.rule.sale.CartChange
 import io.github.yesidrobayo.shopledger.domain.rule.sale.CartPricing
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCart
 import kotlinx.coroutines.test.runTest
@@ -121,6 +122,41 @@ class CartMatchesRegisterTest {
             assertEquals("cobrado con $mode", sale.amountDue, preview.amountDue)
             assertEquals("redondeo con $mode", sale.cashRoundingAmount, preview.cashRounding)
             assertEquals("total con $mode", sale.total, preview.total)
+        }
+    }
+
+    @Test
+    fun `with extras on two lines and the same product sold alone, it is the same`() = runTest {
+        for (mode in TaxMode.entries) {
+            val world = world(mode)
+            // El producto 3 va de extra del 1 y del 2, y también suelto, con su descuento.
+            var cart = lines.dropLast(1)
+            cart = (SaleCart.toggleExtra(cart, 1L, 3L) as CartChange.Changed).lines
+            cart = (SaleCart.toggleExtra(cart, 2L, 3L) as CartChange.Changed).lines
+            cart = cart + lines.last()
+            val pricing = CartPricing(
+                taxMode = mode,
+                rates = world.taxRates.mapValues { it.value.details.rate },
+                defaultRateId = general,
+                methodAdjustment = BasisPoints(350L),
+            )
+            val preview = SaleCart.preview(cart, world.tables.products, emptySet(), pricing)
+
+            val result = world.registerSale()(SaleRequest(cart, card))
+
+            val id = (result as RegisterSaleResult.Registered).saleId
+            val sale = world.tables.sales.getValue(id).content
+            assertEquals("total con $mode", sale.total, preview.total)
+            assertEquals("impuesto con $mode", sale.taxTotal, preview.tax)
+            val stored = world.tables.lines.values.filter { it.saleId == id }
+                .sortedBy { it.id }.map { it.content }
+            assertEquals(stored.map { it.lineTotal }, preview.lines.map { it.total })
+            assertEquals(listOf(1L, 3L, 2L, 3L, 3L), stored.map { it.productId })
+            // El producto 1 lleva 3 unidades y el 2 va por peso: su extra va una sola vez.
+            assertEquals(
+                listOf(3_000L, 3_000L, 1_337L, 1_000L, 1_000L),
+                stored.map { it.quantity.milli },
+            )
         }
     }
 

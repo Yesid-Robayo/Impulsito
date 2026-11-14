@@ -39,6 +39,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodReportReposito
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceListRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductComponentRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomProductModifierRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomProductUnitRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseHistorySource
@@ -99,6 +100,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PeriodReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductModifierRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -240,6 +242,9 @@ class DataPorts internal constructor(
 
     /** Las etiquetas que agrupan productos, y el índice con que la búsqueda las encuentra. */
     val tags: TagRepository = RoomTagRepository(database)
+
+    /** Los extras que se ofrecen al vender cada producto. */
+    val productModifiers: ProductModifierRepository = RoomProductModifierRepository(database)
 
     val systemRows: SystemRowRepository = RoomSystemRowRepository(database)
 

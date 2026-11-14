@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 internal interface ProductModifierDao {
+    /** Los extras de todos los productos, por producto y en el orden de cada uno. */
+    @Query("SELECT * FROM product_modifiers ORDER BY product_id, sort_order, id")
+    fun observeAll(): Flow<List<ProductModifierEntity>>
+
     /** Los extras del producto, en el orden que eligió la persona, y por `id` con el mismo orden. */
     @Query("SELECT * FROM product_modifiers WHERE product_id = :productId ORDER BY sort_order, id")
     fun observeByProduct(productId: Long): Flow<List<ProductModifierEntity>>
@@ -31,6 +35,13 @@ internal interface ProductModifierDao {
             "updated_at = :updatedAt WHERE id = :id",
     )
     suspend fun update(id: Long, groupName: String?, sortOrder: Long, updatedAt: Long): Int
+
+    /** Cambia solo el orden, sin tocar el grupo. Devuelve las filas cambiadas. */
+    @Query(
+        "UPDATE product_modifiers SET sort_order = :sortOrder, updated_at = :updatedAt " +
+            "WHERE id = :id",
+    )
+    suspend fun updateOrder(id: Long, sortOrder: Long, updatedAt: Long): Int
 
     /** Quita el extra del producto. Las ventas pasadas no cambian. */
     @Query("DELETE FROM product_modifiers WHERE id = :id")

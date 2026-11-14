@@ -165,7 +165,11 @@ data class SaleCartState(
     val canRegister: Boolean get() = lines.isNotEmpty() && total != null && !noteTooLong
 }
 
-/** Una línea de la venta, con sus cuentas y lo que necesita su selector de cantidad. */
+/**
+ * Una línea de la venta, con sus cuentas y lo que necesita su selector de cantidad. Con
+ * [parentProductId] es un extra de la línea de ese producto: va debajo de ella, sigue su cantidad y
+ * no lleva selector propio.
+ */
 @Immutable
 data class CartLine(
     val productId: Long,
@@ -178,7 +182,12 @@ data class CartLine(
     val issue: CartLineIssue?,
     val removesLine: Boolean,
     val canIncrement: Boolean,
+    val parentProductId: Long? = null,
 )
+
+/** Un extra que ofrece la hoja de una línea, con su nombre y si ya va en la línea. */
+@Immutable
+data class ExtraChoice(val productId: Long, val name: String, val selected: Boolean)
 
 /** Los métodos con que se cobra, y el elegido. */
 @Immutable
@@ -270,6 +279,8 @@ enum class DiscountMode {
  * @param focusPrice si la hoja se abre con el precio enfocado, como con un producto sin precio.
  * @param unitId la unidad en que se vende la línea, y [saleUnits] las que ofrece el producto: la
  *   base y sus conversiones de venta. Con una sola, la hoja no ofrece elegir.
+ * @param extras los extras vigentes que ofrece el producto, con los que ya lleva la línea. Sin
+ *   ninguno, la hoja no los menciona.
  */
 @Immutable
 data class LineEditor(
@@ -286,6 +297,7 @@ data class LineEditor(
     val quantityError: SaleFieldError? = null,
     val priceError: SaleFieldError? = null,
     val discountError: SaleFieldError? = null,
+    val extras: List<ExtraChoice> = emptyList(),
 )
 
 /** Por qué un campo de la venta no se puede usar así. La pantalla lo dice con su texto. */

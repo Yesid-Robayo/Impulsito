@@ -30,6 +30,8 @@ data class HeldSale(
  *   escribió a mano en la línea, y se respeta al retomar.
  * - [discount] es el descuento de la línea en unidad menor. Un porcentaje se guarda ya convertido
  *   en monto, con el precio que tenía la línea al ponerla en espera: la base no guarda porcentajes.
+ * - [parentIndex] es la posición, en la misma espera, de la línea principal de un extra, que va
+ *   antes; `null` en una línea principal.
  */
 data class HeldSaleLine(
     val productId: Long,
@@ -37,6 +39,7 @@ data class HeldSaleLine(
     val quantity: QuantityMilli,
     val unitPrice: Money?,
     val discount: Money,
+    val parentIndex: Int? = null,
 )
 
 /**

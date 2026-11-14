@@ -381,6 +381,13 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
             action = SettingsRowAction.Navigation { onAction(ProductEditAction.OpenVariants) },
         )
     }
+    // Un producto guardado puede ofrecer extras en su línea de venta.
+    if (product != null) {
+        SettingsRow(
+            title = stringResource(R.string.product_extras_row),
+            action = SettingsRowAction.Navigation { onAction(ProductEditAction.OpenExtras) },
+        )
+    }
     if (!uiState.isNew && uiState.listPrices.isNotEmpty()) ProductListPrices(uiState, onAction)
     // Al final, los campos propios y las etiquetas, si el negocio tiene alguno.
     if (uiState.extras.visible) ProductExtrasSection(uiState.extras, onAction)

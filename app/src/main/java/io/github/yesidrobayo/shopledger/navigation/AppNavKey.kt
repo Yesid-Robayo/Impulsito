@@ -210,6 +210,10 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data class Components(val productId: Long) : AppNavKey
 
+    /** Los extras que se ofrecen al vender un producto. */
+    @Serializable
+    data class Extras(val productId: Long) : AppNavKey
+
     /** La lista de combos y recetas, que abre el centro `Negocio`. */
     @Serializable
     data object Combos : AppNavKey

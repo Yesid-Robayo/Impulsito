@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Português: os adicionais de um produto, oferecidos na sua linha de venda. -->
+    <string name="sale_extras_label">Adicionais</string>
+    <string name="sale_extra_line">+ %1$s</string>
+    <string name="product_extras_row">Adicionais</string>
+    <string name="extras_title">Adicionais</string>
+    <string name="extras_add_action">Adicionar adicional</string>
+    <string name="extras_empty_title">Oferecer adicionais ao vender</string>
+    <string name="extras_empty_body">Uma porção adicional, um molho ou uma embalagem. São escolhidos na linha da venda.</string>
+    <string name="extras_error_save">Não foi possível salvar. Os adicionais continuam como estavam.</string>
+</resources>

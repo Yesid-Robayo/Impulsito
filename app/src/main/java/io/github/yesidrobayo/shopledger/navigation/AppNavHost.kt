@@ -57,6 +57,7 @@ import io.github.yesidrobayo.shopledger.ui.destination.SlotSetupRoute
 import io.github.yesidrobayo.shopledger.ui.encryption.EncryptionRoute
 import io.github.yesidrobayo.shopledger.ui.expense.ExpensesRoute
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
+import io.github.yesidrobayo.shopledger.ui.extra.ExtrasRoute
 import io.github.yesidrobayo.shopledger.ui.extras.CustomFieldsRoute
 import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
@@ -332,6 +333,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.Combos -> CombosRoute(navigator)
 
         is AppNavKey.Components -> RecipeRoute(key, navigator)
+
+        is AppNavKey.Extras -> ExtrasRoute(key, navigator)
 
         AppNavKey.LoyaltyProgram -> LoyaltyProgramRoute(key, navigator)
 

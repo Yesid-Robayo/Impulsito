@@ -68,15 +68,17 @@ class SaleCorrectionsTest {
     }
 
     @Test
-    fun `a product in two lines arrives as one, and extras do not come`() {
+    fun `a product in two lines arrives as one, with its extras under it`() {
         val detail = sampleDetail(
             lines = listOf(
                 sampleLine(10L, 1L, "Jabón", 2_000L, 3_000L, discount = 500L),
-                sampleLine(11L, 9L, "Extra", 1_000L, 1_000L, parentLineId = 10L),
+                sampleLine(11L, 9L, "Extra", 2_000L, 1_000L, parentLineId = 10L),
                 sampleLine(12L, 1L, "Jabón", 1_000L, 2_500L, discount = 100L),
+                sampleLine(13L, 9L, "Extra", 1_000L, 900L, parentLineId = 12L),
+                sampleLine(14L, 9L, "Extra", 1_000L, 1_000L),
             ),
             payments = listOf(samplePayment(20L, 5L, 1L), samplePayment(21L, 6L, 1L)),
-            total = 9_900L,
+            total = 12_800L,
             note = null,
         )
 
@@ -90,6 +92,16 @@ class SaleCorrectionsTest {
                     Money(3_000L),
                     LineDiscount.Amount(Money(600L)),
                 ),
+                // Un extra por producto, con el precio del primero: la cantidad la pone la venta.
+                SaleLineRequest(
+                    9L,
+                    QuantityMilli(3_000L),
+                    Money(1_000L),
+                    LineDiscount.None,
+                    parentIndex = 0,
+                ),
+                // El mismo producto vendido solo sigue en su propia línea.
+                SaleLineRequest(9L, QuantityMilli(1_000L), Money(1_000L), LineDiscount.None),
             ),
             correction.lines,
         )
@@ -97,6 +109,28 @@ class SaleCorrectionsTest {
         assertEquals(5L, correction.paymentMethodId)
         assertNull(correction.note)
         assertEquals(0, correction.leftOut)
+    }
+
+    @Test
+    fun `an extra of an archived line, or of an archived product, is left out and counted`() {
+        val detail = sampleDetail(
+            lines = listOf(
+                sampleLine(10L, 1L, "Arepa", 1_000L, 3_000L),
+                sampleLine(11L, 9L, "Queso", 1_000L, 1_000L, parentLineId = 10L),
+                sampleLine(12L, 8L, "Salsa", 1_000L, 500L, parentLineId = 10L),
+                sampleLine(13L, 2L, "Té", 1_000L, 2_000L),
+                sampleLine(14L, 9L, "Queso", 1_000L, 1_000L, parentLineId = 13L),
+            ),
+            payments = listOf(samplePayment(20L, 5L, 7_500L)),
+            total = 7_500L,
+            archived = setOf(2L, 8L),
+        )
+
+        val correction = SaleCorrections.of(detail)
+
+        assertEquals(listOf(1L, 9L), correction.lines.map { it.productId })
+        assertEquals(listOf(null, 0), correction.lines.map { it.parentIndex })
+        assertEquals(3, correction.leftOut)
     }
 
     @Test
