@@ -97,8 +97,11 @@ class NewTransferViewModel(
         val origin = draft.map { it?.fromId }.distinctUntilChanged().flatMapLatest { id ->
             if (id == null) flowOf(null) else stockAt(id)
         }
-        combine(locationsSource(), origin) { locations, stock ->
-            TransferLoad.Ready(locations, stock) as TransferLoad
+        combine<List<Location>, InventoryOverview?, TransferLoad>(locationsSource(), origin) {
+                locations,
+                stock,
+            ->
+            TransferLoad.Ready(locations, stock)
         }.catch { emit(TransferLoad.Failed) }
     }.flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.Eagerly, TransferLoad.Loading)
