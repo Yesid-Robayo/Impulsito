@@ -21,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.testing.FakeAppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeLowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakePriceHistoryRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeProductRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeStockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeSupplierRepository
@@ -61,6 +62,7 @@ internal class CatalogFixture(zoneId: String = "UTC", currencyConfirmed: Boolean
     val priceHistory = FakePriceHistoryRepository(database)
     val ledger = FakeStockLedgerRepository(database)
     val alerts = FakeLowStockAlertRepository(database)
+    val components = FakeProductComponentRepository(database)
     private val calendar = BusinessCalendarSource(settings)
     private val currencyLock = CurrencyLock(settings)
 
@@ -70,7 +72,7 @@ internal class CatalogFixture(zoneId: String = "UTC", currencyConfirmed: Boolean
     )
     val edit = EditProductUseCase(
         transactions, products, categories, suppliers, units, systemRows, priceHistory, ledger,
-        alerts, calendar, currencyLock, clock,
+        alerts, calendar, currencyLock, clock, components,
     )
     val archive = ArchiveProductUseCase(transactions, products, alerts, clock)
     val reactivate = ReactivateProductUseCase(transactions, products, alerts, calendar, clock)

@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
@@ -41,6 +42,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
  * - **Unidad, modo de stock y lotes.** Con historia ya no cambian: el libro no mezcla unidades.
  * - **Reposición.** Se corrige a mano sin tocar el costo promedio, y se fecha al guardarla. Un
  *   producto que deja de llevar stock propio la pierde, porque ya no se compra.
+ * - **Receta.** Un producto que deja de armarse con componentes pierde su receta en la misma
+ *   transacción: sin historia no hay venta que la necesite, y una receta que no se vende solo
+ *   estorbaría al revisar los niveles de los demás combos.
  * - **Mínimo.** Si el producto queda bajo, crea su alerta callada; si deja de estarlo, la resuelve.
  * - **Archivado.** Se puede renombrar, para reactivarlo si su nombre choca, pero no cambia de
  *   precio ni de costo hasta reactivarlo.
@@ -61,6 +65,7 @@ class EditProductUseCase(
     private val calendar: BusinessCalendarSource,
     private val currencyLock: CurrencyLock,
     private val clock: Clock,
+    private val components: ProductComponentRepository,
 ) {
     private val references = ProductReferences(categories, suppliers, units, systemRows)
 
@@ -184,6 +189,11 @@ class EditProductUseCase(
             null
         }
         products.updateDetails(product.id, requested, now)
+        if (current.stockMode == ProductStockMode.COMPONENTS &&
+            requested.stockMode != ProductStockMode.COMPONENTS
+        ) {
+            components.findByParent(product.id).forEach { components.delete(it.id) }
+        }
         if (initialCostChanged) products.updateInitialCost(product.id, initialCost, now)
         if (replacementChanged) {
             val at = ReplacementCostRules.manualStamp(replacement, now)

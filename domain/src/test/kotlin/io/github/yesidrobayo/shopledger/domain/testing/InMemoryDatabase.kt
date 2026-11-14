@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
@@ -100,6 +101,8 @@ internal data class Tables(
     val productPrices: Map<Pair<Long, Long>, Money> = emptyMap(),
     /** Las listas que usa alguna venta, línea o venta en espera, tablas que estas pruebas no modelan. */
     val priceListsUsedBySales: Set<Long> = emptySet(),
+    /** Las filas de las recetas de los combos, por id. */
+    val productComponents: Map<Long, RecipeComponent> = emptyMap(),
     val lastIds: Map<String, Long> = emptyMap(),
     val changeSeq: Long = 0L,
 )

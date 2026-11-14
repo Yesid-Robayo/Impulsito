@@ -15,6 +15,13 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 internal interface ProductComponentDao {
+    /** Todas las filas de todas las recetas: el grafo que revisa niveles y ciclos. */
+    @Query("SELECT * FROM product_components ORDER BY id")
+    fun observeAll(): Flow<List<ProductComponentEntity>>
+
+    @Query("SELECT * FROM product_components ORDER BY id")
+    suspend fun findAll(): List<ProductComponentEntity>
+
     @Query("SELECT * FROM product_components WHERE parent_product_id = :parentId ORDER BY id")
     fun observeByParent(parentId: Long): Flow<List<ProductComponentEntity>>
 
