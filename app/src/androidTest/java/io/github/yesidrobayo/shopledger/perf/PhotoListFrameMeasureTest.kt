@@ -11,7 +11,7 @@ import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.hasScrollAction
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
@@ -19,6 +19,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.ui.components.PhotoState
+import io.github.yesidrobayo.shopledger.ui.components.PhotoThumbSize
 import io.github.yesidrobayo.shopledger.ui.media.LocalPhotoSource
 import io.github.yesidrobayo.shopledger.ui.media.PhotoCache
 import io.github.yesidrobayo.shopledger.ui.media.PhotoSource
@@ -52,6 +53,10 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class PhotoListFrameMeasureTest {
+    // Con la regla de siempre, las corrutinas de la composición corren sin despachar: cada foto que
+    // vuelve de leerse en disco seguía en ese hilo y recomponía desde ahí, a la vez que el hilo
+    // principal aplicaba cambios, y Compose lo rechaza. Con esta regla, la foto vuelve a la cola de
+    // la prueba y se aplica en el hilo principal, como en la app.
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
@@ -120,13 +125,18 @@ class PhotoListFrameMeasureTest {
         }
         compose.runOnUiThread { window.removeOnFrameMetricsAvailableListener(listener) }
 
+        // Las fotos que llegaron a la caché: sin ninguna, la medida con fotos no midió fotos.
+        val side = with(compose.density) { PhotoThumbSize.ROW.side.roundToPx() }
+        val read = index.values.count { cache.peek(it.sha256, side) != null }
         val total = frames.get()
         val late = slow.get()
         val percent = if (total == 0) 0.0 else late * 100.0 / total
         val shown = "%.1f".format(percent)
         val label = if (withPhotos) "con foto" else "sin foto"
         Log.i(TAG, "$PRODUCTS productos $label: $total fotogramas, $late lentos ($shown %)")
+        Log.i(TAG, "$read fotos leídas")
         assertTrue("Sin fotogramas medidos", total > 0)
+        assertTrue("Ninguna foto llegó a la lista", !withPhotos || read > 0)
     }
 
     private fun Product.withPhoto(id: Long?) = copy(details = details.copy(photoMediaId = id))
