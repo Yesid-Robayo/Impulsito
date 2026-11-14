@@ -69,6 +69,8 @@ class RegionalSettingsViewModelTest {
             saved += input
             nextResult
         },
+        // Estas pruebas no corrigen la moneda: lo prueba CurrencyCorrectionViewModelTest.
+        correct = { error("Estas pruebas no corrigen la moneda") },
         catalog = catalog,
         workContext = dispatcher,
     ).also { it.setUiLocale(Locale.ENGLISH) }

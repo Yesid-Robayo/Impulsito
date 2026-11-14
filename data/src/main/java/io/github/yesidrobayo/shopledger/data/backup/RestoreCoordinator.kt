@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLimits
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
 import io.github.yesidrobayo.shopledger.domain.model.backup.CandidateCheck
 import io.github.yesidrobayo.shopledger.domain.model.backup.CandidateVerdict
+import io.github.yesidrobayo.shopledger.domain.model.backup.SafetyCopyFailure
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogField
@@ -165,6 +166,55 @@ internal class RestoreCoordinator(
         withContext(NonCancellable) { abandon(current) }
         log.info(DataEvent.RESTORE_CANCELLED)
         true
+    }
+
+    /**
+     * Guarda una copia local de seguridad de la base activa antes de un cambio delicado que no es
+     * una restauración, como corregir la moneda del negocio. Es la misma copia del paso 14, con la
+     * misma rotación y los mismos 30 días: nunca destruye el único respaldo de algo.
+     *
+     * Va con el mismo cerrojo de las preparaciones, así que nunca se cruza con la copia de una
+     * restauración. Con una preparación en espera de una respuesta, o con el cerrojo o el diario
+     * de una restauración en el disco, no copia nada.
+     *
+     * @return `null` si quedó guardada y comprobada, o por qué no.
+     */
+    suspend fun saveSafetyCopyBeforeChange(): SafetyCopyFailure? = mutex.withLock {
+        if (session != null || lock.isHeld()) return@withLock SafetyCopyFailure.BUSY
+        val database = active()
+        val saved =
+            safetyCopies.save(
+                database?.changeSeq ?: UNKNOWN_CHANGE_SEQ,
+                database?.verifiedSeq ?: 0L,
+                clock.now(),
+            )
+        when (saved) {
+            SafetyCopyResult.Saved -> {
+                log.info(DataEvent.SAFETY_COPY_SAVED)
+                null
+            }
+
+            SafetyCopyResult.StorageFull -> {
+                log.warn(DataEvent.SAFETY_COPY_NOT_SAVED)
+                SafetyCopyFailure.NO_SPACE
+            }
+
+            is SafetyCopyResult.NeedsChoice -> {
+                log.warn(DataEvent.SAFETY_COPY_NOT_SAVED)
+                SafetyCopyFailure.UNSYNCED_COPIES
+            }
+
+            // Sin base activa, o con la base dañada, no hay copia que sirva: no se cambia nada.
+            SafetyCopyResult.NoActiveDatabase, SafetyCopyResult.ActiveDatabaseDamaged -> {
+                log.warn(DataEvent.SAFETY_COPY_NOT_SAVED)
+                SafetyCopyFailure.FAILED
+            }
+
+            is SafetyCopyResult.Failed -> {
+                log.warn(DataEvent.SAFETY_COPY_NOT_SAVED, saved.cause)
+                SafetyCopyFailure.FAILED
+            }
+        }
     }
 
     /**

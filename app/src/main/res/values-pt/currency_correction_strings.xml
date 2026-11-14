@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Corrigir a moeda do negócio: mesmas casas decimais, os valores nunca mudam. -->
+    <string name="region_correct_currency_action">Corrigir a moeda</string>
+    <string name="region_correct_currency_help">Se a moeda escolhida estiver errada, é possível trocá-la por outra com as mesmas casas decimais. Os valores salvos não mudam.</string>
+    <string name="region_correct_currency_none">Este telefone não conhece outra moeda com as mesmas casas decimais.</string>
+    <string name="region_correct_currency_title">Moeda correta</string>
+    <string name="region_correct_currency_confirm_title">Alterar a moeda para %1$s?</string>
+    <string name="region_correct_currency_confirm_body">Os valores salvos não são convertidos: ficam iguais, agora em %1$s. Antes da troca, uma cópia de proteção é salva neste telefone.</string>
+    <string name="region_correct_currency_confirm_body_symbol">Os valores salvos não são convertidos: ficam iguais, agora em %1$s. O símbolo próprio %2$s é mantido. Antes da troca, uma cópia de proteção é salva neste telefone.</string>
+    <string name="region_correct_currency_check">Entendo que os valores salvos não são convertidos</string>
+    <string name="region_correct_currency_confirm_action">Alterar moeda</string>
+    <string name="region_correcting_currency">Salvando uma cópia de proteção e corrigindo a moeda…</string>
+    <string name="region_currency_corrected">Moeda corrigida. Os valores não mudaram.</string>
+    <string name="region_correct_error_reference">Essa é a moeda de referência. Para usá-la como moeda do negócio, primeiro é preciso removê-la como referência.</string>
+    <string name="region_correct_error_account">Uma conta própria já usa essa moeda. A moeda não mudou.</string>
+    <string name="region_correct_error_other_currency">Há recebimentos, compras ou cotações salvos com essa moeda como outra moeda. A moeda não mudou.</string>
+    <string name="region_correct_error_unavailable">Essa moeda não serve para a correção. A moeda não mudou.</string>
+    <string name="region_correct_error_no_space">Não há espaço para a cópia de proteção. A moeda não mudou.</string>
+    <string name="region_correct_error_busy">Há uma restauração em andamento. A moeda não mudou.</string>
+    <string name="region_correct_error_unsynced">As duas cópias de proteção deste telefone têm alterações que não chegaram à nuvem. A moeda não mudou.</string>
+    <string name="region_correct_error_copy">Não foi possível salvar a cópia de proteção. A moeda não mudou.</string>
+</resources>

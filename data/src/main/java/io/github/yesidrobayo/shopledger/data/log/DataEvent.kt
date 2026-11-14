@@ -39,4 +39,7 @@ internal enum class DataEvent(override val text: String) : LogEvent {
         "No se pudo terminar de soltar el destino anterior; se repite al abrir",
     ),
     SLOT_SESSION_RESUMED("La nube del teléfono volvió tras iniciar sesión"),
+    SAFETY_COPY_SAVED("Copia de seguridad guardada antes de un cambio"),
+    SAFETY_COPY_NOT_SAVED("No se guardó la copia de seguridad previa a un cambio, que no se hizo"),
+    CURRENCY_AUDIT_FAILED("No se pudo anotar la corrección de la moneda en la auditoría"),
 }

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yesidrobayo.shopledger.domain.usecase.region.CorrectBusinessCurrencyUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.ObserveRegionalSettingsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.SaveRegionalSettingsUseCase
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
@@ -33,10 +34,21 @@ fun RegionalSettingsRoute(
             val observe = ObserveRegionalSettingsUseCase(ports.settings)
             val save =
                 SaveRegionalSettingsUseCase(ports.transactions, ports.settings, container.clock)
+            // Corregir la moneda guarda antes la misma copia de seguridad que una restauración.
+            val correct =
+                CorrectBusinessCurrencyUseCase(
+                    transactions = ports.transactions,
+                    settings = ports.settings,
+                    corrections = ports.currencyCorrections,
+                    safetyCopy = container.data.safetyCopyBeforeChange,
+                    audit = container.data.auditRecorder,
+                    clock = container.clock,
+                )
             RegionalSettingsViewModel(
                 firstRun = firstRun,
                 settings = { observe() },
                 save = { save(it) },
+                correct = { correct(it) },
                 catalog = IcuRegionalCatalog(),
                 workContext = container.dispatchers.default,
             )

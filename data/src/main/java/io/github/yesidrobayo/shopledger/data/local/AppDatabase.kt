@@ -117,6 +117,7 @@ import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineDao
 import io.github.yesidrobayo.shopledger.data.local.sale.SaleLineEntity
 import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsDao
 import io.github.yesidrobayo.shopledger.data.local.settings.AppSettingsEntity
+import io.github.yesidrobayo.shopledger.data.local.settings.CurrencyCorrectionDao
 import io.github.yesidrobayo.shopledger.data.local.stock.CountSessionDao
 import io.github.yesidrobayo.shopledger.data.local.stock.CountSessionEntity
 import io.github.yesidrobayo.shopledger.data.local.stock.CountSessionLineEntity
@@ -311,6 +312,8 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
 
     abstract fun appSettingsDao(): AppSettingsDao
+
+    abstract fun currencyCorrectionDao(): CurrencyCorrectionDao
 
     abstract fun backupStateDao(): BackupStateDao
 

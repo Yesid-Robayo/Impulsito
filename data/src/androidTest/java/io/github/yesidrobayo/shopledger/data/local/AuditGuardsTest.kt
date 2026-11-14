@@ -86,6 +86,7 @@ internal class AuditGuardsTest : GuardProbeTest() {
                 "RECOVERY_CODE_VIEWED",
                 "DELETE_MY_DATA",
                 "AUTH_FAILED",
+                "CURRENCY_CORRECTED",
             )
     }
 }

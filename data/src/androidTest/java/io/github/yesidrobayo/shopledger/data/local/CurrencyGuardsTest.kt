@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.MUCH_LATER
 import io.github.yesidrobayo.shopledger.data.local.catalog.guardFailure
 import io.github.yesidrobayo.shopledger.data.local.customer.customerEntryRow
 import io.github.yesidrobayo.shopledger.data.local.customer.customerRow
+import io.github.yesidrobayo.shopledger.data.local.money.moneyAccountRow
 import io.github.yesidrobayo.shopledger.data.local.money.moneyMovementRow
 import io.github.yesidrobayo.shopledger.data.local.payable.supplierEntryRow
 import kotlinx.coroutines.runBlocking
@@ -18,7 +19,8 @@ import org.junit.runner.RunWith
 /**
  * La moneda del negocio, sonda por sonda: el código es de tres letras mayúsculas y los decimales
  * van de 0 a 4; mientras la moneda no esté confirmada y bloqueada, ningún registro con dinero
- * entra; y una vez bloqueada, ni el código ni los decimales cambian.
+ * entra; y una vez bloqueada, los decimales ya no cambian, y el código solo se corrige a una
+ * moneda que nada más usa, con las cuentas que la seguían en el mismo instante.
  *
  * Cada base nace sin moneda, como la de un negocio nuevo: la prueba la confirma cuando lo
  * necesita. Todos los montos son inventados.
@@ -89,12 +91,11 @@ internal class CurrencyGuardsTest : CatalogDatabaseTest() {
     }
 
     @Test
-    fun aLockedCurrencyNeverChangesAndStaysLocked() = runBlocking {
+    fun aLockedCurrencyKeepsItsDecimalsAndStaysLocked() = runBlocking {
         database.confirmTestCurrency(LATER)
 
-        guardFailure(SETTINGS) {
-            settings.updateCurrency("XTT", TEST_BUSINESS_DECIMALS, MUCH_LATER)
-        }
+        // Otros decimales cambiarían el valor de cada monto guardado, con o sin otro código.
+        guardFailure(SETTINGS) { settings.updateCurrency("XTT", 3, MUCH_LATER) }
         guardFailure(SETTINGS) { settings.updateCurrency(TEST_BUSINESS_CURRENCY, 3, MUCH_LATER) }
         for (broken in listOf(
             "currency_locked_at" to null,
@@ -115,6 +116,74 @@ internal class CurrencyGuardsTest : CatalogDatabaseTest() {
         assertEquals(LATER, locked.currencyLockedAt)
         assertEquals(50L, locked.cashRounding)
     }
+
+    @Test
+    fun aLockedCurrencyIsCorrectedOnlyToACurrencyNothingElseUses() = runBlocking {
+        database.confirmTestCurrency(LATER)
+
+        // La moneda de referencia no pasa a ser la del negocio: sus precios quedarían en el libro.
+        execute(
+            update(
+                "app_settings",
+                1,
+                "reference_currency_code" to "XTR",
+                "reference_currency_decimals" to 2L,
+            ),
+        )
+        guardFailure(SETTINGS) { correctTo("XTR") }
+        // Ni la de una cuenta propia en otra moneda: su saldo se sumaría al del negocio.
+        insert("money_accounts", moneyAccountRow().with("currency_code" to "XTA"))
+        guardFailure(SETTINGS) { correctTo("XTA") }
+        // Ni sin moneda.
+        guardFailure(SETTINGS) { correctTo("XXX") }
+
+        // Otra moneda con los mismos decimales sí: solo cambia la etiqueta, no el bloqueo.
+        assertEquals(1, correctTo("XTT"))
+        val corrected = requireNotNull(settings.get())
+        assertEquals("XTT", corrected.currencyCode)
+        assertEquals(TEST_BUSINESS_DECIMALS, corrected.currencyDecimals)
+        assertEquals(LATER, corrected.currencyLockedAt)
+        assertEquals("XTR", corrected.referenceCurrencyCode)
+    }
+
+    @Test
+    fun anAccountWithMovementsFollowsOnlyTheCorrectedBusinessCurrency() = runBlocking {
+        database.confirmTestCurrency(LATER)
+        val accountId = insert("money_accounts", moneyAccountRow())
+        execute(moneyMovementRow(accountId).insertInto("money_movements"))
+
+        // Por su cuenta, una cuenta con movimientos no cambia de moneda.
+        guardFailure(ACCOUNTS) { execute(relabel(accountId, "XTT", 2L, MUCH_LATER)) }
+
+        assertEquals(1, correctTo("XTT"))
+        // Tampoco detrás de la del negocio fuera de su mismo cambio, ni con otros decimales.
+        guardFailure(ACCOUNTS) { execute(relabel(accountId, "XTT", 2L, LATER)) }
+        guardFailure(ACCOUNTS) { execute(relabel(accountId, "XTT", 3L, MUCH_LATER)) }
+        guardFailure(ACCOUNTS) { execute(relabel(accountId, "XTU", 2L, MUCH_LATER)) }
+
+        // Junto con la moneda del negocio, en el mismo instante y con sus decimales, sí.
+        execute(relabel(accountId, "XTT", 2L, MUCH_LATER))
+        assertEquals(
+            50_000L,
+            count("SELECT balance_after FROM money_movements WHERE money_account_id = $accountId"),
+        )
+        assertEquals(
+            "XTT",
+            database.moneyAccountDao().findById(accountId)?.currencyCode,
+        )
+    }
+
+    /** Corrige la moneda del negocio a [code], con sus mismos decimales, como lo hace la app. */
+    private suspend fun correctTo(code: String): Int =
+        settings.updateCurrency(code, TEST_BUSINESS_DECIMALS, MUCH_LATER)
+
+    private fun relabel(accountId: Long, code: String, decimals: Long, at: Long): String = update(
+        "money_accounts",
+        accountId,
+        "currency_code" to code,
+        "currency_decimals" to decimals,
+        "updated_at" to at,
+    )
 
     /** Cada registro con dinero, con la guarda que lo detiene sin moneda, y sus filas padre. */
     private suspend fun moneyRecords(): List<Pair<String, String>> {
@@ -149,6 +218,7 @@ internal class CurrencyGuardsTest : CatalogDatabaseTest() {
 
     private companion object {
         const val SETTINGS = "guard:app_settings"
+        const val ACCOUNTS = "guard:money_accounts"
         const val PRODUCTS = "guard:products"
     }
 }

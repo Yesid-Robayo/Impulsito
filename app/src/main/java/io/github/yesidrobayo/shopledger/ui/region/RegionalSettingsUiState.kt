@@ -29,6 +29,39 @@ enum class RegionalSheet {
     CURRENCY,
     FORMAT,
     ZONE,
+
+    /** La moneda correcta, entre las que tienen los mismos decimales, con la moneda bloqueada. */
+    CORRECTION,
+}
+
+/** Por qué no se corrigió la moneda. Cada uno lleva su texto, que elige la pantalla. */
+enum class CurrencyCorrectionError {
+    /** Es la moneda de referencia: primero hay que quitarla como referencia. */
+    REFERENCE,
+
+    /** Una cuenta propia ya está en esa moneda. */
+    ACCOUNT,
+
+    /** Un cobro, una compra o una cotización la guardó como otra moneda. */
+    OTHER_CURRENCY,
+
+    /** Ya no sirve: cambió lo guardado mientras se elegía, o la moneda ya no está bloqueada. */
+    UNAVAILABLE,
+
+    /** No hubo espacio para la copia de seguridad. */
+    NO_SPACE,
+
+    /** Hay una restauración en curso. */
+    BUSY,
+
+    /** Las dos copias de seguridad guardan cambios que no llegaron al destino. */
+    UNSYNCED_COPIES,
+
+    /** La copia de seguridad falló por otra causa. */
+    COPY_FAILED,
+
+    /** La base no pudo guardar: `state_error_save`. */
+    SAVE_FAILED,
 }
 
 /** Un campo que muestra su error. Cada error lleva su texto, que elige la pantalla. */
@@ -90,6 +123,13 @@ sealed interface RegionalSettingsUiState {
      * @property saveFailed si el último intento de guardar falló en la base.
      * @property confirmingZone si se pregunta antes de cambiar la zona de un negocio con registros.
      * @property sheet la hoja abierta, con su búsqueda [query] y sus opciones ya filtradas.
+     * @property correctionOptions con la moneda bloqueada, las monedas a las que se puede
+     *   corregir: las que tienen los mismos decimales según la norma, sin la actual. `null` sin
+     *   bloqueo, o mientras se arman las listas.
+     * @property correctionTarget la moneda elegida para corregir, mientras se pide confirmar.
+     * @property correcting si se está guardando la copia de seguridad y corrigiendo la moneda.
+     * @property correctionError por qué no se corrigió la moneda la última vez, si falló.
+     * @property currencyCorrected si la moneda se acaba de corregir y falta decirlo.
      */
     @Immutable
     data class Ready(
@@ -109,6 +149,11 @@ sealed interface RegionalSettingsUiState {
         val sheet: RegionalSheet? = null,
         val query: String = "",
         val sheetOptions: List<RegionalOption> = emptyList(),
+        val correctionOptions: List<RegionalOption>? = null,
+        val correctionTarget: RegionalOption? = null,
+        val correcting: Boolean = false,
+        val correctionError: CurrencyCorrectionError? = null,
+        val currencyCorrected: Boolean = false,
     ) : RegionalSettingsUiState
 }
 
@@ -150,4 +195,13 @@ sealed interface RegionalSettingsAction {
 
     /** Ya se mostró que quedó guardada. */
     data object SavedShown : RegionalSettingsAction
+
+    /** Confirmó corregir la moneda a la elegida en la hoja de corrección. */
+    data object ConfirmCorrection : RegionalSettingsAction
+
+    /** No quiso corregir la moneda: se cierra la pregunta sin cambiar nada. */
+    data object CancelCorrection : RegionalSettingsAction
+
+    /** Ya se mostró que la moneda quedó corregida. */
+    data object CorrectionShown : RegionalSettingsAction
 }

@@ -39,4 +39,10 @@ enum class AuditEventType {
 
     /** Falló una autenticación. */
     AUTH_FAILED,
+
+    /**
+     * Se corrigió la moneda del negocio por otra con los mismos decimales, sin tocar ningún monto,
+     * o falló el intento después de confirmarlo.
+     */
+    CURRENCY_CORRECTED,
 }

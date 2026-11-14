@@ -5,14 +5,18 @@ import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.backup.SafetyCopyFailure
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
+import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCorrection
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettingsInput
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import io.github.yesidrobayo.shopledger.domain.rule.region.CurrencyCorrectionProblem
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.region.RegionalSettingsProblem
 import io.github.yesidrobayo.shopledger.domain.rule.region.RegionalSettingsRules
+import io.github.yesidrobayo.shopledger.domain.usecase.region.CorrectCurrencyResult
 import io.github.yesidrobayo.shopledger.domain.usecase.region.SaveRegionalSettingsResult
 import io.github.yesidrobayo.shopledger.ui.readOrNull
 import java.util.Locale
@@ -36,6 +40,8 @@ import kotlinx.coroutines.withContext
  *
  * @param settings lo guardado, o `null` si la base no se pudo abrir.
  * @param save guarda lo elegido, en una sola transacción.
+ * @param correct corrige la moneda bloqueada a otra con los mismos decimales, tras guardar una
+ *   copia de seguridad. Solo cambia la etiqueta: ningún monto.
  * @param catalog lo que el teléfono sabe de monedas, formatos y zonas.
  * @param workContext donde se arman las listas, fuera del hilo principal.
  */
@@ -43,6 +49,7 @@ class RegionalSettingsViewModel(
     private val firstRun: Boolean,
     private val settings: suspend () -> Flow<RegionalSettings>?,
     private val save: suspend (RegionalSettingsInput) -> SaveRegionalSettingsResult,
+    private val correct: suspend (CurrencyCorrection) -> CorrectCurrencyResult,
     private val catalog: RegionalCatalog,
     private val workContext: CoroutineContext,
 ) : ViewModel() {
@@ -53,11 +60,15 @@ class RegionalSettingsViewModel(
     private var lists: Lists? = null
     private var uiLocale: Locale? = null
 
-    /** Las tres listas, en el idioma de la interfaz con que se armaron. */
+    /**
+     * Las tres listas, en el idioma de la interfaz con que se armaron, y los decimales de la norma
+     * de cada moneda, para la corrección.
+     */
     private class Lists(
         val currencies: List<RegionalOption>,
         val formats: List<RegionalOption>,
         val zones: List<RegionalOption>,
+        val currencyDecimals: Map<String, Int?>,
     )
 
     init {
@@ -88,10 +99,14 @@ class RegionalSettingsViewModel(
         viewModelScope.launch {
             lists =
                 withContext(workContext) {
+                    val currencies = catalog.currencies(locale)
                     Lists(
-                        catalog.currencies(locale),
+                        currencies,
                         catalog.formats(locale),
                         catalog.zones(locale),
+                        currencies.associate { option ->
+                            option.key to CurrencyCode.of(option.key)?.let(catalog::isoDecimals)
+                        },
                     )
                 }
             update { it.withNames() }
@@ -158,6 +173,12 @@ class RegionalSettingsViewModel(
                         it
                     }
                 }
+
+            RegionalSettingsAction.ConfirmCorrection -> applyCorrection()
+
+            RegionalSettingsAction.CancelCorrection -> update { it.copy(correctionTarget = null) }
+
+            RegionalSettingsAction.CorrectionShown -> update { it.copy(currencyCorrected = false) }
         }
     }
 
@@ -231,8 +252,86 @@ class RegionalSettingsViewModel(
 
             RegionalSheet.ZONE -> closed.edit(current.draft.copy(zoneId = key))
                 .without(RegionalFieldError.ZONE_UNKNOWN)
+
+            // Elegir la moneda correcta no cambia nada todavía: primero se pregunta.
+            RegionalSheet.CORRECTION ->
+                closed.copy(
+                    correctionTarget = current.correctionOptions?.firstOrNull { it.key == key },
+                    correctionError = null,
+                )
         }.withNames()
     }
+
+    /**
+     * Corrige la moneda a la que la persona confirmó. Guarda primero la copia de seguridad, así
+     * que puede tardar unos segundos: mientras tanto la pantalla lo dice y no se puede pedir otra.
+     */
+    private fun applyCorrection() {
+        val current = state.value as? RegionalSettingsUiState.Ready ?: return
+        val target = current.correctionTarget ?: return
+        if (current.correcting) return
+        val code = CurrencyCode.of(target.key) ?: return
+        val decimals = lists?.currencyDecimals?.get(target.key) ?: return
+        update { it.copy(correctionTarget = null, correcting = true, correctionError = null) }
+        viewModelScope.launch {
+            val result = correct(CurrencyCorrection(code, decimals))
+            update { corrected(it, result) }
+        }
+    }
+
+    /** La pantalla tras corregir la moneda con [result]. */
+    private fun corrected(
+        current: RegionalSettingsUiState.Ready,
+        result: CorrectCurrencyResult,
+    ): RegionalSettingsUiState.Ready {
+        val done = current.copy(correcting = false)
+        return when (result) {
+            is CorrectCurrencyResult.Applied -> {
+                val code = result.currency.code
+                stored = stored?.let { it.copy(currency = it.currency.copy(code = code)) }
+                done
+                    .copy(
+                        draft = current.draft.copy(currency = code),
+                        isoDecimals = catalog.isoDecimals(code),
+                        currencyCorrected = true,
+                    ).withNames()
+            }
+
+            is CorrectCurrencyResult.Rejected ->
+                done.copy(correctionError = correctionErrorOf(result.problem))
+
+            is CorrectCurrencyResult.SafetyCopyFailed ->
+                done.copy(correctionError = correctionErrorOf(result.failure))
+
+            is CorrectCurrencyResult.StorageFailed ->
+                done.copy(correctionError = CurrencyCorrectionError.SAVE_FAILED)
+        }
+    }
+
+    private fun correctionErrorOf(problem: CurrencyCorrectionProblem): CurrencyCorrectionError =
+        when (problem) {
+            CurrencyCorrectionProblem.SAME_AS_REFERENCE -> CurrencyCorrectionError.REFERENCE
+
+            CurrencyCorrectionProblem.USED_BY_ACCOUNT -> CurrencyCorrectionError.ACCOUNT
+
+            CurrencyCorrectionProblem.USED_AS_OTHER_CURRENCY ->
+                CurrencyCorrectionError.OTHER_CURRENCY
+
+            // La hoja ya no las ofrece: solo llegan si lo guardado cambió mientras tanto.
+            CurrencyCorrectionProblem.NOT_LOCKED,
+            CurrencyCorrectionProblem.UNCONFIRMED,
+            CurrencyCorrectionProblem.SAME_AS_CURRENT,
+            CurrencyCorrectionProblem.DECIMALS_DIFFER,
+            -> CurrencyCorrectionError.UNAVAILABLE
+        }
+
+    private fun correctionErrorOf(failure: SafetyCopyFailure): CurrencyCorrectionError =
+        when (failure) {
+            SafetyCopyFailure.NO_SPACE -> CurrencyCorrectionError.NO_SPACE
+            SafetyCopyFailure.BUSY -> CurrencyCorrectionError.BUSY
+            SafetyCopyFailure.UNSYNCED_COPIES -> CurrencyCorrectionError.UNSYNCED_COPIES
+            SafetyCopyFailure.FAILED -> CurrencyCorrectionError.COPY_FAILED
+        }
 
     /**
      * Cambia el formato a [tag]. El primer día de la semana y el separador de CSV se proponen de
@@ -467,6 +566,15 @@ class RegionalSettingsViewModel(
             formatName = built.formats.firstOrNull { it.key == draft.formatTag }?.title,
             zoneName = built.zones.firstOrNull { catalog.sameZone(it.key, draft.zoneId) }?.title,
             zoneKey = built.zones.firstOrNull { catalog.sameZone(it.key, draft.zoneId) }?.key,
+            correctionOptions =
+                if (locked) {
+                    built.currencies.filter {
+                        it.key != draft.currency.code &&
+                            built.currencyDecimals[it.key] == draft.decimals
+                    }
+                } else {
+                    null
+                },
         ).filtered()
     }
 
@@ -479,6 +587,7 @@ class RegionalSettingsViewModel(
                 RegionalSheet.CURRENCY -> built?.currencies
                 RegionalSheet.FORMAT -> built?.formats
                 RegionalSheet.ZONE -> built?.zones
+                RegionalSheet.CORRECTION -> correctionOptions
             }.orEmpty()
         val folded = TextNormalizer.normalize(query)
         return copy(

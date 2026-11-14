@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSourc
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCollectionReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCountSessionRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomCurrencyCorrectionRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomFieldRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCustomerRepository
@@ -89,6 +90,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.CollectionReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.CountSessionRepository
+import io.github.yesidrobayo.shopledger.domain.port.CurrencyCorrectionRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomFieldRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
@@ -203,6 +205,13 @@ class DataPorts internal constructor(
         )
 
     val settings: AppSettingsRepository = RoomAppSettingsRepository(database, restoreLock)
+
+    /**
+     * Corregir la moneda del negocio por otra con los mismos decimales: solo cambia la etiqueta de
+     * los ajustes y de las cuentas que la seguían, nunca un monto.
+     */
+    val currencyCorrections: CurrencyCorrectionRepository =
+        RoomCurrencyCorrectionRepository(database)
 
     val categories: CategoryRepository = RoomCategoryRepository(database)
 

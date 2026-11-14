@@ -120,6 +120,7 @@ import io.github.yesidrobayo.shopledger.data.media.MediaSyncStop
 import io.github.yesidrobayo.shopledger.data.media.MediaSyncStore
 import io.github.yesidrobayo.shopledger.data.print.BluetoothPrinters
 import io.github.yesidrobayo.shopledger.data.print.PrinterSetupFile
+import io.github.yesidrobayo.shopledger.data.repository.RoomAuditRecorder
 import io.github.yesidrobayo.shopledger.data.repository.toStoredImage
 import io.github.yesidrobayo.shopledger.data.rescue.RescueData
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
@@ -140,6 +141,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoExport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
+import io.github.yesidrobayo.shopledger.domain.port.AuditRecorder
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.port.BackupLinkPort
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
@@ -158,6 +160,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PhotoBackupPort
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.PrinterSetupStore
 import io.github.yesidrobayo.shopledger.domain.port.RestoreDrillPort
+import io.github.yesidrobayo.shopledger.domain.port.SafetyCopyPort
 import io.github.yesidrobayo.shopledger.domain.port.SecondDestinationPort
 import io.github.yesidrobayo.shopledger.domain.port.SlotFilesSetupPort
 import io.github.yesidrobayo.shopledger.domain.port.WebDavConnectionPort
@@ -650,6 +653,23 @@ class DataGraph internal constructor(
             beforeUpdate = ::preMigrationCopy,
             ioContext = ioContext,
         )
+    }
+
+    /**
+     * La copia local de seguridad antes de un cambio delicado que no es una restauración, como
+     * corregir la moneda del negocio: la misma que guarda la restauración, con su rotación, sus
+     * 30 días y su mismo cerrojo. Crearlo no toca el disco.
+     */
+    val safetyCopyBeforeChange: SafetyCopyPort by lazy {
+        SafetyCopyPort { restoreCoordinator().saveSafetyCopyBeforeChange() }
+    }
+
+    /**
+     * Anota en la auditoría de la base abierta lo que pide un caso de uso, como la corrección de
+     * la moneda. Sin la base abierta no anota nada, y una falla al anotar nunca detiene nada.
+     */
+    val auditRecorder: AuditRecorder by lazy {
+        RoomAuditRecorder(ports = { ready?.ports }, clock = clock, log = log)
     }
 
     /** La copia previa a migrar. Pedir los archivos de la base toca el disco. */

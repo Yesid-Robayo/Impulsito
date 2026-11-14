@@ -130,11 +130,18 @@ fun RegionalSettingsScreen(
 ) {
     val snackbar = remember { SnackbarHostState() }
     val savedText = stringResource(R.string.region_saved)
+    val correctedText = stringResource(R.string.region_currency_corrected)
     val ready = uiState as? RegionalSettingsUiState.Ready
     LaunchedEffect(ready?.saveState) {
         if (ready?.saveState == RegionalSaveState.SAVED && !ready.firstRun) {
             snackbar.showSnackbar(AppSnackbarVisuals(savedText, SnackbarVariant.SUCCESS))
             onAction(RegionalSettingsAction.SavedShown)
+        }
+    }
+    LaunchedEffect(ready?.currencyCorrected) {
+        if (ready?.currencyCorrected == true) {
+            snackbar.showSnackbar(AppSnackbarVisuals(correctedText, SnackbarVariant.SUCCESS))
+            onAction(RegionalSettingsAction.CorrectionShown)
         }
     }
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
@@ -186,7 +193,40 @@ fun RegionalSettingsScreen(
                 onDismiss = { onAction(RegionalSettingsAction.CancelZoneChange) },
             )
         }
+        ready.correctionTarget?.let { target -> CorrectionDialog(ready, target, onAction) }
     }
+}
+
+/**
+ * La pregunta antes de corregir la moneda: dice que los montos no se convierten, que el símbolo
+ * propio se conserva si hay uno y que antes se guarda una copia de seguridad. El botón se activa
+ * solo al marcar que se entiende.
+ */
+@Composable
+private fun CorrectionDialog(
+    state: RegionalSettingsUiState.Ready,
+    target: RegionalOption,
+    onAction: (RegionalSettingsAction) -> Unit,
+) {
+    val currency = stringResource(R.string.region_option_summary, target.title, target.key)
+    val symbol = state.draft.symbol.trim()
+    ConfirmDialog(
+        title = stringResource(R.string.region_correct_currency_confirm_title, currency),
+        body =
+            if (symbol.isEmpty()) {
+                stringResource(R.string.region_correct_currency_confirm_body, currency)
+            } else {
+                stringResource(
+                    R.string.region_correct_currency_confirm_body_symbol,
+                    currency,
+                    symbol,
+                )
+            },
+        confirmLabel = stringResource(R.string.region_correct_currency_confirm_action),
+        onConfirm = { onAction(RegionalSettingsAction.ConfirmCorrection) },
+        onDismiss = { onAction(RegionalSettingsAction.CancelCorrection) },
+        acknowledgement = stringResource(R.string.region_correct_currency_check),
+    )
 }
 
 /** La barra superior con su atrás, el contenido que se desplaza y, si hay, la acción fija abajo. */
@@ -301,6 +341,7 @@ private fun ColumnScope.RegionalForm(
             color = MaterialTheme.colorScheme.onSurface,
         )
         Help(stringResource(R.string.region_locked_help))
+        CurrencyCorrectionAction(state, onAction)
     } else {
         CompactChipRow(
             options = DECIMAL_CHOICES,
@@ -410,6 +451,48 @@ private fun CurrencyRow(
         warning = stringResource(R.string.region_currency_unconfirmed).takeIf { !code.isConfirmed },
         modifier = Modifier.bleed(),
     )
+}
+
+/**
+ * `Corregir la moneda`, solo con la moneda bloqueada: abre la hoja con las monedas de los mismos
+ * decimales. Mientras se corrige lo dice, y si no hay ninguna otra con esos decimales, también.
+ * Un fallo queda debajo, con su motivo.
+ */
+@Composable
+private fun CurrencyCorrectionAction(
+    state: RegionalSettingsUiState.Ready,
+    onAction: (RegionalSettingsAction) -> Unit,
+) {
+    val options = state.correctionOptions ?: return
+    when {
+        state.correcting -> Help(stringResource(R.string.region_correcting_currency))
+
+        options.isEmpty() -> Help(stringResource(R.string.region_correct_currency_none))
+
+        else -> {
+            Help(stringResource(R.string.region_correct_currency_help))
+            InlineTextButton(
+                stringResource(R.string.region_correct_currency_action),
+                { onAction(RegionalSettingsAction.OpenSheet(RegionalSheet.CORRECTION)) },
+            )
+        }
+    }
+    state.correctionError?.let {
+        NoticeCard(stringResource(correctionErrorText(it)), NoticeVariant.ERROR)
+    }
+}
+
+/** El texto de cada motivo por el que no se corrigió la moneda. */
+private fun correctionErrorText(error: CurrencyCorrectionError): Int = when (error) {
+    CurrencyCorrectionError.REFERENCE -> R.string.region_correct_error_reference
+    CurrencyCorrectionError.ACCOUNT -> R.string.region_correct_error_account
+    CurrencyCorrectionError.OTHER_CURRENCY -> R.string.region_correct_error_other_currency
+    CurrencyCorrectionError.UNAVAILABLE -> R.string.region_correct_error_unavailable
+    CurrencyCorrectionError.NO_SPACE -> R.string.region_correct_error_no_space
+    CurrencyCorrectionError.BUSY -> R.string.region_correct_error_busy
+    CurrencyCorrectionError.UNSYNCED_COPIES -> R.string.region_correct_error_unsynced
+    CurrencyCorrectionError.COPY_FAILED -> R.string.region_correct_error_copy
+    CurrencyCorrectionError.SAVE_FAILED -> R.string.state_error_save
 }
 
 /** El símbolo propio, con su ayuda, su error al salir y el aviso si el teléfono no lo dibuja. */
@@ -591,6 +674,14 @@ private fun Sheets(
                     R.string.region_time_zone,
                     R.string.region_time_zone_search_hint,
                     state.zoneKey ?: state.draft.zoneId,
+                )
+
+            // Ninguna opción está elegida: la actual no está en la lista.
+            RegionalSheet.CORRECTION ->
+                Triple(
+                    R.string.region_correct_currency_title,
+                    R.string.region_currency_search_hint,
+                    "",
                 )
         }
     SelectionSheet(
@@ -806,6 +897,8 @@ private fun previewState(
     locked: Boolean = false,
     errors: Set<RegionalFieldError> = emptySet(),
     saveFailed: Boolean = false,
+    correctionOptions: List<RegionalOption>? = null,
+    correctionError: CurrencyCorrectionError? = null,
 ): RegionalSettingsUiState.Ready = RegionalSettingsUiState.Ready(
     firstRun = firstRun,
     draft =
@@ -827,6 +920,8 @@ private fun previewState(
     cashRoundingStep = Money(5),
     errors = errors,
     saveFailed = saveFailed,
+    correctionOptions = correctionOptions,
+    correctionError = correctionError,
 )
 
 /** Un nombre de 80 caracteres, para ver que nada se corta. */
@@ -860,6 +955,37 @@ private fun RegionalSettingsLockedPreview() {
                 errors = setOf(RegionalFieldError.ZONE_UNKNOWN, RegionalFieldError.SYMBOL_LENGTH),
                 saveFailed = true,
             ),
+            onAction = {},
+            onBack = {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun RegionalSettingsCorrectionPreview() {
+    PreviewTheme {
+        RegionalSettingsScreen(
+            previewState(
+                locked = true,
+                correctionOptions =
+                    listOf(
+                        RegionalOption("XTT", PREVIEW_CURRENCY_NAME, "XTT", "xtt"),
+                    ),
+                correctionError = CurrencyCorrectionError.REFERENCE,
+            ),
+            onAction = {},
+            onBack = {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun RegionalSettingsCorrectionNoneLeftPreview() {
+    PreviewTheme {
+        RegionalSettingsScreen(
+            previewState(locked = true, correctionOptions = emptyList()),
             onAction = {},
             onBack = {},
         )

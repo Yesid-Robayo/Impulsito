@@ -3007,8 +3007,9 @@ private fun triggers(): List<CatalogTrigger> = listOf(
                   AND (NEW.reference_currency_code IS NULL) = (NEW.reference_currency_decimals IS NULL)
                   AND (NEW.loyalty_enabled = 0 OR (NEW.loyalty_amount_per_point IS NOT NULL AND NEW.loyalty_point_value IS NOT NULL))
                   AND (NEW.revenue_limit_amount IS NULL) = (NEW.revenue_limit_months IS NULL)
-                  AND (OLD.currency_locked_at IS NULL OR (NEW.currency_code = OLD.currency_code AND NEW.currency_decimals = OLD.currency_decimals AND NEW.currency_locked_at IS OLD.currency_locked_at))
+                  AND (OLD.currency_locked_at IS NULL OR (NEW.currency_decimals = OLD.currency_decimals AND NEW.currency_locked_at IS OLD.currency_locked_at))
                   AND (NEW.currency_locked_at IS NULL OR NEW.currency_code <> 'XXX')
+                  AND (NEW.currency_code = OLD.currency_code OR OLD.currency_locked_at IS NULL OR ((NEW.reference_currency_code IS NULL OR NEW.reference_currency_code <> NEW.currency_code) AND NOT EXISTS (SELECT 1 FROM money_accounts a WHERE a.currency_code = NEW.currency_code)))
                 ), 0)
                 BEGIN SELECT RAISE(ABORT, 'guard:app_settings'); END
             """.trimIndent(),
@@ -3021,7 +3022,7 @@ private fun triggers(): List<CatalogTrigger> = listOf(
                 CREATE TRIGGER guard_audit_events_insert BEFORE INSERT ON audit_events
                 WHEN NOT IFNULL((
                   typeof(NEW.occurred_at) = 'integer'
-                  AND NEW.event_type IN ('EXPORT_CSV', 'EXPORT_FULL_COPY', 'RESTORE', 'RESTORE_REJECTED', 'DESTINATION_DISCONNECTED', 'DESTINATION_CHANGED', 'APP_LOCK_CHANGED', 'ENCRYPTION_CHANGED', 'RECOVERY_CODE_VIEWED', 'DELETE_MY_DATA', 'AUTH_FAILED')
+                  AND NEW.event_type IN ('EXPORT_CSV', 'EXPORT_FULL_COPY', 'RESTORE', 'RESTORE_REJECTED', 'DESTINATION_DISCONNECTED', 'DESTINATION_CHANGED', 'APP_LOCK_CHANGED', 'ENCRYPTION_CHANGED', 'RECOVERY_CODE_VIEWED', 'DELETE_MY_DATA', 'AUTH_FAILED', 'CURRENCY_CORRECTED')
                   AND NEW.result IN ('SUCCESS', 'FAILURE')
                   AND NOT EXISTS (SELECT 1 FROM audit_events x WHERE x.id = NEW.id)
                 ), 0)
@@ -3941,7 +3942,7 @@ private fun triggers(): List<CatalogTrigger> = listOf(
                   AND (NEW.system_key IS NOT NULL OR NEW.name IS NOT NULL)
                   AND (NEW.name IS NULL) = (NEW.normalized_name IS NULL)
                   AND (NEW.archived_at IS NOT NULL OR NEW.normalized_name IS NULL OR NOT EXISTS (SELECT 1 FROM money_accounts a WHERE a.normalized_name = NEW.normalized_name AND a.archived_at IS NULL AND a.id <> NEW.id))
-                  AND ((NEW.currency_code = OLD.currency_code AND NEW.currency_decimals = OLD.currency_decimals) OR NOT EXISTS (SELECT 1 FROM money_movements m WHERE m.money_account_id = OLD.id))
+                  AND ((NEW.currency_code = OLD.currency_code AND NEW.currency_decimals = OLD.currency_decimals) OR NOT EXISTS (SELECT 1 FROM money_movements m WHERE m.money_account_id = OLD.id) OR (NEW.currency_decimals = OLD.currency_decimals AND NEW.currency_code = (SELECT currency_code FROM app_settings WHERE id = 1) AND NEW.currency_decimals = (SELECT currency_decimals FROM app_settings WHERE id = 1) AND NEW.updated_at = (SELECT updated_at FROM app_settings WHERE id = 1)))
                 ), 0)
                 BEGIN SELECT RAISE(ABORT, 'guard:money_accounts'); END
             """.trimIndent(),

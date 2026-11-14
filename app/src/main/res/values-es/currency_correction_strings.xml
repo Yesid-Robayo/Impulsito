@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Corregir la moneda del negocio: mismos decimales, los montos nunca cambian. -->
+    <string name="region_correct_currency_action">Corregir la moneda</string>
+    <string name="region_correct_currency_help">Si se eligió una moneda equivocada, se puede cambiar por otra con los mismos decimales. Los montos guardados no cambian.</string>
+    <string name="region_correct_currency_none">Este teléfono no conoce otra moneda con los mismos decimales.</string>
+    <string name="region_correct_currency_title">Moneda correcta</string>
+    <string name="region_correct_currency_confirm_title">¿Cambiar la moneda a %1$s?</string>
+    <string name="region_correct_currency_confirm_body">Los montos guardados no se convierten: quedan iguales, ahora en %1$s. Antes del cambio se guarda una copia de seguridad en este teléfono.</string>
+    <string name="region_correct_currency_confirm_body_symbol">Los montos guardados no se convierten: quedan iguales, ahora en %1$s. El símbolo propio %2$s se conserva. Antes del cambio se guarda una copia de seguridad en este teléfono.</string>
+    <string name="region_correct_currency_check">Entiendo que los montos guardados no se convierten</string>
+    <string name="region_correct_currency_confirm_action">Cambiar moneda</string>
+    <string name="region_correcting_currency">Guardando una copia de seguridad y corrigiendo la moneda…</string>
+    <string name="region_currency_corrected">Moneda corregida. Los montos no cambiaron.</string>
+    <string name="region_correct_error_reference">Esa es la moneda de referencia. Para usarla como moneda del negocio, primero hay que quitarla como referencia.</string>
+    <string name="region_correct_error_account">Una cuenta propia ya está en esa moneda. La moneda no cambió.</string>
+    <string name="region_correct_error_other_currency">Hay cobros, compras o cotizaciones guardados con esa moneda como otra moneda. La moneda no cambió.</string>
+    <string name="region_correct_error_unavailable">Esa moneda no sirve para corregir. La moneda no cambió.</string>
+    <string name="region_correct_error_no_space">No hay espacio para la copia de seguridad. La moneda no cambió.</string>
+    <string name="region_correct_error_busy">Hay una restauración en curso. La moneda no cambió.</string>
+    <string name="region_correct_error_unsynced">Las dos copias de seguridad de este teléfono tienen cambios que no llegaron a la nube. La moneda no cambió.</string>
+    <string name="region_correct_error_copy">No se pudo guardar la copia de seguridad. La moneda no cambió.</string>
+</resources>
