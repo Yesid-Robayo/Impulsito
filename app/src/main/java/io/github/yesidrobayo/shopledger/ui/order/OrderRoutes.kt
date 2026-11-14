@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.model.document.OrderStatus
 import io.github.yesidrobayo.shopledger.domain.model.experience.BusinessTool
+import io.github.yesidrobayo.shopledger.domain.rule.document.DocumentReceipt
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.ObservePaymentChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.PaymentChoices
@@ -36,11 +37,15 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
+import io.github.yesidrobayo.shopledger.ui.document.DocumentShareRequest
+import io.github.yesidrobayo.shopledger.ui.document.DocumentSource
+import io.github.yesidrobayo.shopledger.ui.document.ShareDocumentPdf
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.sale.RecordsTab
 import io.github.yesidrobayo.shopledger.ui.sale.SaleNumberFormat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /**
@@ -126,6 +131,9 @@ fun OrderDetailRoute(
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            ShareDocumentPdf(uiState.share) { shared ->
+                viewModel.onAction(OrderDetailAction.ShareFinished(shared))
+            }
             LaunchedEffect(uiState.toDeliver) {
                 val deliver = uiState.toDeliver ?: return@LaunchedEffect
                 viewModel.onAction(OrderDetailAction.DeliverShown)
@@ -241,6 +249,24 @@ private class OrderDetailUseCases(private val dependencies: ScreenDependencies) 
     ): OrderDepositResult = depositUseCase(orderId, amount, accountId)
 
     override suspend fun delivery(orderId: Long): OrderDeliveryResult = prepare(orderId)
+
+    override suspend fun document(orderId: Long): DocumentShareRequest? {
+        val view = observe.detail(orderId).first() ?: return null
+        val source = DocumentSource.read(dependencies)
+        return DocumentShareRequest(
+            document = DocumentReceipt.ofOrder(
+                view.order,
+                view.lines.map { it.line },
+                source.template,
+                source.businessName,
+                view.customerName,
+            ),
+            logo = source.logo,
+            units = source.units,
+            zone = source.zone,
+            attempt = 0L,
+        )
+    }
 }
 
 /** Hoy en la zona del negocio, o `null` si el teléfono no la conoce. */

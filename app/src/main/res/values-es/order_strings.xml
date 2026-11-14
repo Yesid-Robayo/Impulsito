@@ -58,4 +58,8 @@
     <string name="hub_tool_orders">Pedidos</string>
     <string name="hub_tool_orders_desc">Encargos con entrega y anticipo</string>
     <string name="a11y_order_track">Estado del pedido: %1$s. Paso %2$d de %3$d</string>
+    <string name="order_doc_title">Pedido %1$s</string>
+    <string name="order_doc_legend">Este pedido no es un comprobante de venta ni una factura.</string>
+    <string name="order_share_action">Compartir pedido</string>
+    <string name="document_share_failed">No se pudo preparar el documento.</string>
 </resources>

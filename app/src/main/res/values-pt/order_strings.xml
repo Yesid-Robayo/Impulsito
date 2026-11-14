@@ -58,4 +58,8 @@
     <string name="hub_tool_orders">Pedidos</string>
     <string name="hub_tool_orders_desc">Encomendas com entrega e sinal</string>
     <string name="a11y_order_track">Status do pedido: %1$s. Etapa %2$d de %3$d</string>
+    <string name="order_doc_title">Pedido %1$s</string>
+    <string name="order_doc_legend">Este pedido não é um comprovante de venda nem uma nota fiscal.</string>
+    <string name="order_share_action">Compartilhar pedido</string>
+    <string name="document_share_failed">Não foi possível preparar o documento.</string>
 </resources>

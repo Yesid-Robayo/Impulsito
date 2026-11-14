@@ -4,15 +4,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.document.QuoteStatus
 import io.github.yesidrobayo.shopledger.domain.model.experience.BusinessTool
+import io.github.yesidrobayo.shopledger.domain.rule.document.DocumentReceipt
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.CancelQuoteResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.CancelQuoteUseCase
@@ -30,11 +28,13 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.backup.RootBackupBanner
-import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.document.DocumentShareRequest
+import io.github.yesidrobayo.shopledger.ui.document.DocumentSource
+import io.github.yesidrobayo.shopledger.ui.document.ShareDocumentPdf
 import io.github.yesidrobayo.shopledger.ui.sale.RecordsTab
-import io.github.yesidrobayo.shopledger.ui.sale.shareIntent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /**
@@ -93,8 +93,8 @@ fun QuotesRoute(navigator: AppNavigator, asTab: Boolean, onSegment: (RecordsTab)
 }
 
 /**
- * El detalle de una cotización en la navegación. Compartir entrega el texto al selector del
- * sistema, por un toque de la persona. Convertir abre la venta con sus líneas; editar, la venta en
+ * El detalle de una cotización en la navegación. Compartir entrega su documento en PDF, con la
+ * plantilla del comprobante, al selector del sistema, por un toque de la persona. Convertir abre la venta con sus líneas; editar, la venta en
  * modo cotización.
  */
 @Composable
@@ -114,9 +114,9 @@ fun QuoteDetailRoute(
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-            val context = LocalContext.current
-            val formats = LocalAppFormats.current
-            val chooserTitle = stringResource(R.string.action_share)
+            ShareDocumentPdf(uiState.share) { shared ->
+                viewModel.onAction(QuoteDetailAction.ShareFinished(shared))
+            }
             LaunchedEffect(uiState.toSell) {
                 val sell = uiState.toSell ?: return@LaunchedEffect
                 viewModel.onAction(QuoteDetailAction.SellShown)
@@ -136,11 +136,6 @@ fun QuoteDetailRoute(
                         QuoteDetailAction.Edit -> navigator.open(
                             AppNavKey.NewSale(document = SaleDocumentMode.EditQuote(quoteId)),
                         )
-
-                        QuoteDetailAction.Share -> if (quote != null) {
-                            val text = QuoteText.of(quote, context.resources, formats)
-                            context.startActivity(shareIntent(text, chooserTitle))
-                        }
 
                         QuoteDetailAction.ViewSale -> quote?.convertedSaleId?.let {
                             navigator.open(AppNavKey.SaleDetail(it))
@@ -197,6 +192,24 @@ private class QuoteDetailUseCases(private val dependencies: ScreenDependencies) 
     override suspend fun conversion(quoteId: Long): QuoteConversionResult = prepare(quoteId)
 
     override suspend fun cancel(quoteId: Long): CancelQuoteResult = cancelUseCase(quoteId)
+
+    override suspend fun document(quoteId: Long): DocumentShareRequest? {
+        val view = observe.detail(quoteId).first() ?: return null
+        val source = DocumentSource.read(dependencies)
+        return DocumentShareRequest(
+            document = DocumentReceipt.ofQuote(
+                view.quote,
+                view.lines,
+                source.template,
+                source.businessName,
+                view.customerName,
+            ),
+            logo = source.logo,
+            units = source.units,
+            zone = source.zone,
+            attempt = 0L,
+        )
+    }
 }
 
 /** Hoy en la zona del negocio, o `null` si el teléfono no la conoce. */

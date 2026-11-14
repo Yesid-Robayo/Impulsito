@@ -58,4 +58,8 @@
     <string name="hub_tool_orders">Orders</string>
     <string name="hub_tool_orders_desc">Orders with delivery and deposit</string>
     <string name="a11y_order_track">Order status: %1$s. Step %2$d of %3$d</string>
+    <string name="order_doc_title">Order %1$s</string>
+    <string name="order_doc_legend">This order is not a sales receipt or an invoice.</string>
+    <string name="order_share_action">Share order</string>
+    <string name="document_share_failed">The document could not be prepared.</string>
 </resources>

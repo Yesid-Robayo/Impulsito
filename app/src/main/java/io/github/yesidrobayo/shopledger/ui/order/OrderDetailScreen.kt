@@ -92,6 +92,7 @@ fun OrderDetailScreen(
     val cancelled = stringResource(R.string.order_cancelled)
     val deposited = stringResource(R.string.order_deposit_recorded)
     val deliverFailed = stringResource(R.string.order_error_deliver)
+    val shareFailed = stringResource(R.string.document_share_failed)
     LaunchedEffect(uiState.notice) {
         val notice = uiState.notice ?: return@LaunchedEffect
         onAction(OrderDetailAction.NoticeShown)
@@ -100,6 +101,7 @@ fun OrderDetailScreen(
             OrderDetailNotice.CANCELLED -> cancelled to SnackbarVariant.SUCCESS
             OrderDetailNotice.DEPOSIT_RECORDED -> deposited to SnackbarVariant.SUCCESS
             OrderDetailNotice.DELIVER_FAILED -> deliverFailed to SnackbarVariant.ERROR
+            OrderDetailNotice.SHARE_FAILED -> shareFailed to SnackbarVariant.ERROR
         }
         notices.showSnackbar(AppSnackbarVisuals(text, variant))
     }
@@ -151,21 +153,26 @@ fun OrderDetailScreen(
     Dialogs(uiState, onAction)
 }
 
-/** `Editar`, `Volver a pendiente` y `Cancelar pedido`, cada uno solo cuando aplica. */
+/**
+ * `Editar`, `Compartir pedido`, `Volver a pendiente` y `Cancelar pedido`, cada uno solo cuando
+ * aplica. Un pedido cancelado no tiene menú: ya no se entrega ni se comparte.
+ */
 @Composable
 private fun DetailMenu(order: OrderDetail, onAction: (OrderDetailAction) -> Unit) {
+    if (order.status == OrderStatus.CANCELLED) return
     val open = order.status.isOpen
-    if (!open) return
     val edit = stringResource(R.string.action_edit)
+    val share = stringResource(R.string.order_share_action)
     val back = stringResource(R.string.order_back_to_pending_action)
     val cancel = stringResource(R.string.order_cancel_action)
     OverflowMenu(
         buildList {
-            add(OverflowAction(edit, { onAction(OrderDetailAction.Edit) }))
+            if (open) add(OverflowAction(edit, { onAction(OrderDetailAction.Edit) }))
+            add(OverflowAction(share, { onAction(OrderDetailAction.Share) }))
             if (order.status == OrderStatus.READY) {
                 add(OverflowAction(back, { onAction(OrderDetailAction.BackToPending) }))
             }
-            add(OverflowAction(cancel, { onAction(OrderDetailAction.AskCancel) }))
+            if (open) add(OverflowAction(cancel, { onAction(OrderDetailAction.AskCancel) }))
         },
     )
 }

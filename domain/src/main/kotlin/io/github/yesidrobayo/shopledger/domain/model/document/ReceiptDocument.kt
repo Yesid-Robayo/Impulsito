@@ -9,12 +9,18 @@ import kotlin.time.Instant
 /**
  * Qué documento es. Cada uno tiene su título y su leyenda, y ninguno se llama factura.
  *
- * Por ahora solo el de una venta. Cotizaciones y pedidos usan el mismo papel con su propio título
- * y su propia leyenda, para que nunca se confundan con un comprobante de venta.
+ * Cotizaciones y pedidos usan el mismo papel que el comprobante de venta, con su propio título y
+ * su propia leyenda, para que nunca se confundan con él.
  */
 enum class ReceiptKind {
     /** El comprobante de una venta. */
     SALE,
+
+    /** Una cotización: precios ofrecidos, que todavía no son una venta. */
+    QUOTE,
+
+    /** Un pedido: lo encargado, que se vende al entregarlo. */
+    ORDER,
 }
 
 /**
@@ -31,6 +37,8 @@ enum class ReceiptKind {
  * - Los textos ya vienen congelados: nombres de producto, de método y de impuesto como estaban al
  *   vender, aunque después cambien.
  * - [amounts] son las filas de cifras, en el orden en que se dibujan.
+ * - [validUntil] es la vigencia de una cotización, y [dueDate] la fecha de entrega de un pedido, si
+ *   se eligieron. Un comprobante de venta no lleva ninguna.
  */
 data class ReceiptDocument(
     val kind: ReceiptKind,
@@ -43,6 +51,8 @@ data class ReceiptDocument(
     val lines: List<ReceiptLine>,
     val amounts: List<ReceiptAmount>,
     val footerText: String?,
+    val validUntil: BusinessDate? = null,
+    val dueDate: BusinessDate? = null,
 )
 
 /**
@@ -94,6 +104,9 @@ sealed interface ReceiptAmount {
 
     /** La propina. */
     data class Tip(override val amount: Money) : ReceiptAmount
+
+    /** El cobro por envío de un pedido, que suma al total. */
+    data class Shipping(override val amount: Money) : ReceiptAmount
 
     /** Lo que se cobra: el total con la propina y el redondeo. */
     data class Total(override val amount: Money) : ReceiptAmount

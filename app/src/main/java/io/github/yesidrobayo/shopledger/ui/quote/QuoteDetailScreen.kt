@@ -78,6 +78,7 @@ fun QuoteDetailScreen(
     val convertFailed = stringResource(R.string.quote_error_convert)
     val cancelFailed = stringResource(R.string.state_error_save)
     val cancelled = stringResource(R.string.quote_cancelled)
+    val shareFailed = stringResource(R.string.document_share_failed)
     LaunchedEffect(uiState.notice) {
         val notice = uiState.notice ?: return@LaunchedEffect
         onAction(QuoteDetailAction.NoticeShown)
@@ -85,6 +86,7 @@ fun QuoteDetailScreen(
             QuoteDetailNotice.CONVERT_FAILED -> convertFailed to SnackbarVariant.ERROR
             QuoteDetailNotice.CANCEL_FAILED -> cancelFailed to SnackbarVariant.ERROR
             QuoteDetailNotice.CANCELLED -> cancelled to SnackbarVariant.SUCCESS
+            QuoteDetailNotice.SHARE_FAILED -> shareFailed to SnackbarVariant.ERROR
         }
         notices.showSnackbar(AppSnackbarVisuals(text, variant))
     }
@@ -135,7 +137,10 @@ fun QuoteDetailScreen(
     Dialogs(uiState, onAction)
 }
 
-/** `Editar`, `Compartir cotización` y `Cancelar cotización`: editar y cancelar, solo abierta. */
+/**
+ * `Editar`, `Compartir cotización` y `Cancelar cotización`: editar y cancelar, solo abierta. Una
+ * cancelada no se comparte: ya no es una oferta.
+ */
 @Composable
 private fun DetailMenu(quote: QuoteDetail, onAction: (QuoteDetailAction) -> Unit) {
     val open = quote.status == QuoteStatus.OPEN
@@ -145,7 +150,9 @@ private fun DetailMenu(quote: QuoteDetail, onAction: (QuoteDetailAction) -> Unit
     OverflowMenu(
         buildList {
             if (open) add(OverflowAction(edit, { onAction(QuoteDetailAction.Edit) }))
-            add(OverflowAction(share, { onAction(QuoteDetailAction.Share) }))
+            if (quote.status != QuoteStatus.CANCELLED) {
+                add(OverflowAction(share, { onAction(QuoteDetailAction.Share) }))
+            }
             if (open) add(OverflowAction(cancel, { onAction(QuoteDetailAction.AskCancel) }))
         },
     )

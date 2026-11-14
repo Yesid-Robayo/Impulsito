@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.document.OrderDeliveryRes
 import io.github.yesidrobayo.shopledger.domain.usecase.document.OrderDepositResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.OrderView
 import io.github.yesidrobayo.shopledger.ui.ReadOutcome
+import io.github.yesidrobayo.shopledger.ui.document.DocumentShareRequest
 import io.github.yesidrobayo.shopledger.ui.readOutcome
 import io.github.yesidrobayo.shopledger.ui.sale.SaleNumberFormat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,6 +60,9 @@ interface OrderDetailOperations {
     suspend fun deposit(orderId: Long, amount: Money, accountId: Long?): OrderDepositResult
 
     suspend fun delivery(orderId: Long): OrderDeliveryResult
+
+    /** El documento del pedido para compartir, o `null` si ya no se puede leer. */
+    suspend fun document(orderId: Long): DocumentShareRequest? = null
 }
 
 /**
@@ -149,6 +153,7 @@ enum class OrderDetailNotice {
     CANCELLED,
     DEPOSIT_RECORDED,
     DELIVER_FAILED,
+    SHARE_FAILED,
 }
 
 @Immutable
@@ -160,6 +165,7 @@ data class OrderDetailUiState(
     val working: Boolean = false,
     val notice: OrderDetailNotice? = null,
     val toDeliver: Long? = null,
+    val share: DocumentShareRequest? = null,
 )
 
 sealed interface OrderDetailAction {
@@ -194,6 +200,12 @@ sealed interface OrderDetailAction {
 
     data object DeliverShown : OrderDetailAction
 
+    /** Arma el documento del pedido y lo entrega a la ruta para compartirlo. */
+    data object Share : OrderDetailAction
+
+    /** El selector se abrió, o no: [shared] lo dice. */
+    data class ShareFinished(val shared: Boolean) : OrderDetailAction
+
     /** Navegación: los resuelve la ruta. */
     data object Back : OrderDetailAction
 
@@ -218,6 +230,7 @@ class OrderDetailViewModel(
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val overlay = MutableStateFlow(OrderDetailUiState())
+    private var shares = 0L
 
     // Reintentar vuelve a leer desde cero: una lectura que falló ya terminó su flujo.
     private val content: Flow<OrderDetailContent> = attempts.flatMapLatest {
@@ -287,6 +300,15 @@ class OrderDetailViewModel(
 
             OrderDetailAction.DeliverShown -> overlay.update { it.copy(toDeliver = null) }
 
+            OrderDetailAction.Share -> share()
+
+            is OrderDetailAction.ShareFinished -> overlay.update {
+                it.copy(
+                    share = null,
+                    notice = if (action.shared) it.notice else OrderDetailNotice.SHARE_FAILED,
+                )
+            }
+
             OrderDetailAction.Back,
             OrderDetailAction.Edit,
             OrderDetailAction.ViewSale,
@@ -329,6 +351,25 @@ class OrderDetailViewModel(
                 OrderDeliveryResult.NothingToDeliver,
                 -> overlay.update {
                     it.copy(working = false, notice = OrderDetailNotice.DELIVER_FAILED)
+                }
+            }
+        }
+    }
+
+    /**
+     * Arma el documento con la plantilla del comprobante y lo deja para la ruta, que lo comparte
+     * como PDF. Si no se puede leer, lo dice.
+     */
+    private fun share() {
+        if (overlay.value.share != null) return
+        viewModelScope.launch {
+            val request = (readOutcome { operations.document(orderId) } as? ReadOutcome.Read)?.value
+            shares++
+            overlay.update {
+                if (request == null) {
+                    it.copy(notice = OrderDetailNotice.SHARE_FAILED)
+                } else {
+                    it.copy(share = request.copy(attempt = shares))
                 }
             }
         }

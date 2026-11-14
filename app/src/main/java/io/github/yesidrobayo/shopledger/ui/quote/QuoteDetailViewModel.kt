@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteConversion
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteView
 import io.github.yesidrobayo.shopledger.ui.ReadOutcome
+import io.github.yesidrobayo.shopledger.ui.document.DocumentShareRequest
 import io.github.yesidrobayo.shopledger.ui.readOutcome
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +42,9 @@ interface QuoteDetailOperations {
     suspend fun conversion(quoteId: Long): QuoteConversionResult
 
     suspend fun cancel(quoteId: Long): CancelQuoteResult
+
+    /** El documento de la cotización para compartir, o `null` si ya no se puede leer. */
+    suspend fun document(quoteId: Long): DocumentShareRequest? = null
 }
 
 /** Una línea como se muestra: lo congelado al cotizar, sin costo. */
@@ -96,6 +100,7 @@ enum class QuoteDetailNotice {
     CONVERT_FAILED,
     CANCEL_FAILED,
     CANCELLED,
+    SHARE_FAILED,
 }
 
 /** Abrir la venta con las líneas de la cotización: lo resuelve la ruta, una vez. */
@@ -109,6 +114,7 @@ data class QuoteDetailUiState(
     val working: Boolean = false,
     val notice: QuoteDetailNotice? = null,
     val toSell: QuoteToSell? = null,
+    val share: DocumentShareRequest? = null,
 )
 
 sealed interface QuoteDetailAction {
@@ -131,11 +137,15 @@ sealed interface QuoteDetailAction {
 
     data object SellShown : QuoteDetailAction
 
+    /** El selector se abrió, o no: [shared] lo dice. */
+    data class ShareFinished(val shared: Boolean) : QuoteDetailAction
+
     /** Navegación y compartir: los resuelve la ruta. */
     data object Back : QuoteDetailAction
 
     data object Edit : QuoteDetailAction
 
+    /** Arma el documento de la cotización y lo entrega a la ruta para compartirlo. */
     data object Share : QuoteDetailAction
 
     data object ViewSale : QuoteDetailAction
@@ -155,6 +165,7 @@ class QuoteDetailViewModel(
     private val attempts = MutableStateFlow(0)
     private val overlay = MutableStateFlow(QuoteDetailUiState())
     private var pending: QuoteConversion? = null
+    private var shares = 0L
 
     // Reintentar vuelve a leer desde cero: una lectura que falló ya terminó su flujo.
     private val content: Flow<QuoteDetailContent> = attempts.flatMapLatest {
@@ -206,9 +217,17 @@ class QuoteDetailViewModel(
 
             QuoteDetailAction.SellShown -> overlay.update { it.copy(toSell = null) }
 
+            QuoteDetailAction.Share -> share()
+
+            is QuoteDetailAction.ShareFinished -> overlay.update {
+                it.copy(
+                    share = null,
+                    notice = if (action.shared) it.notice else QuoteDetailNotice.SHARE_FAILED,
+                )
+            }
+
             QuoteDetailAction.Back,
             QuoteDetailAction.Edit,
-            QuoteDetailAction.Share,
             QuoteDetailAction.ViewSale,
             -> Unit
         }
@@ -261,6 +280,25 @@ class QuoteDetailViewModel(
     private fun sell(useCurrentPrices: Boolean) {
         pending = null
         overlay.update { it.copy(toSell = QuoteToSell(quoteId, useCurrentPrices)) }
+    }
+
+    /**
+     * Arma el documento con la plantilla del comprobante y lo deja para la ruta, que lo comparte
+     * como PDF. Si no se puede leer, lo dice.
+     */
+    private fun share() {
+        if (overlay.value.share != null) return
+        viewModelScope.launch {
+            val request = (readOutcome { operations.document(quoteId) } as? ReadOutcome.Read)?.value
+            shares++
+            overlay.update {
+                if (request == null) {
+                    it.copy(notice = QuoteDetailNotice.SHARE_FAILED)
+                } else {
+                    it.copy(share = request.copy(attempt = shares))
+                }
+            }
+        }
     }
 
     private fun cancel() {

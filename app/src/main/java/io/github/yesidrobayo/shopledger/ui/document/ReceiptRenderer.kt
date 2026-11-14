@@ -255,11 +255,16 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         if (isNotEmpty()) {
             add(RuleBlock(width, style.accent, style.headerRule, SECTION_GAP * u, AFTER_RULE * u))
         }
-        val title = titleOf(document.kind)
+        val title = titleOf(document)
         add(centered(title, width, style.titleSize, BOLD, style.ink, SECTION_GAP * u))
-        add(centered(numberOf(document), width, style.bodySize, REGULAR, style.ink, GAP * u))
+        numberOf(document)?.let {
+            add(centered(it, width, style.bodySize, REGULAR, style.ink, GAP * u))
+        }
         val whenText = whenOf(document, assets.zone)
         add(centered(whenText, width, style.bodySize, REGULAR, style.muted, SMALL_GAP * u))
+        dateNoteOf(document)?.let {
+            add(centered(it, width, style.bodySize, REGULAR, style.ink, SMALL_GAP * u))
+        }
         document.customerName?.let {
             val customer = resources.getString(R.string.receipt_doc_customer, it)
             add(centered(customer, width, style.bodySize, REGULAR, style.muted, SMALL_GAP * u))
@@ -271,18 +276,55 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         document.footerText?.let {
             add(centered(it, width, style.bodySize, REGULAR, style.ink, SECTION_GAP * u))
         }
-        val legend = resources.getString(R.string.legal_receipt_not_invoice)
+        val legend = resources.getString(legendOf(document.kind))
         add(centered(legend, width, style.legendSize, REGULAR, style.muted, SECTION_GAP * u))
     }
 
-    private fun titleOf(kind: ReceiptKind): String = when (kind) {
-        ReceiptKind.SALE -> resources.getString(R.string.receipt_doc_title)
+    /**
+     * La leyenda de cada tipo, al pie y siempre: ninguno es una factura, y una cotización o un
+     * pedido dicen además que no son un comprobante de venta.
+     */
+    private fun legendOf(kind: ReceiptKind): Int = when (kind) {
+        ReceiptKind.SALE -> R.string.legal_receipt_not_invoice
+        ReceiptKind.QUOTE -> R.string.quote_doc_legend
+        ReceiptKind.ORDER -> R.string.order_doc_legend
     }
 
-    private fun numberOf(document: ReceiptDocument): String {
-        val digits = formats.quantity.format(QuantityMilli.ofUnits(document.number), false)
+    /** El título: `Comprobante de venta`, o `Cotización 41` y `Pedido 58` con su número. */
+    private fun titleOf(document: ReceiptDocument): String {
+        val digits = digitsOf(document)
+        return when (document.kind) {
+            ReceiptKind.SALE -> resources.getString(R.string.receipt_doc_title)
+            ReceiptKind.QUOTE -> resources.getString(R.string.quote_doc_title, digits)
+            ReceiptKind.ORDER -> resources.getString(R.string.order_doc_title, digits)
+        }
+    }
+
+    private fun digitsOf(document: ReceiptDocument): String =
+        formats.quantity.format(QuantityMilli.ofUnits(document.number), false)
+
+    /** La vigencia de una cotización o la entrega de un pedido, si tienen. */
+    private fun dateNoteOf(document: ReceiptDocument): String? {
+        document.validUntil?.let {
+            return resources.getString(
+                R.string.quote_doc_valid_until,
+                formats.date.dayMonthYear(it),
+            )
+        }
+        return document.dueDate?.let {
+            resources.getString(R.string.order_delivery_row, formats.date.dayMonthYear(it))
+        }
+    }
+
+    /**
+     * El número bajo el título de un comprobante de venta, con `Anulada` si se anuló. Una
+     * cotización y un pedido ya lo llevan en el título.
+     */
+    private fun numberOf(document: ReceiptDocument): String? {
+        val digits = digitsOf(document)
         val number = when (document.kind) {
             ReceiptKind.SALE -> resources.getString(R.string.receipt_doc_sale_number, digits)
+            ReceiptKind.QUOTE, ReceiptKind.ORDER -> return null
         }
         if (!document.voided) return number
         val status = resources.getString(R.string.receipt_doc_voided)
@@ -333,6 +375,8 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
 
             is ReceiptAmount.Tip -> resources.getString(R.string.receipt_doc_tip)
 
+            is ReceiptAmount.Shipping -> resources.getString(R.string.order_summary_shipping)
+
             is ReceiptAmount.Total -> resources.getString(R.string.receipt_doc_total)
 
             is ReceiptAmount.Payment -> row.methodName
@@ -357,6 +401,7 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
 
             is ReceiptAmount.Subtotal, is ReceiptAmount.Adjustment, is ReceiptAmount.Rounding,
             is ReceiptAmount.Tip, is ReceiptAmount.Payment, is ReceiptAmount.Change,
+            is ReceiptAmount.Shipping,
             is ReceiptAmount.BalanceDue, is ReceiptAmount.Return,
             -> RowBlock(label, row.amount, width, 0f, style, style.bodySize, style.ink)
         }
