@@ -62,6 +62,7 @@ fun SaleReturnRoute(key: AppNavKey.SaleReturn, navigator: AppNavigator) {
                 moneyLedger = ports.moneyLedger,
                 customers = ports.customers,
                 customerLedger = ports.customerLedger,
+                lineComponents = ports.saleLineComponents,
             )
             SaleReturnViewModel(
                 saleId = key.saleId,

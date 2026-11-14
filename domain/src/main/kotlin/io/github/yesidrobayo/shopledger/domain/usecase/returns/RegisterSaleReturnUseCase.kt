@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntryDraft
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
@@ -28,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
+import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
@@ -36,6 +38,7 @@ import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.SaleLineComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -48,6 +51,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
 import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerEntryIssue
+import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.returns.ReturnShare
@@ -88,6 +92,12 @@ import kotlin.time.Instant
  *
  * Un producto archivado se devuelve igual, y su stock entra aunque siga archivado.
  *
+ * **Un combo vuelve por sus hojas.** Con [lineComponents], cada hoja con stock de la línea vendida
+ * vuelve en proporción a lo devuelto del combo, con su propio `SALE_RETURN` ligado a la hoja, y su
+ * cantidad y su costo salen de las hojas congeladas con cantidades acumuladas, como cada parte de
+ * la línea: devolver el combo de a poco suma exactamente lo que salió. Sin ellas, un combo no se
+ * devuelve.
+ *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que vuelve,
  * una sola vez por producto.
  */
@@ -105,6 +115,7 @@ class RegisterSaleReturnUseCase(
     moneyLedger: MoneyLedgerRepository? = null,
     private val customers: CustomerRepository? = null,
     customerLedger: CustomerLedgerRepository? = null,
+    private val lineComponents: SaleLineComponentRepository? = null,
 ) {
     private val customerLedger = customerLedger?.let(::CustomerLedgerWriter)
     private val ledger = StockChangeRecorder(ledger)
@@ -206,11 +217,13 @@ class RegisterSaleReturnUseCase(
         )
         for (line in returned) {
             val lineId = returns.insertLine(returnId, line.toNewLine())
-            if (line.request.restock && line.sold.content.stockEffect == LineStockEffect.DIRECT) {
-                if (!restock(sale, line, lineId, time, now)) {
-                    return TxResult.Rollback(RegisterSaleReturnResult.LedgerDamaged)
-                }
+            if (!line.request.restock) continue
+            val restocked = when (line.sold.content.stockEffect) {
+                LineStockEffect.DIRECT -> restock(sale, line, lineId, time, now)
+                LineStockEffect.COMPONENTS -> restockLeaves(sale, line, lineId, time, now)
+                LineStockEffect.NONE -> true
             }
+            if (!restocked) return TxResult.Rollback(RegisterSaleReturnResult.LedgerDamaged)
         }
         if (accountId != null && !refund(accountId, returnId, totals.total, time, now)) {
             return TxResult.Rollback(RegisterSaleReturnResult.LedgerDamaged)
@@ -259,7 +272,7 @@ class RegisterSaleReturnUseCase(
             val sold = soldLines[request.saleLineId]
                 ?: return rejected(index, ReturnLineRejection.NOT_IN_SALE)
             val content = sold.content
-            if (content.stockEffect == LineStockEffect.COMPONENTS) {
+            if (content.stockEffect == LineStockEffect.COMPONENTS && lineComponents == null) {
                 return rejected(index, ReturnLineRejection.COMPONENTS_NOT_SUPPORTED)
             }
             // La línea apunta a su producto con una llave que no deja borrarlo.
@@ -295,7 +308,7 @@ class RegisterSaleReturnUseCase(
                 // La regla de la unidad ya rechazó una cantidad que no es positiva.
                 ReturnShareCheck.NotPositive -> error("La cantidad ya se comprobó")
             }
-            lines += ReturnedLine(request, sold, product, share)
+            lines += ReturnedLine(request, sold, product, share, already.quantity)
         }
         return Shared.Lines(lines)
     }
@@ -310,36 +323,102 @@ class RegisterSaleReturnUseCase(
         returnLineId: Long,
         time: RecordTime,
         now: Instant,
+    ): Boolean = enter(
+        productId = line.product.id,
+        locationId = sale.content.locationId,
+        quantity = line.request.quantity,
+        cost = line.share.cost,
+        unitCost = line.sold.content.unitCost,
+        source = StockMovementSource(saleReturnLineId = returnLineId),
+        time = time,
+        now = now,
+    )
+
+    /**
+     * Devuelve al stock la parte de cada hoja con stock de la línea de combo de [line], con un
+     * `SALE_RETURN` ligado a la línea devuelta y a la hoja. La parte de cada hoja, en cantidad y
+     * en costo, sale con las cantidades del combo devueltas antes y después, como cada parte de la
+     * línea; una hoja cuya parte redondea a cero no deja fila. Devuelve `false` si un costo no
+     * cabe.
+     */
+    private suspend fun restockLeaves(
+        sale: Sale,
+        line: ReturnedLine,
+        returnLineId: Long,
+        time: RecordTime,
+        now: Instant,
     ): Boolean {
-        // Se lee de nuevo: otra línea del mismo producto ya pudo moverlo en esta transacción.
-        val product = products.findById(line.product.id) ?: damaged()
-        val quantity = line.request.quantity
-        val before = CostState(product.onHand, product.averageCost, product.stockValue)
-        val after = when (
-            val entry = WeightedAverageCost.entry(
-                before,
-                quantity,
-                line.share.cost,
+        val book = requireNotNull(lineComponents) { "Un combo solo llega aquí con sus hojas" }
+        val sold = line.sold.content.quantity.milli
+        val before = line.returnedBefore.milli
+        val after = Math.addExact(before, line.request.quantity.milli)
+        for (leaf in book.findBySaleLine(line.sold.id)) {
+            val content = leaf.content
+            if (!content.tracked) continue
+            val quantity = partOf(content.quantity.milli, before, after, sold) ?: return false
+            if (quantity == 0L) continue
+            val cost = partOf(content.lineCost.minor, before, after, sold) ?: return false
+            val entered = enter(
+                productId = content.componentProductId,
+                locationId = sale.content.locationId,
+                quantity = QuantityMilli(quantity),
+                cost = Money(cost),
+                unitCost = content.unitCost,
+                source = StockMovementSource(
+                    saleReturnLineId = returnLineId,
+                    saleLineComponentId = leaf.id,
+                ),
+                time = time,
+                now = now,
             )
-        ) {
+            if (!entered) return false
+        }
+        return true
+    }
+
+    /**
+     * La parte de [total] que toca a lo devuelto entre [before] y [after] de [sold] milésimas, con
+     * cantidades acumuladas: la suma de todas las partes es exacta. `null` si no cabe.
+     */
+    private fun partOf(total: Long, before: Long, after: Long, sold: Long): Long? {
+        val upTo = mulDivRound(total, after, sold).valueOrNull() ?: return null
+        val until = mulDivRound(total, before, sold).valueOrNull() ?: return null
+        return upTo - until
+    }
+
+    /** Agrega un `SALE_RETURN` de [quantity] al costo [cost]. Devuelve `false` si no cabe. */
+    private suspend fun enter(
+        productId: Long,
+        locationId: Long,
+        quantity: QuantityMilli,
+        cost: Money,
+        unitCost: Money,
+        source: StockMovementSource,
+        time: RecordTime,
+        now: Instant,
+    ): Boolean {
+        // Se lee de nuevo: otra hoja o línea del mismo producto ya pudo moverlo aquí.
+        val product = products.findById(productId) ?: damaged()
+        val before = CostState(product.onHand, product.averageCost, product.stockValue)
+        val after = when (val entry = WeightedAverageCost.entry(before, quantity, cost)) {
             is Checked.Value -> entry.value
             Checked.Overflow, is Checked.AboveLimit -> return false
         }
         ledger.append(
             NewStockMovement(
                 movement = StockMovementDraft(
-                    key = StockKey(product.id, sale.content.locationId, lotId = null),
+                    key = StockKey(productId, locationId, lotId = null),
                     type = StockMovementType.SALE_RETURN,
                     quantity = quantity,
                     reversesMovementId = null,
                 ),
                 reason = null,
-                unitCost = line.sold.content.unitCost,
-                totalCost = line.share.cost,
+                unitCost = unitCost,
+                totalCost = cost,
                 balanceAfter = after.onHand,
                 averageCostAfter = after.averageCost,
                 stockValueAfter = after.stockValue,
-                source = StockMovementSource(saleReturnLineId = returnLineId),
+                source = source,
                 note = null,
                 occurredAt = time.occurredAt,
                 businessDate = time.businessDate,
@@ -450,12 +529,16 @@ class RegisterSaleReturnUseCase(
     private fun rejected(index: Int, reason: ReturnLineRejection): Shared =
         Shared.Rejected(RegisterSaleReturnResult.LineRejected(index, reason))
 
-    /** Una línea pedida, con la línea vendida, su producto y la parte que devuelve. */
+    /**
+     * Una línea pedida, con la línea vendida, su producto, la parte que devuelve y lo que ya
+     * devolvieron de ella las devoluciones activas, [returnedBefore].
+     */
     private class ReturnedLine(
         val request: ReturnLineRequest,
         val sold: SaleLine,
         val product: Product,
         val share: ReturnShare,
+        val returnedBefore: QuantityMilli,
     ) {
         fun toNewLine() = NewSaleReturnLine(
             saleLineId = sold.id,

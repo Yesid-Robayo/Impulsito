@@ -80,7 +80,8 @@ data class SaleReturnUiState(
  * @param remaining lo que falta por devolver: el tope de [quantity].
  * @param quantity lo que se devuelve ahora.
  * @param restock si vuelve al inventario; sin reingreso cuenta como perdida.
- * @param returnable la línea admite devolución: un combo, que hoy no se vende, no.
+ * @param returnable la línea admite devolución. Hoy toda línea la admite: un combo vuelve por sus
+ *   hojas.
  */
 @Immutable
 data class SaleReturnLineUi(

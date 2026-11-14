@@ -1498,6 +1498,7 @@ internal class SaleWorld(
         moneyLedger = moneyLedger,
         customers = customerRepository,
         customerLedger = customerLedger,
+        lineComponents = lineComponentRepository.takeIf { withCombos },
     )
 
     fun voidSaleReturn(): VoidSaleReturnUseCase = VoidSaleReturnUseCase(

@@ -18,7 +18,6 @@ import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnResolution
 import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnSettlement
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturnRequest
-import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleDetail
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
@@ -420,7 +419,6 @@ class SaleReturnViewModel(
                 ),
                 restock = line.id !in current.lost,
                 archived = row.productId in detail.archivedProductIds,
-                returnable = row.stockEffect != LineStockEffect.COMPONENTS,
             )
         }
         var net = Money.ZERO

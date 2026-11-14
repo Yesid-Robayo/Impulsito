@@ -158,6 +158,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     moneyLedger = ports.moneyLedger,
                     customers = ports.customers,
                     customerLedger = ports.customerLedger,
+                    lineComponents = ports.saleLineComponents,
                 )
             val exchangeSale = ExchangeSaleUseCase(ports.transactions, register, registerReturn)
             NewSaleViewModel(
