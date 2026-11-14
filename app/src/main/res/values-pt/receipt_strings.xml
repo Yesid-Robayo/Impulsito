@@ -44,4 +44,5 @@
     <string name="receipt_error_generate">Não foi possível criar o comprovante. A venda continua registrada.</string>
     <string name="receipt_file_name">Comprovante %1$s</string>
     <string name="receipt_print_action">Imprimir</string>
+    <string name="receipt_print_system_action">Imprimir com o sistema</string>
 </resources>

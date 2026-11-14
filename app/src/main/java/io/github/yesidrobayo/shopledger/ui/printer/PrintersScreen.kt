@@ -247,6 +247,30 @@ private fun PrinterSheetContent(sheet: PrinterSheet, onAction: (PrintersAction) 
     }
 }
 
+/**
+ * El servicio de impresión del sistema, para impresoras Wi-Fi o USB, con su ayuda y la prueba.
+ * Sigue disponible sin Bluetooth y con el permiso negado: no lo necesita.
+ */
+internal fun LazyListScope.systemPrintSection(onTest: () -> Unit) {
+    item(key = SYSTEM) { SectionHeader(stringResource(R.string.printer_section_system)) }
+    item(key = SYSTEM_HELP) {
+        Text(
+            stringResource(R.string.printer_system_help),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
+        )
+    }
+    item(key = SYSTEM_TEST) {
+        PrimaryActionButton(
+            stringResource(R.string.printer_system_test_action),
+            onTest,
+            ActionVariant.OUTLINED,
+            modifier = Modifier.padding(AppTheme.spacing.s16),
+        )
+    }
+}
+
 /** El nombre que da el sistema, o `Bluetooth` si no da ninguno. Nunca la dirección. */
 @Composable
 internal fun printerName(name: String?): String =
@@ -263,3 +287,6 @@ private const val BLUETOOTH = "bluetooth"
 private const val NO_ADAPTER = "no-adapter"
 private const val BLOCKED = "blocked"
 private const val EMPTY = "empty"
+private const val SYSTEM = "system"
+private const val SYSTEM_HELP = "system-help"
+private const val SYSTEM_TEST = "system-test"

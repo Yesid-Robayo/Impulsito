@@ -4,13 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Bundle
-import android.os.CancellationSignal
-import android.os.ParcelFileDescriptor
-import android.print.PageRange
 import android.print.PrintAttributes
-import android.print.PrintDocumentAdapter
-import android.print.PrintDocumentInfo
 import android.print.PrintManager
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -42,12 +36,10 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.LabelPreview
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
+import io.github.yesidrobayo.shopledger.ui.document.FilePrintAdapter
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.rescue.ExportFolder
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -161,7 +153,7 @@ private fun OpenSheet(job: SheetJob?, renderer: LabelRenderer, onOpened: (Boolea
             val attributes = PrintAttributes.Builder()
                 .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
                 .build()
-            val adapter = SheetAdapter(target, title) { ExportFolder.clear(context) }
+            val adapter = FilePrintAdapter(target, title) { ExportFolder.clear(context) }
             // Por referencia: la regla del registro rechaza una llamada que se lee como la salida
             // estándar, y esta es la del servicio de impresión del sistema.
             val printWith = manager::print
@@ -203,51 +195,6 @@ private fun ShowMessage(message: LabelMessage?, onShown: () -> Unit) {
         messages.show(visuals)
         onShown()
     }
-}
-
-/**
- * Entrega al servicio de impresión una hoja ya escrita. No vuelve a dibujar: el PDF ya tiene el
- * tamaño A4, y el servicio lo escala si la persona elige otro papel.
- */
-private class SheetAdapter(
-    private val file: File,
-    private val name: String,
-    private val onFinished: () -> Unit,
-) : PrintDocumentAdapter() {
-    override fun onLayout(
-        oldAttributes: PrintAttributes?,
-        newAttributes: PrintAttributes,
-        cancellationSignal: CancellationSignal,
-        callback: LayoutResultCallback,
-        extras: Bundle?,
-    ) {
-        if (cancellationSignal.isCanceled) {
-            callback.onLayoutCancelled()
-            return
-        }
-        val info = PrintDocumentInfo.Builder(name)
-            .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
-            .build()
-        callback.onLayoutFinished(info, oldAttributes != newAttributes)
-    }
-
-    override fun onWrite(
-        pages: Array<out PageRange>,
-        destination: ParcelFileDescriptor,
-        cancellationSignal: CancellationSignal,
-        callback: WriteResultCallback,
-    ) {
-        try {
-            FileInputStream(file).use { input ->
-                FileOutputStream(destination.fileDescriptor).use { output -> input.copyTo(output) }
-            }
-            callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
-        } catch (_: IOException) {
-            callback.onWriteFailed(null)
-        }
-    }
-
-    override fun onFinish() = onFinished()
 }
 
 /**

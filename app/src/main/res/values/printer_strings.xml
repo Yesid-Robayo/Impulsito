@@ -26,4 +26,7 @@
     <string name="printer_error_print">Printing failed. The document is still recorded.</string>
     <string name="printer_test_page_title">Print test</string>
     <string name="printer_test_page_body">If ñ, ç and ã read well, the printer is ready.</string>
+    <string name="printer_section_system">System print service</string>
+    <string name="printer_system_help">Wi-Fi or USB printers use the Android print service, on the local network.</string>
+    <string name="printer_system_test_action">Test system printing</string>
 </resources>

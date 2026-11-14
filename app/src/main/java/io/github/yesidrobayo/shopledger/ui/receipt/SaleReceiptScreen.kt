@@ -37,8 +37,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
  * El comprobante de una venta a pantalla completa, tal como sale, con `Compartir PDF`, `Compartir
- * imagen` e `Imprimir` abajo y `Editar plantilla` en el menú. Una venta anulada se muestra y se
- * comparte igual: el papel dice que se anuló.
+ * imagen` e `Imprimir` abajo, y `Imprimir con el sistema` y `Editar plantilla` en el menú. Una
+ * venta anulada se muestra y se comparte igual: el papel dice que se anuló.
  *
  * Si no se pudo crear el archivo, lo dice sobre los botones con `Reintentar`: la venta sigue
  * registrada. Es pura: todo llega en [uiState] y sale por [onAction].
@@ -58,6 +58,9 @@ fun SaleReceiptScreen(
             actions = {
                 OverflowMenu(
                     listOf(
+                        OverflowAction(stringResource(R.string.receipt_print_system_action), {
+                            onAction(SaleReceiptAction.PrintWithSystem)
+                        }),
                         OverflowAction(stringResource(R.string.receipt_edit_template_action), {
                             onAction(SaleReceiptAction.EditTemplate)
                         }),

@@ -26,4 +26,7 @@
     <string name="printer_error_print">No se pudo imprimir. El documento sigue registrado.</string>
     <string name="printer_test_page_title">Impresión de prueba</string>
     <string name="printer_test_page_body">Si se leen bien ñ, ç y ã, la impresora está lista.</string>
+    <string name="printer_section_system">Servicio de impresión del sistema</string>
+    <string name="printer_system_help">Para impresoras Wi-Fi o USB, se usa el servicio de impresión de Android, en la red local.</string>
+    <string name="printer_system_test_action">Probar impresión del sistema</string>
 </resources>

@@ -1,9 +1,11 @@
 package io.github.yesidrobayo.shopledger.ui.printer
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -22,8 +24,11 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.document.ReceiptRenderer
+import io.github.yesidrobayo.shopledger.ui.document.printPdfWithSystem
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.receipt.rememberSampleReceipt
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
+import kotlinx.coroutines.launch
 
 /**
  * Las impresoras, abiertas desde los ajustes o al imprimir sin impresora por defecto.
@@ -72,8 +77,10 @@ fun PrintersRoute(key: AppNavKey.Printers, navigator: AppNavigator) {
                 viewModel.onAction(PrintersAction.PermissionResult(it))
             }
             ShowMessage(uiState.message) { viewModel.onAction(PrintersAction.MessageShown) }
+            val systemTest = rememberSystemTest(renderer, testTitle)
             PrintersScreen(
                 uiState = uiState,
+                systemSection = { systemPrintSection(systemTest) },
                 onAction = { action ->
                     when (action) {
                         PrintersAction.Back -> navigator.back()
@@ -96,6 +103,28 @@ fun PrintersRoute(key: AppNavKey.Printers, navigator: AppNavigator) {
                     }
                 },
             )
+        }
+    }
+}
+
+/**
+ * La prueba del servicio de impresión del sistema: un comprobante de muestra, escrito como PDF en
+ * `cache/exports/` y entregado al diálogo de Android, que elige la impresora de la red local, una
+ * por USB o `Guardar como PDF`. Al terminar, la carpeta se vacía.
+ */
+@Composable
+private fun rememberSystemTest(renderer: ReceiptRenderer, title: String): () -> Unit {
+    val context = LocalContext.current
+    val activity = LocalActivity.current
+    val formats = LocalAppFormats.current
+    val scope = rememberCoroutineScope()
+    val messages = LocalAppMessages.current
+    val failed = stringResource(R.string.printer_error_print)
+    val sample = rememberSampleReceipt(null, null, "", "")
+    return {
+        scope.launch {
+            val opened = printPdfWithSystem(context, activity, renderer, formats, sample, title)
+            if (!opened) messages.show(AppSnackbarVisuals(failed, SnackbarVariant.ERROR))
         }
     }
 }

@@ -95,6 +95,9 @@ sealed interface SaleReceiptAction {
 
     /** El aviso de la impresión ya se mostró. */
     data object PrintedShown : SaleReceiptAction
+
+    /** Imprimir con el servicio del sistema, en cualquier impresora local o como PDF. */
+    data object PrintWithSystem : SaleReceiptAction
 }
 
 /**
@@ -186,8 +189,11 @@ class SaleReceiptViewModel(
 
             SaleReceiptAction.Retry -> attempts.update { it + 1 }
 
-            // Los resuelve la ruta: navegan.
-            SaleReceiptAction.Back, SaleReceiptAction.EditTemplate -> Unit
+            // Los resuelve la ruta: navegan o abren el servicio del sistema.
+            SaleReceiptAction.Back,
+            SaleReceiptAction.EditTemplate,
+            SaleReceiptAction.PrintWithSystem,
+            -> Unit
 
             SaleReceiptAction.Print -> {
                 val ready = uiState.value as? SaleReceiptUiState.Ready ?: return

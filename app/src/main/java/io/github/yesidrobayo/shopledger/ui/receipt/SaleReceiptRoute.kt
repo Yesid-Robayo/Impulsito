@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.receipt
 
 import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.document.ReceiptAssets
 import io.github.yesidrobayo.shopledger.ui.document.ReceiptRenderer
+import io.github.yesidrobayo.shopledger.ui.document.printPdfWithSystem
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.printer.AskBluetoothPermission
 import io.github.yesidrobayo.shopledger.ui.printer.printFailureText
@@ -126,6 +128,11 @@ fun SaleReceiptRoute(key: AppNavKey.SaleReceipt, navigator: AppNavigator) {
                 navigator.open(AppNavKey.Printers)
             }
             ShowPrinted(ready) { viewModel.onAction(SaleReceiptAction.PrintedShown) }
+            val activity = LocalActivity.current
+            val scope = rememberCoroutineScope()
+            val messages = LocalAppMessages.current
+            val printFailed = stringResource(R.string.printer_error_print)
+            val printTitle = stringResource(R.string.receipt_doc_title)
             SaleReceiptScreen(
                 uiState = uiState,
                 onAction = { action ->
@@ -134,6 +141,32 @@ fun SaleReceiptRoute(key: AppNavKey.SaleReceipt, navigator: AppNavigator) {
 
                         SaleReceiptAction.EditTemplate ->
                             navigator.open(AppNavKey.ReceiptTemplate)
+
+                        SaleReceiptAction.PrintWithSystem -> ready?.let { shown ->
+                            scope.launch {
+                                val assets = withContext(Dispatchers.IO) {
+                                    ReceiptAssets(
+                                        logo = shown.logo?.let { decodeStored(context, it) },
+                                        units = shown.units,
+                                        zone = shown.zone,
+                                    )
+                                }
+                                val opened = printPdfWithSystem(
+                                    context,
+                                    activity,
+                                    renderer,
+                                    formats,
+                                    shown.document,
+                                    printTitle,
+                                    assets,
+                                )
+                                if (!opened) {
+                                    messages.show(
+                                        AppSnackbarVisuals(printFailed, SnackbarVariant.ERROR),
+                                    )
+                                }
+                            }
+                        }
 
                         is SaleReceiptAction.Share,
                         is SaleReceiptAction.ShareFinished,
