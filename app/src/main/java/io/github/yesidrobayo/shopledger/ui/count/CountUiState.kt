@@ -168,6 +168,7 @@ sealed interface CountFinished {
  *
  * @param reviewing se están revisando las diferencias antes de aplicar.
  * @param readOnly la sesión ya terminó: se ve, pero no se cuenta ni se aplica.
+ * @param canScan algún producto de la sesión tiene código: la búsqueda ofrece el escáner.
  */
 @Immutable
 data class CountSessionUiState(
@@ -189,6 +190,7 @@ data class CountSessionUiState(
     val notice: CountNotice? = null,
     val working: Boolean = false,
     val finished: CountFinished? = null,
+    val canScan: Boolean = false,
 ) {
     val readOnly: Boolean get() = session?.finishedAt != null
     val blind: Boolean get() = session?.isBlind ?: true
@@ -207,6 +209,12 @@ sealed interface CountSessionAction {
     data class Count(val lineId: Long, val text: String) : CountSessionAction
 
     data class Step(val lineId: Long, val up: Boolean) : CountSessionAction
+
+    /** Abre el escáner en lectura continua. */
+    data object Scan : CountSessionAction
+
+    /** El escáner leyó [times] veces el código de [productId]. */
+    data class Scanned(val productId: Long, val times: Int = 1) : CountSessionAction
 
     data object Review : CountSessionAction
 

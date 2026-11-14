@@ -1,6 +1,5 @@
 package io.github.yesidrobayo.shopledger.ui.count
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -81,59 +81,67 @@ fun CountSessionScreen(
     onAction: (CountSessionAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        val title = if (uiState.reviewing) {
-            stringResource(R.string.count_review_action)
-        } else {
-            joined(
-                listOfNotNull(
-                    stringResource(R.string.count_session_title),
-                    uiState.location?.takeIf { uiState.showsLocation }?.let { locationName(it) },
-                    uiState.categoryName,
-                ),
-            ).orEmpty()
-        }
-        AppTopBar(
-            title = title,
-            navigation = TopBarNavigation.BACK,
-            onNavigate = { onAction(CountSessionAction.Back) },
-            navigationLabel = stringResource(R.string.a11y_back),
-            titleStyle = MaterialTheme.typography.titleLarge,
-            actions = {
-                if (!uiState.readOnly && !uiState.loading && !uiState.missing) {
-                    OverflowMenu(
-                        listOf(
-                            OverflowAction(
-                                stringResource(R.string.count_cancel_action),
-                                { onAction(CountSessionAction.AskCancel) },
-                                destructive = true,
+    Surface(
+        modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            val title = if (uiState.reviewing) {
+                stringResource(R.string.count_review_action)
+            } else {
+                joined(
+                    listOfNotNull(
+                        stringResource(R.string.count_session_title),
+                        uiState.location?.takeIf {
+                            uiState.showsLocation
+                        }?.let { locationName(it) },
+                        uiState.categoryName,
+                    ),
+                ).orEmpty()
+            }
+            AppTopBar(
+                title = title,
+                navigation = TopBarNavigation.BACK,
+                onNavigate = { onAction(CountSessionAction.Back) },
+                navigationLabel = stringResource(R.string.a11y_back),
+                titleStyle = MaterialTheme.typography.titleLarge,
+                actions = {
+                    if (!uiState.readOnly && !uiState.loading && !uiState.missing) {
+                        OverflowMenu(
+                            listOf(
+                                OverflowAction(
+                                    stringResource(R.string.count_cancel_action),
+                                    { onAction(CountSessionAction.AskCancel) },
+                                    destructive = true,
+                                ),
                             ),
-                        ),
-                    )
-                }
-            },
-        )
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-            Column(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxSize()) {
-                when {
-                    uiState.readFailed -> NoticeCard(
-                        text = stringResource(R.string.state_error_read),
-                        variant = NoticeVariant.ERROR,
-                        modifier = Modifier.padding(AppTheme.spacing.s16),
-                        actionLabel = stringResource(R.string.action_retry),
-                        onAction = { onAction(CountSessionAction.Retry) },
-                    )
+                        )
+                    }
+                },
+            )
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                Column(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxSize()) {
+                    when {
+                        uiState.readFailed -> NoticeCard(
+                            text = stringResource(R.string.state_error_read),
+                            variant = NoticeVariant.ERROR,
+                            modifier = Modifier.padding(AppTheme.spacing.s16),
+                            actionLabel = stringResource(R.string.action_retry),
+                            onAction = { onAction(CountSessionAction.Retry) },
+                        )
 
-                    uiState.missing -> EmptyState(
-                        icon = R.drawable.ic_fact_check,
-                        title = stringResource(R.string.state_error_read),
-                    )
+                        uiState.missing -> EmptyState(
+                            icon = R.drawable.ic_fact_check,
+                            title = stringResource(R.string.state_error_read),
+                        )
 
-                    uiState.loading -> SessionSkeleton()
+                        uiState.loading -> SessionSkeleton()
 
-                    uiState.reviewing || uiState.readOnly -> ReviewContent(uiState, onAction)
+                        uiState.reviewing || uiState.readOnly -> ReviewContent(uiState, onAction)
 
-                    else -> CountingContent(uiState, onAction)
+                        else -> CountingContent(uiState, onAction)
+                    }
                 }
             }
         }
@@ -191,6 +199,7 @@ private fun ColumnScope.CountingContent(
             query = uiState.query,
             onQueryChange = { onAction(CountSessionAction.Query(it)) },
             placeholder = stringResource(R.string.sale_search_hint),
+            onScan = if (uiState.canScan) ({ onAction(CountSessionAction.Scan) }) else null,
         )
         CompactChipRow(
             options = CountFilter.entries,
@@ -364,8 +373,13 @@ private fun Summary(differences: Int, review: CountReviewUi?, readOnly: Boolean)
                 style = MaterialTheme.typography.titleMedium,
             )
             if (review != null && !readOnly && differences > 0) {
-                AmountLine(R.string.count_surplus, review.surplus)
-                AmountLine(R.string.count_shortage, review.shortage)
+                // Un lado en cero no se muestra: sin sobrante, solo el faltante.
+                if (review.surplus != Money.ZERO) {
+                    AmountLine(R.string.count_surplus, review.surplus)
+                }
+                if (review.shortage != Money.ZERO) {
+                    AmountLine(R.string.count_shortage, review.shortage)
+                }
             }
         }
     }

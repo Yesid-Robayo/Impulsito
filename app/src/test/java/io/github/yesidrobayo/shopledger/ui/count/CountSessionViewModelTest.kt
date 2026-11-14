@@ -155,6 +155,53 @@ class CountSessionViewModelTest {
     }
 
     @Test
+    fun `each scan counts one unit, even of a row the filter hides`() = runTest(dispatcher) {
+        val model = model()
+        assertFalse(model.uiState.value.canScan)
+        model.act(this, CountSessionAction.Filter(CountFilter.DONE))
+
+        model.act(this, CountSessionAction.Scanned(CountSamples.OIL.id, times = 3))
+        model.act(this, CountSessionAction.Scanned(CountSamples.RICE.id))
+
+        assertEquals(
+            listOf(OIL to QuantityMilli(3_000L), RICE to QuantityMilli(9_000L)),
+            operations.records,
+        )
+    }
+
+    @Test
+    fun `a scan of a weighed product finds it to write, and an unknown one changes nothing`() =
+        runTest(dispatcher) {
+            val model = model()
+            model.act(this, CountSessionAction.Filter(CountFilter.PENDING))
+
+            model.act(this, CountSessionAction.Scanned(CountSamples.CHEESE.id))
+            assertEquals(listOf(CHEESE), model.uiState.value.rows.map { it.lineId })
+            assertNull(model.uiState.value.filter)
+            model.act(this, CountSessionAction.Scanned(UNKNOWN_PRODUCT))
+
+            assertTrue(operations.records.isEmpty())
+        }
+
+    @Test
+    fun `the scanner is offered when a product of the session has a code`() = runTest(dispatcher) {
+        operations.view.value = CountSamples.view().let { view ->
+            view.copy(
+                lines = view.lines.map { item ->
+                    val product = requireNotNull(item.product)
+                    item.copy(
+                        product = product.copy(
+                            details = product.details.copy(barcode = "2000000000015"),
+                        ),
+                    )
+                },
+            )
+        }
+
+        assertTrue(model().uiState.value.canScan)
+    }
+
+    @Test
     fun `the search and the chips narrow the rows`() = runTest(dispatcher) {
         val model = model()
 
@@ -341,5 +388,6 @@ class CountSessionViewModelTest {
         const val OIL = 102L
         const val CHEESE = 103L
         const val SOAP = 104L
+        const val UNKNOWN_PRODUCT = 999L
     }
 }

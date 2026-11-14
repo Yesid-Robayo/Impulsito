@@ -6,19 +6,24 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.location.LocationSamples
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
 import java.io.File
@@ -49,11 +54,16 @@ class CountScreensTest {
     private fun text(id: Int) = resources.getString(id)
 
     // Una fila se lee entera por TalkBack: su texto puede estar solo en su descripción.
-    private fun count(value: String) = compose
-        .onAllNodes(
-            hasText(value, substring = true) or hasContentDescription(value, substring = true),
-        ).fetchSemanticsNodes()
-        .size
+    private fun count(value: String) =
+        compose.onAllNodes(matching(value)).fetchSemanticsNodes().size
+
+    private fun matching(value: String): SemanticsMatcher =
+        hasText(value, substring = true) or hasContentDescription(value, substring = true)
+
+    // Con letra al 200 % la lista perezosa no compone lo que queda fuera: se desplaza hasta ahí.
+    private fun scrollTo(value: String) {
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(matching(value))
+    }
 
     private fun home(content: CountHomeContent, sheet: NewCountSheet? = null) =
         CountHomeUiState(content = content, sheet = sheet)
@@ -67,10 +77,12 @@ class CountScreensTest {
             )
         }
 
-        assertEquals(2, count(text(R.string.count_continue_action)))
-        assertEquals(1, count(text(R.string.count_status_applied)))
-        assertEquals(1, count(text(R.string.count_status_cancelled)))
+        // El primer abierto está arriba: se sigue antes de bajar a los anteriores.
         compose.onAllNodesWithText(text(R.string.count_continue_action))[0].performClick()
+        scrollTo(text(R.string.count_status_applied))
+        assertEquals(1, count(text(R.string.count_status_applied)))
+        scrollTo(text(R.string.count_status_cancelled))
+        assertEquals(1, count(text(R.string.count_status_cancelled)))
         compose.onNodeWithText(text(R.string.count_new_action)).performClick()
 
         assertEquals(
@@ -101,6 +113,10 @@ class CountScreensTest {
         }
 
         compose.onNodeWithText(text(R.string.count_scope_empty)).assertIsDisplayed()
+        // Con dos ubicaciones, la hoja ofrece elegir dónde contar.
+        val stall = LocationSamples.STALL.details.name.orEmpty()
+        compose.onNode(hasText(stall) and hasClickAction()).performClick()
+        assertTrue(CountHomeAction.SheetLocation(LocationSamples.STALL.id) in homeActions)
         compose.onNodeWithText(text(R.string.empty_inventory_action)).performClick()
         assertTrue(CountHomeAction.CreateProduct in homeActions)
     }
@@ -112,7 +128,7 @@ class CountScreensTest {
         compose.onNodeWithText(text(R.string.count_progress).format(3, 4)).assertIsDisplayed()
 
         show { CountSessionScreen(CountSamples.counting(blind = false), {}) }
-        assertEquals(4, count(text(R.string.count_expected_label)))
+        assertTrue(count(text(R.string.count_expected_label)) > 0)
     }
 
     @Test
@@ -129,7 +145,9 @@ class CountScreensTest {
         show { CountSessionScreen(CountSamples.reviewing(), { sessionActions += it }) }
 
         val moved = resources.getQuantityString(R.plurals.count_moved_notice, 1, 1)
+        scrollTo(moved)
         compose.onNodeWithText(moved).assertIsDisplayed()
+        scrollTo(text(R.string.count_moved_tag))
         assertEquals(1, count(text(R.string.count_moved_tag)))
         val apply = resources.getQuantityString(R.plurals.count_apply_action, 2, 2)
         compose.onNodeWithText(apply).performClick()

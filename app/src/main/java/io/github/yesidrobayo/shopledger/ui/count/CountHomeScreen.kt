@@ -1,6 +1,5 @@
 package io.github.yesidrobayo.shopledger.ui.count
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,10 +39,10 @@ import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CheckboxRow
+import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
-import io.github.yesidrobayo.shopledger.ui.components.LocationSwitcherOptions
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PickerField
@@ -56,7 +56,6 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
-import io.github.yesidrobayo.shopledger.ui.stock.locationChoices
 import io.github.yesidrobayo.shopledger.ui.stock.locationName
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -71,37 +70,45 @@ fun CountHomeScreen(
     onAction: (CountHomeAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        Column(Modifier.fillMaxSize()) {
-            AppTopBar(
-                title = stringResource(R.string.count_title),
-                navigation = TopBarNavigation.BACK,
-                onNavigate = { onAction(CountHomeAction.Back) },
-                navigationLabel = stringResource(R.string.a11y_back),
-                titleStyle = MaterialTheme.typography.titleLarge,
-            )
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                Box(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxSize()) {
-                    when (val content = uiState.content) {
-                        CountHomeContent.Loading -> SkeletonRows()
+    Surface(
+        modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+                AppTopBar(
+                    title = stringResource(R.string.count_title),
+                    navigation = TopBarNavigation.BACK,
+                    onNavigate = { onAction(CountHomeAction.Back) },
+                    navigationLabel = stringResource(R.string.a11y_back),
+                    titleStyle = MaterialTheme.typography.titleLarge,
+                )
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    Box(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxSize()) {
+                        when (val content = uiState.content) {
+                            CountHomeContent.Loading -> SkeletonRows()
 
-                        CountHomeContent.ReadError -> EmptyState(
-                            icon = R.drawable.ic_error,
-                            title = stringResource(R.string.state_error_read),
-                        ) {
-                            InlineTextButton(stringResource(R.string.action_retry), {
-                                onAction(CountHomeAction.Retry)
-                            })
+                            CountHomeContent.ReadError -> EmptyState(
+                                icon = R.drawable.ic_error,
+                                title = stringResource(R.string.state_error_read),
+                            ) {
+                                InlineTextButton(stringResource(R.string.action_retry), {
+                                    onAction(CountHomeAction.Retry)
+                                })
+                            }
+
+                            is CountHomeContent.Ready -> HomeContent(content.overview, onAction)
                         }
-
-                        is CountHomeContent.Ready -> HomeContent(content.overview, onAction)
-                    }
-                    if (uiState.content is CountHomeContent.Ready) {
-                        TonalFab(
-                            text = stringResource(R.string.count_new_action),
-                            onClick = { onAction(CountHomeAction.NewCount) },
-                            modifier = Modifier.align(Alignment.BottomEnd).keepsMessagesAbove(),
-                        )
+                        // Sin conteos, el botón del vacío ya ofrece empezar: no se repite flotando.
+                        val content = uiState.content
+                        if (content is CountHomeContent.Ready && content.overview.hasCounts) {
+                            TonalFab(
+                                text = stringResource(R.string.count_new_action),
+                                onClick = { onAction(CountHomeAction.NewCount) },
+                                modifier = Modifier.align(Alignment.BottomEnd).keepsMessagesAbove(),
+                            )
+                        }
                     }
                 }
             }
@@ -127,7 +134,7 @@ private fun SkeletonRows() {
 
 @Composable
 private fun HomeContent(overview: CountOverview, onAction: (CountHomeAction) -> Unit) {
-    if (overview.open.isEmpty() && overview.finished.isEmpty()) {
+    if (!overview.hasCounts) {
         EmptyState(
             icon = R.drawable.ic_fact_check,
             title = stringResource(R.string.count_empty_title),
@@ -290,12 +297,15 @@ private fun NewCountSheetView(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                LocationSwitcherOptions(
-                    locations = locationChoices(overview.activeLocations),
-                    selectedId = sheet.locationId,
-                    allowAll = false,
-                    onSelect = { id -> id?.let { onAction(CountHomeAction.SheetLocation(it)) } },
-                    onManage = null,
+                // Chips y no la lista del selector: dentro de la hoja con scroll, esa lista mide cero.
+                CompactChipRow(
+                    options = overview.activeLocations,
+                    label = { locationName(it) },
+                    selected = overview.activeLocations.filterTo(mutableSetOf()) {
+                        it.id == sheet.locationId
+                    },
+                    onToggle = { onAction(CountHomeAction.SheetLocation(it.id)) },
+                    multiple = false,
                 )
             }
             PickerField(
@@ -413,3 +423,7 @@ private const val SKELETON_ROWS = 6
 
 /** El largo máximo de la nota de un conteo, el mismo que revisa el caso de uso. */
 private const val NOTE_MAX = 200
+
+/** Si ya hubo algún conteo, abierto o terminado. */
+private val CountOverview.hasCounts: Boolean
+    get() = open.isNotEmpty() || finished.isNotEmpty()

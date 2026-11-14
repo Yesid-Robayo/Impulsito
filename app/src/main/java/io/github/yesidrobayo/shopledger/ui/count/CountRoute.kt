@@ -31,6 +31,7 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
+import io.github.yesidrobayo.shopledger.navigation.ScanPurpose
 import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
@@ -126,6 +127,19 @@ private fun CountSessionRoute(key: AppNavKey.StockCount, navigator: AppNavigator
                 viewModel.onAction(CountSessionAction.FinishedShown)
                 navigator.back()
             }
+            // Lo que trajo el escáner llega al volver a verse: cada producto, con cuántas lecturas.
+            LaunchedEffect(viewModel) {
+                navigator.scans.toTake.collect { pending ->
+                    if (pending.none { it.purpose == ScanPurpose.STOCK_COUNT }) return@collect
+                    navigator.scans.take(ScanPurpose.STOCK_COUNT)
+                        .mapNotNull { it.productId }
+                        .groupingBy { it }
+                        .eachCount()
+                        .forEach { (productId, times) ->
+                            viewModel.onAction(CountSessionAction.Scanned(productId, times))
+                        }
+                }
+            }
             BackHandler(enabled = uiState.reviewing && !uiState.readOnly) {
                 viewModel.onAction(CountSessionAction.Back)
             }
@@ -139,6 +153,9 @@ private fun CountSessionRoute(key: AppNavKey.StockCount, navigator: AppNavigator
 
                         action == CountSessionAction.ChooseZone ->
                             navigator.open(AppNavKey.RegionalSettings())
+
+                        action == CountSessionAction.Scan ->
+                            navigator.open(AppNavKey.Scanner(ScanPurpose.STOCK_COUNT))
                     }
                 },
             )

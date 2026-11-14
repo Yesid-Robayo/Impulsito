@@ -110,7 +110,12 @@ class CountSessionViewModel(
 
             is CountSessionAction.Count -> count(action.lineId, action.text)
 
-            is CountSessionAction.Step -> step(action.lineId, action.up)
+            is CountSessionAction.Step -> step(action.lineId, if (action.up) 1 else -1)
+
+            is CountSessionAction.Scanned -> scanned(action.productId, action.times)
+
+            // La navegación abre el escáner.
+            CountSessionAction.Scan -> Unit
 
             CountSessionAction.Review -> review()
 
@@ -175,6 +180,7 @@ class CountSessionViewModel(
                 rows = if (ui.reviewing) all else shown,
                 counted = all.count { it.counted != null },
                 total = all.size,
+                canScan = current.lines.any { it.product?.details?.barcode != null },
             )
         }
     }
@@ -207,16 +213,35 @@ class CountSessionViewModel(
         save(lineId, value)
     }
 
-    /** Suma o resta una unidad. Sin contar, sumar empieza en 1; nunca baja de cero. */
-    private fun step(lineId: Long, up: Boolean) {
+    /**
+     * Suma o resta [units] unidades. Sin contar, sumar empieza en 1; nunca baja de cero. Lee lo
+     * guardado de la sesión, no de la fila visible: una búsqueda o un chip pueden ocultarla.
+     */
+    private fun step(lineId: Long, units: Int) {
         if (state.value.readOnly) return
-        val row = state.value.rows.firstOrNull { it.lineId == lineId } ?: return
-        val now = row.counted?.milli ?: 0L
-        val next = if (up) now + MILLI_PER_UNIT else (now - MILLI_PER_UNIT).coerceAtLeast(0L)
-        if (row.counted != null && next == now) return
+        val counted = view?.lines?.firstOrNull { it.line.id == lineId }?.line?.counted
+        val now = counted?.milli ?: 0L
+        val next = (now + units * MILLI_PER_UNIT).coerceAtLeast(0L)
+        if (counted != null && next == now) return
         texts.remove(lineId)
         errors.remove(lineId)
         save(lineId, QuantityMilli(next))
+    }
+
+    /**
+     * Lo que leyó el escáner: en unidades enteras suma una por lectura; si la unidad admite
+     * decimales, busca el producto para escribir lo pesado. Un código de un producto que no está
+     * en este conteo no cambia nada.
+     */
+    private fun scanned(productId: Long, times: Int) {
+        if (state.value.readOnly || state.value.reviewing) return
+        val item = view?.lines?.firstOrNull { it.line.productId == productId } ?: return
+        if (item.unit?.allowsFraction == true) {
+            state.update { it.copy(query = item.product?.details?.name.orEmpty(), filter = null) }
+            rebuild()
+        } else {
+            step(item.line.id, times)
+        }
     }
 
     private fun save(lineId: Long, counted: QuantityMilli?) {
