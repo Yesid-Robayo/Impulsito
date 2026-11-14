@@ -92,6 +92,14 @@ internal interface ProductDao {
     @Query("SELECT EXISTS (SELECT 1 FROM products WHERE parent_product_id = :id)")
     suspend fun hasVariants(id: Long): Boolean
 
+    /** Las variantes de un producto, archivadas o no, en el orden en que se crearon. */
+    @Query("SELECT * FROM products WHERE parent_product_id = :parentId ORDER BY id")
+    suspend fun findVariants(parentId: Long): List<ProductEntity>
+
+    /** Lo mismo que [findVariants], de nuevo con cada cambio en el catálogo. */
+    @Query("SELECT * FROM products WHERE parent_product_id = :parentId ORDER BY id")
+    fun observeVariants(parentId: Long): Flow<List<ProductEntity>>
+
     /** Si existe algún producto, archivado o no, de nuevo con cada cambio en el catálogo. */
     @Query("SELECT EXISTS (SELECT 1 FROM products)")
     fun observeAny(): Flow<Boolean>

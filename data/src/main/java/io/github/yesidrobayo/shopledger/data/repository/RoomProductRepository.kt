@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductVariantRepository
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -24,7 +25,9 @@ import kotlinx.coroutines.flow.map
  * tiene libro: los fija [RoomStockLedgerRepository] con cada fila. La única excepción es el costo
  * inicial, que también es el promedio mientras no haya filas, y la base lo rechaza en cuanto hay una.
  */
-internal class RoomProductRepository(database: AppDatabase) : ProductRepository {
+internal class RoomProductRepository(database: AppDatabase) :
+    ProductRepository,
+    ProductVariantRepository {
     private val products = database.productDao()
     private val writes = RepositoryWrites(database)
 
@@ -52,6 +55,13 @@ internal class RoomProductRepository(database: AppDatabase) : ProductRepository 
         products.findActiveByBarcode(barcode)?.let(::toProduct)
 
     override suspend fun hasHistory(id: Long): Boolean = products.hasHistory(id)
+
+    override suspend fun findVariants(parentId: Long): List<Product> =
+        products.findVariants(parentId).map(::toProduct)
+
+    override fun observeVariants(parentId: Long): Flow<List<Product>> =
+        products.observeVariants(parentId).map { list -> list.map(::toProduct) }
+            .distinctUntilChanged()
 
     /**
      * Las tres relaciones del catálogo que apuntan al producto con una llave `RESTRICT`: si alguna

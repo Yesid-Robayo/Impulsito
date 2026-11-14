@@ -47,6 +47,7 @@
     <string name="dialog_archive_product_body">It stops appearing for sale. Its sales are kept and it can be reactivated.</string>
     <string name="dialog_archive_product_action">Archive product</string>
     <string name="error_product_reactivate_duplicate">An active product already uses that name or code. Change one of the two.</string>
+    <string name="error_product_reactivate_parent_archived">Its main product is archived. Reactivating it brings its variants back.</string>
     <string name="dialog_void_adjustment_title">Void this adjustment?</string>
     <string name="dialog_void_adjustment_body">The stock returns to how it was and the cost is recalculated.</string>
     <string name="dialog_void_adjustment_action">Void adjustment</string>

@@ -271,6 +271,10 @@ class ProductDetailViewModelTest {
             ProductDetailMessage.Failed(false),
             ProductDetailViewModel.reactivateMessage(ReactivateProductResult.UnknownTimeZone),
         )
+        assertEquals(
+            ProductDetailMessage.ParentArchived,
+            ProductDetailViewModel.reactivateMessage(ReactivateProductResult.ParentArchived),
+        )
     }
 
     @Test

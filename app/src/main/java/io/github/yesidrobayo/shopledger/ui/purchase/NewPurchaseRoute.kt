@@ -90,6 +90,7 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                     ports.lowStockAlerts,
                     calendar,
                     container.clock,
+                    ports.productVariants,
                 )
             NewPurchaseViewModel(
                 catalogSource = { observe() },

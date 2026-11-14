@@ -47,6 +47,7 @@
     <string name="dialog_archive_product_body">Deja de aparecer para vender. Sus ventas se conservan y se puede reactivar.</string>
     <string name="dialog_archive_product_action">Archivar producto</string>
     <string name="error_product_reactivate_duplicate">Ya existe un producto activo con ese nombre o ese código. Se debe cambiar uno de los dos.</string>
+    <string name="error_product_reactivate_parent_archived">El producto principal está archivado. Al reactivarlo, vuelve con sus variantes.</string>
     <string name="dialog_void_adjustment_title">¿Anular este ajuste?</string>
     <string name="dialog_void_adjustment_body">El stock vuelve a como estaba y el costo se recalcula.</string>
     <string name="dialog_void_adjustment_action">Anular ajuste</string>

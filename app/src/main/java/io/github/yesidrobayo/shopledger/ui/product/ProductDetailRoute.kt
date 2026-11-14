@@ -140,13 +140,24 @@ private fun ShowMessage(message: ProductDetailMessage?, onShown: () -> Unit) {
         stringResource(
             when (it) {
                 ProductDetailMessage.CostCorrected -> R.string.product_cost_corrected
+
                 ProductDetailMessage.PriceChanged -> R.string.product_price_changed
+
                 ProductDetailMessage.Archived -> R.string.product_archived
+
                 ProductDetailMessage.Reactivated -> R.string.product_reactivated
+
                 ProductDetailMessage.Deleted -> R.string.product_deleted
+
                 ProductDetailMessage.AdjustmentVoided -> R.string.stock_movement_adjustment_void
+
                 ProductDetailMessage.NameTaken -> R.string.error_product_reactivate_duplicate
+
+                ProductDetailMessage.ParentArchived ->
+                    R.string.error_product_reactivate_parent_archived
+
                 ProductDetailMessage.HasHistory -> R.string.product_error_has_history
+
                 is ProductDetailMessage.Failed -> saveErrorText(it.outOfSpace)
             },
         )
@@ -159,6 +170,7 @@ private fun ShowMessage(message: ProductDetailMessage?, onShown: () -> Unit) {
         -> SnackbarVariant.SUCCESS
 
         ProductDetailMessage.NameTaken, ProductDetailMessage.HasHistory,
+        ProductDetailMessage.ParentArchived,
         is ProductDetailMessage.Failed,
         -> SnackbarVariant.ERROR
     }
@@ -243,6 +255,7 @@ class ProductDetailUseCases(
                     ports.products,
                     ports.lowStockAlerts,
                     clock,
+                    ports.productVariants,
                 ),
                 reactivateUseCase =
                     ReactivateProductUseCase(
@@ -251,6 +264,7 @@ class ProductDetailUseCases(
                         ports.lowStockAlerts,
                         calendar,
                         clock,
+                        ports.productVariants,
                     ),
                 deleteUseCase = DeleteProductUseCase(tx, ports.products),
                 voidUseCase = VoidStockAdjustmentUseCase(

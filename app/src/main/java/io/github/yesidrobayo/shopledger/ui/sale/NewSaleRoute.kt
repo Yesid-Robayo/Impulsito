@@ -136,6 +136,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     ports.lowStockAlerts,
                     calendar,
                     container.clock,
+                    ports.productVariants,
                 )
             val registerReturn =
                 RegisterSaleReturnUseCase(

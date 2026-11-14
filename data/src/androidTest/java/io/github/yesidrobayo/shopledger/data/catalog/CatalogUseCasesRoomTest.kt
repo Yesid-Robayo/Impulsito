@@ -86,8 +86,15 @@ internal class CatalogUseCasesRoomTest : CatalogDatabaseTest() {
             tx, products, categories, ports.suppliers, ports.units, ports.systemRows, priceHistory,
             ledger, alerts, calendar, currencyLock, FIXED_CLOCK, ports.productComponents,
         )
-        archive = ArchiveProductUseCase(tx, products, alerts, FIXED_CLOCK)
-        reactivate = ReactivateProductUseCase(tx, products, alerts, calendar, FIXED_CLOCK)
+        archive = ArchiveProductUseCase(tx, products, alerts, FIXED_CLOCK, ports.productVariants)
+        reactivate = ReactivateProductUseCase(
+            tx,
+            products,
+            alerts,
+            calendar,
+            FIXED_CLOCK,
+            ports.productVariants,
+        )
         delete = DeleteProductUseCase(tx, products)
         opening = RegisterOpeningBalanceUseCase(
             tx,

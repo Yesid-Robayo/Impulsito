@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.catalog
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogReference
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewPriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
@@ -163,9 +164,11 @@ class EditProductUseCase(
             null
         }
         val transition = if (watchChanged) {
+            // Un producto con variantes no se vigila: su stock es la suma de sus variantes.
+            val variantParent = CatalogLink.VARIANT_PARENT in products.catalogLinks(product.id)
             LowStockEvaluator.evaluateWithoutMovement(
                 stockMode = requested.stockMode,
-                isArchived = product.isArchived,
+                isArchived = product.isArchived || variantParent,
                 onHand = product.onHand,
                 minStock = requested.minStock,
                 hasActiveAlert = activeAlert != null,

@@ -97,6 +97,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductVariantRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
@@ -196,6 +197,9 @@ class DataPorts internal constructor(
     val payables: PayablesSource = RoomPayablesSource(database)
 
     val products: ProductRepository = RoomProductRepository(database)
+
+    /** Las variantes de cada producto, agrupadas por su producto principal. Solo lee. */
+    val productVariants: ProductVariantRepository = RoomProductRepository(database)
 
     val priceHistory: PriceHistoryRepository = RoomPriceHistoryRepository(database)
 

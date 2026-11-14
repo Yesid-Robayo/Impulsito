@@ -146,6 +146,9 @@ sealed interface ProductDetailMessage {
     /** Reactivar no se pudo: otro producto vigente usa su nombre o su código. */
     data object NameTaken : ProductDetailMessage
 
+    /** Reactivar una variante no se pudo: su producto principal sigue archivado. */
+    data object ParentArchived : ProductDetailMessage
+
     /** Eliminar no se pudo: tiene historia, y solo se archiva. */
     data object HasHistory : ProductDetailMessage
 
@@ -618,6 +621,8 @@ class ProductDetailViewModel(
 
                 is ReactivateProductResult.NameTaken, is ReactivateProductResult.BarcodeTaken ->
                     ProductDetailMessage.NameTaken
+
+                ReactivateProductResult.ParentArchived -> ProductDetailMessage.ParentArchived
 
                 ReactivateProductResult.UnknownTimeZone -> ProductDetailMessage.Failed(false)
 

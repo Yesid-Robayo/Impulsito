@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.testing.FakeLowStockAlertReposito
 import io.github.yesidrobayo.shopledger.domain.testing.FakePriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeProductRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeProductVariantRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeStockLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeSupplierRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeSystemRowRepository
@@ -74,9 +75,15 @@ internal class CatalogFixture(zoneId: String = "UTC", currencyConfirmed: Boolean
         transactions, products, categories, suppliers, units, systemRows, priceHistory, ledger,
         alerts, calendar, currencyLock, clock, components,
     )
-    val archive = ArchiveProductUseCase(transactions, products, alerts, clock)
-    val reactivate = ReactivateProductUseCase(transactions, products, alerts, calendar, clock)
+    val variants = FakeProductVariantRepository(database, products)
+    val archive = ArchiveProductUseCase(transactions, products, alerts, clock, variants)
+    val reactivate =
+        ReactivateProductUseCase(transactions, products, alerts, calendar, clock, variants)
     val delete = DeleteProductUseCase(transactions, products)
+    val createVariants = CreateVariantsUseCase(
+        transactions, products, variants, units, systemRows, priceHistory, ledger, alerts,
+        calendar, currencyLock, clock,
+    )
     val opening = RegisterOpeningBalanceUseCase(
         transactions,
         products,

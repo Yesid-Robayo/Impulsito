@@ -77,9 +77,13 @@ class StockCountFlowTest {
         val inventory = ObserveInventoryUseCase(ports.products, ports.units)().first()
         assertTrue(inventory.lowStock.any { it.id == productId })
 
-        ArchiveProductUseCase(ports.transactions, ports.products, ports.lowStockAlerts, clock)(
-            productId,
-        )
+        ArchiveProductUseCase(
+            ports.transactions,
+            ports.products,
+            ports.lowStockAlerts,
+            clock,
+            ports.productVariants,
+        )(productId)
     }
 
     /** Abre el ajuste del producto, escribe [counted] en el conteo y guarda. */
