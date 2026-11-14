@@ -67,6 +67,7 @@ fun HomeRoute(navigator: AppNavigator) {
                 },
                 noticeStore = container.noDestinationNotice,
                 now = container.clock::now,
+                photoBackup = { container.data.photoBackup.facts() },
             )
         }
     when (model) {
@@ -81,6 +82,7 @@ fun HomeRoute(navigator: AppNavigator) {
             val lowStock by viewModel.lowStock.collectAsStateWithLifecycle()
             val profit by viewModel.profit.collectAsStateWithLifecycle()
             val noDestinationNotice by viewModel.noDestinationNotice.collectAsStateWithLifecycle()
+            val photosPending by viewModel.photosPending.collectAsStateWithLifecycle()
             val policy = LocalPolicyPrompt.current
             LifecycleResumeEffect(viewModel) {
                 viewModel.onReturnToForeground()
@@ -91,6 +93,7 @@ fun HomeRoute(navigator: AppNavigator) {
                 lowStock = lowStock,
                 profit = profit,
                 noDestinationNotice = noDestinationNotice,
+                photosPending = photosPending,
                 uiState = uiState,
                 onAction = { action ->
                     when (action) {

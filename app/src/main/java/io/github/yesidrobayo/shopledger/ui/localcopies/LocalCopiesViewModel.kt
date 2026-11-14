@@ -6,6 +6,9 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConnectFolderResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.ExportFileName
 import io.github.yesidrobayo.shopledger.domain.model.backup.FullCopyExport
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoBackupFacts
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoExport
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoExportFileName
 import io.github.yesidrobayo.shopledger.domain.model.backup.SecondDestinationView
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.SecondDestinationUseCase
 import kotlin.coroutines.cancellation.CancellationException
@@ -31,6 +34,8 @@ import kotlinx.coroutines.withContext
  * @param computation el hilo donde se exporta, fuera del principal.
  * @param second el segundo destino; nulo donde no se ofrece.
  * @param appName el nombre de la app, sin traducir: da la carpeta de la app.
+ * @param photoFacts cuántas fotos hay para exportar, entre otros datos de las fotos.
+ * @param exportPhotos escribe el ZIP de las fotos en el documento elegido.
  */
 class LocalCopiesViewModel(
     private val export: suspend (String) -> FullCopyExport,
@@ -40,6 +45,8 @@ class LocalCopiesViewModel(
     private val computation: CoroutineDispatcher,
     private val second: SecondDestinationUseCase? = null,
     private val appName: String = "",
+    private val photoFacts: suspend () -> PhotoBackupFacts? = { null },
+    private val exportPhotos: suspend (String) -> PhotoExport = { PhotoExport.Failed },
 ) : ViewModel() {
     private val state = MutableStateFlow(LocalCopiesUiState())
     val uiState: StateFlow<LocalCopiesUiState> = state.asStateFlow()
@@ -52,6 +59,7 @@ class LocalCopiesViewModel(
             state.update { it.copy(encrypted = value ?: false, zone = businessZone) }
         }
         refreshSecond()
+        refreshPhotos()
     }
 
     fun onAction(action: LocalCopiesAction) {
@@ -75,7 +83,15 @@ class LocalCopiesViewModel(
 
             LocalCopiesAction.ConfirmRemove -> remove()
 
-            LocalCopiesAction.Resumed -> refreshSecond()
+            LocalCopiesAction.Resumed -> {
+                refreshSecond()
+                refreshPhotos()
+            }
+
+            is LocalCopiesAction.PhotosFileCreated -> exportPhotosTo(action.uri)
+
+            LocalCopiesAction.DismissPhotosFailure ->
+                state.update { it.copy(photos = it.photos.copy(failure = null)) }
 
             LocalCopiesAction.ObscuredTouch ->
                 state.update { it.copy(message = LocalCopiesMessage.OBSCURED_TOUCH) }
@@ -84,7 +100,44 @@ class LocalCopiesViewModel(
             LocalCopiesAction.Back,
             LocalCopiesAction.SaveToFile,
             LocalCopiesAction.ChooseFolder,
+            LocalCopiesAction.ExportPhotos,
             -> Unit
+        }
+    }
+
+    /** Cuántas fotos hay para exportar. Si no se puede leer, cero: no se ofrece exportar. */
+    private fun refreshPhotos() {
+        viewModelScope.launch {
+            val count = safely { photoFacts() }?.exportable ?: 0
+            state.update { it.copy(photos = it.photos.copy(exportable = count)) }
+        }
+    }
+
+    /** El nombre sugerido del ZIP de las fotos, con la fecha del negocio. */
+    fun suggestedPhotosName(): String = PhotoExportFileName.of(now(), state.value.zone)
+
+    /** Exporta las fotos al documento [uri]. Una a la vez. */
+    private fun exportPhotosTo(uri: String) {
+        if (state.value.photos.working) return
+        state.update { it.copy(photos = it.photos.copy(working = true, failure = null)) }
+        viewModelScope.launch {
+            val result = safely { exportPhotos(uri) } ?: PhotoExport.Failed
+            state.update {
+                val photos = it.photos.copy(working = false)
+                when (result) {
+                    is PhotoExport.Saved ->
+                        it.copy(photos = photos, message = LocalCopiesMessage.PHOTOS_SAVED)
+
+                    // Se borraron entre la lista y el toque: la sección lo dice al releer.
+                    PhotoExport.NoPhotos -> it.copy(photos = photos.copy(exportable = 0))
+
+                    PhotoExport.KeyUnavailable ->
+                        it.copy(photos = photos.copy(failure = PhotosFailure.KEY_MISSING))
+
+                    PhotoExport.Failed ->
+                        it.copy(photos = photos.copy(failure = PhotosFailure.OTHER))
+                }
+            }
         }
     }
 

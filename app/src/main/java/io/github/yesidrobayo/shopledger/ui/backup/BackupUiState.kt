@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictLookup
 import io.github.yesidrobayo.shopledger.domain.model.backup.ConflictSides
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.HealthRow
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoBackupFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 
@@ -57,6 +58,7 @@ data class BackupUiState(
     val healthOpen: Boolean? = null,
     val verifying: Boolean = false,
     val beforeUpdate: BeforeUpdateCopy? = null,
+    val photos: PhotoBackupFacts? = null,
 )
 
 /** `Copias con datos móviles`: cerrada, la hoja con las tres opciones o la advertencia. */

@@ -47,6 +47,8 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
                 computation = container.dispatchers.io,
                 second = SecondDestinationUseCase(container.data.secondDestination),
                 appName = appName,
+                photoFacts = { container.data.photoBackup.facts() },
+                exportPhotos = { uri -> container.data.photoBackup.export(uri) },
             )
         }
     when (model) {
@@ -59,6 +61,7 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val messages = LocalAppMessages.current
             val saved = stringResource(R.string.offsite_saved)
+            val photosSaved = stringResource(R.string.offsite_photos_saved)
             val folderFailed = stringResource(R.string.state_error_save)
             val obscured = stringResource(R.string.security_obscured_touch)
             // Con el bloqueo encendido, exportar pide de nuevo la verificación del sistema: el
@@ -87,6 +90,14 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
                 ) { uri ->
                     uri?.let { viewModel.onAction(LocalCopiesAction.FileCreated(it.toString())) }
                 }
+            val photosPicker =
+                rememberLauncherForActivityResult(
+                    ActivityResultContracts.CreateDocument(ZIP_TYPE),
+                ) { uri ->
+                    uri?.let {
+                        viewModel.onAction(LocalCopiesAction.PhotosFileCreated(it.toString()))
+                    }
+                }
             LaunchedEffect(uiState.message) {
                 when (uiState.message) {
                     LocalCopiesMessage.SAVED -> {
@@ -97,6 +108,11 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
                     LocalCopiesMessage.FOLDER_FAILED -> {
                         viewModel.onAction(LocalCopiesAction.MessageShown)
                         messages.show(AppSnackbarVisuals(folderFailed, SnackbarVariant.ERROR))
+                    }
+
+                    LocalCopiesMessage.PHOTOS_SAVED -> {
+                        viewModel.onAction(LocalCopiesAction.MessageShown)
+                        messages.show(AppSnackbarVisuals(photosSaved, SnackbarVariant.SUCCESS))
                     }
 
                     LocalCopiesMessage.OBSCURED_TOUCH -> {
@@ -141,7 +157,25 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
                             Unit
                         }
 
+                    LocalCopiesAction.ExportPhotos ->
+                        if (!uiState.photos.working) {
+                            val name = viewModel.suggestedPhotosName()
+                            // Las fotos son del negocio: con el bloqueo encendido, se pide de nuevo.
+                            scope.launch {
+                                if (sensitive.confirm(exportTitle)) {
+                                    // Sin una app que cree documentos no hay selector.
+                                    try {
+                                        photosPicker.launch(name)
+                                    } catch (_: ActivityNotFoundException) {
+                                        Unit
+                                    }
+                                }
+                            }
+                        }
+
                     is LocalCopiesAction.FileCreated,
+                    is LocalCopiesAction.PhotosFileCreated,
+                    LocalCopiesAction.DismissPhotosFailure,
                     LocalCopiesAction.DismissResult,
                     LocalCopiesAction.MessageShown,
                     is LocalCopiesAction.FolderPicked,
@@ -160,6 +194,9 @@ fun LocalCopiesRoute(navigator: AppNavigator) {
 
 /** El tipo del archivo exportado: una base comprimida con gzip. */
 private const val GZIP_TYPE = "application/gzip"
+
+/** El tipo del ZIP de las fotos exportadas. */
+private const val ZIP_TYPE = "application/zip"
 
 /** El tipo de una copia cifrada, que no es gzip para nadie más que la app. */
 private const val ENCRYPTED_TYPE = "application/octet-stream"

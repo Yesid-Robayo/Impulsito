@@ -22,7 +22,29 @@ data class LocalCopiesUiState(
     val second: SecondDestinationView? = null,
     val folderRejected: Boolean = false,
     val confirmRemove: Boolean = false,
+    val photos: PhotosUi = PhotosUi(),
 )
+
+/**
+ * `Fotos`: cuántas hay para exportar y en qué va `Exportar fotos`. Exportarlas nunca cambia los
+ * datos ni el estado del respaldo.
+ *
+ * @property exportable fotos con su archivo en el teléfono, o `null` mientras se lee.
+ */
+data class PhotosUi(
+    val exportable: Int? = null,
+    val working: Boolean = false,
+    val failure: PhotosFailure? = null,
+)
+
+/** Por qué no se exportaron las fotos. */
+enum class PhotosFailure {
+    /** Cifrado activo sin su clave: nada sale en claro. */
+    KEY_MISSING,
+
+    /** Otra falla: se puede reintentar. */
+    OTHER,
+}
 
 /** En qué va la copia exportada. Ninguno cambia los datos. */
 sealed interface ExportUi {
@@ -60,6 +82,9 @@ enum class LocalCopiesMessage {
 
     /** Un toque llegó a través de otra app dibujada encima: no se guardó nada. */
     OBSCURED_TOUCH,
+
+    /** Las fotos quedaron exportadas y comprobadas en el archivo. */
+    PHOTOS_SAVED,
 }
 
 /** Lo que la persona puede hacer en `Copias locales`. */
@@ -98,4 +123,13 @@ sealed interface LocalCopiesAction {
 
     /** `Guardar en un archivo` se tocó a través de otra app encima: se rechaza y se avisa. */
     data object ObscuredTouch : LocalCopiesAction
+
+    /** `Exportar fotos`: lo resuelve la navegación, con el selector del sistema. */
+    data object ExportPhotos : LocalCopiesAction
+
+    /** El selector devolvió el documento [uri] para el ZIP de las fotos. */
+    data class PhotosFileCreated(val uri: String) : LocalCopiesAction
+
+    /** Cierra el aviso de que las fotos no se exportaron. */
+    data object DismissPhotosFailure : LocalCopiesAction
 }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_slots_photos_note">Photos do not go to %1$s.</string>
+    <string name="storage_photos_pending">Photos: %1$d not backed up</string>
+    <string name="backup_photos_space_stopped">Photos stopped uploading: fewer than 3 backups fit in the service. Data backups continue.</string>
+    <string name="backup_photos_large">Photos already take up more than 1 GB. They keep uploading, but it is worth checking the space in the service.</string>
+    <string name="offsite_photos_title">Photos</string>
+    <string name="offsite_photos_body">Photos are not part of the backup. They can be exported separately, in a ZIP file.</string>
+    <string name="offsite_no_photos">No photos to export</string>
+    <string name="offsite_photos_saved">Photos exported</string>
+    <string name="offsite_photos_failed">The photos could not be exported. The data did not change.</string>
+    <string name="offsite_photos_key_missing">The photos could not be encrypted. The recovery code is needed.</string>
+</resources>

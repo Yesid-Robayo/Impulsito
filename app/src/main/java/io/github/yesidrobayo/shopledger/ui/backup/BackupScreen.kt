@@ -46,6 +46,8 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoBackupFacts
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoDestination
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.format.DataSizeFormatter
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
@@ -205,12 +207,82 @@ private fun LazyListScope.overview(uiState: BackupUiState, onAction: (BackupActi
     if (wording != null && wording.overview.report.status != BackupStatus.NOT_CONNECTED) {
         item(key = DESTINATION) { Destination(uiState.destination, onAction) }
     }
+    val photos = uiState.photos
+    if (wording != null && photos != null && photos.hasSomethingToSay()) {
+        item(key = PHOTOS) { PhotoBackup(photos, wording.providerLabel, onAction) }
+    }
     // Solo con WebDAV: con ranuras, la red y lo que se sube los decide la app de esa nube.
     if (wording != null && wording.overview.report.status != BackupStatus.NOT_CONNECTED &&
         wording.overview.destinationKind == BackupDestinationKind.WEBDAV
     ) {
         item(key = METERED) {
             MeteredSettings(wording.overview.meteredPolicy, uiState.uploadedThisMonth, onAction)
+        }
+    }
+}
+
+/**
+ * Si el bloque `Fotos` tiene algo que decir. Con WebDAV: fotos sin respaldar, la parada por el
+ * espacio del servicio o el aviso de 1 GiB. Con ranuras, siempre: las fotos no van a esa nube. Sin
+ * destino no aparece.
+ */
+private fun PhotoBackupFacts.hasSomethingToSay(): Boolean = when (destination) {
+    PhotoDestination.WEBDAV -> pending > 0 || stoppedForSpace || overOneGiB
+    PhotoDestination.SLOTS -> true
+    PhotoDestination.NONE -> false
+}
+
+/**
+ * `Fotos`, aparte del estado de la copia: nunca lo cambia. Con WebDAV, cuántas faltan, si se
+ * detuvieron por el espacio y el aviso de 1 GiB, que nunca bloquea. Con ranuras, que no van a esa
+ * nube, sin ningún conteo, con `Exportar fotos`.
+ */
+@Composable
+private fun PhotoBackup(
+    photos: PhotoBackupFacts,
+    providerLabel: String?,
+    onAction: (BackupAction) -> Unit,
+) {
+    Column {
+        SectionHeader(stringResource(R.string.offsite_photos_title))
+        when (photos.destination) {
+            PhotoDestination.WEBDAV -> {
+                Column(
+                    Modifier.padding(horizontal = AppTheme.spacing.s8),
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
+                ) {
+                    if (photos.pending > 0) {
+                        Text(
+                            stringResource(R.string.storage_photos_pending, photos.pending),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    if (photos.stoppedForSpace) {
+                        NoticeCard(
+                            stringResource(R.string.backup_photos_space_stopped),
+                            NoticeVariant.WARNING,
+                        )
+                    }
+                    if (photos.overOneGiB) {
+                        NoticeCard(stringResource(R.string.backup_photos_large), NoticeVariant.INFO)
+                    }
+                }
+            }
+
+            PhotoDestination.SLOTS -> Column(Modifier.padding(horizontal = AppTheme.spacing.s8)) {
+                Text(
+                    stringResource(R.string.backup_slots_photos_note, providerLabel.orEmpty()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                InlineTextButton(
+                    stringResource(R.string.offsite_export_photos_action),
+                    { onAction(BackupAction.OpenLocalCopies) },
+                )
+            }
+
+            PhotoDestination.NONE -> Unit
         }
     }
 }
@@ -918,6 +990,7 @@ private const val SKELETON_ROWS = 3
 private const val STATUS = "status"
 private const val DESTINATION = "destination"
 private const val METERED = "metered"
+private const val PHOTOS = "photos"
 private const val COPIES_HEADER = "copiesHeader"
 private const val COPIES_LOADING = "copiesLoading"
 private const val COPIES_STATE = "copiesState"

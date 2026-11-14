@@ -202,9 +202,10 @@ fun BackupStatusBanner(
 }
 
 /**
- * El aviso sin destino ya leído: una línea pequeña bajo el chip del respaldo, con el icono
- * `cloud_off` en advertencia, la frase y una flecha. Toda la línea es un botón de 48 dp que lleva
- * a elegir dónde guardar; con letra grande la frase se parte, nunca se corta.
+ * Una línea pequeña bajo el chip del respaldo, con el icono `cloud_off` en advertencia, la frase y
+ * una flecha: el aviso sin destino ya leído, que lleva a elegir dónde guardar, o las fotos que
+ * llevan más de un día sin subir, que abren el respaldo. Toda la línea es un botón de 48 dp; con
+ * letra grande la frase se parte, nunca se corta.
  */
 @Composable
 fun BackupNoticeLine(

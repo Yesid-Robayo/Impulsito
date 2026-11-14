@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.DrillOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.FullVerifyOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.HealthRow
 import io.github.yesidrobayo.shopledger.domain.model.backup.KeepPhoneResult
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoBackupFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.PinRelease
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.rule.backup.DataHealthRule
@@ -56,6 +57,8 @@ import kotlinx.coroutines.withContext
  * @param changePolicy guarda la política con datos móviles y vuelve a programar la subida.
  * @param releaseCopy quita la marca de fijada a una copia, por su clave en la lista.
  * @param uploadedThisMonth con WebDAV, los bytes subidos en el mes; nulo si no se pudo leer.
+ * @param photos lo que se sabe del respaldo de las fotos, aparte del estado de la copia; nulo si no
+ *   se pudo leer.
  * @param copiesEncrypted si las copias salen cifradas; nulo si no se pudo leer.
  * @param link desconectar, volver tras iniciar sesión y decidir un conflicto; nulo donde no se
  *   ofrece.
@@ -79,6 +82,7 @@ class BackupViewModel(
     private val drill: RunRestoreDrillUseCase? = null,
     private val health: ReadDataHealthUseCase? = null,
     private val fullVerify: RunFullVerifyUseCase? = null,
+    private val photos: suspend () -> PhotoBackupFacts? = { null },
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = state.asStateFlow()
@@ -568,6 +572,7 @@ class BackupViewModel(
             val encrypted = if (info != null) read { copiesEncrypted() } else null
             // La copia previa a migrar es local: se ofrece con o sin destino.
             val beforeUpdate = restore?.let { use -> read { use.beforeUpdateCopy() } }
+            val photoFacts = read { photos() }
             state.update { current ->
                 val slots = info as? BackupDestinationInfo.Slots
                 current.copy(
@@ -577,6 +582,7 @@ class BackupViewModel(
                     uploadedThisMonth = usage,
                     copiesEncrypted = encrypted,
                     beforeUpdate = beforeUpdate,
+                    photos = photoFacts,
                     wording =
                         current.wording?.copy(
                             providerLabel = slots?.providerLabel,

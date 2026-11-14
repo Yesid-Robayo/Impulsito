@@ -108,6 +108,7 @@ fun LocalCopiesScreen(
                     item(key = EXPORT) { ExportSection(uiState.encrypted) }
                     item(key = RESULT) { ExportResult(uiState.export, onAction) }
                     item(key = SECOND) { SecondSection(uiState, onAction) }
+                    item(key = PHOTOS) { PhotosSection(uiState.photos, onAction) }
                 }
             }
             HorizontalDivider(
@@ -279,6 +280,64 @@ private fun SecondSection(uiState: LocalCopiesUiState, onAction: (LocalCopiesAct
     }
 }
 
+/**
+ * `Fotos`: nunca entran en la copia. `Exportar fotos` crea un ZIP aparte; sin fotos en el teléfono
+ * no se ofrece. Un fallo se dice solo aquí: nunca es un fallo del respaldo.
+ */
+@Composable
+private fun PhotosSection(photos: PhotosUi, onAction: (LocalCopiesAction) -> Unit) {
+    val export = { onAction(LocalCopiesAction.ExportPhotos) }
+    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+        Text(
+            stringResource(R.string.offsite_photos_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = AppTheme.spacing.s16).semantics { heading() },
+        )
+        Text(
+            stringResource(R.string.offsite_photos_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        when (photos.exportable) {
+            // Se lee del teléfono: tras un instante, el esqueleto.
+            null -> DelayedSkeleton {
+                SkeletonBlock(Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.listRow))
+            }
+
+            0 -> Text(
+                stringResource(R.string.offsite_no_photos),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            else -> PrimaryActionButton(
+                text = stringResource(R.string.offsite_export_photos_action),
+                onClick = export,
+                variant = ActionVariant.OUTLINED,
+                state = if (photos.working) ActionState.WORKING else ActionState.IDLE,
+            )
+        }
+        when (photos.failure) {
+            PhotosFailure.KEY_MISSING ->
+                NoticeCard(
+                    stringResource(R.string.offsite_photos_key_missing),
+                    NoticeVariant.WARNING,
+                    actionLabel = stringResource(R.string.action_close),
+                    onAction = { onAction(LocalCopiesAction.DismissPhotosFailure) },
+                )
+
+            PhotosFailure.OTHER ->
+                NoticeCard(
+                    stringResource(R.string.offsite_photos_failed),
+                    NoticeVariant.ERROR,
+                    actionLabel = stringResource(R.string.action_retry),
+                    onAction = export,
+                )
+
+            null -> Unit
+        }
+    }
+}
+
 @Composable
 private fun ConnectedFolder(
     second: SecondDestinationView.Connected,
@@ -350,6 +409,7 @@ private const val INTRO = "intro"
 private const val SECOND = "second"
 private const val EXPORT = "export"
 private const val RESULT = "result"
+private const val PHOTOS = "photos"
 
 @ThemePreviews
 @Composable

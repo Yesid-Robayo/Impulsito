@@ -70,6 +70,7 @@ fun BackupRoute(navigator: AppNavigator) {
                 releaseCopy = { key -> container.data.backupSettings.releasePinnedCopy(key) },
                 uploadedThisMonth = { container.data.backupSettings.uploadedThisMonth() },
                 copiesEncrypted = { container.data.backupSettings.copiesEncrypted() },
+                photos = { container.data.photoBackup.facts() },
                 link = BackupLinkUseCase(container.data.backupLink),
                 drill = RunRestoreDrillUseCase(container.data.restoreDrill),
                 health = ReadDataHealthUseCase(container.data.dataHealth),

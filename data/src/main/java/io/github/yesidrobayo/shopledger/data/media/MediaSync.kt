@@ -2,7 +2,6 @@ package io.github.yesidrobayo.shopledger.data.media
 
 import android.graphics.BitmapFactory
 import io.github.yesidrobayo.shopledger.data.backup.PackEncryption
-import io.github.yesidrobayo.shopledger.data.crypto.BackupHeader
 import io.github.yesidrobayo.shopledger.data.crypto.BackupKey
 import io.github.yesidrobayo.shopledger.data.crypto.DurableFile
 import io.github.yesidrobayo.shopledger.data.crypto.EncryptedCopy
@@ -521,18 +520,7 @@ internal class MediaSync(
     /** Los bytes que suben: la foto tal cual en claro, o cifrada con la clave vigente. */
     private suspend fun payloadOf(plain: ByteArray, mode: Mode): ByteArray {
         val key = mode.key ?: return plain
-        val header =
-            BackupHeader(
-                keyId = key.keyId,
-                generation = 0,
-                schemaVersion = 0,
-                createdAtUtcMillis = nowUtcMillis(),
-                deviceId = UUID.fromString(deviceId()),
-                rawSize = plain.size.toLong(),
-            )
-        val sealed = ByteArrayOutputStream()
-        EncryptedCopy.write(ByteArrayInputStream(plain), sealed, header, key)
-        return sealed.toByteArray()
+        return MediaSeal.seal(plain, key, deviceId(), nowUtcMillis())
     }
 
     /** Cómo termina una ejecución por [failure]: reintentar lo pasajero, terminar lo demás. */

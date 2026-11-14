@@ -121,6 +121,7 @@ fun HomeScreen(
     lowStock: HomeLowStock? = null,
     profit: HomeProfit? = null,
     noDestinationNotice: NoDestinationNotice? = NoDestinationNotice.FULL,
+    photosPending: Int = 0,
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -182,7 +183,7 @@ fun HomeScreen(
                         if (expanded) {
                             TwoPanes(
                                 uiState,
-                                HomeBackup(backup, noDestinationNotice),
+                                HomeBackup(backup, noDestinationNotice, photosPending),
                                 lowStock,
                                 profit,
                                 onAction,
@@ -192,7 +193,7 @@ fun HomeScreen(
                         } else {
                             OnePane(
                                 uiState,
-                                HomeBackup(backup, noDestinationNotice),
+                                HomeBackup(backup, noDestinationNotice, photosPending),
                                 lowStock,
                                 profit,
                                 onAction,
@@ -292,7 +293,7 @@ private fun ColumnScope.Overview(
     profit: HomeProfit?,
     onAction: (HomeAction) -> Unit,
 ) {
-    backup.wording?.let { BackupSummary(it, backup.notice, onAction) }
+    backup.wording?.let { BackupSummary(it, backup.notice, backup.photosPending, onAction) }
     TodayHeroBlock(content.hero, Modifier.padding(top = AppTheme.spacing.s8))
     profit?.let { ProfitTiles(it) }
     if (content.firstUse) {
@@ -315,14 +316,24 @@ private fun ColumnScope.Overview(
     lowStock?.let { LowStockCard(it, onAction) }
 }
 
-/** El estado del respaldo de Inicio y cómo va el aviso sin destino. */
+/**
+ * El estado del respaldo de Inicio, cómo va el aviso sin destino y cuántas fotos llevan más de un
+ * día sin subir.
+ */
 @Immutable
-private data class HomeBackup(val wording: BackupWording?, val notice: NoDestinationNotice?)
+private data class HomeBackup(
+    val wording: BackupWording?,
+    val notice: NoDestinationNotice?,
+    val photosPending: Int = 0,
+)
 
 /**
  * El respaldo en Inicio: el chip, siempre visible, en su propia línea bajo la barra; el banner
  * sobre el héroe solo si el estado pide atención; y los avisos que ningún estado oculta. Todo abre
  * la pantalla del respaldo, salvo sin destino, que lleva a elegir dónde guardar.
+ *
+ * Con WebDAV y fotos que llevan más de un día sin subir, una línea aparte bajo el chip, que abre
+ * la pantalla del respaldo y nunca cambia el chip.
  *
  * Sin destino, el aviso va entero con `Entendido`; aceptado, es una línea pequeña que también
  * lleva a elegir dónde guardar. Mientras no se sabe cuál toca, [notice] es `null` y no va
@@ -332,11 +343,20 @@ private data class HomeBackup(val wording: BackupWording?, val notice: NoDestina
 private fun BackupSummary(
     backup: BackupWording,
     notice: NoDestinationNotice?,
+    photosPending: Int,
     onAction: (HomeAction) -> Unit,
 ) {
     val report = backup.overview.report
     val status = report.status
     BackupStatusChip(backupChipLook(backup), onClick = { onAction(HomeAction.OpenBackup) })
+    // Las fotos van aparte de la copia: esta línea nunca cambia el chip, ni con `Todo guardado`.
+    if (photosPending > 0) {
+        BackupNoticeLine(
+            text = stringResource(R.string.storage_photos_pending, photosPending),
+            actionLabel = stringResource(R.string.backup_action_review),
+            onClick = { onAction(HomeAction.OpenBackup) },
+        )
+    }
     val noDestination = status == BackupStatus.NOT_CONNECTED
     when {
         !noDestination || notice == NoDestinationNotice.FULL ->

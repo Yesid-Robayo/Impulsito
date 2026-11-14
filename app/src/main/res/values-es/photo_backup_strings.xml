@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_slots_photos_note">Las fotos no van a %1$s.</string>
+    <string name="storage_photos_pending">Fotos: %1$d sin respaldar</string>
+    <string name="backup_photos_space_stopped">Las fotos dejaron de subir: en el servicio caben menos de 3 copias. Las copias de los datos siguen.</string>
+    <string name="backup_photos_large">Las fotos ya ocupan más de 1 GB. Siguen subiendo, pero conviene revisar el espacio del servicio.</string>
+    <string name="offsite_photos_title">Fotos</string>
+    <string name="offsite_photos_body">Las fotos no entran en la copia. Se pueden exportar aparte, en un archivo ZIP.</string>
+    <string name="offsite_no_photos">Sin fotos para exportar</string>
+    <string name="offsite_photos_saved">Fotos exportadas</string>
+    <string name="offsite_photos_failed">No se pudieron exportar las fotos. Los datos no cambiaron.</string>
+    <string name="offsite_photos_key_missing">No se pudieron cifrar las fotos. Se necesita el código de recuperación.</string>
+</resources>

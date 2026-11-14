@@ -110,10 +110,12 @@ import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
 import io.github.yesidrobayo.shopledger.data.media.MediaCleanup
 import io.github.yesidrobayo.shopledger.data.media.MediaCleanupEvent
+import io.github.yesidrobayo.shopledger.data.media.MediaExporter
 import io.github.yesidrobayo.shopledger.data.media.MediaImporter
 import io.github.yesidrobayo.shopledger.data.media.MediaOpen
 import io.github.yesidrobayo.shopledger.data.media.MediaSync
 import io.github.yesidrobayo.shopledger.data.media.MediaSyncAccess
+import io.github.yesidrobayo.shopledger.data.media.MediaSyncStop
 import io.github.yesidrobayo.shopledger.data.media.MediaSyncStore
 import io.github.yesidrobayo.shopledger.data.repository.toStoredImage
 import io.github.yesidrobayo.shopledger.data.rescue.RescueData
@@ -129,6 +131,9 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInf
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoBackupFacts
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoDestination
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoExport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
@@ -145,6 +150,7 @@ import io.github.yesidrobayo.shopledger.domain.port.FullCopyExportPort
 import io.github.yesidrobayo.shopledger.domain.port.FullVerifyPort
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
 import io.github.yesidrobayo.shopledger.domain.port.LogField
+import io.github.yesidrobayo.shopledger.domain.port.PhotoBackupPort
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.RestoreDrillPort
 import io.github.yesidrobayo.shopledger.domain.port.SecondDestinationPort
@@ -163,6 +169,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResul
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
@@ -766,6 +773,65 @@ class DataGraph internal constructor(
                 if (local) sha !in verified else sha !in unavailable
             }
         }
+    }
+
+    /**
+     * El respaldo de las fotos para las pantallas: qué falta subir, si se detuvo por el espacio y la
+     * exportación aparte. Sin red, y sin cambiar el estado del respaldo. Crearlo no toca el disco.
+     */
+    val photoBackup: PhotoBackupPort by lazy {
+        val exporter =
+            MediaExporter(
+                photos = {
+                    (open() as? DataAccess.Ready)?.ports?.mediaAssetRows?.findInUse()
+                        ?.map { it.toStoredImage() }
+                },
+                mediaDirectory = ::mediaDirectory,
+                workDirectory = { File(context.cacheDir, FullCopyExporter.DIRECTORY_NAME) },
+                sinkFor = { uri -> DocumentExportSink(context.contentResolver, Uri.parse(uri)) },
+                encryption = ::packEncryption,
+                deviceId = { deviceIdentity.deviceId() },
+                nowUtcMillis = clock::nowEpochMillis,
+                ioContext = ioContext,
+            )
+        object : PhotoBackupPort {
+            override suspend fun facts(): PhotoBackupFacts? = photoBackupFacts()
+
+            override suspend fun export(documentUri: String): PhotoExport =
+                exporter.export(documentUri)
+        }
+    }
+
+    /** Lee lo que [photoBackup] dice de las fotos. */
+    private suspend fun photoBackupFacts(): PhotoBackupFacts? {
+        val ports = (open() as? DataAccess.Ready)?.ports ?: return null
+        val destination =
+            when (ports.backupState.get()?.let(::connectedOf)?.kind) {
+                BackupDestinationKind.WEBDAV -> PhotoDestination.WEBDAV
+                BackupDestinationKind.DOCUMENT_SLOTS -> PhotoDestination.SLOTS
+                null -> PhotoDestination.NONE
+            }
+        val rows = ports.mediaAssetRows.findInUse()
+        val states = mediaSyncStore()
+        val verified = states.verified().orEmpty()
+        val stopped = states.stop() == MediaSyncStop.SERVICE_SPACE
+        val directory = mediaDirectory()
+        val local =
+            withContext(ioContext) {
+                rows.filter { File(directory, StoredImage.fileNameOf(it.sha256)).isFile }
+            }
+        // Pendiente es lo que el servicio no tiene en ninguna forma: una foto en claro que espera
+        // su versión cifrada ya está respaldada.
+        val pending = local.filter { it.sha256 !in verified }
+        val dayAgo = (clock.now() - 1.days).toEpochMilliseconds()
+        return PhotoBackupFacts(
+            destination = destination,
+            pending = pending.size,
+            pendingOverADay = pending.count { it.createdAt <= dayAgo },
+            stoppedForSpace = stopped,
+            totalBytes = rows.sumOf { it.sizeBytes },
+            exportable = local.size,
+        )
     }
 
     /**

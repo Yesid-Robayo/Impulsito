@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
+import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoBackupFacts
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
@@ -62,6 +63,7 @@ import kotlinx.coroutines.withContext
  * @param homeProfit la ganancia final de la semana y del mes; recibe las veces que se vuelve a
  *   mirar la fecha.
  * @param noticeStore dónde se guarda cuándo se aceptó el aviso sin destino, fuera de la base.
+ * @param photoBackup lo que se sabe del respaldo de las fotos, para su línea aparte.
  * @param now el reloj, para contar los días desde que se aceptó ese aviso.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -77,6 +79,7 @@ class HomeViewModel(
     homeProfit: (Flow<Unit>) -> Flow<HomeProfit?> = { flowOf(null) },
     private val noticeStore: NoDestinationNoticeStore? = null,
     private val now: () -> Instant = { kotlin.time.Clock.System.now() },
+    private val photoBackup: suspend () -> PhotoBackupFacts? = { null },
 ) : ViewModel() {
     // La primera mirada a la fecha es al abrir; las demás, al volver a primer plano. Un contador,
     // y no un evento, porque dos vueltas seguidas sin leer entre ellas valen por una.
@@ -114,6 +117,18 @@ class HomeViewModel(
             .map<BackupWording, BackupWording?> { it }
             .catch { emit(null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
+
+    /**
+     * Cuántas fotos llevan más de un día sin subir, con WebDAV: una línea aparte bajo el chip, que no
+     * cambia el estado del respaldo. Cero si no hay o si no se puede leer. Se vuelve a mirar al
+     * volver a primer plano.
+     */
+    val photosPending: StateFlow<Int> =
+        dayChecks
+            .map { photoBackup()?.takeIf { it.showsHomeLine }?.pendingOverADay ?: 0 }
+            .flowOn(computation)
+            .catch { emit(0) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), 0)
 
     /**
      * La tarjeta por agotarse, aparte de las ventas: si no se puede leer, Inicio sigue mostrando el
