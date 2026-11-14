@@ -392,10 +392,8 @@ class RegisterProductionUseCase(
      * rechazo.
      */
     private sealed interface InputsRead {
-        class Read(
-            val products: Map<Long, Product>,
-            val lots: Map<Long, List<LotStock>>,
-        ) : InputsRead
+        class Read(val products: Map<Long, Product>, val lots: Map<Long, List<LotStock>>) :
+            InputsRead
 
         class Rejected(val reason: RegisterProductionResult) : InputsRead
     }

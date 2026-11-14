@@ -9,10 +9,10 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoice
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
-import kotlinx.datetime.DayOfWeek
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
+import kotlinx.datetime.DayOfWeek
 
 // Vistas previas de producción, con datos inventados: el ejemplo de las velas, un nombre de 80
 // caracteres, un monto de trece cifras, un insumo que no alcanza, uno sin stock y las variantes

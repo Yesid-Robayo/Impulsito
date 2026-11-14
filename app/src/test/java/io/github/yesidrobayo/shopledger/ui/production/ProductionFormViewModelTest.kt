@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionRequ
 import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionResult
 import io.github.yesidrobayo.shopledger.ui.product.COUNT_UNIT
 import io.github.yesidrobayo.shopledger.ui.product.product
+import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -43,7 +44,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import kotlin.time.Instant
 
 /**
  * El formulario de producción sin base, con el ejemplo de las velas: 0,200 kg de cera y una mecha

@@ -149,11 +149,11 @@ class ProductionFormViewModel(
     val uiState: StateFlow<ProductionFormUiState> =
         combine(catalog, draft, overlay, lotInfo, ::build)
             .flowOn(computation)
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            ProductionFormUiState(),
-        )
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                ProductionFormUiState(),
+            )
 
     /** Si el formulario terminó y la navegación vuelve. */
     val closed: StateFlow<Boolean> = overlay.map { it.closed }
