@@ -98,6 +98,7 @@ internal fun undonePurchase(result: VoidPurchaseResult?): Boolean = when (result
     VoidPurchaseResult.NoteTooLong,
     is VoidPurchaseResult.UnknownTimeZone,
     VoidPurchaseResult.LedgerDamaged,
+    is VoidPurchaseResult.LotAlreadyUsed,
     is VoidPurchaseResult.StorageFailed,
     -> false
 }
@@ -154,6 +155,7 @@ fun rememberPurchaseUndo(): DocumentUndo {
                         alerts = ports.lowStockAlerts,
                         supplierLedger = ports.supplierLedger,
                         money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
+                        lots = ports.stockLots,
                     )
                     UndoPurchaseUseCase(void)(purchaseId)
                 }

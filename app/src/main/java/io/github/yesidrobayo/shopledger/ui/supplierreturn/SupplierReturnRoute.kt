@@ -62,6 +62,7 @@ fun SupplierReturnRoute(key: AppNavKey.SupplierReturn, navigator: AppNavigator) 
                 clock = container.clock,
                 money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
                 alerts = ports.lowStockAlerts,
+                lots = ports.stockLots,
             )
             SupplierReturnViewModel(
                 formSource = { purchaseId, supplierId -> observe(purchaseId, supplierId) },

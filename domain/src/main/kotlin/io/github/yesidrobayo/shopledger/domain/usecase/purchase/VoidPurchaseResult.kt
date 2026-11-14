@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.purchase
 
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 
 /**
@@ -40,6 +41,15 @@ sealed interface VoidPurchaseResult {
      * dañada.
      */
     data object LedgerDamaged : VoidPurchaseResult
+
+    /**
+     * Parte de lo que entró al lote [lotId] del producto [productId] ya salió, por una venta o un
+     * ajuste. Anular lo sacaría del mismo lote y lo dejaría negativo, y un lote con código nunca
+     * queda negativo. [missing] es lo que falta en ese lote para anular: se devuelve primero, o se
+     * corrige con un ajuste.
+     */
+    data class LotAlreadyUsed(val productId: Long, val lotId: Long, val missing: QuantityMilli) :
+        VoidPurchaseResult
 
     /** La base no pudo escribir, por [failure]. No quedó nada guardado. */
     data class StorageFailed(val failure: StorageFailure) : VoidPurchaseResult

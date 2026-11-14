@@ -154,6 +154,7 @@ fun PurchaseDetailRoute(
                 alerts = ports.lowStockAlerts,
                 supplierLedger = ports.supplierLedger,
                 money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
+                lots = ports.stockLots,
             )
             val balance = ObservePurchaseBalanceUseCase(ports.supplierLedger)
             PurchaseDetailViewModel(

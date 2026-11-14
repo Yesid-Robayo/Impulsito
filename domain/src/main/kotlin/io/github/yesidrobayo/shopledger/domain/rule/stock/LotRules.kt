@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.domain.rule.stock
 
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotPart
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotSpan
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LotExit
 
@@ -137,5 +138,31 @@ object LotRules {
             part.lotId == lot.lotId || (part.lotId == null && lot.isUnassigned)
         }.fold(QuantityMilli.ZERO) { sum, part -> sum + part.quantity }
         if (out == QuantityMilli.ZERO) lot else lot.copy(onHand = lot.onHand - out)
+    }
+
+    /**
+     * Cómo vuelve a sus lotes lo devuelto de una línea. [exits] son las partes que salieron con la
+     * venta, en el orden en que salieron, y lo devuelto ocupa de [before] a [after] milésimas
+     * acumuladas de la línea. Cada tramo cae en el lote de la parte que lo cubre: varias
+     * devoluciones de la misma línea vuelven en el orden de salida, y nunca más de lo que salió de
+     * cada lote. Lo que pase de todas las partes, como una línea sin filas con lote, va sin lote.
+     */
+    fun returnSpans(
+        exits: List<LotPart>,
+        before: QuantityMilli,
+        after: QuantityMilli,
+    ): List<LotSpan> {
+        val spans = ArrayList<LotSpan>()
+        var start = QuantityMilli.ZERO
+        for (exit in exits) {
+            val end = start + exit.quantity
+            val from = maxOf(before, start)
+            val to = minOf(after, end)
+            if (from < to) spans += LotSpan(exit.lotId, from, to)
+            start = end
+        }
+        val from = maxOf(before, start)
+        if (from < after) spans += LotSpan(lotId = null, from = from, to = after)
+        return spans
     }
 }

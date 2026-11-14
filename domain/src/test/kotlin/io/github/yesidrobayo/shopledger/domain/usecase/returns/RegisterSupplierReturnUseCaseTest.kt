@@ -511,10 +511,6 @@ class RegisterSupplierReturnUseCaseTest {
             rejected(0, SupplierReturnLineRejection.NOT_STOCKED),
             register(loose(3, 1_000), supplierId = SUPPLIER),
         )
-        assertEquals(
-            rejected(0, SupplierReturnLineRejection.LOTS_NOT_SUPPORTED),
-            register(loose(4, 1_000), supplierId = SUPPLIER),
-        )
         for (milli in listOf(0L, -1_000L, 1_000_000_001L)) {
             assertEquals(
                 rejected(0, SupplierReturnLineRejection.INVALID_QUANTITY),

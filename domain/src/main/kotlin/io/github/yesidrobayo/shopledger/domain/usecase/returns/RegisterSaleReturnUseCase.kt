@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.sale.Sale
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLine
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotPart
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
@@ -57,6 +58,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResul
 import io.github.yesidrobayo.shopledger.domain.rule.returns.ReturnShare
 import io.github.yesidrobayo.shopledger.domain.rule.returns.ReturnShareCheck
 import io.github.yesidrobayo.shopledger.domain.rule.returns.ReturnShares
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotRules
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOutcome
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
@@ -314,8 +316,9 @@ class RegisterSaleReturnUseCase(
     }
 
     /**
-     * Agrega el `SALE_RETURN` de [line] al libro de su producto: entra lo devuelto, al costo que
-     * congeló la venta, en la ubicación de la venta. Devuelve `false` si el costo no cabe.
+     * Agrega los `SALE_RETURN` de [line] al libro de su producto: entra lo devuelto, al costo que
+     * congeló la venta, en la ubicación de la venta y en los lotes de los que salió. Devuelve
+     * `false` si el costo no cabe.
      */
     private suspend fun restock(
         sale: Sale,
@@ -323,16 +326,74 @@ class RegisterSaleReturnUseCase(
         returnLineId: Long,
         time: RecordTime,
         now: Instant,
-    ): Boolean = enter(
-        productId = line.product.id,
-        locationId = sale.content.locationId,
-        quantity = line.request.quantity,
-        cost = line.share.cost,
-        unitCost = line.sold.content.unitCost,
-        source = StockMovementSource(saleReturnLineId = returnLineId),
-        time = time,
-        now = now,
-    )
+    ): Boolean {
+        val before = line.returnedBefore.milli
+        return enterSpans(
+            productId = line.product.id,
+            locationId = sale.content.locationId,
+            exits = exitsOf(sale.id) {
+                it.saleLineId == line.sold.id && it.saleLineComponentId == null
+            },
+            before = before,
+            after = Math.addExact(before, line.request.quantity.milli),
+            cost = line.share.cost,
+            unitCost = line.sold.content.unitCost,
+            source = StockMovementSource(saleReturnLineId = returnLineId),
+            time = time,
+            now = now,
+        )
+    }
+
+    /**
+     * Las partes que salieron con la venta [saleId] en las filas que elige [ofLine], en el orden en
+     * que salieron, con su lote: lo que vuelve, vuelve a ellas.
+     */
+    private suspend fun exitsOf(
+        saleId: Long,
+        ofLine: (StockMovementSource) -> Boolean,
+    ): List<LotPart> = ledger.findBySale(saleId)
+        .filter { it.movement.type == StockMovementType.SALE && ofLine(it.source) }
+        .sortedBy { it.id }
+        .map { LotPart(it.movement.key.lotId, -it.movement.quantity) }
+
+    /**
+     * Agrega un `SALE_RETURN` por cada lote del que salió lo devuelto entre [before] y [after]
+     * milésimas acumuladas de [exits], con su parte de [cost]. Las partes del costo salen con las
+     * mismas cantidades acumuladas, así que suman exacto. Devuelve `false` si un costo no cabe.
+     */
+    private suspend fun enterSpans(
+        productId: Long,
+        locationId: Long,
+        exits: List<LotPart>,
+        before: Long,
+        after: Long,
+        cost: Money,
+        unitCost: Money,
+        source: StockMovementSource,
+        time: RecordTime,
+        now: Instant,
+    ): Boolean {
+        val spans = LotRules.returnSpans(exits, QuantityMilli(before), QuantityMilli(after))
+        val whole = Math.subtractExact(after, before)
+        for (span in spans) {
+            val from = Math.subtractExact(span.from.milli, before)
+            val to = Math.subtractExact(span.to.milli, before)
+            val part = partOf(cost.minor, from, to, whole) ?: return false
+            val entered = enter(
+                productId = productId,
+                locationId = locationId,
+                lotId = span.lotId,
+                quantity = span.quantity,
+                cost = Money(part),
+                unitCost = unitCost,
+                source = source,
+                time = time,
+                now = now,
+            )
+            if (!entered) return false
+        }
+        return true
+    }
 
     /**
      * Devuelve al stock la parte de cada hoja con stock de la línea de combo de [line], con un
@@ -358,10 +419,14 @@ class RegisterSaleReturnUseCase(
             val quantity = partOf(content.quantity.milli, before, after, sold) ?: return false
             if (quantity == 0L) continue
             val cost = partOf(content.lineCost.minor, before, after, sold) ?: return false
-            val entered = enter(
+            // Lo devuelto de la hoja, en sus milésimas acumuladas, para volver a sus lotes.
+            val leafBefore = partOf(content.quantity.milli, 0L, before, sold) ?: return false
+            val entered = enterSpans(
                 productId = content.componentProductId,
                 locationId = sale.content.locationId,
-                quantity = QuantityMilli(quantity),
+                exits = exitsOf(sale.id) { it.saleLineComponentId == leaf.id },
+                before = leafBefore,
+                after = Math.addExact(leafBefore, quantity),
                 cost = Money(cost),
                 unitCost = content.unitCost,
                 source = StockMovementSource(
@@ -376,6 +441,13 @@ class RegisterSaleReturnUseCase(
         return true
     }
 
+    /** El lote de la fila: [lotId], o el sin asignar en un producto con lotes que no trae uno. */
+    private suspend fun lotOf(product: Product, lotId: Long?, now: Instant): Long? = when {
+        lotId != null -> lotId
+        product.details.tracksLots -> ledger.unassignedLot(product.id, now)
+        else -> null
+    }
+
     /**
      * La parte de [total] que toca a lo devuelto entre [before] y [after] de [sold] milésimas, con
      * cantidades acumuladas: la suma de todas las partes es exacta. `null` si no cabe.
@@ -386,10 +458,14 @@ class RegisterSaleReturnUseCase(
         return upTo - until
     }
 
-    /** Agrega un `SALE_RETURN` de [quantity] al costo [cost]. Devuelve `false` si no cabe. */
+    /**
+     * Agrega un `SALE_RETURN` de [quantity] al costo [cost], al lote [lotId]. Sin lote, un producto
+     * con lotes recibe en su lote sin asignar. Devuelve `false` si no cabe.
+     */
     private suspend fun enter(
         productId: Long,
         locationId: Long,
+        lotId: Long?,
         quantity: QuantityMilli,
         cost: Money,
         unitCost: Money,
@@ -407,7 +483,7 @@ class RegisterSaleReturnUseCase(
         ledger.append(
             NewStockMovement(
                 movement = StockMovementDraft(
-                    key = StockKey(productId, locationId, lotId = null),
+                    key = StockKey(productId, locationId, lotOf(product, lotId, now)),
                     type = StockMovementType.SALE_RETURN,
                     quantity = quantity,
                     reversesMovementId = null,

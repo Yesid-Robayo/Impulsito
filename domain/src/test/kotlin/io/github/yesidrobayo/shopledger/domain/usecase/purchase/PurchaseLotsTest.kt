@@ -7,8 +7,11 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineLot
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRejection
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleWorld
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.method
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.product
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -128,5 +131,39 @@ class PurchaseLotsTest {
         assertEquals(lot, compensation.movement.key.lotId)
         assertEquals(QuantityMilli.ZERO, world.lotRepository.findStock(1, 1).single().onHand)
         assertNull(world.tables.lots.values.firstOrNull { it.isUnassigned })
+    }
+
+    @Test
+    fun `a purchase whose lot was partly sold is not voided, and says what is missing`() = runTest {
+        world.addMethod(method())
+        world.addProduct(product(1, tracksLots = true))
+        val purchaseId = world.buy(line(1, 5_000, newLot("V-2")))
+        val lot = world.tables.lots.values.single().id
+        world.registerSale()(
+            SaleRequest(listOf(SaleLineRequest(1, QuantityMilli(3_000))), SaleWorld.CASH),
+        )
+        val before = world.tables
+
+        val result = world.voidPurchase()(purchaseId, VoidReason.ENTRY_ERROR, null)
+
+        // Anularla sacaría 5 de un lote que tiene 2: faltan 3, y no se escribe nada.
+        assertEquals(VoidPurchaseResult.LotAlreadyUsed(1, lot, QuantityMilli(3_000)), result)
+        assertEquals(before, world.tables)
+    }
+
+    @Test
+    fun `a purchase into the unassigned lot is voided even if it goes negative`() = runTest {
+        world.addMethod(method())
+        world.addProduct(product(1, tracksLots = true))
+        val purchaseId = world.buy(line(1, 2_000, lot = null))
+        world.registerSale()(
+            SaleRequest(listOf(SaleLineRequest(1, QuantityMilli(2_000))), SaleWorld.CASH),
+        )
+
+        val result = world.voidPurchase()(purchaseId, VoidReason.ENTRY_ERROR, null)
+
+        assertEquals(VoidPurchaseResult.Voided, result)
+        val unassigned = world.lotRepository.findStock(1, 1).single { it.isUnassigned }
+        assertEquals(QuantityMilli(-2_000), unassigned.onHand)
     }
 }

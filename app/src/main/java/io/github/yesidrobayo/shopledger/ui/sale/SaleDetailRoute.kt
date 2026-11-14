@@ -75,6 +75,7 @@ fun SaleDetailRoute(
                 money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
                 customerLedger = ports.customerLedger,
                 alerts = ports.lowStockAlerts,
+                lots = ports.stockLots,
             )
             SaleDetailViewModel(
                 saleId = key.saleId,

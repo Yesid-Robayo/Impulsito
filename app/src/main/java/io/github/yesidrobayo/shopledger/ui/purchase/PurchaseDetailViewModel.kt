@@ -270,6 +270,7 @@ class PurchaseDetailViewModel(
                     VoidPurchaseResult.NoteTooLong,
                     is VoidPurchaseResult.UnknownTimeZone,
                     VoidPurchaseResult.LedgerDamaged,
+                    is VoidPurchaseResult.LotAlreadyUsed,
                     is VoidPurchaseResult.StorageFailed,
                     -> it.copy(status = PurchaseVoidStatus.FAILED)
                 }
@@ -299,6 +300,7 @@ class PurchaseDetailViewModel(
                     VoidPurchaseResult.NoteTooLong,
                     is VoidPurchaseResult.UnknownTimeZone,
                     VoidPurchaseResult.LedgerDamaged,
+                    is VoidPurchaseResult.LotAlreadyUsed,
                     is VoidPurchaseResult.StorageFailed,
                     -> it.copy(status = PurchaseVoidStatus.FAILED)
                 }

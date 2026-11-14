@@ -259,6 +259,7 @@ class SaleDetailViewModel(
                     VoidSaleReturnResult.NoteTooLong,
                     is VoidSaleReturnResult.UnknownTimeZone,
                     VoidSaleReturnResult.LedgerDamaged,
+                    is VoidSaleReturnResult.LotAlreadyUsed,
                     is VoidSaleReturnResult.StorageFailed,
                     -> it.copy(returnVoidStatus = VoidStatus.FAILED)
                 }

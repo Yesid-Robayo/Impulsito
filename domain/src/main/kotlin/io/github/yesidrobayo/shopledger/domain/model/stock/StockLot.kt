@@ -58,3 +58,11 @@ data class LotStock(
  * del lote sin asignar si es `null`. Cada parte es una fila del libro.
  */
 data class LotPart(val lotId: Long?, val quantity: QuantityMilli)
+
+/**
+ * Un tramo de lo devuelto de una línea que vuelve al lote [lotId], o sin lote si es `null`: de
+ * [from] a [to] milésimas acumuladas de la línea.
+ */
+data class LotSpan(val lotId: Long?, val from: QuantityMilli, val to: QuantityMilli) {
+    val quantity: QuantityMilli get() = to - from
+}

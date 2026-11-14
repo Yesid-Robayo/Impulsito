@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotPart
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotSpan
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LotExit
 import org.junit.Assert.assertEquals
@@ -161,5 +162,44 @@ class LotRulesTest {
         assertThrows(IllegalArgumentException::class.java) {
             LotRules.splitOutflow(QuantityMilli.ZERO, emptyList(), chosenLotId = null)
         }
+    }
+
+    @Test
+    fun `returns go back to the lots in exit order and never more than left each`() {
+        val exits = listOf(LotPart(1L, QuantityMilli(3_000)), LotPart(2L, QuantityMilli(3_000)))
+
+        // Primero 2, luego 3: el segundo tramo termina L1 y empieza L2.
+        assertEquals(
+            listOf(LotSpan(1L, QuantityMilli.ZERO, QuantityMilli(2_000))),
+            LotRules.returnSpans(exits, QuantityMilli.ZERO, QuantityMilli(2_000)),
+        )
+        assertEquals(
+            listOf(
+                LotSpan(1L, QuantityMilli(2_000), QuantityMilli(3_000)),
+                LotSpan(2L, QuantityMilli(3_000), QuantityMilli(5_000)),
+            ),
+            LotRules.returnSpans(exits, QuantityMilli(2_000), QuantityMilli(5_000)),
+        )
+        // Lo que ya volvió de L1 no se vuelve a contar: el tramo cae entero en L2.
+        val last = LotRules.returnSpans(exits, QuantityMilli(5_000), QuantityMilli(6_000))
+        assertEquals(listOf(LotSpan(2L, QuantityMilli(5_000), QuantityMilli(6_000))), last)
+        assertEquals(QuantityMilli(1_000), last.single().quantity)
+    }
+
+    @Test
+    fun `what passes every exit, or a line without exits, comes back without lot`() {
+        val exits = listOf(LotPart(1L, QuantityMilli(1_000)))
+
+        assertEquals(
+            listOf(
+                LotSpan(1L, QuantityMilli.ZERO, QuantityMilli(1_000)),
+                LotSpan(null, QuantityMilli(1_000), QuantityMilli(2_000)),
+            ),
+            LotRules.returnSpans(exits, QuantityMilli.ZERO, QuantityMilli(2_000)),
+        )
+        assertEquals(
+            listOf(LotSpan(null, QuantityMilli(1_000), QuantityMilli(4_000))),
+            LotRules.returnSpans(emptyList(), QuantityMilli(1_000), QuantityMilli(4_000)),
+        )
     }
 }

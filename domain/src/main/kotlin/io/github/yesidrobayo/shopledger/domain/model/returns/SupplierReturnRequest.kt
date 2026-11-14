@@ -47,8 +47,8 @@ enum class SupplierReturnLineRejection {
     /** El producto no lleva stock propio, como un servicio o un combo: no hay libro que restar. */
     NOT_STOCKED,
 
-    /** El producto lleva lotes, y devolver por lote todavía no se ofrece. */
-    LOTS_NOT_SUPPORTED,
+    /** Lo devuelto pasa de lo que queda en el lote con código de su línea de compra. */
+    ABOVE_LOT_STOCK,
 
     /** La cantidad no es positiva o pasa del máximo de una línea. */
     INVALID_QUANTITY,

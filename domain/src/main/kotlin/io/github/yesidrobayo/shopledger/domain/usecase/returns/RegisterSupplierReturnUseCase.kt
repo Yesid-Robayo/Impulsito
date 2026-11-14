@@ -35,6 +35,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
@@ -99,6 +100,7 @@ class RegisterSupplierReturnUseCase(
     private val clock: Clock,
     private val money: DocumentMoney? = null,
     private val alerts: LowStockAlertRepository? = null,
+    private val lots: StockLotRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -159,10 +161,7 @@ class RegisterSupplierReturnUseCase(
             documentMoney
         }
         val time = calendar.stamp(now)
-        val location = purchase?.content?.locationId
-            ?: checkNotNull(systemRows.findId(SystemRow.MAIN_LOCATION)) {
-                "Falta una fila inicial de la base"
-            }
+        val location = locationOf(purchase)
         val returnId = purchaseReturns.insert(
             NewPurchaseReturn(
                 purchaseId = purchase?.id,
@@ -243,6 +242,8 @@ class RegisterSupplierReturnUseCase(
         }.orEmpty()
         // Cada producto se lee una vez: dos líneas del mismo producto lo comparten.
         val read = HashMap<Long, Product>()
+        // Lo que ya toman de cada lote las líneas anteriores de esta devolución.
+        val lotTaken = HashMap<Long, QuantityMilli>()
         val pricingLines = ArrayList<SupplierReturnPricingLine>(lines.size)
         for ((index, line) in lines.withIndex()) {
             val purchaseLine = when (line) {
@@ -267,6 +268,9 @@ class RegisterSupplierReturnUseCase(
                 ?: products.findById(productId)?.also { read[productId] = it }
                 ?: return lineRejected(index, SupplierReturnLineRejection.PRODUCT_NOT_FOUND)
             productRejection(product, line.quantity)?.let { return lineRejected(index, it) }
+            lotRejection(purchase, purchaseLine, line.quantity, lotTaken)?.let {
+                return lineRejected(index, it)
+            }
             pricingLines += SupplierReturnPricingLine(productId, purchaseLine, line.quantity)
         }
         val taken = purchase?.let { purchaseReturns.takenByPurchase(it.id) }.orEmpty()
@@ -315,8 +319,6 @@ class RegisterSupplierReturnUseCase(
         product.details.stockMode != ProductStockMode.TRACKED ->
             SupplierReturnLineRejection.NOT_STOCKED
 
-        product.details.tracksLots -> SupplierReturnLineRejection.LOTS_NOT_SUPPORTED
-
         quantity.milli <= 0L || !Limit.LINE_QUANTITY_MILLI.allows(quantity.milli) ->
             SupplierReturnLineRejection.INVALID_QUANTITY
 
@@ -325,6 +327,35 @@ class RegisterSupplierReturnUseCase(
 
         else -> null
     }
+
+    /**
+     * Por qué no se puede sacar [quantity] del lote de [purchaseLine], o `null` si se puede. Lo
+     * devuelto de una línea de compra con lote sale de ese lote, en la ubicación de la compra, y un
+     * lote con código nunca da más de lo que tiene. El lote sin asignar sí puede quedar negativo.
+     * [taken] suma lo que ya sacaron de cada lote las líneas anteriores.
+     */
+    private suspend fun lotRejection(
+        purchase: Purchase?,
+        purchaseLine: PurchaseLine?,
+        quantity: QuantityMilli,
+        taken: MutableMap<Long, QuantityMilli>,
+    ): SupplierReturnLineRejection? {
+        val lotId = purchaseLine?.content?.lotId ?: return null
+        val lot = lots?.findById(lotId)
+        if (lot?.isUnassigned == true) return null
+        val location = locationOf(purchase)
+        val already = taken[lotId] ?: QuantityMilli.ZERO
+        val available = ledger.onHandAt(StockKey(purchaseLine.content.productId, location, lotId))
+        if (already + quantity > available) return SupplierReturnLineRejection.ABOVE_LOT_STOCK
+        taken[lotId] = already + quantity
+        return null
+    }
+
+    /** La ubicación de la que sale lo devuelto: la de la compra, o la inicial sin compra. */
+    private suspend fun locationOf(purchase: Purchase?): Long = purchase?.content?.locationId
+        ?: checkNotNull(systemRows.findId(SystemRow.MAIN_LOCATION)) {
+            "Falta una fila inicial de la base"
+        }
 
     private suspend fun allowsFraction(product: Product): Boolean =
         // La unidad base de un producto siempre existe: su llave no deja borrarla.
@@ -338,12 +369,19 @@ class RegisterSupplierReturnUseCase(
         time: RecordTime,
         now: Instant,
     ) {
+        // Sale del lote de su línea de compra; sin él, en un producto con lotes, del sin asignar.
+        val lotId = line.purchaseLine?.content?.lotId
+            ?: if (line.product.details.tracksLots) {
+                ledger.unassignedLot(line.product.id, now)
+            } else {
+                null
+            }
         val lineId = purchaseReturns.insertLine(
             returnId,
             NewPurchaseReturnLine(
                 purchaseLineId = line.purchaseLine?.id,
                 productId = line.product.id,
-                lotId = null,
+                lotId = lotId,
                 quantity = line.quantity,
                 unitCost = line.amounts.unitCost,
                 lineTotal = line.amounts.lineTotal,
@@ -352,7 +390,7 @@ class RegisterSupplierReturnUseCase(
         ledger.append(
             NewStockMovement(
                 movement = StockMovementDraft(
-                    key = StockKey(line.product.id, location, lotId = null),
+                    key = StockKey(line.product.id, location, lotId),
                     type = StockMovementType.PURCHASE_RETURN,
                     quantity = -line.quantity,
                     reversesMovementId = null,

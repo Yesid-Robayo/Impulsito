@@ -1263,6 +1263,7 @@ internal class SaleWorld(
         alerts = alertRepository.takeIf { withAlerts },
         supplierLedger = supplierLedger,
         money = DocumentMoney(moneyAccountRepository, moneyLedger),
+        lots = lotRepository,
     )
 
     fun registerSupplierReturn(): RegisterSupplierReturnUseCase = RegisterSupplierReturnUseCase(
@@ -1279,6 +1280,7 @@ internal class SaleWorld(
         clock = clock,
         money = DocumentMoney(moneyAccountRepository, moneyLedger),
         alerts = alertRepository.takeIf { withAlerts },
+        lots = lotRepository,
     )
 
     fun voidSupplierReturn(): VoidSupplierReturnUseCase = VoidSupplierReturnUseCase(
@@ -1596,6 +1598,7 @@ internal class SaleWorld(
         money = DocumentMoney(moneyAccountRepository, moneyLedger),
         customerLedger = customerLedger,
         alerts = alertRepository.takeIf { withAlerts },
+        lots = lotRepository,
     )
 
     fun exchangeSale(): ExchangeSaleUseCase =

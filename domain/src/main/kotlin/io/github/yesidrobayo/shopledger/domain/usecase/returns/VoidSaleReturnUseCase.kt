@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.returns
 
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.VoidableDocument
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
@@ -17,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
@@ -31,6 +33,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOut
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.lotShortfallOf
 import kotlin.time.Instant
 
 /**
@@ -72,6 +75,7 @@ class VoidSaleReturnUseCase(
     private val money: DocumentMoney? = null,
     private val customerLedger: CustomerLedgerRepository? = null,
     private val alerts: LowStockAlertRepository? = null,
+    private val lots: StockLotRepository? = null,
 ) {
     private val ledger = StockChangeRecorder(ledger)
 
@@ -118,10 +122,15 @@ class VoidSaleReturnUseCase(
             }
         }
 
-        val now = clock.now()
-        returns.markVoided(saleReturnId, Voiding(now, reason, cleanNote))
         val rows = ledger.findBySaleReturn(saleReturnId)
             .filter { it.movement.type == StockMovementType.SALE_RETURN }
+        ledger.lotShortfallOf(rows, lots)?.let { short ->
+            return TxResult.Rollback(
+                VoidSaleReturnResult.LotAlreadyUsed(short.productId, short.lotId, short.missing),
+            )
+        }
+        val now = clock.now()
+        returns.markVoided(saleReturnId, Voiding(now, reason, cleanNote))
         for ((productId, productRows) in rows.groupBy { it.movement.key.productId }) {
             if (!compensate(productId, productRows, now, calendar)) {
                 return TxResult.Rollback(VoidSaleReturnResult.LedgerDamaged)
@@ -290,6 +299,14 @@ sealed interface VoidSaleReturnResult {
      * escribe libros así; puede venir de una copia dañada.
      */
     data object LedgerDamaged : VoidSaleReturnResult
+
+    /**
+     * Lo que volvió al lote [lotId] del producto [productId] ya salió otra vez. Anular lo sacaría
+     * del mismo lote y lo dejaría negativo, y un lote con código nunca queda negativo. [missing] es
+     * lo que falta en ese lote para anular.
+     */
+    data class LotAlreadyUsed(val productId: Long, val lotId: Long, val missing: QuantityMilli) :
+        VoidSaleReturnResult
 
     /** La base no pudo escribir, por [failure]. No quedó nada guardado. */
     data class StorageFailed(val failure: StorageFailure) : VoidSaleReturnResult

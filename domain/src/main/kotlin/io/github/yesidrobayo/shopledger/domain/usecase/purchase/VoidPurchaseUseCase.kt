@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
@@ -32,6 +33,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
 import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.appendChained
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.lotShortfallOf
 import kotlin.time.Instant
 
 /**
@@ -82,6 +84,7 @@ class VoidPurchaseUseCase(
     private val alerts: LowStockAlertRepository? = null,
     private val supplierLedger: SupplierLedgerRepository? = null,
     private val money: DocumentMoney? = null,
+    private val lots: StockLotRepository? = null,
 ) {
     private val ledger = StockChangeRecorder(ledger)
 
@@ -122,10 +125,15 @@ class VoidPurchaseUseCase(
             return TxResult.Rollback(VoidPurchaseResult.HasActiveReturns)
         }
 
-        val now = clock.now()
-        purchases.markVoided(purchaseId, Voiding(now, reason, note?.takeIf { it.isNotBlank() }))
         val purchaseRows = ledger.findByPurchase(purchaseId)
             .filter { it.movement.type == StockMovementType.PURCHASE }
+        ledger.lotShortfallOf(purchaseRows, lots)?.let { short ->
+            return TxResult.Rollback(
+                VoidPurchaseResult.LotAlreadyUsed(short.productId, short.lotId, short.missing),
+            )
+        }
+        val now = clock.now()
+        purchases.markVoided(purchaseId, Voiding(now, reason, note?.takeIf { it.isNotBlank() }))
         for ((productId, rows) in purchaseRows.groupBy { it.movement.key.productId }) {
             val compensated = compensate(productId, rows, now, calendar)
             if (!compensated) return TxResult.Rollback(VoidPurchaseResult.LedgerDamaged)
