@@ -365,6 +365,7 @@ class ImportRowReaderTest {
                 listOf("Granja", "treinta"),
                 listOf("Huerta", "9999"),
                 listOf("Vivero", "1234567"),
+                listOf("Cosecha", "3/0"),
             ),
         )
 
@@ -374,6 +375,7 @@ class ImportRowReaderTest {
                 ImportRowIssue(3, "payment_terms_days", ImportIssue.INVALID_VALUE),
                 ImportRowIssue(4, "payment_terms_days", ImportIssue.LIMIT),
                 ImportRowIssue(5, "payment_terms_days", ImportIssue.LIMIT),
+                ImportRowIssue(6, "payment_terms_days", ImportIssue.INVALID_VALUE),
             ),
             preview.issues,
         )
@@ -398,6 +400,7 @@ class ImportRowReaderTest {
                 listOf("2026-04", "-100,01"),
                 listOf("", ""),
                 listOf("2026-05", ""),
+                listOf("", "2"),
             ),
         )
 
@@ -416,6 +419,7 @@ class ImportRowReaderTest {
                 ImportRowIssue(5, "change_percent", ImportIssue.INVALID_VALUE),
                 ImportRowIssue(6, "change_percent", ImportIssue.LIMIT),
                 ImportRowIssue(8, "change_percent", ImportIssue.MISSING),
+                ImportRowIssue(9, "month", ImportIssue.MISSING),
             ),
             preview.issues,
         )

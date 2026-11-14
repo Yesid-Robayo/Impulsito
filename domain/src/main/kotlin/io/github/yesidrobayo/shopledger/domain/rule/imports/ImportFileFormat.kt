@@ -26,11 +26,9 @@ object ImportFileFormat {
         var comma = 0
         for (row in sheet.rows) {
             for (cell in row.cells) {
-                when (vote(cell.trim())) {
-                    DecimalSeparator.POINT -> point++
-                    DecimalSeparator.COMMA -> comma++
-                    null -> Unit
-                }
+                val vote = vote(cell.trim())
+                if (vote == DecimalSeparator.POINT) point++
+                if (vote == DecimalSeparator.COMMA) comma++
             }
         }
         return when {

@@ -34,6 +34,8 @@ class ImportCellTextTest {
         assertEquals("0.1", ImportCellText.spreadsheetNumber("0.09999999999999999"))
         // La cifra 16 es un 4: se descarta sin subir la anterior.
         assertEquals("0.123456789012345", ImportCellText.spreadsheetNumber("0.1234567890123454"))
+        // La cifra 16 es un 6: sube la anterior, y el 9 lleva el acarreo hasta el 4.
+        assertEquals("0.12345678901235", ImportCellText.spreadsheetNumber("0.1234567890123496"))
     }
 
     @Test
