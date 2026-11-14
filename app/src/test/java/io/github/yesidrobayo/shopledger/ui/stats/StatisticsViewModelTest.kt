@@ -418,6 +418,21 @@ class StatisticsViewModelTest {
         assertEquals(DayOfWeek.MONDAY, model.content().weekStartDay)
     }
 
+    @Test
+    fun `a product shows and hides its variants`() = runTest(dispatcher) {
+        val model = viewModel()
+        advanceUntilIdle()
+
+        model.onAction(StatisticsAction.ToggleVariants(7L))
+        model.onAction(StatisticsAction.ToggleVariants(9L))
+        advanceUntilIdle()
+        assertEquals(setOf(7L, 9L), model.content().expandedProducts)
+
+        model.onAction(StatisticsAction.ToggleVariants(7L))
+        advanceUntilIdle()
+        assertEquals(setOf(9L), model.content().expandedProducts)
+    }
+
     private fun totals(net: Long = 0, count: Long = 0) = PeriodTotals(
         ProfitTotals(
             salesNetTotal = Money(net),

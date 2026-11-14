@@ -536,7 +536,9 @@ private fun ColumnScope.Detail(
                 top = top,
                 ranking = content.ranking,
                 units = content.units,
+                expanded = content.expandedProducts,
                 onSelect = { onAction(StatisticsAction.SelectRanking(it)) },
+                onToggle = { onAction(StatisticsAction.ToggleVariants(it)) },
                 modifier = rows,
             )
         }

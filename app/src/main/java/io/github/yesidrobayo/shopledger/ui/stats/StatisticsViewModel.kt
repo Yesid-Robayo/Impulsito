@@ -185,6 +185,7 @@ class StatisticsViewModel(
                 // Solo con datos: sin otros ingresos en el período, la sección no aparece.
                 otherIncome = details.otherIncome.takeIf { it != Money.ZERO },
                 ranking = chosen.ranking,
+                expandedProducts = chosen.expandedProducts,
                 choosingRange = chosen.choosingRange,
                 weekStartDay = shown.calendar.weekStartDay,
                 collection = details.collection,
@@ -205,6 +206,19 @@ class StatisticsViewModel(
 
             is StatisticsAction.SelectRanking ->
                 choice.value = choice.value.copy(ranking = action.ranking)
+
+            is StatisticsAction.ToggleVariants -> {
+                val open = choice.value.expandedProducts
+                choice.value =
+                    choice.value.copy(
+                        expandedProducts =
+                            if (action.productId in open) {
+                                open - action.productId
+                            } else {
+                                open + action.productId
+                            },
+                    )
+            }
 
             StatisticsAction.ChooseRange -> choice.value = choice.value.copy(choosingRange = true)
 
@@ -301,6 +315,7 @@ class StatisticsViewModel(
         val selectedDay: BusinessDate? = null,
         val showList: Boolean = false,
         val ranking: RankingKind = RankingKind.SALES,
+        val expandedProducts: Set<Long> = emptySet(),
         val range: ReportPeriod.Range? = null,
         val choosingRange: Boolean = false,
     )

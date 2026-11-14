@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitTotals
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.catalog.VariantValues
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.ExpenseCategoryTotal
@@ -16,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.model.report.PeriodNoticeCounts
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodTotals
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodVariation
 import io.github.yesidrobayo.shopledger.domain.model.report.ProductSales
+import io.github.yesidrobayo.shopledger.domain.model.report.VariantOf
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.report.ExpenseRow
@@ -123,13 +125,24 @@ private fun previewBreakdown(): PeriodBreakdown {
                 Money(1_204_000),
                 Money(802_000),
             ),
+            // Un producto con dos variantes, que los rankings suman en él.
             ProductSales(
-                2L,
+                21L,
                 s.SECOND_NAME,
                 1L,
-                QuantityMilli(160_000),
-                Money(812_000),
-                Money(590_000),
+                QuantityMilli(100_000),
+                Money(512_000),
+                Money(370_000),
+                VariantOf(2L, s.SECOND_NAME, VariantValues("M", "Rojo")),
+            ),
+            ProductSales(
+                22L,
+                s.SECOND_NAME,
+                1L,
+                QuantityMilli(60_000),
+                Money(300_000),
+                Money(220_000),
+                VariantOf(2L, s.SECOND_NAME, VariantValues(s.LONG_NAME.take(40), null)),
             ),
             ProductSales(
                 3L,
@@ -219,6 +232,16 @@ private fun StatisticsOtherIncomePreview() {
             onAction = {},
         )
     }
+}
+
+/** Con el producto de dos variantes desplegado: su suma arriba y cada una debajo. */
+internal fun previewVariants(): StatisticsUiState.Content =
+    previewStatisticsContent().copy(expandedProducts = setOf(2L))
+
+@ThemePreviews
+@Composable
+private fun StatisticsVariantsPreview() {
+    PreviewTheme { StatisticsScreen(previewVariants(), onAction = {}) }
 }
 
 @ThemePreviews

@@ -4,10 +4,19 @@ import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitSummary
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.VariantValues
 import io.github.yesidrobayo.shopledger.domain.model.report.ExpenseCategoryTotal
 import io.github.yesidrobayo.shopledger.domain.model.report.ProductSales
 
-/** Un producto en un ranking, con su ganancia en ventas ya calculada. */
+/**
+ * Un producto en un ranking, con su ganancia en ventas ya calculada.
+ *
+ * Un producto con variantes vendidas llega como su principal, con la suma de ellas, y [variants]
+ * las trae debajo, en el orden del ranking: cada una con lo suyo y [values] con sus valores.
+ * Solo faltan las que dan cero en la cifra del ranking, así que las de la lista suman lo del
+ * principal.
+ * Lo que el principal vendió antes de tener variantes va entre ellas, con [values] en `null`.
+ */
 data class RankedProduct(
     val productId: Long,
     val name: String,
@@ -15,6 +24,8 @@ data class RankedProduct(
     val quantity: QuantityMilli,
     val netSales: Money,
     val grossProfit: Money,
+    val variants: List<RankedProduct> = emptyList(),
+    val values: VariantValues? = null,
 )
 
 /** Los más vendidos de una misma unidad: nunca se suman kilos con unidades. */
@@ -50,57 +61,95 @@ object PeriodRankings {
     const val TOP_LIMIT: Int = 10
 
     /**
-     * Los diez primeros por ventas, por ganancia y por cantidad de cada unidad. Solo entran los que
-     * vendieron, ganaron o salieron de verdad: un producto devuelto entero no destaca. Los empates
-     * se ordenan por id, para que la lista no salte entre lecturas. Devuelve [Checked.Overflow] si
-     * una ganancia no cabe en `Long`.
+     * Los diez primeros por ventas, por ganancia y por cantidad de cada unidad. Las variantes
+     * cuentan en su producto principal, y en el ranking por cantidad solo con las de su misma
+     * unidad. Solo entran los que vendieron, ganaron o salieron de verdad: un producto devuelto
+     * entero no destaca. Los empates se ordenan por id, para que la lista no salte entre lecturas.
+     * Devuelve [Checked.Overflow] si una suma o una ganancia no cabe en `Long`.
      */
     fun top(products: List<ProductSales>): Checked<TopProducts> = try {
-        val ranked =
-            products.map {
-                RankedProduct(
-                    productId = it.productId,
-                    name = it.name,
-                    baseUnitId = it.baseUnitId,
-                    quantity = it.quantity,
-                    netSales = it.netSales,
-                    grossProfit = it.netSales - it.cost,
-                )
-            }
+        val sold = products.map(::rankedOf)
+        val families = sold.groupBy { it.family }
         Checked.Value(
             TopProducts(
-                bySales = ranked.filter { it.netSales > Money.ZERO }
-                    .sortedWith(
-                        compareByDescending<RankedProduct> {
-                            it.netSales
-                        }.thenBy { it.productId },
-                    )
-                    .take(TOP_LIMIT),
-                byProfit = ranked.filter { it.grossProfit > Money.ZERO }
-                    .sortedWith(
-                        compareByDescending<RankedProduct> {
-                            it.grossProfit
-                        }.thenBy { it.productId },
-                    )
-                    .take(TOP_LIMIT),
-                byQuantity = ranked.filter { it.quantity > QuantityMilli.ZERO }
-                    .groupBy { it.baseUnitId }
+                bySales = families.values.ranked(byNetSales),
+                byProfit = families.values.ranked(byGrossProfit),
+                byQuantity = sold.groupBy { it.product.baseUnitId }
                     .toSortedMap()
                     .map { (unit, inUnit) ->
-                        UnitRanking(
-                            unit,
-                            inUnit.sortedWith(
-                                compareByDescending<RankedProduct> {
-                                    it.quantity
-                                }.thenBy { it.productId },
-                            ).take(TOP_LIMIT),
-                        )
+                        UnitRanking(unit, inUnit.groupBy { it.family }.values.ranked(byQuantity))
                     },
             ),
         )
     } catch (overflow: ArithmeticException) {
         Checked.Overflow
     }
+
+    /**
+     * Los primeros [TOP_LIMIT] de estas familias por [measure]: cada una sumada en su principal,
+     * con sus variantes debajo si las tiene.
+     */
+    private fun Collection<List<Sold>>.ranked(measure: Measure): List<RankedProduct> =
+        map { family -> familyOf(family, measure) }
+            .filter { measure.of(it) > 0L }
+            .sortedWith(measure.order)
+            .take(TOP_LIMIT)
+
+    private fun familyOf(family: List<Sold>, measure: Measure): RankedProduct {
+        val first = family.first()
+        if (family.none { it.isVariant }) return first.product
+        val variants = family.map { it.product }.filter { measure.of(it) != 0L }
+        return RankedProduct(
+            productId = first.family,
+            name = first.familyName,
+            baseUnitId = first.product.baseUnitId,
+            quantity = family.fold(QuantityMilli.ZERO) { sum, it -> sum + it.product.quantity },
+            netSales = family.fold(Money.ZERO) { sum, it -> sum + it.product.netSales },
+            grossProfit = family.fold(Money.ZERO) { sum, it -> sum + it.product.grossProfit },
+            variants = variants.sortedWith(measure.order),
+        )
+    }
+
+    private fun rankedOf(sales: ProductSales): Sold {
+        val variantOf = sales.variantOf
+        val product =
+            RankedProduct(
+                productId = sales.productId,
+                name = sales.name,
+                baseUnitId = sales.baseUnitId,
+                quantity = sales.quantity,
+                netSales = sales.netSales,
+                grossProfit = sales.netSales - sales.cost,
+            )
+        return if (variantOf == null) {
+            Sold(product, sales.productId, sales.name, isVariant = false)
+        } else {
+            Sold(
+                product.copy(values = variantOf.values),
+                variantOf.parentId,
+                variantOf.parentName,
+                isVariant = true,
+            )
+        }
+    }
+
+    /** Lo vendido de un producto, con la familia en que se suma: su principal, o él mismo. */
+    private class Sold(
+        val product: RankedProduct,
+        val family: Long,
+        val familyName: String,
+        val isVariant: Boolean,
+    )
+
+    /** La cifra por la que se ordena un ranking, de mayor a menor y, en empate, por id. */
+    private class Measure(val of: (RankedProduct) -> Long) {
+        val order: Comparator<RankedProduct> =
+            compareByDescending<RankedProduct> { of(it) }.thenBy { it.productId }
+    }
+
+    private val byNetSales = Measure { it.netSales.minor }
+    private val byGrossProfit = Measure { it.grossProfit.minor }
+    private val byQuantity = Measure { it.quantity.milli }
 
     /**
      * Los gastos del período por categoría, en el orden dado, y después daños y pérdidas y las

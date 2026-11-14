@@ -59,4 +59,5 @@
         <item quantity="many">%1$d de linhas foram vendidas sem custo de reposição nem custo: este valor fica abaixo do real.</item>
         <item quantity="other">%1$d linhas foram vendidas sem custo de reposição nem custo: este valor fica abaixo do real.</item>
     </plurals>
+    <string name="stats_variant_without">Sem variante</string>
 </resources>

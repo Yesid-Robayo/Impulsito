@@ -55,4 +55,5 @@
         <item quantity="one">%1$d line was sold without a replacement cost or cost: this figure falls short.</item>
         <item quantity="other">%1$d lines were sold without a replacement cost or cost: this figure falls short.</item>
     </plurals>
+    <string name="stats_variant_without">No variant</string>
 </resources>

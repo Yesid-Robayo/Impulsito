@@ -51,6 +51,10 @@ object VariantRules {
     /** Lo que separa el nombre del principal de cada valor en el nombre de una variante. */
     const val NAME_SEPARATOR: String = " · "
 
+    /** Los valores de una variante, sin el nombre del principal: `M · Rojo`. */
+    fun labelOf(values: VariantValues): String =
+        listOfNotNull(values.first, values.second).joinToString(NAME_SEPARATOR)
+
     /** El nombre de la variante de [parentName] con [values] ya recortados. */
     fun nameOf(parentName: String, values: VariantValues): String =
         listOfNotNull(parentName, values.first, values.second).joinToString(NAME_SEPARATOR)

@@ -7,7 +7,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -24,7 +31,8 @@ import org.junit.runner.RunWith
 /**
  * Capturas de `Números` para la puerta de calidad visual: el mes con su gráfica y la barra tocada, la
  * ganancia con la lista, el período sin movimientos, un día con pérdida y un monto de trece cifras,
- * el modo discreto, sin datos, sin zona y con error. Con la paleta predeterminada y otra, en claro y
+ * el modo discreto, sin datos, sin zona y con error, y los más vendidos con un producto de dos
+ * variantes desplegado. Con la paleta predeterminada y otra, en claro y
  * en oscuro. Solo corre con `captureDir`; la letra grande y la ventana ancha se fijan en el emulador
  * antes de correrla.
  */
@@ -81,6 +89,67 @@ class StatisticsGalleryTest {
                             File(
                                 requireNotNull(dir),
                                 "${palette.name.lowercase()}-$mode-$name.png",
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * `Lo que más se vendió` con un producto de dos variantes desplegado, por ventas y por
+     * cantidad: la sección queda lejos del borde de arriba, así que se dibuja sola.
+     */
+    @Test
+    fun drawsTheRankingWithItsVariants() {
+        val dir = captureDir
+        assumeTrue("Sin captureDir no hay capturas", dir != null)
+        val content = previewVariants()
+        val top = requireNotNull(content.breakdown?.top)
+        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            for (palette in listOf(ColorPalette.INDIGO_MUSTARD, ColorPalette.GARNET_HONEY)) {
+                for (dark in listOf(false, true)) {
+                    for (ranking in listOf(RankingKind.SALES, RankingKind.QUANTITY)) {
+                        scenario.onActivity { activity ->
+                            val bars = SystemBarStyle.auto(TRANSPARENT, TRANSPARENT) { dark }
+                            activity.enableEdgeToEdge(bars, bars)
+                            activity.setContent {
+                                AppTheme(palette = palette, darkTheme = dark) {
+                                    CompositionLocalProvider(
+                                        LocalAppFormats provides previewFormats(),
+                                    ) {
+                                        Column(
+                                            Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.background)
+                                                .safeDrawingPadding(),
+                                        ) {
+                                            TopSold(
+                                                top = top,
+                                                ranking = ranking,
+                                                units = content.units,
+                                                expanded = content.expandedProducts,
+                                                onSelect = {},
+                                                onToggle = {},
+                                                modifier =
+                                                    Modifier.padding(
+                                                        horizontal = AppTheme.spacing.s16,
+                                                    ),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        instrumentation.waitForIdleSync()
+                        SystemClock.sleep(SETTLE_MILLIS)
+                        val mode = if (dark) "dark" else "light"
+                        val name = ranking.name.lowercase()
+                        save(
+                            File(
+                                requireNotNull(dir),
+                                "${palette.name.lowercase()}-$mode-variants-$name.png",
                             ),
                         )
                     }

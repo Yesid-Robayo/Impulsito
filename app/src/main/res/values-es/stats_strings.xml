@@ -59,4 +59,5 @@
         <item quantity="many">%1$d de líneas se vendieron sin costo de reposición ni costo: esta cifra se queda corta.</item>
         <item quantity="other">%1$d líneas se vendieron sin costo de reposición ni costo: esta cifra se queda corta.</item>
     </plurals>
+    <string name="stats_variant_without">Sin variante</string>
 </resources>

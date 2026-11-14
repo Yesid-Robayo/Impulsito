@@ -8,13 +8,18 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitSummary
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.catalog.VariantValues
 import io.github.yesidrobayo.shopledger.domain.model.report.ExpenseCategoryTotal
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.ProductSales
+import io.github.yesidrobayo.shopledger.domain.model.report.VariantOf
 import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+
+/** El producto principal de las variantes de prueba. */
+private const val SHIRT = 10L
 
 /** Los más vendidos, los gastos por categoría y los rangos propios, con valores a mano. */
 class PeriodRankingsTest {
@@ -65,6 +70,80 @@ class PeriodRankingsTest {
         assertEquals(
             Checked.Overflow,
             PeriodRankings.top(listOf(sales(1L, net = Long.MAX_VALUE, cost = -1))),
+        )
+    }
+
+    @Test
+    fun `a parent adds up its variants and lists them under it`() {
+        // Camiseta: M Rojo vende 8.000 con costo 5.000; M Azul, 7.000 con 4.000; L Rojo se
+        // devolvió entera; y antes de tener variantes la camiseta vendió 2.000 con costo 2.500.
+        val products =
+            listOf(
+                variant(11L, "M", "Rojo", net = 8_000, cost = 5_000),
+                variant(12L, "M", "Azul", net = 7_000, cost = 4_000),
+                variant(13L, "L", "Rojo", net = 0, cost = 0, quantity = 0),
+                sales(SHIRT, net = 2_000, cost = 2_500).copy(name = "Camiseta"),
+                sales(1L, net = 5_000, cost = 3_000),
+            )
+
+        val top = topOf(products)
+
+        // Por ventas: 8.000 + 7.000 + 0 + 2.000 = 17.000, por encima de los 5.000 del café.
+        val bySales = top.bySales.first()
+        assertEquals(listOf(SHIRT, 1L), top.bySales.map { it.productId })
+        assertEquals("Camiseta", bySales.name)
+        assertEquals(Money(17_000), bySales.netSales)
+        assertEquals(listOf(11L, 12L, SHIRT), bySales.variants.map { it.productId })
+        assertEquals(
+            listOf(Money(8_000), Money(7_000), Money(2_000)),
+            bySales.variants.map { it.netSales },
+        )
+        assertEquals(VariantValues("M", "Rojo"), bySales.variants.first().values)
+        assertNull(bySales.variants.last().values)
+        assertEquals(emptyList<RankedProduct>(), top.bySales.last().variants)
+        // Por ganancia: 3.000 + 3.000 + 0 − 500 = 5.500. La pérdida de antes resta y se ve.
+        val byProfit = top.byProfit.first()
+        assertEquals(Money(5_500), byProfit.grossProfit)
+        assertEquals(listOf(11L, 12L, SHIRT), byProfit.variants.map { it.productId })
+        assertEquals(Money(-500), byProfit.variants.last().grossProfit)
+        // Por cantidad: tres unidades, una de cada una que salió.
+        val byQuantity = top.byQuantity.single().products
+        assertEquals(listOf(SHIRT, 1L), byQuantity.map { it.productId })
+        assertEquals(QuantityMilli(3_000), byQuantity.first().quantity)
+        assertEquals(listOf(SHIRT, 11L, 12L), byQuantity.first().variants.map { it.productId })
+    }
+
+    @Test
+    fun `variants in another unit count apart by quantity`() {
+        val top =
+            topOf(
+                listOf(
+                    variant(21L, "Grande", null, net = 900, cost = 0, quantity = 1_500)
+                        .copy(baseUnitId = kilogram),
+                    variant(22L, "Chico", null, net = 600, cost = 0, quantity = 2_000),
+                ),
+            )
+
+        assertEquals(Money(1_500), top.bySales.single().netSales)
+        val (inUnits, inKilograms) = top.byQuantity
+        assertEquals(QuantityMilli(2_000), inUnits.products.single().quantity)
+        assertEquals(listOf(22L), inUnits.products.single().variants.map { it.productId })
+        assertEquals(QuantityMilli(1_500), inKilograms.products.single().quantity)
+        assertEquals(listOf(21L), inKilograms.products.single().variants.map { it.productId })
+    }
+
+    @Test
+    fun `variants that do not fit together are an overflow`() {
+        val half = Long.MAX_VALUE / 2 + 1
+
+        assertEquals(
+            Checked.Overflow,
+            PeriodRankings.top(
+                listOf(
+                    variant(11L, "M", null, net = half, cost = 0),
+                    variant(12L, "L", null, net = half, cost = 0),
+                ),
+            ),
         )
     }
 
@@ -125,6 +204,18 @@ class PeriodRankingsTest {
         quantity: Long = 1_000,
         unitId: Long = unit,
     ) = ProductSales(id, "Producto $id", unitId, QuantityMilli(quantity), Money(net), Money(cost))
+
+    private fun variant(
+        id: Long,
+        first: String,
+        second: String?,
+        net: Long,
+        cost: Long,
+        quantity: Long = 1_000,
+    ) = sales(id, net, cost, quantity).copy(
+        name = "Camiseta · $first",
+        variantOf = VariantOf(SHIRT, "Camiseta", VariantValues(first, second)),
+    )
 
     private fun profit(shrinkage: Long, fees: Long) = ProfitSummary(
         netSales = Money.ZERO,

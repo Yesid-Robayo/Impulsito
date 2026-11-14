@@ -16,14 +16,18 @@ import io.github.yesidrobayo.shopledger.data.local.saleReturn
 import io.github.yesidrobayo.shopledger.data.local.saleReturnLine
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodBreakdownRepository
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.catalog.VariantValues
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.ExpenseCategoryTotal
 import io.github.yesidrobayo.shopledger.domain.model.report.PaymentMethodTotal
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodNoticeCounts
 import io.github.yesidrobayo.shopledger.domain.model.report.ProductSales
+import io.github.yesidrobayo.shopledger.domain.model.report.VariantOf
+import io.github.yesidrobayo.shopledger.domain.rule.report.PeriodRankings
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -36,9 +40,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Los desgloses de un período sobre la base real: lo vendido por producto con lo devuelto restado y
- * las variantes en su padre, lo cobrado por método, lo gastado por categoría, los conteos de los
- * avisos y los planes de consulta. Los montos y nombres son inventados.
+ * Los desgloses de un período sobre la base real: lo vendido por producto con lo devuelto restado
+ * y cada variante con su padre, lo cobrado por método, lo gastado por categoría, los conteos de
+ * los avisos y los planes de consulta. Los montos y nombres son inventados.
  */
 @RunWith(AndroidJUnit4::class)
 internal class PeriodBreakdownQueryTest : LedgerDatabaseTest() {
@@ -96,13 +100,26 @@ internal class PeriodBreakdownQueryTest : LedgerDatabaseTest() {
     }
 
     @Test
-    fun productsSumTheirLinesMinusWhatWasReturnedAndVariantsCountInTheirParent() = runBlocking {
+    fun productsSumTheirLinesMinusWhatWasReturnedAndVariantsComeWithTheirParent() = runBlocking {
         val shirt = database.productDao().insert(product("Camiseta inventada"))
-        val blue = database.productDao().insert(product("Camiseta azul", parentProductId = shirt))
-        val red = database.productDao().insert(product("Camiseta roja", parentProductId = shirt))
+        val blue =
+            database.productDao().insert(
+                product("Camiseta azul", parentProductId = shirt).copy(
+                    variantAxis1 = "Color",
+                    variantValue1 = "Azul",
+                ),
+            )
+        val red =
+            database.productDao().insert(
+                product("Camiseta roja", parentProductId = shirt).copy(
+                    variantAxis1 = "Color",
+                    variantValue1 = "Roja",
+                ),
+            )
         val (coffeeSale, coffeeLine) = saleWith("2026-11-03", productId, net = 10_000, cost = 6_000)
         saleWith("2026-11-04", blue, net = 7_000, cost = 4_000, quantity = 1_000)
         saleWith("2026-11-05", red, net = 8_000, cost = 5_000, quantity = 1_000)
+        saleWith("2026-11-06", red, net = 8_000, cost = 5_000, quantity = 1_000)
         // Una unidad de café vuelve al stock el lunes siguiente: igual se resta de lo vendido.
         val returnId =
             database.saleReturnDao().insert(
@@ -127,16 +144,33 @@ internal class PeriodBreakdownQueryTest : LedgerDatabaseTest() {
                     Money(3_000),
                 ),
                 ProductSales(
-                    shirt,
-                    "Camiseta inventada",
+                    blue,
+                    "Camiseta azul",
+                    1L,
+                    QuantityMilli(1_000),
+                    Money(7_000),
+                    Money(4_000),
+                    VariantOf(shirt, "Camiseta inventada", VariantValues("Azul", null)),
+                ),
+                ProductSales(
+                    red,
+                    "Camiseta roja",
                     1L,
                     QuantityMilli(2_000),
-                    Money(15_000),
-                    Money(9_000),
+                    Money(16_000),
+                    Money(10_000),
+                    VariantOf(shirt, "Camiseta inventada", VariantValues("Roja", null)),
                 ),
             ),
             rows,
         )
+        // La camiseta suma sus dos variantes: 7.000 + 16.000 de ventas y 3.000 + 6.000 de
+        // ganancia, por encima del café.
+        val top = (PeriodRankings.top(rows) as Checked.Value).value
+        assertEquals(listOf(shirt, productId), top.bySales.map { it.productId })
+        assertEquals(Money(23_000), top.bySales.first().netSales)
+        assertEquals(Money(9_000), top.byProfit.first().grossProfit)
+        assertEquals(listOf(red, blue), top.bySales.first().variants.map { it.productId })
     }
 
     @Test

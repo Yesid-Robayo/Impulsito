@@ -79,4 +79,8 @@
     </plurals>
     <string name="ledger_status_voided">Anulado</string>
     <string name="a11y_ledger_voided_amount">%1$s, anulado</string>
+    <string name="a11y_ranking_expanded">Expandido</string>
+    <string name="a11y_ranking_collapsed">Recolhido</string>
+    <string name="a11y_ranking_expand">Mostrar os detalhes</string>
+    <string name="a11y_ranking_collapse">Ocultar os detalhes</string>
 </resources>

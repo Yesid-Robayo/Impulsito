@@ -87,6 +87,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
 
                         is StatisticsAction.SelectKind,
                         is StatisticsAction.SelectRanking,
+                        is StatisticsAction.ToggleVariants,
                         StatisticsAction.ChooseRange,
                         StatisticsAction.DismissRange,
                         is StatisticsAction.ShowRange,

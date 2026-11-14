@@ -46,6 +46,7 @@ sealed interface StatisticsUiState {
      * @param breakdown los destacados, los desgloses y los avisos, o `null` mientras llegan.
      * @param units las unidades por id, para nombrar las cantidades de los más vendidos.
      * @param ranking qué ranking de los más vendidos se muestra.
+     * @param expandedProducts los más vendidos que muestran sus variantes, por id.
      * @param choosingRange si está abierta la elección de un rango de fechas.
      * @param weekStartDay el primer día de las semanas del negocio, para el calendario del rango.
      * @param otherIncome los otros ingresos del período, aparte de la ganancia, o `null` sin ninguno.
@@ -71,6 +72,7 @@ sealed interface StatisticsUiState {
         val breakdown: PeriodBreakdown? = null,
         val units: Map<Long, MeasureUnit> = emptyMap(),
         val ranking: RankingKind = RankingKind.SALES,
+        val expandedProducts: Set<Long> = emptySet(),
         val choosingRange: Boolean = false,
         val weekStartDay: DayOfWeek? = null,
         val otherIncome: Money? = null,
@@ -132,6 +134,9 @@ sealed interface StatisticsAction {
 
     /** Elige el orden de los más vendidos. */
     data class SelectRanking(val ranking: RankingKind) : StatisticsAction
+
+    /** Muestra u oculta las variantes de [productId] en los más vendidos. */
+    data class ToggleVariants(val productId: Long) : StatisticsAction
 
     /** Abre la elección de un rango de fechas. */
     data object ChooseRange : StatisticsAction

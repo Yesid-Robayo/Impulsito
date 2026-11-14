@@ -77,4 +77,8 @@
     </plurals>
     <string name="ledger_status_voided">Voided</string>
     <string name="a11y_ledger_voided_amount">%1$s, voided</string>
+    <string name="a11y_ranking_expanded">Expanded</string>
+    <string name="a11y_ranking_collapsed">Collapsed</string>
+    <string name="a11y_ranking_expand">Show details</string>
+    <string name="a11y_ranking_collapse">Hide details</string>
 </resources>

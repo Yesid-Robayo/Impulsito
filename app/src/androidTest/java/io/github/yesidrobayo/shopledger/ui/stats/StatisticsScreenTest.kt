@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.stats
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -16,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
+import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -126,6 +128,32 @@ class StatisticsScreenTest {
             ),
             actions,
         )
+    }
+
+    @Test
+    fun aProductWithVariantsUnfoldsToShowEachOne() {
+        show(previewStatisticsContent())
+
+        val family = PreviewSamples.SECOND_NAME
+        scrollTo(family)
+        compose.onNode(
+            hasText(family) and hasStateDescription(text(R.string.a11y_ranking_collapsed)),
+        ).performClick()
+        compose.onNodeWithText("M · Rojo").assertDoesNotExist()
+
+        assertEquals(listOf<StatisticsAction>(StatisticsAction.ToggleVariants(2L)), actions)
+    }
+
+    @Test
+    fun anUnfoldedProductListsItsVariantsUnderIt() {
+        show(previewVariants())
+
+        scrollTo("M · Rojo")
+        compose.onNode(
+            hasText(PreviewSamples.SECOND_NAME) and
+                hasStateDescription(text(R.string.a11y_ranking_expanded)),
+        ).assertExists()
+        compose.onNodeWithText("M · Rojo").assertIsDisplayed()
     }
 
     @Test

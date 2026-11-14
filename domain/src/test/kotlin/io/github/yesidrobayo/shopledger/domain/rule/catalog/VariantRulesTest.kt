@@ -20,6 +20,12 @@ class VariantRulesTest {
     private val twoAxes = VariantAxes("Talla", "Color")
 
     @Test
+    fun `the label of a variant is its values without the parent name`() {
+        assertEquals("M · Rojo", VariantRules.labelOf(VariantValues("M", "Rojo")))
+        assertEquals("Grande", VariantRules.labelOf(VariantValues("Grande", null)))
+    }
+
+    @Test
     fun `two axes give one product per combination named after the parent`() {
         val check = VariantRules.check(
             shirt,

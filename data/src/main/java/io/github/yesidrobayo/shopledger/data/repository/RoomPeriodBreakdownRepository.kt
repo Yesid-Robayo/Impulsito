@@ -1,14 +1,17 @@
 package io.github.yesidrobayo.shopledger.data.repository
 
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
+import io.github.yesidrobayo.shopledger.data.local.report.ProductSalesRow
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.catalog.VariantValues
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.ExpenseCategoryTotal
 import io.github.yesidrobayo.shopledger.domain.model.report.PaymentMethodTotal
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodNoticeCounts
 import io.github.yesidrobayo.shopledger.domain.model.report.ProductSales
+import io.github.yesidrobayo.shopledger.domain.model.report.VariantOf
 import io.github.yesidrobayo.shopledger.domain.port.PeriodBreakdownRepository
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -33,10 +36,25 @@ internal class RoomPeriodBreakdownRepository(database: AppDatabase) : PeriodBrea
                     quantity = QuantityMilli(it.quantityMilli),
                     netSales = Money(it.netSales),
                     cost = Money(it.cost),
+                    variantOf = variantOf(it),
                 )
             }
         }
         .distinctUntilChanged()
+
+    /**
+     * El principal de [row] si es una variante. Una variante sin valor, que la app no escribe pero
+     * una copia de otro origen podría traer, se nombra con su propio nombre: lo que vendió sigue
+     * sumando en su principal.
+     */
+    private fun variantOf(row: ProductSalesRow): VariantOf? {
+        val parentId = row.parentId ?: return null
+        return VariantOf(
+            parentId = parentId,
+            parentName = row.parentName ?: row.name,
+            values = VariantValues(row.variantValue1 ?: row.name, row.variantValue2),
+        )
+    }
 
     override fun observePaymentMethods(period: ReportPeriod): Flow<List<PaymentMethodTotal>> =
         breakdowns

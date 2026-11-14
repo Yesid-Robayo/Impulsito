@@ -1,10 +1,14 @@
 package io.github.yesidrobayo.shopledger.ui.stats
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,12 +16,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
@@ -27,6 +36,7 @@ import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.report.PaymentMethodTotal
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodNoticeCounts
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.VariantRules
 import io.github.yesidrobayo.shopledger.domain.rule.report.ExpenseRow
 import io.github.yesidrobayo.shopledger.domain.rule.report.RankedProduct
 import io.github.yesidrobayo.shopledger.domain.rule.report.TopProducts
@@ -112,13 +122,20 @@ internal fun VoidedRow(counts: PeriodNoticeCounts, modifier: Modifier) {
     )
 }
 
-/** `Lo que más se vendió`: los diez primeros por ventas, por ganancia o por cantidad. */
+/**
+ * `Lo que más se vendió`: los diez primeros por ventas, por ganancia o por cantidad. Un producto
+ * con variantes muestra su suma y se despliega para ver cada una debajo, en la misma escala.
+ *
+ * @param expanded los productos desplegados, por id.
+ */
 @Composable
 internal fun TopSold(
     top: TopProducts,
     ranking: RankingKind,
     units: Map<Long, MeasureUnit>,
+    expanded: Set<Long>,
     onSelect: (RankingKind) -> Unit,
+    onToggle: (Long) -> Unit,
     modifier: Modifier,
 ) {
     if (top.bySales.isEmpty() && top.byProfit.isEmpty() && top.byQuantity.isEmpty()) return
@@ -132,38 +149,109 @@ internal fun TopSold(
             multiple = false,
         )
         when (ranking) {
-            RankingKind.SALES -> MoneyRanking(top.bySales) { it.netSales }
+            RankingKind.SALES -> MoneyRanking(top.bySales, expanded, onToggle) { it.netSales }
 
-            RankingKind.PROFIT -> MoneyRanking(top.byProfit) { it.grossProfit }
+            RankingKind.PROFIT -> MoneyRanking(top.byProfit, expanded, onToggle) { it.grossProfit }
 
             RankingKind.QUANTITY ->
                 top.byQuantity.forEach { inUnit ->
                     val unit = units[inUnit.unitId]
-                    inUnit.products.forEach { QuantityRow(it, unit) }
+                    inUnit.products.forEach { product ->
+                        val open = product.productId in expanded
+                        QuantityRow(
+                            product,
+                            unit,
+                            expanded = open.takeIf { product.variants.isNotEmpty() },
+                            onToggle = { onToggle(product.productId) },
+                        )
+                        if (open) {
+                            product.variants.forEach { QuantityRow(it, unit, nested = true) }
+                        }
+                    }
                 }
         }
     }
 }
 
 @Composable
-private fun MoneyRanking(products: List<RankedProduct>, amountOf: (RankedProduct) -> Money) {
+private fun MoneyRanking(
+    products: List<RankedProduct>,
+    expanded: Set<Long>,
+    onToggle: (Long) -> Unit,
+    amountOf: (RankedProduct) -> Money,
+) {
     val leader = products.firstOrNull()?.let(amountOf) ?: return
     Column {
-        products.forEach { RankingRow(it.name, amountOf(it), leader, sensitive = true) }
+        products.forEach { product ->
+            val open = product.productId in expanded
+            RankingRow(
+                product.name,
+                amountOf(product),
+                leader,
+                sensitive = true,
+                expanded = open.takeIf { product.variants.isNotEmpty() },
+                onToggle = { onToggle(product.productId) },
+            )
+            if (open) {
+                product.variants.forEach {
+                    RankingRow(
+                        variantName(it),
+                        amountOf(it),
+                        leader,
+                        sensitive = true,
+                        nested = true,
+                    )
+                }
+            }
+        }
     }
 }
 
-/** Una fila por cantidad: el nombre y lo que salió, en su unidad. La cantidad no es dinero. */
+/**
+ * El nombre de una fila debajo de su producto: sus valores, como `M · Rojo`, o `Sin variante`
+ * para lo que el producto vendió antes de tenerlas.
+ */
 @Composable
-private fun QuantityRow(product: RankedProduct, unit: MeasureUnit?) {
+private fun variantName(product: RankedProduct): String =
+    product.values?.let(VariantRules::labelOf) ?: stringResource(R.string.stats_variant_without)
+
+/**
+ * Una fila por cantidad: el nombre y lo que salió, en su unidad. La cantidad no es dinero. Con
+ * [expanded], la fila se despliega para mostrar sus variantes; con [nested], es una de ellas.
+ */
+@Composable
+private fun QuantityRow(
+    product: RankedProduct,
+    unit: MeasureUnit?,
+    expanded: Boolean? = null,
+    nested: Boolean = false,
+    onToggle: () -> Unit = {},
+) {
+    val spacing = AppTheme.spacing
     LedgerLineLayout(
-        gap = AppTheme.spacing.s16,
+        gap = spacing.s16,
         modifier =
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = AppTheme.sizes.touchTarget)
-                .semantics(mergeDescendants = true) {},
-        leading = { Text(product.name, style = MaterialTheme.typography.bodyLarge) },
+                .rowSemantics(expanded, onToggle)
+                .then(if (nested) Modifier.padding(start = spacing.s24) else Modifier),
+        leading = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (nested) variantName(product) else product.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color =
+                        if (nested) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (expanded != null) ExpandArrow(expanded)
+            }
+        },
         trailing = {
             Text(
                 if (unit == null) {
@@ -175,6 +263,36 @@ private fun QuantityRow(product: RankedProduct, unit: MeasureUnit?) {
             )
         },
     )
+}
+
+@Composable
+private fun ExpandArrow(expanded: Boolean) {
+    Icon(
+        painter = painterResource(R.drawable.ic_expand_more),
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier =
+            Modifier
+                .padding(start = AppTheme.spacing.s4)
+                .size(AppTheme.sizes.icon)
+                .rotate(if (expanded) 180f else 0f),
+    )
+}
+
+/** Igual que en `RankingRow`: un solo foco, o un botón que dice si está desplegado. */
+@Composable
+private fun Modifier.rowSemantics(expanded: Boolean?, onToggle: () -> Unit): Modifier {
+    if (expanded == null) return semantics(mergeDescendants = true) {}
+    val state =
+        stringResource(
+            if (expanded) R.string.a11y_ranking_expanded else R.string.a11y_ranking_collapsed,
+        )
+    val action =
+        stringResource(
+            if (expanded) R.string.a11y_ranking_collapse else R.string.a11y_ranking_expand,
+        )
+    return clickable(role = Role.Button, onClickLabel = action, onClick = onToggle)
+        .semantics { stateDescription = state }
 }
 
 /** Sin la unidad a mano, la cantidad sola, sin unidad que la nombre mal. */

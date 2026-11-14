@@ -30,7 +30,10 @@ internal interface PeriodBreakdownDao {
     ): Flow<NoticeCountsRow>
 }
 
-/** Lo vendido de un producto, o de las variantes de un padre, en el rango. */
+/**
+ * Lo vendido de un producto en el rango. Si es una variante, trae su principal y sus valores, para
+ * que los rankings la sumen en él.
+ */
 internal data class ProductSalesRow(
     @ColumnInfo(name = "product_id") val productId: Long,
     @ColumnInfo(name = "name") val name: String,
@@ -38,6 +41,10 @@ internal data class ProductSalesRow(
     @ColumnInfo(name = "quantity_milli") val quantityMilli: Long,
     @ColumnInfo(name = "net_sales") val netSales: Long,
     @ColumnInfo(name = "cost") val cost: Long,
+    @ColumnInfo(name = "parent_id") val parentId: Long?,
+    @ColumnInfo(name = "parent_name") val parentName: String?,
+    @ColumnInfo(name = "variant_value_1") val variantValue1: String?,
+    @ColumnInfo(name = "variant_value_2") val variantValue2: String?,
 )
 
 /** Lo cobrado con un método, por el nombre que quedó en cada pago. */
@@ -76,22 +83,25 @@ private const val ACTIVE_SALES_IN_RANGE =
 /**
  * Lo vendido por producto, con lo devuelto de esas mismas líneas restado, en cualquier fecha: el
  * ranking dice qué se vendió y se quedó vendido. El costo devuelto es solo el de lo que volvió al
- * stock. Las variantes se suman en su padre, con su nombre y su unidad.
+ * stock. Cada variante viene sola, con su principal y sus valores: los rankings la suman en él y
+ * la muestran debajo.
  */
 internal const val PRODUCT_SALES_SQL =
-    "SELECT g.id AS product_id, g.name AS name, g.base_unit_id AS base_unit_id, " +
+    "SELECT p.id AS product_id, p.name AS name, p.base_unit_id AS base_unit_id, " +
         "SUM(sl.quantity_milli - COALESCE(r.quantity_milli, 0)) AS quantity_milli, " +
         "SUM(sl.net_amount - COALESCE(r.net_amount, 0)) AS net_sales, " +
-        "SUM(sl.line_cost - COALESCE(r.line_cost, 0)) AS cost " +
+        "SUM(sl.line_cost - COALESCE(r.line_cost, 0)) AS cost, " +
+        "g.id AS parent_id, g.name AS parent_name, " +
+        "p.variant_value_1 AS variant_value_1, p.variant_value_2 AS variant_value_2 " +
         "FROM sales s JOIN sale_lines sl ON sl.sale_id = s.id " +
         "JOIN products p ON p.id = sl.product_id " +
-        "JOIN products g ON g.id = COALESCE(p.parent_product_id, p.id) " +
+        "LEFT JOIN products g ON g.id = p.parent_product_id " +
         "LEFT JOIN (SELECT rl.sale_line_id, SUM(rl.quantity_milli) AS quantity_milli, " +
         "SUM(rl.net_amount) AS net_amount, " +
         "SUM(CASE WHEN rl.restock = 1 THEN rl.line_cost ELSE 0 END) AS line_cost " +
         "FROM sale_return_lines rl JOIN sale_returns rr ON rr.id = rl.sale_return_id " +
         "WHERE rr.status = 'ACTIVE' GROUP BY rl.sale_line_id) r ON r.sale_line_id = sl.id " +
-        "WHERE $ACTIVE_SALES_IN_RANGE GROUP BY g.id"
+        "WHERE $ACTIVE_SALES_IN_RANGE GROUP BY p.id"
 
 /**
  * Lo cobrado por método, agrupado por el nombre que quedó en cada pago: así un método renombrado

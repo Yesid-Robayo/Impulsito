@@ -2,17 +2,18 @@ package io.github.yesidrobayo.shopledger.domain.model.report
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.VariantValues
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 
 // Los desgloses de un período, como los leen las estadísticas. Cada suma cuenta solo ventas y
 // gastos activos con fecha de negocio en el período.
 
 /**
- * Lo vendido de un producto en un período, con lo devuelto de esas mismas líneas ya restado. Las
- * variantes cuentan en su producto padre.
+ * Lo vendido de un producto en un período, con lo devuelto de esas mismas líneas ya restado. Una
+ * variante viene sola, con [variantOf]: los rankings la suman en su producto principal.
  */
 data class ProductSales(
-    /** El producto, o el padre de las variantes. */
+    /** El producto vendido: la variante misma, si lo es. */
     val productId: Long,
     /** Su nombre de hoy. */
     val name: String,
@@ -24,6 +25,18 @@ data class ProductSales(
     val netSales: Money,
     /** Lo que costó lo vendido. */
     val cost: Money,
+    /** El principal y los valores de la variante, o `null` si no es una variante. */
+    val variantOf: VariantOf? = null,
+)
+
+/** De qué producto principal es una variante vendida, y con qué valores. */
+data class VariantOf(
+    /** El producto principal, que agrupa a sus variantes en los reportes. */
+    val parentId: Long,
+    /** El nombre de hoy del principal. */
+    val parentName: String,
+    /** Los valores de la variante, uno por eje. */
+    val values: VariantValues,
 )
 
 /** Lo cobrado con un método en un período, leído de los pagos de cada venta. */
