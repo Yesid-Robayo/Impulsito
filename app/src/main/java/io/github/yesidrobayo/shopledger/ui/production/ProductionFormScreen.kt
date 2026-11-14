@@ -22,19 +22,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotRules
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
+import io.github.yesidrobayo.shopledger.ui.components.DateField
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LotPicker
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
@@ -49,6 +55,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
+import io.github.yesidrobayo.shopledger.ui.components.lotOptionsOf
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -165,6 +172,9 @@ private fun ColumnScope.ProductionForm(
                         error = uiState.quantityError?.let { fieldErrorText(it) },
                     )
                 }
+                uiState.outputLot?.let { lot ->
+                    item(key = OUTPUT_LOT) { OutputLotFields(lot, uiState, onAction) }
+                }
             }
             if (uiState.inputs.isNotEmpty()) {
                 item(key = INPUTS) {
@@ -244,6 +254,16 @@ private fun InputCard(input: ProductionInputUi, onAction: (ProductionFormAction)
                 modifier = Modifier.padding(top = spacing.s4),
             )
         }
+        // Sin elegir, sale primero el lote que vence antes: la persona solo interviene si quiere.
+        input.lots?.let { choices ->
+            LotPicker(
+                options = lotOptionsOf(choices, withUnassigned = false),
+                selectedId = input.chosenLotId,
+                unit = unit,
+                onSelect = { onAction(ProductionFormAction.ChooseInputLot(input.productId, it)) },
+                modifier = Modifier.fillMaxWidth().padding(top = spacing.s8),
+            )
+        }
         input.leftAfter?.let { left ->
             NoticeCard(
                 text = stringResource(
@@ -253,6 +273,83 @@ private fun InputCard(input: ProductionInputUi, onAction: (ProductionFormAction)
                 variant = NoticeVariant.WARNING,
                 modifier = Modifier.padding(top = spacing.s8),
             )
+        }
+    }
+}
+
+/**
+ * El lote al que entra lo producido: su código y, en un lote nuevo, su vencimiento. Sin código,
+ * entra al lote sin asignar. Con el código de un lote que el producto ya tiene, suma a él y su
+ * vencimiento se muestra para leer, como al recibir una compra.
+ */
+@Composable
+private fun OutputLotFields(
+    lot: ProductionLotUi,
+    uiState: ProductionFormUiState,
+    onAction: (ProductionFormAction) -> Unit,
+) {
+    val spacing = AppTheme.spacing
+    val help = when {
+        lot.code.isBlank() -> stringResource(R.string.purchase_lot_blank_help)
+        lot.existing -> stringResource(R.string.production_lot_existing_help)
+        else -> null
+    }
+    Column {
+        AppTextField(
+            value = lot.code,
+            onValueChange = { onAction(ProductionFormAction.LotCodeChange(it)) },
+            label = stringResource(R.string.purchase_lot_code_label),
+            modifier = Modifier.fillMaxWidth(),
+            error = if (lot.tooLong) {
+                pluralStringResource(
+                    R.plurals.error_text_long,
+                    LotRules.MAX_CODE_LENGTH,
+                    LotRules.MAX_CODE_LENGTH,
+                )
+            } else {
+                null
+            },
+            supportingText = help,
+            capitalization = KeyboardCapitalization.Characters,
+            autoCorrect = false,
+        )
+        val today = uiState.today
+        val weekStartDay = uiState.weekStartDay
+        when {
+            lot.code.isBlank() -> Unit
+
+            lot.existing ->
+                Text(
+                    text = lot.existingExpiry?.let {
+                        val date = LocalAppFormats.current.date.dayMonthYear(it)
+                        stringResource(R.string.lot_expires_on, date)
+                    } ?: stringResource(R.string.lot_no_expiry),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = spacing.s4),
+                )
+
+            today != null && weekStartDay != null -> {
+                DateField(
+                    label = stringResource(R.string.purchase_lot_expiry_label),
+                    date = lot.expiry,
+                    onDateChange = { onAction(ProductionFormAction.LotExpiryChange(it)) },
+                    today = today,
+                    weekStartDay = weekStartDay,
+                    modifier = Modifier.padding(top = spacing.s8),
+                    latest = null,
+                )
+                if (lot.expiry != null) {
+                    InlineTextButton(
+                        text = stringResource(R.string.lot_no_expiry),
+                        onClick = { onAction(ProductionFormAction.LotExpiryChange(null)) },
+                    )
+                }
+            }
+
+            // Sin la zona del negocio no hay hoy desde el que elegir: el lote entra sin
+            // vencimiento.
+            else -> Unit
         }
     }
 }
@@ -364,6 +461,7 @@ internal const val PRODUCTION_FORM_TAG = "production-form"
 
 private const val PRODUCT = "product"
 private const val QUANTITY = "quantity"
+private const val OUTPUT_LOT = "output-lot"
 private const val INPUTS = "inputs"
 private const val FIGURES = "figures"
 private const val NOTE = "note"

@@ -9,19 +9,29 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboExpansion
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboExpansionResult
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboFigures
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComponentLeaf
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ExpandedLeaf
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LeafStockPlan
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockPlan
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
 import io.github.yesidrobayo.shopledger.domain.rule.roundDiv
 
-/** Un insumo de una producción: un producto que no es combo y cuánto se consume de él. */
-data class ProductionInput(val productId: Long, val quantity: QuantityMilli)
+/**
+ * Un insumo de una producción: un producto que no es combo y cuánto se consume de él. En un
+ * insumo con lotes, [lotId] es el lote que eligió la persona, que sale primero; sin él, sale el
+ * que vence antes.
+ */
+data class ProductionInput(
+    val productId: Long,
+    val quantity: QuantityMilli,
+    val lotId: Long? = null,
+)
 
 /** Los insumos que pide la receta para una cantidad, o por qué no se pueden calcular. */
 sealed interface RecipeInputsResult {
@@ -110,6 +120,11 @@ object ProductionRules {
      * El costo de producir [quantity] milésimas de lo que hoy está en [output], consumiendo
      * [inputs]. [products] trae cada insumo, con su modo, su stock y su costo de este momento.
      *
+     * [lots] trae lo que tiene cada lote de los insumos con lotes, por producto, en la ubicación
+     * de donde salen. Un insumo así sale primero de su lote elegido y luego del que vence antes,
+     * con una parte por lote valorada en orden, como la hoja de un combo vendido; lo que falte
+     * sale del lote sin asignar. Un insumo que no está en [lots] sale en una sola parte.
+     *
      * Rechaza si una cifra no cabe en `Long`, si el costo de un insumo o el total pasa del tope de
      * un documento, o si lo producido quedaría con su stock, su valor o su costo promedio sobre
      * sus topes.
@@ -119,9 +134,21 @@ object ProductionRules {
         quantity: QuantityMilli,
         inputs: List<ProductionInput>,
         products: Map<Long, Product>,
+        lots: Map<Long, List<LotStock>> = emptyMap(),
     ): Checked<ProductionPlan> {
         val leaves = inputs.map { ExpandedLeaf(it.productId, it.quantity, it.productId) }
-        val subject = ComboFigures.subjectOf(leaves, products)
+        val figured = ComboFigures.subjectOf(leaves, products)
+        val chosen = inputs.associate { it.productId to it.lotId }
+        val subject = figured.copy(
+            leaves = figured.leaves.map { leaf ->
+                val stocks = lots[leaf.productId]
+                if (leaf is ComponentLeaf.Tracked && stocks != null) {
+                    leaf.copy(lots = stocks, chosenLotId = chosen[leaf.productId])
+                } else {
+                    leaf
+                }
+            },
+        )
         val planned = when (val result = StockModeRules.planLine(subject)) {
             // Una receta expandida siempre se planea como las hojas de un combo.
             is Checked.Value -> result.value as LineStockPlan.Components

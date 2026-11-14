@@ -181,6 +181,20 @@ class SaleLotsTest {
         assertEquals(listOf(5_000L, 3_000L), back)
     }
 
+    @Test
+    fun `voiding a combo sale gives each leaf unit back to its lot`() = runTest {
+        world.withCombos = true
+        stockedLots()
+        world.addProduct(product(5, salePrice = 9_000, stockMode = ProductStockMode.COMPONENTS))
+        world.addRecipe(RecipeComponent(9L, 5, 1, QuantityMilli(2_000)))
+        val sale = sell(SaleLineRequest(5, QuantityMilli(3_000))) as RegisterSaleResult.Registered
+
+        world.voidSale()(sale.saleId, VoidReason.ENTRY_ERROR, null)
+
+        val back = world.lotRepository.findStock(1, 1).map { it.onHand.milli }
+        assertEquals(listOf(5_000L, 3_000L), back)
+    }
+
     private companion object {
         const val STALL = 30L
     }

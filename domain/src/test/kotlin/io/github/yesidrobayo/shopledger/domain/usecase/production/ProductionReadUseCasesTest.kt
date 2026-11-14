@@ -33,16 +33,18 @@ class ProductionReadUseCasesTest {
     private val observeDetail = ObserveProductionDetailUseCase(fixture.batches)
 
     @Test
-    fun `only a current product with stock, without lots and with a recipe can be produced`() =
+    fun `only a current product with stock and with a recipe can be produced, also with lots`() =
         runTest {
             catalog.seedProduct(10L, "Combo inventado", stockMode = ProductStockMode.COMPONENTS)
             catalog.seedProduct(11L, "Archivado inventado", archived = true)
+            catalog.seedProduct(12L, "Velón con lotes inventado", tracksLots = true)
             fixture.seedRecipe(10L, WAX to 1_000L)
             fixture.seedRecipe(11L, WAX to 1_000L)
+            fixture.seedRecipe(12L, WAX to 1_000L)
 
             val read = observeCatalog().first()
 
-            assertEquals(listOf(CANDLE), read.producible.map { it.id })
+            assertEquals(listOf(CANDLE, 12L), read.producible.map { it.id })
             assertTrue(read.hasRecipes)
             assertEquals(ProductStockMode.UNTRACKED, read.modes[LABEL])
         }

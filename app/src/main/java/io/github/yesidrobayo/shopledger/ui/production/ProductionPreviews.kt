@@ -6,6 +6,10 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoice
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
+import kotlinx.datetime.DayOfWeek
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -56,6 +60,35 @@ internal fun previewProductionForm(): ProductionFormUiState {
             hasUncosted = true,
         ),
         noteText = s.SHORT_NAME,
+    )
+}
+
+/**
+ * El formulario con lotes: el primer insumo ofrece sus lotes, con el segundo elegido, y lo
+ * producido pide el código y el vencimiento de un lote nuevo.
+ */
+internal fun previewProductionFormWithLots(): ProductionFormUiState {
+    val form = previewProductionForm()
+    val longCode = PreviewSamples.LONG_NAME.take(60)
+    val choices = LotChoices(
+        lots = listOf(
+            LotChoice(LotStock(11L, "A-118", YESTERDAY, false, QuantityMilli(1_200)), null),
+            LotChoice(LotStock(12L, longCode, TODAY, false, QuantityMilli(2_000)), null),
+        ),
+        unassigned = null,
+    )
+    return form.copy(
+        inputs = listOf(form.inputs.first().copy(lots = choices, chosenLotId = 12L)) +
+            form.inputs.drop(1),
+        outputLot = ProductionLotUi(
+            code = "P-40",
+            expiry = TODAY,
+            existing = false,
+            existingExpiry = null,
+            tooLong = false,
+        ),
+        today = TODAY,
+        weekStartDay = DayOfWeek.MONDAY,
     )
 }
 
@@ -116,6 +149,12 @@ internal fun previewProductionDetail(): ProductionsUiState {
 @Composable
 private fun ProductionFormPreview() {
     PreviewTheme { ProductionFormScreen(previewProductionForm(), {}) }
+}
+
+@ThemePreviews
+@Composable
+private fun ProductionFormLotsPreview() {
+    PreviewTheme { ProductionFormScreen(previewProductionFormWithLots(), {}) }
 }
 
 @ThemePreviews

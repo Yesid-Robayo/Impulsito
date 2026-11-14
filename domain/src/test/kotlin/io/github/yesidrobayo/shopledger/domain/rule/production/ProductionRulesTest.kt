@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.rule.production
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -8,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboTestProducts.product
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboTestProducts.row
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LeafStockPlan
@@ -145,6 +147,54 @@ class ProductionRulesTest {
             CostState(QuantityMilli(90_000), Money(150), Money(13_500)),
             plan.inputStatesAfter[wick],
         )
+    }
+
+    @Test
+    fun `an input with lots leaves by expiry or from its chosen lot, one part per lot`() {
+        fun lot(id: Long, expiry: String?, milli: Long) = LotStock(
+            lotId = id,
+            code = if (expiry == null) null else "L$id",
+            expiryDate = expiry?.let { requireNotNull(BusinessDate.parse(it)) },
+            isUnassigned = expiry == null,
+            onHand = QuantityMilli(milli),
+        )
+        val lots = mapOf(
+            wax to listOf(
+                lot(102, "2026-11-20", 4_000),
+                lot(101, "2026-11-10", 1_000),
+                lot(103, null, 0),
+            ),
+        )
+        val service = product(label, ProductStockMode.UNTRACKED, fixedUnitCost = 300)
+        val products = catalog(waxStock, wickStock, service)
+
+        val byExpiry = planned(
+            ProductionRules.plan(empty, units(10), listOf(input(wax, 3_000)), products, lots),
+        )
+        val chosen = planned(
+            ProductionRules.plan(
+                empty,
+                units(10),
+                listOf(
+                    ProductionInput(wax, QuantityMilli(2_000), lotId = 102),
+                    input(wick, 10_000),
+                    input(label, 10_000),
+                ),
+                products,
+                lots,
+            ),
+        )
+
+        val parts = (byExpiry.inputs.single() as LeafStockPlan.Tracked).exit.lots
+        val split = parts.map { it.lotId to it.quantity.milli }
+        assertEquals(listOf(101L to 1_000L, 102L to 2_000L), split)
+        assertEquals(Money(24_000), byExpiry.totalCost)
+        val (waxExit, wickExit) = chosen.inputs.take(2).map { it as LeafStockPlan.Tracked }
+        assertEquals(listOf(102L), waxExit.exit.lots.map { it.lotId })
+        assertEquals(Money(16_000), waxExit.exit.cost)
+        // Un insumo sin lotes leídos sale en una sola parte, y uno sin stock no sale.
+        assertEquals(emptyList<Any>(), wickExit.exit.lots)
+        assertEquals(Money(20_500), chosen.totalCost)
     }
 
     @Test

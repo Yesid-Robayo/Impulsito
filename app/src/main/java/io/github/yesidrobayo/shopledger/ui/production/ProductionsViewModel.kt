@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
  * @param days las producciones por fecha de negocio, la más nueva primero.
  * @param canLoadMore hay más producciones que las cargadas: la lista pide el tramo siguiente.
  * @param detail la producción abierta en la hoja, si hay una.
+ * @param voidLotUsed anular se rechazó porque parte del lote al que entró lo producido ya salió.
  */
 @Immutable
 data class ProductionsUiState(
@@ -49,6 +50,7 @@ data class ProductionsUiState(
     val voiding: Boolean = false,
     val voidFailed: Boolean = false,
     val voided: Boolean = false,
+    val voidLotUsed: Boolean = false,
 )
 
 /** Las producciones de una fecha de negocio. */
@@ -171,6 +173,7 @@ class ProductionsViewModel(
                     voiding = shown.voiding,
                     voidFailed = shown.voidFailed,
                     voided = shown.voided,
+                    voidLotUsed = shown.voidLotUsed,
                 )
             }
         }.flowOn(computation)
@@ -218,7 +221,9 @@ class ProductionsViewModel(
     private fun voidNow() {
         val id = openId.value ?: return
         if (overlay.value.voiding) return
-        overlay.update { it.copy(voidAsked = false, voiding = true, voidFailed = false) }
+        overlay.update {
+            it.copy(voidAsked = false, voiding = true, voidFailed = false, voidLotUsed = false)
+        }
         viewModelScope.launch {
             // La pantalla no pide motivo: anular desde el detalle es corregir un error de
             // registro.
@@ -229,6 +234,10 @@ class ProductionsViewModel(
 
                     // Ya estaba anulada: el detalle se actualiza solo y no hay nada que avisar.
                     VoidProductionResult.AlreadyVoided -> it.copy(voiding = false)
+
+                    // Reintentar no lo arregla: el lote ya no tiene lo que entró.
+                    is VoidProductionResult.LotAlreadyUsed ->
+                        it.copy(voiding = false, voidLotUsed = true)
 
                     VoidProductionResult.NotFound,
                     VoidProductionResult.ReasonNotAllowed,
@@ -303,6 +312,7 @@ class ProductionsViewModel(
         val voiding: Boolean = false,
         val voidFailed: Boolean = false,
         val voided: Boolean = false,
+        val voidLotUsed: Boolean = false,
     )
 
     private companion object {

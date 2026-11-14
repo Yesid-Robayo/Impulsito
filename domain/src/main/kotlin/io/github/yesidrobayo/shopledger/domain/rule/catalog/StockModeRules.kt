@@ -129,7 +129,7 @@ object StockModeRules {
             val lots = lotStocks[leaf.productId] ?: leaf.lots
             when (lots) {
                 null -> exitOf(state, leaf.quantity)
-                else -> lotExitOf(state, leaf.quantity, lots, chosenLotId = null)
+                else -> lotExitOf(state, leaf.quantity, lots, leaf.chosenLotId)
             }.map { exit ->
                 // Un componente que vuelve a salir en la misma línea sigue con lo que dejó.
                 if (lots != null) {

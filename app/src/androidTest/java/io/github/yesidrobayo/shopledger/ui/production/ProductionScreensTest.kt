@@ -58,6 +58,35 @@ class ProductionScreensTest {
     }
 
     @Test
+    fun withLotsTheFormOffersTheLotOfAnInputAndAsksForTheLotOfTheProduct() {
+        show { ProductionFormScreen(previewProductionFormWithLots(), { formActions += it }) }
+
+        scrollFormTo(text(R.string.purchase_lot_code_label))
+        scrollFormTo(text(R.string.purchase_lot_expiry_label))
+        scrollFormTo(text(R.string.lot_picker_label))
+    }
+
+    @Test
+    fun withoutLotsTheFormAsksForNoLot() {
+        show { ProductionFormScreen(previewProductionForm(), { formActions += it }) }
+
+        compose.onNodeWithText(text(R.string.purchase_lot_code_label)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.lot_picker_label)).assertDoesNotExist()
+    }
+
+    @Test
+    fun aVoidRefusedByAUsedLotSaysWhy() {
+        show {
+            ProductionsScreen(
+                previewProductionDetail().copy(voidLotUsed = true),
+                { listActions += it },
+            )
+        }
+
+        compose.onNodeWithText(text(R.string.error_void_lot_already_used)).assertExists()
+    }
+
+    @Test
     fun withoutRecipesTheFormOffersToCreateOne() {
         show {
             ProductionFormScreen(

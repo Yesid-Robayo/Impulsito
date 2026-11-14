@@ -1,9 +1,12 @@
 package io.github.yesidrobayo.shopledger.ui.production
 
 import androidx.compose.runtime.Immutable
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
+import kotlinx.datetime.DayOfWeek
 
 /**
  * Lo que muestra el formulario de una producción.
@@ -15,6 +18,8 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
  * @param inputs los insumos de la receta para la cantidad escrita, editables para esta tanda.
  * @param figures lo que cuesta la tanda y cómo deja el costo, si todo se puede leer.
  * @param picker la hoja para elegir el producto, si está abierta.
+ * @param outputLot el lote al que entra lo producido, solo si el producto se controla por lotes.
+ * @param today hoy y [weekStartDay] para elegir el vencimiento; faltan si la zona no se reconoce.
  */
 @Immutable
 data class ProductionFormUiState(
@@ -33,6 +38,9 @@ data class ProductionFormUiState(
     val notice: ProductionNotice? = null,
     val discardAsked: Boolean = false,
     val registered: Boolean = false,
+    val outputLot: ProductionLotUi? = null,
+    val today: BusinessDate? = null,
+    val weekStartDay: DayOfWeek? = null,
 ) {
     /** Si la persona escribió algo que se perdería al salir. */
     val dirty: Boolean
@@ -46,6 +54,9 @@ data class ProductionProductUi(val id: Long, val name: String, val unit: Measure
 /**
  * Un insumo de la tanda: su nombre, su unidad, la cantidad escrita, lo que hay y, si no alcanza,
  * cuánto quedaría. [tracked] es `false` en un servicio, que no tiene stock que mostrar.
+ *
+ * En un insumo con lotes, [lots] son los que se pueden elegir, en el orden de salida, y
+ * [chosenLotId] el elegido, o `null` para que salga primero el que vence antes.
  */
 @Immutable
 data class ProductionInputUi(
@@ -57,6 +68,26 @@ data class ProductionInputUi(
     val available: QuantityMilli,
     val leftAfter: QuantityMilli?,
     val error: ProductionFieldError?,
+    val lots: LotChoices? = null,
+    val chosenLotId: Long? = null,
+)
+
+/**
+ * El lote al que entra lo producido, tal como se escribió.
+ *
+ * @param code el código, vacío sin lote: entonces lo producido entra al lote sin asignar.
+ * @param expiry el vencimiento escrito para un lote nuevo, o `null` sin vencimiento.
+ * @param existing si el código es el de un lote que el producto ya tiene: lo producido suma a ese
+ *   lote, y su vencimiento, [existingExpiry], se muestra para leer.
+ * @param tooLong el código pasa del largo máximo.
+ */
+@Immutable
+data class ProductionLotUi(
+    val code: String,
+    val expiry: BusinessDate?,
+    val existing: Boolean,
+    val existingExpiry: BusinessDate?,
+    val tooLong: Boolean,
 )
 
 /**
@@ -113,6 +144,15 @@ sealed interface ProductionFormAction {
     data class QuantityChange(val text: String) : ProductionFormAction
 
     data class InputChange(val productId: Long, val text: String) : ProductionFormAction
+
+    /** Eligió el lote del que sale el insumo [productId], o `null` para volver a lo automático. */
+    data class ChooseInputLot(val productId: Long, val lotId: Long?) : ProductionFormAction
+
+    /** Escribió el código del lote al que entra lo producido. */
+    data class LotCodeChange(val text: String) : ProductionFormAction
+
+    /** Eligió el vencimiento del lote nuevo, o `null` para ninguno. */
+    data class LotExpiryChange(val date: BusinessDate?) : ProductionFormAction
 
     data class NoteChange(val text: String) : ProductionFormAction
 

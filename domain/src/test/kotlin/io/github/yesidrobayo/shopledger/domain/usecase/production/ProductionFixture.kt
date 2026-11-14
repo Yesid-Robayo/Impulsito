@@ -35,6 +35,21 @@ internal class ProductionFixture(zoneId: String = "UTC", currencyConfirmed: Bool
         VoidProductionUseCase(transactions, products, batches, ledger, alerts, calendar, clock)
     }
 
+    /** El registro con los lotes conectados, como en la app. */
+    val registerWithLots = with(catalog) {
+        RegisterProductionUseCase(
+            transactions, products, units, components, batches, systemRows, ledger, alerts,
+            calendar, currencyLock, clock, lots,
+        )
+    }
+
+    /** La anulación con los lotes conectados, como en la app. */
+    val voidWithLots = with(catalog) {
+        VoidProductionUseCase(
+            transactions, products, batches, ledger, alerts, calendar, clock, lots,
+        )
+    }
+
     val adjust = with(catalog) {
         AdjustStockUseCase(
             transactions, products, units, systemRows, ledger, alerts, calendar, currencyLock,

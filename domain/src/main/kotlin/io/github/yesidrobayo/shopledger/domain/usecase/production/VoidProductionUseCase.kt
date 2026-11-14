@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.production
 
 import io.github.yesidrobayo.shopledger.domain.model.DocumentStatus
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.VoidableDocument
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
@@ -14,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductionBatchRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
@@ -26,6 +28,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.stamp
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.storageSafe
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.lotShortfallOf
 
 /**
  * Anula una producción en una sola transacción: la marca anulada y cada fila suya del libro recibe
@@ -43,6 +46,10 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockChangeRecorder
  * - **Puede dejar lo producido negativo**, si ya se vendió: la venta conserva el costo con que
  * salió,   y la pantalla lo avisa antes de confirmar.
  * - **Todo con la fecha de la anulación**, porque el libro es cronológico.
+ * - **Cada fila vuelve a su lote.** Un insumo con lotes regresa al lote de donde salió, y lo
+ *   producido sale del lote al que entró. Si parte de un lote con código ya salió, anular se
+ *   rechaza con lo que falta, en vez de dejarlo negativo: solo el lote sin asignar puede quedar
+ *   así. Con [lots] se reconoce el lote sin asignar; sin él, todo lote se revisa.
  *
  * En la misma transacción evalúa la alerta de stock bajo de cada producto que mueve.
  */
@@ -54,6 +61,7 @@ class VoidProductionUseCase(
     private val alerts: LowStockAlertRepository,
     private val calendar: BusinessCalendarSource,
     private val clock: Clock,
+    private val lots: StockLotRepository? = null,
 ) {
     private val ledger = StockChangeRecorder(ledger)
 
@@ -84,11 +92,17 @@ class VoidProductionUseCase(
         }
         val now = clock.now()
         val time = calendar.stamp(now) ?: return reject(VoidProductionResult.UnknownTimeZone)
-        batches.markVoided(batchId, Voiding(now, reason, cleanNote))
         val rows = ledger.findByProductionBatch(batchId).filter {
             it.movement.type == StockMovementType.PRODUCTION_OUT ||
                 it.movement.type == StockMovementType.PRODUCTION_IN
         }
+        val entries = rows.filter { it.movement.type == StockMovementType.PRODUCTION_IN }
+        ledger.lotShortfallOf(entries, lots)?.let { short ->
+            return reject(
+                VoidProductionResult.LotAlreadyUsed(short.productId, short.lotId, short.missing),
+            )
+        }
+        batches.markVoided(batchId, Voiding(now, reason, cleanNote))
         for ((productId, productRows) in rows.groupBy { it.movement.key.productId }) {
             if (!compensate(productId, productRows, time)) {
                 return reject(VoidProductionResult.LedgerDamaged)
@@ -211,6 +225,13 @@ sealed interface VoidProductionResult {
 
     /** Este teléfono no reconoce la zona del negocio: no hay cómo fechar la anulación. */
     data object UnknownTimeZone : VoidProductionResult
+
+    /**
+     * Parte de lo producido que entró al lote [lotId] de [productId] ya salió, por una venta o un
+     * ajuste: anular dejaría ese lote con código en negativo. Faltan [missing] milésimas.
+     */
+    data class LotAlreadyUsed(val productId: Long, val lotId: Long, val missing: QuantityMilli) :
+        VoidProductionResult
 
     /**
      * El libro de un producto no se puede reproducir. La app no escribe libros así; puede venir de

@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.production
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -12,13 +13,25 @@ import io.github.yesidrobayo.shopledger.domain.rule.production.ProductionInput
  *
  * Los insumos llegan ya calculados desde la receta, con la cantidad que la persona pudo cambiar
  * para esta tanda. Cada uno es una hoja, en milésimas de su unidad base, y aparece una sola vez.
+ *
+ * [lot] es el lote al que entra lo producido, solo en un producto que se controla por lotes. Sin
+ * él, entra al lote sin asignar del producto.
  */
 data class ProductionRequest(
     val productId: Long,
     val quantity: QuantityMilli,
     val inputs: List<ProductionInput>,
     val note: String?,
+    val lot: ProductionLot? = null,
 )
+
+/**
+ * El lote al que entra lo producido: el del código [code], tal como lo escribió la persona. Si el
+ * producto ya tiene un lote con ese código, lo producido se suma a él, como otra entrega del mismo
+ * lote en una compra, y su vencimiento no cambia. Si no, se crea con el vencimiento [expiry], si
+ * lo tiene. Un código en blanco entra al lote sin asignar.
+ */
+data class ProductionLot(val code: String, val expiry: BusinessDate?)
 
 /** Por qué no se puede usar un insumo de la producción. */
 enum class ProductionInputRejection {
@@ -34,8 +47,11 @@ enum class ProductionInputRejection {
     /** Ya aparece en otro renglón de la producción. */
     REPEATED,
 
-    /** Lleva lotes, y la producción todavía no elige lote. */
+    /** Lleva lotes, y el registro no tiene cómo leerlos. Solo pasa sin lotes conectados. */
     LOTS_NOT_SUPPORTED,
+
+    /** El lote elegido no es de este insumo, o no tiene nada en la ubicación de donde sale. */
+    LOT_NOT_FOUND,
 
     /** La cantidad es cero, negativa o pasa del tope de una línea. */
     INVALID_QUANTITY,
@@ -58,8 +74,17 @@ sealed interface RegisterProductionResult {
     /** El producto no lleva stock propio: un combo o un servicio no se producen por adelantado. */
     data object NotStocked : RegisterProductionResult
 
-    /** El producto lleva lotes, y la producción todavía no elige lote. */
+    /**
+     * El producto lleva lotes, y el registro no tiene cómo leerlos. Solo pasa sin lotes
+     * conectados.
+     */
     data object LotsNotSupported : RegisterProductionResult
+
+    /** Llegó un lote para lo producido, y el producto no se controla por lotes. */
+    data object LotNotTracked : RegisterProductionResult
+
+    /** El código del lote de lo producido pasa de [max] caracteres. */
+    data class LotCodeTooLong(val max: Int) : RegisterProductionResult
 
     /** El producto no tiene receta. */
     data object NoRecipe : RegisterProductionResult

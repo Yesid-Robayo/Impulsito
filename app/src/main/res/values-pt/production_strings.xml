@@ -32,4 +32,5 @@
     <string name="combo_produce_action">Produzir</string>
     <string name="combo_save_recipe_action">Salvar receita</string>
     <string name="combo_recipe_saved">A receita foi salva</string>
+    <string name="production_lot_existing_help">Esse lote já existe: o que se produz soma-se a ele</string>
 </resources>

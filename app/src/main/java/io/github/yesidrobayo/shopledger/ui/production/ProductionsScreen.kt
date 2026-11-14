@@ -339,6 +339,12 @@ private fun ProductionDetailSheet(
                     onAction = { onAction(ProductionsAction.ConfirmVoid) },
                 )
             }
+            if (uiState.voidLotUsed) {
+                NoticeCard(
+                    text = stringResource(R.string.error_void_lot_already_used),
+                    variant = NoticeVariant.ERROR,
+                )
+            }
         }
     }
     if (uiState.voidAsked) {

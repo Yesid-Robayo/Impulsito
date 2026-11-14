@@ -9,12 +9,14 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.usecase.production.LoadProductionLotsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProductionCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProductionDetailUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.production.VoidProductionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.LoadLotChoicesUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -51,6 +53,7 @@ fun ProductionsRoute(navigator: AppNavigator) {
                 ports.lowStockAlerts,
                 BusinessCalendarSource(ports.settings),
                 container.clock,
+                lots = ports.stockLots,
             )
             ProductionsViewModel(
                 catalogSource = { catalog() },
@@ -120,10 +123,23 @@ fun ProductionFormRoute(key: AppNavKey.ProductionForm, navigator: AppNavigator) 
                     ports.productComponents,
                     ports.units,
                 )
+            val calendar = BusinessCalendarSource(ports.settings)
             val register = RegisterProductionUseCase(
                 ports.transactions, ports.products, ports.units, ports.productComponents,
                 ports.productionBatches, ports.systemRows, ports.stockLedger, ports.lowStockAlerts,
-                BusinessCalendarSource(ports.settings), CurrencyLock(ports.settings),
+                calendar, CurrencyLock(ports.settings), container.clock, ports.stockLots,
+            )
+            val loadLots = LoadProductionLotsUseCase(
+                ports.stockLots,
+                LoadLotChoicesUseCase(
+                    ports.stockLots,
+                    ports.products,
+                    ports.systemRows,
+                    calendar,
+                    ports.settings,
+                    container.clock,
+                ),
+                calendar,
                 container.clock,
             )
             ProductionFormViewModel(
@@ -133,6 +149,7 @@ fun ProductionFormRoute(key: AppNavKey.ProductionForm, navigator: AppNavigator) 
                 quantitySymbols = formats.quantity.inputSymbols,
                 initialProductId = key.productId,
                 computation = container.dispatchers.default,
+                lotsSource = { output, inputs -> loadLots(output, inputs) },
             )
         }
     when (model) {

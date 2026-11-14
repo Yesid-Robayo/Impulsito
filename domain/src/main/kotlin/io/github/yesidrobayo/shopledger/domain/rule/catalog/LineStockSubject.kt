@@ -78,12 +78,15 @@ sealed interface ComponentLeaf {
 
     /**
      * Un componente con stock propio: escribe su salida en su libro. Con lotes, [lots] es lo que
-     * tiene cada lote antes de esta línea, y la salida sigue el orden de vencimiento.
+     * tiene cada lote antes de esta línea, y la salida sigue el orden de vencimiento. Un insumo de
+     * una producción puede traer el lote elegido, [chosenLotId], que sale primero; la hoja de un
+     * combo vendido nunca lo trae.
      */
     data class Tracked(
         override val productId: Long,
         override val quantity: QuantityMilli,
         val lots: List<LotStock>? = null,
+        val chosenLotId: Long? = null,
     ) : ComponentLeaf {
         init {
             requirePositive(quantity)

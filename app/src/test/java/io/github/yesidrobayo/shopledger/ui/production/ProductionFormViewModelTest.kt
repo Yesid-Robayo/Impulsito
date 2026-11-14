@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.production
 
 import androidx.lifecycle.SavedStateHandle
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -9,9 +10,15 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoice
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.production.ProductionInput
 import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionCatalog
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionLot
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionLots
 import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionResult
 import io.github.yesidrobayo.shopledger.ui.product.COUNT_UNIT
@@ -28,6 +35,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.DayOfWeek
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,6 +43,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Instant
 
 /**
  * El formulario de producción sin base, con el ejemplo de las velas: 0,200 kg de cera y una mecha
@@ -78,6 +87,7 @@ class ProductionFormViewModelTest {
         initial: Long? = null,
         state: SavedStateHandle = savedState,
         source: () -> Flow<ProductionCatalog> = { flowOf(catalog) },
+        lots: suspend (Long?, Set<Long>) -> ProductionLots = { _, _ -> ProductionLots() },
     ): ProductionFormViewModel {
         val model = ProductionFormViewModel(
             catalogSource = source,
@@ -89,6 +99,7 @@ class ProductionFormViewModelTest {
             quantitySymbols = symbols,
             initialProductId = initial,
             computation = dispatcher,
+            lotsSource = lots,
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -242,6 +253,114 @@ class ProductionFormViewModelTest {
             again.act(this, ProductionFormAction.ConfirmLeave)
             assertTrue(again.closed.value)
         }
+
+    @Test
+    fun `without lots nothing new shows and no lot is read`() = runTest(dispatcher) {
+        var reads = 0
+        val model = viewModel(
+            initial = candle.id,
+            lots = { _, _ -> ProductionLots().also { reads++ } },
+        )
+
+        model.act(this, ProductionFormAction.QuantityChange("10"))
+
+        assertNull(model.state.outputLot)
+        assertEquals(listOf(null, null), model.state.inputs.map { it.lots })
+        assertEquals(0, reads)
+    }
+
+    @Test
+    fun `an input with lots offers its lots and the product with lots asks for its lot`() =
+        runTest(dispatcher) {
+            val date = requireNotNull(BusinessDate.parse("2026-11-20"))
+            val cheese = product(
+                10L,
+                "Queso inventado",
+                averageCost = 1_000L,
+                stockValue = 5_000L,
+                onHand = 5_000L,
+            ).let { it.copy(details = it.details.copy(tracksLots = true)) }
+            val bread = product(11L, "Pan inventado")
+                .let { it.copy(details = it.details.copy(tracksLots = true)) }
+            val bakery = ProductionCatalog(
+                products = listOf(cheese, bread).associateBy { it.id },
+                recipes = mapOf(
+                    bread.id to
+                        listOf(RecipeComponent(3L, bread.id, cheese.id, QuantityMilli(500))),
+                ),
+                units = mapOf(COUNT_UNIT.id to COUNT_UNIT),
+            )
+            fun lot(id: Long, code: String, milli: Long) =
+                LotChoice(LotStock(id, code, date, false, QuantityMilli(milli)), null)
+            val stored = StockLot(
+                id = 201L,
+                productId = bread.id,
+                code = "P-1",
+                isUnassigned = false,
+                expiryDate = date,
+                purchaseLineId = null,
+                expiryNotifiedAt = null,
+                createdAt = Instant.fromEpochMilliseconds(0L),
+                closedAt = null,
+            )
+            val read = ProductionLots(
+                inputs = mapOf(
+                    cheese.id to
+                        LotChoices(listOf(lot(101L, "A", 1_000L), lot(102L, "B", 4_000L)), null),
+                ),
+                outputLots = listOf(stored),
+                today = date,
+                weekStartDay = DayOfWeek.MONDAY,
+            )
+            val asked = mutableListOf<Pair<Long?, Set<Long>>>()
+            val model = viewModel(
+                initial = bread.id,
+                source = { flowOf(bakery) },
+                lots = { output, inputs -> read.also { asked += output to inputs } },
+            )
+
+            model.act(this, ProductionFormAction.QuantityChange("4"))
+            model.act(this, ProductionFormAction.ChooseInputLot(cheese.id, 102L))
+            model.act(this, ProductionFormAction.LotCodeChange("P-1"))
+
+            assertEquals(listOf<Pair<Long?, Set<Long>>>(bread.id to setOf(cheese.id)), asked)
+            val input = model.state.inputs.single()
+            assertEquals(102L, input.chosenLotId)
+            assertEquals(2, input.lots?.lots?.size)
+            assertTrue(requireNotNull(model.state.outputLot).existing)
+            assertEquals(date, model.state.outputLot?.existingExpiry)
+
+            model.act(this, ProductionFormAction.LotCodeChange("P-2"))
+            model.act(this, ProductionFormAction.LotExpiryChange(date))
+            assertFalse(requireNotNull(model.state.outputLot).existing)
+            model.act(this, ProductionFormAction.Register)
+
+            val request = requests.single()
+            assertEquals(ProductionLot("P-2", date), request.lot)
+            val expected = ProductionInput(cheese.id, QuantityMilli(2_000), 102L)
+            assertEquals(listOf(expected), request.inputs)
+        }
+
+    @Test
+    fun `a lot code over its limit is marked and nothing is registered`() = runTest(dispatcher) {
+        val bread = product(11L, "Pan inventado")
+            .let { it.copy(details = it.details.copy(tracksLots = true)) }
+        val bakery = catalog.copy(
+            products = catalog.products + (bread.id to bread),
+            recipes = catalog.recipes +
+                (bread.id to listOf(RecipeComponent(9L, bread.id, wick.id, QuantityMilli(1_000)))),
+        )
+        val model = viewModel(initial = bread.id, source = { flowOf(bakery) })
+        model.act(this, ProductionFormAction.QuantityChange("2"))
+
+        model.act(this, ProductionFormAction.LotCodeChange("x".repeat(61)))
+        model.act(this, ProductionFormAction.Register)
+
+        assertTrue(requireNotNull(model.state.outputLot).tooLong)
+        assertTrue(requests.isEmpty())
+        model.act(this, ProductionFormAction.ChooseInputLot(wick.id, null))
+        assertNull(model.state.inputs.single().chosenLotId)
+    }
 
     @Test
     fun `a read failure offers to retry`() = runTest(dispatcher) {

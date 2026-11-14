@@ -231,14 +231,12 @@ private fun TopBarActions(overview: ProductOverview, onAction: (ProductDetailAct
                     onAction(ProductDetailAction.OpenCostSheet)
                 }),
             )
-            // Un producto con stock propio puede producirse con una receta. Con lotes todavía no.
-            if (!product.details.tracksLots) {
-                add(
-                    OverflowAction(stringResource(R.string.combo_add_recipe_action), {
-                        onAction(ProductDetailAction.OpenRecipe)
-                    }),
-                )
-            }
+            // Un producto con stock propio puede producirse con una receta, también con lotes.
+            add(
+                OverflowAction(stringResource(R.string.combo_add_recipe_action), {
+                    onAction(ProductDetailAction.OpenRecipe)
+                }),
+            )
         }
         if (overview.movements.isEmpty()) {
             add(

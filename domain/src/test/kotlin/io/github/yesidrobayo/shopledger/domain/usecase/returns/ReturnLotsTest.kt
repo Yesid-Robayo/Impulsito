@@ -3,6 +3,8 @@ package io.github.yesidrobayo.shopledger.domain.usecase.returns
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineLot
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.model.returns.PurchaseReturnResolution
@@ -95,6 +97,29 @@ class ReturnLotsTest {
         assertEquals(listOf(3_000L, 1_500L, 3_000L), rows.map { it.totalCost.minor })
         assertEquals(QuantityMilli(3_000), onHand(lotL1))
         assertEquals(QuantityMilli(4_000), onHand(lotL2))
+    }
+
+    @Test
+    fun `a combo leaf with lots goes back to the lots it left, in exit order`() = runTest {
+        world.withCombos = true
+        stockedLots()
+        world.addProduct(product(5, salePrice = 9_000, stockMode = ProductStockMode.COMPONENTS))
+        world.addRecipe(RecipeComponent(9L, 5, 1, QuantityMilli(2_000)))
+        // Tres combos sacan 6 del producto 1: 3 de L1 y 3 de L2.
+        val sold = world.registerSale()(
+            SaleRequest(listOf(SaleLineRequest(5, QuantityMilli(3_000))), SaleWorld.CASH),
+        )
+        val saleId = (sold as RegisterSaleResult.Registered).saleId
+        val lineId = world.tables.lines.values.single { it.saleId == saleId }.id
+
+        assertTrue(giveBack(saleId, lineId, 2_000) is RegisterSaleReturnResult.Registered)
+
+        // Dos combos devuelven 4: los 3 de L1 y 1 de L2, en el orden de salida.
+        val rows = returnRows()
+        assertEquals(listOf(lotL1, lotL2), rows.map { it.movement.key.lotId })
+        assertEquals(listOf(3_000L, 1_000L), rows.map { it.movement.quantity.milli })
+        assertEquals(QuantityMilli(3_000), onHand(lotL1))
+        assertEquals(QuantityMilli(3_000), onHand(lotL2))
     }
 
     @Test

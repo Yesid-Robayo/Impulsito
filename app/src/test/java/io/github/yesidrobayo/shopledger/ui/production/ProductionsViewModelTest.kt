@@ -167,6 +167,20 @@ class ProductionsViewModelTest {
     }
 
     @Test
+    fun `a void refused because the produced lot was used says why, without retry`() =
+        runTest(dispatcher) {
+            result = VoidProductionResult.LotAlreadyUsed(1L, 7L, QuantityMilli(1_000))
+            val model = viewModel()
+            model.act(this, ProductionsAction.Open(2L))
+
+            model.act(this, ProductionsAction.ConfirmVoid)
+
+            assertTrue(model.uiState.value.voidLotUsed)
+            assertFalse(model.uiState.value.voidFailed)
+            assertFalse(model.uiState.value.voided)
+        }
+
+    @Test
     fun `a long list loads by tranches`() = runTest(dispatcher) {
         batches.value = (1L..60L).map { batch(it, today, 1_000L) }
         val model = viewModel()
