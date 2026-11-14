@@ -17,6 +17,7 @@
     <string name="receipt_doc_tip">Propina</string>
     <string name="receipt_doc_total">Total</string>
     <string name="receipt_doc_change">Cambio</string>
+    <string name="receipt_doc_credit_applied">Saldo a favor aplicado</string>
     <string name="receipt_doc_balance_due">Saldo pendiente</string>
     <string name="receipt_doc_return">Devolución %1$s</string>
     <string name="receipt_sample_note">Ejemplo con datos de muestra</string>

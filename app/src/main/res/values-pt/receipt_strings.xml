@@ -17,6 +17,7 @@
     <string name="receipt_doc_tip">Gorjeta</string>
     <string name="receipt_doc_total">Total</string>
     <string name="receipt_doc_change">Troco</string>
+    <string name="receipt_doc_credit_applied">Saldo a favor aplicado</string>
     <string name="receipt_doc_balance_due">Saldo pendente</string>
     <string name="receipt_doc_return">Devolução %1$s</string>
     <string name="receipt_sample_note">Exemplo com dados de amostra</string>

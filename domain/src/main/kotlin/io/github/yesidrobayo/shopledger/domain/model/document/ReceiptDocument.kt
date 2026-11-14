@@ -117,7 +117,13 @@ sealed interface ReceiptAmount {
     /** El cambio que se devolvió en efectivo. */
     data class Change(override val amount: Money) : ReceiptAmount
 
-    /** Lo que quedó a crédito. */
+    /**
+     * Lo que el pago a crédito cubrió con el saldo a favor que el cliente ya tenía, como un
+     * anticipo: no es deuda.
+     */
+    data class CreditApplied(override val amount: Money) : ReceiptAmount
+
+    /** Lo que quedó a crédito y el cliente debe: lo que el saldo a favor no alcanzó a cubrir. */
     data class BalanceDue(override val amount: Money) : ReceiptAmount
 
     /** Una devolución activa del documento, con su número y lo que devolvió, en negativo. */

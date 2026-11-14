@@ -9,6 +9,7 @@ import android.graphics.Rect
 import android.graphics.pdf.PdfRenderer
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import androidx.annotation.RequiresApi
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
@@ -17,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
+import io.github.yesidrobayo.shopledger.domain.model.document.ReceiptAmount
 import io.github.yesidrobayo.shopledger.domain.model.document.ReceiptDocument
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleDetail
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
@@ -38,6 +40,7 @@ import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -100,10 +103,31 @@ class ReceiptRendererTest {
             amounts,
         )
         // Con la plantilla vacía, sin nombre y sin cliente, la leyenda sigue cerrando el papel.
-        val bare = SaleReceiptDocument.of(sampleSale(), EMPTY_TEMPLATE, null, null)
+        val bare = SaleReceiptDocument.of(sampleSale(), EMPTY_TEMPLATE, null, null, Money.ZERO)
         val bareTexts = renderer.textsOf(bare, assets)
         assertEquals(string(R.string.receipt_doc_title), bareTexts.first())
         assertEquals(string(R.string.legal_receipt_not_invoice), bareTexts.last())
+    }
+
+    /**
+     * Con 3.000 a favor antes de la venta, los 5.000 a crédito del ejemplo se parten: 3.000 de
+     * saldo a favor aplicado y 2.000 pendientes, cada uno en su fila y en ese orden.
+     */
+    @Test
+    fun theCreditBalanceAppliedHasItsOwnRowBeforeWhatIsStillDue() {
+        val document = SaleReceiptDocument.of(
+            sampleSale(),
+            SAMPLE_TEMPLATE,
+            "Tienda Central",
+            "Cliente de prueba",
+            Money(3_000L),
+        )
+        val labels = renderer.textsOf(document, assets).map { it.substringBefore('\t') }
+
+        val applied = labels.indexOf(string(R.string.receipt_doc_credit_applied))
+        assertTrue(applied >= 0)
+        assertEquals(string(R.string.receipt_doc_balance_due), labels[applied + 1])
+        save(renderer.renderImage(document, assets), "receipt-credit-applied")
     }
 
     @Test
@@ -137,6 +161,23 @@ class ReceiptRendererTest {
         }
         assertEquals(expected, pageSizeOf(letter, document, "letter"))
         assertEquals(816, renderer.renderImage(document, assets).width)
+    }
+
+    /**
+     * Los montos del PDF se pueden copiar y buscar: el texto que el sistema saca de la página trae
+     * el total como se escribe. Solo Android 15 o más nuevo sabe sacar el texto de un PDF.
+     */
+    @Test
+    fun theAmountsOfThePdfCanBeCopiedAndSearched() {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM)
+        val document = documentOf(sampleSale())
+        val file = File(folder, "receipt-text.pdf")
+        assertTrue(renderer.writePdf(document, assets, file))
+
+        val total = document.amounts.filterIsInstance<ReceiptAmount.Total>().single().amount
+        val digits = formats.money.parts(total).number.filterNot { it.isWhitespace() }
+        val text = pdfText(file).filterNot { it.isWhitespace() }
+        assertTrue("$digits en $text", text.contains(digits))
     }
 
     @Test
@@ -188,14 +229,20 @@ class ReceiptRendererTest {
             EMPTY_TEMPLATE,
             null,
             null,
+            Money.ZERO,
         )
         val file = File(folder, "symbol.pdf")
         assertTrue(ReceiptRenderer(context, formats, PALETTE).writePdf(document, assets, file))
         return firstPageBand(file)
     }
 
-    private fun documentOf(sale: SaleDetail) =
-        SaleReceiptDocument.of(sale, SAMPLE_TEMPLATE, "Tienda Central", "Cliente de prueba")
+    private fun documentOf(sale: SaleDetail) = SaleReceiptDocument.of(
+        sale,
+        SAMPLE_TEMPLATE,
+        "Tienda Central",
+        "Cliente de prueba",
+        Money.ZERO,
+    )
 
     private fun pageSizeOf(
         renderer: ReceiptRenderer,
@@ -210,6 +257,15 @@ class ReceiptRendererTest {
             }
         }
     }
+
+    /** El texto que el sistema saca de la primera página del PDF. */
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    private fun pdfText(file: File): String =
+        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+            PdfRenderer(fd).use { pdf ->
+                pdf.openPage(0).use { page -> page.textContents.joinToString(" ") { it.text } }
+            }
+        }
 
     private fun pageCount(file: File): Int =
         ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->

@@ -112,8 +112,13 @@ class DocumentsGalleryTest {
     }
 
     private fun shots(): List<Pair<String, @Composable () -> Unit>> {
-        val document =
-            SaleReceiptDocument.of(sampleSale(), SAMPLE_TEMPLATE, "Tienda Central", null)
+        val document = SaleReceiptDocument.of(
+            sampleSale(),
+            SAMPLE_TEMPLATE,
+            "Tienda Central",
+            null,
+            Money.ZERO,
+        )
         val receipt = SaleReceiptUiState.Ready(
             document = document,
             logo = null,

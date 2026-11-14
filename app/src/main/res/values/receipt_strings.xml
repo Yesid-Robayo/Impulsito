@@ -17,6 +17,7 @@
     <string name="receipt_doc_tip">Tip</string>
     <string name="receipt_doc_total">Total</string>
     <string name="receipt_doc_change">Change</string>
+    <string name="receipt_doc_credit_applied">Credit balance applied</string>
     <string name="receipt_doc_balance_due">Balance due</string>
     <string name="receipt_doc_return">Return %1$s</string>
     <string name="receipt_sample_note">Example with sample data</string>

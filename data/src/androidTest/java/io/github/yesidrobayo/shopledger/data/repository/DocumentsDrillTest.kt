@@ -120,6 +120,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.region.SaveRegionalSettingsResult
 import io.github.yesidrobayo.shopledger.domain.usecase.region.SaveRegionalSettingsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleDetailUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.ReadCreditBeforeSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.BusinessProfileChange
@@ -581,6 +582,7 @@ internal class DocumentsDrillTest : CatalogDatabaseTest() {
             settings.receipt,
             settings.profile.businessName,
             customerName = null,
+            creditBefore = ReadCreditBeforeSaleUseCase(tx, ports.customerLedger)(counterSale),
         )
         today = requireNotNull(ports.sales.findById(counterSale)).content.businessDate
         assertEquals(JAN_1, today)
@@ -770,13 +772,18 @@ internal class DocumentsDrillTest : CatalogDatabaseTest() {
             "24500 9250",
             rows("SELECT total || ' ' || total_cost FROM sales WHERE id = $orderSale").single(),
         )
-        // Su comprobante: las líneas, el envío como ajuste, el anticipo como saldo a crédito
-        // y el efectivo. Tampoco lleva costo.
+        // Su comprobante: las líneas, el envío como ajuste, el pago a crédito, el efectivo y
+        // el anticipo como saldo a favor aplicado, leído del libro de la clienta. No lleva saldo
+        // pendiente, porque la clienta no debe nada, ni costo.
+        val creditBefore = ReadCreditBeforeSaleUseCase(tx, ports.customerLedger)
+        assertEquals(Money(10_000), creditBefore(orderSale))
+        assertEquals(Money.ZERO, creditBefore(counterSale))
         val orderReceipt = SaleReceiptDocument.of(
             requireNotNull(saleDetail(orderSale).first()),
             settings.receipt,
             settings.profile.businessName,
             "Clienta inventada",
+            creditBefore(orderSale),
         )
         assertEquals(
             listOf(
@@ -785,7 +792,7 @@ internal class DocumentsDrillTest : CatalogDatabaseTest() {
                 "Total 24500",
                 "Payment 10000",
                 "Payment 14500",
-                "BalanceDue 10000",
+                "CreditApplied 10000",
             ),
             amountRows(orderReceipt),
         )

@@ -80,7 +80,13 @@ class SaleReceiptDocumentTest {
 
     @Test
     fun `a taxed sale lists its lines before the adjustment and every amount in paper order`() {
-        val document = SaleReceiptDocument.of(taxedSale(), template, " Tienda Central ", " Ana ")
+        val document = SaleReceiptDocument.of(
+            taxedSale(),
+            template,
+            " Tienda Central ",
+            " Ana ",
+            Money.ZERO,
+        )
 
         assertEquals(
             ReceiptDocument(
@@ -113,13 +119,100 @@ class SaleReceiptDocumentTest {
         )
     }
 
+    /**
+     * Lo pagado a crédito primero consume el saldo a favor que el cliente ya tenía: con 10.000 a
+     * favor, los 7.000 a crédito son un anticipo aplicado y no queda nada pendiente. Con 3.000 a
+     * favor, 3.000 se aplican y 4.000 quedan debiendo.
+     */
+    @Test
+    fun `credit on account first uses the credit balance, and only the rest is due`() {
+        val covered = SaleReceiptDocument.of(taxedSale(), template, null, "Ana", Money(10_000L))
+        val partly = SaleReceiptDocument.of(taxedSale(), template, null, "Ana", Money(3_000L))
+
+        assertEquals(
+            listOf(
+                ReceiptAmount.Change(Money(5_000L)),
+                ReceiptAmount.CreditApplied(Money(7_000L)),
+            ),
+            covered.amounts.takeLast(2),
+        )
+        assertTrue(covered.amounts.none { it is ReceiptAmount.BalanceDue })
+        assertEquals(
+            listOf(
+                ReceiptAmount.Change(Money(5_000L)),
+                ReceiptAmount.CreditApplied(Money(3_000L)),
+                ReceiptAmount.BalanceDue(Money(4_000L)),
+            ),
+            partly.amounts.takeLast(3),
+        )
+    }
+
+    /**
+     * La entrega de un pedido de 20.000 con 1.500 de envío y 5.000 de anticipo: la venta cobra
+     * 21.500, 5.000 a crédito con el anticipo y 16.500 en efectivo. El cliente no debe nada, así
+     * que el comprobante dice que se aplicó el anticipo y no lleva saldo pendiente.
+     */
+    @Test
+    fun `a delivered order shows its deposit as applied and nothing due`() {
+        val cash = payment(samplePayment(20L, 1L, 16_500L), "Efectivo", PaymentMethodKind.CASH)
+        val credit =
+            payment(samplePayment(21L, 2L, 5_000L), "A crédito", PaymentMethodKind.ON_ACCOUNT)
+        val base = sampleDetail(
+            listOf(sampleLine(10L, 1L, "Pastel", 1_000L, 20_000L)),
+            listOf(cash, credit),
+            total = 21_500L,
+        )
+        val detail = base.copy(
+            sale = base.sale.copy(
+                content = base.sale.content.copy(
+                    orderAdjustment = Money(1_500L),
+                    amountDue = Money(21_500L),
+                ),
+            ),
+        )
+
+        val document = SaleReceiptDocument.of(detail, template, null, "Ana", Money(5_000L))
+
+        assertEquals(
+            listOf(
+                ReceiptAmount.Subtotal(Money(20_000L)),
+                ReceiptAmount.Adjustment(Money(1_500L)),
+                ReceiptAmount.Total(Money(21_500L)),
+                ReceiptAmount.Payment("Efectivo", Money(16_500L)),
+                ReceiptAmount.Payment("A crédito", Money(5_000L)),
+                ReceiptAmount.CreditApplied(Money(5_000L)),
+            ),
+            document.amounts,
+        )
+    }
+
+    /**
+     * Sin pago a crédito, el saldo a favor no se toca y no aparece; un saldo negativo, que sería
+     * deuda, no cuenta como saldo a favor.
+     */
+    @Test
+    fun `a credit balance shows only when the sale used it`() {
+        val detail = sampleDetail(
+            listOf(sampleLine(10L, 1L, "Arroz", 1_000L, 5_000L)),
+            listOf(samplePayment(20L, 1L, 5_000L)),
+            5_000L,
+        )
+
+        val cash = SaleReceiptDocument.of(detail, template, null, "Ana", Money(8_000L))
+        val owed = SaleReceiptDocument.of(taxedSale(), template, null, "Ana", Money(-2_000L))
+
+        assertTrue(cash.amounts.none { it is ReceiptAmount.CreditApplied })
+        assertTrue(owed.amounts.none { it is ReceiptAmount.CreditApplied })
+        assertEquals(ReceiptAmount.BalanceDue(Money(7_000L)), owed.amounts.last())
+    }
+
     @Test
     fun `tax already in the prices is reported as included`() {
         val line = taxed(sampleLine(10L, 1L, "Café", 1_000L, 11_000L), 0L, 1_000L)
             .let { it.copy(content = it.content.copy(lineTotal = Money(11_000L))) }
         val detail = sampleDetail(listOf(line), listOf(samplePayment(20L, 1L, 11_000L)), 11_000L)
 
-        val document = SaleReceiptDocument.of(detail, template, null, null)
+        val document = SaleReceiptDocument.of(detail, template, null, null, Money.ZERO)
 
         assertEquals(
             listOf(
@@ -142,7 +235,7 @@ class SaleReceiptDocumentTest {
         )
         val detail = sampleDetail(lines, listOf(samplePayment(20L, 1L, 4_350L)), 4_350L)
 
-        val taxes = SaleReceiptDocument.of(detail, template, null, null)
+        val taxes = SaleReceiptDocument.of(detail, template, null, null, Money.ZERO)
             .amounts.filterIsInstance<ReceiptAmount.Tax>()
 
         assertEquals(
@@ -164,7 +257,7 @@ class SaleReceiptDocumentTest {
         val detail = sampleDetail(lines, listOf(samplePayment(20L, 1L, 10_500L)), 10_500L)
         val empty = ReceiptSettings(null, null, "   ", null)
 
-        val document = SaleReceiptDocument.of(detail, empty, "  ", null)
+        val document = SaleReceiptDocument.of(detail, empty, "  ", null, Money.ZERO)
 
         assertEquals(listOf(false, true), document.lines.map { it.extra })
         assertEquals(ReceiptHeader(null, null, null), document.header)
@@ -186,8 +279,8 @@ class SaleReceiptDocumentTest {
         )
         val voided = detail.copy(sale = detail.sale.copy(voiding = VOIDING))
 
-        val active = SaleReceiptDocument.of(detail, template, null, null)
-        val document = SaleReceiptDocument.of(voided, template, null, null)
+        val active = SaleReceiptDocument.of(detail, template, null, null, Money.ZERO)
+        val document = SaleReceiptDocument.of(voided, template, null, null, Money.ZERO)
 
         assertFalse(active.voided)
         assertTrue(document.voided)
@@ -211,14 +304,15 @@ class SaleReceiptDocumentTest {
         }
         val detail = sampleDetail(listOf(huge), listOf(samplePayment(20L, 1L, 9_000L)), 9_000L)
 
-        val document = SaleReceiptDocument.of(detail, template, null, null)
+        val document = SaleReceiptDocument.of(detail, template, null, null, Money.ZERO)
 
         assertEquals(Money(9_000L), document.lines.single().amount)
     }
 
     @Test
     fun `no cost, fee nor note reaches the document`() {
-        val text = SaleReceiptDocument.of(taxedSale(), template, "Tienda", "Ana").toString()
+        val document = SaleReceiptDocument.of(taxedSale(), template, "Tienda", "Ana", Money.ZERO)
+        val text = document.toString()
 
         assertFalse(text.contains(SENTINEL_COST.toString()))
         assertFalse(text.contains("Nota interna"))

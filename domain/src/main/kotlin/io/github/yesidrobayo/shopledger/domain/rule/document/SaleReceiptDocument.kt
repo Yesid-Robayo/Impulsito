@@ -25,11 +25,16 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleLineRules
 object SaleReceiptDocument {
     /**
      * El comprobante de [detail] con la plantilla [template], encabezado por [businessName], y con
-     * [customerName] si la venta tiene cliente.
+     * [customerName] si la venta tiene cliente. [creditBefore] es el saldo a favor que el cliente
+     * tenía justo antes de la venta, cero si no tenía o no hay cliente.
      *
      * Las cifras salen de lo que la venta congeló, en el orden del papel: subtotal, ajuste,
-     * impuesto, redondeo, propina, total, pagos, cambio, saldo a crédito y devoluciones activas.
-     * Cada fila, salvo el total, solo aparece si no es cero.
+     * impuesto, redondeo, propina, total, pagos, cambio, saldo a favor aplicado, saldo pendiente y
+     * devoluciones activas. Cada fila, salvo el total, solo aparece si no es cero.
+     *
+     * Lo pagado a crédito primero consume el saldo a favor, como lo hizo el libro del cliente al
+     * vender: esa parte es un anticipo aplicado, no deuda. Solo lo que el saldo a favor no cubrió
+     * queda como saldo pendiente.
      *
      * El subtotal es lo que cobran las líneas tras su descuento, antes del ajuste de toda la
      * venta. Si subtotal y ajuste ya dan el total, el impuesto venía en los precios: se informa
@@ -41,6 +46,7 @@ object SaleReceiptDocument {
         template: ReceiptSettings,
         businessName: String?,
         customerName: String?,
+        creditBefore: Money,
     ): ReceiptDocument {
         val sale = detail.sale.content
         val rows = detail.lines.map { it.content }
@@ -66,7 +72,11 @@ object SaleReceiptDocument {
             payments.forEach { add(ReceiptAmount.Payment(it.methodNameSnapshot, it.amount)) }
             addIfNotZero(payments.mapNotNull { it.changeAmount }.sum(), ReceiptAmount::Change)
             val onAccount = payments.filter { it.methodKind == PaymentMethodKind.ON_ACCOUNT }
-            addIfNotZero(onAccount.map { it.amount }.sum(), ReceiptAmount::BalanceDue)
+                .map { it.amount }
+                .sum()
+            val applied = minOf(onAccount, creditBefore.coerceAtLeast(Money.ZERO))
+            addIfNotZero(applied, ReceiptAmount::CreditApplied)
+            addIfNotZero(onAccount - applied, ReceiptAmount::BalanceDue)
             detail.returns
                 .filter { it.status == DocumentStatus.ACTIVE }
                 .forEach { add(ReceiptAmount.Return(it.id, -it.content.totalRefund)) }

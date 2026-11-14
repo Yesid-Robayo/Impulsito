@@ -69,6 +69,7 @@ class SaleReceiptViewModelTest {
             observeSource = { flowOf(source) },
             observeUnits = { flowOf(emptyList()) },
             customerName = { id -> "Cliente de prueba".takeIf { id == CUSTOMER_ID } },
+            creditBefore = { id -> if (id == SALE_ID) CREDIT_BEFORE else Money.ZERO },
             loadImage = { id -> LOGO.takeIf { id == LOGO_ID } },
             computation = dispatcher,
         )
@@ -95,6 +96,21 @@ class SaleReceiptViewModelTest {
                 ReceiptAmount.Total(Money(5_000L)),
                 ready.document.amounts.filterIsInstance<ReceiptAmount.Total>().single(),
             )
+        }
+
+    /**
+     * Una venta a crédito de un cliente que ya tenía saldo a favor: el comprobante dice que se
+     * aplicó, y no lleva saldo pendiente porque el cliente no quedó debiendo.
+     */
+    @Test
+    fun `credit on account that the credit balance covered is not shown as due`() =
+        runTest(dispatcher) {
+            detail.value = sale(kind = PaymentMethodKind.ON_ACCOUNT)
+
+            val amounts = model().ready().document.amounts
+
+            assertEquals(ReceiptAmount.CreditApplied(Money(5_000L)), amounts.last())
+            assertTrue(amounts.none { it is ReceiptAmount.BalanceDue })
         }
 
     @Test
@@ -144,7 +160,10 @@ class SaleReceiptViewModelTest {
         assertNull(model.ready().shareFailed)
     }
 
-    private fun sale(voided: Boolean = false): SaleDetail {
+    private fun sale(
+        voided: Boolean = false,
+        kind: PaymentMethodKind = PaymentMethodKind.CASH,
+    ): SaleDetail {
         val at = Instant.fromEpochMilliseconds(1_793_198_520_000L)
         val date = BusinessDate(LocalDate(2026, 10, 28))
         return SaleDetail(
@@ -209,7 +228,7 @@ class SaleReceiptViewModelTest {
                     content = NewSalePayment(
                         paymentMethodId = 1L,
                         methodNameSnapshot = "Efectivo",
-                        methodKind = PaymentMethodKind.CASH,
+                        methodKind = kind,
                         amount = Money(5_000L),
                         feeAmount = Money.ZERO,
                         settlementDate = date,
@@ -227,6 +246,7 @@ class SaleReceiptViewModelTest {
         const val CUSTOMER_ID = 3L
         const val LOGO_ID = 9L
         const val COST = 777_777L
+        val CREDIT_BEFORE = Money(8_000L)
         val LOGO = StoredImage("a".repeat(64), "image/webp", 640, 320, 20_000)
     }
 }

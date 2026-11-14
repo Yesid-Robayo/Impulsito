@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntryDraft
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntryType
 import io.github.yesidrobayo.shopledger.domain.model.customer.NewCustomerLedgerEntry
+import io.github.yesidrobayo.shopledger.domain.model.document.ReceiptAmount
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
@@ -19,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.NewSalePayment
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.settings.ReceiptSettings
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.CustomerLedgerRepository
@@ -26,11 +28,15 @@ import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.rule.document.SaleReceiptDocument
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleDetailUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.ReadCreditBeforeSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.VoidSaleUseCase
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -254,6 +260,54 @@ internal class CreditSaleOnDatabaseTest : RepositoryTest() {
         assertNull(charge.dueDate)
         assertEquals(Money(-5_000), customers.findById(customerId)?.balance)
         assertInvariantsHold()
+    }
+
+    /**
+     * El comprobante lee del libro el saldo a favor que la venta usó: con 3.000 a favor, la venta
+     * de 7.000 con 5.000 a crédito aplica 3.000 y deja 2.000 pendientes. Leer no escribe nada ni
+     * cuenta como cambio, y anular la venta no cambia lo que se lee. Una venta sin cargo no tiene
+     * saldo a favor que mostrar.
+     */
+    @Test
+    fun theReceiptReadsTheCreditBalanceTheSaleUsedWithoutWriting() = runBlocking {
+        val prepaid = CustomerEntryDraft(
+            customerId,
+            CustomerLedgerEntryType.PAYMENT,
+            Money(-3_000),
+            CustomerEntrySource.None,
+            null,
+            null,
+        )
+        commit { CustomerLedgerWriter(customerLedger).append(prepaid, RecordTime(AT, DATE)) }
+        val saleId = (registerSale(creditSale()) as RegisterSaleResult.Registered).saleId
+        val read = ReadCreditBeforeSaleUseCase(runner, customerLedger)
+        val before = tableCounts()
+        val seq = changeSeq()
+
+        assertEquals(Money(3_000), read(saleId))
+        assertEquals(before, tableCounts())
+        assertEquals(seq, changeSeq())
+        val detail = ObserveSaleDetailUseCase(sales, salePayments, products)(saleId).first()
+        val receipt = SaleReceiptDocument.of(
+            requireNotNull(detail),
+            ReceiptSettings(null, null, null, null),
+            null,
+            "Cliente inventado",
+            read(saleId),
+        )
+        assertEquals(
+            listOf(
+                ReceiptAmount.CreditApplied(Money(3_000)),
+                ReceiptAmount.BalanceDue(Money(2_000)),
+            ),
+            receipt.amounts.filter {
+                it is ReceiptAmount.CreditApplied || it is ReceiptAmount.BalanceDue
+            },
+        )
+
+        assertEquals(VoidSaleResult.Voided, voidSale(saleId, VoidReason.ENTRY_ERROR, null))
+        assertEquals(Money(3_000), read(saleId))
+        assertEquals(Money.ZERO, read(saleId + 1))
     }
 
     @Test

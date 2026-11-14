@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.receipt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.document.ReceiptDocument
@@ -112,6 +113,8 @@ sealed interface SaleReceiptAction {
  * @param observeSource la plantilla, el nombre del negocio y su zona.
  * @param observeUnits las unidades de medida, para escribir las cantidades.
  * @param customerName el nombre del cliente de la venta, o `null` si ya no tiene datos.
+ * @param creditBefore el saldo a favor que el cliente tenía justo antes de la venta, leído de su
+ *   libro: separa en el comprobante el anticipo aplicado de lo que quedó debiendo.
  * @param loadImage la imagen guardada de un id, para el logo.
  * @param observePrinters las impresoras guardadas, para saber cuál va por defecto.
  * @param printReceipt imprime el comprobante listo en una térmica. Un fallo no toca la venta.
@@ -123,6 +126,7 @@ class SaleReceiptViewModel(
     private val observeSource: () -> Flow<SaleReceiptSource>,
     private val observeUnits: () -> Flow<List<MeasureUnit>>,
     private val customerName: suspend (Long) -> String?,
+    private val creditBefore: suspend (Long) -> Money,
     private val loadImage: suspend (Long) -> StoredImage?,
     computation: CoroutineDispatcher,
     observePrinters: () -> Flow<PrinterSetup> = { flowOf(PrinterSetup.EMPTY) },
@@ -143,6 +147,7 @@ class SaleReceiptViewModel(
                 template.receipt,
                 template.businessName,
                 customer,
+                creditBefore(saleId),
             )
             SaleReceiptUiState.Ready(
                 document = document,

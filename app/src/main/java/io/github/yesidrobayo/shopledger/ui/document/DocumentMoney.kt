@@ -13,7 +13,10 @@ import io.github.yesidrobayo.shopledger.ui.theme.CurrencySymbolFamily
 
 /** La fuente con que se dibuja un tramo de un monto en papel. */
 enum class DocumentFont {
-    /** Figtree, con cifras tabulares: cifras, signo y lo que Figtree tiene del símbolo. */
+    /**
+     * Figtree: cifras, signo y lo que Figtree tiene del símbolo. Las cifras son tabulares en la
+     * imagen del comprobante y en la térmica, y de ancho propio en un PDF, para poder copiarlas.
+     */
     APP,
 
     /** `currency_symbols`, para los símbolos que Figtree no trae. */

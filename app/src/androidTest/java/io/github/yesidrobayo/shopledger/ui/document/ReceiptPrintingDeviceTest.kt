@@ -47,6 +47,7 @@ class ReceiptPrintingDeviceTest {
         SAMPLE_TEMPLATE,
         "Tienda Central",
         null,
+        Money.ZERO,
     )
 
     @Test

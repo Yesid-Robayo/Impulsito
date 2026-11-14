@@ -78,6 +78,18 @@ object CustomerLedgerRules {
             )
         }
 
+    /**
+     * El saldo a favor que tenía el cliente justo antes de una venta, leído de [charges], los
+     * cargos a crédito de esa venta en el orden del libro: el saldo que dejó el primero menos su
+     * monto. Cero si la venta no cargó nada a crédito o si el cliente debía. Solo lee: el saldo de
+     * entonces ya está en la fila, y no cambia aunque después se anule la venta.
+     */
+    fun creditBefore(charges: List<CustomerLedgerEntry>): Money {
+        val charge = charges.firstOrNull() ?: return Money.ZERO
+        val before = charge.balanceAfter - charge.amount
+        return if (before < Money.ZERO) -before else Money.ZERO
+    }
+
     /** [raw] recortada, o `null` si queda en blanco: una nota vacía no se guarda. */
     fun note(raw: String?): String? = raw?.let { it.trim().ifEmpty { null } }
 

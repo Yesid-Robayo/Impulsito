@@ -235,10 +235,13 @@ class CatalogRenderer(context: Context, private val formats: AppFormats, palette
             setFontVariationSettings("'wght' $weight")
         }
 
+    /**
+     * El pincel de un tramo de precio, con la fuente que tiene sus caracteres. Las cifras van con
+     * su ancho propio, sin la variante tabular: el PDF no dice qué cifra es cada una tabular, y el
+     * precio no se podría copiar ni buscar. Cada precio sigue alineado a la derecha.
+     */
     private fun moneyPaint(font: DocumentFont): Paint = when (font) {
-        DocumentFont.APP -> textPaint(BODY_SIZE, MEDIUM, ink).apply {
-            fontFeatureSettings = TABULAR
-        }
+        DocumentFont.APP -> textPaint(BODY_SIZE, MEDIUM, ink)
 
         DocumentFont.CURRENCY -> TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = ink
@@ -383,7 +386,6 @@ class CatalogRenderer(context: Context, private val formats: AppFormats, palette
         const val REGULAR = 400
         const val MEDIUM = 500
         const val BOLD = 600
-        const val TABULAR = "'tnum'"
         const val GAP = 4f
         const val ROW_GAP = 6f
         const val SECTION_GAP = 12f

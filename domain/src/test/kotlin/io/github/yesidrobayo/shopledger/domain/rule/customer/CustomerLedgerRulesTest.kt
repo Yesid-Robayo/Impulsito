@@ -143,6 +143,25 @@ class CustomerLedgerRulesTest {
         assertEquals(true to true, signs[ENTRY_VOID])
     }
 
+    /**
+     * El saldo a favor de antes de una venta sale de su primer cargo: el saldo que dejó menos su
+     * monto. Un anticipo de 5.000 consumido entero deja 0 y da 5.000; uno de 3.000 ante un cargo
+     * de 5.000 deja 2.000 de deuda y da 3.000. Sin cargos, o si el cliente ya debía, no hay nada.
+     */
+    @Test
+    fun `the credit balance before a sale is what its first charge found`() {
+        val consumed = stored(9L, CREDIT_SALE, 5_000).copy(balanceAfter = Money.ZERO)
+        val partly = stored(9L, CREDIT_SALE, 5_000).copy(balanceAfter = Money(2_000))
+        val owed = stored(9L, CREDIT_SALE, 5_000).copy(balanceAfter = Money(6_000))
+        val even = stored(9L, CREDIT_SALE, 5_000)
+
+        assertEquals(Money(5_000), CustomerLedgerRules.creditBefore(listOf(consumed, owed)))
+        assertEquals(Money(3_000), CustomerLedgerRules.creditBefore(listOf(partly)))
+        assertEquals(Money.ZERO, CustomerLedgerRules.creditBefore(listOf(owed)))
+        assertEquals(Money.ZERO, CustomerLedgerRules.creditBefore(listOf(even)))
+        assertEquals(Money.ZERO, CustomerLedgerRules.creditBefore(emptyList()))
+    }
+
     private fun next(previous: Money, draft: CustomerEntryDraft) =
         CustomerLedgerRules.next(previous, draft)
 

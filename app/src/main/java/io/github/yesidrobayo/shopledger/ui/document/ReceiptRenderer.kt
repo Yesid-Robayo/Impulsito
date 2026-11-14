@@ -56,8 +56,9 @@ data class ReceiptAssets(
  * La leyenda de que no es una factura la pone siempre este motor, al pie, y nada la quita.
  *
  * Los textos salen de los recursos en el idioma de la interfaz, y los números del formato del
- * negocio. Cada monto se dibuja por tramos, con la fuente que tiene su símbolo y las cifras
- * tabulares alineadas a la derecha.
+ * negocio. Cada monto se dibuja por tramos, con la fuente que tiene su símbolo, alineado a la
+ * derecha. En la imagen y en la térmica las cifras son tabulares; en el PDF no, porque el PDF no
+ * dice qué cifra es cada una tabular y no se podrían copiar ni buscar.
  */
 class ReceiptRenderer(context: Context, private val formats: AppFormats, palette: ColorPalette) {
     private val resources = context.resources
@@ -86,7 +87,11 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         amountWeight = MEDIUM,
         unit = 1f,
         withLogo = true,
+        tabular = true,
     )
+
+    // El PDF es el papel con cifras de ancho propio: así cada monto se puede copiar y buscar.
+    private val pdfPaper = paper.copy(tabular = false)
 
     // En térmica no hay grises: todo es negro, los montos van en 600 y el logo no se imprime.
     private val thermal = Style(
@@ -103,6 +108,7 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         amountWeight = BOLD,
         unit = THERMAL_UNIT,
         withLogo = false,
+        tabular = true,
     )
 
     /**
@@ -113,7 +119,7 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         val sheet = PaperSize.of(formats.date.formatLocale)
         val column = min(COLUMN_WIDTH, sheet.width - 2 * PAGE_MARGIN)
         val left = (sheet.width - column) / 2f
-        val blocks = blocksOf(document, assets, column, paper)
+        val blocks = blocksOf(document, assets, column, pdfPaper)
         val pdf = PdfDocument()
         return try {
             var number = 0
@@ -383,6 +389,9 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
 
             is ReceiptAmount.Change -> resources.getString(R.string.receipt_doc_change)
 
+            is ReceiptAmount.CreditApplied ->
+                resources.getString(R.string.receipt_doc_credit_applied)
+
             is ReceiptAmount.BalanceDue -> resources.getString(R.string.receipt_doc_balance_due)
 
             is ReceiptAmount.Return -> {
@@ -401,7 +410,7 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
 
             is ReceiptAmount.Subtotal, is ReceiptAmount.Adjustment, is ReceiptAmount.Rounding,
             is ReceiptAmount.Tip, is ReceiptAmount.Payment, is ReceiptAmount.Change,
-            is ReceiptAmount.Shipping,
+            is ReceiptAmount.Shipping, is ReceiptAmount.CreditApplied,
             is ReceiptAmount.BalanceDue, is ReceiptAmount.Return,
             -> RowBlock(label, row.amount, width, 0f, style, style.bodySize, style.ink)
         }
@@ -431,11 +440,20 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
             setFontVariationSettings("'wght' $weight")
         }
 
-    /** El pincel de un tramo de monto, con la fuente que tiene sus caracteres. */
-    private fun moneyPaint(font: DocumentFont, size: Float, weight: Int, color: Int): Paint =
+    /**
+     * El pincel de un tramo de monto, con la fuente que tiene sus caracteres, y con cifras
+     * tabulares si [tabular].
+     */
+    private fun moneyPaint(
+        font: DocumentFont,
+        size: Float,
+        weight: Int,
+        color: Int,
+        tabular: Boolean,
+    ): Paint =
         when (font) {
             DocumentFont.APP -> textPaint(size, weight, color).apply {
-                fontFeatureSettings = TABULAR
+                if (tabular) fontFeatureSettings = TABULAR
             }
 
             DocumentFont.CURRENCY -> TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -528,7 +546,7 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         private val before = (if (total) TOTAL_GAP else ROW_GAP) * style.unit
         private val weight = if (total) BOLD else style.amountWeight
         private val runs = money.runsOf(amount).map {
-            it.text to moneyPaint(it.font, size, weight, color)
+            it.text to moneyPaint(it.font, size, weight, color, style.tabular)
         }
         private val amountWidth = runs.fold(0f) { sum, (text, paint) ->
             sum + paint.measureText(text)
@@ -614,9 +632,9 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
     /**
      * Cómo se dibuja: tamaños, tintas, filetes, el peso de los montos y si lleva logo. [unit]
      * multiplica el aire entre bloques: un punto de PDF en papel, o los puntos de la cabeza que
-     * vale un punto en térmica.
+     * vale un punto en térmica. [tabular] da a las cifras de los montos el mismo ancho.
      */
-    private class Style(
+    private data class Style(
         val nameSize: Float,
         val titleSize: Float,
         val bodySize: Float,
@@ -630,5 +648,6 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         val amountWeight: Int,
         val unit: Float,
         val withLogo: Boolean,
+        val tabular: Boolean,
     )
 }

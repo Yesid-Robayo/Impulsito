@@ -21,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResul
 import io.github.yesidrobayo.shopledger.domain.usecase.print.ObservePrinterSetupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleDetailUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.ReadCreditBeforeSaleUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -98,6 +99,10 @@ fun SaleReceiptRoute(key: AppNavKey.SaleReceipt, navigator: AppNavigator) {
                 customerName = { id ->
                     ports.transactions.read { ports.customers.findById(id) }?.contact?.name
                 },
+                creditBefore = ReadCreditBeforeSaleUseCase(
+                    ports.transactions,
+                    ports.customerLedger,
+                )::invoke,
                 loadImage = { id -> ports.transactions.read { ports.mediaAssets.findImage(id) } },
                 computation = dependencies.container.dispatchers.default,
                 observePrinters = ObservePrinterSetupUseCase(printers)::invoke,
