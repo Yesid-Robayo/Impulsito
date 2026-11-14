@@ -88,7 +88,8 @@ class ImportHeaderNamingTest {
 
     @Test
     fun aKeyWithoutHeaderOrAliasHasNoLabels() {
-        assertEquals(emptyList<String>(), ImportHeaderNaming(app).labels("points_balance"))
+        // Toda columna exportada ya tiene encabezado: una clave inventada no tiene ninguno.
+        assertEquals(emptyList<String>(), ImportHeaderNaming(app).labels("not_a_column"))
         assertEquals(null, ImportHeaderNaming.aliasRes("name"))
     }
 
