@@ -239,17 +239,25 @@ internal class SaleDaoTest : LedgerDatabaseTest() {
         // producto cuyo modo de stock concuerde con su efecto.
         guardFailure("guard:sale_lines") { lines.insert(saleLine(id, MISSING_ID, priceListId)) }
         constraintFailure(FOREIGN_KEY) { lines.insert(saleLine(id, productId, MISSING_ID)) }
-        constraintFailure(FOREIGN_KEY) {
+        // Una línea principal que no existe también la rechaza la guarda antes que la llave: la
+        // principal de un extra es una línea de la misma venta que no es otro extra.
+        guardFailure("guard:sale_lines") {
             lines.insert(saleLine(id, productId, priceListId, parentLineId = MISSING_ID))
         }
-        lines.insert(saleLine(id, productId, priceListId))
+        val mainLineId = lines.insert(saleLine(id, productId, priceListId))
+        // Un extra de otra venta no se cuelga de esta línea; uno de la misma venta, sí.
+        val otherId = sales.insert(sale(priceListId))
+        guardFailure("guard:sale_lines") {
+            lines.insert(saleLine(otherId, productId, priceListId, parentLineId = mainLineId))
+        }
+        lines.insert(saleLine(id, productId, priceListId, parentLineId = mainLineId))
 
         // Con ventas, el producto se archiva y la lista de precios no se borra.
         constraintFailure(FOREIGN_KEY) { database.productDao().delete(productId) }
         constraintFailure(FOREIGN_KEY) {
             execute("DELETE FROM price_lists WHERE id = $priceListId")
         }
-        assertEquals(1L, count("SELECT COUNT(*) FROM sale_lines"))
+        assertEquals(2L, count("SELECT COUNT(*) FROM sale_lines"))
     }
 
     @Test
