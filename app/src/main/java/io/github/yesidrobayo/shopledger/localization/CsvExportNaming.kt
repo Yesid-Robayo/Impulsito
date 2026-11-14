@@ -120,6 +120,8 @@ class CsvExportNaming(private val resources: () -> Resources) : CsvNaming {
             "old_price" -> R.string.csv_header_old_price
             "new_price" -> R.string.csv_header_new_price
             "source" -> R.string.csv_header_source
+            "month" -> R.string.csv_header_month
+            "change_percent" -> R.string.csv_header_change_percent
             else -> null
         }
     }

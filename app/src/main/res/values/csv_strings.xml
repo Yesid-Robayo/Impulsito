@@ -85,4 +85,6 @@
     <string name="csv_header_old_price">Old price</string>
     <string name="csv_header_new_price">New price</string>
     <string name="csv_header_source">Source</string>
+    <string name="csv_header_month">Month</string>
+    <string name="csv_header_change_percent">Change</string>
 </resources>
