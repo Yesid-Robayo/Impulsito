@@ -39,6 +39,9 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
+/** El código del principal de unas variantes, inventado. */
+private const val SHIRT_CODE = "2900000777773"
+
 /**
  * Lo que trae el escáner a la venta nueva: el producto se agrega como al tocarlo, y el código de
  * una presentación pone la línea nueva en esa unidad. Un lector externo escribe el código en la
@@ -60,7 +63,29 @@ class NewSaleScanTest {
         cheese.id to
             mapOf(box.id to ConversionDetails(box.id, 5_000L, Money(100_000L), null, true, false)),
     )
+    private val shirt = product(7L, "Camiseta básica", barcode = SHIRT_CODE)
+    private val shirtS = variantOf(8L, "S")
+    private val shirtM = variantOf(9L, "M")
+    private val shirtBox =
+        mapOf(box.id to ConversionDetails(box.id, 6_000L, null, "2900000888887", true, false))
     private val catalog = MutableStateFlow(catalogOf(conversions))
+
+    private fun variantOf(id: Long, size: String) =
+        product(id, "Camiseta básica $size", salePrice = 18_000L).let {
+            it.copy(
+                details = it.details.copy(
+                    parentProductId = 7L,
+                    variantAxis1 = "Talla",
+                    variantValue1 = size,
+                ),
+            )
+        }
+
+    private fun SaleCatalog.withShirts(): SaleCatalog {
+        val shirts = listOf(shirt, shirtS, shirtM)
+        return copy(products = products + shirts)
+    }
+
     private val requests = mutableListOf<SaleRequest>()
     private val symbols = NumberSymbols(decimalSeparator = ',', minusSign = '-', grouping = null)
 
@@ -164,6 +189,45 @@ class NewSaleScanTest {
         val line = model.state.cart.lines.single()
         assertEquals(COUNT_UNIT, line.unit)
         assertEquals(QuantityMilli(2_000L), line.quantity)
+    }
+
+    @Test
+    fun `a parent code opens its variant picker and adds no line`() = runTest(dispatcher) {
+        catalog.value = catalogOf(conversions + (shirt.id to shirtBox)).withShirts()
+        val model = viewModel()
+
+        model.act(this, NewSaleAction.AddScanned(shirt.id, unitId = null))
+
+        assertEquals(emptyList<Any>(), model.state.cart.lines)
+        val sheet = model.state.sheet as SaleSheet.VariantPick
+        assertEquals(shirt.id, sheet.parentId)
+
+        model.act(this, NewSaleAction.PickVariantValue(0, "M"))
+
+        assertEquals(shirtM.id, model.state.cart.lines.single().productId)
+    }
+
+    @Test
+    fun `the code of a parent's box also opens the picker`() = runTest(dispatcher) {
+        catalog.value = catalogOf(conversions + (shirt.id to shirtBox)).withShirts()
+        val model = viewModel()
+
+        model.act(this, NewSaleAction.AddScanned(shirt.id, unitId = box.id))
+
+        assertEquals(emptyList<Any>(), model.state.cart.lines)
+        assertEquals(shirt.id, (model.state.sheet as SaleSheet.VariantPick).parentId)
+    }
+
+    @Test
+    fun `an external reader with a parent code opens the picker too`() = runTest(dispatcher) {
+        catalog.value = catalogOf(conversions).withShirts()
+        val model = viewModel()
+
+        model.act(this, NewSaleAction.QueryChange(SHIRT_CODE))
+        model.act(this, NewSaleAction.SubmitSearch)
+
+        assertEquals(emptyList<Any>(), model.state.cart.lines)
+        assertEquals(shirt.id, (model.state.sheet as SaleSheet.VariantPick).parentId)
     }
 
     @Test

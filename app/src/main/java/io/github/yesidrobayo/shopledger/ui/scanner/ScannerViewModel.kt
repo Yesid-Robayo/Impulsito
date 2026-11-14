@@ -215,7 +215,10 @@ class ScannerViewModel(
         if (state.closed || state.sheet != null) return@withLock
         val catalog = catalog ?: return@withLock take(ScanTake(code, match = null))
         when (val match = catalog.find(code)) {
-            is CodeMatch.Found -> take(ScanTake(code, match))
+            // El principal de unas variantes cierra el escáner: la pantalla que lo abrió muestra
+            // enseguida el selector, y la lectura no sigue con una variante sin elegir.
+            is CodeMatch.Found ->
+                take(ScanTake(code, match), endsSession = catalog.hasVariants(match.product.id))
 
             is CodeMatch.Archived ->
                 showSheet(ScanSheet.Archived(code, match.product.id, match.product.details.name))
@@ -289,8 +292,11 @@ class ScannerViewModel(
         handle(sheet.code)
     }
 
-    /** Toma un código: lo entrega, lo cuenta y, si no es lectura continua, cierra el escáner. */
-    private fun take(taken: ScanTake) {
+    /**
+     * Toma un código: lo entrega, lo cuenta y, si no es lectura continua o [endsSession], cierra
+     * el escáner.
+     */
+    private fun take(taken: ScanTake, endsSession: Boolean = false) {
         if (mutableState.value.closed) return
         deliver(taken)
         mutableState.update {
@@ -299,7 +305,7 @@ class ScannerViewModel(
                 lastRead = taken.match?.product?.details?.name ?: taken.code,
                 readPulse = it.readPulse + 1,
                 slowHint = false,
-                closed = !it.continuous,
+                closed = !it.continuous || endsSession,
             )
         }
         restartSlowHint()

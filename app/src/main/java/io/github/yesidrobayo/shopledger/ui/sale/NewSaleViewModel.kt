@@ -355,13 +355,15 @@ class NewSaleViewModel(
 
     /**
      * Agrega un producto que trajo el escáner. Una línea nueva toma la unidad del código leído, si
-     * era el de una presentación; una que ya estaba suma uno en la unidad que tiene.
+     * era el de una presentación; una que ya estaba suma uno en la unidad que tiene. El principal
+     * de unas variantes abre su selector, con el código que sea: nunca entra como una línea.
      */
     private fun addScanned(productId: Long, unitId: Long?) {
         val catalog = readyCatalog() ?: return
         val product = catalog.products.firstOrNull { it.id == productId } ?: return
         val isNew = SaleCart.quantityOf(draft.value.lines, productId) == QuantityMilli.ZERO
-        if (unitId == null || unitId == product.details.baseUnitId || !isNew) {
+        val parent = VariantChoices.variantsOf(catalog, productId).isNotEmpty()
+        if (parent || unitId == null || unitId == product.details.baseUnitId || !isNew) {
             addProduct(productId)
             return
         }

@@ -18,6 +18,12 @@ interface ScanCatalog {
     suspend fun assign(productId: Long, code: String): AssignBarcodeResult
 
     suspend fun reactivate(productId: Long): ReactivateProductResult
+
+    /**
+     * Si [productId] es el principal de unas variantes: no se vende ni se compra él, sino una de
+     * ellas, que se elige en la pantalla que abrió el escáner.
+     */
+    suspend fun hasVariants(productId: Long): Boolean
 }
 
 /** Un producto que puede recibir el código leído, con su nombre normalizado para buscarlo. */

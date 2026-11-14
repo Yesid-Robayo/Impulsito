@@ -42,4 +42,7 @@ class PortsScanCatalog(private val ports: DataPorts, clock: Clock) : ScanCatalog
 
     override suspend fun reactivate(productId: Long): ReactivateProductResult =
         reactivateProduct(productId)
+
+    override suspend fun hasVariants(productId: Long): Boolean =
+        ports.productVariants.findVariants(productId).isNotEmpty()
 }

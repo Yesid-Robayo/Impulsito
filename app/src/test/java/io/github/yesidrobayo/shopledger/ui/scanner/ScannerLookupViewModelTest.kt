@@ -72,6 +72,24 @@ class ScannerLookupViewModelTest {
     }
 
     @Test
+    fun aParentCodeIsTakenAndEndsAContinuousSession() = runTest(dispatcher) {
+        val model = model(continuous = true)
+        val frames = model.openFrameSink()
+
+        model.read(frames, OIL_CODE)
+        runCurrent()
+        assertFalse(model.uiState.value.closed)
+        model.read(frames, SHIRT_CODE)
+        runCurrent()
+        model.read(frames, OIL_CODE)
+        runCurrent()
+
+        // El aceite sigue la lectura; la camiseta la cierra, para elegir su variante enseguida.
+        assertEquals(listOf(OIL_CODE, SHIRT_CODE), taken.map { it.code })
+        assertTrue(model.uiState.value.closed)
+    }
+
+    @Test
     fun aBoxCodeIsTakenWithItsUnit() = runTest(dispatcher) {
         val model = model()
         val frames = model.openFrameSink()
@@ -244,6 +262,8 @@ class ScannerLookupViewModelTest {
 
             BOX_CODE -> CodeMatch.Found(OIL, BOX)
 
+            SHIRT_CODE -> CodeMatch.Found(SHIRT, null)
+
             ARCHIVED_CODE ->
                 if (archivedIsActive) {
                     CodeMatch.Found(ARCHIVED, null)
@@ -267,6 +287,8 @@ class ScannerLookupViewModelTest {
             if (reactivateResult == ReactivateProductResult.Reactivated) archivedIsActive = true
             return reactivateResult
         }
+
+        override suspend fun hasVariants(productId: Long): Boolean = productId == SHIRT.id
     }
 
     private object NoLog : EventLog {
@@ -279,10 +301,12 @@ class ScannerLookupViewModelTest {
         const val OIL_CODE = "2900000123458"
         const val BOX_CODE = "2900000999992"
         const val ARCHIVED_CODE = "2900000555551"
+        const val SHIRT_CODE = "2900000777773"
         const val UNKNOWN_CODE = "P00000042"
         val OIL = product(1L, "Aceite 900 ml")
         val NEW = product(2L, "Jabón de avena")
         val ARCHIVED = product(3L, "Arroz 1 kg")
+        val SHIRT = product(4L, "Camiseta básica")
         val CANDIDATE = ScanCandidate(NEW.id, NEW.details.name, "jabon de avena")
         val BOX =
             ProductConversion(
