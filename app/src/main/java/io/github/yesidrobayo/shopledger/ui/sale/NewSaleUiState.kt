@@ -26,6 +26,9 @@ import kotlinx.datetime.DayOfWeek
  *
  * Con [quote], la pantalla arma una cotización: sin pagos y con `Guardar cotización`. [quoteSaved]
  * llega una sola vez, con el número de la cotización que se guardó.
+ *
+ * Con [order], arma un pedido del mismo modo, con `Guardar pedido`, y [orderSaved] llega una vez con
+ * su número. Con [delivery], es la venta que entrega un pedido.
  */
 @Immutable
 data class NewSaleUiState(
@@ -48,6 +51,9 @@ data class NewSaleUiState(
     val lots: Map<Long, LotChoices> = emptyMap(),
     val quote: QuoteEditing? = null,
     val quoteSaved: Long? = null,
+    val order: OrderEditing? = null,
+    val orderSaved: Long? = null,
+    val delivery: DeliveryBand? = null,
 )
 
 /**
@@ -261,6 +267,8 @@ sealed interface SaleSheet {
      * eje, en orden. Al completar los ejes se agrega la línea y la hoja se cierra, sin botón extra.
      */
     data class SaveQuote(val form: QuoteSaveSheet) : SaleSheet
+
+    data class SaveOrder(val form: OrderSaveSheet) : SaleSheet
 
     data class VariantPick(
         val parentId: Long,

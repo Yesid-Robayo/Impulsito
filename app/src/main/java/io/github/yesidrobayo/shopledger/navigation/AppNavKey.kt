@@ -423,6 +423,10 @@ data class PurchasePrefillLine(
  * - [EditQuote] abre una cotización abierta con sus líneas, para guardarla encima.
  * - [FromQuote] abre una venta con las líneas de una cotización: al registrarla, la cotización queda
  *   convertida en la misma transacción. Con [useCurrentPrices], las líneas toman el precio de hoy.
+ * - [NewOrder] arma un pedido nuevo: la misma pantalla, sin pagos y con `Guardar pedido`.
+ * - [EditOrder] abre un pedido sin entregar con sus líneas, para guardarlo encima.
+ * - [FromOrder] abre la venta de la entrega de un pedido: sus líneas al precio acordado, su cliente
+ *   y su envío. Al registrarla, el pedido queda entregado en la misma transacción.
  */
 @Serializable
 sealed interface SaleDocumentMode {
@@ -434,4 +438,13 @@ sealed interface SaleDocumentMode {
 
     @Serializable
     data class FromQuote(val quoteId: Long, val useCurrentPrices: Boolean) : SaleDocumentMode
+
+    @Serializable
+    data object NewOrder : SaleDocumentMode
+
+    @Serializable
+    data class EditOrder(val orderId: Long) : SaleDocumentMode
+
+    @Serializable
+    data class FromOrder(val orderId: Long) : SaleDocumentMode
 }

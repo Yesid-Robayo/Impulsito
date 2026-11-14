@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.expense.ExpensesRoute
+import io.github.yesidrobayo.shopledger.ui.order.OrdersRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.PurchaseHistoryRoute
 import io.github.yesidrobayo.shopledger.ui.quote.QuotesRoute
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +36,9 @@ enum class RecordsTab {
 
     /** Solo aparece si hay al menos una cotización. */
     QUOTES,
+
+    /** Solo aparece si hay al menos un pedido. */
+    ORDERS,
 }
 
 /**
@@ -55,8 +59,8 @@ internal val LocalRecordsExtraSegments =
  * Cada segmento conserva su ViewModel mientras Registros esté abierto: volver a uno ya visto lo
  * muestra con los filtros que tenía.
  *
- * `Cotizaciones` solo aparece si hay al menos una: quien no cotiza no ve nada nuevo. Si deja de
- * haberla mientras está elegido, vuelve a `Ventas`.
+ * `Cotizaciones` solo aparece si hay al menos una, y `Pedidos` si hay al menos uno: quien no los usa
+ * no ve nada nuevo. Si deja de haberlos mientras está elegido, vuelve a `Ventas`.
  */
 @Composable
 fun RecordsRoute(navigator: AppNavigator) {
@@ -78,6 +82,8 @@ fun RecordsRoute(navigator: AppNavigator) {
                 ExpensesRoute(AppNavKey.Expenses(), navigator, onSegment = select)
 
             RecordsTab.QUOTES -> QuotesRoute(navigator, asTab = true, onSegment = select)
+
+            RecordsTab.ORDERS -> OrdersRoute(navigator, asTab = true, onSegment = select)
         }
     }
 }
@@ -115,4 +121,5 @@ internal class RecordsSegmentsViewModel(usage: Flow<Set<BusinessTool>>) : ViewMo
 private fun RecordsTab.toolOf(): BusinessTool? = when (this) {
     RecordsTab.SALES, RecordsTab.PURCHASES, RecordsTab.EXPENSES -> null
     RecordsTab.QUOTES -> BusinessTool.QUOTES
+    RecordsTab.ORDERS -> BusinessTool.ORDERS
 }

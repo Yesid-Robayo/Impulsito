@@ -34,8 +34,12 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.HeldSaleRules
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCart
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrection
 import io.github.yesidrobayo.shopledger.domain.usecase.document.DocumentLineRejection
+import io.github.yesidrobayo.shopledger.domain.usecase.document.OrderDeliveryResult
+import io.github.yesidrobayo.shopledger.domain.usecase.document.OrderRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteRequest
+import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveOrderResult
+import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveOrderUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveQuoteResult
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.returns.ExchangeResult
@@ -142,9 +146,33 @@ class NewSaleViewModel(
     /** La cotización que se arma, o `null` si se vende. */
     private val quoteMode: QuoteEditing? = when (document) {
         SaleDocumentMode.NewQuote -> QuoteEditing(editingId = null)
+
         is SaleDocumentMode.EditQuote -> QuoteEditing(editingId = document.quoteId)
-        is SaleDocumentMode.FromQuote, null -> null
+
+        is SaleDocumentMode.FromQuote,
+        SaleDocumentMode.NewOrder,
+        is SaleDocumentMode.EditOrder,
+        is SaleDocumentMode.FromOrder,
+        null,
+        -> null
     }
+
+    /** El pedido que se arma, o `null` si se vende. */
+    private val orderMode: OrderEditing? = when (document) {
+        SaleDocumentMode.NewOrder -> OrderEditing(editingId = null)
+
+        is SaleDocumentMode.EditOrder -> OrderEditing(editingId = document.orderId)
+
+        SaleDocumentMode.NewQuote,
+        is SaleDocumentMode.EditQuote,
+        is SaleDocumentMode.FromQuote,
+        is SaleDocumentMode.FromOrder,
+        null,
+        -> null
+    }
+
+    /** La entrega, el envío y el cliente del pedido que se edita, leídos al abrirlo. */
+    private var orderSeed: OrderSaveSheet? = null
 
     // Los clientes que se pueden elegir para una cotización. Una falla solo deja la lista vacía.
     private val quoteCustomers: StateFlow<List<Customer>> = documents.customers()
@@ -216,6 +244,10 @@ class NewSaleViewModel(
             state.copy(heldCount = list.count { it.id != state.heldSaleId })
         }
         .combine(lotInfo) { state, info -> withLots(state, info) }
+        .combine(quoteCustomers) { state, people ->
+            // El saldo a favor de la entrega se vuelve a leer cuando llegan los clientes.
+            state.copy(delivery = deliveryOf(draft.value, people))
+        }
         .flowOn(computation)
         .stateIn(
             viewModelScope,
@@ -235,7 +267,9 @@ class NewSaleViewModel(
             when (document) {
                 is SaleDocumentMode.EditQuote -> prefillQuote(document.quoteId)
                 is SaleDocumentMode.FromQuote -> prefillConversion(document)
-                SaleDocumentMode.NewQuote, null -> Unit
+                is SaleDocumentMode.EditOrder -> prefillOrder(document.orderId)
+                is SaleDocumentMode.FromOrder -> prefillDelivery(document.orderId)
+                SaleDocumentMode.NewQuote, SaleDocumentMode.NewOrder, null -> Unit
             }
         }
     }
@@ -388,6 +422,60 @@ class NewSaleViewModel(
             NewSaleAction.ConfirmSaveQuote -> confirmSaveQuote()
 
             NewSaleAction.QuoteSavedShown -> overlay.update { it.copy(quoteSaved = null) }
+
+            NewSaleAction.OpenSaveOrder -> openSaveOrder()
+
+            is NewSaleAction.OrderDueDateChange -> editOrderForm {
+                it.copy(dueDate = action.date, failed = false)
+            }
+
+            is NewSaleAction.OrderTextChange -> editOrderForm {
+                when (action.field) {
+                    OrderTextField.ADDRESS -> it.copy(address = action.text, textTooLong = false)
+
+                    OrderTextField.NOTE -> it.copy(deliveryNote = action.text, textTooLong = false)
+
+                    OrderTextField.SHIPPING ->
+                        it.copy(shippingText = action.text, shippingError = false)
+                }
+            }
+
+            NewSaleAction.OrderOpenCustomers -> editOrderForm {
+                it.copy(choosingCustomer = true, customerQuery = "")
+            }
+
+            NewSaleAction.OrderCloseCustomers -> editOrderForm {
+                it.copy(choosingCustomer = false, customerQuery = "")
+            }
+
+            is NewSaleAction.OrderCustomerQuery -> editOrderForm {
+                it.copy(customerQuery = action.query)
+            }
+
+            is NewSaleAction.OrderPickCustomer -> {
+                changeDraft { it.copy(customerId = action.customerId) }
+                editOrderForm {
+                    it.copy(
+                        customerId = action.customerId,
+                        choosingCustomer = false,
+                        failed = false,
+                    )
+                }
+            }
+
+            NewSaleAction.OrderRemoveCustomer -> {
+                changeDraft { it.copy(customerId = null) }
+                editOrderForm { it.copy(customerId = null) }
+            }
+
+            // Crear un cliente es otra pantalla: la ruta la abre y la hoja queda como estaba.
+            is NewSaleAction.OrderNewCustomer -> editOrderForm {
+                it.copy(choosingCustomer = false, customerQuery = "")
+            }
+
+            NewSaleAction.ConfirmSaveOrder -> confirmSaveOrder()
+
+            NewSaleAction.OrderSavedShown -> overlay.update { it.copy(orderSaved = null) }
         }
     }
 
@@ -797,8 +885,15 @@ class NewSaleViewModel(
             openSaveQuote()
             return
         }
+        // Un pedido tampoco: se guarda con la suya.
+        if (orderMode != null) {
+            openSaveOrder()
+            return
+        }
         val catalog = readyCatalog() ?: return
         val current = draft.value
+        // Una entrega con envío o con saldo a favor se confirma en el cobro, que los muestra.
+        if (deliveryOf(current, quoteCustomers.value)?.needsCheckout == true) return
         val preview = previewOf(catalog, current)
         if (current.lines.isEmpty()) return
         val total = preview.total
@@ -843,7 +938,11 @@ class NewSaleViewModel(
                 locationId = catalog.saleLocationId(current.locationId),
                 // Una venta de una cotización la deja convertida, con el cliente cotizado.
                 quoteId = current.quoteId,
-                customerId = current.customerId.takeIf { current.quoteId != null },
+                customerId = current.customerId.takeIf {
+                    current.quoteId != null || current.orderId != null
+                },
+                // La venta de una entrega deja el pedido entregado, con el cliente del pedido.
+                orderId = current.orderId,
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> {
@@ -1250,6 +1349,215 @@ class NewSaleViewModel(
         )
     }
 
+    // ------------------------------------------------------------------ pedidos
+
+    /**
+     * Abre el pedido guardado [orderId] para editarlo: sus líneas con el precio acordado escrito y
+     * su cliente; la entrega y el envío esperan en la hoja. Si ya no se puede leer, abre vacía y lo
+     * dice.
+     */
+    private fun prefillOrder(orderId: Long) {
+        viewModelScope.launch {
+            val view = (readOutcome { documents.order(orderId) } as? ReadOutcome.Read)?.value
+            if (view == null) {
+                changeDraft { it.copy(prefilled = true) }
+                overlay.update { it.copy(notice = SaleNotice.CORRECTION_FAILED) }
+                return@launch
+            }
+            val order = view.order
+            orderSeed = OrderSaveSheet(
+                dueDate = order.dueDate,
+                address = order.deliveryAddress.orEmpty(),
+                deliveryNote = order.deliveryNote.orEmpty(),
+                shippingText = if (order.shippingAmount == Money.ZERO) {
+                    ""
+                } else {
+                    moneyText(order.shippingAmount)
+                },
+            )
+            changeDraft {
+                it.copy(
+                    lines = QuoteLines.requestsOf(view.lines.map { line -> line.line }),
+                    customerId = order.customerId,
+                    prefilled = true,
+                )
+            }
+        }
+    }
+
+    /**
+     * Abre la venta que entrega el pedido [orderId]: sus líneas al precio acordado, su cliente con su
+     * lista y su envío. Las líneas de productos archivados quedan fuera, y se dice cuántas.
+     */
+    private fun prefillDelivery(orderId: Long) {
+        viewModelScope.launch {
+            val result = readOrNull { documents.delivery(orderId) }
+            val delivery = (result as? OrderDeliveryResult.Ready)?.delivery
+            if (delivery == null) {
+                changeDraft { it.copy(prefilled = true) }
+                overlay.update { it.copy(notice = SaleNotice.CORRECTION_FAILED) }
+                return@launch
+            }
+            changeDraft {
+                it.copy(
+                    lines = delivery.lines,
+                    customerId = delivery.customerId,
+                    priceListId = delivery.priceListId,
+                    orderId = delivery.orderId,
+                    shipping = delivery.shippingAmount,
+                    prefilled = true,
+                )
+            }
+            val leftOut = delivery.archivedLines
+            if (leftOut > 0) {
+                overlay.update { it.copy(notice = SaleNotice.LINES_LEFT_OUT, leftOut = leftOut) }
+            }
+        }
+    }
+
+    /** Abre la hoja de `Guardar pedido` con el cliente y lo que ya traía el pedido editado. */
+    private fun openSaveOrder() {
+        val current = draft.value
+        if (current.lines.isEmpty()) return
+        val seed = orderSeed ?: OrderSaveSheet()
+        showSheet(
+            SaleSheet.SaveOrder(
+                seed.copy(customerId = current.customerId, today = readyCatalog()?.today),
+            ),
+        )
+    }
+
+    private fun editOrderForm(change: (OrderSaveSheet) -> OrderSaveSheet) =
+        overlay.update { shown ->
+            val sheet = shown.sheet as? SaleSheet.SaveOrder ?: return@update shown
+            shown.copy(sheet = SaleSheet.SaveOrder(change(sheet.form)))
+        }
+
+    /** El cobro por envío escrito: cero en blanco, o `null` si no se puede leer o es negativo. */
+    private fun shippingOf(text: String): Money? {
+        val read = NumberInputParser.money(
+            text,
+            numbers.moneySymbols,
+            numbers.currencyDecimals,
+            Limit.DOCUMENT_TOTAL,
+        )
+        return when (read) {
+            NumberInput.Blank -> Money.ZERO
+            is NumberInput.Value -> read.value.takeIf { it >= Money.ZERO }
+            NumberInput.Malformed, is NumberInput.TooManyDecimals, is NumberInput.TooLarge -> null
+        }
+    }
+
+    /**
+     * Guarda el pedido. En modo pedido, la pantalla se cierra con el aviso; desde una venta, la
+     * venta se vacía: sus líneas quedaron en el pedido. Si no se guardó, la hoja sigue abierta con lo
+     * escrito y dice por qué.
+     */
+    private fun confirmSaveOrder() {
+        val sheet = overlay.value.sheet as? SaleSheet.SaveOrder ?: return
+        val form = sheet.form
+        if (form.working) return
+        val catalog = readyCatalog() ?: return
+        val shipping = shippingOf(form.shippingText)
+        if (shipping == null) {
+            editOrderForm { it.copy(shippingError = true) }
+            return
+        }
+        if (form.address.trim().length > SaveOrderUseCase.MAX_TEXT_LENGTH ||
+            form.deliveryNote.trim().length > SaveOrderUseCase.MAX_TEXT_LENGTH
+        ) {
+            editOrderForm { it.copy(textTooLong = true) }
+            return
+        }
+        val current = draft.value
+        editOrderForm { it.copy(working = true, failed = false, extras = false, noLines = false) }
+        viewModelScope.launch {
+            val request = OrderRequest(
+                // El lote se elige al entregar: un pedido no lo guarda.
+                lines = current.lines.map { it.copy(lotId = null) },
+                customerId = form.customerId,
+                dueDate = form.dueDate,
+                deliveryAddress = form.address,
+                deliveryNote = form.deliveryNote,
+                shippingAmount = shipping,
+                priceListId = catalog.salePriceList(current.priceListId)?.listId,
+                orderId = orderMode?.editingId,
+            )
+            when (val result = readOrNull { documents.saveOrder(request) }) {
+                is SaveOrderResult.Saved -> {
+                    changeDraft { SaleDraft(methodId = it.methodId, prefilled = true) }
+                    orderSeed = null
+                    overlay.update {
+                        it.copy(
+                            sheet = null,
+                            orderSaved = result.orderId,
+                            closed = orderMode != null,
+                        )
+                    }
+                }
+
+                SaveOrderResult.CurrencyNotConfirmed -> showSheet(SaleSheet.CurrencyRequired)
+
+                SaveOrderResult.EmptyOrder -> editOrderForm {
+                    it.copy(working = false, noLines = true)
+                }
+
+                SaveOrderResult.TextTooLong -> editOrderForm {
+                    it.copy(working = false, textTooLong = true)
+                }
+
+                SaveOrderResult.InvalidShipping -> editOrderForm {
+                    it.copy(working = false, shippingError = true)
+                }
+
+                is SaveOrderResult.LineRejected -> editOrderForm {
+                    val extra = result.reason == DocumentLineRejection.EXTRA_NOT_SUPPORTED
+                    it.copy(working = false, extras = extra, failed = !extra)
+                }
+
+                null,
+                SaveOrderResult.TooManyLines,
+                SaveOrderResult.CustomerUnavailable,
+                SaveOrderResult.PriceListUnavailable,
+                SaveOrderResult.TotalTooLarge,
+                SaveOrderResult.OrderNotOpen,
+                is SaveOrderResult.UnknownTimeZone,
+                is SaveOrderResult.StorageFailed,
+                -> editOrderForm { it.copy(working = false, failed = true) }
+            }
+        }
+    }
+
+    /** La hoja del pedido con el nombre del cliente elegido y, si se busca, la lista. */
+    private fun withOrderCustomers(sheet: SaleSheet): SaleSheet {
+        if (sheet !is SaleSheet.SaveOrder) return sheet
+        val form = sheet.form
+        val all = quoteCustomers.value
+        val chosen = all.firstOrNull { it.id == form.customerId }
+        return SaleSheet.SaveOrder(
+            form.copy(
+                customerName = chosen?.contact?.name,
+                customerBalance = chosen?.balance ?: Money.ZERO,
+                customerChoices = if (form.choosingCustomer) {
+                    CustomerSearch.filter(all, form.customerQuery)
+                } else {
+                    emptyList()
+                },
+            ),
+        )
+    }
+
+    /**
+     * La entrega que arma [current], si sale de un pedido, con el saldo a favor de su cliente entre
+     * [people]: lo que tiene a favor, cero si no tiene o si ya no se puede elegir.
+     */
+    private fun deliveryOf(current: SaleDraft, people: List<Customer>): DeliveryBand? {
+        val orderId = current.orderId ?: return null
+        val balance = people.firstOrNull { it.id == current.customerId }?.balance ?: Money.ZERO
+        val credit = if (balance < Money.ZERO) -balance else Money.ZERO
+        return DeliveryBand(orderId, current.shipping, credit)
+    }
+
     // ------------------------------------------------------------------ catálogo
     private fun onCatalog(catalog: SaleCatalog) {
         val current = draft.value
@@ -1356,7 +1664,8 @@ class NewSaleViewModel(
                 cart = SaleContentBuilder.cart(catalog, current, previewOf(catalog, current))
                     .copy(
                         noteTooLong = current.note.length > MAX_NOTE_LENGTH,
-                        forQuote = quoteMode != null,
+                        // Un pedido se arma igual que una cotización: sin fecha ni espera.
+                        forQuote = quoteMode != null || orderMode != null,
                     )
                 payment = SalePaymentState(
                     methods = catalog.methods.map {
@@ -1378,7 +1687,9 @@ class NewSaleViewModel(
             cart = cart,
             payment = payment,
             sheet = shown.sheet?.let {
-                withQuoteCustomers(withLineExtras(withLineIssue(it, cart), load, current))
+                withOrderCustomers(
+                    withQuoteCustomers(withLineExtras(withLineIssue(it, cart), load, current)),
+                )
             },
             dialog = shown.dialog,
             status = shown.status,
@@ -1392,6 +1703,9 @@ class NewSaleViewModel(
             canScan = (load as? CatalogLoad.Ready)?.catalog?.hasCodes() == true,
             quote = quoteMode,
             quoteSaved = shown.quoteSaved,
+            order = orderMode,
+            orderSaved = shown.orderSaved,
+            delivery = deliveryOf(current, quoteCustomers.value),
         )
     }
 
@@ -1557,6 +1871,7 @@ class NewSaleViewModel(
         val closed: Boolean = false,
         val heldNotice: HeldNotice? = null,
         val quoteSaved: Long? = null,
+        val orderSaved: Long? = null,
     )
 
     companion object {

@@ -247,6 +247,7 @@ internal fun recordsTabLabel(tab: RecordsTab): Int = when (tab) {
     RecordsTab.PURCHASES -> R.string.records_tab_purchases
     RecordsTab.EXPENSES -> R.string.records_tab_expenses
     RecordsTab.QUOTES -> R.string.quote_tab
+    RecordsTab.ORDERS -> R.string.order_tab
 }
 
 /**

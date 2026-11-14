@@ -157,7 +157,7 @@ fun NewSaleScreen(
             val compact = isLargeText() || maxHeight < SHORT_HEIGHT
             Column(Modifier.fillMaxSize()) {
                 AppTopBar(
-                    title = stringResource(titleOf(uiState.quote)),
+                    title = stringResource(titleOf(uiState.quote, uiState.order)),
                     navigation = TopBarNavigation.CLOSE,
                     onNavigate = { onAction(NewSaleAction.Close) },
                     navigationLabel = stringResource(R.string.a11y_close),
@@ -341,14 +341,24 @@ private fun SalePanel(
                 }
                 if (!cart.isEmpty) {
                     val quoting = uiState.quote != null
-                    val primary =
-                        if (quoting) NewSaleAction.OpenSaveQuote else NewSaleAction.Register
-                    // Una cotización no se cobra: sin métodos ni más opciones de cobro.
-                    if (!quoting) PaymentChoice(uiState.payment, onAction, compact)
+                    val ordering = uiState.order != null
+                    val delivery = uiState.delivery
+                    val primary = when {
+                        quoting -> NewSaleAction.OpenSaveQuote
+
+                        ordering -> NewSaleAction.OpenSaveOrder
+
+                        // El envío y el saldo a favor de una entrega se ven y se cobran en el cobro.
+                        delivery?.needsCheckout == true -> NewSaleAction.OpenCheckout
+
+                        else -> NewSaleAction.Register
+                    }
+                    // Una cotización o un pedido no se cobran: sin métodos ni más opciones de cobro.
+                    if (!quoting && !ordering) PaymentChoice(uiState.payment, onAction, compact)
                     SaleSummary(cart, onAction, opensCart)
                     val exchange = uiState.exchange
                     when {
-                        quoting -> Unit
+                        quoting || ordering -> Unit
                         exchange == null -> CheckoutActions(uiState, onAction)
                         else -> exchange.difference?.let { ExchangeDifferenceText(it) }
                     }
@@ -364,6 +374,8 @@ private fun SalePanel(
                         text = stringResource(
                             when {
                                 quoting -> R.string.quote_save_action
+                                ordering -> R.string.order_save_action
+                                delivery != null -> R.string.order_deliver_action
                                 uiState.exchange == null -> R.string.sale_register
                                 else -> R.string.sale_return_exchange_register_action
                             },
@@ -855,8 +867,10 @@ private const val ARCHIVED = "archived"
 @Composable
 private fun HeldSaleActions(uiState: NewSaleUiState, onAction: (NewSaleAction) -> Unit) {
     // Un cambio no se pone en espera: su devolución vive en la pantalla de debajo. Una cotización
-    // tampoco: ya se guarda como cotización.
+    // o un pedido tampoco: ya se guardan como tales. La entrega de un pedido no se guarda aparte:
+    // perdería el pedido que entrega.
     if (uiState.exchange != null || uiState.quote != null) return
+    if (uiState.order != null || uiState.delivery != null) return
     if (uiState.heldCount > 0) {
         InlineTextButton(
             text = stringResource(R.string.draft_badge, uiState.heldCount),
@@ -874,17 +888,23 @@ private fun HeldSaleActions(uiState: NewSaleUiState, onAction: (NewSaleAction) -
                     label = stringResource(R.string.quote_save_from_sale_action),
                     onClick = { onAction(NewSaleAction.OpenSaveQuote) },
                 ),
+                OverflowAction(
+                    label = stringResource(R.string.order_save_from_sale_action),
+                    onClick = { onAction(NewSaleAction.OpenSaveOrder) },
+                ),
             ),
         )
     }
 }
 
-/** El título de la pantalla: la venta, o la cotización nueva o editada. */
+/** El título de la pantalla: la venta, la cotización o el pedido, nuevos o editados. */
 @StringRes
-private fun titleOf(quote: QuoteEditing?): Int = when {
-    quote == null -> R.string.sale_new_title
-    quote.editingId == null -> R.string.quote_new_title
-    else -> R.string.quote_edit_title
+private fun titleOf(quote: QuoteEditing?, order: OrderEditing?): Int = when {
+    quote != null && quote.editingId == null -> R.string.quote_new_title
+    quote != null -> R.string.quote_edit_title
+    order != null && order.editingId == null -> R.string.order_new_title
+    order != null -> R.string.order_edit_title
+    else -> R.string.sale_new_title
 }
 
 /** Los mensajes de [notice], en orden, con su tipo. */

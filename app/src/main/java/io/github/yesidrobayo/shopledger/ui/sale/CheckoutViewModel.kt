@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -130,9 +131,14 @@ class CheckoutViewModel(
             val taken = offered()
             sale = taken?.draft?.takeIf { it.lines.isNotEmpty() }
             qrOnly = taken?.qrOnly ?: false
-            // La venta abierta desde un cliente llega con él elegido.
+            // La venta abierta desde un cliente llega con él elegido, y la entrega de un pedido
+            // con su envío en el ajuste de la venta, que es ingreso.
             editing = MutableStateFlow(
-                Editing(customerId = sale?.customerId, priceListId = sale?.priceListId),
+                Editing(
+                    customerId = sale?.customerId,
+                    priceListId = sale?.priceListId,
+                    adjustment = sale?.shipping ?: Money.ZERO,
+                ),
             )
             if (sale != null) {
                 SaleDraftStore.write(savedState, sale)
@@ -612,6 +618,20 @@ class CheckoutViewModel(
             it.copy(payments = listOf(Written(methodId, due, moneyText(due))), started = true)
         }
         if (qrOnly) showQr(0)
+        if (current.orderId != null) applyOrderCredit(current)
+    }
+
+    /**
+     * La entrega de un pedido usa de entrada el saldo a favor de su cliente, que es su anticipo: lo
+     * cubierto va a crédito y el resto queda por cobrar. Espera a que llegue el cliente; la persona
+     * puede cambiar los pagos después.
+     */
+    private fun applyOrderCredit(current: SaleDraft) {
+        val customerId = current.customerId ?: return
+        viewModelScope.launch {
+            customers.first { list -> list.any { it.id == customerId } }
+            useCreditBalance()
+        }
     }
 
     private fun amount(index: Int, text: String) = changePayment(index) { written ->
@@ -1169,6 +1189,8 @@ class CheckoutViewModel(
                 locationId = catalog.saleLocationId(current.locationId),
                 // Una venta de una cotización la deja convertida, también desde aquí.
                 quoteId = current.quoteId,
+                // La venta de una entrega deja el pedido entregado en su misma transacción.
+                orderId = current.orderId,
             )
             when (val result = registerSale(request)) {
                 is RegisterSaleResult.Registered -> overlay.update {

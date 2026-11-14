@@ -72,6 +72,8 @@ import io.github.yesidrobayo.shopledger.ui.location.NewTransferRoute
 import io.github.yesidrobayo.shopledger.ui.lot.LotsRoute
 import io.github.yesidrobayo.shopledger.ui.money.MoneyAccountsRoute
 import io.github.yesidrobayo.shopledger.ui.onboarding.OnboardingRoute
+import io.github.yesidrobayo.shopledger.ui.order.OrderDetailRoute
+import io.github.yesidrobayo.shopledger.ui.order.OrdersRoute
 import io.github.yesidrobayo.shopledger.ui.payable.PayableDetailRoute
 import io.github.yesidrobayo.shopledger.ui.payable.PayablesRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodFormRoute
@@ -313,6 +315,11 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.Quotes -> when (val quoteId = key.quoteId) {
             null -> QuotesRoute(navigator, asTab = false)
             else -> QuoteDetailRoute(quoteId, navigator)
+        }
+
+        is AppNavKey.Orders -> when (val orderId = key.orderId) {
+            null -> OrdersRoute(navigator, asTab = false)
+            else -> OrderDetailRoute(orderId, navigator)
         }
 
         is AppNavKey.SaleReturn -> SaleReturnRoute(key, navigator)

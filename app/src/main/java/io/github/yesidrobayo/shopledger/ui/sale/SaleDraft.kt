@@ -30,6 +30,10 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
  *   última. Solo se elige con más de una ubicación.
  * @param quoteId la cotización de la que sale esta venta, si sale de una: al registrarla, queda
  *   convertida en la misma transacción.
+ * @param orderId el pedido que se entrega con esta venta, si sale de uno: al registrarla, queda
+ *   entregado en la misma transacción.
+ * @param shipping el cobro por envío del pedido que se entrega: entra en el ajuste de la venta, que
+ *   es ingreso. Cero sin pedido.
  */
 data class SaleDraft(
     val lines: List<SaleLineRequest> = emptyList(),
@@ -44,6 +48,8 @@ data class SaleDraft(
     val priceListId: Long? = null,
     val locationId: Long? = null,
     val quoteId: Long? = null,
+    val orderId: Long? = null,
+    val shipping: Money = Money.ZERO,
 )
 
 /**
@@ -68,6 +74,8 @@ internal object SaleDraftStore {
     private const val PRICE_LIST = "sale.priceList"
     private const val LOCATION = "sale.location"
     private const val QUOTE = "sale.quote"
+    private const val ORDER = "sale.order"
+    private const val SHIPPING = "sale.shipping"
 
     private const val FIELDS = 9
     private const val UNIT = 6
@@ -93,6 +101,8 @@ internal object SaleDraftStore {
         priceListId = state.get<Long>(PRICE_LIST),
         locationId = state.get<Long>(LOCATION),
         quoteId = state.get<Long>(QUOTE),
+        orderId = state.get<Long>(ORDER),
+        shipping = Money(state.get<Long>(SHIPPING) ?: 0L),
     )
 
     fun write(state: SavedStateHandle, draft: SaleDraft) {
@@ -108,6 +118,8 @@ internal object SaleDraftStore {
         state[PRICE_LIST] = draft.priceListId
         state[LOCATION] = draft.locationId
         state[QUOTE] = draft.quoteId
+        state[ORDER] = draft.orderId
+        state[SHIPPING] = draft.shipping.minor
     }
 
     private fun encode(lines: List<SaleLineRequest>): LongArray {

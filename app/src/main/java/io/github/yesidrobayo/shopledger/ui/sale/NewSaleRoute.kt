@@ -15,11 +15,18 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.document.ObserveOrdersUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.ObserveQuotesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.document.OrderDeliveryResult
+import io.github.yesidrobayo.shopledger.domain.usecase.document.OrderRequest
+import io.github.yesidrobayo.shopledger.domain.usecase.document.OrderView
+import io.github.yesidrobayo.shopledger.domain.usecase.document.PrepareOrderDeliveryUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.PrepareQuoteConversionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.document.QuoteView
+import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveOrderResult
+import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveOrderUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveQuoteResult
 import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveQuoteUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payment.ObserveCashRoundingUseCase
@@ -131,6 +138,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     locations = ports.locations,
                     lots = ports.stockLots,
                     quotes = ports.quotes,
+                    orders = ports.orders,
                 )
             val hold =
                 HoldSaleUseCase(
@@ -261,6 +269,19 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                 // El mensaje vive en la navegación: sigue a la vista al cerrar la cotización.
                 messages.show(AppSnackbarVisuals(quoteSavedText, SnackbarVariant.SUCCESS))
             }
+            val orderSaved = uiState.orderSaved
+            val orderSavedText = orderSaved?.let {
+                stringResource(
+                    R.string.order_saved,
+                    formats.quantity.format(QuantityMilli.ofUnits(it), allowsFraction = false),
+                )
+            }
+            LaunchedEffect(orderSaved) {
+                if (orderSaved == null || orderSavedText == null) return@LaunchedEffect
+                viewModel.onAction(NewSaleAction.OrderSavedShown)
+                // El mensaje vive en la navegación: sigue a la vista al cerrar el pedido.
+                messages.show(AppSnackbarVisuals(orderSavedText, SnackbarVariant.SUCCESS))
+            }
             LaunchedEffect(registered) {
                 if (registered == null || registeredText == null) return@LaunchedEffect
                 if (registered.exchanged) {
@@ -333,6 +354,8 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
 
                         is NewSaleAction.QuoteNewCustomer -> navigator.open(AppNavKey.Customers())
 
+                        is NewSaleAction.OrderNewCustomer -> navigator.open(AppNavKey.Customers())
+
                         else -> Unit
                     }
                 },
@@ -350,7 +373,7 @@ private fun undoSale(undo: SaleUndo, messages: AppMessages, saleId: Long, texts:
     }
 }
 
-/** Las cotizaciones de la venta nueva sobre los casos de uso de la base abierta. */
+/** Las cotizaciones y los pedidos de la venta nueva sobre los casos de uso de la base abierta. */
 private class SaleQuoteOperations(dependencies: ScreenDependencies) : SaleDocumentOperations {
     private val ports = dependencies.ports
     private val clock = dependencies.container.clock
@@ -388,4 +411,38 @@ private class SaleQuoteOperations(dependencies: ScreenDependencies) : SaleDocume
     override suspend fun conversion(quoteId: Long): QuoteConversionResult = prepare(quoteId)
 
     override fun customers(): Flow<List<Customer>> = ports.customers.observeSelectable()
+
+    private val saveOrderUseCase = SaveOrderUseCase(
+        transactions = ports.transactions,
+        settings = ports.settings,
+        orders = ports.orders,
+        customers = ports.customers,
+        clock = clock,
+        products = ports.products,
+        units = ports.units,
+        taxRates = ports.taxRates,
+        systemRows = ports.systemRows,
+        productUnits = ports.productUnits,
+        priceLists = ports.priceLists,
+        productPrices = ports.productPrices,
+    )
+    private val observeOrders = ObserveOrdersUseCase(
+        ports.orders,
+        ports.customers,
+        ports.products,
+        ports.productComponents,
+    )
+    private val prepareDelivery = PrepareOrderDeliveryUseCase(
+        ports.transactions,
+        ports.orders,
+        ports.products,
+        ports.customers,
+    )
+
+    override suspend fun saveOrder(request: OrderRequest): SaveOrderResult =
+        saveOrderUseCase(request)
+
+    override suspend fun order(orderId: Long): OrderView? = observeOrders.detail(orderId).first()
+
+    override suspend fun delivery(orderId: Long): OrderDeliveryResult = prepareDelivery(orderId)
 }

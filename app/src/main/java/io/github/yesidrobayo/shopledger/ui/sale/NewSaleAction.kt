@@ -149,6 +149,30 @@ sealed interface NewSaleAction {
 
     data object QuoteSavedShown : NewSaleAction
 
+    /** Abre la hoja de `Guardar pedido`, con las líneas de la venta. */
+    data object OpenSaveOrder : NewSaleAction
+
+    data class OrderDueDateChange(val date: BusinessDate?) : NewSaleAction
+
+    data class OrderTextChange(val field: OrderTextField, val text: String) : NewSaleAction
+
+    data object OrderOpenCustomers : NewSaleAction
+
+    data object OrderCloseCustomers : NewSaleAction
+
+    data class OrderCustomerQuery(val query: String) : NewSaleAction
+
+    data class OrderPickCustomer(val customerId: Long) : NewSaleAction
+
+    data object OrderRemoveCustomer : NewSaleAction
+
+    /** Crear un cliente que no está: lo resuelve la ruta, que abre Clientes. */
+    data class OrderNewCustomer(val name: String) : NewSaleAction
+
+    data object ConfirmSaveOrder : NewSaleAction
+
+    data object OrderSavedShown : NewSaleAction
+
     /** Ir a las ventas en espera. */
     data object OpenHeldSales : NewSaleAction
 

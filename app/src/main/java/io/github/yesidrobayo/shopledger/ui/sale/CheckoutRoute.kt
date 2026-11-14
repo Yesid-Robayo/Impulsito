@@ -104,6 +104,7 @@ fun CheckoutRoute(navigator: AppNavigator) {
                     locations = ports.locations,
                     lots = ports.stockLots,
                     quotes = ports.quotes,
+                    orders = ports.orders,
                 )
             val images = FindPaymentImagesUseCase(ports.transactions, ports.mediaAssets)
             val createCustomer =

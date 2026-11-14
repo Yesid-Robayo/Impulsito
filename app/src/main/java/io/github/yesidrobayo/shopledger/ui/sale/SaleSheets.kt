@@ -109,6 +109,8 @@ internal fun SaleSheets(
 
         is SaleSheet.SaveQuote -> QuoteSaveSheetView(sheet.form, uiState.cart, onAction)
 
+        is SaleSheet.SaveOrder -> OrderSaveSheetView(sheet.form, uiState.cart, onAction)
+
         is SaleSheet.VariantPick -> VariantPickerSheet(sheet, onAction)
 
         SaleSheet.CurrencyRequired -> AppBottomSheet(
