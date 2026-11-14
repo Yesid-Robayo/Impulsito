@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Catálogo compartible: un PDF con productos y precios, sin costos. -->
+<resources>
+    <string name="hub_tool_catalog">Shareable catalog</string>
+    <string name="hub_tool_catalog_desc">A PDF with products and prices to send</string>
+    <string name="catalog_which">Which products</string>
+    <string name="catalog_filter_all">All</string>
+    <string name="catalog_filter_category">Category</string>
+    <string name="catalog_price_list">Price list</string>
+    <string name="catalog_show_photos">Show photos</string>
+    <string name="catalog_group_by_category">Group by category</string>
+    <string name="catalog_include_out_of_stock">Include out of stock</string>
+    <string name="catalog_custom_title_label">Title</string>
+    <string name="catalog_default_title">Catalog</string>
+    <string name="catalog_summary">Products: %1$d · Pages: %2$d</string>
+    <string name="catalog_share_action">Share PDF</string>
+    <string name="catalog_save_action">Save PDF</string>
+    <string name="catalog_generating">Generating…</string>
+    <string name="catalog_doc_prices_date">Prices as of %1$s</string>
+    <string name="catalog_doc_page">Page %1$s of %2$s</string>
+    <string name="catalog_doc_legend">This catalog is not a sales receipt or an invoice.</string>
+    <string name="catalog_empty_title">No products with a price</string>
+    <string name="catalog_empty_action">Go to products</string>
+    <string name="catalog_error_generate">The catalog could not be created.</string>
+    <string name="catalog_confirm_currency_action">Confirm currency</string>
+</resources>

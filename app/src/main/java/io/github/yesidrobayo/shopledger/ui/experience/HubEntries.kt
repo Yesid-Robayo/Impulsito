@@ -66,6 +66,12 @@ val HUB_ENTRIES: List<HubEntry> =
             AppNavKey.HeldSales,
         ),
         HubEntry(
+            BusinessTool.SHAREABLE_CATALOG,
+            R.string.hub_tool_catalog,
+            R.string.hub_tool_catalog_desc,
+            AppNavKey.ShareableCatalog,
+        ),
+        HubEntry(
             BusinessTool.LABELS,
             R.string.hub_tool_labels,
             R.string.hub_tool_labels_desc,

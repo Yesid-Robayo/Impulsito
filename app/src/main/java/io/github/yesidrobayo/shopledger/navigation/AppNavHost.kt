@@ -40,6 +40,7 @@ import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.safety.PolicyConsentUseCase
 import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
 import io.github.yesidrobayo.shopledger.ui.cash.CashRegisterRoute
+import io.github.yesidrobayo.shopledger.ui.catalog.CatalogRoute
 import io.github.yesidrobayo.shopledger.ui.category.CategoriesRoute
 import io.github.yesidrobayo.shopledger.ui.combo.CombosRoute
 import io.github.yesidrobayo.shopledger.ui.combo.RecipeRoute
@@ -409,6 +410,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.SaleReceipt -> SaleReceiptRoute(key, navigator)
 
         AppNavKey.Printers -> PrintersRoute(AppNavKey.Printers, navigator)
+
+        AppNavKey.ShareableCatalog -> CatalogRoute(AppNavKey.ShareableCatalog, navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }
