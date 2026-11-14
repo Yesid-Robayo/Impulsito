@@ -21,6 +21,9 @@ import kotlin.time.Instant
  * ganancia, con el objetivo heredado: el del producto, el de su categoría o el del negocio. `Costo
  * viejo` mira la fecha del costo de reposición, o la de creación si nunca tuvo uno, y solo en
  * productos con stock propio y algún costo: un servicio no se compra y su costo no tiene fecha.
+ *
+ * Un insumo puro no entra en la lista: no tiene precio de venta que decidir. Uno que también se
+ * vende sí entra, por su precio.
  */
 object PriceReviewRules {
     /**
@@ -55,6 +58,7 @@ object PriceReviewRules {
      * no se conoce la zona del negocio, el costo viejo no se evalúa.
      */
     fun reviewOf(product: Product, context: PricingContext, check: StaleCostCheck?): PriceReview? {
+        if (!product.details.usage.isSold) return null
         val pricing = ProductPricing.of(product, context)
         val margin = pricing.marginOf(product.salePrice)
         val oldSince = check?.let { stale ->

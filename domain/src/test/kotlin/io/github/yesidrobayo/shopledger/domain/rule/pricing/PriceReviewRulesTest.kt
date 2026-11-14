@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReview
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
 import io.github.yesidrobayo.shopledger.domain.model.pricing.StaleCostCheck
@@ -179,6 +180,25 @@ class PriceReviewRulesTest {
     }
 
     @Test
+    fun aPureInputNeverAsksForAPriceAndOneAlsoSoldDoes() {
+        fun withEveryReason(usage: ProductUsage) = product(
+            salePrice = Money(1_000),
+            averageCost = Money(900),
+            replacementCost = Money(900),
+            replacementCostAt = AUGUST_FIRST,
+            reviewSince = AUGUST_FIRST,
+            usage = usage,
+        )
+
+        val input = withEveryReason(ProductUsage.INPUT)
+        val both = withEveryReason(ProductUsage.BOTH)
+
+        assertNull(PriceReviewRules.reviewOf(input, context(), check(90)))
+        val review = requireNotNull(PriceReviewRules.reviewOf(both, context(), check(90)))
+        assertEquals(3, review.reasons.size)
+    }
+
+    @Test
     fun anOldCostAppearsWithItsBusinessDate() {
         val old = product(
             salePrice = Money(1_000),
@@ -295,10 +315,11 @@ class PriceReviewRulesTest {
         category: Long? = null,
         target: BasisPoints? = null,
         archived: Boolean = false,
+        usage: ProductUsage = ProductUsage.SALE,
     ) = Product(
         id = id,
         details = CatalogFixture.details("Producto $id", stockMode)
-            .copy(categoryId = category, targetMargin = target),
+            .copy(categoryId = category, targetMargin = target, usage = usage),
         salePrice = salePrice,
         initialCost = Money.ZERO,
         averageCost = averageCost,
