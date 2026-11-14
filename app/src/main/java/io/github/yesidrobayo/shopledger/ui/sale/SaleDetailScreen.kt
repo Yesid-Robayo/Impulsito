@@ -67,6 +67,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ProductStock
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
+import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -131,28 +132,33 @@ fun SaleDetailScreen(
                     onNavigate = { onAction(SaleDetailAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
                     actions = {
-                        if (ready != null) {
+                        val menu = buildList {
                             // El texto solo de una venta activa; el comprobante en papel, también
                             // de una anulada, porque dice que se anuló.
-                            val share = stringResource(R.string.action_share)
-                            val receipt = stringResource(R.string.receipt_view_title)
-                            OverflowMenu(
-                                buildList {
-                                    if (ready.sale.receipt != null) {
-                                        add(
-                                            OverflowAction(share, {
-                                                onAction(SaleDetailAction.Share)
-                                            }),
-                                        )
-                                    }
-                                    add(
-                                        OverflowAction(receipt, {
-                                            onAction(SaleDetailAction.OpenReceipt)
-                                        }),
-                                    )
-                                },
-                            )
+                            if (ready?.sale?.receipt != null) {
+                                add(
+                                    OverflowAction(stringResource(R.string.action_share), {
+                                        onAction(SaleDetailAction.Share)
+                                    }),
+                                )
+                            }
+                            if (ready != null) {
+                                add(
+                                    OverflowAction(stringResource(R.string.receipt_view_title), {
+                                        onAction(SaleDetailAction.OpenReceipt)
+                                    }),
+                                )
+                            }
+                            // Solo una venta activa se marca en los pendientes de facturar.
+                            if (ready != null && ready.sale.voiding == null) {
+                                add(
+                                    OverflowAction(stringResource(R.string.fiscal_mark_title), {
+                                        onAction(SaleDetailAction.OpenFiscalMark)
+                                    }),
+                                )
+                            }
                         }
+                        if (menu.isNotEmpty()) OverflowMenu(menu)
                     },
                 )
                 Box(
@@ -218,6 +224,14 @@ private fun DetailBody(sale: SaleDetailView, onAction: (SaleDetailAction) -> Uni
                 sale,
                 Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
             )
+        }
+        if (sale.recordedElsewhere) {
+            item(key = FISCAL) {
+                FiscalMarkBlock(
+                    sale,
+                    Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
+                )
+            }
         }
         item(key = PAYMENTS) { SectionHeader(stringResource(R.string.sale_detail_payments)) }
         items(sale.payments, key = { "payment-${it.paymentId}" }) { PaymentRow(it) }
@@ -338,6 +352,32 @@ private fun TotalBlock(sale: SaleDetailView, modifier: Modifier = Modifier) {
             voiding.note?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = muted)
             }
+        }
+    }
+}
+
+/**
+ * La marca de registrada aparte, con su referencia. Anulada, avisa que anularla aquí no cambia el
+ * registro que la persona hizo en el otro sistema.
+ */
+@Composable
+private fun FiscalMarkBlock(sale: SaleDetailView, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+        ) {
+            StatusTag(stringResource(R.string.fiscal_status_recorded))
+            sale.fiscalMark?.externalReference?.let {
+                Text(
+                    stringResource(R.string.fiscal_reference_row, it),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (sale.voiding != null) {
+            NoticeCard(stringResource(R.string.fiscal_voided_notice), NoticeVariant.INFO)
         }
     }
 }
@@ -642,6 +682,9 @@ private fun VoidSheetContent(ready: SaleDetailUiState.Ready, onAction: (SaleDeta
             )
         },
     ) {
+        if (ready.sale.recordedElsewhere) {
+            NoticeCard(stringResource(R.string.fiscal_voided_notice), NoticeVariant.INFO)
+        }
         Text(
             stringResource(R.string.dialog_void_sale_body, period),
             style = MaterialTheme.typography.bodyMedium,
@@ -947,3 +990,4 @@ private const val RESULTS = "results"
 private const val NOTE = "note"
 private const val ACTIONS = "actions"
 private const val RETURNS = "returns"
+private const val FISCAL = "fiscal"

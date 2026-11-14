@@ -7,6 +7,8 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.document.FiscalMarkStatus
+import io.github.yesidrobayo.shopledger.domain.model.document.SaleFiscalMark
 import io.github.yesidrobayo.shopledger.domain.model.returns.ReturnResolution
 import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleReceipt
@@ -52,7 +54,8 @@ sealed interface SaleDetailUiState {
  * que se comparte, solo de una venta activa, y [units] las unidades con que se escriben sus
  * cantidades. [hasActiveReturns] dice si alguna devolución sigue activa. [canReturn] dice si queda
  * algo por devolver, y [returns] son sus devoluciones, activas y anuladas, en el orden en que se
- * registraron.
+ * registraron. [fiscalMark] es la marca que la persona le puso en los pendientes de facturar, o
+ * `null` si no tiene.
  */
 @Immutable
 data class SaleDetailView(
@@ -72,7 +75,14 @@ data class SaleDetailView(
     val hasActiveReturns: Boolean = false,
     val canReturn: Boolean = false,
     val returns: List<SaleReturnRow> = emptyList(),
+    val fiscalMark: SaleFiscalMark? = null,
 ) {
+    /**
+     * Si la persona la marcó como registrada aparte, en el sistema que usa fuera de la app.
+     * Anularla aquí no cambia ese registro, y la pantalla lo avisa.
+     */
+    val recordedElsewhere: Boolean get() = fiscalMark?.status == FiscalMarkStatus.RECORDED
+
     /**
      * Solo una venta activa se anula, una sola vez, y nunca con una devolución activa: lo que falta
      * se devuelve.
@@ -286,4 +296,7 @@ sealed interface SaleDetailAction {
 
     /** El aviso de devolución anulada ya se mostró. */
     data object ReturnVoidedShown : SaleDetailAction
+
+    /** Abre la hoja `Registro externo` de la venta, en los pendientes de facturar. */
+    data object OpenFiscalMark : SaleDetailAction
 }

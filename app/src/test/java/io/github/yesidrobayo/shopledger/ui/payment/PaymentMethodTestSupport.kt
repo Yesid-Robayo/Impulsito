@@ -256,6 +256,9 @@ internal object NoSettings : AppSettingsRepository {
         updatedAt: Instant,
     ) = error("Solo lectura")
 
+    override suspend fun updateFiscalPortalUrl(url: String?, updatedAt: Instant) =
+        error("Solo lectura")
+
     override suspend fun updateReferenceCurrency(
         reference: ReferenceCurrency?,
         updatedAt: Instant,

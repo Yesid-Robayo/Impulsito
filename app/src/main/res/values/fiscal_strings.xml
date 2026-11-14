@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- English: pending invoicing, a control of what is still to record in another system. %1$s = app in the disclaimer and the link help. The row and selection texts serve every list of documents. -->
+    <string name="hub_tool_fiscal">Pending invoicing</string>
+    <string name="hub_tool_fiscal_desc">Track what is still to record in another system</string>
+    <string name="fiscal_disclaimer">%1$s does not issue tax documents or connect to any authority. This list only helps keep track.</string>
+    <string name="fiscal_filter_pending">Pending</string>
+    <string name="fiscal_filter_recorded">Recorded elsewhere</string>
+    <string name="fiscal_filter_not_needed">Not needed</string>
+    <string name="fiscal_status_pending">Pending</string>
+    <string name="fiscal_status_recorded">Recorded elsewhere</string>
+    <string name="fiscal_status_not_needed">Not needed</string>
+    <string name="fiscal_summary_count">Sales: %1$s</string>
+    <string name="fiscal_sale_row">Sale %1$s</string>
+    <string name="fiscal_reference_row">Ref. %1$s</string>
+    <string name="fiscal_no_customer">No customer</string>
+    <string name="fiscal_share_summary_action">Share summary</string>
+    <string name="fiscal_open_link_action">Open link</string>
+    <string name="fiscal_configure_link_action">Set up link</string>
+    <string name="fiscal_mark_title">External record</string>
+    <string name="fiscal_view_sale_action">View sale</string>
+    <string name="fiscal_reference_label">External reference</string>
+    <string name="fiscal_mark_recorded_action">Recorded elsewhere</string>
+    <string name="fiscal_mark_not_needed_action">Not needed</string>
+    <string name="fiscal_mark_pending_action">Back to pending</string>
+    <string name="fiscal_link_label">Link to the external system</string>
+    <string name="fiscal_link_help">The person using the app writes it. %1$s does not visit it or read the response.</string>
+    <string name="fiscal_link_save_action">Save link</string>
+    <string name="fiscal_empty_title">No pending sales this month</string>
+    <string name="fiscal_filter_empty">No sales with this mark</string>
+    <string name="fiscal_first_use_body">Use it to keep track of what still has to be recorded in another system.</string>
+    <string name="fiscal_error_save">The mark could not be saved. The sale did not change.</string>
+    <string name="fiscal_error_reference">Use at most 60 characters</string>
+    <string name="fiscal_error_link">Use an address that starts with https://</string>
+    <string name="fiscal_error_no_app">No app can open this link.</string>
+    <string name="fiscal_voided_notice">This sale was recorded elsewhere. Voiding it here does not change that record.</string>
+    <string name="fiscal_return_tag">With return</string>
+    <string name="fiscal_return_help">This sale has a return. Check whether the external record must change too.</string>
+    <string name="fiscal_share_period">Summary for the period: %1$s</string>
+    <string name="fiscal_share_total">Sales: %1$s. Total: %2$s</string>
+    <string name="fiscal_share_line">Sale %1$s · %2$s · %3$s</string>
+    <string name="fiscal_share_note">Summary for internal use. It is not an invoice or a tax document.</string>
+    <string name="fiscal_row_detail">%1$s · %2$s</string>
+    <string name="fiscal_zone_unknown_title">This phone does not know the business time zone. Choose it to see the sales.</string>
+    <string name="a11y_document_row">%1$s, %2$s, %3$s, %4$s</string>
+    <string name="a11y_doc_select_action">Select</string>
+    <string name="a11y_doc_selected">Selected</string>
+    <plurals name="fiscal_mark_many_recorded_action">
+        <item quantity="one">Mark %1$d as recorded</item>
+        <item quantity="other">Mark %1$d as recorded</item>
+    </plurals>
+    <plurals name="fiscal_mark_many_not_needed_action">
+        <item quantity="one">Mark %1$d as not needed</item>
+        <item quantity="other">Mark %1$d as not needed</item>
+    </plurals>
+    <plurals name="a11y_doc_selection_count">
+        <item quantity="one">%1$d sale selected</item>
+        <item quantity="other">%1$d sales selected</item>
+    </plurals>
+</resources>

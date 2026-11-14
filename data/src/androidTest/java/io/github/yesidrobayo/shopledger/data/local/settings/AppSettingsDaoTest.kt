@@ -179,6 +179,12 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 // Cambia solo las columnas regionales: lo comprueba RegionalSettingsRepositoryTest
                 // comparando la fila entera antes y después.
                 "updateRegional",
+                // Cambia solo fiscal_portal_url y updated_at: lo comprueba
+                // FiscalBridgeRepositoryTest comparando la fila entera antes y después.
+                "updateFiscalPortalUrl",
+                // Cambian solo sus columnas y updated_at, cada una con su consulta de una línea.
+                "updateExpiryNoticeDays",
+                "updateReceiptTemplate",
                 "markOnboardingCompleted",
             ),
             functionsOf(AppSettingsDao::class.java),

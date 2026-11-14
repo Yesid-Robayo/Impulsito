@@ -56,6 +56,7 @@ import io.github.yesidrobayo.shopledger.ui.customer.CustomerListRoute
 import io.github.yesidrobayo.shopledger.ui.customer.LoyaltyProgramRoute
 import io.github.yesidrobayo.shopledger.ui.destination.DestinationChoiceRoute
 import io.github.yesidrobayo.shopledger.ui.destination.SlotSetupRoute
+import io.github.yesidrobayo.shopledger.ui.document.FiscalRoute
 import io.github.yesidrobayo.shopledger.ui.encryption.EncryptionRoute
 import io.github.yesidrobayo.shopledger.ui.expense.ExpensesRoute
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
@@ -402,6 +403,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.NewStockTransfer -> NewTransferRoute(key, navigator)
 
         is AppNavKey.StockCount -> StockCountRoute(key, navigator)
+
+        is AppNavKey.PendingFiscal -> FiscalRoute(key, navigator)
 
         // Ajustes: solo configuración, en grupos.
         AppNavKey.Settings ->

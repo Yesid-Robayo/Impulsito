@@ -287,8 +287,12 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data class Orders(val orderId: Long? = null) : AppNavKey
 
+    /**
+     * Los pendientes de facturar. Con [saleId], abre la hoja `Registro externo` de esa venta, como
+     * desde el detalle de la venta.
+     */
     @Serializable
-    data object PendingFiscal : AppNavKey
+    data class PendingFiscal(val saleId: Long? = null) : AppNavKey
 
     @Serializable
     data object ShareableCatalog : AppNavKey

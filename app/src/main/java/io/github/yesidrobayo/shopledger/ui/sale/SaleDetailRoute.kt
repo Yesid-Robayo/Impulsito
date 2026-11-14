@@ -90,6 +90,7 @@ fun SaleDetailRoute(
                 loadReturnLines = { ports.saleReturns.findLines(it) },
                 voidReturn = { id, reason, note -> voidReturn(id, reason, note) },
                 isSaleActive = { ports.sales.findById(it)?.status == DocumentStatus.ACTIVE },
+                observeFiscalMark = { ports.saleFiscalMarks.observeMark(it) },
             )
         }
     when (model) {
@@ -121,6 +122,10 @@ fun SaleDetailRoute(
 
                         SaleDetailAction.OpenReceipt -> navigator.open(
                             AppNavKey.SaleReceipt(key.saleId),
+                        )
+
+                        SaleDetailAction.OpenFiscalMark -> navigator.open(
+                            AppNavKey.PendingFiscal(saleId = key.saleId),
                         )
 
                         SaleDetailAction.Share -> {

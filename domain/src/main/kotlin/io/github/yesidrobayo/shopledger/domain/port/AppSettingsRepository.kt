@@ -95,6 +95,13 @@ interface AppSettingsRepository {
         updatedAt: Instant,
     )
 
+    /**
+     * Guarda el enlace al sistema que la persona usa fuera de la app, ya validado, o lo quita con
+     * `null`. Solo dentro de [TransactionRunner.write]: es un dato del negocio y cuenta como
+     * cambio.
+     */
+    suspend fun updateFiscalPortalUrl(url: String?, updatedAt: Instant)
+
     /** Marca el fin del primer uso. Fuera de [TransactionRunner.write]: no cuenta como cambio. */
     suspend fun markOnboardingCompleted(completedAt: Instant)
 }

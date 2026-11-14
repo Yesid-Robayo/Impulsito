@@ -114,6 +114,12 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
         }
     }
 
+    override suspend fun updateFiscalPortalUrl(url: String?, updatedAt: Instant) {
+        writes.inTransaction {
+            requireOneRow(settings.updateFiscalPortalUrl(url, updatedAt.toStoredMillis()))
+        }
+    }
+
     override suspend fun updateReferenceCurrency(
         reference: ReferenceCurrency?,
         updatedAt: Instant,

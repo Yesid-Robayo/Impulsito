@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.document.SaleFiscalMark
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturnLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleDetail
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleReceipt
@@ -74,6 +75,7 @@ class SaleDetailViewModel(
     private val voidReturn: suspend (Long, VoidReason, String?) -> VoidSaleReturnResult =
         { _, _, _ -> VoidSaleReturnResult.NotFound },
     private val isSaleActive: suspend (Long) -> Boolean = { true },
+    private val observeFiscalMark: (Long) -> Flow<SaleFiscalMark?> = { flowOf(null) },
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val overlay = MutableStateFlow(Overlay())
@@ -84,12 +86,14 @@ class SaleDetailViewModel(
             observeCalendar(),
             observeUnits(),
             observeBusinessName(),
-        ) { detail, calendar, units, businessName ->
+            observeFiscalMark(saleId),
+        ) { detail, calendar, units, businessName, fiscalMark ->
             if (detail == null) {
                 Content.Missing
             } else {
                 val ready = (calendar as? BusinessCalendarResult.Ready)?.calendar
-                Content.Found(viewOf(detail, ready, units.associateBy { it.id }, businessName))
+                val view = viewOf(detail, ready, units.associateBy { it.id }, businessName)
+                Content.Found(view.copy(fiscalMark = fiscalMark))
             }
         }.flowOn(computation)
             // Una falla de lectura no cierra la pantalla: muestra el error y deja reintentar.
@@ -175,6 +179,9 @@ class SaleDetailViewModel(
 
             // Abrir la devolución es navegación: la resuelve la ruta.
             SaleDetailAction.OpenReturn -> Unit
+
+            // El registro externo es otra pantalla: lo resuelve la ruta.
+            SaleDetailAction.OpenFiscalMark -> Unit
 
             is SaleDetailAction.OpenReturnDetail -> openReturn(action.returnId)
 

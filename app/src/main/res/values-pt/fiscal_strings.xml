@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Português: pendentes de faturar, um controle do que falta registrar em outro sistema. %1$s = app no aviso e na ajuda do link. Os textos da linha e da seleção servem a toda lista de documentos. -->
+    <string name="hub_tool_fiscal">Pendentes de faturar</string>
+    <string name="hub_tool_fiscal_desc">Controle do que falta registrar em outro sistema</string>
+    <string name="fiscal_disclaimer">%1$s não emite documentos fiscais nem se conecta a nenhuma autoridade. Esta lista só ajuda a manter o controle.</string>
+    <string name="fiscal_filter_pending">Pendentes</string>
+    <string name="fiscal_filter_recorded">Registradas à parte</string>
+    <string name="fiscal_filter_not_needed">Não se aplica</string>
+    <string name="fiscal_status_pending">Pendente</string>
+    <string name="fiscal_status_recorded">Registrada à parte</string>
+    <string name="fiscal_status_not_needed">Não se aplica</string>
+    <string name="fiscal_summary_count">Vendas: %1$s</string>
+    <string name="fiscal_sale_row">Venda %1$s</string>
+    <string name="fiscal_reference_row">Ref. %1$s</string>
+    <string name="fiscal_no_customer">Sem cliente</string>
+    <string name="fiscal_share_summary_action">Compartilhar resumo</string>
+    <string name="fiscal_open_link_action">Abrir link</string>
+    <string name="fiscal_configure_link_action">Configurar link</string>
+    <string name="fiscal_mark_title">Registro externo</string>
+    <string name="fiscal_view_sale_action">Ver venda</string>
+    <string name="fiscal_reference_label">Referência externa</string>
+    <string name="fiscal_mark_recorded_action">Registrada à parte</string>
+    <string name="fiscal_mark_not_needed_action">Não se aplica</string>
+    <string name="fiscal_mark_pending_action">Voltar a pendente</string>
+    <string name="fiscal_link_label">Link para o sistema externo</string>
+    <string name="fiscal_link_help">É escrito pela pessoa. %1$s não o visita nem lê a resposta.</string>
+    <string name="fiscal_link_save_action">Salvar link</string>
+    <string name="fiscal_empty_title">Sem vendas pendentes neste mês</string>
+    <string name="fiscal_filter_empty">Sem vendas com esta marca</string>
+    <string name="fiscal_first_use_body">Serve para acompanhar o que ainda falta registrar em outro sistema.</string>
+    <string name="fiscal_error_save">Não foi possível salvar a marca. A venda não mudou.</string>
+    <string name="fiscal_error_reference">Usar no máximo 60 caracteres</string>
+    <string name="fiscal_error_link">Usar um endereço que comece com https://</string>
+    <string name="fiscal_error_no_app">Nenhum app pode abrir este link.</string>
+    <string name="fiscal_voided_notice">Esta venda estava registrada à parte. Anulá-la aqui não muda esse registro.</string>
+    <string name="fiscal_return_tag">Com devolução</string>
+    <string name="fiscal_return_help">Esta venda tem uma devolução. Convém revisar se o registro externo também deve mudar.</string>
+    <string name="fiscal_share_period">Resumo do período: %1$s</string>
+    <string name="fiscal_share_total">Vendas: %1$s. Total: %2$s</string>
+    <string name="fiscal_share_line">Venda %1$s · %2$s · %3$s</string>
+    <string name="fiscal_share_note">Resumo para uso interno. Não é uma nota fiscal nem um documento fiscal.</string>
+    <string name="fiscal_row_detail">%1$s · %2$s</string>
+    <string name="fiscal_zone_unknown_title">Este telefone não conhece o fuso horário do negócio. Ao escolhê-lo, as vendas aparecem.</string>
+    <string name="a11y_document_row">%1$s, %2$s, %3$s, %4$s</string>
+    <string name="a11y_doc_select_action">Selecionar</string>
+    <string name="a11y_doc_selected">Selecionada</string>
+    <plurals name="fiscal_mark_many_recorded_action">
+        <item quantity="one">Marcar %1$d como registrada</item>
+        <item quantity="many">Marcar %1$d de vendas como registradas</item>
+        <item quantity="other">Marcar %1$d como registradas</item>
+    </plurals>
+    <plurals name="fiscal_mark_many_not_needed_action">
+        <item quantity="one">Marcar %1$d como desnecessária</item>
+        <item quantity="many">Marcar %1$d de vendas como desnecessárias</item>
+        <item quantity="other">Marcar %1$d como desnecessárias</item>
+    </plurals>
+    <plurals name="a11y_doc_selection_count">
+        <item quantity="one">%1$d venda selecionada</item>
+        <item quantity="many">%1$d de vendas selecionadas</item>
+        <item quantity="other">%1$d vendas selecionadas</item>
+    </plurals>
+</resources>

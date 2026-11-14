@@ -78,6 +78,12 @@ val HUB_ENTRIES: List<HubEntry> =
             AppNavKey.Quotes(),
         ),
         HubEntry(
+            BusinessTool.PENDING_FISCAL,
+            R.string.hub_tool_fiscal,
+            R.string.hub_tool_fiscal_desc,
+            AppNavKey.PendingFiscal(),
+        ),
+        HubEntry(
             BusinessTool.LABELS,
             R.string.hub_tool_labels,
             R.string.hub_tool_labels_desc,

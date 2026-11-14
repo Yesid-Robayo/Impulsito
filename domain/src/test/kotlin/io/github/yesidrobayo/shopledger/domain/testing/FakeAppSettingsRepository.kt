@@ -230,6 +230,18 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
         settings.value = current.copy(updatedAt = updatedAt, receipt = receipt)
     }
 
+    /** Cada cambio del enlace al sistema externo, en orden. */
+    val fiscalPortalWrites = mutableListOf<Pair<String?, Instant>>()
+
+    override suspend fun updateFiscalPortalUrl(url: String?, updatedAt: Instant) {
+        fiscalPortalWrites += url to updatedAt
+        val current = settings.value
+        settings.value = current.copy(
+            updatedAt = updatedAt,
+            receipt = current.receipt.copy(fiscalPortalUrl = url),
+        )
+    }
+
     /** Cada cambio de preferencia escrito, en orden. */
     val preferenceWrites = mutableListOf<PreferenceChange>()
 

@@ -153,6 +153,12 @@ internal interface AppSettingsDao {
         updatedAt: Long,
     ): Int
 
+    /** El enlace al sistema externo que escribió la persona, o nulo para quitarlo. */
+    @Query(
+        "UPDATE app_settings SET fiscal_portal_url = :url, updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateFiscalPortalUrl(url: String?, updatedAt: Long): Int
+
     /**
      * La moneda de referencia y sus decimales, o las dos en nulo para quitarla. Las cotizaciones
      * de cada moneda se conservan en su libro.

@@ -151,7 +151,7 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     is AppNavKey.Orders -> detail(R.string.order_title, business)
 
-    AppNavKey.PendingFiscal -> detail(R.string.fiscal_title, business)
+    is AppNavKey.PendingFiscal -> detail(R.string.fiscal_title, business)
 
     AppNavKey.ShareableCatalog -> detail(R.string.catalog_title, business)
 

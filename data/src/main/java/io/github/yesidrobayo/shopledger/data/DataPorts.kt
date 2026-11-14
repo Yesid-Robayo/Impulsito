@@ -53,6 +53,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseReturnRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomQuoteRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomReplacementReportRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFiscalMarkRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFrequencySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleHistorySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleLineComponentRepository
@@ -126,6 +127,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.QuoteRepository
 import io.github.yesidrobayo.shopledger.domain.port.ReplacementReportRepository
+import io.github.yesidrobayo.shopledger.domain.port.SaleFiscalMarkRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.SaleLineComponentRepository
@@ -306,6 +308,9 @@ class DataPorts internal constructor(
 
     /** Las ventas en espera: se guardan y se borran sin contar como cambio sin respaldar. */
     val heldSales: HeldSaleRepository = RoomHeldSaleRepository(database)
+
+    /** Las marcas del puente fiscal, aparte de las ventas: marcar una venta no la cambia. */
+    val saleFiscalMarks: SaleFiscalMarkRepository = RoomSaleFiscalMarkRepository(database)
 
     /** Los pagos de las ventas, y lo que una venta copia del método con que cobra. */
     val salePayments: SalePaymentRepository = RoomSalePaymentRepository(database)
