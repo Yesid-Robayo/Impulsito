@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyDocument
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.domain.rule.money.MoneyStatementLine
+import io.github.yesidrobayo.shopledger.ui.clickWhenStill
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -128,7 +129,7 @@ class MoneyAccountsScreenTest {
         show(SAMPLE_DETAIL_STATE.copy(movement = MovementSheet(receipt, MoneyDocument.Sale(7))))
 
         compose.onNodeWithText(text(R.string.money_automatic_notice)).assertExists()
-        compose.onNodeWithText(text(R.string.action_view)).performClick()
+        compose.clickWhenStill(compose.onNodeWithText(text(R.string.action_view)))
         assertEquals(
             listOf<MoneyAccountsAction>(MoneyAccountsAction.OpenDocument(MoneyDocument.Sale(7))),
             actions,
@@ -139,7 +140,7 @@ class MoneyAccountsScreenTest {
     fun aManualMovementOffersItsVoid() {
         show(SAMPLE_DETAIL_STATE.copy(movement = MovementSheet(line(6))))
 
-        compose.onNodeWithText(text(R.string.money_void_action)).performClick()
+        compose.clickWhenStill(compose.onNodeWithText(text(R.string.money_void_action)))
         assertEquals(listOf<MoneyAccountsAction>(MoneyAccountsAction.AskVoid), actions)
     }
 
@@ -158,7 +159,7 @@ class MoneyAccountsScreenTest {
 
         compose.onNodeWithText(text(R.string.money_negative_warning, ""), substring = true)
             .assertExists()
-        compose.onNodeWithText(text(R.string.money_save_action)).performClick()
+        compose.clickWhenStill(compose.onNodeWithText(text(R.string.money_save_action)))
         assertEquals(listOf<MoneyAccountsAction>(MoneyAccountsAction.Save), actions)
     }
 

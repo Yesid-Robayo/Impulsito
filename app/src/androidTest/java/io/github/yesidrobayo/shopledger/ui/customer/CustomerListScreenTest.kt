@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.ui.clickWhenStill
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -160,8 +161,10 @@ class CustomerListScreenTest {
         showSheet(CustomerEditor(editingId = null, name = ""))
 
         compose.onNodeWithText(text(R.string.customer_minimal_data_help)).assertExists()
-        compose.onNodeWithText(text(R.string.customer_pick_contact_action)).performClick()
-        compose.onNodeWithText(text(R.string.customer_save_action)).performClick()
+        compose.clickWhenStill(
+            compose.onNodeWithText(text(R.string.customer_pick_contact_action)),
+        )
+        compose.clickWhenStill(compose.onNodeWithText(text(R.string.customer_save_action)))
 
         assertEquals(
             listOf(CustomerEditorAction.PickContact, CustomerEditorAction.Save),
@@ -174,7 +177,7 @@ class CustomerListScreenTest {
         showSheet(CustomerEditor(editingId = null, name = "Ana Ríos", sameNameWarned = true))
 
         compose.onNodeWithText(text(R.string.customer_duplicate_warning)).assertExists()
-        compose.onNodeWithText(text(R.string.customer_save_action)).performClick()
+        compose.clickWhenStill(compose.onNodeWithText(text(R.string.customer_save_action)))
 
         assertEquals(listOf(CustomerEditorAction.Save), editorActions)
     }
