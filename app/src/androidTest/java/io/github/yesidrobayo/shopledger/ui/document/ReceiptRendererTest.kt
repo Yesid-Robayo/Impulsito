@@ -9,7 +9,6 @@ import android.graphics.Rect
 import android.graphics.pdf.PdfRenderer
 import android.os.Build
 import android.os.ParcelFileDescriptor
-import androidx.annotation.RequiresApi
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
@@ -176,7 +175,7 @@ class ReceiptRendererTest {
 
         val total = document.amounts.filterIsInstance<ReceiptAmount.Total>().single().amount
         val digits = formats.money.parts(total).number.filterNot { it.isWhitespace() }
-        val text = pdfText(file).filterNot { it.isWhitespace() }
+        val text = PdfPageText.firstPage(file).filterNot { it.isWhitespace() }
         assertTrue("$digits en $text", text.contains(digits))
     }
 
@@ -257,15 +256,6 @@ class ReceiptRendererTest {
             }
         }
     }
-
-    /** El texto que el sistema saca de la primera página del PDF. */
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
-    private fun pdfText(file: File): String =
-        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
-            PdfRenderer(fd).use { pdf ->
-                pdf.openPage(0).use { page -> page.textContents.joinToString(" ") { it.text } }
-            }
-        }
 
     private fun pageCount(file: File): Int =
         ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->

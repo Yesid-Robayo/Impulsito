@@ -1,8 +1,13 @@
 package io.github.yesidrobayo.shopledger.ui.location
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -148,21 +153,34 @@ class LocationsScreenTest {
             LotOption(31L, "J-1", LotExpiry.None, QuantityMilli(1_000L)),
             LotOption(32L, "J-2", LotExpiry.None, QuantityMilli(2_000L)),
         )
-        val state = NewTransferUiState(
+        val rice = TransferLineUi(1L, 7L, "Arroz", LocationSamples.UNIT, "1")
+        val soap = TransferLineUi(2L, 9L, "Jabón", LocationSamples.UNIT, "2", lots = lots)
+        val base = NewTransferUiState(
             loading = false,
             locations = listOf(LocationSamples.MAIN, LocationSamples.STALL),
             fromId = LocationSamples.MAIN.id,
             toId = LocationSamples.STALL.id,
-            lines = listOf(
-                TransferLineUi(1L, 7L, "Arroz", LocationSamples.UNIT, "1"),
-                TransferLineUi(2L, 9L, "Jabón", LocationSamples.UNIT, "2", lots = lots),
-            ),
+            lines = listOf(rice),
         )
+        var state by mutableStateOf(base)
         compose.setContent { PreviewTheme { NewTransferScreen(state, {}) } }
+        val auto = resources.getString(R.string.lot_picker_auto)
 
-        // Un solo campo de lote: el del jabón, que sale por vencimiento sin elegir.
-        assertEquals(1, count(resources.getString(R.string.lot_picker_auto)))
-        compose.onNodeWithText(resources.getString(R.string.lot_picker_auto)).performClick()
+        // Sin lotes no hay campo de lote. Un campo se lee como texto y como descripción, así
+        // que se compara cuánto suma cada línea con lotes: el arroz no suma nada.
+        assertEquals(0, count(auto))
+        state = base.copy(lines = listOf(rice, soap))
+        compose.waitForIdle()
+        val onePicker = count(auto)
+        assertTrue(onePicker >= 1)
+        state = base.copy(lines = listOf(rice, soap, soap.copy(key = 3L)))
+        compose.waitForIdle()
+        assertEquals(2 * onePicker, count(auto))
+        state = base.copy(lines = listOf(rice, soap))
+        compose.waitForIdle()
+
+        // El jabón sale por vencimiento sin elegir, y su campo abre los lotes del origen.
+        compose.onAllNodesWithText(auto).onFirst().performClick()
         assertTrue(count(resources.getString(R.string.lot_name, "J-1")) >= 1)
         assertTrue(count(resources.getString(R.string.lot_name, "J-2")) >= 1)
     }
