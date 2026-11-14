@@ -119,6 +119,7 @@ import io.github.yesidrobayo.shopledger.data.media.MediaSyncAccess
 import io.github.yesidrobayo.shopledger.data.media.MediaSyncStop
 import io.github.yesidrobayo.shopledger.data.media.MediaSyncStore
 import io.github.yesidrobayo.shopledger.data.print.BluetoothPrinters
+import io.github.yesidrobayo.shopledger.data.print.PrinterSetupFile
 import io.github.yesidrobayo.shopledger.data.repository.toStoredImage
 import io.github.yesidrobayo.shopledger.data.rescue.RescueData
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
@@ -155,6 +156,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ImportFileReader
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.PhotoBackupPort
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
+import io.github.yesidrobayo.shopledger.domain.port.PrinterSetupStore
 import io.github.yesidrobayo.shopledger.domain.port.RestoreDrillPort
 import io.github.yesidrobayo.shopledger.domain.port.SecondDestinationPort
 import io.github.yesidrobayo.shopledger.domain.port.SlotFilesSetupPort
@@ -272,6 +274,15 @@ class DataGraph internal constructor(
      * Bluetooth: se lee al listar o al imprimir, con el permiso ya concedido.
      */
     val printers: BluetoothPrinters by lazy { BluetoothPrinters(context, log, ioContext) }
+
+    /**
+     * Las impresoras guardadas en `noBackupFilesDir/printers.json`, con su papel y la de por
+     * defecto. Son de esta instalación: no viajan en una copia. Una sola instancia: su caché y su
+     * cerrojo viven en ella.
+     */
+    val printerSetup: PrinterSetupStore by lazy {
+        PrinterSetupFile({ File(context.noBackupFilesDir, PrinterSetupFile.FILE_NAME) }, ioContext)
+    }
 
     /**
      * El código de recuperación sellado y el estado del cifrado, en `no_backup/recovery/`. Una sola

@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.domain.model.document.ReceiptDocument
 import io.github.yesidrobayo.shopledger.domain.model.document.ReceiptKind
 import io.github.yesidrobayo.shopledger.domain.model.document.ReceiptLine
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.domain.rule.print.MonochromeThreshold
 import io.github.yesidrobayo.shopledger.ui.format.AppFormats
 import io.github.yesidrobayo.shopledger.ui.sale.saleQuantityText
 import io.github.yesidrobayo.shopledger.ui.theme.paletteOf
@@ -71,16 +72,48 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
     private val ink = scheme.onSurface.toArgb()
     private val muted = scheme.onSurfaceVariant.toArgb()
     private val accent = scheme.primary.toArgb()
+    private val paper = Style(
+        nameSize = NAME_SIZE,
+        titleSize = TITLE_SIZE,
+        bodySize = BODY_SIZE,
+        totalSize = TOTAL_SIZE,
+        legendSize = LEGEND_SIZE,
+        ink = ink,
+        muted = muted,
+        accent = accent,
+        headerRule = HEADER_RULE,
+        thinRule = THIN_RULE,
+        amountWeight = MEDIUM,
+        unit = 1f,
+        withLogo = true,
+    )
+
+    // En térmica no hay grises: todo es negro, los montos van en 600 y el logo no se imprime.
+    private val thermal = Style(
+        nameSize = THERMAL_NAME,
+        titleSize = THERMAL_TITLE,
+        bodySize = THERMAL_BODY,
+        totalSize = THERMAL_TOTAL,
+        legendSize = THERMAL_LEGEND,
+        ink = Color.BLACK,
+        muted = Color.BLACK,
+        accent = Color.BLACK,
+        headerRule = THERMAL_RULE,
+        thinRule = THERMAL_RULE,
+        amountWeight = BOLD,
+        unit = THERMAL_UNIT,
+        withLogo = false,
+    )
 
     /**
      * Escribe [document] como PDF en [target], en la hoja del formato regional, en tantas páginas
      * como haga falta. Devuelve `false` si no quedó escrito entero, y entonces no deja archivo.
      */
     fun writePdf(document: ReceiptDocument, assets: ReceiptAssets, target: File): Boolean {
-        val paper = PaperSize.of(formats.date.formatLocale)
-        val column = min(COLUMN_WIDTH, paper.width - 2 * PAGE_MARGIN)
-        val left = (paper.width - column) / 2f
-        val blocks = blocksOf(document, assets, column)
+        val sheet = PaperSize.of(formats.date.formatLocale)
+        val column = min(COLUMN_WIDTH, sheet.width - 2 * PAGE_MARGIN)
+        val left = (sheet.width - column) / 2f
+        val blocks = blocksOf(document, assets, column, paper)
         val pdf = PdfDocument()
         return try {
             var number = 0
@@ -88,11 +121,11 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
             var top = 0f
             for (block in blocks) {
                 val current = page
-                if (current == null || top + block.height > paper.height - PAGE_MARGIN) {
+                if (current == null || top + block.height > sheet.height - PAGE_MARGIN) {
                     current?.let(pdf::finishPage)
                     number++
                     page = pdf.startPage(
-                        PdfDocument.PageInfo.Builder(paper.width, paper.height, number).create(),
+                        PdfDocument.PageInfo.Builder(sheet.width, sheet.height, number).create(),
                     )
                     top = PAGE_MARGIN.toFloat()
                 }
@@ -127,7 +160,7 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         assets: ReceiptAssets,
         scale: Float = IMAGE_SCALE,
     ): Bitmap {
-        val blocks = blocksOf(document, assets, COLUMN_WIDTH)
+        val blocks = blocksOf(document, assets, COLUMN_WIDTH, paper)
         val height = blocks.fold(0f) { sum, block -> sum + block.height } + 2 * IMAGE_MARGIN
         val width = COLUMN_WIDTH + 2 * IMAGE_MARGIN
         val bitmap = Bitmap.createBitmap(
@@ -148,37 +181,98 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
     }
 
     /**
+     * [document] para una térmica de [dots] puntos de ancho, en blanco y negro puros, con la misma
+     * regla de un bit que usa la impresión: lo que se ve es lo que sale. Va sin logo, con todo en
+     * negro y con los tamaños de la térmica.
+     */
+    fun renderThermal(document: ReceiptDocument, assets: ReceiptAssets, dots: Int): Bitmap {
+        val column = dots - 2 * THERMAL_PADDING
+        return thermalBitmap(blocksOf(document, assets, column, thermal), dots)
+    }
+
+    /**
+     * La página de prueba de una térmica de [dots] puntos: [title] y [body], centrados y con los
+     * tamaños de la térmica. El texto lleva letras como `ñ`, `ç` y `ã`, dibujadas como imagen.
+     */
+    fun renderThermalTest(title: String, body: String, dots: Int): Bitmap {
+        val column = dots - 2 * THERMAL_PADDING
+        val u = thermal.unit
+        val blocks = listOf(
+            centered(title, column, thermal.titleSize, BOLD, Color.BLACK, 0f),
+            centered(body, column, thermal.bodySize, REGULAR, Color.BLACK, SECTION_GAP * u),
+        )
+        return thermalBitmap(blocks, dots)
+    }
+
+    /** [blocks] sobre blanco, a [dots] de ancho, pasados a blanco y negro puros. */
+    private fun thermalBitmap(blocks: List<Block>, dots: Int): Bitmap {
+        val height = blocks.fold(0f) { sum, block -> sum + block.height } + 2 * THERMAL_PADDING
+        val bitmap = Bitmap.createBitmap(dots, ceil(height).toInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.WHITE)
+        canvas.translate(THERMAL_PADDING.toFloat(), THERMAL_PADDING.toFloat())
+        var top = 0f
+        for (block in blocks) {
+            block.draw(canvas, top)
+            top += block.height
+        }
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        for (index in pixels.indices) {
+            val dark = MonochromeThreshold.isDark(pixels[index])
+            pixels[index] = if (dark) Color.BLACK else Color.WHITE
+        }
+        bitmap.setPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        return bitmap
+    }
+
+    /**
      * Los textos del documento en el orden en que se dibujan, cada fila con su nombre y su monto.
      * Es lo que leen las pruebas para saber qué lleva el papel sin mirar píxeles.
      */
     internal fun textsOf(document: ReceiptDocument, assets: ReceiptAssets): List<String> =
-        blocksOf(document, assets, COLUMN_WIDTH).mapNotNull { it.text }
+        blocksOf(document, assets, COLUMN_WIDTH, paper).mapNotNull { it.text }
 
-    /** Los bloques del documento, de arriba abajo, para una columna de [width] puntos. */
+    /**
+     * Los bloques del documento, de arriba abajo, para una columna de [width] unidades con el
+     * estilo [style]: puntos de PDF en papel, puntos de la cabeza en térmica.
+     */
     private fun blocksOf(
         document: ReceiptDocument,
         assets: ReceiptAssets,
         width: Int,
+        style: Style,
     ): List<Block> = buildList {
         val header = document.header
-        assets.logo?.let { add(LogoBlock(it, width)) }
-        header.businessName?.let { add(centered(it, width, NAME_SIZE, BOLD, ink, GAP)) }
-        header.businessDetails?.let { add(centered(it, width, BODY_SIZE, REGULAR, muted, GAP)) }
-        if (isNotEmpty()) add(RuleBlock(width, accent, HEADER_RULE, SECTION_GAP))
-        add(centered(titleOf(document.kind), width, TITLE_SIZE, BOLD, ink, SECTION_GAP))
-        add(centered(numberOf(document), width, BODY_SIZE, REGULAR, ink, GAP))
-        add(centered(whenOf(document, assets.zone), width, BODY_SIZE, REGULAR, muted, SMALL_GAP))
+        val u = style.unit
+        if (style.withLogo) assets.logo?.let { add(LogoBlock(it, width)) }
+        header.businessName?.let {
+            add(centered(it, width, style.nameSize, BOLD, style.ink, GAP * u))
+        }
+        header.businessDetails?.let {
+            add(centered(it, width, style.bodySize, REGULAR, style.muted, GAP * u))
+        }
+        if (isNotEmpty()) {
+            add(RuleBlock(width, style.accent, style.headerRule, SECTION_GAP * u, AFTER_RULE * u))
+        }
+        val title = titleOf(document.kind)
+        add(centered(title, width, style.titleSize, BOLD, style.ink, SECTION_GAP * u))
+        add(centered(numberOf(document), width, style.bodySize, REGULAR, style.ink, GAP * u))
+        val whenText = whenOf(document, assets.zone)
+        add(centered(whenText, width, style.bodySize, REGULAR, style.muted, SMALL_GAP * u))
         document.customerName?.let {
             val customer = resources.getString(R.string.receipt_doc_customer, it)
-            add(centered(customer, width, BODY_SIZE, REGULAR, muted, SMALL_GAP))
+            add(centered(customer, width, style.bodySize, REGULAR, style.muted, SMALL_GAP * u))
         }
-        add(RuleBlock(width, muted, THIN_RULE, SECTION_GAP))
-        document.lines.forEach { add(lineRow(it, assets.units, width)) }
-        add(RuleBlock(width, muted, THIN_RULE, SECTION_GAP))
-        document.amounts.forEach { add(amountRow(it, width)) }
-        document.footerText?.let { add(centered(it, width, BODY_SIZE, REGULAR, ink, SECTION_GAP)) }
+        add(RuleBlock(width, style.muted, style.thinRule, SECTION_GAP * u, AFTER_RULE * u))
+        document.lines.forEach { add(lineRow(it, assets.units, width, style)) }
+        add(RuleBlock(width, style.muted, style.thinRule, SECTION_GAP * u, AFTER_RULE * u))
+        document.amounts.forEach { add(amountRow(it, width, style)) }
+        document.footerText?.let {
+            add(centered(it, width, style.bodySize, REGULAR, style.ink, SECTION_GAP * u))
+        }
         val legend = resources.getString(R.string.legal_receipt_not_invoice)
-        add(centered(legend, width, LEGEND_SIZE, REGULAR, muted, SECTION_GAP))
+        add(centered(legend, width, style.legendSize, REGULAR, style.muted, SECTION_GAP * u))
     }
 
     private fun titleOf(kind: ReceiptKind): String = when (kind) {
@@ -202,14 +296,19 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         return resources.getString(R.string.receipt_doc_date_time, date, time)
     }
 
-    private fun lineRow(line: ReceiptLine, units: Map<Long, MeasureUnit>, width: Int): Block {
+    private fun lineRow(
+        line: ReceiptLine,
+        units: Map<Long, MeasureUnit>,
+        width: Int,
+        style: Style,
+    ): Block {
         val quantity = saleQuantityText(line.quantity, units[line.unitId], resources, formats)
         val label = resources.getString(R.string.receipt_doc_line, quantity, line.productName)
-        val indent = if (line.extra) EXTRA_INDENT else 0f
-        return RowBlock(label, line.amount, width, indent, BODY_SIZE, MEDIUM, ink, ROW_GAP)
+        val indent = if (line.extra) EXTRA_INDENT * style.unit else 0f
+        return RowBlock(label, line.amount, width, indent, style, style.bodySize, style.ink)
     }
 
-    private fun amountRow(row: ReceiptAmount, width: Int): Block {
+    private fun amountRow(row: ReceiptAmount, width: Int, style: Style): Block {
         val label = when (row) {
             is ReceiptAmount.Subtotal -> resources.getString(R.string.receipt_doc_subtotal)
 
@@ -249,19 +348,17 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         }
         return when (row) {
             is ReceiptAmount.Total ->
-                RowBlock(label, row.amount, width, 0f, TOTAL_SIZE, BOLD, ink, TOTAL_GAP)
+                RowBlock(label, row.amount, width, 0f, style, style.totalSize, style.ink, true)
 
-            is ReceiptAmount.Tax ->
-                if (row.included) {
-                    RowBlock(label, row.amount, width, 0f, BODY_SIZE, MEDIUM, muted, ROW_GAP)
-                } else {
-                    RowBlock(label, row.amount, width, 0f, BODY_SIZE, MEDIUM, ink, ROW_GAP)
-                }
+            is ReceiptAmount.Tax -> {
+                val color = if (row.included) style.muted else style.ink
+                RowBlock(label, row.amount, width, 0f, style, style.bodySize, color)
+            }
 
             is ReceiptAmount.Subtotal, is ReceiptAmount.Adjustment, is ReceiptAmount.Rounding,
             is ReceiptAmount.Tip, is ReceiptAmount.Payment, is ReceiptAmount.Change,
             is ReceiptAmount.BalanceDue, is ReceiptAmount.Return,
-            -> RowBlock(label, row.amount, width, 0f, BODY_SIZE, MEDIUM, ink, ROW_GAP)
+            -> RowBlock(label, row.amount, width, 0f, style, style.bodySize, style.ink)
         }
     }
 
@@ -332,18 +429,19 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         }
     }
 
-    /** Un filete de lado a lado, con [before] de aire encima y [AFTER_RULE] debajo. */
+    /** Un filete de lado a lado, con [before] de aire encima y [after] debajo. */
     private class RuleBlock(
         private val width: Int,
         color: Int,
         stroke: Float,
         private val before: Float,
+        after: Float,
     ) : Block {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.color = color
             strokeWidth = stroke
         }
-        override val height: Float = before + stroke + AFTER_RULE
+        override val height: Float = before + stroke + after
         override val text: String? = null
 
         override fun draw(canvas: Canvas, top: Float) {
@@ -369,18 +467,21 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
 
     /**
      * Una fila con su nombre a la izquierda, que se parte en varias líneas si no cabe, y su monto
-     * a la derecha, en una sola línea y sobre la línea base de la primera.
+     * a la derecha, en una sola línea y sobre la línea base de la primera. La del [total] va en
+     * negrita y con más aire encima.
      */
     private inner class RowBlock(
         label: String,
         amount: Money,
         private val width: Int,
         private val indent: Float,
+        style: Style,
         size: Float,
-        weight: Int,
         color: Int,
-        private val before: Float,
+        total: Boolean = false,
     ) : Block {
+        private val before = (if (total) TOTAL_GAP else ROW_GAP) * style.unit
+        private val weight = if (total) BOLD else style.amountWeight
         private val runs = money.runsOf(amount).map {
             it.text to moneyPaint(it.font, size, weight, color)
         }
@@ -389,8 +490,8 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         }
         private val labelLayout = layout(
             label,
-            textPaint(size, if (weight >= BOLD) BOLD else REGULAR, color),
-            (width - indent - amountWidth - COLUMN_GAP).toInt(),
+            textPaint(size, if (total) BOLD else REGULAR, color),
+            (width - indent - amountWidth - COLUMN_GAP * style.unit).toInt(),
             Layout.Alignment.ALIGN_NORMAL,
         )
         private val amountHeight = runs.maxOf { (_, paint) ->
@@ -447,5 +548,42 @@ class ReceiptRenderer(context: Context, private val formats: AppFormats, palette
         const val EXTRA_INDENT = 12f
         const val LOGO_MAX = 96f
         val CENTER = Layout.Alignment.ALIGN_CENTER
+
+        // Térmica: alturas en puntos de la cabeza, de 203 ppp.
+        const val THERMAL_NAME = 28f
+        const val THERMAL_TITLE = 24f
+        const val THERMAL_BODY = 22f
+        const val THERMAL_TOTAL = 30f
+        const val THERMAL_LEGEND = 20f
+
+        /** Una línea negra de 2 puntos: una de medio punto no sale en térmica. */
+        const val THERMAL_RULE = 2f
+
+        /** Cuántos puntos de la cabeza vale un punto de aire: el texto es 2,2 veces el del PDF. */
+        const val THERMAL_UNIT = 2.2f
+
+        /** El borde blanco a cada lado: la cabeza no imprime pegada al borde del papel. */
+        const val THERMAL_PADDING = 8
     }
+
+    /**
+     * Cómo se dibuja: tamaños, tintas, filetes, el peso de los montos y si lleva logo. [unit]
+     * multiplica el aire entre bloques: un punto de PDF en papel, o los puntos de la cabeza que
+     * vale un punto en térmica.
+     */
+    private class Style(
+        val nameSize: Float,
+        val titleSize: Float,
+        val bodySize: Float,
+        val totalSize: Float,
+        val legendSize: Float,
+        val ink: Int,
+        val muted: Int,
+        val accent: Int,
+        val headerRule: Float,
+        val thinRule: Float,
+        val amountWeight: Int,
+        val unit: Float,
+        val withLogo: Boolean,
+    )
 }

@@ -82,6 +82,7 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderScreen
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
 import io.github.yesidrobayo.shopledger.ui.pricing.PriceListsRoute
+import io.github.yesidrobayo.shopledger.ui.printer.PrintersRoute
 import io.github.yesidrobayo.shopledger.ui.product.BulkPriceRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductDetailRoute
 import io.github.yesidrobayo.shopledger.ui.product.ProductEditRoute
@@ -406,6 +407,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.ReceiptTemplate -> ReceiptTemplateRoute(AppNavKey.ReceiptTemplate, navigator)
 
         is AppNavKey.SaleReceipt -> SaleReceiptRoute(key, navigator)
+
+        AppNavKey.Printers -> PrintersRoute(AppNavKey.Printers, navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }

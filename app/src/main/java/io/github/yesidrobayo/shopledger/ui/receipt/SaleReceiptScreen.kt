@@ -36,8 +36,8 @@ import io.github.yesidrobayo.shopledger.ui.document.ReceiptAssets
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
- * El comprobante de una venta a pantalla completa, tal como sale, con `Compartir PDF` y
- * `Compartir imagen` abajo y `Editar plantilla` en el menú. Una venta anulada se muestra y se
+ * El comprobante de una venta a pantalla completa, tal como sale, con `Compartir PDF`, `Compartir
+ * imagen` e `Imprimir` abajo y `Editar plantilla` en el menú. Una venta anulada se muestra y se
  * comparte igual: el papel dice que se anuló.
  *
  * Si no se pudo crear el archivo, lo dice sobre los botones con `Reintentar`: la venta sigue
@@ -125,8 +125,9 @@ private fun Paper(ready: SaleReceiptUiState.Ready, modifier: Modifier) {
 }
 
 /**
- * `Compartir PDF`, la acción principal, y `Compartir imagen`. Mientras se crea un archivo, su botón
- * dice `Generando…` y ninguno atiende otro toque.
+ * `Compartir PDF`, la acción principal, `Compartir imagen` e `Imprimir`. Mientras se crea un
+ * archivo, su botón dice `Generando…` y ninguno atiende otro toque. `Imprimir` usa la térmica por
+ * defecto; sin ninguna, abre las impresoras.
  */
 @Composable
 private fun ShareBar(ready: SaleReceiptUiState.Ready, onAction: (SaleReceiptAction) -> Unit) {
@@ -152,6 +153,18 @@ private fun ShareBar(ready: SaleReceiptUiState.Ready, onAction: (SaleReceiptActi
         }
         ShareButton(ready, ReceiptShare.PDF, ActionVariant.PRIMARY, onAction, width)
         ShareButton(ready, ReceiptShare.IMAGE, ActionVariant.OUTLINED, onAction, width)
+        val print = if (ready.printing) {
+            R.string.printer_status_printing
+        } else {
+            R.string.receipt_print_action
+        }
+        PrimaryActionButton(
+            text = stringResource(print),
+            onClick = { onAction(SaleReceiptAction.Print) },
+            variant = ActionVariant.TEXT,
+            state = if (ready.printing) ActionState.WORKING else ActionState.IDLE,
+            modifier = width,
+        )
     }
 }
 

@@ -43,4 +43,5 @@
     <string name="receipt_generating">Generating…</string>
     <string name="receipt_error_generate">The receipt could not be created. The sale is still recorded.</string>
     <string name="receipt_file_name">Receipt %1$s</string>
+    <string name="receipt_print_action">Print</string>
 </resources>

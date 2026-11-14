@@ -12,4 +12,18 @@
     <string name="printer_error_unpaired">%1$s ya no está emparejada.</string>
     <string name="printer_status_printing">Imprimiendo…</string>
     <string name="printer_sent">Enviado a %1$s</string>
+    <string name="printer_intro">Se imprime solo en impresoras ya emparejadas con este teléfono.</string>
+    <string name="printer_add_action">Agregar impresora</string>
+    <string name="printer_paper_width">Ancho del papel</string>
+    <string name="printer_paper_58">58 mm</string>
+    <string name="printer_paper_80">80 mm</string>
+    <string name="printer_status_default">Predeterminada</string>
+    <string name="printer_test_action">Imprimir prueba</string>
+    <string name="printer_set_default_action">Usar por defecto</string>
+    <string name="printer_remove_action">Quitar impresora</string>
+    <string name="printer_empty_title">Sin impresoras</string>
+    <string name="printer_empty_body">Una impresora guardada aquí sirve para comprobantes y etiquetas.</string>
+    <string name="printer_error_print">No se pudo imprimir. El documento sigue registrado.</string>
+    <string name="printer_test_page_title">Impresión de prueba</string>
+    <string name="printer_test_page_body">Si se leen bien ñ, ç y ã, la impresora está lista.</string>
 </resources>

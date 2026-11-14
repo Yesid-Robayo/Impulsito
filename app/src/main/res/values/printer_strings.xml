@@ -12,4 +12,18 @@
     <string name="printer_error_unpaired">%1$s is no longer paired.</string>
     <string name="printer_status_printing">Printing…</string>
     <string name="printer_sent">Sent to %1$s</string>
+    <string name="printer_intro">Printing only works with printers already paired with this phone.</string>
+    <string name="printer_add_action">Add printer</string>
+    <string name="printer_paper_width">Paper width</string>
+    <string name="printer_paper_58">58 mm</string>
+    <string name="printer_paper_80">80 mm</string>
+    <string name="printer_status_default">Default</string>
+    <string name="printer_test_action">Print test</string>
+    <string name="printer_set_default_action">Use as default</string>
+    <string name="printer_remove_action">Remove printer</string>
+    <string name="printer_empty_title">No printers</string>
+    <string name="printer_empty_body">A printer saved here is used for receipts and labels.</string>
+    <string name="printer_error_print">Printing failed. The document is still recorded.</string>
+    <string name="printer_test_page_title">Print test</string>
+    <string name="printer_test_page_body">If ñ, ç and ã read well, the printer is ready.</string>
 </resources>

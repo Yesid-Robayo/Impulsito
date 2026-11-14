@@ -7,22 +7,32 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.di.ThermalReceiptPrinting
+import io.github.yesidrobayo.shopledger.domain.model.print.PrintResult
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
+import io.github.yesidrobayo.shopledger.domain.usecase.print.ObservePrinterSetupUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleDetailUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
+import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
+import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.document.ReceiptAssets
 import io.github.yesidrobayo.shopledger.ui.document.ReceiptRenderer
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.printer.AskBluetoothPermission
+import io.github.yesidrobayo.shopledger.ui.printer.printFailureText
 import io.github.yesidrobayo.shopledger.ui.rescue.ExportFolder
 import io.github.yesidrobayo.shopledger.ui.rescue.exportFile
 import io.github.yesidrobayo.shopledger.ui.rescue.pdfShareIntent
@@ -45,9 +55,20 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun SaleReceiptRoute(key: AppNavKey.SaleReceipt, navigator: AppNavigator) {
+    val context = LocalContext.current
+    val formats = LocalAppFormats.current
+    val palette = AppTheme.palette
+    val renderer = remember(context, formats, palette) {
+        ReceiptRenderer(context, formats, palette)
+    }
     val model =
         rememberAppViewModel(key = "receipt-${key.saleId}") { dependencies ->
             val ports = dependencies.ports
+            val printers = dependencies.container.data.printerSetup
+            val printing = ThermalReceiptPrinting.bluetooth(
+                dependencies.container.data.printers,
+                dependencies.container.dispatchers.default,
+            )
             val observe = ObserveSaleDetailUseCase(
                 ports.sales,
                 ports.salePayments,
@@ -77,6 +98,11 @@ fun SaleReceiptRoute(key: AppNavKey.SaleReceipt, navigator: AppNavigator) {
                 },
                 loadImage = { id -> ports.transactions.read { ports.mediaAssets.findImage(id) } },
                 computation = dependencies.container.dispatchers.default,
+                observePrinters = ObservePrinterSetupUseCase(printers)::invoke,
+                printReceipt = { printer, ready ->
+                    val assets = ReceiptAssets(logo = null, units = ready.units, zone = ready.zone)
+                    printing.printReceipt(printer, renderer, ready.document, assets)
+                },
             )
         }
     when (model) {
@@ -87,9 +113,19 @@ fun SaleReceiptRoute(key: AppNavKey.SaleReceipt, navigator: AppNavigator) {
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-            ShareReceipt(uiState as? SaleReceiptUiState.Ready) { shared ->
+            val ready = uiState as? SaleReceiptUiState.Ready
+            ShareReceipt(ready) { shared ->
                 viewModel.onAction(SaleReceiptAction.ShareFinished(shared))
             }
+            AskBluetoothPermission(ready?.askingPermission == true) {
+                viewModel.onAction(SaleReceiptAction.PrintPermission(it))
+            }
+            LaunchedEffect(ready?.openPrinters) {
+                if (ready?.openPrinters != true) return@LaunchedEffect
+                viewModel.onAction(SaleReceiptAction.PrintersOpened)
+                navigator.open(AppNavKey.Printers)
+            }
+            ShowPrinted(ready) { viewModel.onAction(SaleReceiptAction.PrintedShown) }
             SaleReceiptScreen(
                 uiState = uiState,
                 onAction = { action ->
@@ -102,6 +138,10 @@ fun SaleReceiptRoute(key: AppNavKey.SaleReceipt, navigator: AppNavigator) {
                         is SaleReceiptAction.Share,
                         is SaleReceiptAction.ShareFinished,
                         SaleReceiptAction.Retry,
+                        SaleReceiptAction.Print,
+                        is SaleReceiptAction.PrintPermission,
+                        SaleReceiptAction.PrintersOpened,
+                        SaleReceiptAction.PrintedShown,
                         -> viewModel.onAction(action)
                     }
                 },
@@ -159,6 +199,31 @@ private fun ShareReceipt(ready: SaleReceiptUiState.Ready?, onFinished: (Boolean)
             false
         }
         onFinished(shared)
+    }
+}
+
+/** Cómo terminó la impresión, en un aviso: enviada, o por qué no. La venta nunca cambia. */
+@Composable
+private fun ShowPrinted(ready: SaleReceiptUiState.Ready?, onShown: () -> Unit) {
+    val messages = LocalAppMessages.current
+    val resources = LocalResources.current
+    val printed = ready?.printed
+    val name = ready?.printer?.name ?: stringResource(R.string.printer_section_bluetooth)
+    LaunchedEffect(printed) {
+        if (printed == null) return@LaunchedEffect
+        val visuals = when (printed) {
+            is PrintResult.Sent -> AppSnackbarVisuals(
+                resources.getString(R.string.printer_sent, name),
+                SnackbarVariant.SUCCESS,
+            )
+
+            is PrintResult.Failed -> AppSnackbarVisuals(
+                printFailureText(resources, printed.reason, name),
+                SnackbarVariant.ERROR,
+            )
+        }
+        messages.show(visuals)
+        onShown()
     }
 }
 

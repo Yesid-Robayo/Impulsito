@@ -12,4 +12,18 @@
     <string name="printer_error_unpaired">%1$s não está mais pareada.</string>
     <string name="printer_status_printing">Imprimindo…</string>
     <string name="printer_sent">Enviado a %1$s</string>
+    <string name="printer_intro">A impressão funciona só com impressoras já pareadas com este telefone.</string>
+    <string name="printer_add_action">Adicionar impressora</string>
+    <string name="printer_paper_width">Largura do papel</string>
+    <string name="printer_paper_58">58 mm</string>
+    <string name="printer_paper_80">80 mm</string>
+    <string name="printer_status_default">Padrão</string>
+    <string name="printer_test_action">Imprimir teste</string>
+    <string name="printer_set_default_action">Usar como padrão</string>
+    <string name="printer_remove_action">Remover impressora</string>
+    <string name="printer_empty_title">Sem impressoras</string>
+    <string name="printer_empty_body">Uma impressora salva aqui serve para comprovantes e etiquetas.</string>
+    <string name="printer_error_print">Não foi possível imprimir. O documento continua registrado.</string>
+    <string name="printer_test_page_title">Teste de impressão</string>
+    <string name="printer_test_page_body">Se ñ, ç e ã saírem legíveis, a impressora está pronta.</string>
 </resources>

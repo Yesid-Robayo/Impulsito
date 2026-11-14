@@ -422,8 +422,8 @@ private fun RegionGroup(overview: SettingsOverviewUiState?, onOpen: (AppNavKey) 
 }
 
 /**
- * `Ventas y cobro`: impuestos, métodos de pago, el interruptor de las propinas y la plantilla del
- * comprobante.
+ * `Ventas y cobro`: impuestos, métodos de pago, el interruptor de las propinas, la plantilla del
+ * comprobante y las impresoras.
  */
 @Composable
 private fun SalesGroup(
@@ -448,6 +448,10 @@ private fun SalesGroup(
     SettingsRow(
         title = stringResource(R.string.receipt_template_title),
         action = SettingsRowAction.Navigation { onOpen(AppNavKey.ReceiptTemplate) },
+    )
+    SettingsRow(
+        title = stringResource(R.string.printer_title),
+        action = SettingsRowAction.Navigation { onOpen(AppNavKey.Printers) },
     )
     if (saveFailed) {
         NoticeCard(

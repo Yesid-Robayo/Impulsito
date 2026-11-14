@@ -43,4 +43,5 @@
     <string name="receipt_generating">Generando…</string>
     <string name="receipt_error_generate">No se pudo crear el comprobante. La venta sigue registrada.</string>
     <string name="receipt_file_name">Comprobante %1$s</string>
+    <string name="receipt_print_action">Imprimir</string>
 </resources>
