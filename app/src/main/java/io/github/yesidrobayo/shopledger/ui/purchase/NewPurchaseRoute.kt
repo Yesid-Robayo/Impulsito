@@ -66,6 +66,7 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                     taxRates = ports.taxRates,
                     clock = container.clock,
                     productUnits = ports.productUnits,
+                    lots = ports.stockLots,
                 )
             val register =
                 RegisterPurchaseUseCase(
@@ -85,6 +86,7 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                     supplierLedger = ports.supplierLedger,
                     money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
                     locations = ports.locations,
+                    lots = ports.stockLots,
                 )
             val reactivate =
                 ReactivateProductUseCase(

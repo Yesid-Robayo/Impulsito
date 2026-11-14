@@ -16,10 +16,13 @@ import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchase
 import io.github.yesidrobayo.shopledger.domain.model.purchase.NewPurchaseLine
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCostChange
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineLot
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRejection
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
+import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
@@ -35,6 +38,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.SupplierLedgerRepository
@@ -57,6 +61,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseTotals
 import io.github.yesidrobayo.shopledger.domain.rule.purchase.PurchaseUnit
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotCodeCheck
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotRules
 import io.github.yesidrobayo.shopledger.domain.usecase.money.AccountIssue
 import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.money.MoneyAppendResult
@@ -77,8 +83,8 @@ import kotlin.time.Instant
  *   deduce de ese valor. Con stock en cero, negativo o sin valor, el costo anterior no pesa.
  * - **Costo unitario o total, a elección.** La persona escribe uno de los dos y el otro se deduce.
  *   Los dos se guardan en la línea. Una bonificación vale cero, y baja el promedio.
- * - **Un producto puede repetirse**, por ejemplo con dos costos distintos. Las líneas se aplican en
- *   orden, cada una con su fila del libro, y la segunda parte del costo que dejó la primera.
+ * - **Un producto puede repetirse**, por ejemplo con dos costos distintos. Las líneas se aplican
+ * en   orden, cada una con su fila del libro, y la segunda parte del costo que dejó la primera.
  * - **Las ventas pasadas no cambian.** Cada venta congeló su costo, y una compra solo mueve el
  *   costo de lo que venga después. Tampoco cambia el precio de venta de ningún producto.
  * - **El impuesto va línea por línea**, con la tasa del producto o la del negocio, y cada línea
@@ -100,21 +106,23 @@ import kotlin.time.Instant
  *   y no escribe nada en el libro del proveedor, como siempre.
  *
  * Por ahora la compra va sin cuenta de dinero: sus movimientos llegan con el libro de dinero.
- * Tampoco compra productos con lotes: los rechaza con su motivo.
+ * Un producto que se controla por lotes entra al lote de su línea: uno que ya tiene, o uno nuevo
+ * que se crea aquí con su código y su vencimiento, y que recuerda la línea con que entró. Sin
+ * lote, entra al lote sin asignar. [lots] solo hace falta para comprar con lote.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
  * [supplierLedger] solo hace falta para comprar a plazo.
  *
  * Cada producto comprado toma como costo de reposición lo que costó una unidad base de su última
- * línea con costo, fechado con la compra, en esta misma transacción. Una compra con fecha anterior a
- * la reposición que ya tiene no la cambia, y una bonificación tampoco. El costo promedio no se mueve
- * por eso: la reposición es solo una vista adicional.
+ * línea con costo, fechado con la compra, en esta misma transacción. Una compra con fecha anterior
+ * a la reposición que ya tiene no la cambia, y una bonificación tampoco. El costo promedio no se
+ * mueve por eso: la reposición es solo una vista adicional.
  *
  * Con una cuenta elegida, lo pagado al confirmar sale de ella como un `PURCHASE_PAYMENT`, en esta
  * misma transacción y con la fecha de la compra. La cuenta tiene que estar vigente y llevar la
- * moneda del negocio. Sin cuenta, o sin nada pagado, no se escribe dinero ni se lee ninguna cuenta.
- * [money] solo hace falta para pagar desde una cuenta.
+ * moneda del negocio. Sin cuenta, o sin nada pagado, no se escribe dinero ni se lee ninguna
+ * cuenta. [money] solo hace falta para pagar desde una cuenta.
  */
 class RegisterPurchaseUseCase(
     private val transactions: TransactionRunner,
@@ -133,6 +141,7 @@ class RegisterPurchaseUseCase(
     private val supplierLedger: SupplierLedgerRepository? = null,
     private val money: DocumentMoney? = null,
     private val locations: LocationRepository? = null,
+    private val lots: StockLotRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -177,6 +186,7 @@ class RegisterPurchaseUseCase(
             PurchasePricingResult.TotalTooLarge ->
                 return reject(RegisterPurchaseResult.PurchaseTotalTooLarge)
         }
+        storedLotRejection(request.lines)?.let { return reject(it) }
         val settlement = when (
             val result = settlementOf(request, priced.totals.total, supplier, time)
         ) {
@@ -205,7 +215,7 @@ class RegisterPurchaseUseCase(
             location,
             request.supplierId,
             reference,
-            priced.lines,
+            priced.lines.zip(request.lines.map { it.lot }),
             priced.totals,
             settlement.copy(moneyAccountId = accountId),
             time,
@@ -243,7 +253,8 @@ class RegisterPurchaseUseCase(
      * Los cambios de costo, con lo que pide revisar el precio. Un costo conocido que sube marca el
      * producto para revisar su precio, en esta misma transacción, salvo que ya estuviera marcado:
      * la cola de revisión ordena por la marca más antigua. Además, se dice si el margen del precio
-     * de venta quedó por debajo de su objetivo, el del producto, el de su categoría o el del negocio.
+     * de venta quedó por debajo de su objetivo, el del producto, el de su categoría o el del
+     * negocio.
      */
     private suspend fun reviewPrices(
         priced: PurchasePricingResult.Priced,
@@ -430,8 +441,8 @@ class RegisterPurchaseUseCase(
 
     /**
      * Las conversiones de compra de [productId] que piden sus líneas, leídas dentro de la
-     * transacción para congelar el factor que hay al confirmar. Una que no existe o no es de compra
-     * queda fuera, y el cálculo rechaza su línea.
+     * transacción para congelar el factor que hay al confirmar. Una que no existe o no es de
+     * compra queda fuera, y el cálculo rechaza su línea.
      */
     private suspend fun purchaseUnitsOf(
         productId: Long,
@@ -474,7 +485,7 @@ class RegisterPurchaseUseCase(
         location: Long,
         supplierId: Long?,
         reference: String?,
-        lines: List<PricedPurchaseLine>,
+        lines: List<Pair<PricedPurchaseLine, PurchaseLineLot?>>,
         totals: PurchaseTotals,
         settlement: Settlement,
         time: RecordTime,
@@ -498,12 +509,18 @@ class RegisterPurchaseUseCase(
                 createdAt = now,
             ),
         )
-        for (line in lines) {
-            val lineId = purchases.insertLine(purchaseId, line.toNewLine())
+        for ((line, lot) in lines) {
+            val product = line.subject.product
+            val lotId = lotOf(product.id, product.details.tracksLots, lot, now)
+            val lineId = purchases.insertLine(purchaseId, line.toNewLine(lotId))
+            // Un lote nuevo recuerda la línea con que entró, que recién ahora tiene id.
+            if (lot is PurchaseLineLot.New && lotId != null) {
+                requireNotNull(lots).attachPurchaseLine(lotId, lineId)
+            }
             ledger.append(
                 NewStockMovement(
                     movement = StockMovementDraft(
-                        key = StockKey(line.subject.product.id, location, lotId = null),
+                        key = StockKey(product.id, location, lotId),
                         type = StockMovementType.PURCHASE,
                         quantity = line.quantity,
                         reversesMovementId = null,
@@ -525,7 +542,74 @@ class RegisterPurchaseUseCase(
         return purchaseId
     }
 
-    private fun PricedPurchaseLine.toNewLine(): NewPurchaseLine = NewPurchaseLine(
+    /**
+     * El motivo por el que un lote no sirve, leído en la base: un lote elegido que no existe o es
+     * de otro producto, o un código nuevo que el producto ya tiene. `null` si todos sirven.
+     */
+    private suspend fun storedLotRejection(
+        lines: List<PurchaseLineRequest>,
+    ): RegisterPurchaseResult? {
+        for ((index, line) in lines.withIndex()) {
+            val reason = when (val lot = line.lot) {
+                null -> null
+
+                is PurchaseLineLot.Existing -> {
+                    val found = requireNotNull(lots) { "Comprar con lote pide los lotes" }
+                        .findById(lot.lotId)
+                    if (found?.productId == line.productId) {
+                        null
+                    } else {
+                        PurchaseLineRejection.LOT_NOT_FOUND
+                    }
+                }
+
+                is PurchaseLineLot.New -> {
+                    val code = codeOf(lot)
+                    val repository = requireNotNull(lots) { "Comprar con lote pide los lotes" }
+                    repository.findByCode(line.productId, code)
+                        ?.let { PurchaseLineRejection.LOT_CODE_REPEATED }
+                }
+            }
+            if (reason != null) return RegisterPurchaseResult.LineRejected(index, reason)
+        }
+        return null
+    }
+
+    /**
+     * El lote de la fila de una línea: ninguno en un producto sin lotes, el elegido, uno nuevo que
+     * se crea aquí, o el lote sin asignar si la línea no trae lote.
+     */
+    private suspend fun lotOf(
+        productId: Long,
+        tracksLots: Boolean,
+        lot: PurchaseLineLot?,
+        now: Instant,
+    ): Long? = when (lot) {
+        null -> if (tracksLots) ledger.unassignedLot(productId, now) else null
+
+        is PurchaseLineLot.Existing -> lot.lotId
+
+        is PurchaseLineLot.New ->
+            requireNotNull(lots).insert(
+                NewStockLot(
+                    productId = productId,
+                    code = codeOf(lot),
+                    expiryDate = lot.expiry,
+                    purchaseLineId = null,
+                    createdAt = now,
+                ),
+            )
+    }
+
+    /** El código recortado de un lote nuevo, que el cálculo de la compra ya revisó. */
+    private fun codeOf(lot: PurchaseLineLot.New): String = when (
+        val check = LotRules.checkCode(lot.code)
+    ) {
+        is LotCodeCheck.Valid -> check.code
+        LotCodeCheck.Blank, is LotCodeCheck.TooLong -> error("El cálculo ya rechazó ese código")
+    }
+
+    private fun PricedPurchaseLine.toNewLine(lotId: Long?): NewPurchaseLine = NewPurchaseLine(
         productId = subject.product.id,
         unitId = unitId,
         unitFactor = unitFactor,
@@ -537,7 +621,7 @@ class RegisterPurchaseUseCase(
         taxNameSnapshot = subject.taxName,
         taxAmount = split.taxAmount,
         costAmount = split.costAmount,
-        lotId = null,
+        lotId = lotId,
         referenceUnitCost = null,
     )
 
@@ -549,9 +633,9 @@ class RegisterPurchaseUseCase(
         throw StorageFailureException(StorageFailure.INVARIANT_VIOLATION)
 
     /**
-     * Cómo se paga la compra: [amountPaid] al confirmar, [credit] lo que queda debiendo, o `null` si
-     * se pagó completa, y [dueDate] el vencimiento de esa deuda, si tiene. [moneyAccountId] es la
-     * cuenta de la que sale lo pagado, si la hay.
+     * Cómo se paga la compra: [amountPaid] al confirmar, [credit] lo que queda debiendo, o `null`
+     * si se pagó completa, y [dueDate] el vencimiento de esa deuda, si tiene. [moneyAccountId] es
+     * la cuenta de la que sale lo pagado, si la hay.
      */
     private data class Settlement(
         val amountPaid: Money,

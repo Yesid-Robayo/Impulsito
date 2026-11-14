@@ -11,8 +11,17 @@ enum class PurchaseLineRejection {
     /** El producto no lleva stock propio, como un servicio o un combo: no hay libro que sumar. */
     NOT_STOCKED,
 
-    /** El producto lleva lotes, y comprar por lote todavía no se ofrece. */
-    LOTS_NOT_SUPPORTED,
+    /** La línea trae lote, y el producto no se controla por lotes. */
+    LOT_NOT_TRACKED,
+
+    /** El lote elegido no existe o es de otro producto. */
+    LOT_NOT_FOUND,
+
+    /** El código del lote nuevo está en blanco o pasa del largo máximo. */
+    INVALID_LOT_CODE,
+
+    /** El producto ya tiene un lote con ese código, o la compra lo crea dos veces. */
+    LOT_CODE_REPEATED,
 
     /** La unidad elegida no es la base ni una conversión de compra del producto. */
     UNIT_UNAVAILABLE,

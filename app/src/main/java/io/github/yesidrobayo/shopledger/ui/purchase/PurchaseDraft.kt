@@ -43,7 +43,9 @@ data class PurchaseDraft(
 
 /**
  * Una línea tal como se escribió: los textos se leen al calcular, con el formato regional.
- * [unitId] es la unidad en que se compra, o `null` para la base.
+ * [unitId] es la unidad en que se compra, o `null` para la base. En un producto con lotes,
+ * [lotCode] es el código del lote tal como se escribió, vacío sin lote, y [lotExpiry] su
+ * vencimiento, o `null` sin vencimiento.
  */
 data class PurchaseLineDraft(
     val key: Long,
@@ -52,6 +54,8 @@ data class PurchaseLineDraft(
     val amountText: String,
     val byTotal: Boolean,
     val unitId: Long? = null,
+    val lotCode: String = "",
+    val lotExpiry: BusinessDate? = null,
 )
 
 /**
@@ -74,6 +78,8 @@ internal object PurchaseDraftStore {
     private const val PAID_NOW = "purchase.paidNow"
     private const val ACCOUNT = "purchase.accountId"
     private const val LOCATION = "purchase.locationId"
+    private const val LOT_CODES = "purchase.lotCodes"
+    private const val LOT_EXPIRIES = "purchase.lotExpiries"
 
     private const val FIELDS = 4
 
@@ -85,6 +91,9 @@ internal object PurchaseDraftStore {
             state.get<LongArray>(LINES),
             state.get<ArrayList<String>>(QUANTITIES),
             state.get<ArrayList<String>>(AMOUNTS),
+        ).withLots(
+            state.get<ArrayList<String>>(LOT_CODES),
+            state.get<ArrayList<String>>(LOT_EXPIRIES),
         ),
         supplierId = state.get<Long>(SUPPLIER),
         supplierTouched = state.get<Boolean>(SUPPLIER_TOUCHED) ?: false,
@@ -112,6 +121,9 @@ internal object PurchaseDraftStore {
         state[LINES] = numbers
         state[QUANTITIES] = ArrayList(draft.lines.map { it.quantityText })
         state[AMOUNTS] = ArrayList(draft.lines.map { it.amountText })
+        state[LOT_CODES] = ArrayList(draft.lines.map { it.lotCode })
+        // Sin vencimiento se guarda vacío: un `Bundle` no lleva `null` dentro de una lista.
+        state[LOT_EXPIRIES] = ArrayList(draft.lines.map { it.lotExpiry?.toString().orEmpty() })
         state[SUPPLIER] = draft.supplierId
         state[SUPPLIER_TOUCHED] = draft.supplierTouched
         state[DATE] = draft.date?.toString()
@@ -124,6 +136,23 @@ internal object PurchaseDraftStore {
         state[PAID_NOW] = draft.paidNowText
         state[ACCOUNT] = draft.accountId
         state[LOCATION] = draft.locationId
+    }
+
+    /**
+     * Las líneas con el lote que se escribió en cada una. Si los lotes guardados no cuadran con
+     * las líneas, las líneas quedan sin lote: el lote se vuelve a escribir, la compra no se
+     * pierde.
+     */
+    private fun List<PurchaseLineDraft>.withLots(
+        codes: List<String>?,
+        expiries: List<String>?,
+    ): List<PurchaseLineDraft> {
+        if (codes == null || expiries == null || codes.size != size || expiries.size != size) {
+            return this
+        }
+        return mapIndexed { index, line ->
+            line.copy(lotCode = codes[index], lotExpiry = BusinessDate.parse(expiries[index]))
+        }
     }
 
     /** Lo guardado; si las tres partes no cuadran entre sí, se descarta entero. */

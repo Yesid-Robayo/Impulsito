@@ -1,7 +1,9 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.purchase
 
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineLot
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleWorld
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.TestLocations
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.product
@@ -56,6 +58,22 @@ class PurchaseLocationTest {
         assertTrue(buy(SaleWorld.MAIN_LOCATION) is RegisterPurchaseResult.Registered)
 
         assertEquals(1, world.tables.purchases.size)
+    }
+
+    @Test
+    fun aLotBoughtForTheWarehouseEntersTheLotThereAndNotInTheInitialLocation() = runTest {
+        world.addProduct(product(2, tracksLots = true))
+        val lotLine =
+            atUnitCost(2, 3_000, cost = 1_000).copy(lot = PurchaseLineLot.New("B-9", null))
+
+        world.registerPurchase()(PurchaseRequest(listOf(lotLine), locationId = WAREHOUSE))
+
+        val lot = world.tables.lots.values.single().id
+        assertEquals(StockKey(2, WAREHOUSE, lot), world.movements().last().movement.key)
+        val atWarehouse = world.lotRepository.findStock(2, WAREHOUSE).single()
+        assertEquals(QuantityMilli(3_000), atWarehouse.onHand)
+        val atInitial = world.lotRepository.findStock(2, SaleWorld.MAIN_LOCATION).single()
+        assertEquals(QuantityMilli.ZERO, atInitial.onHand)
     }
 
     private companion object {

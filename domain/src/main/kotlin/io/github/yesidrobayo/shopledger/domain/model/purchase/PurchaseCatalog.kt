@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxRateDetails
 import kotlinx.datetime.DayOfWeek
 
@@ -13,7 +14,7 @@ import kotlinx.datetime.DayOfWeek
  * Lo que la pantalla de compra necesita del negocio para armar una compra.
  *
  * - [products]: los productos sin archivar que se pueden comprar, por nombre normalizado: los que
- *   llevan stock propio y no llevan lotes.
+ *   llevan stock propio.
  * - [archived]: los archivados que se podrían comprar: la búsqueda ofrece reactivarlos.
  * - [units]: todas las unidades, también las archivadas, por id.
  * - [suppliers]: los proveedores sin archivar, por nombre: los que se eligen en una compra nueva.
@@ -23,6 +24,8 @@ import kotlinx.datetime.DayOfWeek
  *   una fecha anterior. Faltan si el teléfono no conoce la zona del negocio.
  * - [conversions]: por producto, las unidades en que se compra además de la base, con su factor,
  *   por id de unidad. Solo las que se ofrecen al comprar.
+ * - [lots]: por producto, los lotes con código que no se cerraron, en el orden en que entraron:
+ *   escribir el código de uno de ellos suma a ese lote en vez de crear otro.
  */
 data class PurchaseCatalog(
     val products: List<Product>,
@@ -34,4 +37,5 @@ data class PurchaseCatalog(
     val today: BusinessDate?,
     val weekStartDay: DayOfWeek?,
     val conversions: Map<Long, Map<Long, ConversionDetails>> = emptyMap(),
+    val lots: Map<Long, List<StockLot>> = emptyMap(),
 )

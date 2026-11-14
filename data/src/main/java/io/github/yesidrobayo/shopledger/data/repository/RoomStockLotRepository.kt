@@ -28,6 +28,9 @@ internal class RoomStockLotRepository(database: AppDatabase) : StockLotRepositor
         .map { rows -> rows.map(::toLot) }
         .distinctUntilChanged()
 
+    override fun observeAll(): Flow<List<StockLot>> =
+        lots.observeAll().map { rows -> rows.map(::toLot) }.distinctUntilChanged()
+
     override suspend fun findById(id: Long): StockLot? = lots.findById(id)?.let(::toLot)
 
     override suspend fun findByCode(productId: Long, code: String): StockLot? =
@@ -49,6 +52,10 @@ internal class RoomStockLotRepository(database: AppDatabase) : StockLotRepositor
                 closedAt = null,
             ),
         )
+    }
+
+    override suspend fun attachPurchaseLine(lotId: Long, purchaseLineId: Long) {
+        writes.inTransaction { requireOneRow(lots.setPurchaseLine(lotId, purchaseLineId)) }
     }
 
     private fun toLot(row: StockLotEntity): StockLot = StockLot(

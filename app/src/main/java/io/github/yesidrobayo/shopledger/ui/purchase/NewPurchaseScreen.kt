@@ -24,9 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotRules
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AdaptiveFieldRow
@@ -59,16 +62,17 @@ import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.money.PayingAccountChips
 import io.github.yesidrobayo.shopledger.ui.stock.locationChoices
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
+import kotlinx.datetime.DayOfWeek
 
 /**
  * La compra nueva (pantalla de nueva compra): proveedor, fecha y referencia arriba, las líneas
  * editables en el mismo formulario y, abajo, el total con `Registrar compra`.
  *
- * Cada línea es una tarjeta con cantidad y costo lado a lado, y la persona elige si escribe el costo
- * unitario o el total de la línea: el otro valor se muestra deducido, con el efecto en el costo
- * promedio. Una compra se copia de un documento línea por línea, así que todo lo escrito queda a la
- * vista, sin hojas que lo escondan. En una ventana ancha, las líneas van a la izquierda y el
- * resumen a la derecha.
+ * Cada línea es una tarjeta con cantidad y costo lado a lado, y la persona elige si escribe el
+ * costo unitario o el total de la línea: el otro valor se muestra deducido, con el efecto en el
+ * costo promedio. Una compra se copia de un documento línea por línea, así que todo lo escrito
+ * queda a la vista, sin hojas que lo escondan. En una ventana ancha, las líneas van a la izquierda
+ * y el resumen a la derecha.
  *
  * Los costos y el total van con modo discreto, salvo el campo que se está llenando.
  */
@@ -194,7 +198,9 @@ private fun PurchaseLines(
                 }
             }
         } else {
-            items(uiState.lines, key = { it.key }) { line -> PurchaseLineCard(line, onAction) }
+            items(uiState.lines, key = { it.key }) { line ->
+                PurchaseLineCard(line, uiState.today, uiState.weekStartDay, onAction)
+            }
             item(key = "add") {
                 InlineTextButton(
                     text = stringResource(R.string.empty_purchase_action),
@@ -322,9 +328,17 @@ private fun PaymentSection(uiState: NewPurchaseUiState, onAction: (NewPurchaseAc
     }
 }
 
-/** Una línea: producto, cantidad y costo, con lo que se deduce y el efecto en el costo. */
+/**
+ * Una línea: producto, cantidad y costo, con lo que se deduce y el efecto en el costo. Un producto
+ * con lotes pide además el código y el vencimiento del lote; sin lotes, la línea no cambia.
+ */
 @Composable
-private fun PurchaseLineCard(line: PurchaseLineUi, onAction: (NewPurchaseAction) -> Unit) {
+private fun PurchaseLineCard(
+    line: PurchaseLineUi,
+    today: BusinessDate?,
+    weekStartDay: DayOfWeek?,
+    onAction: (NewPurchaseAction) -> Unit,
+) {
     val spacing = AppTheme.spacing
     val unit = line.unit?.let { unitLabel(it) } ?: UnitLabel("", allowsFraction = false)
     val costLabel = stringResource(R.string.form_unit_cost)
@@ -399,6 +413,7 @@ private fun PurchaseLineCard(line: PurchaseLineUi, onAction: (NewPurchaseAction)
                 )
             },
         )
+        line.lot?.let { lot -> PurchaseLotFields(line, lot, today, weekStartDay, onAction) }
         line.derived?.let { derived ->
             LabeledAmount(if (line.byTotal) costLabel else totalLabel, derived)
         }
@@ -429,6 +444,85 @@ private fun PurchaseLineCard(line: PurchaseLineUi, onAction: (NewPurchaseAction)
             )
         }
     }
+}
+
+/**
+ * El lote de una línea: su código y, en un lote nuevo, su vencimiento, que puede ser pasado porque
+ * un lote puede llegar vencido. Sin código, la línea entra al lote sin asignar. Con el código de
+ * un lote que el producto ya tiene, la línea suma a él y su vencimiento se muestra para leer.
+ */
+@Composable
+private fun PurchaseLotFields(
+    line: PurchaseLineUi,
+    lot: PurchaseLotUi,
+    today: BusinessDate?,
+    weekStartDay: DayOfWeek?,
+    onAction: (NewPurchaseAction) -> Unit,
+) {
+    val spacing = AppTheme.spacing
+    val help = when {
+        lot.code.isBlank() -> stringResource(R.string.purchase_lot_blank_help)
+        lot.existing -> stringResource(R.string.purchase_lot_existing_help)
+        else -> null
+    }
+    AppTextField(
+        value = lot.code,
+        onValueChange = { onAction(NewPurchaseAction.LotCodeChange(line.key, it)) },
+        label = stringResource(R.string.purchase_lot_code_label),
+        modifier = Modifier.fillMaxWidth().padding(top = spacing.s8),
+        error = lot.error?.let { lotErrorText(it, line.name) },
+        supportingText = help,
+        capitalization = KeyboardCapitalization.Characters,
+        autoCorrect = false,
+    )
+    val expiryLabel = stringResource(R.string.purchase_lot_expiry_label)
+    when {
+        lot.code.isBlank() -> Unit
+
+        lot.existing ->
+            Text(
+                text = lot.existingExpiry?.let {
+                    val date = LocalAppFormats.current.date.dayMonthYear(it)
+                    stringResource(R.string.lot_expires_on, date)
+                } ?: stringResource(R.string.lot_no_expiry),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = spacing.s4),
+            )
+
+        today != null && weekStartDay != null -> {
+            DateField(
+                label = expiryLabel,
+                date = lot.expiry,
+                onDateChange = { onAction(NewPurchaseAction.LotExpiryChange(line.key, it)) },
+                today = today,
+                weekStartDay = weekStartDay,
+                modifier = Modifier.padding(top = spacing.s8),
+                latest = null,
+            )
+            if (lot.expiry != null) {
+                InlineTextButton(
+                    text = stringResource(R.string.lot_no_expiry),
+                    onClick = { onAction(NewPurchaseAction.LotExpiryChange(line.key, null)) },
+                )
+            }
+        }
+
+        // Sin la zona del negocio no hay hoy desde el que elegir: el lote entra sin vencimiento.
+        else -> Unit
+    }
+}
+
+@Composable
+private fun lotErrorText(error: PurchaseLotError, productName: String): String = when (error) {
+    PurchaseLotError.TOO_LONG ->
+        pluralStringResource(
+            R.plurals.error_text_long,
+            LotRules.MAX_CODE_LENGTH,
+            LotRules.MAX_CODE_LENGTH,
+        )
+
+    PurchaseLotError.REPEATED -> stringResource(R.string.lot_error_code_repeated, productName)
 }
 
 @Composable

@@ -39,13 +39,29 @@ data class PurchaseRequest(
  * [unitId] `null` es la unidad base. Otra unidad tiene que ser una conversión de compra del
  * producto, como la caja: su factor lleva la cantidad a la unidad base, que es la del libro. El
  * costo unitario va por unidad entera de [unitId]: una caja, no una unidad suelta.
+ *
+ * [lot] es el lote con que entra, solo en un producto que se controla por lotes. Sin él, la línea
+ * entra al lote sin asignar del producto. Una serie es una línea de una unidad con su código.
  */
 data class PurchaseLineRequest(
     val productId: Long,
     val quantity: QuantityMilli,
     val amount: PurchaseLineAmount,
     val unitId: Long? = null,
+    val lot: PurchaseLineLot? = null,
 )
+
+/** El lote con que entra una línea de compra de un producto que se controla por lotes. */
+sealed interface PurchaseLineLot {
+    /** Entra a un lote que el producto ya tiene, como otra entrega del mismo lote. */
+    data class Existing(val lotId: Long) : PurchaseLineLot
+
+    /**
+     * Crea un lote con [code], tal como lo escribió la persona, y su vencimiento [expiry], si lo
+     * tiene. El código es único dentro del producto.
+     */
+    data class New(val code: String, val expiry: BusinessDate?) : PurchaseLineLot
+}
 
 /**
  * Cómo escribió la persona lo que costó una línea. El otro valor se deduce, y los dos se guardan.

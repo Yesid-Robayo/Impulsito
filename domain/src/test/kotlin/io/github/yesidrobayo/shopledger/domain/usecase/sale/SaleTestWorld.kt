@@ -732,6 +732,9 @@ internal class SaleWorld(
         override fun observeByProduct(productId: Long): Flow<List<StockLot>> =
             committed.map { tables -> lotsOf(tables, productId) }
 
+        override fun observeAll(): Flow<List<StockLot>> =
+            committed.map { tables -> tables.lots.values.sortedBy { it.id } }
+
         override suspend fun findById(id: Long): StockLot? = read().lots[id]
 
         override suspend fun findByCode(productId: Long, code: String): StockLot? =
@@ -754,6 +757,12 @@ internal class SaleWorld(
             )
             write { it.copy(lots = it.lots + (id to row)) }
             return id
+        }
+
+        override suspend fun attachPurchaseLine(lotId: Long, purchaseLineId: Long) {
+            val lot = read().lots[lotId] ?: brokenRule()
+            val attached = lot.copy(purchaseLineId = purchaseLineId)
+            write { it.copy(lots = it.lots + (lotId to attached)) }
         }
 
         private fun lotsOf(tables: SaleTables, productId: Long): List<StockLot> =
@@ -1232,6 +1241,7 @@ internal class SaleWorld(
         supplierLedger = supplierLedger,
         money = DocumentMoney(moneyAccountRepository, moneyLedger),
         locations = locationRepository,
+        lots = lotRepository,
     )
 
     fun voidPurchase(): VoidPurchaseUseCase = VoidPurchaseUseCase(

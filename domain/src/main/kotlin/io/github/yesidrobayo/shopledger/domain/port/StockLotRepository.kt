@@ -16,6 +16,9 @@ interface StockLotRepository {
     /** Los lotes de un producto, también el sin asignar y los cerrados. */
     fun observeByProduct(productId: Long): Flow<List<StockLot>>
 
+    /** Todos los lotes, de todos los productos. */
+    fun observeAll(): Flow<List<StockLot>>
+
     suspend fun findById(id: Long): StockLot?
 
     /** El lote del producto con ese código, que es único dentro del producto. */
@@ -29,4 +32,10 @@ interface StockLotRepository {
 
     /** Agrega un lote con código y devuelve su id. Falla si el producto ya tiene ese código. */
     suspend fun insert(lot: NewStockLot): Long
+
+    /**
+     * Anota en el lote [lotId] la línea de compra [purchaseLineId] con que entró. Se llama en la
+     * misma transacción que crea los dos, después de la línea, que necesita el lote para existir.
+     */
+    suspend fun attachPurchaseLine(lotId: Long, purchaseLineId: Long)
 }

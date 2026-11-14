@@ -20,6 +20,9 @@ internal interface StockLotDao {
     @Query("SELECT * FROM stock_lots WHERE product_id = :productId ORDER BY id")
     fun observeByProduct(productId: Long): Flow<List<StockLotEntity>>
 
+    @Query("SELECT * FROM stock_lots ORDER BY id")
+    fun observeAll(): Flow<List<StockLotEntity>>
+
     @Query("SELECT * FROM stock_lots WHERE product_id = :productId ORDER BY id")
     suspend fun findByProduct(productId: Long): List<StockLotEntity>
 
@@ -68,6 +71,10 @@ internal interface StockLotDao {
         "UPDATE stock_lots SET lot_code = :lotCode, expiry_date = :expiryDate WHERE id = :id",
     )
     suspend fun updateCodeAndExpiry(id: Long, lotCode: String?, expiryDate: String?): Int
+
+    /** Anota la línea de compra con que entró el lote. Devuelve las filas cambiadas. */
+    @Query("UPDATE stock_lots SET purchase_line_id = :purchaseLineId WHERE id = :id")
+    suspend fun setPurchaseLine(id: Long, purchaseLineId: Long): Int
 
     /** Anota el aviso de vencimiento, para no repetirlo, o lo borra con `null`. */
     @Query("UPDATE stock_lots SET expiry_notified_at = :notifiedAt WHERE id = :id")

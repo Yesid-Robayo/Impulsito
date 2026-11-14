@@ -3,4 +3,11 @@
     <!-- Portugués: lotes, vencimientos y series. -->
     <string name="lot_tracks_label">Controlar por lotes</string>
     <string name="lot_tracks_locked">Tem movimentos: o controle por lotes não muda</string>
+    <string name="lot_expires_on">Vence em %1$s</string>
+    <string name="lot_no_expiry">Sem validade</string>
+    <string name="lot_error_code_repeated">Esse lote já existe em %1$s</string>
+    <string name="purchase_lot_code_label">Código do lote</string>
+    <string name="purchase_lot_expiry_label">Validade</string>
+    <string name="purchase_lot_blank_help">Sem código, entra no lote sem atribuição</string>
+    <string name="purchase_lot_existing_help">Esse lote já existe: esta entrega soma-se a ele</string>
 </resources>

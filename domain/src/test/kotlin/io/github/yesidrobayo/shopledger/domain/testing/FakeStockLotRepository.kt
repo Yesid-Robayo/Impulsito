@@ -17,6 +17,9 @@ internal class FakeStockLotRepository(private val database: InMemoryDatabase) :
     override fun observeByProduct(productId: Long): Flow<List<StockLot>> =
         database.tables.map { tables -> ofProduct(tables, productId) }
 
+    override fun observeAll(): Flow<List<StockLot>> =
+        database.tables.map { tables -> tables.lots.values.sortedBy { it.id } }
+
     override suspend fun findById(id: Long): StockLot? = database.read().lots[id]
 
     override suspend fun findByCode(productId: Long, code: String): StockLot? =
@@ -49,6 +52,12 @@ internal class FakeStockLotRepository(private val database: InMemoryDatabase) :
         )
         database.write { it.copy(lots = it.lots + (id to row)) }
         return id
+    }
+
+    override suspend fun attachPurchaseLine(lotId: Long, purchaseLineId: Long) {
+        val lot = checkNotNull(database.read().lots[lotId]) { "El lote no existe" }
+        val attached = lot.copy(purchaseLineId = purchaseLineId)
+        database.write { it.copy(lots = it.lots + (lotId to attached)) }
     }
 
     private fun ofProduct(tables: Tables, productId: Long): List<StockLot> =

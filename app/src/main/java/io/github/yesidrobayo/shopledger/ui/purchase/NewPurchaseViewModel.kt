@@ -11,11 +11,13 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineAmount
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineLot
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRejection
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
@@ -189,6 +191,14 @@ class NewPurchaseViewModel(
 
             is NewPurchaseAction.UnitChange -> editLine(action.key) {
                 it.copy(unitId = action.unitId)
+            }
+
+            is NewPurchaseAction.LotCodeChange -> editLine(action.key) {
+                it.copy(lotCode = action.text)
+            }
+
+            is NewPurchaseAction.LotExpiryChange -> editLine(action.key) {
+                it.copy(lotExpiry = action.date)
             }
 
             is NewPurchaseAction.AmountChange -> editLine(action.key) {
@@ -707,9 +717,56 @@ class NewPurchaseViewModel(
                 quantityError = quantityError,
                 amountError = amountError,
                 archived = product == null || product.isArchived,
+                lot = product?.takeIf { it.details.tracksLots }
+                    ?.let { lotUiOf(catalog, line, rejection) },
             )
         }
         return BuiltLines(ui, total, notice)
+    }
+
+    /**
+     * El lote de la línea en pantalla: si el código es el de un lote que ya existe, con su
+     * vencimiento, y por qué no sirve, si el cálculo o el registro lo rechazaron.
+     */
+    private fun lotUiOf(
+        catalog: PurchaseCatalog,
+        line: PurchaseLineDraft,
+        rejection: PurchaseLineRejection?,
+    ): PurchaseLotUi {
+        val match = existingLotOf(catalog, line)
+        // Un código en blanco no llega al cálculo: deja la línea sin lote. Solo puede ser largo.
+        val error = when {
+            rejection == PurchaseLineRejection.INVALID_LOT_CODE -> PurchaseLotError.TOO_LONG
+            rejection == PurchaseLineRejection.LOT_CODE_REPEATED -> PurchaseLotError.REPEATED
+            else -> null
+        }
+        return PurchaseLotUi(
+            code = line.lotCode,
+            expiry = line.lotExpiry,
+            existing = match != null,
+            existingExpiry = match?.expiryDate,
+            error = error,
+        )
+    }
+
+    /** El lote que el producto ya tiene con el código escrito, o `null` si es nuevo o no hay. */
+    private fun existingLotOf(catalog: PurchaseCatalog, line: PurchaseLineDraft): StockLot? {
+        val code = line.lotCode.trim().takeIf { it.isNotEmpty() } ?: return null
+        return catalog.lots[line.productId].orEmpty().firstOrNull { it.code == code }
+    }
+
+    /**
+     * El lote con que entra la línea: ninguno en un producto sin lotes o sin código, el que ya
+     * existe con ese código, o uno nuevo con su vencimiento.
+     */
+    private fun lotRequestOf(
+        catalog: PurchaseCatalog,
+        product: Product,
+        line: PurchaseLineDraft,
+    ): PurchaseLineLot? {
+        if (!product.details.tracksLots || line.lotCode.isBlank()) return null
+        return existingLotOf(catalog, line)?.let { PurchaseLineLot.Existing(it.id) }
+            ?: PurchaseLineLot.New(line.lotCode, line.lotExpiry)
     }
 
     /**
@@ -740,7 +797,11 @@ class NewPurchaseViewModel(
             PurchaseLineRejection.PRODUCT_NOT_FOUND,
             PurchaseLineRejection.PRODUCT_ARCHIVED,
             PurchaseLineRejection.NOT_STOCKED,
-            PurchaseLineRejection.LOTS_NOT_SUPPORTED,
+            // El lote se dice en su propio campo, y uno que desapareció se vuelve a escribir.
+            PurchaseLineRejection.LOT_NOT_TRACKED,
+            PurchaseLineRejection.LOT_NOT_FOUND,
+            PurchaseLineRejection.INVALID_LOT_CODE,
+            PurchaseLineRejection.LOT_CODE_REPEATED,
             -> null to null
 
             PurchaseLineRejection.INVALID_QUANTITY -> PurchaseFieldError.TOO_HIGH to null
@@ -830,6 +891,7 @@ class NewPurchaseViewModel(
             } else {
                 PurchaseLineAmount.UnitCost(amount.value)
             },
+            lot = lotRequestOf(catalog, product, line),
         )
     }
 

@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCostChange
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineAmount
+import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineLot
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRejection
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
@@ -22,6 +23,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.UnitConversion
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.UnitConversionResult
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotCodeCheck
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotRules
 
 /**
  * Lo que el cálculo de una compra necesita de un producto: el producto leído, con su saldo y su
@@ -116,10 +119,12 @@ object PurchasePricing {
         val costBefore = LinkedHashMap<Long, Money>()
         val costAfter = HashMap<Long, CostState>()
         val priced = ArrayList<PricedPurchaseLine>(lines.size)
+        val newCodes = HashSet<Pair<Long, String>>()
         for ((index, line) in lines.withIndex()) {
             val subject = subjects[line.productId]
                 ?: return rejected(index, PurchaseLineRejection.PRODUCT_NOT_FOUND)
             val product = subject.product
+            lotRejection(line, product, newCodes)?.let { return rejected(index, it) }
             val before = costAfter[product.id]
                 ?: CostState(product.onHand, product.averageCost, product.stockValue)
             val result = priceLine(line, subject, before, taxes)
@@ -203,8 +208,37 @@ object PurchasePricing {
     private fun productRejection(product: Product): PurchaseLineRejection? = when {
         product.isArchived -> PurchaseLineRejection.PRODUCT_ARCHIVED
         !StockModeRules.hasLedger(product.details.stockMode) -> PurchaseLineRejection.NOT_STOCKED
-        product.details.tracksLots -> PurchaseLineRejection.LOTS_NOT_SUPPORTED
         else -> null
+    }
+
+    /**
+     * Lo que se revisa del lote sin leer la base: solo un producto con lotes lo lleva, y un lote
+     * nuevo tiene un código válido que la compra no crea dos veces. [newCodes] junta los códigos
+     * nuevos de las líneas anteriores, por producto. Que el código no exista ya en el producto, y
+     * que un lote elegido sea suyo, lo revisa el caso de uso.
+     */
+    private fun lotRejection(
+        line: PurchaseLineRequest,
+        product: Product,
+        newCodes: MutableSet<Pair<Long, String>>,
+    ): PurchaseLineRejection? {
+        val lot = line.lot ?: return null
+        if (!product.details.tracksLots) return PurchaseLineRejection.LOT_NOT_TRACKED
+        return when (lot) {
+            is PurchaseLineLot.Existing -> null
+
+            is PurchaseLineLot.New -> when (val check = LotRules.checkCode(lot.code)) {
+                is LotCodeCheck.Valid ->
+                    if (newCodes.add(product.id to check.code)) {
+                        null
+                    } else {
+                        PurchaseLineRejection.LOT_CODE_REPEATED
+                    }
+
+                LotCodeCheck.Blank, is LotCodeCheck.TooLong ->
+                    PurchaseLineRejection.INVALID_LOT_CODE
+            }
+        }
     }
 
     private fun quantityRejection(

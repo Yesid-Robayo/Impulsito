@@ -368,7 +368,6 @@ class RegisterPurchaseUseCaseTest {
         world.addProduct(product(2, archived = true))
         world.addProduct(product(3, stockMode = ProductStockMode.UNTRACKED))
         world.addProduct(product(4, stockMode = ProductStockMode.COMPONENTS))
-        world.addProduct(product(5, tracksLots = true))
 
         val ok = atUnitCost(1, 1_000, cost = 100)
         val expected = mapOf(
@@ -376,7 +375,6 @@ class RegisterPurchaseUseCaseTest {
             2L to PurchaseLineRejection.PRODUCT_ARCHIVED,
             3L to PurchaseLineRejection.NOT_STOCKED,
             4L to PurchaseLineRejection.NOT_STOCKED,
-            5L to PurchaseLineRejection.LOTS_NOT_SUPPORTED,
         )
         for ((productId, reason) in expected) {
             assertEquals(

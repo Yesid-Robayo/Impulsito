@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseCatalog
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.SupplierRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxSettingsRepository
@@ -25,9 +26,10 @@ import kotlinx.coroutines.flow.map
  * reactivar, las unidades, los proveedores y los impuestos. Vuelve a emitir con cada cambio
  * confirmado de cualquiera de ellos y cuando cambia la zona del negocio. No escribe nada.
  *
- * Solo se compran los productos con stock propio y sin lotes: un servicio o un combo no tienen
- * libro que sumar, y comprar por lote todavía no se ofrece. Las tasas archivadas también van,
- * porque un producto conserva la suya.
+ * Solo se compran los productos con stock propio: un servicio o un combo no tienen libro que
+ * sumar. Las tasas archivadas también van, porque un producto conserva la suya. Con [lots],
+ * también los lotes con código abiertos de cada producto, para recibir otra entrega en el mismo
+ * lote.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObservePurchaseCatalogUseCase(
@@ -39,6 +41,7 @@ class ObservePurchaseCatalogUseCase(
     private val taxRates: TaxRateRepository,
     private val clock: Clock,
     private val productUnits: ProductUnitRepository? = null,
+    private val lots: StockLotRepository? = null,
 ) {
     operator fun invoke(): Flow<PurchaseCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = when (result) {
@@ -54,6 +57,10 @@ class ObservePurchaseCatalogUseCase(
             all.filter { it.details.forPurchase }
                 .groupBy { it.productId }
                 .mapValues { (_, list) -> list.associate { it.details.unitId to it.details } }
+        } ?: flowOf(emptyMap())
+        // El lote sin asignar no se elige: lo usa una línea sin código.
+        val openLots = lots?.observeAll()?.map { all ->
+            all.filter { !it.isUnassigned && it.closedAt == null }.groupBy { it.productId }
         } ?: flowOf(emptyMap())
         combine(
             products.observe(ArchiveFilter.ACTIVE),
@@ -73,8 +80,9 @@ class ObservePurchaseCatalogUseCase(
                 weekStartDay = ready?.weekStartDay,
             )
         }.combine(conversions) { catalog, byProduct -> catalog.copy(conversions = byProduct) }
+            .combine(openLots) { catalog, byProduct -> catalog.copy(lots = byProduct) }
     }
 
     private fun isBuyable(product: Product): Boolean =
-        StockModeRules.hasLedger(product.details.stockMode) && !product.details.tracksLots
+        StockModeRules.hasLedger(product.details.stockMode)
 }

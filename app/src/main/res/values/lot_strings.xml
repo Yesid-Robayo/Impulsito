@@ -3,4 +3,11 @@
     <!-- Inglés: lotes, vencimientos y series. -->
     <string name="lot_tracks_label">Track by batch</string>
     <string name="lot_tracks_locked">It has movements: batch tracking does not change</string>
+    <string name="lot_expires_on">Expires on %1$s</string>
+    <string name="lot_no_expiry">No expiry date</string>
+    <string name="lot_error_code_repeated">That batch already exists in %1$s</string>
+    <string name="purchase_lot_code_label">Batch code</string>
+    <string name="purchase_lot_expiry_label">Expiry date</string>
+    <string name="purchase_lot_blank_help">Without a code, it goes into the unassigned batch</string>
+    <string name="purchase_lot_existing_help">That batch already exists: this delivery adds to it</string>
 </resources>

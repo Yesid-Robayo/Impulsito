@@ -8,8 +8,10 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.testing.FakeAppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeProductRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeStockLotRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeSupplierRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeTaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeTaxSettingsRepository
@@ -32,9 +34,9 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * El catálogo de la compra: solo los productos con stock propio y sin lotes, los archivados que se
- * podrían reactivar, los proveedores vigentes, las tasas también archivadas y la fecha de hoy.
- * Datos inventados.
+ * El catálogo de la compra: solo los productos con stock propio, también con lotes, los archivados
+ * que se podrían reactivar, los proveedores vigentes, las tasas también archivadas, los lotes con
+ * código abiertos y la fecha de hoy. Datos inventados.
  */
 class ObservePurchaseCatalogUseCaseTest {
     private val database = InMemoryDatabase()
@@ -49,6 +51,7 @@ class ObservePurchaseCatalogUseCaseTest {
         taxSettings = FakeTaxSettingsRepository(database),
         taxRates = FakeTaxRateRepository(database),
         clock = FixedClock(NOW),
+        lots = FakeStockLotRepository(database),
     )
 
     private fun supplier(id: Long, archived: Boolean) = Supplier(
@@ -88,7 +91,7 @@ class ObservePurchaseCatalogUseCaseTest {
 
         val catalog = useCase("Etc/GMT+5")().first()
 
-        assertEquals(listOf(1L), catalog.products.map { it.id })
+        assertEquals(listOf(1L, 4L), catalog.products.map { it.id })
         assertEquals(listOf(5L), catalog.archived.map { it.id })
         assertEquals(listOf(7L), catalog.suppliers.map { it.id })
         assertEquals(setOf(1L), catalog.units.keys)
@@ -97,6 +100,42 @@ class ObservePurchaseCatalogUseCaseTest {
         assertEquals(TaxMode.NONE, catalog.taxes.mode)
         assertEquals(TODAY, catalog.today)
         assertEquals(DayOfWeek.MONDAY, catalog.weekStartDay)
+    }
+
+    @Test
+    fun `offers the open lots with code of each product`() = runTest {
+        seed()
+        fun lot(id: Long, code: String?, unassigned: Boolean = false, closed: Boolean = false) =
+            StockLot(
+                id = id,
+                productId = 4L,
+                code = code,
+                isUnassigned = unassigned,
+                expiryDate = null,
+                purchaseLineId = null,
+                expiryNotifiedAt = null,
+                createdAt = SaleWorld.EPOCH,
+                closedAt = if (closed) SaleWorld.EPOCH else null,
+            )
+        database.seed { tables ->
+            tables.copy(
+                lots = listOf(
+                    lot(30L, "A-1"),
+                    lot(31L, null, unassigned = true),
+                    lot(32L, "A-2", closed = true),
+                    lot(33L, "A-3"),
+                ).associateBy { it.id },
+            )
+        }
+
+        val catalog = useCase("Etc/GMT+5")().first()
+
+        assertEquals(
+            mapOf(4L to listOf("A-1", "A-3")),
+            catalog.lots.mapValues { (_, lots) ->
+                lots.map { it.code }
+            },
+        )
     }
 
     @Test

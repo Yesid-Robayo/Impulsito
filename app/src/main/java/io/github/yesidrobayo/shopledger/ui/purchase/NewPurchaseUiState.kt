@@ -68,6 +68,7 @@ data class NewPurchaseUiState(
  * @param costDiffersFrom el costo anterior cuando el de esta línea es más del triple o menos de un
  *   tercio: un error de digitación aquí daña el promedio. No bloquea.
  * @param archived el producto se archivó mientras se escribía la compra: se reactiva o se quita.
+ * @param lot el lote de la línea, solo en un producto que se controla por lotes.
  */
 data class PurchaseLineUi(
     val key: Long,
@@ -86,7 +87,34 @@ data class PurchaseLineUi(
     val quantityError: PurchaseFieldError? = null,
     val amountError: PurchaseFieldError? = null,
     val archived: Boolean = false,
+    val lot: PurchaseLotUi? = null,
 )
+
+/**
+ * El lote de una línea de compra, tal como se escribió.
+ *
+ * @param code el código, vacío sin lote: entonces la línea entra al lote sin asignar.
+ * @param expiry el vencimiento escrito para un lote nuevo, o `null` sin vencimiento.
+ * @param existing si el código es el de un lote que el producto ya tiene: la línea suma a ese lote
+ *   y [existingExpiry] es su vencimiento, que no se cambia aquí.
+ * @param error por qué el código no sirve, o `null`.
+ */
+data class PurchaseLotUi(
+    val code: String = "",
+    val expiry: BusinessDate? = null,
+    val existing: Boolean = false,
+    val existingExpiry: BusinessDate? = null,
+    val error: PurchaseLotError? = null,
+)
+
+/** Por qué no sirve el código de un lote. La pantalla elige el texto. */
+enum class PurchaseLotError {
+    /** Pasa del largo máximo de un código. */
+    TOO_LONG,
+
+    /** Otra línea de esta compra ya crea un lote con ese código. */
+    REPEATED,
+}
 
 /**
  * Cómo se paga la compra en pantalla.
@@ -268,6 +296,12 @@ sealed interface NewPurchaseAction {
 
     /** Comprar la línea en otra unidad, como la caja: [unitId] `null` es la base. */
     data class UnitChange(val key: Long, val unitId: Long?) : NewPurchaseAction
+
+    /** Escribió el código del lote de la línea. */
+    data class LotCodeChange(val key: Long, val text: String) : NewPurchaseAction
+
+    /** Eligió el vencimiento del lote nuevo de la línea, o `null` para ninguno. */
+    data class LotExpiryChange(val key: Long, val date: BusinessDate?) : NewPurchaseAction
 
     /** Escribir el total de la línea, o volver al costo unitario. */
     data class AmountModeChange(val key: Long, val byTotal: Boolean) : NewPurchaseAction
