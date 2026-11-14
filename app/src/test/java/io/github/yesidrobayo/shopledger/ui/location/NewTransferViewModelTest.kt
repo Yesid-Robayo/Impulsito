@@ -293,19 +293,18 @@ class NewTransferViewModelTest {
         }
 
     @Test
-    fun `the chosen lot survives the process and can go back to automatic`() =
-        runTest(dispatcher) {
-            val first = model()
-            first.act(this, NewTransferAction.AddProduct(9L))
-            val key = first.state.lines.single().key
-            first.act(this, NewTransferAction.ChooseLot(key, 31L))
+    fun `the chosen lot survives the process and can go back to automatic`() = runTest(dispatcher) {
+        val first = model()
+        first.act(this, NewTransferAction.AddProduct(9L))
+        val key = first.state.lines.single().key
+        first.act(this, NewTransferAction.ChooseLot(key, 31L))
 
-            val again = model(state = savedState)
-            assertEquals(31L, again.state.lines.single().lotId)
+        val again = model(state = savedState)
+        assertEquals(31L, again.state.lines.single().lotId)
 
-            again.act(this, NewTransferAction.ChooseLot(key, null))
-            assertNull(again.state.lines.single().lotId)
-        }
+        again.act(this, NewTransferAction.ChooseLot(key, null))
+        assertNull(again.state.lines.single().lotId)
+    }
 
     @Test
     fun `a lot that is no longer there marks the line`() = runTest(dispatcher) {

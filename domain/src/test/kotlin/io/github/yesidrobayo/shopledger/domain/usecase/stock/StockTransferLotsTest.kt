@@ -146,21 +146,20 @@ class StockTransferLotsTest {
     }
 
     @Test
-    fun `what the lots lack comes from the unassigned lot, the only one left negative`() =
-        runTest {
-            seeded()
+    fun `what the lots lack comes from the unassigned lot, the only one left negative`() = runTest {
+        seeded()
 
-            val id = (move(10_000L) as RegisterStockTransferResult.Registered).transferId
+        val id = (move(10_000L) as RegisterStockTransferResult.Registered).transferId
 
-            val unassigned = unassignedId()
-            assertEquals(
-                listOf(lotB to 2_000L, lotA to 3_000L, lotC to 4_000L, unassigned to 1_000L),
-                linesOf(id),
-            )
-            assertEquals(-1_000L, at(MAIN, unassigned))
-            assertEquals(1_000L, at(STALL, unassigned))
-            assertEquals(listOf(0L, 0L, 0L), listOf(lotA, lotB, lotC).map { at(MAIN, it) })
-        }
+        val unassigned = unassignedId()
+        assertEquals(
+            listOf(lotB to 2_000L, lotA to 3_000L, lotC to 4_000L, unassigned to 1_000L),
+            linesOf(id),
+        )
+        assertEquals(-1_000L, at(MAIN, unassigned))
+        assertEquals(1_000L, at(STALL, unassigned))
+        assertEquals(listOf(0L, 0L, 0L), listOf(lotA, lotB, lotC).map { at(MAIN, it) })
+    }
 
     @Test
     fun `two lines of one product split from what the first one left`() = runTest {

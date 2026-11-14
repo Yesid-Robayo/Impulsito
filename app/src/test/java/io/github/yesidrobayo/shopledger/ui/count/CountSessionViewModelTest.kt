@@ -186,50 +186,49 @@ class CountSessionViewModelTest {
         }
 
     @Test
-    fun `a product with lots shows one row per lot, found by its code too`() =
-        runTest(dispatcher) {
-            val soap = CountSamples.SOAP.let {
-                it.copy(details = it.details.copy(tracksLots = true))
-            }
-            val base = CountSamples.view()
-            val soapLine = base.lines.last()
-            val coded = StockLot(
-                id = 41L,
-                productId = soap.id,
-                code = "J-1",
-                isUnassigned = false,
-                expiryDate = null,
-                purchaseLineId = null,
-                expiryNotifiedAt = null,
-                createdAt = Instant.fromEpochMilliseconds(0L),
-                closedAt = null,
-            )
-            operations.view.value = base.copy(
-                lines = base.lines.dropLast(1) + listOf(
-                    soapLine.copy(product = soap, lot = coded),
-                    soapLine.copy(
-                        line = soapLine.line.copy(id = SOAP_UNASSIGNED, counted = null),
-                        product = soap,
-                        lot = null,
-                    ),
-                ),
-            )
-            val model = model()
-
-            assertEquals(CountLotUi("J-1"), model.row(SOAP).lot)
-            val unassigned = CountLotUi(code = null, unassigned = true)
-            assertEquals(unassigned, model.row(SOAP_UNASSIGNED).lot)
-            // Sin lotes, la fila no cambia.
-            assertNull(model.row(RICE).lot)
-            model.act(this, CountSessionAction.Query("J-1"))
-            assertEquals(listOf(SOAP), model.uiState.value.rows.map { it.lineId })
-
-            // Con dos lotes el código no dice cuál: busca el producto, sin sumar nada.
-            model.act(this, CountSessionAction.Query(""))
-            model.act(this, CountSessionAction.Scanned(CountSamples.SOAP.id))
-            assertEquals(listOf(SOAP, SOAP_UNASSIGNED), model.uiState.value.rows.map { it.lineId })
-            assertTrue(operations.records.isEmpty())
+    fun `a product with lots shows one row per lot, found by its code too`() = runTest(dispatcher) {
+        val soap = CountSamples.SOAP.let {
+            it.copy(details = it.details.copy(tracksLots = true))
         }
+        val base = CountSamples.view()
+        val soapLine = base.lines.last()
+        val coded = StockLot(
+            id = 41L,
+            productId = soap.id,
+            code = "J-1",
+            isUnassigned = false,
+            expiryDate = null,
+            purchaseLineId = null,
+            expiryNotifiedAt = null,
+            createdAt = Instant.fromEpochMilliseconds(0L),
+            closedAt = null,
+        )
+        operations.view.value = base.copy(
+            lines = base.lines.dropLast(1) + listOf(
+                soapLine.copy(product = soap, lot = coded),
+                soapLine.copy(
+                    line = soapLine.line.copy(id = SOAP_UNASSIGNED, counted = null),
+                    product = soap,
+                    lot = null,
+                ),
+            ),
+        )
+        val model = model()
+
+        assertEquals(CountLotUi("J-1"), model.row(SOAP).lot)
+        val unassigned = CountLotUi(code = null, unassigned = true)
+        assertEquals(unassigned, model.row(SOAP_UNASSIGNED).lot)
+        // Sin lotes, la fila no cambia.
+        assertNull(model.row(RICE).lot)
+        model.act(this, CountSessionAction.Query("J-1"))
+        assertEquals(listOf(SOAP), model.uiState.value.rows.map { it.lineId })
+
+        // Con dos lotes el código no dice cuál: busca el producto, sin sumar nada.
+        model.act(this, CountSessionAction.Query(""))
+        model.act(this, CountSessionAction.Scanned(CountSamples.SOAP.id))
+        assertEquals(listOf(SOAP, SOAP_UNASSIGNED), model.uiState.value.rows.map { it.lineId })
+        assertTrue(operations.records.isEmpty())
+    }
 
     @Test
     fun `the scanner is offered when a product of the session has a code`() = runTest(dispatcher) {
