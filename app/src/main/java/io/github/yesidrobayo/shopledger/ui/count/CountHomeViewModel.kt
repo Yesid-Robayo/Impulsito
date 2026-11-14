@@ -63,8 +63,10 @@ class CountHomeViewModel(private val operations: CountHomeOperations) : ViewMode
             CountHomeAction.Back,
             is CountHomeAction.OpenSession,
             CountHomeAction.ChooseZone,
-            CountHomeAction.CreateProduct,
             -> Unit
+
+            // Sale a crear un producto: la hoja no queda abierta a medias al volver.
+            CountHomeAction.CreateProduct -> state.update { it.copy(sheet = null) }
 
             CountHomeAction.Retry -> {
                 state.update { it.copy(content = CountHomeContent.Loading) }

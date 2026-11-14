@@ -337,9 +337,25 @@ private fun NewCountSheetView(
                         },
                     ),
                     variant = NoticeVariant.WARNING,
-                    actionLabel = stringResource(R.string.stats_zone_unknown_action)
-                        .takeIf { error == NewCountError.UNKNOWN_ZONE },
-                    onAction = { onAction(CountHomeAction.ChooseZone) },
+                    actionLabel = when {
+                        error == NewCountError.UNKNOWN_ZONE ->
+                            stringResource(R.string.stats_zone_unknown_action)
+
+                        // Sin categoría, nada que contar es que no hay productos con stock.
+                        error == NewCountError.SCOPE_EMPTY && sheet.categoryId == null ->
+                            stringResource(R.string.empty_inventory_action)
+
+                        else -> null
+                    },
+                    onAction = {
+                        onAction(
+                            if (error == NewCountError.UNKNOWN_ZONE) {
+                                CountHomeAction.ChooseZone
+                            } else {
+                                CountHomeAction.CreateProduct
+                            },
+                        )
+                    },
                 )
             }
             sheet.failedOutOfSpace?.let {

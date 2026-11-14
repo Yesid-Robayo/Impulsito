@@ -87,8 +87,11 @@ class CountSessionViewModel(
 
     fun onAction(action: CountSessionAction) {
         when (action) {
-            CountSessionAction.Back ->
-                if (state.value.reviewing) state.update { it.copy(reviewing = false) }
+            // Volver de la revisión a contar rearma las filas con la búsqueda y el filtro.
+            CountSessionAction.Back -> if (state.value.reviewing) {
+                state.update { it.copy(reviewing = false) }
+                rebuild()
+            }
 
             CountSessionAction.Retry -> {
                 state.update { it.copy(loading = true, readFailed = false) }
@@ -111,11 +114,16 @@ class CountSessionViewModel(
 
             CountSessionAction.Review -> review()
 
-            CountSessionAction.AskApply -> state.update { it.copy(dialog = CountDialog.APPLY) }
+            // Sin diferencias, cerrar no cambia el stock: no hay nada que confirmar.
+            CountSessionAction.AskApply -> if (differences() == 0) {
+                finish(CountDialog.APPLY)
+            } else {
+                state.update { it.copy(dialog = CountDialog.APPLY) }
+            }
 
             CountSessionAction.AskCancel -> state.update { it.copy(dialog = CountDialog.CANCEL) }
 
-            CountSessionAction.Confirm -> confirm()
+            CountSessionAction.Confirm -> state.value.dialog?.let { finish(it) }
 
             CountSessionAction.DismissDialog -> state.update { it.copy(dialog = null) }
 
@@ -267,8 +275,13 @@ class CountSessionViewModel(
         }
     }
 
-    private fun confirm() {
-        val dialog = state.value.dialog ?: return
+    /** Cuántas líneas contadas difieren de lo esperado: los ajustes que dejaría aplicar. */
+    private fun differences(): Int = view?.lines?.count { item ->
+        (item.line.difference ?: QuantityMilli.ZERO).milli != 0L
+    } ?: 0
+
+    private fun finish(dialog: CountDialog) {
+        if (state.value.working || state.value.readOnly) return
         state.update { it.copy(dialog = null, working = true, notice = null) }
         viewModelScope.launch {
             val result = when (dialog) {

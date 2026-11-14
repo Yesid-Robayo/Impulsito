@@ -209,9 +209,15 @@ private fun ColumnScope.CountingContent(
     }
     LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
         if (uiState.rows.isEmpty()) {
+            // Sin búsqueda, lo que deja la lista vacía es el filtro: todo contado o nada aún.
             item(key = "empty") {
+                val query = uiState.query.trim()
                 EmptyStateInline(
-                    title = stringResource(R.string.empty_search_title, uiState.query.trim()),
+                    title = if (query.isEmpty()) {
+                        stringResource(R.string.catalog_filter_empty)
+                    } else {
+                        stringResource(R.string.empty_search_title, query)
+                    },
                     modifier = Modifier.padding(spacing.s16),
                 )
             }
