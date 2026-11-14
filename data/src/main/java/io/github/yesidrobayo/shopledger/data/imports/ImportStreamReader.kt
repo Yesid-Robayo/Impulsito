@@ -27,8 +27,8 @@ import java.nio.charset.StandardCharsets
  *   exportación y lo que ofrecen las hojas de cálculo. Un byte que no es UTF-8 rechaza el archivo:
  *   leerlo con otra tabla rompería tildes y eñes sin avisar, y la persona lo puede guardar de
  *   nuevo.
- * - **Otros tipos.** Un ZIP, que es lo que es un `.xlsx`, y el `.xls` antiguo no se leen como
- *   texto.
+ * - **Hojas de cálculo.** Un ZIP, que es lo que es un `.xlsx`, va entero a [XlsxSheetReader], ya
+ *   acotado por el tope del archivo. El `.xls` antiguo no se lee.
  */
 internal class ImportStreamReader(private val limits: ImportLimits = ImportLimits()) {
     /**
@@ -56,8 +56,10 @@ internal class ImportStreamReader(private val limits: ImportLimits = ImportLimit
 
             Kind.UTF16 -> ImportFileRead.Rejected(ImportRejection.ENCODING)
 
-            Kind.SPREADSHEET, Kind.OLD_SPREADSHEET ->
-                ImportFileRead.Rejected(ImportRejection.UNSUPPORTED_TYPE)
+            Kind.SPREADSHEET ->
+                XlsxSheetReader(limits).read(input.readBytes(), onRows, checkActive)
+
+            Kind.OLD_SPREADSHEET -> ImportFileRead.Rejected(ImportRejection.UNSUPPORTED_TYPE)
         }
     } catch (tooLarge: TooLargeException) {
         ImportFileRead.Rejected(ImportRejection.TOO_LARGE)

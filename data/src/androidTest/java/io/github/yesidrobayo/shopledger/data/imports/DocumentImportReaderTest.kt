@@ -88,7 +88,7 @@ internal class DocumentImportReaderTest {
     fun aDocumentThatIsGoneIsUnreadable() = runBlocking {
         val read =
             DocumentImportReader(context.contentResolver, Dispatchers.IO)
-                .read(Uri.fromFile(File(folder, "gone.csv")).toString(), null, CsvSeparator.COMMA) {
+                .read(Uri.fromFile(File(folder, "no.csv")).toString(), null, CsvSeparator.COMMA) {
                 }
 
         assertEquals(ImportFileRead.Rejected(ImportRejection.UNREADABLE), read)

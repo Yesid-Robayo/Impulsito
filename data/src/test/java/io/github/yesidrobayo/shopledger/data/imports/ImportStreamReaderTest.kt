@@ -64,7 +64,7 @@ class ImportStreamReaderTest {
     }
 
     @Test
-    fun `a zip or an old spreadsheet is not read as text`() {
+    fun `a broken zip or an old spreadsheet is not read`() {
         val zip = byteArrayOf(0x50, 0x4B, 0x03, 0x04, 0x14, 0x00)
         val emptyZip = byteArrayOf(0x50, 0x4B, 0x05, 0x06) + ByteArray(18)
         val compound = byteArrayOf(0xD0.toByte(), 0xCF.toByte(), 0x11, 0xE0.toByte(), 0x00)
