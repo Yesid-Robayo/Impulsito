@@ -273,6 +273,10 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object ReceiptTemplate : AppNavKey
 
+    /** El comprobante de una venta, para verlo y compartirlo. */
+    @Serializable
+    data class SaleReceipt(val saleId: Long) : AppNavKey
+
     @Serializable
     data object Printers : AppNavKey
 

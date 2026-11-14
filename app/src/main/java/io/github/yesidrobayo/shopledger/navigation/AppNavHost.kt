@@ -92,6 +92,7 @@ import io.github.yesidrobayo.shopledger.ui.purchase.NewPurchaseRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.PurchaseDetailRoute
 import io.github.yesidrobayo.shopledger.ui.purchase.PurchaseHistoryRoute
 import io.github.yesidrobayo.shopledger.ui.receipt.ReceiptTemplateRoute
+import io.github.yesidrobayo.shopledger.ui.receipt.SaleReceiptRoute
 import io.github.yesidrobayo.shopledger.ui.reference.ReferenceCurrencyRoute
 import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.reorder.ReorderRoute
@@ -403,6 +404,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
             )
 
         AppNavKey.ReceiptTemplate -> ReceiptTemplateRoute(AppNavKey.ReceiptTemplate, navigator)
+
+        is AppNavKey.SaleReceipt -> SaleReceiptRoute(key, navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }

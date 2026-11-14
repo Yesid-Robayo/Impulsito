@@ -119,6 +119,10 @@ fun SaleDetailRoute(
                             AppNavKey.SaleReturn(key.saleId),
                         )
 
+                        SaleDetailAction.OpenReceipt -> navigator.open(
+                            AppNavKey.SaleReceipt(key.saleId),
+                        )
+
                         SaleDetailAction.Share -> {
                             val sale = (uiState as? SaleDetailUiState.Ready)?.sale
                             val receipt = sale?.receipt

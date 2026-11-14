@@ -36,4 +36,11 @@
     <string name="receipt_sample_product_first">Rice 1 kg</string>
     <string name="receipt_sample_product_second">Cooking oil 900 ml</string>
     <string name="a11y_receipt_preview">Receipt preview. %1$s</string>
+    <string name="receipt_view_title">Receipt</string>
+    <string name="receipt_share_pdf_action">Share PDF</string>
+    <string name="receipt_share_image_action">Share image</string>
+    <string name="receipt_edit_template_action">Edit template</string>
+    <string name="receipt_generating">Generating…</string>
+    <string name="receipt_error_generate">The receipt could not be created. The sale is still recorded.</string>
+    <string name="receipt_file_name">Receipt %1$s</string>
 </resources>

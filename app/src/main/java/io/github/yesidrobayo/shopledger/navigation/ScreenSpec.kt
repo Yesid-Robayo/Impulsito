@@ -187,6 +187,8 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     AppNavKey.ReceiptTemplate -> detail(R.string.receipt_template_title, settings)
 
+    is AppNavKey.SaleReceipt -> detail(R.string.receipt_view_title, records)
+
     AppNavKey.Printers -> detail(R.string.printer_title, settings)
 
     is AppNavKey.Help -> detail(R.string.help_title, settings)

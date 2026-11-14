@@ -32,6 +32,9 @@ internal object ExportFolder {
     /** El tipo de un documento para compartir, como el extracto de un cliente. */
     const val PDF_TYPE = "application/pdf"
 
+    /** El tipo de una imagen para compartir, como un comprobante para mensajería. */
+    const val PNG_TYPE = "image/png"
+
     /** La carpeta. Pedirla no toca el disco. */
     fun of(context: Context): File = File(context.cacheDir, NAME)
 
@@ -104,6 +107,9 @@ internal fun crashLogShareIntent(uri: Uri): Intent = shareIntent(uri, ExportFold
 
 /** El selector del sistema para compartir un PDF de `cache/exports/`, con permiso solo de lectura. */
 internal fun pdfShareIntent(uri: Uri): Intent = shareIntent(uri, ExportFolder.PDF_TYPE)
+
+/** El selector del sistema para compartir una imagen PNG de `cache/exports/`, solo para leer. */
+internal fun pngShareIntent(uri: Uri): Intent = shareIntent(uri, ExportFolder.PNG_TYPE)
 
 private fun shareIntent(uri: Uri, type: String): Intent {
     val send =

@@ -36,4 +36,11 @@
     <string name="receipt_sample_product_first">Arroz 1 kg</string>
     <string name="receipt_sample_product_second">Óleo 900 ml</string>
     <string name="a11y_receipt_preview">Prévia do comprovante. %1$s</string>
+    <string name="receipt_view_title">Comprovante</string>
+    <string name="receipt_share_pdf_action">Compartilhar PDF</string>
+    <string name="receipt_share_image_action">Compartilhar imagem</string>
+    <string name="receipt_edit_template_action">Editar modelo</string>
+    <string name="receipt_generating">Gerando…</string>
+    <string name="receipt_error_generate">Não foi possível criar o comprovante. A venda continua registrada.</string>
+    <string name="receipt_file_name">Comprovante %1$s</string>
 </resources>

@@ -262,6 +262,9 @@ sealed interface SaleDetailAction {
     /** Comparte el comprobante como texto, con el selector del sistema. */
     data object Share : SaleDetailAction
 
+    /** Abre el comprobante en papel, para compartirlo como PDF o imagen. */
+    data object OpenReceipt : SaleDetailAction
+
     data object Back : SaleDetailAction
 
     /** Abre la devolución de la venta. */

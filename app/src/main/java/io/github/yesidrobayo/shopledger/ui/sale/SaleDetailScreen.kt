@@ -131,13 +131,26 @@ fun SaleDetailScreen(
                     onNavigate = { onAction(SaleDetailAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
                     actions = {
-                        if (ready?.sale?.receipt != null) {
+                        if (ready != null) {
+                            // El texto solo de una venta activa; el comprobante en papel, también
+                            // de una anulada, porque dice que se anuló.
+                            val share = stringResource(R.string.action_share)
+                            val receipt = stringResource(R.string.receipt_view_title)
                             OverflowMenu(
-                                listOf(
-                                    OverflowAction(stringResource(R.string.action_share), {
-                                        onAction(SaleDetailAction.Share)
-                                    }),
-                                ),
+                                buildList {
+                                    if (ready.sale.receipt != null) {
+                                        add(
+                                            OverflowAction(share, {
+                                                onAction(SaleDetailAction.Share)
+                                            }),
+                                        )
+                                    }
+                                    add(
+                                        OverflowAction(receipt, {
+                                            onAction(SaleDetailAction.OpenReceipt)
+                                        }),
+                                    )
+                                },
                             )
                         }
                     },

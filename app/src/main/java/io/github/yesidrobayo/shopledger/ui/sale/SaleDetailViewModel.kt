@@ -167,6 +167,9 @@ class SaleDetailViewModel(
             // Compartir lo resuelve la navegación, con el comprobante del estado.
             SaleDetailAction.Share -> Unit
 
+            // Lo resuelve la ruta: abre el comprobante.
+            SaleDetailAction.OpenReceipt -> Unit
+
             // Volver lo resuelve la navegación.
             SaleDetailAction.Back -> Unit
 
