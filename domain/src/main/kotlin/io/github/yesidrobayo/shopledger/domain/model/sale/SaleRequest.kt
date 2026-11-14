@@ -44,6 +44,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  *
  * [quoteId] es la cotización abierta de la que sale esta venta, si sale de una: al confirmar, queda
  * convertida en la misma transacción, y una que ya no está abierta deshace la venta.
+ *
+ * [orderId] es el pedido que se entrega con esta venta, si sale de uno: al confirmar, queda
+ * entregado en la misma transacción, y uno ya entregado o cancelado deshace la venta.
  */
 data class SaleRequest(
     val lines: List<SaleLineRequest>,
@@ -60,4 +63,5 @@ data class SaleRequest(
     val priceListId: Long? = null,
     val locationId: Long? = null,
     val quoteId: Long? = null,
+    val orderId: Long? = null,
 )

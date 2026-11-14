@@ -1524,6 +1524,7 @@ internal class SaleWorld(
         locations = locationRepository,
         lots = lotRepository.takeIf { withLots },
         quotes = quoteRepository,
+        orders = orderRepository,
     )
 
     /**

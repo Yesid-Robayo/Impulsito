@@ -5,7 +5,6 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.document.DocumentLine
 import io.github.yesidrobayo.shopledger.domain.model.document.QuoteStatus
-import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -129,7 +128,7 @@ class PrepareQuoteConversionUseCase(
         if (kept.isEmpty()) return QuoteConversionResult.NothingToConvert
         val convertible = kept.map { line ->
             val product = requireNotNull(byId[line.content.productId])
-            ConvertibleLine(requestOf(line), currentPriceOf(line, product, list))
+            ConvertibleLine(DocumentLines.requestOf(line), currentPriceOf(line, product, list))
         }
         return QuoteConversionResult.Ready(
             QuoteConversion(
@@ -141,22 +140,6 @@ class PrepareQuoteConversionUseCase(
                 archivedLines = lines.size - kept.size,
                 expiredOn = quote.validUntil?.takeIf { it < today },
             ),
-        )
-    }
-
-    /** La línea como la pide la venta: lo cotizado, con su precio y su descuento ya en monto. */
-    private fun requestOf(line: DocumentLine): SaleLineRequest {
-        val content = line.content
-        return SaleLineRequest(
-            productId = content.productId,
-            quantity = content.enteredQuantity,
-            unitPrice = content.unitPrice,
-            discount = if (content.lineDiscount == Money.ZERO) {
-                LineDiscount.None
-            } else {
-                LineDiscount.Amount(content.lineDiscount)
-            },
-            unitId = content.unitId,
         )
     }
 

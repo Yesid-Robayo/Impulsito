@@ -137,6 +137,12 @@ sealed interface RegisterSaleResult {
      * guarda.
      */
     data object QuoteUnavailable : RegisterSaleResult
+
+    /**
+     * El pedido que se entrega ya no está sin entregar: otra venta lo entregó, o se canceló,
+     * mientras se vendía. Un pedido se entrega una sola vez, así que la venta no se guarda.
+     */
+    data object OrderUnavailable : RegisterSaleResult
 }
 
 /** Por qué una línea de la venta no se puede vender. */

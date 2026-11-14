@@ -55,6 +55,7 @@ import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.OrderRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
@@ -212,7 +213,8 @@ import kotlin.time.Instant
  *
  * Una venta que sale de una cotización la deja convertida en la misma transacción, con [quotes]:
  * la venta guarda la cotización, y la cotización su venta. Si ya no está abierta, la venta no se
- * guarda, porque una cotización se convierte una sola vez.
+ * guarda, porque una cotización se convierte una sola vez. Lo mismo con un pedido y [orders]: la
+ * venta de la entrega lo deja entregado, y es esa venta la que saca su stock.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
@@ -244,6 +246,7 @@ class RegisterSaleUseCase(
     private val locations: LocationRepository? = null,
     private val lots: StockLotRepository? = null,
     private val quotes: QuoteRepository? = null,
+    private val orders: OrderRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -341,7 +344,13 @@ class RegisterSaleUseCase(
         val written = write(
             settled,
             plan,
-            Placement(request.customerId, choice.listId, locationId, request.quoteId),
+            Placement(
+                request.customerId,
+                choice.listId,
+                locationId,
+                request.quoteId,
+                request.orderId,
+            ),
             note,
             time,
             now,
@@ -366,6 +375,13 @@ class RegisterSaleUseCase(
             val book = requireNotNull(quotes) { "Vender una cotización necesita las cotizaciones" }
             if (!book.markConverted(quote, saleId, now)) {
                 return TxResult.Rollback(RegisterSaleResult.QuoteUnavailable)
+            }
+        }
+        request.orderId?.let { order ->
+            // El pedido queda entregado con esta venta, o la venta no se guarda.
+            val book = requireNotNull(orders) { "Entregar un pedido necesita los pedidos" }
+            if (!book.markDelivered(order, saleId, now)) {
+                return TxResult.Rollback(RegisterSaleResult.OrderUnavailable)
             }
         }
         request.heldSaleId?.let { held ->
@@ -1340,7 +1356,7 @@ class RegisterSaleUseCase(
     ): Written {
         val priced = settled.priced
         val salePayments = plan.payments
-        val (customerId, priceListId, locationId, quoteId) = placement
+        val (customerId, priceListId, locationId, quoteId, orderId) = placement
         val totals = priced.totals
         val saleId = sales.insert(
             NewSale(
@@ -1358,7 +1374,7 @@ class RegisterSaleUseCase(
                 locationId = locationId,
                 cashSessionId = plan.cashSessionId,
                 quoteId = quoteId,
-                orderId = null,
+                orderId = orderId,
                 note = note,
                 occurredAt = time.occurredAt,
                 businessDate = time.businessDate,
@@ -1496,6 +1512,7 @@ class RegisterSaleUseCase(
         val priceListId: Long,
         val locationId: Long,
         val quoteId: Long? = null,
+        val orderId: Long? = null,
     )
 
     /**
