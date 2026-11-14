@@ -21,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.stock.LocationKind
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LocationRules
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockTransferDetailLine
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
@@ -162,7 +163,7 @@ internal fun TransferDetailSheet(
             }
             detail.lines.forEach { line ->
                 LineRow(
-                    name = line.product?.details?.name.orEmpty(),
+                    name = transferLineName(line),
                     quantity = line.quantity,
                     unit = line.unit,
                 )
@@ -184,6 +185,12 @@ internal fun TransferDetailSheet(
                             destination,
                         ),
                         variant = NoticeVariant.WARNING,
+                    )
+                }
+                if (ready.lotUsed) {
+                    NoticeCard(
+                        text = stringResource(R.string.error_void_lot_already_used),
+                        variant = NoticeVariant.ERROR,
                     )
                 }
                 ready.failure?.let {
@@ -228,6 +235,23 @@ private fun LineRow(name: String, quantity: QuantityMilli, unit: MeasureUnit?) {
             color = MaterialTheme.colorScheme.outlineVariant,
         )
     }
+}
+
+/**
+ * El nombre de una línea: el producto y, si salió de un lote, también el lote, como
+ * `Jabón de avena · Lote 22` o `Jabón de avena · Lote sin asignar`.
+ */
+@Composable
+private fun transferLineName(line: StockTransferDetailLine): String {
+    val name = line.product?.details?.name.orEmpty()
+    val lot = line.lot ?: return name
+    val code = lot.code
+    val lotName = when {
+        lot.isUnassigned -> stringResource(R.string.lot_unassigned_name)
+        code != null -> stringResource(R.string.lot_name, code)
+        else -> stringResource(R.string.lot_no_code)
+    }
+    return stringResource(R.string.location_transfer_line_lot, name, lotName)
 }
 
 @Composable

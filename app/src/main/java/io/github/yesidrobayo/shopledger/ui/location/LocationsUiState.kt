@@ -94,7 +94,10 @@ data class LocationEditor(
 @Immutable
 data class SaveFailed(val outOfSpace: Boolean)
 
-/** La hoja de una transferencia: se lee al abrirla, y se puede anular si está activa. */
+/**
+ * La hoja de una transferencia: se lee al abrirla, y se puede anular si está activa.
+ * [lotUsed] dice que no se anuló porque un lote con código ya no tiene en el destino lo que llegó.
+ */
 @Immutable
 sealed interface TransferSheet {
     val transferId: Long
@@ -105,6 +108,7 @@ sealed interface TransferSheet {
         val detail: StockTransferDetail,
         val voiding: Boolean = false,
         val failure: SaveFailed? = null,
+        val lotUsed: Boolean = false,
     ) : TransferSheet {
         override val transferId: Long get() = detail.transfer.id
     }

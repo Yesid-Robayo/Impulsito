@@ -132,6 +132,25 @@ class CountScreensTest {
     }
 
     @Test
+    fun aBlindCountByLotNamesEachLotAndStillHidesTheExpected() {
+        val rows = CountSamples.rows()
+        val soap = rows.last()
+        val byLot = rows.dropLast(1) + listOf(
+            soap.copy(lot = CountLotUi("J-1")),
+            soap.copy(lineId = 105L, lot = CountLotUi(code = null, unassigned = true)),
+        )
+        show { CountSessionScreen(CountSamples.counting(blind = true).copy(rows = byLot), {}) }
+
+        val lotName = text(R.string.lot_name).format("J-1")
+        scrollTo(lotName)
+        assertTrue(count(text(R.string.count_row_lot).format(soap.name, lotName)) >= 1)
+        val unassigned = text(R.string.lot_unassigned_name)
+        scrollTo(unassigned)
+        assertTrue(count(text(R.string.count_row_lot).format(soap.name, unassigned)) >= 1)
+        assertEquals(0, count(text(R.string.count_expected_label)))
+    }
+
+    @Test
     fun countingGoesToTheReview() {
         show { CountSessionScreen(CountSamples.counting(), { sessionActions += it }) }
 

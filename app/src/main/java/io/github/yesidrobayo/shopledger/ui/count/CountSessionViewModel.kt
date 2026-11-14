@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.CountLineView
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CountReview
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CountSessionView
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.FinishCountResult
@@ -157,12 +158,13 @@ class CountSessionViewModel(
                     ?: "",
                 error = errors[item.line.id],
                 moved = item.line.productId in moved,
+                lot = lotOf(item),
             )
         }
         state.update { ui ->
             val wanted = TextNormalizer.normalize(ui.query.trim())
             val shown = all
-                .filter { wanted.isEmpty() || wanted in TextNormalizer.normalize(it.name) }
+                .filter { wanted.isEmpty() || matches(it, wanted) }
                 .filter {
                     when (ui.filter) {
                         null -> true
@@ -184,6 +186,11 @@ class CountSessionViewModel(
             )
         }
     }
+
+    /** Si la fila coincide con lo buscado, ya normalizado: por el producto o por el lote. */
+    private fun matches(row: CountRowUi, wanted: String): Boolean =
+        wanted in TextNormalizer.normalize(row.name) ||
+            row.lot?.code?.let { wanted in TextNormalizer.normalize(it) } == true
 
     private fun count(lineId: Long, text: String) {
         if (state.value.readOnly) return
@@ -230,13 +237,15 @@ class CountSessionViewModel(
 
     /**
      * Lo que leyó el escáner: en unidades enteras suma una por lectura; si la unidad admite
-     * decimales, busca el producto para escribir lo pesado. Un código de un producto que no está
-     * en este conteo no cambia nada.
+     * decimales, busca el producto para escribir lo pesado. Un producto con varios lotes también
+     * se busca, porque el código no dice de qué lote es: la persona suma en su fila. Un código de
+     * un producto que no está en este conteo no cambia nada.
      */
     private fun scanned(productId: Long, times: Int) {
         if (state.value.readOnly || state.value.reviewing) return
-        val item = view?.lines?.firstOrNull { it.line.productId == productId } ?: return
-        if (item.unit?.allowsFraction == true) {
+        val items = view?.lines?.filter { it.line.productId == productId }.orEmpty()
+        val item = items.firstOrNull() ?: return
+        if (item.unit?.allowsFraction == true || items.size > 1) {
             state.update { it.copy(query = item.product?.details?.name.orEmpty(), filter = null) }
             rebuild()
         } else {
@@ -275,6 +284,19 @@ class CountSessionViewModel(
     }
 
     private fun unitOf(lineId: Long) = view?.lines?.firstOrNull { it.line.id == lineId }?.unit
+
+    /**
+     * El lote de la fila: el de la línea, o el sin asignar si el producto lleva lotes y la línea
+     * todavía no tiene uno. Sin lotes, ninguno: la fila se ve como siempre.
+     */
+    private fun lotOf(item: CountLineView): CountLotUi? {
+        val lot = item.lot
+        return when {
+            lot != null -> CountLotUi(lot.code, lot.isUnassigned)
+            item.product?.details?.tracksLots == true -> CountLotUi(code = null, unassigned = true)
+            else -> null
+        }
+    }
 
     private fun review() {
         val current = view ?: return

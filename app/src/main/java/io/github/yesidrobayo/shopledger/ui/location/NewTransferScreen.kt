@@ -38,6 +38,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.LocationSwitcherOptions
+import io.github.yesidrobayo.shopledger.ui.components.LotPicker
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PickerField
@@ -223,8 +224,8 @@ private fun EndField(label: String, value: String, error: Boolean, onClick: () -
 }
 
 /**
- * Un producto de la transferencia: su nombre, `Quitar`, la cantidad en su unidad y, si dejaría el
- * origen en negativo, lo que quedaría.
+ * Un producto de la transferencia: su nombre, `Quitar`, la cantidad en su unidad, el lote si el
+ * producto lleva lotes y, si dejaría el origen en negativo, lo que quedaría.
  */
 @Composable
 private fun LineCard(line: TransferLineUi, origin: String, onAction: (NewTransferAction) -> Unit) {
@@ -250,6 +251,14 @@ private fun LineCard(line: TransferLineUi, origin: String, onAction: (NewTransfe
             unit = unit,
             modifier = Modifier.fillMaxWidth().padding(top = spacing.s8),
             error = line.error?.let { lineErrorText(it) },
+        )
+        // Solo un producto con lotes trae opciones: sin lotes no se dibuja nada.
+        LotPicker(
+            options = line.lots,
+            selectedId = line.lotId,
+            unit = unit,
+            onSelect = { onAction(NewTransferAction.ChooseLot(line.key, it)) },
+            modifier = Modifier.fillMaxWidth().padding(top = spacing.s8),
         )
         line.leftAtOrigin?.let { left ->
             NoticeCard(

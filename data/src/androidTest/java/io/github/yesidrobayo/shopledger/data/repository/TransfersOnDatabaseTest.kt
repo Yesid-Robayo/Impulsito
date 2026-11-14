@@ -52,6 +52,7 @@ internal class TransfersOnDatabaseTest : RepositoryTest() {
             ports.stockLedger,
             calendar,
             FIXED_CLOCK,
+            ports.stockLots,
         )
         void = VoidStockTransferUseCase(
             ports.transactions,
@@ -60,6 +61,7 @@ internal class TransfersOnDatabaseTest : RepositoryTest() {
             ports.stockLedger,
             calendar,
             FIXED_CLOCK,
+            ports.stockLots,
         )
         warehouse = database.locationDao().insert(location("Bodega"))
         // Diez unidades a 1200 en la ubicación inicial: valen 12000.

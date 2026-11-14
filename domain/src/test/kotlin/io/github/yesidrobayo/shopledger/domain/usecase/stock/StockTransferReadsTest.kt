@@ -42,6 +42,7 @@ class StockTransferReadsTest {
         catalog.ledger,
         calendar,
         catalog.clock,
+        catalog.lots,
     )
     private val void = VoidStockTransferUseCase(
         catalog.transactions,
@@ -50,6 +51,7 @@ class StockTransferReadsTest {
         catalog.ledger,
         calendar,
         catalog.clock,
+        catalog.lots,
     )
     private val observe =
         ObserveStockTransfersUseCase(transfers, locations, calendar, catalog.clock)
@@ -58,6 +60,7 @@ class StockTransferReadsTest {
         catalog.products,
         catalog.units,
         FakeLocationStockSource(database),
+        catalog.lots,
     )
 
     private suspend fun seeded(stallCreatedAt: Instant = CatalogFixture.NOW) {
@@ -188,6 +191,34 @@ class StockTransferReadsTest {
 
         assertTrue(requireNotNull(read(id)).voidShortfalls.isEmpty())
     }
+
+    @Test
+    fun `a product with lots counts once in the list and its lines name their lots`() =
+        runTest {
+            seeded()
+            fixture.seedStock(id = 3L, units = 0L, unitCost = 1_000L, tracksLots = true)
+            val soon = fixture.seedLot(3L, "A-1", expiry = "2026-11-20")
+            val later = fixture.seedLot(3L, "B-2")
+            fixture.receiveIntoLot(3L, soon, units = 2_000L, unitCost = 1_000L)
+            fixture.receiveIntoLot(3L, later, units = 3_000L, unitCost = 1_000L)
+            // Salen 2 del que vence antes y 2 del otro: dos líneas, un solo producto.
+            val id = move(MAIN, STALL, 3L to 4_000L)
+
+            val list = observe(days = 30).first() as StockTransfersRead.Ready
+            val detail = requireNotNull(read(id))
+
+            assertEquals(listOf(1), list.transfers.map { it.productCount })
+            assertEquals(listOf(soon, later), detail.lines.map { it.lot?.id })
+            assertEquals(listOf(2_000L, 2_000L), detail.lines.map { it.quantity.milli })
+            // Sin los lotes a mano, la hoja igual se lee, sin nombrarlos.
+            val plain = ReadStockTransferUseCase(
+                transfers,
+                catalog.products,
+                catalog.units,
+                FakeLocationStockSource(database),
+            )
+            assertTrue(requireNotNull(plain(id)).lines.all { it.lot == null })
+        }
 
     private companion object {
         const val MAIN = CatalogFixture.MAIN_LOCATION_ID

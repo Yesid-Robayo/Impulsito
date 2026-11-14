@@ -11,6 +11,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.LoadLotChoicesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.RegisterStockTransferUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -37,6 +38,7 @@ fun NewTransferRoute(key: AppNavKey.NewStockTransfer, navigator: AppNavigator) {
             val clock = dependencies.container.clock
             val inventory =
                 ObserveInventoryUseCase(ports.products, ports.units, ports.locationStock)
+            val calendar = BusinessCalendarSource(ports.settings)
             val register = RegisterStockTransferUseCase(
                 ports.transactions,
                 ports.products,
@@ -44,7 +46,16 @@ fun NewTransferRoute(key: AppNavKey.NewStockTransfer, navigator: AppNavigator) {
                 ports.locations,
                 ports.stockTransfers,
                 ports.stockLedger,
-                BusinessCalendarSource(ports.settings),
+                calendar,
+                clock,
+                ports.stockLots,
+            )
+            val loadLots = LoadLotChoicesUseCase(
+                ports.stockLots,
+                ports.products,
+                ports.systemRows,
+                calendar,
+                ports.settings,
                 clock,
             )
             NewTransferViewModel(
@@ -55,6 +66,7 @@ fun NewTransferRoute(key: AppNavKey.NewStockTransfer, navigator: AppNavigator) {
                 savedState = savedState,
                 quantitySymbols = formats.quantity.inputSymbols,
                 computation = dependencies.container.dispatchers.default,
+                lotChoices = { productId, locationId -> loadLots(productId, locationId) },
             )
         }
     when (model) {

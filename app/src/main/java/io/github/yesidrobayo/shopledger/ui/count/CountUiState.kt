@@ -101,9 +101,17 @@ enum class CountRowError {
 }
 
 /**
+ * El lote de una fila de un producto con lotes: su [code], o el lote sin asignar si [unassigned].
+ * Un lote sin código y que no es el sin asignar se nombra `Sin código`.
+ */
+@Immutable
+data class CountLotUi(val code: String?, val unassigned: Boolean = false)
+
+/**
  * Un producto de la sesión. [text] es lo escrito tal cual, que se guarda al ser válido; [counted]
  * es lo guardado. [expected] solo se muestra sin conteo a ciegas, o en la revisión. [moved] dice
- * que tuvo movimientos después de abrir la sesión.
+ * que tuvo movimientos después de abrir la sesión. [lot] es el lote de la fila en un producto con
+ * lotes, que se cuenta lote por lote; sin lotes es `null` y la fila no cambia.
  */
 @Immutable
 data class CountRowUi(
@@ -115,6 +123,7 @@ data class CountRowUi(
     val text: String,
     val error: CountRowError? = null,
     val moved: Boolean = false,
+    val lot: CountLotUi? = null,
 ) {
     val difference: QuantityMilli? get() = counted?.let { it - expected }
 }

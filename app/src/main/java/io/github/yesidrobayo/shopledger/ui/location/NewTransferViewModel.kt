@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferLineRejection
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferRequest
@@ -17,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockTransferRules
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.RegisterStockTransferResult
+import io.github.yesidrobayo.shopledger.ui.components.lotOptionsOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -58,6 +61,13 @@ private data class TransferOverlay(
     val closed: Boolean = false,
 )
 
+/** Lo que decide qué lotes leer: el origen, los productos con lotes y el stock del origen. */
+private data class LotRead(
+    val fromId: Long?,
+    val products: Set<Long>,
+    val origin: InventoryOverview?,
+)
+
 /** Cómo se leyó la cantidad de una línea. */
 private sealed interface LineRead {
     data class Valid(val quantity: QuantityMilli) : LineRead
@@ -73,11 +83,14 @@ private sealed interface LineRead {
  *
  * - **Nada se escribe hasta registrar.** Lo escrito vive en el estado guardado de la pantalla.
  * - **El origen puede quedar en negativo:** cada línea lo avisa con lo que quedaría, sin bloquear.
- * - **Solo productos con libro propio y sin lotes:** un servicio o uno hecho de componentes no
- *   tiene stock que mover, y esta versión todavía no transfiere por lote.
+ * - **Solo productos con libro propio:** un servicio o uno hecho de componentes no tiene stock
+ *   que mover. Un producto con lotes ofrece sus lotes del origen; sin elegir, sale por
+ *   vencimiento, como en la venta.
  * - **Un error nunca borra lo escrito.** Una cantidad vacía solo se marca al intentar registrar.
  *
  * @param initialFrom la ubicación de origen propuesta, como la abierta en la pantalla anterior.
+ * @param lotChoices los lotes de un producto en una ubicación, en el orden de salida, o `null` si
+ *   el producto no lleva lotes.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewTransferViewModel(
@@ -88,6 +101,7 @@ class NewTransferViewModel(
     private val savedState: SavedStateHandle,
     private val quantitySymbols: NumberSymbols,
     computation: CoroutineDispatcher,
+    private val lotChoices: suspend (Long, Long) -> LotChoices? = { _, _ -> null },
 ) : ViewModel() {
     private val draft = MutableStateFlow(TransferDraftStore.read(savedState))
     private val overlay = MutableStateFlow(TransferOverlay())
@@ -106,7 +120,25 @@ class NewTransferViewModel(
     }.flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.Eagerly, TransferLoad.Loading)
 
-    val uiState: StateFlow<NewTransferUiState> = combine(load, draft, overlay, ::build)
+    /**
+     * Los lotes en el origen de cada producto con lotes de las líneas. Se leen otra vez si cambia
+     * el origen, las líneas o el stock del origen.
+     */
+    private val lots: StateFlow<Map<Long, LotChoices>> = combine(load, draft) { current, saved ->
+        val origin = (current as? TransferLoad.Ready)?.origin
+        val withLots = origin?.tracked.orEmpty().filter { it.details.tracksLots }.map { it.id }
+        val wanted = saved?.lines.orEmpty().map { it.productId }.filter { it in withLots }.toSet()
+        LotRead(saved?.fromId, wanted, origin)
+    }.distinctUntilChanged()
+        .mapLatest { read ->
+            val from = read.fromId ?: return@mapLatest emptyMap<Long, LotChoices>()
+            read.products.mapNotNull { id -> lotChoices(id, from)?.let { id to it } }.toMap()
+        }
+        .catch { emit(emptyMap()) }
+        .flowOn(computation)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    val uiState: StateFlow<NewTransferUiState> = combine(load, draft, overlay, lots, ::build)
         .flowOn(computation)
         .stateIn(
             viewModelScope,
@@ -151,6 +183,17 @@ class NewTransferViewModel(
                     current.copy(
                         lines = current.lines.map {
                             if (it.key == action.key) it.copy(quantityText = action.text) else it
+                        },
+                    )
+                }
+                overlay.update { it.copy(rejected = it.rejected - action.key, notice = null) }
+            }
+
+            is NewTransferAction.ChooseLot -> {
+                changeDraft { current ->
+                    current.copy(
+                        lines = current.lines.map {
+                            if (it.key == action.key) it.copy(lotId = action.lotId) else it
                         },
                     )
                 }
@@ -240,7 +283,11 @@ class NewTransferViewModel(
         if (blocked || from == null || to == null) return
         val lines = current.lines.map { line ->
             val read = readQuantity(line.quantityText, line.unit?.allowsFraction ?: false, true)
-            StockTransferLineRequest(line.productId, (read as LineRead.Valid).quantity)
+            StockTransferLineRequest(
+                line.productId,
+                (read as LineRead.Valid).quantity,
+                lotId = line.lotId,
+            )
         }
         val keys = current.lines.map { it.key }
         overlay.update { it.copy(saving = true, notice = null) }
@@ -284,12 +331,14 @@ class NewTransferViewModel(
     }
 
     /** El estado de ahora, armado en el acto: no espera a que la pantalla lo recoja. */
-    private fun snapshot(): NewTransferUiState = build(load.value, draft.value, overlay.value)
+    private fun snapshot(): NewTransferUiState =
+        build(load.value, draft.value, overlay.value, lots.value)
 
     private fun build(
         load: TransferLoad,
         draft: TransferDraft?,
         overlay: TransferOverlay,
+        lotsByProduct: Map<Long, LotChoices>,
     ): NewTransferUiState {
         val ready = load as? TransferLoad.Ready
         val current = draft ?: TransferDraft()
@@ -319,6 +368,10 @@ class NewTransferViewModel(
                 quantityText = line.quantityText,
                 error = error,
                 leftAtOrigin = left,
+                lots = lotsByProduct[line.productId]
+                    ?.let { lotOptionsOf(it, withUnassigned = true) }
+                    .orEmpty(),
+                lotId = line.lotId,
             )
         }
         val sameEnds = current.fromId != null && current.fromId == current.toId
@@ -344,9 +397,8 @@ class NewTransferViewModel(
         )
     }
 
-    /** Lo que se puede mover: con libro propio, sin lotes y vigente, por nombre. */
-    private fun movableProducts(origin: InventoryOverview): List<Product> =
-        origin.tracked.filterNot { it.details.tracksLots }
+    /** Lo que se puede mover: con libro propio y vigente, por nombre, también con lotes. */
+    private fun movableProducts(origin: InventoryOverview): List<Product> = origin.tracked
 
     private fun picker(
         movable: Collection<Product>,
@@ -412,7 +464,8 @@ class NewTransferViewModel(
             StockTransferLineRejection.PRODUCT_NOT_FOUND,
             StockTransferLineRejection.PRODUCT_ARCHIVED,
             StockTransferLineRejection.NOT_TRACKED,
-            StockTransferLineRejection.LOTS_NOT_SUPPORTED,
+            // La pantalla solo ofrece lotes del producto: uno que ya no está se vuelve a elegir.
+            StockTransferLineRejection.LOT_NOT_FOUND,
             -> TransferLineError.UNAVAILABLE
         }
     }

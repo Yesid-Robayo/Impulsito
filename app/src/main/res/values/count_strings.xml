@@ -61,4 +61,5 @@
     <string name="count_positive">+%1$s</string>
     <string name="hub_tool_count">Stock count</string>
     <string name="hub_tool_count_desc">Count inventory and adjust differences</string>
+    <string name="count_row_lot">%1$s · %2$s</string>
 </resources>

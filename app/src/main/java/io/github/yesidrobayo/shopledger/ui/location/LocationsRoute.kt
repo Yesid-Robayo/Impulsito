@@ -123,6 +123,7 @@ class LocationsUseCases(
                     ports.products,
                     ports.units,
                     ports.locationStock,
+                    ports.stockLots,
                 ),
                 saveUseCase = SaveLocationUseCase(tx, ports.locations, clock),
                 archiveUseCase =
@@ -135,6 +136,7 @@ class LocationsUseCases(
                     ports.stockLedger,
                     calendar,
                     clock,
+                    ports.stockLots,
                 ),
             )
         }

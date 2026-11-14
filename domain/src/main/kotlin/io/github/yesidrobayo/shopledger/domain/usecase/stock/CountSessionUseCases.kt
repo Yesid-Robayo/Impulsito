@@ -5,8 +5,11 @@ import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.model.stock.CountSessionLine
 import io.github.yesidrobayo.shopledger.domain.model.stock.CountSessionStatus
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewCountSession
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
@@ -24,11 +27,13 @@ import io.github.yesidrobayo.shopledger.domain.port.LocationStockSource
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
+import io.github.yesidrobayo.shopledger.domain.rule.stock.CountLotRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockAdjustmentRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementCheck
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
@@ -69,9 +74,12 @@ sealed interface OpenCountResult {
  * una línea por producto vigente con stock propio, con lo que el libro dice de esa ubicación
  * congelado como esperado. A ciegas por defecto.
  *
- * Una ubicación tiene a lo sumo un conteo abierto: dos a la vez contarían lo mismo dos veces. Los
- * productos con lotes y el principal de unas variantes, que no tiene stock propio, no entran: los
- * lotes llegan con su propia tarea.
+ * Una ubicación tiene a lo sumo un conteo abierto: dos a la vez contarían lo mismo dos veces. El
+ * principal de unas variantes, que no tiene stock propio, no entra.
+ *
+ * Un producto con lotes se cuenta por lote: una línea por cada lote con saldo en la ubicación, con
+ * su esperado congelado, y otra para el lote sin asignar si tiene saldo o si no hay ningún lote
+ * ([CountLotRules.linesOf]). Sin [lots], esos productos no entran.
  */
 class OpenCountSessionUseCase(
     private val transactions: TransactionRunner,
@@ -82,6 +90,7 @@ class OpenCountSessionUseCase(
     private val stock: LocationStockSource,
     private val calendar: BusinessCalendarSource,
     private val clock: Clock,
+    private val lots: StockLotRepository? = null,
 ) {
     suspend operator fun invoke(request: OpenCountRequest): OpenCountResult =
         storageSafe(OpenCountResult::StorageFailed) {
@@ -105,7 +114,7 @@ class OpenCountSessionUseCase(
         val parents = active.mapNotNullTo(mutableSetOf()) { it.details.parentProductId }
         val counted = active.filter {
             it.details.stockMode == ProductStockMode.TRACKED &&
-                !it.details.tracksLots &&
+                (!it.details.tracksLots || lots != null) &&
                 it.id !in parents &&
                 (categoryId == null || it.details.categoryId == categoryId)
         }.sortedWith(compareBy({ it.details.normalizedName }, { it.id }))
@@ -122,8 +131,16 @@ class OpenCountSessionUseCase(
             ),
         )
         for (product in counted) {
-            val expected = stock.onHandAt(product.id, request.locationId)
-            sessions.insertLine(sessionId, product.id, lotId = null, expected = expected)
+            if (product.details.tracksLots) {
+                val repository = checkNotNull(lots) { "Solo entran con lotes si se leen" }
+                val stocks = repository.findStock(product.id, request.locationId)
+                for (line in CountLotRules.linesOf(stocks)) {
+                    sessions.insertLine(sessionId, product.id, line.lotId, line.expected)
+                }
+            } else {
+                val expected = stock.onHandAt(product.id, request.locationId)
+                sessions.insertLine(sessionId, product.id, lotId = null, expected = expected)
+            }
         }
         return TxResult.Commit(OpenCountResult.Opened(sessionId))
     }
@@ -241,6 +258,11 @@ sealed interface FinishCountResult {
  *
  * Lo esperado es lo que había al abrir, aunque algo se haya movido después: la pantalla lo avisa
  * antes de aplicar, con [CountSessionRepository.productsMovedSinceOpen].
+ *
+ * Un producto con lotes escribe un ajuste por lote contado con diferencia, en ese lote. Lo que
+ * sobra entra al lote; lo que falta sale de él hasta dejarlo en cero, y el resto del lote sin
+ * asignar ([CountLotRules.splitCorrection]), que se crea si no existe: un lote con código nunca
+ * queda en negativo.
  */
 class ApplyCountSessionUseCase(
     private val transactions: TransactionRunner,
@@ -251,6 +273,7 @@ class ApplyCountSessionUseCase(
     private val calendar: BusinessCalendarSource,
     private val currencyLock: CurrencyLock,
     private val clock: Clock,
+    private val lots: StockLotRepository? = null,
 ) {
     private val ledger = StockChangeRecorder(ledger)
 
@@ -269,61 +292,119 @@ class ApplyCountSessionUseCase(
         }
         val time = calendar.stamp(clock.now()) ?: return reject(FinishCountResult.UnknownTimeZone)
         var written = 0
-        var locked = false
+        val currency = CurrencyOnce()
         for (line in sessions.findLines(sessionId)) {
             val change = line.difference?.takeIf { it != QuantityMilli.ZERO } ?: continue
             val product = checkNotNull(products.findById(line.productId)) {
                 "Una línea siempre tiene su producto"
             }
-            val draft = StockMovementDraft(
-                key = StockKey(product.id, session.locationId, lotId = null),
-                type = StockMovementType.ADJUSTMENT,
-                quantity = change,
-                reversesMovementId = null,
-            )
-            if (StockMovementRules.check(draft, product.onHand, null, false) ==
-                StockMovementCheck.AboveOnHandLimit
-            ) {
-                return reject(FinishCountResult.AboveLimit(Limit.ON_HAND_MILLI))
+            for (part in partsOf(product, line, session.locationId, change, time)) {
+                val key = StockKey(product.id, session.locationId, part.lotId)
+                append(sessionId, key, part.quantity, currency, time)?.let { return reject(it) }
+                written++
             }
-            val before = CostState(product.onHand, product.averageCost, product.stockValue)
-            val value = when (val checked = StockAdjustmentRules.value(before, change)) {
-                is Checked.Value -> checked.value
-                Checked.Overflow -> return reject(FinishCountResult.AboveLimit(Limit.STOCK_VALUE))
-                is Checked.AboveLimit -> return reject(FinishCountResult.AboveLimit(checked.limit))
-            }
-            // Un ajuste sin valor no es dinero: no fija ninguna moneda.
-            if (!locked && value.totalCost != Money.ZERO) {
-                if (!currencyLock.lock(time.occurredAt)) {
-                    return reject(FinishCountResult.CurrencyUnconfirmed)
-                }
-                locked = true
-            }
-            ledger.append(
-                NewStockMovement(
-                    movement = draft,
-                    reason = StockAdjustmentReason.COUNT_CORRECTION,
-                    unitCost = product.averageCost,
-                    totalCost = value.totalCost,
-                    balanceAfter = value.after.onHand,
-                    averageCostAfter = value.after.averageCost,
-                    stockValueAfter = value.after.stockValue,
-                    source = StockMovementSource(countSessionId = sessionId),
-                    note = null,
-                    occurredAt = time.occurredAt,
-                    businessDate = time.businessDate,
-                    createdAt = time.occurredAt,
-                ),
-            )
-            written++
         }
         sessions.finish(sessionId, CountSessionStatus.APPLIED, time.occurredAt)
         ledger.applyAlerts(alerts, products, time)
         return TxResult.Commit(FinishCountResult.Applied(written))
     }
 
+    /**
+     * Las filas que corrigen [line] por [change]: una sin lote en un producto sin lotes. Con
+     * lotes, en el lote de la línea, o en el sin asignar si la línea es de él o de ninguno; un
+     * lote con código no da más de lo que tiene, y el resto sale del sin asignar.
+     */
+    private suspend fun partsOf(
+        product: Product,
+        line: CountSessionLine,
+        locationId: Long,
+        change: QuantityMilli,
+        time: RecordTime,
+    ): List<CorrectionPart> {
+        if (!product.details.tracksLots) return listOf(CorrectionPart(lotId = null, change))
+        val repository = checkNotNull(lots) { "Aplicar un conteo con lotes pide los lotes" }
+        val lot = line.lotId?.let { repository.findById(it) }
+        if (lot == null || lot.isUnassigned) {
+            val unassigned = lot?.id ?: ledger.unassignedLot(product.id, time.occurredAt)
+            return listOf(CorrectionPart(unassigned, change))
+        }
+        val available = ledger.onHandAt(StockKey(product.id, locationId, lot.id))
+        val split = CountLotRules.splitCorrection(change, available)
+        val parts = ArrayList<CorrectionPart>(2)
+        if (split.lot != QuantityMilli.ZERO) parts += CorrectionPart(lot.id, split.lot)
+        if (split.unassigned != QuantityMilli.ZERO) {
+            val unassigned = ledger.unassignedLot(product.id, time.occurredAt)
+            parts += CorrectionPart(unassigned, split.unassigned)
+        }
+        return parts
+    }
+
+    /**
+     * Agrega el ajuste de [change] en [key], valorado al costo del producto de ahora, o devuelve
+     * por qué no se puede. La primera fila con valor fija la moneda, una sola vez.
+     */
+    private suspend fun append(
+        sessionId: Long,
+        key: StockKey,
+        change: QuantityMilli,
+        currency: CurrencyOnce,
+        time: RecordTime,
+    ): FinishCountResult? {
+        // Se lee otra vez: dos filas del mismo producto ven el estado que dejó la anterior.
+        val product = checkNotNull(products.findById(key.productId)) {
+            "Una línea siempre tiene su producto"
+        }
+        val draft = StockMovementDraft(
+            key = key,
+            type = StockMovementType.ADJUSTMENT,
+            quantity = change,
+            reversesMovementId = null,
+        )
+        if (StockMovementRules.check(draft, product.onHand, null, false) ==
+            StockMovementCheck.AboveOnHandLimit
+        ) {
+            return FinishCountResult.AboveLimit(Limit.ON_HAND_MILLI)
+        }
+        val before = CostState(product.onHand, product.averageCost, product.stockValue)
+        val value = when (val checked = StockAdjustmentRules.value(before, change)) {
+            is Checked.Value -> checked.value
+            Checked.Overflow -> return FinishCountResult.AboveLimit(Limit.STOCK_VALUE)
+            is Checked.AboveLimit -> return FinishCountResult.AboveLimit(checked.limit)
+        }
+        // Un ajuste sin valor no es dinero: no fija ninguna moneda.
+        if (!currency.locked && value.totalCost != Money.ZERO) {
+            if (!currencyLock.lock(time.occurredAt)) return FinishCountResult.CurrencyUnconfirmed
+            currency.locked = true
+        }
+        ledger.append(
+            NewStockMovement(
+                movement = draft,
+                reason = StockAdjustmentReason.COUNT_CORRECTION,
+                unitCost = product.averageCost,
+                totalCost = value.totalCost,
+                balanceAfter = value.after.onHand,
+                averageCostAfter = value.after.averageCost,
+                stockValueAfter = value.after.stockValue,
+                source = StockMovementSource(countSessionId = sessionId),
+                note = null,
+                occurredAt = time.occurredAt,
+                businessDate = time.businessDate,
+                createdAt = time.occurredAt,
+            ),
+        )
+        return null
+    }
+
     private fun reject(result: FinishCountResult): TxResult<FinishCountResult> =
         TxResult.Rollback(result)
+}
+
+/** Una fila de la corrección de una línea: [quantity] en el lote [lotId], o sin lote. */
+private data class CorrectionPart(val lotId: Long?, val quantity: QuantityMilli)
+
+/** Si la moneda ya quedó fija en esta aplicación: se fija una sola vez. */
+private class CurrencyOnce {
+    var locked: Boolean = false
 }
 
 /** Cancela un conteo abierto: lo contado se conserva en sus líneas, y el libro no cambia. */

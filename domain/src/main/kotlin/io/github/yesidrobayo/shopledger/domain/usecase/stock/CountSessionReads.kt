@@ -11,11 +11,13 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.model.stock.CountSession
 import io.github.yesidrobayo.shopledger.domain.model.stock.CountSessionLine
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.CountSessionRepository
 import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.stock.LocationRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockAdjustmentRules
@@ -115,8 +117,16 @@ private data class Places(
     val archived: List<Location>,
 )
 
-/** Un producto de la sesión, listo para mostrar y valorar. */
-data class CountLineView(val line: CountSessionLine, val product: Product?, val unit: MeasureUnit?)
+/**
+ * Un producto de la sesión, listo para mostrar y valorar. En un producto con lotes, [lot] es el
+ * lote de la línea, o `null` si es el sin asignar que todavía no existe.
+ */
+data class CountLineView(
+    val line: CountSessionLine,
+    val product: Product?,
+    val unit: MeasureUnit?,
+    val lot: StockLot? = null,
+)
 
 /** Una sesión abierta o terminada, con sus líneas y lo que se ve de ella. */
 data class CountSessionView(
@@ -127,9 +137,10 @@ data class CountSessionView(
 )
 
 /**
- * Una sesión y sus líneas, para contar o revisar. Los productos, sus unidades y la ubicación se
- * leen una sola vez al abrirla, porque una sesión no cambia de productos; las líneas vuelven a
- * emitir con cada conteo anotado. `null` si la sesión no existe.
+ * Una sesión y sus líneas, para contar o revisar. Los productos, sus unidades, sus lotes y la
+ * ubicación se leen una sola vez al abrirla, porque una sesión no cambia de productos; las líneas
+ * vuelven a emitir con cada conteo anotado. `null` si la sesión no existe. Las líneas de un
+ * mismo producto con lotes van juntas, en el orden en que se abrieron: primero el que vence antes.
  */
 class ObserveCountSessionUseCase(
     private val sessions: CountSessionRepository,
@@ -137,6 +148,7 @@ class ObserveCountSessionUseCase(
     private val units: UnitRepository,
     private val locations: LocationRepository,
     private val categories: CategoryRepository,
+    private val lots: StockLotRepository? = null,
 ) {
     operator fun invoke(sessionId: Long): Flow<CountSessionView?> = flow {
         val session = sessions.findById(sessionId)
@@ -148,6 +160,9 @@ class ObserveCountSessionUseCase(
         val byId = products.findByIds(first.map { it.productId }.toSet()).associateBy { it.id }
         val unitsById = byId.values.map { it.details.baseUnitId }.distinct()
             .mapNotNull { units.findById(it) }
+            .associateBy { it.id }
+        val lotsById = first.mapNotNull { it.lotId }.distinct()
+            .mapNotNull { id -> lots?.findById(id) }
             .associateBy { it.id }
         val location = locations.findById(session.locationId)
         val category = session.categoryId?.let { categories.findById(it) }
@@ -164,10 +179,15 @@ class ObserveCountSessionUseCase(
                                 line,
                                 product,
                                 product?.let { unitsById[it.details.baseUnitId] },
+                                line.lotId?.let { lotsById[it] },
                             )
                         }
                         .sortedWith(
-                            compareBy({ it.product?.details?.normalizedName }, { it.line.id }),
+                            compareBy(
+                                { it.product?.details?.normalizedName },
+                                { it.line.productId },
+                                { it.line.id },
+                            ),
                         ),
                 )
             },

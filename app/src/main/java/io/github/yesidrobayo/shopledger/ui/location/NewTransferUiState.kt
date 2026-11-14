@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.ui.components.LotOption
 
 /** Por qué una línea no se puede registrar. La pantalla elige el texto. */
 enum class TransferLineError {
@@ -28,6 +29,9 @@ enum class TransferLineError {
  * Una línea del formulario: el producto, cuánto se mueve tal como se escribió, y [leftAtOrigin],
  * lo
  * que quedaría en el origen si es menos que cero, para avisarlo sin bloquear.
+ *
+ * En un producto con lotes, [lots] son los lotes del origen en el orden de salida y [lotId] el
+ * elegido, o `null` para salir por vencimiento. Sin lotes, [lots] va vacía y no se ve nada nuevo.
  */
 @Immutable
 data class TransferLineUi(
@@ -38,6 +42,8 @@ data class TransferLineUi(
     val quantityText: String,
     val error: TransferLineError? = null,
     val leftAtOrigin: QuantityMilli? = null,
+    val lots: List<LotOption> = emptyList(),
+    val lotId: Long? = null,
 )
 
 /** Un producto que se puede agregar, con lo que hay de él en el origen. */
@@ -118,6 +124,9 @@ sealed interface NewTransferAction {
 
     data class QuantityChange(val key: Long, val text: String) : NewTransferAction
 
+    /** Elige el lote de la línea [key], o vuelve a la salida por vencimiento con `null`. */
+    data class ChooseLot(val key: Long, val lotId: Long?) : NewTransferAction
+
     data class RemoveLine(val key: Long) : NewTransferAction
 
     data class Note(val text: String) : NewTransferAction
@@ -153,8 +162,13 @@ data class TransferDraft(
     val showMissing: Boolean = false,
 )
 
-/** Una línea tal como se escribió. */
-data class TransferLineDraft(val key: Long, val productId: Long, val quantityText: String)
+/** Una línea tal como se escribió, con el lote elegido si el producto lleva lotes. */
+data class TransferLineDraft(
+    val key: Long,
+    val productId: Long,
+    val quantityText: String,
+    val lotId: Long? = null,
+)
 
 /**
  * Guarda el borrador en el estado guardado, con tipos que caben en un `Bundle`. Si las partes no
@@ -164,6 +178,7 @@ internal object TransferDraftStore {
     private const val ENDS = "transfer.ends"
     private const val LINES = "transfer.lines"
     private const val TEXTS = "transfer.texts"
+    private const val LOTS = "transfer.lots"
     private const val NOTE = "transfer.note"
     private const val NEXT_KEY = "transfer.nextKey"
     private const val SHOW_MISSING = "transfer.showMissing"
@@ -180,6 +195,8 @@ internal object TransferDraftStore {
         val texts = state.get<ArrayList<String>>(TEXTS) ?: return null
         val count = numbers.size / FIELDS
         if (ends.size != 2 || numbers.size % FIELDS != 0 || texts.size != count) return null
+        // Un borrador de antes de los lotes no los trae: sus líneas salen por vencimiento.
+        val lots = state.get<LongArray>(LOTS)?.takeIf { it.size == count }
         return TransferDraft(
             fromId = ends[0].takeIf { it != NONE },
             toId = ends[1].takeIf { it != NONE },
@@ -188,6 +205,7 @@ internal object TransferDraftStore {
                     key = numbers[index * FIELDS],
                     productId = numbers[index * FIELDS + 1],
                     quantityText = texts[index],
+                    lotId = lots?.get(index)?.takeIf { it != NONE },
                 )
             },
             note = state.get<String>(NOTE).orEmpty(),
@@ -205,6 +223,7 @@ internal object TransferDraftStore {
         state[ENDS] = longArrayOf(draft.fromId ?: NONE, draft.toId ?: NONE)
         state[LINES] = numbers
         state[TEXTS] = ArrayList(draft.lines.map { it.quantityText })
+        state[LOTS] = LongArray(draft.lines.size) { draft.lines[it].lotId ?: NONE }
         state[NOTE] = draft.note
         state[NEXT_KEY] = draft.nextKey
         state[SHOW_MISSING] = draft.showMissing

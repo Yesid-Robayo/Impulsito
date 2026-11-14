@@ -253,6 +253,7 @@ private fun ColumnScope.CountingContent(
 private fun CountRow(row: CountRowUi, blind: Boolean, onAction: (CountSessionAction) -> Unit) {
     val spacing = AppTheme.spacing
     val unit = labelOf(row)
+    val title = rowTitle(row)
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
@@ -263,7 +264,7 @@ private fun CountRow(row: CountRowUi, blind: Boolean, onAction: (CountSessionAct
             horizontalArrangement = Arrangement.spacedBy(spacing.s12),
         ) {
             Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
-                Text(row.name, style = MaterialTheme.typography.bodyLarge)
+                Text(title, style = MaterialTheme.typography.bodyLarge)
                 if (!blind) {
                     Text(
                         stringResource(R.string.count_expected, quantityText(row.expected, unit)),
@@ -276,7 +277,7 @@ private fun CountRow(row: CountRowUi, blind: Boolean, onAction: (CountSessionAct
                 QuantityStepper(
                     quantity = row.counted ?: QuantityMilli.ZERO,
                     unit = unit,
-                    productName = row.name,
+                    productName = title,
                     onDecrement = { onAction(CountSessionAction.Step(row.lineId, up = false)) },
                     onIncrement = { onAction(CountSessionAction.Step(row.lineId, up = true)) },
                     valueText = if (row.counted == null) NOT_COUNTED else null,
@@ -417,7 +418,7 @@ private fun DifferenceRow(row: CountRowUi) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                row.name,
+                rowTitle(row),
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f),
             )
@@ -434,6 +435,22 @@ private fun DifferenceRow(row: CountRowUi) {
         thickness = AppTheme.sizes.hairline,
         color = MaterialTheme.colorScheme.outlineVariant,
     )
+}
+
+/**
+ * El nombre de una fila: el producto, y en un producto con lotes también su lote, como
+ * `Jabón de avena · Lote 22` o `Jabón de avena · Lote sin asignar`.
+ */
+@Composable
+private fun rowTitle(row: CountRowUi): String {
+    val lot = row.lot ?: return row.name
+    val code = lot.code
+    val lotName = when {
+        lot.unassigned -> stringResource(R.string.lot_unassigned_name)
+        code != null -> stringResource(R.string.lot_name, code)
+        else -> stringResource(R.string.lot_no_code)
+    }
+    return stringResource(R.string.count_row_lot, row.name, lotName)
 }
 
 @Composable

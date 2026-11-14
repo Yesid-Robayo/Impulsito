@@ -177,6 +177,7 @@ private class CountHomeUseCases(dependencies: ScreenDependencies) : CountHomeOpe
         ports.locationStock,
         BusinessCalendarSource(ports.settings),
         dependencies.container.clock,
+        ports.stockLots,
     )
 
     override fun overview(): Flow<CountOverview> = overviewUseCase()
@@ -196,6 +197,7 @@ private class CountSessionUseCases(dependencies: ScreenDependencies) : CountSess
         ports.units,
         ports.locations,
         ports.categories,
+        ports.stockLots,
     )
     private val recordUseCase =
         RecordCountUseCase(ports.transactions, ports.countSessions, ports.products, ports.units)
@@ -209,6 +211,7 @@ private class CountSessionUseCases(dependencies: ScreenDependencies) : CountSess
         BusinessCalendarSource(ports.settings),
         CurrencyLock(ports.settings),
         clock,
+        ports.stockLots,
     )
     private val cancelUseCase =
         CancelCountSessionUseCase(ports.transactions, ports.countSessions, clock)

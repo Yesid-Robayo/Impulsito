@@ -56,4 +56,5 @@
         <item quantity="many">%1$d de productos</item>
         <item quantity="other">%1$d productos</item>
     </plurals>
+    <string name="location_transfer_line_lot">%1$s · %2$s</string>
 </resources>

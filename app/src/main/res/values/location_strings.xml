@@ -54,4 +54,5 @@
         <item quantity="one">%1$d product</item>
         <item quantity="other">%1$d products</item>
     </plurals>
+    <string name="location_transfer_line_lot">%1$s · %2$s</string>
 </resources>

@@ -4,11 +4,13 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.stock.CountSessionStatus
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CountReview
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CountSessionView
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.FinishCountResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.RecordCountResult
+import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -180,6 +182,52 @@ class CountSessionViewModelTest {
             assertNull(model.uiState.value.filter)
             model.act(this, CountSessionAction.Scanned(UNKNOWN_PRODUCT))
 
+            assertTrue(operations.records.isEmpty())
+        }
+
+    @Test
+    fun `a product with lots shows one row per lot, found by its code too`() =
+        runTest(dispatcher) {
+            val soap = CountSamples.SOAP.let {
+                it.copy(details = it.details.copy(tracksLots = true))
+            }
+            val base = CountSamples.view()
+            val soapLine = base.lines.last()
+            val coded = StockLot(
+                id = 41L,
+                productId = soap.id,
+                code = "J-1",
+                isUnassigned = false,
+                expiryDate = null,
+                purchaseLineId = null,
+                expiryNotifiedAt = null,
+                createdAt = Instant.fromEpochMilliseconds(0L),
+                closedAt = null,
+            )
+            operations.view.value = base.copy(
+                lines = base.lines.dropLast(1) + listOf(
+                    soapLine.copy(product = soap, lot = coded),
+                    soapLine.copy(
+                        line = soapLine.line.copy(id = SOAP_UNASSIGNED, counted = null),
+                        product = soap,
+                        lot = null,
+                    ),
+                ),
+            )
+            val model = model()
+
+            assertEquals(CountLotUi("J-1"), model.row(SOAP).lot)
+            val unassigned = CountLotUi(code = null, unassigned = true)
+            assertEquals(unassigned, model.row(SOAP_UNASSIGNED).lot)
+            // Sin lotes, la fila no cambia.
+            assertNull(model.row(RICE).lot)
+            model.act(this, CountSessionAction.Query("J-1"))
+            assertEquals(listOf(SOAP), model.uiState.value.rows.map { it.lineId })
+
+            // Con dos lotes el código no dice cuál: busca el producto, sin sumar nada.
+            model.act(this, CountSessionAction.Query(""))
+            model.act(this, CountSessionAction.Scanned(CountSamples.SOAP.id))
+            assertEquals(listOf(SOAP, SOAP_UNASSIGNED), model.uiState.value.rows.map { it.lineId })
             assertTrue(operations.records.isEmpty())
         }
 
@@ -389,5 +437,6 @@ class CountSessionViewModelTest {
         const val CHEESE = 103L
         const val SOAP = 104L
         const val UNKNOWN_PRODUCT = 999L
+        const val SOAP_UNASSIGNED = 105L
     }
 }

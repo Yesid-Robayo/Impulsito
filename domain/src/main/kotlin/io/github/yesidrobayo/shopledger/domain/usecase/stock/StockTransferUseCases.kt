@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.VoidableDocument
 import io.github.yesidrobayo.shopledger.domain.model.Voiding
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotPart
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockTransfer
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockTransferLine
@@ -16,16 +17,19 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferLineRejection
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferRequest
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockTransferRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockCompensation
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockTransferRules
@@ -75,6 +79,10 @@ sealed interface RegisterStockTransferResult {
  * - **Nunca se bloquea por falta de stock en el origen:** puede quedar en negativo, como al vender.
  *   La pantalla lo avisa antes de confirmar.
  * - **La fecha es la de hoy**, como un ajuste: lo que se movió atrasado se ve en el orden del libro.
+ * - **Un producto con lotes sale por lote**, como en la venta: primero el lote elegido, luego el
+ *   que vence antes, y lo que falte, del lote sin asignar, que se crea si no existe. Ningún lote
+ *   con código da más de lo que tiene en el origen. Cada lote del que sale es una línea guardada
+ *   con su salida y su entrada, y llega al destino con su mismo código y vencimiento.
  *
  * No toca las alertas de stock bajo: el saldo de cada producto no cambia.
  */
@@ -87,6 +95,7 @@ class RegisterStockTransferUseCase(
     private val ledger: StockLedgerRepository,
     private val calendar: BusinessCalendarSource,
     private val clock: Clock,
+    private val lots: StockLotRepository,
 ) {
     suspend operator fun invoke(request: StockTransferRequest): RegisterStockTransferResult =
         storageSafe(RegisterStockTransferResult::StorageFailed) {
@@ -118,7 +127,14 @@ class RegisterStockTransferUseCase(
             val allowsFraction = product
                 ?.let { units.findById(it.details.baseUnitId)?.allowsFraction }
                 ?: false
-            StockTransferRules.lineRejection(product, allowsFraction, line.quantity)?.let {
+            val chosenLot = line.lotId?.let { lots.findById(it) }
+            StockTransferRules.lineRejection(
+                product,
+                allowsFraction,
+                line.quantity,
+                line.lotId,
+                chosenLot,
+            )?.let {
                 return reject(RegisterStockTransferResult.LineRejected(index, it))
             }
         }
@@ -139,28 +155,48 @@ class RegisterStockTransferUseCase(
             val product = checkNotNull(products.findById(line.productId)) {
                 "El producto de la línea se acaba de leer"
             }
-            val lineId = transfers.insertLine(
-                transferId,
-                NewStockTransferLine(line.productId, lotId = null, quantity = line.quantity),
-            )
-            val source = StockMovementSource(transferLineId = lineId)
-            val exit = StockMovementDraft(
-                key = StockKey(product.id, request.fromLocationId, lotId = null),
-                type = StockMovementType.TRANSFER_OUT,
-                quantity = -line.quantity,
-                reversesMovementId = null,
-            )
-            val entry = StockMovementDraft(
-                key = StockKey(product.id, request.toLocationId, lotId = null),
-                type = StockMovementType.TRANSFER_IN,
-                quantity = line.quantity,
-                reversesMovementId = null,
-            )
-            val low = StockTransferRules.balanceAfterExit(product.onHand, line.quantity)
-            ledger.append(transferRow(exit, product, low, source, time))
-            ledger.append(transferRow(entry, product, product.onHand, source, time))
+            for (part in partsOf(product, line, request.fromLocationId, time)) {
+                val lineId = transfers.insertLine(
+                    transferId,
+                    NewStockTransferLine(product.id, lotId = part.lotId, quantity = part.quantity),
+                )
+                val source = StockMovementSource(transferLineId = lineId)
+                val exit = StockMovementDraft(
+                    key = StockKey(product.id, request.fromLocationId, part.lotId),
+                    type = StockMovementType.TRANSFER_OUT,
+                    quantity = -part.quantity,
+                    reversesMovementId = null,
+                )
+                val entry = StockMovementDraft(
+                    key = StockKey(product.id, request.toLocationId, part.lotId),
+                    type = StockMovementType.TRANSFER_IN,
+                    quantity = part.quantity,
+                    reversesMovementId = null,
+                )
+                val low = StockTransferRules.balanceAfterExit(product.onHand, part.quantity)
+                ledger.append(transferRow(exit, product, low, source, time))
+                ledger.append(transferRow(entry, product, product.onHand, source, time))
+            }
         }
         return TxResult.Commit(RegisterStockTransferResult.Registered(transferId))
+    }
+
+    /**
+     * De qué lotes sale [line]: sin lotes, una sola parte sin lote. Con lotes, el reparto de la
+     * venta sobre lo que tiene cada lote en el origen, leído otra vez para cada línea: dos líneas
+     * del mismo producto ven lo que dejó la anterior. La parte sin lote va al sin asignar.
+     */
+    private suspend fun partsOf(
+        product: Product,
+        line: StockTransferLineRequest,
+        fromLocationId: Long,
+        time: RecordTime,
+    ): List<LotPart> {
+        if (!product.details.tracksLots) return listOf(LotPart(lotId = null, line.quantity))
+        val stocks = lots.findStock(product.id, fromLocationId)
+        return LotRules.splitOutflow(line.quantity, stocks, line.lotId).map { part ->
+            part.copy(lotId = part.lotId ?: ledger.unassignedLot(product.id, time.occurredAt))
+        }
     }
 
     private fun reject(
@@ -181,6 +217,13 @@ sealed interface VoidStockTransferResult {
     /** El motivo no vale para una transferencia, como una devolución de cliente. */
     data object ReasonNotAllowed : VoidStockTransferResult
 
+    /**
+     * Del lote con código [lotId] de [productId] ya salió parte de lo que llegó al destino: anular
+     * dejaría ese lote en negativo, y solo el lote sin asignar puede quedar así. Faltan [missing].
+     */
+    data class LotAlreadyUsed(val productId: Long, val lotId: Long, val missing: QuantityMilli) :
+        VoidStockTransferResult
+
     /** La nota pasa de 200 caracteres. */
     data object NoteTooLong : VoidStockTransferResult
 
@@ -199,6 +242,10 @@ sealed interface VoidStockTransferResult {
  * Primero se compensan las entradas y después las salidas: el destino baja, y el origen recupera.
  * Puede dejar el destino en negativo si ya se vendió allí lo transferido; la pantalla lo avisa, y la
  * anulación sigue. Los compensatorios llevan la fecha de hoy.
+ *
+ * Cada fila se compensa en su mismo lote. Si un lote con código ya no tiene en el destino lo que
+ * llegó, no se anula nada ([VoidStockTransferResult.LotAlreadyUsed]), como al anular una compra:
+ * solo el lote sin asignar puede quedar en negativo.
  */
 class VoidStockTransferUseCase(
     private val transactions: TransactionRunner,
@@ -207,6 +254,7 @@ class VoidStockTransferUseCase(
     private val ledger: StockLedgerRepository,
     private val calendar: BusinessCalendarSource,
     private val clock: Clock,
+    private val lots: StockLotRepository,
 ) {
     suspend operator fun invoke(
         transferId: Long,
@@ -233,10 +281,20 @@ class VoidStockTransferUseCase(
         if (transfer.voiding != null) return reject(VoidStockTransferResult.AlreadyVoided)
         val time = calendar.stamp(clock.now())
             ?: return reject(VoidStockTransferResult.UnknownTimeZone)
+        val written = transfers.findMovements(transferId)
+            .filterNot { it.movement.type.isCompensating }
+        val entries = written.filter { it.movement.type == StockMovementType.TRANSFER_IN }
+        ledger.lotShortfallOf(entries, lots)?.let { short ->
+            val used = VoidStockTransferResult.LotAlreadyUsed(
+                short.productId,
+                short.lotId,
+                short.missing,
+            )
+            return reject(used)
+        }
         transfers.markVoided(transferId, Voiding(time.occurredAt, reason, note))
         // Las entradas primero: el destino baja y después el origen recupera, línea por línea.
-        val rows = transfers.findMovements(transferId)
-            .filterNot { it.movement.type.isCompensating }
+        val rows = written
             .sortedWith(compareBy({ it.source.transferLineId }, { it.movement.type.ordinal }))
             .reversed()
         for (row in rows) {

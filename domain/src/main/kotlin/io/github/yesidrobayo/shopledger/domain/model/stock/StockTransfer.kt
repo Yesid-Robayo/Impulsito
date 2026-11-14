@@ -18,8 +18,16 @@ data class StockTransferRequest(
     val note: String? = null,
 )
 
-/** [quantity] milésimas de la unidad base de [productId] que pasan del origen al destino. */
-data class StockTransferLineRequest(val productId: Long, val quantity: QuantityMilli)
+/**
+ * [quantity] milésimas de la unidad base de [productId] que pasan del origen al destino. En un
+ * producto con lotes, [lotId] es el lote que sale primero; sin elegir, sale por vencimiento, como
+ * en la venta, y lo que falte, del lote sin asignar.
+ */
+data class StockTransferLineRequest(
+    val productId: Long,
+    val quantity: QuantityMilli,
+    val lotId: Long? = null,
+)
 
 /** Por qué una línea de una transferencia no se puede registrar. */
 enum class StockTransferLineRejection {
@@ -32,8 +40,8 @@ enum class StockTransferLineRejection {
     /** El producto no lleva stock propio: un servicio o uno hecho de componentes no tiene libro. */
     NOT_TRACKED,
 
-    /** El producto lleva lotes, y esta versión todavía no transfiere por lote. */
-    LOTS_NOT_SUPPORTED,
+    /** El lote elegido no existe, es de otro producto, o el producto no se controla por lotes. */
+    LOT_NOT_FOUND,
 
     /** La cantidad es cero o negativa, o tiene decimales en una unidad que no los admite. */
     INVALID_QUANTITY,
@@ -52,7 +60,10 @@ data class NewStockTransfer(
     val createdAt: Instant,
 )
 
-/** Una línea por guardar: [quantity] de [productId], del lote [lotId] si el producto lleva lotes. */
+/**
+ * Una línea por guardar: [quantity] de [productId], del lote [lotId] si el producto lleva lotes.
+ * Una línea pedida de un producto con lotes se guarda como una línea por cada lote del que sale.
+ */
 data class NewStockTransferLine(val productId: Long, val lotId: Long?, val quantity: QuantityMilli)
 
 /**

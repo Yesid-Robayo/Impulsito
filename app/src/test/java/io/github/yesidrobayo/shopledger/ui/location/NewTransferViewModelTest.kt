@@ -4,6 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoice
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotChoices
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferLineRejection
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransferRequest
@@ -40,11 +43,21 @@ class NewTransferViewModelTest {
     private val requests = mutableListOf<StockTransferRequest>()
     private var result: RegisterStockTransferResult = RegisterStockTransferResult.Registered(1L)
 
-    // En el origen: 8 de arroz y 1,5 kg de queso; el jabón lleva lotes y no se ofrece.
+    // En el origen: 8 de arroz, 1,5 kg de queso y 3 de jabón, que lleva lotes.
     private val rice = LocationSamples.product(7L, "Arroz", LocationSamples.UNIT.id, 8_000L)
     private val cheese = LocationSamples.product(8L, "Queso", LocationSamples.KILOGRAM.id, 1_500L)
     private val soap = LocationSamples.product(9L, "Jabón", LocationSamples.UNIT.id, 3_000L)
         .let { it.copy(details = it.details.copy(tracksLots = true)) }
+
+    // El jabón tiene en el origen 1 del lote J-1 y 2 del J-2, y 0 sin asignar.
+    private val soapLots = LotChoices(
+        lots = listOf(
+            LotChoice(LotStock(31L, "J-1", null, false, QuantityMilli(1_000L)), null),
+            LotChoice(LotStock(32L, "J-2", null, false, QuantityMilli(2_000L)), null),
+        ),
+        unassigned = LotStock(30L, null, null, true, QuantityMilli.ZERO),
+    )
+    private val lotReads = mutableListOf<Pair<Long, Long>>()
 
     @Before
     fun useTestMain() = Dispatchers.setMain(dispatcher)
@@ -81,6 +94,10 @@ class NewTransferViewModelTest {
             savedState = state,
             quantitySymbols = symbols,
             computation = dispatcher,
+            lotChoices = { productId, locationId ->
+                lotReads += productId to locationId
+                if (productId == soap.id) soapLots else null
+            },
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()
@@ -107,11 +124,11 @@ class NewTransferViewModelTest {
         }
 
     @Test
-    fun `the picker offers products with their own book and no lots, once each`() =
+    fun `the picker offers products with their own book, with lots too, once each`() =
         runTest(dispatcher) {
             val model = model()
             model.act(this, NewTransferAction.OpenPicker)
-            assertEquals(listOf(7L, 8L), model.state.picker?.options?.map { it.id })
+            assertEquals(listOf(7L, 8L, 9L), model.state.picker?.options?.map { it.id })
 
             model.act(this, NewTransferAction.AddProduct(7L))
             model.act(this, NewTransferAction.OpenPicker)
@@ -243,6 +260,72 @@ class NewTransferViewModelTest {
             again.act(this, NewTransferAction.ConfirmLeave)
             assertTrue(again.closed.value)
         }
+
+    @Test
+    fun `a product with lots offers its lots at the origin and sends the chosen one`() =
+        runTest(dispatcher) {
+            val model = model()
+            model.act(this, NewTransferAction.AddProduct(9L))
+            model.act(this, NewTransferAction.AddProduct(7L))
+            val (soapLine, riceLine) = model.state.lines
+
+            // Los lotes del origen, en el orden de salida, y el sin asignar al final.
+            assertEquals(listOf(31L, 32L, 30L), soapLine.lots.map { it.lotId })
+            assertTrue(soapLine.lots.last().unassigned)
+            assertNull(soapLine.lotId)
+            // Un producto sin lotes no trae nada nuevo, ni se leen sus lotes.
+            assertTrue(riceLine.lots.isEmpty())
+            assertEquals(listOf(9L to LocationSamples.MAIN.id), lotReads.distinct())
+
+            model.act(this, NewTransferAction.ChooseLot(soapLine.key, 32L))
+            model.act(this, NewTransferAction.QuantityChange(soapLine.key, "2"))
+            model.act(this, NewTransferAction.QuantityChange(riceLine.key, "1"))
+            assertEquals(32L, model.state.lines.first().lotId)
+            model.act(this, NewTransferAction.Register)
+
+            assertEquals(
+                listOf(
+                    StockTransferLineRequest(9L, QuantityMilli(2_000L), lotId = 32L),
+                    StockTransferLineRequest(7L, QuantityMilli(1_000L)),
+                ),
+                requests.single().lines,
+            )
+        }
+
+    @Test
+    fun `the chosen lot survives the process and can go back to automatic`() =
+        runTest(dispatcher) {
+            val first = model()
+            first.act(this, NewTransferAction.AddProduct(9L))
+            val key = first.state.lines.single().key
+            first.act(this, NewTransferAction.ChooseLot(key, 31L))
+
+            val again = model(state = savedState)
+            assertEquals(31L, again.state.lines.single().lotId)
+
+            again.act(this, NewTransferAction.ChooseLot(key, null))
+            assertNull(again.state.lines.single().lotId)
+        }
+
+    @Test
+    fun `a lot that is no longer there marks the line`() = runTest(dispatcher) {
+        result = RegisterStockTransferResult.LineRejected(
+            0,
+            StockTransferLineRejection.LOT_NOT_FOUND,
+        )
+        val model = model()
+        model.act(this, NewTransferAction.AddProduct(9L))
+        val key = model.state.lines.single().key
+        model.act(this, NewTransferAction.ChooseLot(key, 31L))
+        model.act(this, NewTransferAction.QuantityChange(key, "1"))
+
+        model.act(this, NewTransferAction.Register)
+        assertEquals(TransferLineError.UNAVAILABLE, model.state.lines.single().error)
+
+        // Elegir otro lote quita la marca.
+        model.act(this, NewTransferAction.ChooseLot(key, 32L))
+        assertNull(model.state.lines.single().error)
+    }
 
     @Test
     fun `closing an empty form leaves without asking`() = runTest(dispatcher) {

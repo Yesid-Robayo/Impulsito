@@ -353,7 +353,7 @@ class LocationsViewModel(private val operations: LocationsOperations) : ViewMode
     }
 
     private fun voidTransfer(transferId: Long) {
-        editSheet { it.copy(voiding = true, failure = null) }
+        editSheet { it.copy(voiding = true, failure = null, lotUsed = false) }
         viewModelScope.launch {
             when (val result = operations.voidTransfer(transferId)) {
                 VoidStockTransferResult.Voided -> state.update {
@@ -363,6 +363,10 @@ class LocationsViewModel(private val operations: LocationsOperations) : ViewMode
                 // Otra hoja ya la anuló, o ya no existe: se muestra como quedó.
                 VoidStockTransferResult.AlreadyVoided, VoidStockTransferResult.NotFound ->
                     refreshTransfer(transferId)
+
+                // Anular dejaría un lote con código en negativo: no se anula, y se dice por qué.
+                is VoidStockTransferResult.LotAlreadyUsed ->
+                    editSheet { it.copy(voiding = false, lotUsed = true) }
 
                 is VoidStockTransferResult.StorageFailed -> editSheet {
                     it.copy(voiding = false, failure = SaveFailed(result.failure.isOutOfSpace))

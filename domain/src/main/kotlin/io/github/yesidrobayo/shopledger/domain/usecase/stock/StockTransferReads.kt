@@ -6,11 +6,13 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.stock.Location
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockLot
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockTransfer
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
 import io.github.yesidrobayo.shopledger.domain.port.LocationStockSource
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockTransferRepository
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
@@ -23,7 +25,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.mapLatest
 
-/** Una transferencia en la lista, con cuántas líneas lleva: una por producto movido. */
+/**
+ * Una transferencia en la lista, con cuántos productos movió: un producto con lotes guarda una
+ * línea por lote, pero cuenta una vez.
+ */
 data class StockTransferSummary(val transfer: StockTransfer, val productCount: Int)
 
 /** Lo que se lee de la lista de transferencias. */
@@ -77,7 +82,9 @@ class ObserveStockTransfersUseCase(
                     }.mapLatest { (found, first, from) ->
                         StockTransfersRead.Ready(
                             transfers = found.map {
-                                StockTransferSummary(it, transfers.findLines(it.id).size)
+                                val products = transfers.findLines(it.id)
+                                    .distinctBy { saved -> saved.line.productId }
+                                StockTransferSummary(it, products.size)
                             },
                             hasOlder = first != null && first < from,
                         )
@@ -97,13 +104,15 @@ class ObserveStockTransfersUseCase(
 }
 
 /**
- * Una línea de una transferencia, lista para mostrar: el producto, su unidad y cuánto se movió.
+ * Una línea de una transferencia, lista para mostrar: el producto, su unidad, cuánto se movió y,
+ * en un producto con lotes, de qué [lot].
  */
 data class StockTransferDetailLine(
     val productId: Long,
     val product: Product?,
     val unit: MeasureUnit?,
     val quantity: QuantityMilli,
+    val lot: StockLot? = null,
 )
 
 /**
@@ -133,6 +142,7 @@ class ReadStockTransferUseCase(
     private val products: ProductRepository,
     private val units: UnitRepository,
     private val stock: LocationStockSource,
+    private val lots: StockLotRepository? = null,
 ) {
     /** La transferencia [transferId], o `null` si ya no existe. */
     suspend operator fun invoke(transferId: Long): StockTransferDetail? {
@@ -150,6 +160,7 @@ class ReadStockTransferUseCase(
                 product = product,
                 unit = product?.let { unitsById[it.details.baseUnitId] },
                 quantity = saved.line.quantity,
+                lot = saved.line.lotId?.let { lots?.findById(it) },
             )
         }
         val shortfalls = if (transfer.voiding != null) {

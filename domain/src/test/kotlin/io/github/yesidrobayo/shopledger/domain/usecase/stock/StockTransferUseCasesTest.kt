@@ -46,6 +46,7 @@ class StockTransferUseCasesTest {
         catalog.ledger,
         calendar,
         catalog.clock,
+        catalog.lots,
     )
     private val void = VoidStockTransferUseCase(
         catalog.transactions,
@@ -54,6 +55,7 @@ class StockTransferUseCasesTest {
         catalog.ledger,
         calendar,
         catalog.clock,
+        catalog.lots,
     )
 
     private suspend fun seeded() {
@@ -272,6 +274,7 @@ class StockTransferUseCasesTest {
             unknownCatalog.ledger,
             unknownCalendar,
             unknownCatalog.clock,
+            unknownCatalog.lots,
         )(move(1_000L))
 
         assertEquals(RegisterStockTransferResult.UnknownTimeZone, result)

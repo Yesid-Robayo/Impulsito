@@ -9,6 +9,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.ui.components.LotExpiry
+import io.github.yesidrobayo.shopledger.ui.components.LotOption
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -138,5 +140,30 @@ class LocationsScreenTest {
         val main = resources.getString(R.string.seed_locations_main)
         assertTrue(count(main) >= 3)
         assertTrue(count(resources.getString(R.string.location_transfer_register_action)) >= 1)
+    }
+
+    @Test
+    fun onlyALineWithLotsOffersItsLotAndOpensTheLotsAtTheOrigin() {
+        val lots = listOf(
+            LotOption(31L, "J-1", LotExpiry.None, QuantityMilli(1_000L)),
+            LotOption(32L, "J-2", LotExpiry.None, QuantityMilli(2_000L)),
+        )
+        val state = NewTransferUiState(
+            loading = false,
+            locations = listOf(LocationSamples.MAIN, LocationSamples.STALL),
+            fromId = LocationSamples.MAIN.id,
+            toId = LocationSamples.STALL.id,
+            lines = listOf(
+                TransferLineUi(1L, 7L, "Arroz", LocationSamples.UNIT, "1"),
+                TransferLineUi(2L, 9L, "Jabón", LocationSamples.UNIT, "2", lots = lots),
+            ),
+        )
+        compose.setContent { PreviewTheme { NewTransferScreen(state, {}) } }
+
+        // Un solo campo de lote: el del jabón, que sale por vencimiento sin elegir.
+        assertEquals(1, count(resources.getString(R.string.lot_picker_auto)))
+        compose.onNodeWithText(resources.getString(R.string.lot_picker_auto)).performClick()
+        assertTrue(count(resources.getString(R.string.lot_name, "J-1")) >= 1)
+        assertTrue(count(resources.getString(R.string.lot_name, "J-2")) >= 1)
     }
 }

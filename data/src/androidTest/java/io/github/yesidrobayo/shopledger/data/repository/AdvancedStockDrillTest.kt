@@ -171,6 +171,7 @@ internal class AdvancedStockDrillTest : CatalogDatabaseTest() {
             ports.stockLedger,
             calendar,
             clock,
+            ports.stockLots,
         )
         val voidTransfer = VoidStockTransferUseCase(
             tx,
@@ -179,6 +180,7 @@ internal class AdvancedStockDrillTest : CatalogDatabaseTest() {
             ports.stockLedger,
             calendar,
             clock,
+            ports.stockLots,
         )
         val registerSale = RegisterSaleUseCase(
             transactions = tx,
