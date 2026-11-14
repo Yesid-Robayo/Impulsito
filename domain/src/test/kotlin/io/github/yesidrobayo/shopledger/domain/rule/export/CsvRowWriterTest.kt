@@ -88,6 +88,11 @@ class CsvRowWriterTest(defaults: ForeignSystemDefaults) {
     }
 
     @Test(expected = IllegalArgumentException::class)
+    fun `a scaled cell cannot have negative decimals`() {
+        CsvCell.Scaled(1L, -1)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
     fun `a number cannot have negative decimals`() {
         CsvFormat(CsvSeparator.SEMICOLON, DecimalSeparator.COMMA, 2).scaledCell(1L, -1)
     }
