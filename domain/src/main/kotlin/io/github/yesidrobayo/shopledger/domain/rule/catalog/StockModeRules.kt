@@ -8,21 +8,23 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.map
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotRules
 import io.github.yesidrobayo.shopledger.domain.rule.timesQuantity
 
 /**
  * Qué hace cada modo de stock con el libro y con el costo de una venta.
  *
- * Solo un producto con stock propio tiene libro. Un servicio no tiene existencias: vender no escribe
- * ninguna fila, su saldo es siempre cero y su costo es un costo fijo por unidad, que la persona
- * escribe porque no hay compras de dónde sacarlo. Un combo tampoco tiene libro: si lo tuviera,
- * habría dos verdades para el mismo stock. Al venderse descuenta cada componente con stock, y su
- * costo es la suma de sus componentes.
+ * Solo un producto con stock propio tiene libro. Un servicio no tiene existencias: vender no
+ * escribe ninguna fila, su saldo es siempre cero y su costo es un costo fijo por unidad, que la
+ * persona escribe porque no hay compras de dónde sacarlo. Un combo tampoco tiene libro: si lo
+ * tuviera, habría dos verdades para el mismo stock. Al venderse descuenta cada componente con
+ * stock, y su costo es la suma de sus componentes.
  *
- * El modo se copia en la línea como su efecto de stock, para que la línea diga siempre qué filas le
- * corresponden, y para anular la venta igual aunque el producto cambie después.
+ * El modo se copia en la línea como su efecto de stock, para que la línea diga siempre qué filas
+ * le corresponden, y para anular la venta igual aunque el producto cambie después.
  *
  * Los costos que multiplican devuelven [Checked]: una cifra que no cabe en `Long`, o que pasa del
  * tope de una línea, llega como rechazo y no se guarda nada.
@@ -42,8 +44,8 @@ object StockModeRules {
     fun hasLedger(mode: ProductStockMode): Boolean = mode == ProductStockMode.TRACKED
 
     /**
-     * El saldo que debe guardar un producto en modo [mode] cuyo libro suma [ledgerSum]: la suma, si
-     * tiene libro, y cero si no.
+     * El saldo que debe guardar un producto en modo [mode] cuyo libro suma [ledgerSum]: la suma,
+     * si tiene libro, y cero si no.
      *
      * Devuelve `null` si ningún saldo cuadra: un producto sin libro cuyas filas no suman cero. La
      * app no puede escribir filas en un producto así, así que el daño está en el libro, y corregir
@@ -77,8 +79,10 @@ object StockModeRules {
      * Nunca rechaza una salida por falta de stock: el saldo de un producto puede quedar negativo.
      */
     fun planLine(subject: LineStockSubject): Checked<LineStockPlan> = when (subject) {
-        is LineStockSubject.Tracked ->
-            exitOf(subject.costState, subject.quantity).map(LineStockPlan::Direct)
+        is LineStockSubject.Tracked -> when (val lots = subject.lots) {
+            null -> exitOf(subject.costState, subject.quantity)
+            else -> lotExitOf(subject.costState, subject.quantity, lots, subject.chosenLotId)
+        }.map(LineStockPlan::Direct)
 
         is LineStockSubject.Untracked ->
             fixedCost(subject.fixedUnitCost, subject.quantity).map { lineCost ->
@@ -90,10 +94,11 @@ object StockModeRules {
 
     private fun planComponents(subject: LineStockSubject.Components): Checked<LineStockPlan> {
         val states = LinkedHashMap(subject.costStates)
+        val lotStocks = HashMap<Long, List<LotStock>>()
         val leaves = ArrayList<LeafStockPlan>(subject.leaves.size)
         var lineCost = 0L
         for (leaf in subject.leaves) {
-            val planned = when (val result = planLeaf(leaf, states)) {
+            val planned = when (val result = planLeaf(leaf, states, lotStocks)) {
                 is Checked.Value -> result.value
                 Checked.Overflow -> return Checked.Overflow
                 is Checked.AboveLimit -> return result
@@ -115,12 +120,21 @@ object StockModeRules {
     private fun planLeaf(
         leaf: ComponentLeaf,
         states: Map<Long, CostState>,
+        lotStocks: MutableMap<Long, List<LotStock>>,
     ): Checked<LeafStockPlan> = when (leaf) {
         is ComponentLeaf.Tracked -> {
             val state = requireNotNull(states[leaf.productId]) {
                 "Falta el estado de costo de un componente con stock"
             }
-            exitOf(state, leaf.quantity).map { exit ->
+            val lots = lotStocks[leaf.productId] ?: leaf.lots
+            when (lots) {
+                null -> exitOf(state, leaf.quantity)
+                else -> lotExitOf(state, leaf.quantity, lots, chosenLotId = null)
+            }.map { exit ->
+                // Un componente que vuelve a salir en la misma línea sigue con lo que dejó.
+                if (lots != null) {
+                    lotStocks[leaf.productId] = LotRules.afterOutflow(lots, exit.lots)
+                }
                 LeafStockPlan.Tracked(leaf.productId, exit)
             }
         }
@@ -157,6 +171,37 @@ object StockModeRules {
             return Checked.Overflow
         }
         return Checked.Value(StockExit(quantity, state.averageCost, cost, after))
+    }
+
+    /**
+     * La salida de [quantity] milésimas repartida entre los lotes [lots]: primero el elegido,
+     * luego el que vence antes, y lo que falte del lote sin asignar. Cada parte sale en orden con
+     * su propio costo de salida, desde el estado que dejó la anterior, y la línea cuesta la suma.
+     */
+    private fun lotExitOf(
+        state: CostState,
+        quantity: QuantityMilli,
+        lots: List<LotStock>,
+        chosenLotId: Long?,
+    ): Checked<StockExit> {
+        val parts = ArrayList<LotExit>()
+        var current = state
+        var total = 0L
+        for (part in LotRules.splitOutflow(quantity, lots, chosenLotId)) {
+            val exit = when (val result = exitOf(current, part.quantity)) {
+                is Checked.Value -> result.value
+                Checked.Overflow -> return Checked.Overflow
+                is Checked.AboveLimit -> return result
+            }
+            // Cada parte y la suma anterior caben en el tope de una línea: la suma cabe en Long.
+            total += exit.cost.minor
+            if (!Limit.DOCUMENT_TOTAL.allows(total)) {
+                return Checked.AboveLimit(Limit.DOCUMENT_TOTAL)
+            }
+            parts += LotExit(part.lotId, part.quantity, exit.cost, exit.stateAfter)
+            current = exit.stateAfter
+        }
+        return Checked.Value(StockExit(quantity, state.averageCost, Money(total), current, parts))
     }
 
     /** El costo fijo por la cantidad, redondeado, dentro del tope de una línea. */

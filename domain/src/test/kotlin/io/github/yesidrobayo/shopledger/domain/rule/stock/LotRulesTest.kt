@@ -1,9 +1,12 @@
 package io.github.yesidrobayo.shopledger.domain.rule.stock
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotPart
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.LotExit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -135,6 +138,22 @@ class LotRulesTest {
             listOf(part(null, 2_500L)),
             LotRules.splitOutflow(QuantityMilli(2_500L), emptyList(), chosenLotId = null),
         )
+    }
+
+    @Test
+    fun `what is left after an outflow follows each part and the unassigned lot`() {
+        val lots = listOf(lot(1, 3_000L), lot(2, 5_000L), lot(9, 0L, unassigned = true))
+        val state = CostState(QuantityMilli.ZERO, Money.ZERO, Money.ZERO)
+        val taken = listOf(
+            LotExit(1, QuantityMilli(3_000L), Money.ZERO, state),
+            LotExit(null, QuantityMilli(2_000L), Money.ZERO, state),
+        )
+
+        assertEquals(
+            listOf(0L, 5_000L, -2_000L),
+            LotRules.afterOutflow(lots, taken).map { it.onHand.milli },
+        )
+        assertEquals(lots, LotRules.afterOutflow(lots, emptyList()))
     }
 
     @Test

@@ -432,6 +432,8 @@ class RegisterSaleUseCaseTest {
             rejected(0, LineRejection.COMPONENTS_NOT_SUPPORTED),
             lineRejectionOf(line(3, 1_000)),
         )
+        // Sin los lotes, la venta no puede repartir la salida de un producto con lotes.
+        world.withLots = false
         assertEquals(rejected(0, LineRejection.LOTS_NOT_SUPPORTED), lineRejectionOf(line(4, 1_000)))
     }
 

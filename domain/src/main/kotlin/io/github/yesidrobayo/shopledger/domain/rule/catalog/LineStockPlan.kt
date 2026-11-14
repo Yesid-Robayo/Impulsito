@@ -86,18 +86,33 @@ sealed interface LeafStockPlan {
 }
 
 /**
+ * La parte de una salida que sale de un lote: [quantity] milésimas, positivas, del lote [lotId], o
+ * del lote sin asignar si es `null`. [cost] es su costo de salida, calculado en orden desde el
+ * estado que dejó la parte anterior, y [stateAfter] el estado que deja. Cada parte es una fila.
+ */
+data class LotExit(
+    val lotId: Long?,
+    val quantity: QuantityMilli,
+    val cost: Money,
+    val stateAfter: CostState,
+)
+
+/**
  * Una salida del libro de un producto con stock al venderlo.
  *
  * [quantity] es lo que sale, positivo. [cost] es lo que se lleva del valor del stock, y es el costo
  * real de la línea. [unitCost] es el costo promedio del momento, que la línea congela solo para
  * mostrarlo: un [unitCost] en cero no significa que la salida no tenga costo. [stateAfter] es el
  * estado de costo del producto tras la salida, el que queda en su fila del libro y en el producto.
+ * Con lotes, [lots] son sus partes, una fila por lote: el costo es la suma de sus costos, y el
+ * estado, el que deja la última. Sin lotes está vacía y la salida es una sola fila.
  */
 data class StockExit(
     val quantity: QuantityMilli,
     val unitCost: Money,
     val cost: Money,
     val stateAfter: CostState,
+    val lots: List<LotExit> = emptyList(),
 ) {
     /**
      * La fila de venta que esta salida agrega al libro, en la parte del stock [key]. Lleva la

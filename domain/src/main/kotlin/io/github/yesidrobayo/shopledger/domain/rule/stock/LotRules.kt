@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.rule.stock
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotPart
 import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.LotExit
 
 /** Cómo quedó un código de lote escrito por la persona. */
 sealed interface LotCodeCheck {
@@ -124,5 +125,17 @@ object LotRules {
         }
         if (left > QuantityMilli.ZERO) parts += LotPart(lotId = null, quantity = left)
         return parts
+    }
+
+    /**
+     * Lo que queda en cada lote de [lots] después de las partes [taken] de una salida: así la
+     * línea siguiente de la misma venta reparte desde lo que dejó esta. Una parte del lote sin
+     * asignar resta del sin asignar, si está en la lista.
+     */
+    fun afterOutflow(lots: List<LotStock>, taken: List<LotExit>): List<LotStock> = lots.map { lot ->
+        val out = taken.filter { part ->
+            part.lotId == lot.lotId || (part.lotId == null && lot.isUnassigned)
+        }.fold(QuantityMilli.ZERO) { sum, part -> sum + part.quantity }
+        if (out == QuantityMilli.ZERO) lot else lot.copy(onHand = lot.onHand - out)
     }
 }

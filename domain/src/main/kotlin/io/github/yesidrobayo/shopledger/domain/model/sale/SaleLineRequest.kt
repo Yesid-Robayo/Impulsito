@@ -13,6 +13,9 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  * producto en la base, o el de la conversión. Cambiarlo aquí no cambia el precio del producto ni
  * deja fila en su historial. [discount] es el descuento de la línea.
  *
+ * [lotId] es el lote que eligió la persona, en un producto que se controla por lotes. Sin él, la
+ * línea sale por el vencimiento más cercano.
+ *
  * Agregar dos veces el mismo producto lo suma la pantalla en una sola línea, en la unidad que tenga
  * esa línea; el caso de uso guarda las líneas tal como llegan, porque un producto sí puede repetirse
  * en otra unidad o como extra.
@@ -28,4 +31,5 @@ data class SaleLineRequest(
     val discount: LineDiscount = LineDiscount.None,
     val unitId: Long? = null,
     val parentIndex: Int? = null,
+    val lotId: Long? = null,
 )

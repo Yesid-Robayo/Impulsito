@@ -117,6 +117,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     recipes = ports.productComponents,
                     lineComponents = ports.saleLineComponents,
                     locations = ports.locations,
+                    lots = ports.stockLots,
                 )
             val hold =
                 HoldSaleUseCase(

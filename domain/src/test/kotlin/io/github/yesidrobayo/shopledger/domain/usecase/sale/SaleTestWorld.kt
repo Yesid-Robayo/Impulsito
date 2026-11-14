@@ -216,6 +216,9 @@ internal class SaleWorld(
     /** Si la venta lee las recetas y guarda las hojas de los combos. Sin eso, los rechaza. */
     var withCombos: Boolean = false
 
+    /** Si la venta recibe los lotes: sin ellos, rechaza los productos con lotes. */
+    var withLots: Boolean = true
+
     val tables: SaleTables get() = committed.value
 
     val settings = FakeAppSettingsRepository(
@@ -1481,6 +1484,7 @@ internal class SaleWorld(
         recipes = recipeRepository.takeIf { withCombos },
         lineComponents = lineComponentRepository.takeIf { withCombos },
         locations = locationRepository,
+        lots = lotRepository.takeIf { withLots },
     )
 
     /** Las recetas de los combos: la venta solo las lee. */

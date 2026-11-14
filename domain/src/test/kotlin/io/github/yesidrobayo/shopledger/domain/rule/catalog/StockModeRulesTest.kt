@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.rule.catalog
 
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -7,9 +8,11 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementDraft
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
+import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementCheck
 import io.github.yesidrobayo.shopledger.domain.rule.stock.StockMovementRules
 import io.github.yesidrobayo.shopledger.domain.rule.timesQuantity
@@ -387,6 +390,89 @@ class StockModeRulesTest {
     private fun untrackedCost(fixedUnitCost: Long, quantity: Long): Money = rules.planLine(
         LineStockSubject.Untracked(Money(fixedUnitCost), qty(quantity)),
     ).accepted().lineCost
+
+    private fun lot(id: Long, milli: Long, expiry: String? = null, unassigned: Boolean = false) =
+        LotStock(
+            lotId = id,
+            code = if (unassigned) null else "L$id",
+            expiryDate = expiry?.let { requireNotNull(BusinessDate.parse(it)) },
+            isUnassigned = unassigned,
+            onHand = qty(milli),
+        )
+
+    @Test
+    fun `selling 6 from lots of 3 and 5 writes two rows of 4500 and costs 9000`() {
+        // Q = 8000, C = 1500 y V = 12000, el ejemplo de la salida por vencimiento.
+        val lots = listOf(lot(2, 5_000, "2026-11-20"), lot(1, 3_000, "2026-11-10"))
+        val subject = LineStockSubject.Tracked(state(8_000, 1_500, 12_000), qty(6_000), lots)
+
+        val plan = rules.planLine(subject).valueOrNull() as LineStockPlan.Direct
+
+        assertEquals(
+            listOf(
+                LotExit(1, qty(3_000), Money(4_500), state(5_000, 1_500, 7_500)),
+                LotExit(2, qty(3_000), Money(4_500), state(2_000, 1_500, 3_000)),
+            ),
+            plan.exit.lots,
+        )
+        assertEquals(Money(9_000), plan.lineCost)
+        assertEquals(state(2_000, 1_500, 3_000), plan.exit.stateAfter)
+        assertEquals(Money(1_500), plan.exit.unitCost)
+    }
+
+    @Test
+    fun `a chosen lot leaves first and the rest goes to the unassigned lot`() {
+        val lots = listOf(lot(1, 3_000, "2026-11-10"), lot(2, 1_000, "2026-11-20"))
+        val subject =
+            LineStockSubject.Tracked(state(4_000, 1_500, 6_000), qty(5_000), lots, chosenLotId = 2)
+
+        val plan = rules.planLine(subject).valueOrNull() as LineStockPlan.Direct
+
+        assertEquals(listOf(2L, 1L, null), plan.exit.lots.map { it.lotId })
+        assertEquals(listOf(1_000L, 3_000L, 1_000L), plan.exit.lots.map { it.quantity.milli })
+        // Sin stock, el último sale al promedio y el valor queda en cero.
+        assertEquals(listOf(1_500L, 4_500L, 1_500L), plan.exit.lots.map { it.cost.minor })
+        assertEquals(Money(7_500), plan.lineCost)
+    }
+
+    @Test
+    fun `a lot exit above the cap or out of a long is rejected`() {
+        val above = LineStockSubject.Tracked(
+            state(0, 2_000_000_000_000_000, 0),
+            qty(1_000_000),
+            emptyList(),
+        )
+        assertEquals(Checked.AboveLimit(Limit.DOCUMENT_TOTAL), rules.planLine(above))
+        val overflow =
+            LineStockSubject.Tracked(state(0, Long.MAX_VALUE, 0), qty(2_000), emptyList())
+        assertEquals(Checked.Overflow, rules.planLine(overflow))
+        // Cada parte cabe en el tope, pero las dos juntas no: 6 × 10^14 dos veces.
+        val parts = LineStockSubject.Tracked(
+            state(0, 600_000_000_000_000, 0),
+            qty(2_000),
+            listOf(lot(1, 1_000)),
+        )
+        assertEquals(Checked.AboveLimit(Limit.DOCUMENT_TOTAL), rules.planLine(parts))
+    }
+
+    @Test
+    fun `a leaf with lots in two leaves of a combo follows from what the first left`() {
+        val lots = listOf(lot(1, 3_000, "2026-11-10"), lot(2, 5_000, "2026-11-20"))
+        val subject = LineStockSubject.Components(
+            leaves = listOf(
+                ComponentLeaf.Tracked(7, qty(2_000), lots),
+                ComponentLeaf.Tracked(7, qty(2_000), lots),
+            ),
+            costStates = mapOf(7L to state(8_000, 1_500, 12_000)),
+        )
+
+        val plan = rules.planLine(subject).valueOrNull() as LineStockPlan.Components
+
+        val parts = plan.leaves.map { (it as LeafStockPlan.Tracked).exit.lots }
+        val lotIds = parts.map { leaf -> leaf.map { it.lotId } }
+        assertEquals(listOf(listOf(1L), listOf(1L, 2L)), lotIds)
+        assertEquals(Money(6_000), plan.lineCost)
+    }
 
     private fun qty(milli: Long) = QuantityMilli(milli)
 

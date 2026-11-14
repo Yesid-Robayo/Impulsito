@@ -162,7 +162,8 @@ class RegisterComboSaleTest {
     }
 
     @Test
-    fun aComponentWithLotsIsRejected() = runTest {
+    fun aComponentWithLotsIsRejectedWithoutTheLots() = runTest {
+        world.withLots = false
         world.addProduct(product(LOTS, tracksLots = true))
         world.addRecipe(RecipeComponent(9L, KIT, LOTS, QuantityMilli(1_000)))
 

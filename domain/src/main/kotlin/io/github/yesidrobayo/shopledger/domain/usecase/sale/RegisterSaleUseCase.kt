@@ -39,6 +39,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.LoyaltySettings
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 import io.github.yesidrobayo.shopledger.domain.model.stock.NewStockMovement
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
@@ -64,6 +65,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SaleLineComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.StockLotRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
@@ -79,9 +81,11 @@ import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboExpansion
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboExpansionResult
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboFigures
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComponentLeaf
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LeafStockPlan
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockPlan
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockSubject
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.LotExit
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockExit
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerEntryIssue
@@ -107,6 +111,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnit
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SurchargeSettlement
+import io.github.yesidrobayo.shopledger.domain.rule.stock.LotRules
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerEntryOutcome
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerLedgerWriter
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.LoyaltyEntryOutcome
@@ -199,7 +204,10 @@ import kotlin.time.Instant
  *   el libro. Un enlace que no cumple eso se rechaza con su motivo antes de leer la base. Un mismo
  *   producto puede repetirse como extra de varias líneas.
  *
- * Por ahora no vende productos con lotes, tampoco como componente: los rechaza con su motivo.
+ * Un producto que se controla por lotes, también como componente de un combo, sale primero del
+ * lote elegido y luego del que vence antes, con una fila por lote valorada en orden: la línea
+ * cuesta la suma de sus filas. Lo que falte sale del lote sin asignar, que puede quedar negativo:
+ * vender nunca se bloquea. Sin [lots], los rechaza con su motivo.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
@@ -229,6 +237,7 @@ class RegisterSaleUseCase(
     private val recipes: ProductComponentRepository? = null,
     private val lineComponents: SaleLineComponentRepository? = null,
     private val locations: LocationRepository? = null,
+    private val lots: StockLotRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -286,7 +295,9 @@ class RegisterSaleUseCase(
             ?: return TxResult.Rollback(RegisterSaleResult.PriceListUnavailable)
         val locationId = locationOf(request)
             ?: return TxResult.Rollback(RegisterSaleResult.LocationUnavailable)
-        val priced = when (val result = priceLines(request.lines, current.taxes, choice.prices)) {
+        val priced = when (
+            val result = priceLines(request.lines, current.taxes, choice.prices, locationId)
+        ) {
             is Priced.Lines -> result
             is Priced.Rejected -> return TxResult.Rollback(result.rejection)
         }
@@ -766,10 +777,12 @@ class RegisterSaleUseCase(
         requests: List<SaleLineRequest>,
         taxes: TaxSettings,
         priceList: SalePriceList?,
+        locationId: Long,
     ): Priced {
         val byId = HashMap<Long, Product>()
         products.findByIds(requests.map { it.productId }.toSet()).associateByTo(byId) { it.id }
         val costStates = HashMap<Long, CostState>()
+        val lotStocks = LotStocks(locationId)
         val combos = ComboReads()
         val fractionByUnit = HashMap<Long, Boolean>()
         val taxByRate = HashMap<Long, AppliedTax>()
@@ -807,7 +820,17 @@ class RegisterSaleUseCase(
                 ?: return rejected(index, LineRejection.INVALID_QUANTITY)
             val tax = appliedTax(product, taxes, taxByRate)
             val subject =
-                when (val built = stockSubject(product, baseQuantity, costStates, byId, combos)) {
+                when (
+                    val built = stockSubject(
+                        product,
+                        baseQuantity,
+                        request.lotId,
+                        costStates,
+                        lotStocks,
+                        byId,
+                        combos,
+                    )
+                ) {
                     is SubjectResult.Ready -> built.subject
                     is SubjectResult.Rejected -> return rejected(index, built.reason)
                 }
@@ -819,8 +842,20 @@ class RegisterSaleUseCase(
             if (!totals.add(line)) return Priced.Rejected(RegisterSaleResult.SaleTotalTooLarge)
             // La línea siguiente sigue desde el costo que deja esta, también en cada componente.
             when (val plan = line.plan) {
-                is LineStockPlan.Direct -> costStates[product.id] = plan.exit.stateAfter
-                is LineStockPlan.Components -> costStates.putAll(plan.costStatesAfter)
+                is LineStockPlan.Direct -> {
+                    costStates[product.id] = plan.exit.stateAfter
+                    lotStocks.taken(product.id, plan.exit.lots)
+                }
+
+                is LineStockPlan.Components -> {
+                    costStates.putAll(plan.costStatesAfter)
+                    for (leaf in plan.leaves) {
+                        if (leaf is LeafStockPlan.Tracked) {
+                            lotStocks.taken(leaf.productId, leaf.exit.lots)
+                        }
+                    }
+                }
+
                 is LineStockPlan.NoStock -> Unit
             }
             lines += line
@@ -879,7 +914,7 @@ class RegisterSaleUseCase(
             (recipes == null || lineComponents == null) ->
             LineRejection.COMPONENTS_NOT_SUPPORTED
 
-        product.details.tracksLots -> LineRejection.LOTS_NOT_SUPPORTED
+        product.details.tracksLots && lots == null -> LineRejection.LOTS_NOT_SUPPORTED
 
         else -> null
     }
@@ -965,23 +1000,40 @@ class RegisterSaleUseCase(
     private suspend fun stockSubject(
         product: Product,
         quantity: QuantityMilli,
+        chosenLotId: Long?,
         costStates: Map<Long, CostState>,
+        lotStocks: LotStocks,
         byId: MutableMap<Long, Product>,
         combos: ComboReads,
     ): SubjectResult = when (product.details.stockMode) {
-        ProductStockMode.TRACKED -> SubjectResult.Ready(
-            LineStockSubject.Tracked(
-                costState = costStates[product.id]
-                    ?: CostState(product.onHand, product.averageCost, product.stockValue),
-                quantity = quantity,
-            ),
-        )
+        ProductStockMode.TRACKED -> {
+            val lots = if (product.details.tracksLots) lotStocks.of(product.id) else null
+            // Un lote elegido tiene que ser de este producto.
+            if (chosenLotId != null && lots.orEmpty().none { it.lotId == chosenLotId }) {
+                SubjectResult.Rejected(LineRejection.LOT_NOT_FOUND)
+            } else {
+                SubjectResult.Ready(
+                    LineStockSubject.Tracked(
+                        costState = costStates[product.id]
+                            ?: CostState(product.onHand, product.averageCost, product.stockValue),
+                        quantity = quantity,
+                        lots = lots,
+                        chosenLotId = chosenLotId,
+                    ),
+                )
+            }
+        }
 
         ProductStockMode.UNTRACKED -> SubjectResult.Ready(
             LineStockSubject.Untracked(product.details.fixedUnitCost, quantity),
         )
 
-        ProductStockMode.COMPONENTS -> comboSubject(product, quantity, costStates, byId, combos)
+        ProductStockMode.COMPONENTS ->
+            if (chosenLotId != null) {
+                SubjectResult.Rejected(LineRejection.LOT_NOT_FOUND)
+            } else {
+                comboSubject(product, quantity, costStates, lotStocks, byId, combos)
+            }
     }
 
     /**
@@ -992,6 +1044,7 @@ class RegisterSaleUseCase(
         combo: Product,
         quantity: QuantityMilli,
         costStates: Map<Long, CostState>,
+        lotStocks: LotStocks,
         byId: MutableMap<Long, Product>,
         combos: ComboReads,
     ): SubjectResult {
@@ -1018,14 +1071,44 @@ class RegisterSaleUseCase(
         for (leaf in leaves) {
             // La receta apunta a su componente con una llave que no deja borrarlo.
             val component = byId[leaf.productId] ?: damaged()
-            if (component.details.tracksLots) {
+            if (component.details.tracksLots && lots == null) {
                 return SubjectResult.Rejected(LineRejection.LOTS_NOT_SUPPORTED)
             }
         }
-        val stored = ComboFigures.subjectOf(leaves, byId)
+        val figured = ComboFigures.subjectOf(leaves, byId)
+        // Una hoja con lotes sale por vencimiento desde lo que dejaron las líneas anteriores.
+        val stored = figured.copy(
+            leaves = figured.leaves.map { leaf ->
+                val product = byId[leaf.productId]
+                if (leaf is ComponentLeaf.Tracked && product?.details?.tracksLots == true) {
+                    leaf.copy(lots = lotStocks.of(leaf.productId))
+                } else {
+                    leaf
+                }
+            },
+        )
         // Un componente que ya salió en una línea anterior sigue desde el estado que dejó.
         val states = stored.costStates.mapValues { (id, state) -> costStates[id] ?: state }
         return SubjectResult.Ready(LineStockSubject.Components(stored.leaves, states))
+    }
+
+    /**
+     * Lo que tiene cada lote de los productos con lotes de la venta, en la ubicación de la venta
+     * ([locationId]): el lote se reparte donde sale la mercancía, no en la principal. Se lee una
+     * vez por producto, y cada línea resta lo que se llevó, para que la siguiente reparta desde ahí.
+     */
+    private inner class LotStocks(private val locationId: Long) {
+        private val byProduct = HashMap<Long, List<LotStock>>()
+
+        suspend fun of(productId: Long): List<LotStock> = byProduct[productId] ?: run {
+            val repository = requireNotNull(lots) { "Vender con lotes pide los lotes" }
+            repository.findStock(productId, locationId).also { byProduct[productId] = it }
+        }
+
+        fun taken(productId: Long, parts: List<LotExit>) {
+            val current = byProduct[productId] ?: return
+            byProduct[productId] = LotRules.afterOutflow(current, parts)
+        }
     }
 
     /** Las recetas de todos los combos, leídas una sola vez por venta y solo si vende un combo. */
@@ -1276,9 +1359,10 @@ class RegisterSaleUseCase(
             val lineId = sales.insertLine(saleId, line.toNewLine(priceListId, parentId))
             lineIds += lineId
             when (val plan = line.plan) {
-                is LineStockPlan.Direct -> appendSale(
+                is LineStockPlan.Direct -> appendSales(
                     plan.exit,
-                    StockKey(line.product.id, locationId, lotId = null),
+                    line.product.id,
+                    locationId,
                     StockMovementSource(saleLineId = lineId),
                     time,
                     now,
@@ -1317,9 +1401,10 @@ class RegisterSaleUseCase(
                 ),
             )
             when (leaf) {
-                is LeafStockPlan.Tracked -> appendSale(
+                is LeafStockPlan.Tracked -> appendSales(
                     leaf.exit,
-                    StockKey(leaf.productId, locationId, lotId = null),
+                    leaf.productId,
+                    locationId,
                     StockMovementSource(saleLineId = lineId, saleLineComponentId = componentId),
                     time,
                     now,
@@ -1327,6 +1412,34 @@ class RegisterSaleUseCase(
 
                 is LeafStockPlan.Untracked -> Unit
             }
+        }
+    }
+
+    /**
+     * Las filas de venta de [exit] en el libro de [productId]: una sola sin lotes, o una por lote,
+     * cada una con su costo y el estado que deja. La parte sin lote va al lote sin asignar.
+     */
+    private suspend fun appendSales(
+        exit: StockExit,
+        productId: Long,
+        locationId: Long,
+        source: StockMovementSource,
+        time: RecordTime,
+        now: Instant,
+    ) {
+        if (exit.lots.isEmpty()) {
+            appendSale(exit, StockKey(productId, locationId, lotId = null), source, time, now)
+            return
+        }
+        for (part in exit.lots) {
+            val lotId = part.lotId ?: ledger.unassignedLot(productId, now)
+            appendSale(
+                StockExit(part.quantity, exit.unitCost, part.cost, part.stateAfter),
+                StockKey(productId, locationId, lotId),
+                source,
+                time,
+                now,
+            )
         }
     }
 

@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
+import io.github.yesidrobayo.shopledger.domain.model.stock.LotStock
 
 /**
  * Lo que la regla de modos de stock necesita saber de una línea de venta para decidir qué hace con
@@ -20,8 +21,17 @@ sealed interface LineStockSubject {
     /**
      * Un producto con stock propio. [costState] es su estado de costo justo antes de esta línea, ya
      * con las líneas anteriores de la misma venta.
+     *
+     * Con lotes, [lots] es lo que tiene cada lote en la ubicación de la venta, también ya con las
+     * líneas anteriores, y [chosenLotId] el lote que eligió la persona, si eligió uno. Sin lotes,
+     * [lots] es `null`.
      */
-    data class Tracked(val costState: CostState, val quantity: QuantityMilli) : LineStockSubject {
+    data class Tracked(
+        val costState: CostState,
+        val quantity: QuantityMilli,
+        val lots: List<LotStock>? = null,
+        val chosenLotId: Long? = null,
+    ) : LineStockSubject {
         init {
             requirePositive(quantity)
         }
@@ -66,9 +76,15 @@ sealed interface ComponentLeaf {
     val productId: Long
     val quantity: QuantityMilli
 
-    /** Un componente con stock propio: escribe su salida en su libro. */
-    data class Tracked(override val productId: Long, override val quantity: QuantityMilli) :
-        ComponentLeaf {
+    /**
+     * Un componente con stock propio: escribe su salida en su libro. Con lotes, [lots] es lo que
+     * tiene cada lote antes de esta línea, y la salida sigue el orden de vencimiento.
+     */
+    data class Tracked(
+        override val productId: Long,
+        override val quantity: QuantityMilli,
+        val lots: List<LotStock>? = null,
+    ) : ComponentLeaf {
         init {
             requirePositive(quantity)
         }

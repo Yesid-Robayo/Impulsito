@@ -150,6 +150,9 @@ enum class LineRejection {
     /** El producto lleva lotes. Vender por lotes todavía no está disponible. */
     LOTS_NOT_SUPPORTED,
 
+    /** El lote elegido no es de este producto, o el producto no se controla por lotes. */
+    LOT_NOT_FOUND,
+
     /** La cantidad no es positiva o pasa del tope de una línea. */
     INVALID_QUANTITY,
 
