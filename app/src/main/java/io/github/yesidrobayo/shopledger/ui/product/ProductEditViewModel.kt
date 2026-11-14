@@ -235,6 +235,8 @@ class ProductEditViewModel(
             // La pantalla abre la de unidades; aquí no cambia nada.
             ProductEditAction.ManageUnits -> Unit
 
+            ProductEditAction.OpenVariants -> Unit
+
             is ProductEditAction.SalePriceChange ->
                 edit(ProductEditField.SALE_PRICE) { copy(salePrice = action.text) }
 

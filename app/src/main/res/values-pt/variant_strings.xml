@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Portugués: la pantalla de variantes de un producto y su fila en el formulario. -->
+    <string name="product_variants_row">Variações</string>
+    <string name="variant_axis_1_label">Eixo 1</string>
+    <string name="variant_axis_2_label">Eixo 2</string>
+    <string name="variant_axis_1_hint">Por exemplo: tamanho</string>
+    <string name="variant_axis_2_hint">Por exemplo: cor</string>
+    <string name="variant_add_value_action">Adicionar valor</string>
+    <string name="variant_add_axis_action">Adicionar outro eixo</string>
+    <string name="variant_apply_all_title">Aplicar a todas</string>
+    <string name="variant_price_label">Preço</string>
+    <string name="variant_cost_label">Custo</string>
+    <string name="variant_min_stock_label">Estoque mínimo</string>
+    <string name="variant_initial_stock_label">Estoque inicial</string>
+    <string name="variant_save_action">Salvar variantes</string>
+    <string name="variant_empty_title">Adicionar o primeiro valor</string>
+    <string name="variant_error_value_repeated">Esse valor já existe</string>
+    <string name="variant_error_code_repeated">Esse código já é de %1$s</string>
+    <string name="variant_error_save">Não foi possível salvar. Nenhuma variante foi criada.</string>
+    <string name="variant_value_label">Valor</string>
+    <string name="variant_combinations_title">Combinações</string>
+    <string name="variant_cell_description">%1$s, %2$s</string>
+    <string name="variant_created_status">Criada</string>
+    <string name="variant_apply_action">Aplicar</string>
+    <string name="variant_error_combination_repeated">Essa combinação já existe</string>
+    <string name="variant_error_parent_stock">Este produto tem estoque próprio. É preciso ajustá-lo a zero antes de criar variantes.</string>
+    <string name="variant_error_parent">Este produto não admite variantes.</string>
+    <string name="variant_error_nothing_checked">É preciso marcar pelo menos uma combinação nova.</string>
+    <plurals name="variant_create_action">
+        <item quantity="one">Criar %1$d variante</item>
+        <item quantity="many">Criar %1$d de variantes</item>
+        <item quantity="other">Criar %1$d variantes</item>
+    </plurals>
+</resources>

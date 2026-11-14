@@ -29,6 +29,9 @@ sealed interface ProductEditAction {
     /** Quiere administrar las unidades: lo resuelve la navegación. */
     data object ManageUnits : ProductEditAction
 
+    /** Abre las variantes del producto guardado. */
+    data object OpenVariants : ProductEditAction
+
     /** Quiere agregar una conversión de compra o venta a este producto. */
     data object NewConversion : ProductEditAction
 

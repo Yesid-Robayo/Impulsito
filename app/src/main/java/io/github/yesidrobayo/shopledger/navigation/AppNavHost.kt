@@ -98,6 +98,7 @@ import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnDetailRo
 import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
+import io.github.yesidrobayo.shopledger.ui.variant.VariantsRoute
 import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
 import kotlinx.coroutines.flow.first
 
@@ -297,6 +298,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.PriceLists -> PriceListsRoute(navigator)
 
         AppNavKey.Units -> UnitsRoute(navigator)
+
+        is AppNavKey.Variants -> VariantsRoute(key, navigator)
 
         AppNavKey.LoyaltyProgram -> LoyaltyProgramRoute(key, navigator)
 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inglés: la pantalla de variantes de un producto y su fila en el formulario. -->
+    <string name="product_variants_row">Variants</string>
+    <string name="variant_axis_1_label">Option 1</string>
+    <string name="variant_axis_2_label">Option 2</string>
+    <string name="variant_axis_1_hint">For example: size</string>
+    <string name="variant_axis_2_hint">For example: color</string>
+    <string name="variant_add_value_action">Add value</string>
+    <string name="variant_add_axis_action">Add another option</string>
+    <string name="variant_apply_all_title">Apply to all</string>
+    <string name="variant_price_label">Price</string>
+    <string name="variant_cost_label">Cost</string>
+    <string name="variant_min_stock_label">Minimum stock</string>
+    <string name="variant_initial_stock_label">Opening stock</string>
+    <string name="variant_save_action">Save variants</string>
+    <string name="variant_empty_title">Add the first value</string>
+    <string name="variant_error_value_repeated">That value already exists</string>
+    <string name="variant_error_code_repeated">That code already belongs to %1$s</string>
+    <string name="variant_error_save">Could not save. No variants were created.</string>
+    <string name="variant_value_label">Value</string>
+    <string name="variant_combinations_title">Combinations</string>
+    <string name="variant_cell_description">%1$s, %2$s</string>
+    <string name="variant_created_status">Created</string>
+    <string name="variant_apply_action">Apply</string>
+    <string name="variant_error_combination_repeated">That combination already exists</string>
+    <string name="variant_error_parent_stock">This product has its own stock. Adjust it to zero before creating variants.</string>
+    <string name="variant_error_parent">This product does not take variants.</string>
+    <string name="variant_error_nothing_checked">Check at least one new combination.</string>
+    <plurals name="variant_create_action">
+        <item quantity="one">Create %1$d variant</item>
+        <item quantity="other">Create %1$d variants</item>
+    </plurals>
+</resources>

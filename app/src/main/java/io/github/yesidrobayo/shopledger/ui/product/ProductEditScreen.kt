@@ -339,6 +339,16 @@ private fun MoreDetails(uiState: ProductEditUiState, onAction: (ProductEditActio
     if (uiState.tracksStock) ReplacementCostField(uiState, onAction)
     uiState.reference?.let { ReferencePriceField(uiState, it, onAction) }
     if (!uiState.isNew) ProductConversions(uiState, onAction)
+    // Un producto guardado puede tener variantes, salvo una variante o un combo.
+    val product = uiState.product
+    if (product != null && product.details.parentProductId == null &&
+        form.stockMode != ProductStockMode.COMPONENTS
+    ) {
+        SettingsRow(
+            title = stringResource(R.string.product_variants_row),
+            action = SettingsRowAction.Navigation { onAction(ProductEditAction.OpenVariants) },
+        )
+    }
     if (!uiState.isNew && uiState.listPrices.isNotEmpty()) ProductListPrices(uiState, onAction)
 }
 

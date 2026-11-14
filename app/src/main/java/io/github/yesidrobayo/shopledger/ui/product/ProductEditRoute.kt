@@ -116,6 +116,9 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
 
                         ProductEditAction.ManageUnits -> navigator.open(AppNavKey.Units)
 
+                        ProductEditAction.OpenVariants ->
+                            uiState.product?.let { navigator.open(AppNavKey.Variants(it.id)) }
+
                         else -> viewModel.onAction(action)
                     }
                 },
