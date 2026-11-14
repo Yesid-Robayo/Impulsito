@@ -4366,7 +4366,8 @@ private fun triggers(): List<CatalogTrigger> = listOf(
                   AND (NEW.rounding_step IS NULL OR (typeof(NEW.rounding_step) = 'integer' AND NEW.rounding_step BETWEEN 0 AND 1000000000000))
                   AND typeof(NEW.occurred_at) = 'integer'
                   AND date(NEW.business_date) = NEW.business_date
-                  AND (NEW.source = 'INITIAL') = (NEW.old_price IS NULL)
+                  AND (NEW.source <> 'INITIAL' OR NEW.old_price IS NULL)
+                  AND (NEW.old_price IS NOT NULL OR NEW.source IN ('INITIAL', 'IMPORT'))
                   AND (NEW.source IN ('BULK', 'BULK_UNDO')) = (NEW.batch_id IS NOT NULL)
                   AND (NEW.source = 'BULK') = (NEW.bulk_mode IS NOT NULL)
                   AND (NEW.source = 'BULK') = (NEW.rounding_step IS NOT NULL)

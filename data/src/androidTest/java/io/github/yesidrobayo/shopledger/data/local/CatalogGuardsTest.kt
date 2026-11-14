@@ -167,7 +167,11 @@ internal class CatalogGuardsTest : GuardProbeTest() {
         insert("product_price_history", valid.with("source" to "INITIAL", "old_price" to null))
         insert("product_price_history", valid)
         insert("product_price_history", bulk)
-        assertEquals(3L, count("SELECT COUNT(*) FROM product_price_history"))
+        // Un producto importado nace con su precio de importación, sin precio anterior; uno que ya
+        // existía cambia de precio por importación con su precio anterior.
+        insert("product_price_history", valid.with("source" to "IMPORT", "old_price" to null))
+        insert("product_price_history", valid.with("source" to "IMPORT"))
+        assertEquals(5L, count("SELECT COUNT(*) FROM product_price_history"))
     }
 
     @Test
