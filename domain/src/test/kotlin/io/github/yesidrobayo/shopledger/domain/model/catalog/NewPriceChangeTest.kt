@@ -36,12 +36,14 @@ class NewPriceChangeTest {
         change(PriceChangeSource.INITIAL, oldPrice = null)
         change(PriceChangeSource.MANUAL)
         change(PriceChangeSource.IMPORT)
+        // Un producto que nace de un archivo importado tampoco tiene precio anterior.
+        change(PriceChangeSource.IMPORT, oldPrice = null)
         change(PriceChangeSource.BULK, batchId = batch, bulkRule = rule)
         change(PriceChangeSource.BULK_UNDO, batchId = batch)
     }
 
     @Test
-    fun `only the initial price may lack a previous price`() {
+    fun `only the price a product is born with may lack a previous price`() {
         assertThrows(IllegalArgumentException::class.java) {
             change(PriceChangeSource.MANUAL, oldPrice = null)
         }

@@ -100,19 +100,25 @@ fun ProductListScreen(
                 navigationLabel = null,
             ) {
                 // Con productos, el menú ofrece actualizar sus precios de una vez e imprimir sus
-                // etiquetas.
-                if (uiState.content is ProductListContent.Products) {
-                    OverflowMenu(
-                        listOf(
-                            OverflowAction(stringResource(R.string.bulk_title), {
-                                onAction(ProductListAction.UpdatePrices)
-                            }),
-                            OverflowAction(stringResource(R.string.label_title), {
-                                onAction(ProductListAction.OpenLabels)
-                            }),
-                        ),
+                // etiquetas. Importar está siempre, para no cargar el catálogo a mano.
+                val catalogActions = if (uiState.content is ProductListContent.Products) {
+                    listOf(
+                        OverflowAction(stringResource(R.string.bulk_title), {
+                            onAction(ProductListAction.UpdatePrices)
+                        }),
+                        OverflowAction(stringResource(R.string.label_title), {
+                            onAction(ProductListAction.OpenLabels)
+                        }),
                     )
+                } else {
+                    emptyList()
                 }
+                OverflowMenu(
+                    catalogActions +
+                        OverflowAction(stringResource(R.string.import_title), {
+                            onAction(ProductListAction.OpenImport)
+                        }),
+                )
                 SettingsButton()
             }
             backupBanner()

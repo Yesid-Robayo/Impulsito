@@ -89,6 +89,8 @@ fun ProductListRoute(navigator: AppNavigator, tabs: (@Composable () -> Unit)? = 
 
                         ProductListAction.OpenLabels -> navigator.open(AppNavKey.Labels())
 
+                        ProductListAction.OpenImport -> navigator.open(AppNavKey.ImportData)
+
                         is ProductListAction.QueryChange, ProductListAction.Retry,
                         ProductListAction.OpenFilters, ProductListAction.CloseFilters,
                         is ProductListAction.FilterCategory, is ProductListAction.FilterSupplier,

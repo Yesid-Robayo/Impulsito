@@ -159,6 +159,7 @@ class ProductListViewModel(
 
             is ProductListAction.OpenProduct, is ProductListAction.CreateProduct,
             ProductListAction.UpdatePrices, ProductListAction.OpenLabels,
+            ProductListAction.OpenImport,
             -> Unit
         }
     }

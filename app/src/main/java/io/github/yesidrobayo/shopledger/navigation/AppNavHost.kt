@@ -63,6 +63,7 @@ import io.github.yesidrobayo.shopledger.ui.extra.ExtrasRoute
 import io.github.yesidrobayo.shopledger.ui.extras.CustomFieldsRoute
 import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
+import io.github.yesidrobayo.shopledger.ui.imports.ImportRoute
 import io.github.yesidrobayo.shopledger.ui.label.LabelsRoute
 import io.github.yesidrobayo.shopledger.ui.localcopies.LocalCopiesRoute
 import io.github.yesidrobayo.shopledger.ui.location.LocationsRoute
@@ -358,6 +359,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.ProductionForm -> ProductionFormRoute(key, navigator)
 
         is AppNavKey.Replenishment -> ReorderRoute(key, navigator)
+
+        AppNavKey.ImportData -> ImportRoute(navigator)
 
         AppNavKey.LoyaltyProgram -> LoyaltyProgramRoute(key, navigator)
 

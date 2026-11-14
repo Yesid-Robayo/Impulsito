@@ -23,6 +23,9 @@ sealed interface ProductListAction {
     /** Abre `Etiquetas imprimibles`, desde el menú. */
     data object OpenLabels : ProductListAction
 
+    /** Abre `Importar datos`, desde el menú, también con el catálogo vacío. */
+    data object OpenImport : ProductListAction
+
     /** Abre la hoja `Filtrar y ordenar`. */
     data object OpenFilters : ProductListAction
 

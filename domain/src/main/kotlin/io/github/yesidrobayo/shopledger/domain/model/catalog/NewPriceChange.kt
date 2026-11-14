@@ -9,7 +9,7 @@ import kotlin.uuid.Uuid
  * Una fila del historial de precios que el caso de uso va a agregar, todavía sin id.
  *
  * El historial solo crece: cambiar un precio nunca altera una venta pasada, y cada cambio queda
- * explicado. [oldPrice] solo falta en el precio con que nace el producto. [batchId] agrupa las
+ * explicado. [oldPrice] solo falta en el precio con que nace el producto, a mano o importado. [batchId] agrupa las
  * filas de una misma actualización masiva, o las de su deshacer, para poder deshacerla entera.
  * [bulkRule] solo existe en una actualización masiva, y dice cómo se calculó.
  *
@@ -28,8 +28,8 @@ data class NewPriceChange(
     val businessDate: BusinessDate,
 ) {
     init {
-        require(oldPrice != null || source == PriceChangeSource.INITIAL) {
-            "Solo el precio inicial puede no tener precio anterior"
+        require(oldPrice != null || source in BIRTH_SOURCES) {
+            "Solo el precio con que nace un producto puede no tener precio anterior"
         }
         require((batchId != null) == source.isBatch) {
             "Solo una actualización masiva o su deshacer llevan lote"
@@ -41,4 +41,9 @@ data class NewPriceChange(
 
     /** La fila que queda en el historial cuando la base la guarda con [id]. */
     fun recordedAs(id: Long): PriceChange = PriceChange(id = id, content = this)
+
+    private companion object {
+        /** Los orígenes con que nace un producto: creado a mano o traído de un archivo. */
+        val BIRTH_SOURCES = setOf(PriceChangeSource.INITIAL, PriceChangeSource.IMPORT)
+    }
 }

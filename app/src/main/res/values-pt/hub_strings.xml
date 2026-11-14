@@ -20,4 +20,6 @@
     <string name="hub_tool_units_desc">Comprar por caixa e vender por unidade</string>
     <string name="hub_tool_supplier_returns">Devolução a fornecedor</string>
     <string name="hub_tool_supplier_returns_desc">Devolver mercadoria comprada</string>
+    <string name="hub_tool_import">Importar dados</string>
+    <string name="hub_tool_import_desc">Carregar produtos e mais de um arquivo</string>
 </resources>
