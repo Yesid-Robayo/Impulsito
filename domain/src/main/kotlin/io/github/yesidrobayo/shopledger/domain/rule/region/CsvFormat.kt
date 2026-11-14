@@ -52,6 +52,16 @@ class CsvFormat(
      */
     fun percentCell(rate: BasisPoints): String = cell(rate.bp, PERCENT_DECIMALS)
 
+    /**
+     * La celda de un número guardado con sus propios [decimals], como el saldo de una cuenta en
+     * otra moneda o una cotización en millonésimas: `4000500000` con seis decimales da
+     * `4000,500000`.
+     */
+    fun scaledCell(value: Long, decimals: Int): String {
+        require(decimals >= 0) { "Los decimales no pueden ser negativos" }
+        return cell(value, decimals)
+    }
+
     private fun cell(scaled: Long, decimals: Int): String {
         val number = decimal(scaled, decimals)
         return if (separator.char in number) "$QUOTE$number$QUOTE" else number

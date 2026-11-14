@@ -123,7 +123,8 @@ internal class CsvExportOnDatabaseTest : RepositoryTest() {
             assertTrue(content.startsWith(CsvRowWriter.BYTE_ORDER_MARK))
             assertTrue(content.endsWith("\r\n"))
         }
-        assertEquals((1..9).map { CsvExportProgress(it, 9) }, progress)
+        val total = CsvExportTable.entries.size
+        assertEquals((1..total).map { CsvExportProgress(it, total) }, progress)
         assertEquals(listOf(Unit), audits)
         assertEquals(0, document.discards)
 
@@ -163,7 +164,7 @@ internal class CsvExportOnDatabaseTest : RepositoryTest() {
 
         // Las filas de datos, sin los encabezados, en todos los archivos.
         val dataRows = files.values.sumOf { csvLines(it).size - 1 }
-        assertEquals(CsvExport.Saved(files = 9, rows = dataRows.toLong()), result)
+        assertEquals(CsvExport.Saved(files = total, rows = dataRows.toLong()), result)
     }
 
     @Test

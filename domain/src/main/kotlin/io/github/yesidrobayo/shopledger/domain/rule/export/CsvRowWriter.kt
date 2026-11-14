@@ -43,6 +43,8 @@ class CsvRowWriter(private val format: CsvFormat, private val zone: BusinessTime
 
         is CsvCell.Percent -> format.percentCell(cell.value)
 
+        is CsvCell.Scaled -> format.scaledCell(cell.value, cell.decimals)
+
         is CsvCell.Day -> if (STORED_DAY.matches(
                 cell.value,
             )

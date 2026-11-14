@@ -32,6 +32,7 @@ class SheetCellWriter(currencyDecimals: Int, zone: BusinessTimeZone) {
         is CsvCell.Quantity -> SheetValue.Number(numbers.quantityCell(cell.value))
         is CsvCell.Count -> SheetValue.Number(cell.value.toString())
         is CsvCell.Percent -> SheetValue.Number(numbers.percentCell(cell.value))
+        is CsvCell.Scaled -> SheetValue.Number(numbers.scaledCell(cell.value, cell.decimals))
         is CsvCell.Day -> SheetValue.Text(cell.value)
         is CsvCell.Moment -> SheetValue.Text(dates.cell(cell))
         is CsvCell.TimeOfDay -> SheetValue.Text(dates.cell(cell))

@@ -72,6 +72,27 @@ class CsvRowWriterTest(defaults: ForeignSystemDefaults) {
     }
 
     @Test
+    fun `a number with its own decimals comes from the stored integer`() {
+        // El saldo de una cuenta en una moneda sin decimales y una cotización en millonésimas.
+        assertEquals("1234", semicolons.cell(CsvCell.Scaled(1_234L, 0)))
+        assertEquals("-12,340", semicolons.cell(CsvCell.Scaled(-12_340L, 3)))
+        assertEquals("4000,500000", semicolons.cell(CsvCell.Scaled(4_000_500_000L, 6)))
+        assertEquals("0,000001", semicolons.cell(CsvCell.Scaled(1L, 6)))
+        val commas = CsvRowWriter(CsvFormat(CsvSeparator.COMMA, DecimalSeparator.COMMA, 2), zone)
+        assertEquals("\"0,5\"", commas.cell(CsvCell.Scaled(5L, 1)))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `a number cannot have more decimals than a rate`() {
+        CsvCell.Scaled(1L, CsvCell.Scaled.MAX_DECIMALS + 1)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `a number cannot have negative decimals`() {
+        CsvFormat(CsvSeparator.SEMICOLON, DecimalSeparator.COMMA, 2).scaledCell(1L, -1)
+    }
+
+    @Test
     fun `dates and times are iso in the business zone`() {
         val afternoon = Instant.parse("2026-11-12T15:04:05Z").toEpochMilliseconds()
         assertEquals("2026-11-12 10:04:05", semicolons.cell(CsvCell.Moment(afternoon)))

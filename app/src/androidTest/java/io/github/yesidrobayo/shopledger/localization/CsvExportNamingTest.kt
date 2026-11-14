@@ -68,6 +68,17 @@ class CsvExportNamingTest {
     }
 
     @Test
+    fun theOtherTablesFollowTheLanguageToo() {
+        assertEquals("clientes.csv", naming("es").fileName(CsvExportTable.CUSTOMERS))
+        assertEquals("customers.csv", naming("en").fileName(CsvExportTable.CUSTOMERS))
+        assertEquals("orcamentos.csv", naming("pt").fileName(CsvExportTable.QUOTES))
+        assertEquals("cotizaciones.csv", naming("es").fileName(CsvExportTable.FX_RATES))
+        assertEquals("Número de registro", naming("es").header("id"))
+        assertEquals("Exchange rate", naming("en").header("fx_rate"))
+        assertEquals("Às cegas", naming("pt").header("is_blind"))
+    }
+
+    @Test
     fun everyFileAndColumnHasItsTextInEachLanguage() {
         for (language in LANGUAGES) {
             val names = naming(language)

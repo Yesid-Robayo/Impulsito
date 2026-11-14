@@ -26,6 +26,9 @@ class SheetCellWriterTest {
         assertEquals(SheetValue.Number("2.500"), writer.cell(quantity))
         assertEquals(SheetValue.Number("12.50"), writer.cell(CsvCell.Percent(BasisPoints(1_250L))))
         assertEquals(SheetValue.Number("30"), writer.cell(CsvCell.Count(30L)))
+        val rate = CsvCell.Scaled(4_000_500_000L, 6)
+        assertEquals(SheetValue.Number("4000.500000"), writer.cell(rate))
+        assertEquals(SheetValue.Number("-7"), writer.cell(CsvCell.Scaled(-7L, 0)))
     }
 
     @Test

@@ -61,7 +61,7 @@ class ExportCsvUseCaseTest {
             "12,34\t2026-11-12 10:00:00\r\n",
             request.rows.row(listOf(CsvCell.Amount(Money(1234L)), CsvCell.Moment(moment))),
         )
-        assertEquals(listOf(CsvExportProgress(1, 9)), progress)
+        assertEquals(listOf(CsvExportProgress(1, CsvExportTable.entries.size)), progress)
         assertNull(request.range)
     }
 

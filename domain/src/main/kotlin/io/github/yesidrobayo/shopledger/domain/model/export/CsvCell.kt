@@ -37,6 +37,25 @@ sealed interface CsvCell {
     /** Un porcentaje, como la tasa de un impuesto. */
     data class Percent(val value: BasisPoints) : CsvCell
 
+    /**
+     * Un número guardado como entero, con sus [decimals] aparte: un monto en la moneda de una
+     * cuenta, que puede no ser la del negocio, o una cotización en millonésimas. Sale como [value]
+     * con esos decimales, desde el entero, igual que un monto.
+     */
+    data class Scaled(val value: Long, val decimals: Int) : CsvCell {
+        init {
+            require(decimals in 0..MAX_DECIMALS) { "Los decimales van de 0 a $MAX_DECIMALS" }
+        }
+
+        companion object {
+            /** Los decimales de una cotización guardada en millonésimas. */
+            const val MICRO_DECIMALS: Int = 6
+
+            /** El máximo de decimales de una celda: los de una cotización. */
+            const val MAX_DECIMALS: Int = MICRO_DECIMALS
+        }
+    }
+
     /** Una fecha guardada como `AAAA-MM-DD`, como la fecha de negocio o el vencimiento. */
     data class Day(val value: String) : CsvCell
 
