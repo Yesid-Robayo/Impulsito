@@ -87,6 +87,7 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     tipsEnabled = { ObserveTipsEnabledUseCase(ports.settings)() },
                     priceLists = ports.priceLists,
                     productPrices = ports.productPrices,
+                    recipes = ports.productComponents,
                 )
             val register =
                 RegisterSaleUseCase(
@@ -111,6 +112,8 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                     moneyLedger = ports.moneyLedger,
                     priceLists = ports.priceLists,
                     productPrices = ports.productPrices,
+                    recipes = ports.productComponents,
+                    lineComponents = ports.saleLineComponents,
                 )
             val hold =
                 HoldSaleUseCase(

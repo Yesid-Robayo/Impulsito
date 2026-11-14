@@ -35,6 +35,9 @@ import kotlinx.datetime.DayOfWeek
  * - [priceLists]: todas las listas de precios, también las archivadas, que una relativa puede tener
  *   de base; y [ownPrices], los precios propios de cada producto, por producto y lista. Con ellos la
  *   venta muestra el precio de la lista elegida, el mismo que guarda al confirmar.
+ * - [comboAvailability]: cuántos combos enteros alcanzan con el stock de sus componentes, por id
+ *   del combo; `null` si ningún componente lleva stock. Un combo no tiene stock propio, así que la
+ *   tarjeta muestra esto, y avisa si la venta pide más, sin bloquearla.
  */
 data class SaleCatalog(
     val products: List<Product>,
@@ -53,6 +56,7 @@ data class SaleCatalog(
     val loyalty: LoyaltySettings = LoyaltySettings.OFF,
     val priceLists: List<PriceList> = emptyList(),
     val ownPrices: Map<Long, Map<Long, Money>> = emptyMap(),
+    val comboAvailability: Map<Long, Long?> = emptyMap(),
 ) {
     /** Las listas que se ofrecen al vender: las vigentes, la inicial primero. */
     val activePriceLists: List<PriceList> get() = priceLists.filterNot { it.isArchived }

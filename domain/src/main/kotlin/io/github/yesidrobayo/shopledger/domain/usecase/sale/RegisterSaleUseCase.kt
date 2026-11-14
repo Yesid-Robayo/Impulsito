@@ -6,9 +6,11 @@ import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.Scale
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntryDraft
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerEntrySource
@@ -25,6 +27,7 @@ import io.github.yesidrobayo.shopledger.domain.model.region.RecordTime
 import io.github.yesidrobayo.shopledger.domain.model.sale.ForeignTender
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
+import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLineComponent
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSalePayment
 import io.github.yesidrobayo.shopledger.domain.model.sale.PaymentRejection
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
@@ -52,9 +55,11 @@ import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
+import io.github.yesidrobayo.shopledger.domain.port.SaleLineComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.StockLedgerRepository
@@ -70,13 +75,19 @@ import io.github.yesidrobayo.shopledger.domain.rule.LineTax
 import io.github.yesidrobayo.shopledger.domain.rule.TaxCalculator
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityCheck
 import io.github.yesidrobayo.shopledger.domain.rule.UnitQuantityRule
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboExpansion
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboExpansionResult
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboFigures
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.LeafStockPlan
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockPlan
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.LineStockSubject
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockExit
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.CustomerEntryIssue
 import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyLedgerRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.LoyaltyProgramRules
 import io.github.yesidrobayo.shopledger.domain.rule.customer.RedemptionCheck
+import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.LinePriceList
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.SalePriceList
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
@@ -174,7 +185,14 @@ import kotlin.time.Instant
  *   guarda igual, el pago queda sin cuenta y el resultado lo avisa. Con una caja abierta en la
  *   cuenta, la venta queda en esa sesión.
  *
- * Por ahora no vende combos ni productos con lotes: los rechaza con su motivo.
+ * - **Un combo descuenta sus hojas.** Con [recipes] y [lineComponents], la línea de un combo se
+ *   expande a sus hojas con un solo redondeo por hoja, guarda cada una congelada con su costo, y
+ *   cada hoja con stock escribe su salida en el libro de su producto, ligada a la hoja. La línea
+ *   cuesta la suma de sus hojas, y su costo unitario es ese costo por unidad del combo. Una hoja
+ *   que redondea a cero se rechaza con su motivo. Un componente archivado se sigue descontando: el
+ *   combo sigue vendiéndose. Sin ellos, un combo se rechaza con su motivo.
+ *
+ * Por ahora no vende productos con lotes, tampoco como componente: los rechaza con su motivo.
  *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
@@ -201,6 +219,8 @@ class RegisterSaleUseCase(
     moneyLedger: MoneyLedgerRepository? = null,
     private val priceLists: PriceListRepository? = null,
     private val productPrices: ProductPriceRepository? = null,
+    private val recipes: ProductComponentRepository? = null,
+    private val lineComponents: SaleLineComponentRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -712,8 +732,10 @@ class RegisterSaleUseCase(
         taxes: TaxSettings,
         priceList: SalePriceList?,
     ): Priced {
-        val byId = products.findByIds(requests.map { it.productId }.toSet()).associateBy { it.id }
+        val byId = HashMap<Long, Product>()
+        products.findByIds(requests.map { it.productId }.toSet()).associateByTo(byId) { it.id }
         val costStates = HashMap<Long, CostState>()
+        val combos = ComboReads()
         val fractionByUnit = HashMap<Long, Boolean>()
         val taxByRate = HashMap<Long, AppliedTax>()
         val lines = ArrayList<PricedLine>(requests.size)
@@ -749,15 +771,22 @@ class RegisterSaleUseCase(
             val baseQuantity = SaleUnits.baseQuantity(request.quantity, unit)
                 ?: return rejected(index, LineRejection.INVALID_QUANTITY)
             val tax = appliedTax(product, taxes, taxByRate)
-            val result =
-                priceLine(request, product, tax, taxes.mode, costStates, unit, baseQuantity)
+            val subject =
+                when (val built = stockSubject(product, baseQuantity, costStates, byId, combos)) {
+                    is SubjectResult.Ready -> built.subject
+                    is SubjectResult.Rejected -> return rejected(index, built.reason)
+                }
+            val result = priceLine(request, product, tax, taxes.mode, subject, unit, baseQuantity)
             val line = when (result) {
                 is LineResult.Ready -> result.line
                 is LineResult.Rejected -> return rejected(index, result.reason)
             }
             if (!totals.add(line)) return Priced.Rejected(RegisterSaleResult.SaleTotalTooLarge)
-            line.plan.let { plan ->
-                if (plan is LineStockPlan.Direct) costStates[product.id] = plan.exit.stateAfter
+            // La línea siguiente sigue desde el costo que deja esta, también en cada componente.
+            when (val plan = line.plan) {
+                is LineStockPlan.Direct -> costStates[product.id] = plan.exit.stateAfter
+                is LineStockPlan.Components -> costStates.putAll(plan.costStatesAfter)
+                is LineStockPlan.NoStock -> Unit
             }
             lines += line
         }
@@ -810,7 +839,9 @@ class RegisterSaleUseCase(
     private fun productRejection(product: Product): LineRejection? = when {
         product.isArchived -> LineRejection.PRODUCT_ARCHIVED
 
-        product.details.stockMode == ProductStockMode.COMPONENTS ->
+        // Sin recetas ni dónde guardar sus hojas, un combo no se puede descontar.
+        product.details.stockMode == ProductStockMode.COMPONENTS &&
+            (recipes == null || lineComponents == null) ->
             LineRejection.COMPONENTS_NOT_SUPPORTED
 
         product.details.tracksLots -> LineRejection.LOTS_NOT_SUPPORTED
@@ -835,7 +866,7 @@ class RegisterSaleUseCase(
         product: Product,
         tax: AppliedTax,
         taxMode: TaxMode,
-        costStates: Map<Long, CostState>,
+        subject: LineStockSubject,
         unit: SaleUnit,
         baseQuantity: QuantityMilli,
     ): LineResult {
@@ -851,15 +882,18 @@ class RegisterSaleUseCase(
         }
         val discount = SaleLineRules.discountOf(gross, request.discount)
             ?: return LineResult.Rejected(LineRejection.INVALID_DISCOUNT)
-        val plan = StockModeRules.planLine(stockSubject(product, baseQuantity, costStates))
+        val plan = StockModeRules.planLine(subject)
             .valueOr { return LineResult.Rejected(LineRejection.AMOUNT_TOO_LARGE) }
         val unitCost = when (plan) {
             is LineStockPlan.Direct -> plan.exit.unitCost
 
             is LineStockPlan.NoStock -> plan.unitCost
 
-            // Un combo se rechaza antes de llegar aquí.
-            is LineStockPlan.Components -> error("Un combo no llega a calcular su línea")
+            // El costo de su línea por unidad del combo: se muestra como el de cualquier línea.
+            is LineStockPlan.Components ->
+                mulDivRound(plan.lineCost.minor, Scale.MILLI, baseQuantity.milli, Limit.UNIT_MONEY)
+                    .valueOr { return LineResult.Rejected(LineRejection.AMOUNT_TOO_LARGE) }
+                    .let(::Money)
         }
         val unitReplacement = SaleLineRules.unitReplacementCost(product.replacementCost, unitCost)
         val lineReplacement = SaleLineRules.lineReplacementCost(baseQuantity, unitReplacement)
@@ -888,21 +922,85 @@ class RegisterSaleUseCase(
         )
     }
 
-    private fun stockSubject(
+    /**
+     * Lo que la regla de modos de stock necesita para costear [quantity] de [product], con el
+     * estado de costo que dejaron las líneas anteriores de la venta en [costStates].
+     */
+    private suspend fun stockSubject(
         product: Product,
         quantity: QuantityMilli,
         costStates: Map<Long, CostState>,
-    ): LineStockSubject = when (product.details.stockMode) {
-        ProductStockMode.TRACKED -> LineStockSubject.Tracked(
-            costState = costStates[product.id]
-                ?: CostState(product.onHand, product.averageCost, product.stockValue),
-            quantity = quantity,
+        byId: MutableMap<Long, Product>,
+        combos: ComboReads,
+    ): SubjectResult = when (product.details.stockMode) {
+        ProductStockMode.TRACKED -> SubjectResult.Ready(
+            LineStockSubject.Tracked(
+                costState = costStates[product.id]
+                    ?: CostState(product.onHand, product.averageCost, product.stockValue),
+                quantity = quantity,
+            ),
         )
 
-        ProductStockMode.UNTRACKED ->
-            LineStockSubject.Untracked(product.details.fixedUnitCost, quantity)
+        ProductStockMode.UNTRACKED -> SubjectResult.Ready(
+            LineStockSubject.Untracked(product.details.fixedUnitCost, quantity),
+        )
 
-        ProductStockMode.COMPONENTS -> error("Un combo no llega a calcular su línea")
+        ProductStockMode.COMPONENTS -> comboSubject(product, quantity, costStates, byId, combos)
+    }
+
+    /**
+     * Expande la línea de un combo a sus hojas y las prepara para costearlas. Lee las recetas una
+     * sola vez por venta, y los productos de los componentes que la venta todavía no leyó.
+     */
+    private suspend fun comboSubject(
+        combo: Product,
+        quantity: QuantityMilli,
+        costStates: Map<Long, CostState>,
+        byId: MutableMap<Long, Product>,
+        combos: ComboReads,
+    ): SubjectResult {
+        val all = combos.recipes()
+        val first = all[combo.id].orEmpty().map { it.componentProductId }
+        val second = first.flatMap { id -> all[id].orEmpty().map { it.componentProductId } }
+        val unread = (first + second).filterNot { it in byId }.toSet()
+        if (unread.isNotEmpty()) products.findByIds(unread).associateByTo(byId) { it.id }
+        val modes = byId.mapValues { it.value.details.stockMode }
+        val leaves = when (val result = ComboExpansion.expand(combo.id, quantity, all, modes)) {
+            is ComboExpansionResult.Leaves -> result.leaves
+
+            is ComboExpansionResult.LeafRoundsToZero ->
+                return SubjectResult.Rejected(LineRejection.COMPONENT_ROUNDS_TO_ZERO)
+
+            ComboExpansionResult.QuantityOutOfRange ->
+                return SubjectResult.Rejected(LineRejection.INVALID_QUANTITY)
+
+            // Un tercer nivel solo llega con una base dañada: la línea no guarda un combo como
+            // hoja.
+            ComboExpansionResult.TooDeep ->
+                return SubjectResult.Rejected(LineRejection.COMPONENTS_NOT_SUPPORTED)
+        }
+        for (leaf in leaves) {
+            // La receta apunta a su componente con una llave que no deja borrarlo.
+            val component = byId[leaf.productId] ?: damaged()
+            if (component.details.tracksLots) {
+                return SubjectResult.Rejected(LineRejection.LOTS_NOT_SUPPORTED)
+            }
+        }
+        val stored = ComboFigures.subjectOf(leaves, byId)
+        // Un componente que ya salió en una línea anterior sigue desde el estado que dejó.
+        val states = stored.costStates.mapValues { (id, state) -> costStates[id] ?: state }
+        return SubjectResult.Ready(LineStockSubject.Components(stored.leaves, states))
+    }
+
+    /** Las recetas de todos los combos, leídas una sola vez por venta y solo si vende un combo. */
+    private inner class ComboReads {
+        private var loaded: Map<Long, List<RecipeComponent>>? = null
+
+        suspend fun recipes(): Map<Long, List<RecipeComponent>> = loaded
+            ?: requireNotNull(recipes) { "Un combo solo llega aquí con sus recetas" }
+                .findAll()
+                .groupBy { it.parentProductId }
+                .also { loaded = it }
     }
 
     /**
@@ -1138,33 +1236,87 @@ class RegisterSaleUseCase(
         )
         for (line in priced.lines) {
             val lineId = sales.insertLine(saleId, line.toNewLine(priceListId))
-            val plan = line.plan
-            if (plan is LineStockPlan.Direct) {
-                val exit = plan.exit
-                ledger.append(
-                    NewStockMovement(
-                        movement = exit.saleMovement(
-                            StockKey(line.product.id, locationId, lotId = null),
-                        ),
-                        reason = null,
-                        unitCost = exit.unitCost,
-                        totalCost = -exit.cost,
-                        balanceAfter = exit.stateAfter.onHand,
-                        averageCostAfter = exit.stateAfter.averageCost,
-                        stockValueAfter = exit.stateAfter.stockValue,
-                        source = StockMovementSource(saleLineId = lineId),
-                        note = null,
-                        // El movimiento hereda el hecho de la venta: una venta atrasada lo
-                        // fecha en su día, aunque tome su lugar en el libro por orden de llegada.
-                        occurredAt = time.occurredAt,
-                        businessDate = time.businessDate,
-                        createdAt = now,
-                    ),
+            when (val plan = line.plan) {
+                is LineStockPlan.Direct -> appendSale(
+                    plan.exit,
+                    StockKey(line.product.id, locationId, lotId = null),
+                    StockMovementSource(saleLineId = lineId),
+                    time,
+                    now,
                 )
+
+                is LineStockPlan.Components -> writeLeaves(plan, lineId, locationId, time, now)
+
+                is LineStockPlan.NoStock -> Unit
             }
         }
         val paymentIds = salePayments.map { payments.insert(saleId, it) }
         return Written(saleId, paymentIds)
+    }
+
+    /**
+     * Guarda cada hoja de la línea de combo [lineId], congelada, y la salida de cada hoja con
+     * stock en el libro de su producto, ligada a la línea y a la hoja.
+     */
+    private suspend fun writeLeaves(
+        plan: LineStockPlan.Components,
+        lineId: Long,
+        locationId: Long,
+        time: RecordTime,
+        now: Instant,
+    ) {
+        val book = requireNotNull(lineComponents) { "Un combo solo llega aquí con sus hojas" }
+        for (leaf in plan.leaves) {
+            val componentId = book.insert(
+                lineId,
+                NewSaleLineComponent(
+                    componentProductId = leaf.productId,
+                    quantity = leaf.quantity,
+                    tracked = leaf.tracked,
+                    unitCost = leaf.unitCost,
+                    lineCost = leaf.lineCost,
+                ),
+            )
+            when (leaf) {
+                is LeafStockPlan.Tracked -> appendSale(
+                    leaf.exit,
+                    StockKey(leaf.productId, locationId, lotId = null),
+                    StockMovementSource(saleLineId = lineId, saleLineComponentId = componentId),
+                    time,
+                    now,
+                )
+
+                is LeafStockPlan.Untracked -> Unit
+            }
+        }
+    }
+
+    /** La fila de venta de [exit] en el libro, en la parte del stock [key]. */
+    private suspend fun appendSale(
+        exit: StockExit,
+        key: StockKey,
+        source: StockMovementSource,
+        time: RecordTime,
+        now: Instant,
+    ) {
+        ledger.append(
+            NewStockMovement(
+                movement = exit.saleMovement(key),
+                reason = null,
+                unitCost = exit.unitCost,
+                totalCost = -exit.cost,
+                balanceAfter = exit.stateAfter.onHand,
+                averageCostAfter = exit.stateAfter.averageCost,
+                stockValueAfter = exit.stateAfter.stockValue,
+                source = source,
+                note = null,
+                // El movimiento hereda el hecho de la venta: una venta atrasada lo fecha en su
+                // día, aunque tome su lugar en el libro por orden de llegada.
+                occurredAt = time.occurredAt,
+                businessDate = time.businessDate,
+                createdAt = now,
+            ),
+        )
     }
 
     /** La venta guardada y los ids de sus pagos, en el orden en que se guardaron. */
@@ -1277,6 +1429,13 @@ class RegisterSaleUseCase(
         class Ready(val line: PricedLine) : LineResult
 
         class Rejected(val reason: LineRejection) : LineResult
+    }
+
+    /** Lo que costea una línea, o por qué no se puede vender. */
+    private sealed interface SubjectResult {
+        class Ready(val subject: LineStockSubject) : SubjectResult
+
+        class Rejected(val reason: LineRejection) : SubjectResult
     }
 
     /**

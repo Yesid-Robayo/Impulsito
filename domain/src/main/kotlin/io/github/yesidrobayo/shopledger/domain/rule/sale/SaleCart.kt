@@ -193,6 +193,17 @@ object SaleCart {
     }
 
     /**
+     * Cuántos combos faltarían si se venden [inSale] milésimas de un combo que alcanza para
+     * [available] combos enteros, solo si faltan: es el mismo aviso que el de un producto, y nunca
+     * impide vender. Sin componentes con stock, [available] es `null` y nunca avisa.
+     */
+    fun comboOversell(available: Long?, inSale: QuantityMilli): QuantityMilli? {
+        val units = available ?: return null
+        val left = QuantityMilli.ofUnits(units) - inSale
+        return left.takeIf { it < QuantityMilli.ZERO }
+    }
+
+    /**
      * Las cuentas de la venta en edición, con [products] por id tal como están ahora, igual que las
      * hará la venta al confirmar:
      *

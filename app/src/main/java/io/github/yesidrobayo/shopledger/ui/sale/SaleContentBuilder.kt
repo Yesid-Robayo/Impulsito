@@ -122,7 +122,8 @@ internal object SaleContentBuilder {
                 unit = request.unitId?.let { catalog.units[it] },
                 removesLine = SaleCart.decrementRemoves(quantity),
                 canIncrement = SaleCart.canIncrement(quantity),
-                oversell = SaleCart.oversell(product, sold),
+                oversell = SaleCart.oversell(product, sold)
+                    ?: comboOversell(product, catalog, sold),
             )
         }
         return SaleTile(
@@ -131,7 +132,7 @@ internal object SaleContentBuilder {
             // El precio de la lista elegida, el mismo que tomará la línea.
             price = (if (priceList == null) product.salePrice else priceList.priceOf(product).price)
                 ?.takeIf { it > Money.ZERO },
-            stock = familyStockOf(product, catalog) ?: stockOf(product),
+            stock = familyStockOf(product, catalog) ?: stockOf(product, catalog),
             unit = catalog.units[product.details.baseUnitId],
             line = line,
             photoMediaId = product.details.photoMediaId,
@@ -155,8 +156,27 @@ internal object SaleContentBuilder {
         }
     }
 
-    private fun stockOf(product: Product): TileStock {
+    /** Un combo avisa si la venta pide más de los que alcanzan sus componentes. */
+    private fun comboOversell(
+        product: Product,
+        catalog: SaleCatalog,
+        sold: QuantityMilli,
+    ): QuantityMilli? {
+        if (product.details.stockMode != ProductStockMode.COMPONENTS) return null
+        return SaleCart.comboOversell(catalog.comboAvailability[product.id], sold)
+    }
+
+    private fun stockOf(product: Product, catalog: SaleCatalog): TileStock {
         val details = product.details
+        // Un combo no tiene stock propio: muestra cuántos alcanzan con sus componentes.
+        if (details.stockMode == ProductStockMode.COMPONENTS) {
+            val available = catalog.comboAvailability[product.id] ?: return TileStock.None
+            return if (available > 0L) {
+                TileStock.Normal(QuantityMilli.ofUnits(available))
+            } else {
+                TileStock.Out
+            }
+        }
         if (details.stockMode != ProductStockMode.TRACKED) return TileStock.None
         val onHand = product.onHand
         return when {

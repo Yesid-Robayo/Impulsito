@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SupplierDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
@@ -62,12 +63,15 @@ import io.github.yesidrobayo.shopledger.domain.model.returns.PurchaseReturnResol
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturn
 import io.github.yesidrobayo.shopledger.domain.model.returns.SaleReturnLine
 import io.github.yesidrobayo.shopledger.domain.model.sale.HeldSale
+import io.github.yesidrobayo.shopledger.domain.model.sale.LineStockEffect
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewHeldSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSale
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLine
+import io.github.yesidrobayo.shopledger.domain.model.sale.NewSaleLineComponent
 import io.github.yesidrobayo.shopledger.domain.model.sale.NewSalePayment
 import io.github.yesidrobayo.shopledger.domain.model.sale.Sale
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLine
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineComponent
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePayment
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentMethod
 import io.github.yesidrobayo.shopledger.domain.model.settings.BusinessCurrency
@@ -90,11 +94,13 @@ import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
+import io.github.yesidrobayo.shopledger.domain.port.SaleLineComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
@@ -158,6 +164,10 @@ internal data class SaleTables(
     val saleReturnLines: Map<Long, SaleReturnLine> = emptyMap(),
     val purchaseReturns: Map<Long, PurchaseReturn> = emptyMap(),
     val purchaseReturnLines: Map<Long, PurchaseReturnLine> = emptyMap(),
+    /** Las filas de las recetas de los combos, por id. */
+    val recipes: Map<Long, RecipeComponent> = emptyMap(),
+    /** Las hojas guardadas de las líneas de combo, por id: solo crecen. */
+    val lineComponents: Map<Long, SaleLineComponent> = emptyMap(),
 )
 
 /** Una falla inyectada a propósito en una escritura. */
@@ -194,6 +204,9 @@ internal class SaleWorld(
 
     /** Si los casos de uso que mueven stock evalúan las alertas de stock bajo. */
     var withAlerts: Boolean = false
+
+    /** Si la venta lee las recetas y guarda las hojas de los combos. Sin eso, los rechaza. */
+    var withCombos: Boolean = false
 
     val tables: SaleTables get() = committed.value
 
@@ -1395,7 +1408,77 @@ internal class SaleWorld(
         moneyLedger = moneyLedger,
         priceLists = priceListRepository,
         productPrices = productPriceRepository,
+        recipes = recipeRepository.takeIf { withCombos },
+        lineComponents = lineComponentRepository.takeIf { withCombos },
     )
+
+    /** Las recetas de los combos: la venta solo las lee. */
+    val recipeRepository: ProductComponentRepository = object : ProductComponentRepository {
+        override fun observeAll(): Flow<List<RecipeComponent>> = unused()
+
+        override fun observeByParent(parentId: Long): Flow<List<RecipeComponent>> = unused()
+
+        override suspend fun findAll(): List<RecipeComponent> =
+            read().recipes.values.sortedBy { it.id }
+
+        override suspend fun findByParent(parentId: Long): List<RecipeComponent> = unused()
+
+        override suspend fun insert(
+            parentId: Long,
+            componentId: Long,
+            quantity: QuantityMilli,
+            createdAt: Instant,
+        ): Long = unused()
+
+        override suspend fun updateQuantity(
+            id: Long,
+            quantity: QuantityMilli,
+            updatedAt: Instant,
+        ) = unused()
+
+        override suspend fun delete(id: Long) = unused()
+    }
+
+    /**
+     * Las hojas de las líneas de combo, con lo que comprueba la guarda: la línea es de combo, la
+     * hoja no es otro combo y `tracked` coincide con el modo de su producto.
+     */
+    val lineComponentRepository: SaleLineComponentRepository =
+        object : SaleLineComponentRepository {
+            override suspend fun findBySaleLine(saleLineId: Long): List<SaleLineComponent> =
+                read().lineComponents.values.filter { it.saleLineId == saleLineId }
+                    .sortedBy { it.id }
+
+            override suspend fun findBySale(saleId: Long): List<SaleLineComponent> {
+                val tables = read()
+                val lineIds = linesOf(tables, saleId).map { it.id }.toSet()
+                return tables.lineComponents.values.filter { it.saleLineId in lineIds }
+                    .sortedBy { it.id }
+            }
+
+            override suspend fun insert(saleLineId: Long, component: NewSaleLineComponent): Long {
+                val tables = read()
+                val line = tables.lines[saleLineId] ?: brokenRule()
+                val product = tables.products[component.componentProductId] ?: brokenRule()
+                val mode = product.details.stockMode
+                if (line.content.stockEffect != LineStockEffect.COMPONENTS ||
+                    mode == ProductStockMode.COMPONENTS ||
+                    (mode == ProductStockMode.TRACKED) != component.tracked ||
+                    component.quantity.milli <= 0L
+                ) {
+                    brokenRule()
+                }
+                val id = nextId("sale_line_components")
+                val row = SaleLineComponent(id, saleLineId, component)
+                write { it.copy(lineComponents = it.lineComponents + (id to row)) }
+                return id
+            }
+        }
+
+    /** Guarda [rows] como recetas, como las dejaría la base: parte de lo que arma una prueba. */
+    fun addRecipe(vararg rows: RecipeComponent) = arrange { tables ->
+        tables.copy(recipes = tables.recipes + rows.associateBy { it.id })
+    }
 
     /** Las listas de precios de la venta, si la prueba las usa; sin ellas, solo la inicial. */
     var priceListRepository: PriceListRepository? = null

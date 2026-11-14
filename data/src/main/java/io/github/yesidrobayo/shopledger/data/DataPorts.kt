@@ -46,6 +46,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseReturnReposi
 import io.github.yesidrobayo.shopledger.data.repository.RoomReplacementReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFrequencySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleHistorySource
+import io.github.yesidrobayo.shopledger.data.repository.RoomSaleLineComponentRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSalePaymentRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleReturnRepository
@@ -105,6 +106,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.ReplacementReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
+import io.github.yesidrobayo.shopledger.domain.port.SaleLineComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleReturnRepository
@@ -224,6 +226,10 @@ class DataPorts internal constructor(
 
     /** Las recetas de los combos: qué componentes lleva cada uno y cuánto. */
     val productComponents: ProductComponentRepository = RoomProductComponentRepository(database)
+
+    /** Las hojas que consumió cada línea de combo, congeladas al vender. */
+    val saleLineComponents: SaleLineComponentRepository =
+        RoomSaleLineComponentRepository(database)
 
     val systemRows: SystemRowRepository = RoomSystemRowRepository(database)
 

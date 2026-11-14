@@ -114,6 +114,14 @@ class SaleCartTest {
         assertNull(SaleCart.oversell(service, QuantityMilli(5_000L)))
     }
 
+    @Test
+    fun `a combo warns when the sale asks for more than its components are enough for`() {
+        // Alcanzan 3 kits: pedir 5 avisa que faltan 2; pedir 3 no avisa; sin stock no limita.
+        assertEquals(QuantityMilli(-2_000L), SaleCart.comboOversell(3L, QuantityMilli(5_000L)))
+        assertNull(SaleCart.comboOversell(3L, QuantityMilli(3_000L)))
+        assertNull(SaleCart.comboOversell(null, QuantityMilli(5_000L)))
+    }
+
     /** El ejemplo de la venta de tres productos: 31000 en total, con descuento del 10 %. */
     @Test
     fun `the preview adds the lines like the sale will, discount included`() {

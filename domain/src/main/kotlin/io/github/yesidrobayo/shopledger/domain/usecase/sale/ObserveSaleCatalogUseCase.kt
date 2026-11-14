@@ -2,6 +2,9 @@ package io.github.yesidrobayo.shopledger.domain.usecase.sale
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceList
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleCatalog
@@ -11,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.TaxSettings
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
+import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
@@ -18,6 +22,7 @@ import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.TaxRateRepository
 import io.github.yesidrobayo.shopledger.domain.port.TaxSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboFigures
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.FrequentProducts
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
@@ -48,6 +53,8 @@ import kotlinx.coroutines.flow.map
  *   programa va apagado y no se mencionan puntos.
  * - Las listas de precios y los precios propios, de [priceLists] y [productPrices]: la venta muestra
  *   el precio de la lista elegida. Sin ellos, solo existe el precio de venta.
+ * - Cuántos alcanzan de cada combo, de [recipes], con el stock de hoy de sus componentes. Sin
+ *   ellas, un combo no dice cuántos alcanzan.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObserveSaleCatalogUseCase(
@@ -65,6 +72,7 @@ class ObserveSaleCatalogUseCase(
     private val loyalty: () -> Flow<LoyaltySettings> = { flowOf(LoyaltySettings.OFF) },
     private val priceLists: PriceListRepository? = null,
     private val productPrices: ProductPriceRepository? = null,
+    private val recipes: ProductComponentRepository? = null,
 ) {
     operator fun invoke(): Flow<SaleCatalog> = calendar.observe().flatMapLatest { result ->
         val ready = result as? BusinessCalendarResult.Ready
@@ -118,6 +126,27 @@ class ObserveSaleCatalogUseCase(
             .combine(loyalty()) { sale, program -> sale.copy(loyalty = program) }
             .combine(pricesOf()) { sale, (lists, own) ->
                 sale.copy(priceLists = lists, ownPrices = own)
+            }
+            .combine(recipesOf()) { sale, stored ->
+                sale.copy(comboAvailability = combos(sale, stored))
+            }
+    }
+
+    /** Las recetas guardadas, o ninguna si la venta no las lee. */
+    private fun recipesOf(): Flow<List<RecipeComponent>> =
+        recipes?.observeAll() ?: flowOf(emptyList())
+
+    /** Cuántos alcanzan de cada combo vigente con su receta guardada. */
+    private fun combos(sale: SaleCatalog, stored: List<RecipeComponent>): Map<Long, Long?> {
+        if (stored.isEmpty()) return emptyMap()
+        val byId = (sale.products + sale.archived).associateBy { it.id }
+        val byParent = stored.groupBy { it.parentProductId }
+        return sale.products.filter { it.details.stockMode == ProductStockMode.COMPONENTS }
+            .associate { combo ->
+                val lines = byParent[combo.id].orEmpty()
+                    .map { RecipeLine(it.componentProductId, it.quantity) }
+                val figures = ComboFigures.preview(combo.id, lines, stored, byId)
+                combo.id to figures.availability?.units
             }
     }
 

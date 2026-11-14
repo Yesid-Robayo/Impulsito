@@ -135,8 +135,9 @@ enum class LineRejection {
     PRODUCT_ARCHIVED,
 
     /**
-     * El producto se arma con componentes. Vender un combo, que descuenta cada componente, todavía
-     * no está disponible.
+     * El producto se arma con componentes y su receta no se puede descontar: la venta no tiene con
+     * qué leer las recetas, o la receta tiene un tercer nivel de combos, que solo deja una base
+     * dañada.
      */
     COMPONENTS_NOT_SUPPORTED,
 
@@ -169,4 +170,10 @@ enum class LineRejection {
      * de sus variantes.
      */
     PRODUCT_HAS_VARIANTS,
+
+    /**
+     * Con esta cantidad, un componente del combo consumiría menos de media milésima: no queda
+     * nada que descontar ni que guardar. Se vende más del combo, o se ajusta la receta.
+     */
+    COMPONENT_ROUNDS_TO_ZERO,
 }
