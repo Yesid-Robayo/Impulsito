@@ -52,10 +52,7 @@ enum class CurrencyCorrectionProblem {
  */
 object CurrencyCorrectionRules {
     /** El primer problema de corregir la moneda de [current] a [request], o `null` si no hay. */
-    fun check(
-        current: RegionalSettings,
-        request: CurrencyCorrection,
-    ): CurrencyCorrectionProblem? {
+    fun check(current: RegionalSettings, request: CurrencyCorrection): CurrencyCorrectionProblem? {
         val currency = current.currency
         return when {
             !currency.isLocked -> CurrencyCorrectionProblem.NOT_LOCKED
