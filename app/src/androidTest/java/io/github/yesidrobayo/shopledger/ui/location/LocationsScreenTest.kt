@@ -48,7 +48,14 @@ class LocationsScreenTest {
             products,
         ).joinToString()
         assertEquals(1, count(reading))
-        assertEquals(1, count(resources.getString(R.string.location_archived_group)))
+        // En algunos idiomas el grupo y la marca de la fila archivada se escriben igual.
+        assertTrue(count(resources.getString(R.string.location_archived_group)) >= 1)
+        val archived = listOf(
+            LocationSamples.WAREHOUSE.details.name.orEmpty(),
+            resources.getString(R.string.location_kind_warehouse),
+            resources.getString(R.string.status_archived),
+        ).joinToString()
+        assertEquals(1, count(archived))
         assertEquals(1, count(resources.getString(R.string.location_new_action)))
     }
 
