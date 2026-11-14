@@ -61,6 +61,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductPriceRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
+import io.github.yesidrobayo.shopledger.domain.port.QuoteRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleLineComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
@@ -209,6 +210,10 @@ import kotlin.time.Instant
  * cuesta la suma de sus filas. Lo que falte sale del lote sin asignar, que puede quedar negativo:
  * vender nunca se bloquea. Sin [lots], los rechaza con su motivo.
  *
+ * Una venta que sale de una cotización la deja convertida en la misma transacción, con [quotes]:
+ * la venta guarda la cotización, y la cotización su venta. Si ya no está abierta, la venta no se
+ * guarda, porque una cotización se convierte una sola vez.
+ *
  * Con [alerts], evalúa en la misma transacción la alerta de stock bajo de cada producto que mueve,
  * una sola vez por producto. Sin él no la evalúa: solo lo omiten las pruebas que no miran alertas.
  */
@@ -238,6 +243,7 @@ class RegisterSaleUseCase(
     private val lineComponents: SaleLineComponentRepository? = null,
     private val locations: LocationRepository? = null,
     private val lots: StockLotRepository? = null,
+    private val quotes: QuoteRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
     private val ledger = StockChangeRecorder(ledger)
@@ -335,7 +341,7 @@ class RegisterSaleUseCase(
         val written = write(
             settled,
             plan,
-            Placement(request.customerId, choice.listId, locationId),
+            Placement(request.customerId, choice.listId, locationId, request.quoteId),
             note,
             time,
             now,
@@ -354,6 +360,13 @@ class RegisterSaleUseCase(
         )
         moveMoney(written.paymentIds, plan.payments, time, now)?.let {
             return TxResult.Rollback(it)
+        }
+        request.quoteId?.let { quote ->
+            // La cotización queda convertida con esta venta, o la venta no se guarda.
+            val book = requireNotNull(quotes) { "Vender una cotización necesita las cotizaciones" }
+            if (!book.markConverted(quote, saleId, now)) {
+                return TxResult.Rollback(RegisterSaleResult.QuoteUnavailable)
+            }
         }
         request.heldSaleId?.let { held ->
             // Si ya no existe, alguien la descartó en el intermedio: la venta igual se confirma.
@@ -1327,7 +1340,7 @@ class RegisterSaleUseCase(
     ): Written {
         val priced = settled.priced
         val salePayments = plan.payments
-        val (customerId, priceListId, locationId) = placement
+        val (customerId, priceListId, locationId, quoteId) = placement
         val totals = priced.totals
         val saleId = sales.insert(
             NewSale(
@@ -1344,7 +1357,7 @@ class RegisterSaleUseCase(
                 priceListId = priceListId,
                 locationId = locationId,
                 cashSessionId = plan.cashSessionId,
-                quoteId = null,
+                quoteId = quoteId,
                 orderId = null,
                 note = note,
                 occurredAt = time.occurredAt,
@@ -1474,8 +1487,16 @@ class RegisterSaleUseCase(
     /** La venta guardada y los ids de sus pagos, en el orden en que se guardaron. */
     private class Written(val saleId: Long, val paymentIds: List<Long>)
 
-    /** A quién, con qué lista y desde qué ubicación se vende: lo que la venta guarda de su lugar. */
-    private data class Placement(val customerId: Long?, val priceListId: Long, val locationId: Long)
+    /**
+     * A quién, con qué lista y desde qué ubicación se vende, y de qué cotización sale, si sale de
+     * una: lo que la venta guarda de su lugar.
+     */
+    private data class Placement(
+        val customerId: Long?,
+        val priceListId: Long,
+        val locationId: Long,
+        val quoteId: Long? = null,
+    )
 
     /**
      * Los pagos tal como se guardan, con la cuenta solo si su dinero entra en ella; la caja abierta

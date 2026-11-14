@@ -21,6 +21,13 @@ internal interface QuoteDao {
     )
     fun observeOpen(): Flow<List<QuoteEntity>>
 
+    /** Las de [status], de la fecha de negocio más nueva a la más vieja, y por `id` en cada fecha. */
+    @Query("SELECT * FROM quotes WHERE status = :status ORDER BY business_date DESC, id DESC")
+    fun observeByStatus(status: String): Flow<List<QuoteEntity>>
+
+    @Query("SELECT * FROM quotes WHERE id = :id")
+    fun observeById(id: Long): Flow<QuoteEntity?>
+
     @Query("SELECT * FROM quotes WHERE id = :id")
     suspend fun findById(id: Long): QuoteEntity?
 
@@ -59,6 +66,10 @@ internal interface QuoteDao {
     /** Quita una línea. Solo se llama mientras la cotización está abierta. */
     @Query("DELETE FROM quote_lines WHERE id = :lineId")
     suspend fun deleteLine(lineId: Long): Int
+
+    /** Quita todas sus líneas, para escribirlas de nuevo. Solo con la cotización abierta. */
+    @Query("DELETE FROM quote_lines WHERE quote_id = :quoteId")
+    suspend fun deleteLinesOf(quoteId: Long): Int
 
     /**
      * La marca convertida en la venta [saleId], en la misma transacción que crea esa venta.

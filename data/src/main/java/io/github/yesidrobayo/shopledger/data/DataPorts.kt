@@ -49,6 +49,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomProductionBatchRepos
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseHistorySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseReturnRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomQuoteRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomReplacementReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFrequencySource
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleHistorySource
@@ -119,6 +120,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductionBatchRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
+import io.github.yesidrobayo.shopledger.domain.port.QuoteRepository
 import io.github.yesidrobayo.shopledger.domain.port.ReplacementReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
@@ -396,6 +398,9 @@ class DataPorts internal constructor(
 
     /** Las producciones y sus insumos. Solo se anulan, nunca se editan. */
     val productionBatches: ProductionBatchRepository = RoomProductionBatchRepository(database)
+
+    /** Las cotizaciones y sus líneas: no tocan stock ni dinero, y se convierten una sola vez. */
+    val quotes: QuoteRepository = RoomQuoteRepository(database)
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()

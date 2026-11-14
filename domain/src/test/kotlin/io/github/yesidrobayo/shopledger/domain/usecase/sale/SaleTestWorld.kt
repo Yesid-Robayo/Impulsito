@@ -33,6 +33,10 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.LoyaltyLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.NewCustomerLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.NewLoyaltyLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.PointsSummary
+import io.github.yesidrobayo.shopledger.domain.model.document.DocumentLine
+import io.github.yesidrobayo.shopledger.domain.model.document.NewQuote
+import io.github.yesidrobayo.shopledger.domain.model.document.Quote
+import io.github.yesidrobayo.shopledger.domain.model.document.QuoteStatus
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
@@ -106,6 +110,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
+import io.github.yesidrobayo.shopledger.domain.port.QuoteRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleLineComponentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SalePaymentRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleRepository
@@ -126,6 +131,9 @@ import io.github.yesidrobayo.shopledger.domain.testing.FixedClock
 import io.github.yesidrobayo.shopledger.domain.testing.appSettings
 import io.github.yesidrobayo.shopledger.domain.testing.lastCostsOf
 import io.github.yesidrobayo.shopledger.domain.testing.regionalSettings
+import io.github.yesidrobayo.shopledger.domain.usecase.document.CancelQuoteUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.document.PrepareQuoteConversionUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveQuoteUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.VoidPurchaseUseCase
@@ -177,6 +185,9 @@ internal data class SaleTables(
     val lineComponents: Map<Long, SaleLineComponent> = emptyMap(),
     /** Los lotes de los productos que se controlan por lotes, por id. */
     val lots: Map<Long, StockLot> = emptyMap(),
+    /** Las cotizaciones, por id, y sus líneas, por id de línea. */
+    val quotes: Map<Long, Quote> = emptyMap(),
+    val quoteLines: Map<Long, DocumentLine> = emptyMap(),
 )
 
 /** Una falla inyectada a propósito en una escritura. */
@@ -1493,6 +1504,147 @@ internal class SaleWorld(
         lineComponents = lineComponentRepository.takeIf { withCombos },
         locations = locationRepository,
         lots = lotRepository.takeIf { withLots },
+        quotes = quoteRepository,
+    )
+
+    /**
+     * Las cotizaciones, con lo que comprueban sus guardas: nacen abiertas, cuadran su total, y
+     * cerradas no cambian ni dejan tocar sus líneas.
+     */
+    val quoteRepository: QuoteRepository = object : QuoteRepository {
+        override fun observeByStatus(status: QuoteStatus): Flow<List<Quote>> =
+            committed.map { tables ->
+                tables.quotes.values.filter { it.status == status }.sortedWith(
+                    compareByDescending<Quote> { it.businessDate }.thenByDescending { it.id },
+                )
+            }
+
+        override fun observeById(id: Long): Flow<Quote?> = committed.map { it.quotes[id] }
+
+        override suspend fun findById(id: Long): Quote? = read().quotes[id]
+
+        override suspend fun findLines(quoteId: Long): List<DocumentLine> =
+            read().quoteLines.values.filter { it.documentId == quoteId }.sortedBy { it.id }
+
+        override suspend fun insert(quote: NewQuote): Long {
+            checkQuote(quote)
+            val id = nextId("quotes")
+            val row = Quote(
+                id = id,
+                customerId = quote.customerId,
+                status = QuoteStatus.OPEN,
+                validUntil = quote.validUntil,
+                totals = quote.totals,
+                convertedSaleId = null,
+                note = quote.note,
+                occurredAt = quote.occurredAt,
+                businessDate = quote.businessDate,
+                createdAt = quote.at,
+                updatedAt = quote.at,
+            )
+            write { it.copy(quotes = it.quotes + (id to row)) }
+            insertQuoteLines(id, quote)
+            return id
+        }
+
+        override suspend fun update(id: Long, quote: NewQuote): Boolean {
+            val current = read().quotes[id]
+            if (current == null || current.status != QuoteStatus.OPEN) return false
+            checkQuote(quote)
+            write { tables ->
+                tables.copy(
+                    quotes = tables.quotes + (
+                        id to current.copy(
+                            customerId = quote.customerId,
+                            validUntil = quote.validUntil,
+                            totals = quote.totals,
+                            note = quote.note,
+                            updatedAt = quote.at,
+                        )
+                        ),
+                    quoteLines = tables.quoteLines.filterValues { it.documentId != id },
+                )
+            }
+            insertQuoteLines(id, quote)
+            return true
+        }
+
+        override suspend fun markConverted(id: Long, saleId: Long, at: Instant): Boolean {
+            val current = read().quotes[id]
+            if (current?.status != QuoteStatus.OPEN) return false
+            val converted = current.copy(
+                status = QuoteStatus.CONVERTED,
+                convertedSaleId = saleId,
+                updatedAt = at,
+            )
+            write { it.copy(quotes = it.quotes + (id to converted)) }
+            return true
+        }
+
+        override suspend fun markCancelled(id: Long, at: Instant): Boolean {
+            val current = read().quotes[id]
+            if (current?.status != QuoteStatus.OPEN) return false
+            val cancelled = current.copy(status = QuoteStatus.CANCELLED, updatedAt = at)
+            write { it.copy(quotes = it.quotes + (id to cancelled)) }
+            return true
+        }
+    }
+
+    /** Lo que exige la guarda de una cotización: total igual a neto más impuesto en cada nivel. */
+    private fun checkQuote(quote: NewQuote) {
+        val totals = quote.totals
+        if (totals.total != totals.net + totals.tax ||
+            quote.lines.any { it.lineTotal != it.netAmount + it.taxAmount }
+        ) {
+            brokenRule()
+        }
+    }
+
+    private fun insertQuoteLines(quoteId: Long, quote: NewQuote) {
+        for (line in quote.lines) {
+            val id = nextId("quote_lines")
+            write { it.copy(quoteLines = it.quoteLines + (id to DocumentLine(id, quoteId, line))) }
+        }
+    }
+
+    /** Agrega una cotización ya guardada, como la dejaría la base. */
+    fun addQuote(quote: Quote, vararg lines: DocumentLine) = arrange { tables ->
+        val lastQuote = maxOf(tables.lastIds["quotes"] ?: 0L, quote.id)
+        val lastLine = maxOf(tables.lastIds["quote_lines"] ?: 0L, lines.maxOfOrNull { it.id } ?: 0L)
+        tables.copy(
+            quotes = tables.quotes + (quote.id to quote),
+            quoteLines = tables.quoteLines + lines.associateBy { it.id },
+            lastIds = tables.lastIds + ("quotes" to lastQuote) + ("quote_lines" to lastLine),
+        )
+    }
+
+    fun saveQuote(): SaveQuoteUseCase = SaveQuoteUseCase(
+        transactions = transactions,
+        settings = settings,
+        quotes = quoteRepository,
+        customers = customerRepository,
+        clock = clock,
+        products = products,
+        units = unitRepository,
+        taxRates = taxRateRepository,
+        systemRows = systemRowRepository,
+        productUnits = productUnitRepository,
+        priceLists = priceListRepository,
+        productPrices = productPriceRepository,
+    )
+
+    fun cancelQuote(): CancelQuoteUseCase = CancelQuoteUseCase(transactions, quoteRepository, clock)
+
+    fun prepareQuoteConversion(): PrepareQuoteConversionUseCase = PrepareQuoteConversionUseCase(
+        transactions = transactions,
+        settings = settings,
+        quotes = quoteRepository,
+        products = products,
+        customers = customerRepository,
+        clock = clock,
+        productUnits = productUnitRepository,
+        priceLists = priceListRepository,
+        productPrices = productPriceRepository,
     )
 
     /** Las recetas de los combos: la venta solo las lee. */

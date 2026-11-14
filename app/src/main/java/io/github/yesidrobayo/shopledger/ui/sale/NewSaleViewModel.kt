@@ -765,6 +765,7 @@ class NewSaleViewModel(
                 RegisterSaleResult.PointsAboveSale,
                 RegisterSaleResult.PriceListUnavailable,
                 RegisterSaleResult.LocationUnavailable,
+                RegisterSaleResult.QuoteUnavailable,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }

@@ -41,6 +41,9 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  *
  * [locationId] es la ubicación de donde sale el stock, que la venta guarda. Nula es la inicial:
  * mientras haya una sola, nadie pregunta dónde.
+ *
+ * [quoteId] es la cotización abierta de la que sale esta venta, si sale de una: al confirmar, queda
+ * convertida en la misma transacción, y una que ya no está abierta deshace la venta.
  */
 data class SaleRequest(
     val lines: List<SaleLineRequest>,
@@ -56,4 +59,5 @@ data class SaleRequest(
     val pointsRedeemed: Long = 0L,
     val priceListId: Long? = null,
     val locationId: Long? = null,
+    val quoteId: Long? = null,
 )

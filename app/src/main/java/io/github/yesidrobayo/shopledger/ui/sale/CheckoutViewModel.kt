@@ -1219,6 +1219,7 @@ class CheckoutViewModel(
                 RegisterSaleResult.PointsNotAvailable,
                 RegisterSaleResult.PriceListUnavailable,
                 RegisterSaleResult.LocationUnavailable,
+                RegisterSaleResult.QuoteUnavailable,
                 -> overlay.update { it.copy(status = RegisterStatus.FAILED) }
             }
         }

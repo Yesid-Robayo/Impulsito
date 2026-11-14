@@ -130,6 +130,13 @@ sealed interface RegisterSaleResult {
      * la venta con un total negativo.
      */
     data object PointsAboveSale : RegisterSaleResult
+
+    /**
+     * La cotización de la que sale la venta ya no está abierta: otra venta la convirtió, o se
+     * canceló, mientras se vendía. Una cotización se convierte una sola vez, así que la venta no se
+     * guarda.
+     */
+    data object QuoteUnavailable : RegisterSaleResult
 }
 
 /** Por qué una línea de la venta no se puede vender. */
