@@ -29,6 +29,25 @@ internal interface OrderDao {
     )
     fun observeOpen(): Flow<List<OrderEntity>>
 
+    /**
+     * Los sin entregar de [status], por fecha de entrega, la más cercana primero y sin fecha al
+     * final, y luego por `id`.
+     */
+    @Query(
+        "SELECT * FROM orders WHERE status = :status " +
+            "ORDER BY due_date IS NULL, due_date, id",
+    )
+    fun observeOpenByStatus(status: String): Flow<List<OrderEntity>>
+
+    /** Los entregados o cancelados de [status], del más nuevo al más viejo, y luego por `id`. */
+    @Query(
+        "SELECT * FROM orders WHERE status = :status ORDER BY business_date DESC, id DESC",
+    )
+    fun observeClosedByStatus(status: String): Flow<List<OrderEntity>>
+
+    @Query("SELECT * FROM orders WHERE id = :id")
+    fun observeById(id: Long): Flow<OrderEntity?>
+
     @Query("SELECT * FROM orders WHERE id = :id")
     suspend fun findById(id: Long): OrderEntity?
 
@@ -87,6 +106,10 @@ internal interface OrderDao {
     /** Quita una línea. Solo se llama mientras el pedido no se ha entregado ni cancelado. */
     @Query("DELETE FROM order_lines WHERE id = :lineId")
     suspend fun deleteLine(lineId: Long): Int
+
+    /** Quita todas sus líneas, para escribirlas de nuevo. Solo con el pedido sin entregar. */
+    @Query("DELETE FROM order_lines WHERE order_id = :orderId")
+    suspend fun deleteLinesOf(orderId: Long): Int
 
     /**
      * Lo marca listo, con `READY`, o lo devuelve a `PENDING`. Devuelve 0 si ya se entregó o se

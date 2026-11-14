@@ -34,7 +34,10 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.NewCustomerLedgerE
 import io.github.yesidrobayo.shopledger.domain.model.customer.NewLoyaltyLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.customer.PointsSummary
 import io.github.yesidrobayo.shopledger.domain.model.document.DocumentLine
+import io.github.yesidrobayo.shopledger.domain.model.document.NewOrder
 import io.github.yesidrobayo.shopledger.domain.model.document.NewQuote
+import io.github.yesidrobayo.shopledger.domain.model.document.Order
+import io.github.yesidrobayo.shopledger.domain.model.document.OrderStatus
 import io.github.yesidrobayo.shopledger.domain.model.document.Quote
 import io.github.yesidrobayo.shopledger.domain.model.document.QuoteStatus
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
@@ -103,6 +106,7 @@ import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.OrderRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodNames
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductComponentRepository
@@ -134,6 +138,7 @@ import io.github.yesidrobayo.shopledger.domain.testing.lastCostsOf
 import io.github.yesidrobayo.shopledger.domain.testing.regionalSettings
 import io.github.yesidrobayo.shopledger.domain.usecase.document.CancelQuoteUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.PrepareQuoteConversionUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveOrderUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.document.SaveQuoteUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.money.DocumentMoney
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
@@ -189,6 +194,9 @@ internal data class SaleTables(
     /** Las cotizaciones, por id, y sus líneas, por id de línea. */
     val quotes: Map<Long, Quote> = emptyMap(),
     val quoteLines: Map<Long, DocumentLine> = emptyMap(),
+    /** Los pedidos, por id, y sus líneas, por id de línea. */
+    val orders: Map<Long, Order> = emptyMap(),
+    val orderLines: Map<Long, DocumentLine> = emptyMap(),
 )
 
 /** Una falla inyectada a propósito en una escritura. */
@@ -322,7 +330,11 @@ internal class SaleWorld(
     }
 
     val products: ProductRepository = object : ProductRepository {
-        override fun observe(filter: ArchiveFilter): Flow<List<Product>> = unused()
+        override fun observe(filter: ArchiveFilter): Flow<List<Product>> = committed.map { tables ->
+            tables.products.values
+                .filter { it.isArchived == (filter == ArchiveFilter.ARCHIVED) }
+                .sortedBy { it.id }
+        }
 
         override fun observeById(id: Long): Flow<Product?> = committed.map { it.products[id] }
 
@@ -1654,9 +1666,139 @@ internal class SaleWorld(
         productPrices = productPriceRepository,
     )
 
+    /**
+     * Los pedidos, con lo que comprueban sus guardas: nacen pendientes, y entregados o cancelados no
+     * cambian ni dejan tocar sus líneas. Lo reservado sale de las líneas de los sin entregar.
+     */
+    val orderRepository: OrderRepository = object : OrderRepository {
+        override fun observeByStatus(status: OrderStatus): Flow<List<Order>> =
+            committed.map { tables ->
+                tables.orders.values.filter { it.status == status }.sortedBy { it.id }
+            }
+
+        override fun observeById(id: Long): Flow<Order?> = committed.map { it.orders[id] }
+
+        override fun observeReservedLines(): Flow<Map<Long, QuantityMilli>> =
+            committed.map { tables -> reservedLinesOf(tables) }
+
+        override suspend fun findById(id: Long): Order? = read().orders[id]
+
+        override suspend fun findLines(orderId: Long): List<DocumentLine> =
+            read().orderLines.values.filter { it.documentId == orderId }.sortedBy { it.id }
+
+        override suspend fun insert(order: NewOrder): Long {
+            checkOrder(order)
+            val id = nextId("orders")
+            val row = Order(
+                id = id,
+                customerId = order.customerId,
+                status = OrderStatus.PENDING,
+                deliveryAddress = order.deliveryAddress,
+                deliveryNote = order.deliveryNote,
+                shippingAmount = order.shippingAmount,
+                dueDate = order.dueDate,
+                deliveredSaleId = null,
+                total = order.total,
+                occurredAt = order.occurredAt,
+                businessDate = order.businessDate,
+                createdAt = order.at,
+                updatedAt = order.at,
+            )
+            write { it.copy(orders = it.orders + (id to row)) }
+            insertOrderLines(id, order)
+            return id
+        }
+
+        override suspend fun update(id: Long, order: NewOrder): Boolean {
+            val current = read().orders[id]
+            if (current == null || !current.status.isOpen) return false
+            checkOrder(order)
+            val changed = current.copy(
+                customerId = order.customerId,
+                deliveryAddress = order.deliveryAddress,
+                deliveryNote = order.deliveryNote,
+                shippingAmount = order.shippingAmount,
+                dueDate = order.dueDate,
+                total = order.total,
+                updatedAt = order.at,
+            )
+            write { tables ->
+                tables.copy(
+                    orders = tables.orders + (id to changed),
+                    orderLines = tables.orderLines.filterValues { it.documentId != id },
+                )
+            }
+            insertOrderLines(id, order)
+            return true
+        }
+
+        override suspend fun setPreparation(id: Long, status: OrderStatus, at: Instant): Boolean {
+            val current = read().orders[id]
+            if (current == null || !current.status.isOpen || !status.isOpen) return false
+            write { it.copy(orders = it.orders + (id to current.copy(status = status))) }
+            return true
+        }
+
+        override suspend fun markDelivered(id: Long, saleId: Long, at: Instant): Boolean {
+            val current = read().orders[id]
+            if (current == null || !current.status.isOpen) return false
+            val delivered = current.copy(
+                status = OrderStatus.DELIVERED,
+                deliveredSaleId = saleId,
+                updatedAt = at,
+            )
+            write { it.copy(orders = it.orders + (id to delivered)) }
+            return true
+        }
+
+        override suspend fun markCancelled(id: Long, at: Instant): Boolean {
+            val current = read().orders[id]
+            if (current == null || !current.status.isOpen) return false
+            val cancelled = current.copy(status = OrderStatus.CANCELLED, updatedAt = at)
+            write { it.copy(orders = it.orders + (id to cancelled)) }
+            return true
+        }
+    }
+
+    /** Lo que suman las líneas de los pedidos sin entregar, por producto. */
+    private fun reservedLinesOf(tables: SaleTables): Map<Long, QuantityMilli> {
+        val open = tables.orders.values.filter { it.status.isOpen }.map { it.id }.toSet()
+        return tables.orderLines.values.filter { it.documentId in open }
+            .groupBy { it.content.productId }
+            .mapValues { (_, lines) -> QuantityMilli(lines.sumOf { it.content.quantity.milli }) }
+    }
+
+    /** Lo que exige la base de un pedido: cada línea con su total igual a neto más impuesto. */
+    private fun checkOrder(order: NewOrder) {
+        if (order.lines.any { it.lineTotal != it.netAmount + it.taxAmount }) brokenRule()
+    }
+
+    private fun insertOrderLines(orderId: Long, order: NewOrder) {
+        for (line in order.lines) {
+            val id = nextId("order_lines")
+            write { it.copy(orderLines = it.orderLines + (id to DocumentLine(id, orderId, line))) }
+        }
+    }
+
+    fun saveOrder(): SaveOrderUseCase = SaveOrderUseCase(
+        transactions = transactions,
+        settings = settings,
+        orders = orderRepository,
+        customers = customerRepository,
+        clock = clock,
+        products = products,
+        units = unitRepository,
+        taxRates = taxRateRepository,
+        systemRows = systemRowRepository,
+        productUnits = productUnitRepository,
+        priceLists = priceListRepository,
+        productPrices = productPriceRepository,
+    )
+
     /** Las recetas de los combos: la venta solo las lee. */
     val recipeRepository: ProductComponentRepository = object : ProductComponentRepository {
-        override fun observeAll(): Flow<List<RecipeComponent>> = unused()
+        override fun observeAll(): Flow<List<RecipeComponent>> =
+            committed.map { tables -> tables.recipes.values.sortedBy { it.id } }
 
         override fun observeByParent(parentId: Long): Flow<List<RecipeComponent>> = unused()
 

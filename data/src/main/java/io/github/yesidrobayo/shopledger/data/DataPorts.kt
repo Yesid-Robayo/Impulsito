@@ -35,6 +35,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomMoneyAccountRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMovementDocumentSource
+import io.github.yesidrobayo.shopledger.data.repository.RoomOrderRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPayablesSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodBreakdownRepository
@@ -104,6 +105,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
 import io.github.yesidrobayo.shopledger.domain.port.MoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.port.MoneyLedgerRepository
 import io.github.yesidrobayo.shopledger.domain.port.MovementDocumentSource
+import io.github.yesidrobayo.shopledger.domain.port.OrderRepository
 import io.github.yesidrobayo.shopledger.domain.port.PayablesSource
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PeriodBreakdownRepository
@@ -401,6 +403,9 @@ class DataPorts internal constructor(
 
     /** Las cotizaciones y sus líneas: no tocan stock ni dinero, y se convierten una sola vez. */
     val quotes: QuoteRepository = RoomQuoteRepository(database)
+
+    /** Los pedidos y sus líneas: reservan sin tocar el libro de stock hasta entregarse. */
+    val orders: OrderRepository = RoomOrderRepository(database)
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()
