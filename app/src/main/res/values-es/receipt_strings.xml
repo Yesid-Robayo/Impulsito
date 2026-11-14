@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos del comprobante en papel, PDF e imagen. Nunca lo llaman factura. -->
+<resources>
+    <string name="receipt_doc_title">Comprobante de venta</string>
+    <string name="receipt_doc_sale_number">Venta %1$s</string>
+    <string name="receipt_doc_number_status">%1$s · %2$s</string>
+    <string name="receipt_doc_voided">Anulada</string>
+    <string name="receipt_doc_date_time">%1$s, %2$s</string>
+    <string name="receipt_doc_customer">Cliente: %1$s</string>
+    <string name="receipt_doc_line">%1$s %2$s</string>
+    <string name="receipt_doc_subtotal">Subtotal</string>
+    <string name="receipt_doc_discount">Descuento</string>
+    <string name="receipt_doc_surcharge">Recargo</string>
+    <string name="receipt_doc_tax">Impuesto</string>
+    <string name="receipt_doc_tax_included">Incluye %1$s</string>
+    <string name="receipt_doc_rounding">Redondeo</string>
+    <string name="receipt_doc_tip">Propina</string>
+    <string name="receipt_doc_total">Total</string>
+    <string name="receipt_doc_change">Cambio</string>
+    <string name="receipt_doc_balance_due">Saldo pendiente</string>
+    <string name="receipt_doc_return">Devolución %1$s</string>
+</resources>

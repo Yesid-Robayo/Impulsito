@@ -4,10 +4,10 @@ import android.content.res.Resources
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleReceipt
-import io.github.yesidrobayo.shopledger.domain.model.sale.SaleReceiptLine
 import io.github.yesidrobayo.shopledger.format.IcuTextNormalizer
 import io.github.yesidrobayo.shopledger.localization.SeedText
 import io.github.yesidrobayo.shopledger.ui.currency.CurrencySymbolFonts
@@ -19,8 +19,8 @@ import io.github.yesidrobayo.shopledger.ui.format.AppFormats
  * si lo tiene, la fecha, una línea por producto, el total y la leyenda de que no es una factura.
  *
  * Sale de [SaleReceipt], que no tiene costo, ganancia, comisión ni nota: este texto no puede
- * llevarlos. Los textos salen de los recursos en el idioma de la interfaz, y los números del formato
- * regional, como en pantalla.
+ * llevarlos. Los textos salen de los recursos en el idioma de la interfaz, y los números del
+ * formato regional, como en pantalla.
  */
 internal object SaleReceiptText {
     fun of(
@@ -53,7 +53,7 @@ internal object SaleReceiptText {
         val lines = receipt.lines.map { line ->
             resources.getString(
                 R.string.share_receipt_sale_line,
-                quantityOf(line, resources, formats, units[line.unitId]),
+                saleQuantityText(line.quantity, units[line.unitId], resources, formats),
                 line.productName,
                 money(line.total),
             )
@@ -66,26 +66,29 @@ internal object SaleReceiptText {
             .joinToString(SECTION_BREAK) { it.joinToString(LINE_BREAK) }
     }
 
-    /** La cantidad con su unidad, como en pantalla: `2 und` o `0,250 kg`. */
-    private fun quantityOf(
-        line: SaleReceiptLine,
-        resources: Resources,
-        formats: AppFormats,
-        unit: MeasureUnit?,
-    ): String {
-        val symbol =
-            unit?.let {
-                SeedText.unitSymbol(resources, it.systemKey, it.symbol)
-                    ?: SeedText.displayName(resources, SeedTable.UNITS, it.systemKey, it.name)
-            } ?: resources.getString(R.string.seed_units_unit)
-        val number = formats.quantity.format(line.quantity, unit?.allowsFraction ?: false)
-        return if (unit != null && unit.systemKey == null) {
-            resources.getString(R.string.format_custom_unit_quantity, number, symbol)
-        } else {
-            number + IcuTextNormalizer.NO_BREAK_SPACE + symbol
-        }
-    }
-
     private const val LINE_BREAK = "\n"
     private const val SECTION_BREAK = "\n\n"
+}
+
+/**
+ * La cantidad de una línea vendida con su unidad, como en pantalla: `2 und` o `0,250 kg`. Sin
+ * unidad conocida, la genérica. La usan el comprobante en texto y el de papel.
+ */
+internal fun saleQuantityText(
+    quantity: QuantityMilli,
+    unit: MeasureUnit?,
+    resources: Resources,
+    formats: AppFormats,
+): String {
+    val symbol =
+        unit?.let {
+            SeedText.unitSymbol(resources, it.systemKey, it.symbol)
+                ?: SeedText.displayName(resources, SeedTable.UNITS, it.systemKey, it.name)
+        } ?: resources.getString(R.string.seed_units_unit)
+    val number = formats.quantity.format(quantity, unit?.allowsFraction ?: false)
+    return if (unit != null && unit.systemKey == null) {
+        resources.getString(R.string.format_custom_unit_quantity, number, symbol)
+    } else {
+        number + IcuTextNormalizer.NO_BREAK_SPACE + symbol
+    }
 }
