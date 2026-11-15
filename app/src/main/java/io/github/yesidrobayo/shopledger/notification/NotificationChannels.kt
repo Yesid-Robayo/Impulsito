@@ -55,6 +55,9 @@ class NotificationChannels(
         /** El canal de los avisos de vencimiento: un lote que entró en sus días de aviso. */
         const val EXPIRY_CHANNEL_ID = "expiry"
 
+        /** El canal del resumen del día: sin sonido, porque es un aviso que la persona pidió. */
+        const val DAILY_SUMMARY_CHANNEL_ID = "daily_summary"
+
         /**
          * Los canales de la app. Cada aviso suma aquí su canal cuando llega, con un ID que no cambia
          * nunca.
@@ -78,6 +81,12 @@ class NotificationChannels(
                     name = R.string.notif_channel_expiry,
                     description = null,
                     importance = ChannelImportance.DEFAULT,
+                ),
+                NotificationChannelSpec(
+                    id = DAILY_SUMMARY_CHANNEL_ID,
+                    name = R.string.notif_channel_daily_summary,
+                    description = null,
+                    importance = ChannelImportance.LOW,
                 ),
             )
     }

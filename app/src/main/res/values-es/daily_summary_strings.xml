@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Resumen diario: la fila de Ajustes y la notificación local. -->
+    <string name="settings_daily_summary">Resumen diario</string>
+    <string name="settings_daily_summary_off">Apagado</string>
+    <string name="settings_daily_summary_time">Hora del resumen</string>
+    <string name="settings_daily_summary_save">Guardar hora</string>
+    <string name="settings_daily_summary_help">Una notificación de este teléfono, sin internet. Con el teléfono bloqueado no muestra montos, y puede llegar con retraso.</string>
+    <string name="notif_channel_daily_summary">Resumen diario</string>
+    <string name="notif_daily_title">Resumen del día</string>
+    <string name="notif_daily_body">Ventas: %1$s. Total: %2$s. Ganancia en ventas: %3$s.</string>
+    <string name="notif_daily_body_discreet">Ventas de hoy: %1$s.</string>
+    <string name="notif_daily_public">El resumen del día está listo</string>
+</resources>

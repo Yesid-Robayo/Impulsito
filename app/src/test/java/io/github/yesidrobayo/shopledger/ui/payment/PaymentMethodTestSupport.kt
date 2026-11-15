@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.LocalTime
 
 // Apoyo de las pruebas de las pantallas de métodos de pago. Nombres y comisiones inventados, sin
 // marcas.
@@ -247,6 +248,9 @@ internal object NoSettings : AppSettingsRepository {
     override suspend fun updateCostStaleDays(days: Int, updatedAt: Instant) = error("Solo lectura")
 
     override suspend fun updateExpiryNoticeDays(days: Int, updatedAt: Instant) =
+        error("Solo lectura")
+
+    override suspend fun updateDailySummaryTime(time: LocalTime?, updatedAt: Instant) =
         error("Solo lectura")
 
     override suspend fun updateReceiptTemplate(

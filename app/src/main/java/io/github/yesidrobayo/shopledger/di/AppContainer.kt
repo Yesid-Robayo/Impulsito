@@ -26,6 +26,8 @@ import io.github.yesidrobayo.shopledger.lock.AppLock
 import io.github.yesidrobayo.shopledger.notification.AndroidBackupNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidLowStockNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidReminderNotifier
+import io.github.yesidrobayo.shopledger.notification.DailySummaryDelivery
+import io.github.yesidrobayo.shopledger.notification.DailySummaryScheduler
 import io.github.yesidrobayo.shopledger.notification.ExpiryNoticeDelivery
 import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
@@ -129,6 +131,14 @@ class AppContainer(application: Application) {
             clock = clock,
             log = log,
         )
+    }
+
+    /**
+     * El resumen del día: la actividad principal sigue su hora al abrir la base y programa, o
+     * cancela, el trabajo del teléfono que lo muestra.
+     */
+    val dailySummaryDelivery: DailySummaryDelivery by lazy {
+        DailySummaryDelivery(applicationScope, DailySummaryScheduler(application), clock, log)
     }
 
     /**

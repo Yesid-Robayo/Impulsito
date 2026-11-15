@@ -340,6 +340,7 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 tipsSaveFailed = uiState.saveFailed,
                 profile = uiState.profile,
                 costStaleDays = uiState.costStaleDays,
+                dailySummary = { DailySummarySetting() },
                 profileSheet = uiState.profileSheet,
                 onProfileAction = viewModel::onProfileAction,
                 security = securityState,

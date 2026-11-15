@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.ReferenceCurrency
 import io.github.yesidrobayo.shopledger.domain.model.settings.RegionalSettingsInput
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.LocalTime
 
 /**
  * Los ajustes, de su única fila, que la base crea al nacer.
@@ -82,6 +83,12 @@ interface AppSettingsRepository {
      * Los días antes del vencimiento de un lote en que se avisa, salvo que el producto fije otros.
      */
     suspend fun updateExpiryNoticeDays(days: Int, updatedAt: Instant)
+
+    /**
+     * La hora del resumen del día, en la zona del negocio, o `null` para apagarlo. Solo dentro de
+     * [TransactionRunner.write]: es un dato del negocio y cuenta como cambio.
+     */
+    suspend fun updateDailySummaryTime(time: LocalTime?, updatedAt: Instant)
 
     /**
      * Guarda la plantilla del comprobante: el logo, los datos del negocio y el pie, cada uno o

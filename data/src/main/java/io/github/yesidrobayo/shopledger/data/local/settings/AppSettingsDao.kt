@@ -140,6 +140,12 @@ internal interface AppSettingsDao {
     )
     suspend fun updateExpiryNoticeDays(days: Long, updatedAt: Long): Int
 
+    /** La hora del resumen del día, `HH:mm`, o `null` para apagarlo. */
+    @Query(
+        "UPDATE app_settings SET daily_summary_time = :time, updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateDailySummaryTime(time: String?, updatedAt: Long): Int
+
     /** La plantilla del comprobante, sin tocar la dirección del portal de trámites. */
     @Query(
         "UPDATE app_settings SET receipt_logo_media_id = :logoMediaId, " +

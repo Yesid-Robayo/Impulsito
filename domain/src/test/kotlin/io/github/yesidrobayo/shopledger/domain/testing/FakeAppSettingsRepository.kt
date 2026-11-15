@@ -29,6 +29,7 @@ import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalTime
 
 /**
  * Ajustes regionales de prueba, con la zona y la semana por parámetro y una moneda reservada para
@@ -199,6 +200,14 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
         settings.value = current.copy(
             updatedAt = updatedAt,
             notices = current.notices.copy(expiryNoticeDays = days),
+        )
+    }
+
+    override suspend fun updateDailySummaryTime(time: LocalTime?, updatedAt: Instant) {
+        val current = settings.value
+        settings.value = current.copy(
+            updatedAt = updatedAt,
+            notices = current.notices.copy(dailySummaryTime = time),
         )
     }
 

@@ -96,6 +96,17 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
         }
     }
 
+    override suspend fun updateDailySummaryTime(time: LocalTime?, updatedAt: Instant) {
+        writes.inTransaction {
+            requireOneRow(
+                settings.updateDailySummaryTime(
+                    time?.let(::storedText),
+                    updatedAt.toStoredMillis(),
+                ),
+            )
+        }
+    }
+
     override suspend fun updateReceiptTemplate(
         logoMediaId: Long?,
         businessDetails: String?,
@@ -313,6 +324,10 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
     /** El día con que empieza la semana, de 1, lunes, a 7, domingo, como en ISO 8601. */
     private fun storedWeekDay(isoDay: Long): DayOfWeek =
         DayOfWeek.entries.firstOrNull { it.isoDayNumber.toLong() == isoDay } ?: brokenRow()
+
+    /** [time] como se guarda, `HH:mm`, sin segundos. */
+    private fun storedText(time: LocalTime): String =
+        "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
 
     /** La hora guardada como `HH:mm`. */
     private fun storedTime(text: String): LocalTime = if (STORED_TIME.matches(text)) {

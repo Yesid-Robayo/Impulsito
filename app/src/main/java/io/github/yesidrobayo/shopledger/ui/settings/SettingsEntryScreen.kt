@@ -102,6 +102,7 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE, SUPPORT }
  * @param onRetryPalette vuelve a elegir la paleta que no se guardó.
  * @param support las líneas de `Información para soporte`, sin datos del negocio.
  * @param onCopySupport copia esas líneas al portapapeles.
+ * @param dailySummary `Resumen diario`, en `Avisos`, con su propio estado.
  */
 @Composable
 fun SettingsEntryScreen(
@@ -133,6 +134,7 @@ fun SettingsEntryScreen(
     onCopySupport: () -> Unit = {},
     readFailed: Boolean = false,
     onRetryRead: () -> Unit = {},
+    dailySummary: @Composable () -> Unit = {},
 ) {
     var aboutSheet by rememberSaveable { mutableStateOf<AboutSheet?>(null) }
     var rangeOpen by rememberSaveable { mutableStateOf(false) }
@@ -200,6 +202,7 @@ fun SettingsEntryScreen(
                 usage?.let {
                     AlertsGroup(it, notificationsBlocked, onUsageAction) {
                         costStaleDays?.let { days -> CostStaleDaysRow(days, onProfileAction) }
+                        dailySummary()
                     }
                 }
                 if (profile != null) {
