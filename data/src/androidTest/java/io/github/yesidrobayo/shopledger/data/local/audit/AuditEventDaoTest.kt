@@ -111,7 +111,8 @@ internal class AuditEventDaoTest : CatalogDatabaseTest() {
     @Test
     fun noFunctionEditsAnEvent() {
         assertEquals(
-            setOf("observeLatest", "insert", "pruneOldest"),
+            // `observeLatestFailures` solo lee, como `observeLatest`.
+            setOf("observeLatest", "observeLatestFailures", "insert", "pruneOldest"),
             functionsOf(AuditEventDao::class.java),
         )
     }

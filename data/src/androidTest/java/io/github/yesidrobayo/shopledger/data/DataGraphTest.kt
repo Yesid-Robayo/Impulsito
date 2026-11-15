@@ -103,9 +103,13 @@ class DataGraphTest {
             assertTrue(askedFrom.isEmpty())
 
             graph.open()
+            // Al abrir se pide en el disco, también para mirar si quedó un borrado a medias.
+            assertTrue(askedFrom.isNotEmpty() && askedFrom.all { it == IO_THREAD })
+            val firstOpen = askedFrom.toList()
             graph.open()
 
-            assertEquals(listOf(IO_THREAD), askedFrom)
+            // Abrir otra vez no la pide: la base ya está abierta.
+            assertEquals(firstOpen, askedFrom)
         } finally {
             executor.shutdown()
         }
