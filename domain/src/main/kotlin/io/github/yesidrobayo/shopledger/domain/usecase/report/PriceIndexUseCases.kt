@@ -207,5 +207,4 @@ class ObserveRealComparisonUseCase(
 }
 
 /** El mes de [date]. */
-internal fun yearMonthOf(date: BusinessDate): YearMonth =
-    YearMonth(date.date.year, date.date.month)
+internal fun yearMonthOf(date: BusinessDate): YearMonth = YearMonth(date.date.year, date.date.month)

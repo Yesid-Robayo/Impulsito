@@ -78,13 +78,12 @@ class AndroidRevenueLimitNotifier(
     }
 
     /** Lo único que se ve con el teléfono bloqueado. Al tocarla se abre la pantalla. */
-    private fun publicVersion(context: Context): Notification =
-        builder(
-            context.getString(R.string.notif_limit_public, context.getString(R.string.app_name)),
-        )
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(open())
-            .build()
+    private fun publicVersion(context: Context): Notification = builder(
+        context.getString(R.string.notif_limit_public, context.getString(R.string.app_name)),
+    )
+        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        .setContentIntent(open())
+        .build()
 
     private fun builder(title: String): NotificationCompat.Builder = NotificationCompat
         .Builder(app, NotificationChannels.LIMITS_CHANNEL_ID)

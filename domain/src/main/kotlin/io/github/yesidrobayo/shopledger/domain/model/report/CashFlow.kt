@@ -25,11 +25,7 @@ data class CashFlowSums(
  * aparte por sus fechas: lo que se acredita después de hoy, lo que vence por cobrar y lo que vence
  * por pagar. Los tres van en positivo.
  */
-data class CashFlowWindow(
-    val settlements: Money,
-    val receivables: Money,
-    val payables: Money,
-)
+data class CashFlowWindow(val settlements: Money, val receivables: Money, val payables: Money)
 
 /**
  * El flujo de caja proyectado: [availableToday], lo que se puede usar hoy, y cada horizonte con su

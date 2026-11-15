@@ -105,30 +105,29 @@ class ManagementSummaryViewModelTest {
         }
 
     @Test
-    fun `while the next period loads the figures of the previous one stay`() =
-        runTest(dispatcher) {
-            summaries.value = mapOf(october to summary(october))
-            val slow = MutableStateFlow<ManagementSummary?>(null)
-            val model = model(
-                observe = { period, _ ->
-                    if (period == october) {
-                        summaries.map { it[period] }
-                    } else {
-                        flow { slow.collect { if (it != null) emit(it) } }
-                    }
-                },
-            )
-            advanceUntilIdle()
+    fun `while the next period loads the figures of the previous one stay`() = runTest(dispatcher) {
+        summaries.value = mapOf(october to summary(october))
+        val slow = MutableStateFlow<ManagementSummary?>(null)
+        val model = model(
+            observe = { period, _ ->
+                if (period == october) {
+                    summaries.map { it[period] }
+                } else {
+                    flow { slow.collect { if (it != null) emit(it) } }
+                }
+            },
+        )
+        advanceUntilIdle()
 
-            model.onAction(SummaryAction.PreviousPeriod)
-            advanceUntilIdle()
-            assertEquals(october, model.uiState.value.summary?.period)
+        model.onAction(SummaryAction.PreviousPeriod)
+        advanceUntilIdle()
+        assertEquals(october, model.uiState.value.summary?.period)
 
-            val september = ReportPeriod.Month(YearMonth(2026, 9))
-            slow.value = summary(september)
-            advanceUntilIdle()
-            assertEquals(september, model.uiState.value.summary?.period)
-        }
+        val september = ReportPeriod.Month(YearMonth(2026, 9))
+        slow.value = summary(september)
+        advanceUntilIdle()
+        assertEquals(september, model.uiState.value.summary?.period)
+    }
 
     @Test
     fun `a chosen range replaces the month, in any order`() = runTest(dispatcher) {

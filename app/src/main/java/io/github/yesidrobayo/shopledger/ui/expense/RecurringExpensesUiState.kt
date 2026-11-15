@@ -56,10 +56,8 @@ sealed interface RecurringContent {
     data object UnknownZone : RecurringContent
 
     /** Los vigentes: [due] esperan confirmación, del más atrasado al más reciente. */
-    data class Active(
-        val due: List<RecurringExpense>,
-        val scheduled: List<RecurringExpense>,
-    ) : RecurringContent
+    data class Active(val due: List<RecurringExpense>, val scheduled: List<RecurringExpense>) :
+        RecurringContent
 
     /** Los archivados, que ya no se proponen. Vacía si no hay ninguno. */
     data class Archived(val items: List<RecurringExpense>) : RecurringContent

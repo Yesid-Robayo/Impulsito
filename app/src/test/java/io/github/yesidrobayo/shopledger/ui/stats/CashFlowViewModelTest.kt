@@ -60,21 +60,20 @@ class CashFlowViewModelTest {
         }
 
     @Test
-    fun `a failed read stays until retrying, and coming back reads again`() =
-        runTest(dispatcher) {
-            fail = true
-            val model = CashFlowViewModel { observe() }
-            advanceUntilIdle()
-            assertEquals(CashFlowUiState.Failed, model.uiState.value)
+    fun `a failed read stays until retrying, and coming back reads again`() = runTest(dispatcher) {
+        fail = true
+        val model = CashFlowViewModel { observe() }
+        advanceUntilIdle()
+        assertEquals(CashFlowUiState.Failed, model.uiState.value)
 
-            fail = false
-            read.value = projection
-            model.retry()
-            advanceUntilIdle()
-            assertEquals(CashFlowUiState.Ready(projection), model.uiState.value)
+        fail = false
+        read.value = projection
+        model.retry()
+        advanceUntilIdle()
+        assertEquals(CashFlowUiState.Ready(projection), model.uiState.value)
 
-            model.onReturnToForeground()
-            advanceUntilIdle()
-            assertEquals(3, reads)
-        }
+        model.onReturnToForeground()
+        advanceUntilIdle()
+        assertEquals(3, reads)
+    }
 }

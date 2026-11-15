@@ -318,7 +318,6 @@ class RecurringExpensesViewModel(
                 is SkipRecurringExpenseResult.Skipped ->
                     RecurringMessage.Skipped(result.nextDueDate)
 
-
                 SkipRecurringExpenseResult.AlreadyHandled,
                 SkipRecurringExpenseResult.Archived,
                 SkipRecurringExpenseResult.NotFound,
@@ -370,7 +369,9 @@ class RecurringExpensesViewModel(
         done: RecurringMessage,
     ): RecurringMessage = when (result) {
         RecurringExpenseLifecycleResult.Done, RecurringExpenseLifecycleResult.Unchanged -> done
+
         RecurringExpenseLifecycleResult.NotFound -> RecurringMessage.AlreadyHandled
+
         is RecurringExpenseLifecycleResult.StorageFailed ->
             RecurringMessage.Failed(result.failure.isOutOfSpace)
     }
@@ -390,15 +391,21 @@ class RecurringExpensesViewModel(
             RecurringFormError.AMOUNT_ZERO.takeIf { amount.value <= Money.ZERO }
 
         NumberInput.Blank -> RecurringFormError.AMOUNT_ZERO
+
         NumberInput.Malformed -> RecurringFormError.AMOUNT_NOT_A_NUMBER
+
         is NumberInput.TooManyDecimals -> RecurringFormError.AMOUNT_DECIMALS
+
         is NumberInput.TooLarge -> RecurringFormError.AMOUNT_TOO_HIGH
     }
 
     private fun formError(error: RecurringExpenseInputError): RecurringFormError = when (error) {
         RecurringExpenseInputError.AMOUNT_NOT_POSITIVE -> RecurringFormError.AMOUNT_ZERO
+
         RecurringExpenseInputError.AMOUNT_TOO_LARGE -> RecurringFormError.AMOUNT_TOO_HIGH
+
         RecurringExpenseInputError.DESCRIPTION_TOO_LONG -> RecurringFormError.DESCRIPTION_TOO_LONG
+
         RecurringExpenseInputError.DAY_OUT_OF_RANGE,
         RecurringExpenseInputError.NEXT_DATE_MISMATCH,
         -> RecurringFormError.DAY_INVALID

@@ -47,15 +47,15 @@ class ProfitConcentrationRulesTest {
 
     @Test
     fun `a product enters while what came before it is still under 80 percent`() {
-        // 7999 antes del segundo: no llega al 80 % de 10000, así que el segundo entra. Con él se
-        // llega justo a 8000, y el tercero ya no.
+        // De mayor a menor: 7999, 1001 y 1000, de 10000. Antes del segundo van 7999, que no
+        // llegan al 80 %, así que entra aunque con él se pase a 9000. El tercero ya no.
         val products =
-            listOf(sales(1, profit = 7_999), sales(2, profit = 1), sales(3, profit = 2_000))
+            listOf(sales(1, profit = 7_999), sales(2, profit = 1_000), sales(3, profit = 1_001))
 
         val leaders = ProfitConcentrationRules.of(products) as ProfitConcentration.Leaders
 
-        assertEquals(listOf(1L, 2L), leaders.leaders.map { it.productId })
-        assertEquals(BasisPoints(8_000), leaders.reachedShare)
+        assertEquals(listOf(1L, 3L), leaders.leaders.map { it.productId })
+        assertEquals(BasisPoints(9_000), leaders.reachedShare)
     }
 
     @Test
@@ -160,15 +160,14 @@ class ProfitConcentrationRulesTest {
         assertFalse(none.copy(customers = listOf(buyer)).isEmpty)
     }
 
-    private fun sales(id: Long, profit: Long) =
-        ProductSales(
-            id,
-            "Producto $id",
-            1,
-            QuantityMilli(1_000),
-            Money(profit),
-            Money.ZERO,
-        )
+    private fun sales(id: Long, profit: Long) = ProductSales(
+        id,
+        "Producto $id",
+        1,
+        QuantityMilli(1_000),
+        Money(profit),
+        Money.ZERO,
+    )
 
     private fun variant(id: Long, profit: Long) = sales(id, profit).copy(
         name = "Camiseta · $id",

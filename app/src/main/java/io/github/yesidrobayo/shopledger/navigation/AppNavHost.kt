@@ -450,7 +450,9 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         AppNavKey.ManagementSummary ->
             ManagementSummaryRoute(AppNavKey.ManagementSummary, navigator)
+
         AppNavKey.PriceIndex -> PriceIndexRoute(navigator)
+
         AppNavKey.GoalsAndLimits -> GoalsRoute(navigator)
 
         else -> PlaceholderRoute(key, navigator)

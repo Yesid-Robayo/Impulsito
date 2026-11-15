@@ -123,9 +123,7 @@ fun GoalsRoute(navigator: AppNavigator) {
             GoalsScreen(uiState) { action ->
                 when (action) {
                     GoalsAction.Back -> navigator.back()
-
                     GoalsAction.ChooseZone -> navigator.open(AppNavKey.RegionalSettings())
-
                     else -> viewModel.onAction(action)
                 }
             }
@@ -166,11 +164,8 @@ fun GoalsScreen(
             ) {
                 when (uiState) {
                     GoalsUiState.Loading -> LoadingSkeleton()
-
                     GoalsUiState.ReadFailed -> ReadFailed(onAction)
-
                     GoalsUiState.UnknownZone -> UnknownZone(onAction)
-
                     is GoalsUiState.Ready -> ReadyBody(uiState, onAction)
                 }
             }

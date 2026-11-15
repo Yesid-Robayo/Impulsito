@@ -26,10 +26,8 @@ import kotlinx.coroutines.withContext
  * Escribir va a un temporal que se sincroniza y se renombra encima: un corte deja la línea de
  * antes o la nueva. Leer toma a lo sumo [MAX_BYTES] bytes. Todo toca el disco en [io].
  */
-class LimitNoticeFile(
-    private val directory: () -> File,
-    private val io: CoroutineContext,
-) : LimitNoticeStore {
+class LimitNoticeFile(private val directory: () -> File, private val io: CoroutineContext) :
+    LimitNoticeStore {
     override suspend fun read(): LimitNoticeMark? = withContext(io) {
         val target = File(directory(), FILE_NAME)
         if (!target.isFile) {

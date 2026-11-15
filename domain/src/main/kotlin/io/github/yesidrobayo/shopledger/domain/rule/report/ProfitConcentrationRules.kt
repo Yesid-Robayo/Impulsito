@@ -68,17 +68,16 @@ object ProfitConcentrationRules {
     }
 
     /** Lo vendido por producto, con las variantes sumadas en su principal. */
-    private fun families(products: List<ProductSales>): List<Family> =
-        products
-            .groupBy { it.variantOf?.parentId ?: it.productId }
-            .map { (id, rows) ->
-                val parentName = rows.firstNotNullOfOrNull { it.variantOf?.parentName }
-                Family(
-                    id = id,
-                    name = parentName ?: rows.first().name,
-                    profit = rows.fold(Money.ZERO) { sum, row -> sum + (row.netSales - row.cost) },
-                )
-            }
+    private fun families(products: List<ProductSales>): List<Family> = products
+        .groupBy { it.variantOf?.parentId ?: it.productId }
+        .map { (id, rows) ->
+            val parentName = rows.firstNotNullOfOrNull { it.variantOf?.parentName }
+            Family(
+                id = id,
+                name = parentName ?: rows.first().name,
+                profit = rows.fold(Money.ZERO) { sum, row -> sum + (row.netSales - row.cost) },
+            )
+        }
 
     private class Family(val id: Long, val name: String, val profit: Money)
 

@@ -87,29 +87,28 @@ class ManagementSummaryUseCasesTest {
     )
 
     @Test
-    fun `the summary reads the statistics sums, the tax, the methods and the notices`() =
-        runTest {
-            reports.totals.value = mapOf(october to totals(net = 4_250_000, cost = 2_720_000))
+    fun `the summary reads the statistics sums, the tax, the methods and the notices`() = runTest {
+        reports.totals.value = mapOf(october to totals(net = 4_250_000, cost = 2_720_000))
 
-            val summary = requireNotNull(observe()(october, calendar).first())
+        val summary = requireNotNull(observe()(october, calendar).first())
 
-            assertEquals(Money(4_250_000), summary.profit.netSales)
-            assertEquals(Money(1_530_000), summary.profit.grossProfit)
-            val tax = TaxEstimate(collected = Money(510_000), paid = Money(120_000))
-            assertEquals(tax, summary.tax)
-            assertEquals(breakdowns.methods, summary.methods)
-            assertEquals(3L, summary.salesWithoutCost)
-            assertEquals(
-                listOf(
-                    SummaryContent.SALES_AND_PAYMENTS,
-                    SummaryContent.PURCHASES_AND_EXPENSES,
-                    SummaryContent.CLOSING_INVENTORY,
-                ),
-                summary.contents,
-            )
-            // Octubre termina el 1 de noviembre a las 00:00 en la zona del negocio, 05:00 en UTC.
-            assertEquals(Instant.parse("2026-11-01T05:00:00Z"), breakdowns.askedEnd)
-        }
+        assertEquals(Money(4_250_000), summary.profit.netSales)
+        assertEquals(Money(1_530_000), summary.profit.grossProfit)
+        val tax = TaxEstimate(collected = Money(510_000), paid = Money(120_000))
+        assertEquals(tax, summary.tax)
+        assertEquals(breakdowns.methods, summary.methods)
+        assertEquals(3L, summary.salesWithoutCost)
+        assertEquals(
+            listOf(
+                SummaryContent.SALES_AND_PAYMENTS,
+                SummaryContent.PURCHASES_AND_EXPENSES,
+                SummaryContent.CLOSING_INVENTORY,
+            ),
+            summary.contents,
+        )
+        // Octubre termina el 1 de noviembre a las 00:00 en la zona del negocio, 05:00 en UTC.
+        assertEquals(Instant.parse("2026-11-01T05:00:00Z"), breakdowns.askedEnd)
+    }
 
     @Test
     fun `without tax in the business the summary has no tax row`() = runTest {
@@ -235,20 +234,19 @@ class ManagementSummaryUseCasesTest {
         }
     }
 
-    private fun totals(net: Long = 0, refund: Long = 0, cost: Long = 0) =
-        PeriodTotals(
-            ProfitTotals(
-                salesNetTotal = Money(net),
-                returnsNetRefund = Money(refund),
-                salesTotalCost = Money(cost),
-                returnsCostReturned = Money.ZERO,
-                recordedExpenses = Money.ZERO,
-                netShrinkage = Money.ZERO,
-                paymentFees = Money.ZERO,
-                cashRoundingTotal = Money.ZERO,
-            ),
-            salesCount = 1,
-        )
+    private fun totals(net: Long = 0, refund: Long = 0, cost: Long = 0) = PeriodTotals(
+        ProfitTotals(
+            salesNetTotal = Money(net),
+            returnsNetRefund = Money(refund),
+            salesTotalCost = Money(cost),
+            returnsCostReturned = Money.ZERO,
+            recordedExpenses = Money.ZERO,
+            netShrinkage = Money.ZERO,
+            paymentFees = Money.ZERO,
+            cashRoundingTotal = Money.ZERO,
+        ),
+        salesCount = 1,
+    )
 
     private fun date(year: Int, month: Int, day: Int) = BusinessDate(LocalDate(year, month, day))
 

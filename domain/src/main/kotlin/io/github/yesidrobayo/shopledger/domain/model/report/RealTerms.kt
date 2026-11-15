@@ -14,11 +14,7 @@ import kotlinx.datetime.YearMonth
  * @param change la variación del mes, con signo, en puntos básicos: `+1,9 %` son 190.
  * @param sourceNote de dónde la sacó la persona, con sus palabras, o `null`.
  */
-data class PriceIndexEntry(
-    val month: YearMonth,
-    val change: BasisPoints,
-    val sourceNote: String?,
-)
+data class PriceIndexEntry(val month: YearMonth, val change: BasisPoints, val sourceNote: String?)
 
 /**
  * El índice para `Índice de precios`: los meses, del más reciente al más antiguo, y los que faltan

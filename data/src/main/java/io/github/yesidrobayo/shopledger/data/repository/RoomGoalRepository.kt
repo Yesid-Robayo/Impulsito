@@ -79,9 +79,8 @@ internal class RoomGoalRepository(database: AppDatabase) : GoalRepository {
  * El texto `AAAA-MM` con que se guarda un mes. Se arma con las cifras, sin el formato del
  * teléfono: con otra región, `String.format` podría escribir cifras de otro sistema.
  */
-internal fun YearMonth.toStoredMonth(): String =
-    year.toString().padStart(YEAR_DIGITS, '0') + "-" +
-        month.number.toString().padStart(MONTH_DIGITS, '0')
+internal fun YearMonth.toStoredMonth(): String = year.toString().padStart(YEAR_DIGITS, '0') + "-" +
+    month.number.toString().padStart(MONTH_DIGITS, '0')
 
 private const val YEAR_DIGITS = 4
 private const val MONTH_DIGITS = 2

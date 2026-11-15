@@ -43,18 +43,17 @@ internal class RoomPriceIndexRepository(database: AppDatabase) : PriceIndexRepos
         }
     }
 
-    override fun observeEntries(): Flow<List<PriceIndexEntry>> =
-        entries.observeAll()
-            .map { rows ->
-                rows.map { row ->
-                    PriceIndexEntry(
-                        month = YearMonth.parse(row.month),
-                        change = BasisPoints(row.changeBp),
-                        sourceNote = row.sourceNote,
-                    )
-                }
+    override fun observeEntries(): Flow<List<PriceIndexEntry>> = entries.observeAll()
+        .map { rows ->
+            rows.map { row ->
+                PriceIndexEntry(
+                    month = YearMonth.parse(row.month),
+                    change = BasisPoints(row.changeBp),
+                    sourceNote = row.sourceNote,
+                )
             }
-            .distinctUntilChanged()
+        }
+        .distinctUntilChanged()
 
     override suspend fun insertEntry(entry: PriceIndexEntry, createdAt: Instant): Long =
         writes.inTransaction {

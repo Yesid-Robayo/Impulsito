@@ -134,11 +134,7 @@ fun ManagementSummaryRoute(key: AppNavKey, navigator: AppNavigator) {
 }
 
 /** Lo que la pantalla hace con el paquete listo: compartirlo, guardarlo o vaciar la carpeta. */
-private class SummaryFiles(
-    val share: () -> Unit,
-    val save: () -> Unit,
-    val clear: () -> Unit,
-)
+private class SummaryFiles(val share: () -> Unit, val save: () -> Unit, val clear: () -> Unit)
 
 /**
  * Escribe el paquete que pide [viewModel] y da qué hacer con él. Sin [writer], que solo falta

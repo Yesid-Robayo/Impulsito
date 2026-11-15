@@ -89,7 +89,9 @@ fun StatisticsRoute(navigator: AppNavigator) {
                             navigator.open(AppNavKey.RegionalSettings())
 
                         StatisticsAction.OpenSummary -> navigator.open(AppNavKey.ManagementSummary)
+
                         StatisticsAction.OpenPriceIndex -> navigator.open(AppNavKey.PriceIndex)
+
                         StatisticsAction.OpenCategories -> navigator.open(AppNavKey.Categories)
 
                         is StatisticsAction.SelectKind,

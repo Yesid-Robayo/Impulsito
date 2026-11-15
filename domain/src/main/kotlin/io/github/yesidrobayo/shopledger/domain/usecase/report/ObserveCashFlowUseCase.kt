@@ -38,31 +38,30 @@ class ObserveCashFlowUseCase(
     private val calendar: BusinessCalendarSource,
     private val clock: Clock,
 ) {
-    operator fun invoke(dayChecks: Flow<Unit> = flowOf(Unit)): Flow<CashFlowProjection?> =
-        combine(
-            calendar.observe(),
-            usage.observe().map { BusinessTool.MONEY_ACCOUNTS in it }.distinctUntilChanged(),
-            dayChecks,
-        ) { result, inUse, _ ->
-            when (result) {
-                is BusinessCalendarResult.Ready ->
-                    result.calendar.businessDateOf(clock.now()).takeIf { inUse }
+    operator fun invoke(dayChecks: Flow<Unit> = flowOf(Unit)): Flow<CashFlowProjection?> = combine(
+        calendar.observe(),
+        usage.observe().map { BusinessTool.MONEY_ACCOUNTS in it }.distinctUntilChanged(),
+        dayChecks,
+    ) { result, inUse, _ ->
+        when (result) {
+            is BusinessCalendarResult.Ready ->
+                result.calendar.businessDateOf(clock.now()).takeIf { inUse }
 
-                is BusinessCalendarResult.UnknownZone -> null
+            is BusinessCalendarResult.UnknownZone -> null
+        }
+    }.distinctUntilChanged().flatMapLatest { today ->
+        if (today == null) {
+            flowOf(null)
+        } else {
+            val sums = source.observe(
+                today,
+                today.plusDays(CashFlowRules.SHORT_DAYS),
+                today.plusDays(CashFlowRules.LONG_DAYS),
+            )
+            combine(sums, recurring.observe(ArchiveFilter.ACTIVE)) { read, active ->
+                read.takeIf { it.accountCount > 0 }
+                    ?.let { CashFlowRules.project(today, it, active) }
             }
-        }.distinctUntilChanged().flatMapLatest { today ->
-            if (today == null) {
-                flowOf(null)
-            } else {
-                val sums = source.observe(
-                    today,
-                    today.plusDays(CashFlowRules.SHORT_DAYS),
-                    today.plusDays(CashFlowRules.LONG_DAYS),
-                )
-                combine(sums, recurring.observe(ArchiveFilter.ACTIVE)) { read, active ->
-                    read.takeIf { it.accountCount > 0 }
-                        ?.let { CashFlowRules.project(today, it, active) }
-                }
-            }
-        }.distinctUntilChanged()
+        }
+    }.distinctUntilChanged()
 }

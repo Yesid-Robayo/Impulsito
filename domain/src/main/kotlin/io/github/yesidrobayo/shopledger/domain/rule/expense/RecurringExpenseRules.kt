@@ -29,7 +29,7 @@ object RecurringExpenseRules {
         if (!Limit.DOCUMENT_TOTAL.allows(amount.minor)) {
             errors += RecurringExpenseInputError.AMOUNT_TOO_LARGE
         }
-        val description = draft.description?.trim()?.ifEmpty { null }
+        val description = draft.description?.let { text -> text.trim().ifEmpty { null } }
         if (description != null && CatalogText.length(description) > DESCRIPTION_MAX) {
             errors += RecurringExpenseInputError.DESCRIPTION_TOO_LONG
         }

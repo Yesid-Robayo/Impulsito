@@ -98,13 +98,12 @@ class AnalysisViewModel(private val analysis: (ReportPeriod) -> Flow<PeriodAnaly
                 AnalysisUiState.Loading,
             )
 
-    private fun stateOf(shown: ReportPeriod): Flow<AnalysisUiState> =
-        analysis(shown)
-            .map<PeriodAnalysis, AnalysisUiState> { found ->
-                if (found.isEmpty) AnalysisUiState.Hidden else AnalysisUiState.Ready(found)
-            }
-            // Una falla de lectura no cierra la pantalla: lo dice aquí y deja reintentar.
-            .catch { emit(AnalysisUiState.ReadError) }
+    private fun stateOf(shown: ReportPeriod): Flow<AnalysisUiState> = analysis(shown)
+        .map<PeriodAnalysis, AnalysisUiState> { found ->
+            if (found.isEmpty) AnalysisUiState.Hidden else AnalysisUiState.Ready(found)
+        }
+        // Una falla de lectura no cierra la pantalla: lo dice aquí y deja reintentar.
+        .catch { emit(AnalysisUiState.ReadError) }
 
     /** Muestra el análisis de [shown]. Repetir el mismo período no vuelve a leer. */
     fun show(shown: ReportPeriod) {

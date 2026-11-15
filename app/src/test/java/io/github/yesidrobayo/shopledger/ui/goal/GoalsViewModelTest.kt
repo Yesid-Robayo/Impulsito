@@ -151,42 +151,40 @@ class GoalsViewModelTest {
     }
 
     @Test
-    fun `the sheet opens with the saved goals and saves what was typed`() =
-        runTest(dispatcher) {
-            goals.value = mapOf(november to MonthGoals(november, Money(100_000_000), null))
-            val model = model()
+    fun `the sheet opens with the saved goals and saves what was typed`() = runTest(dispatcher) {
+        goals.value = mapOf(november to MonthGoals(november, Money(100_000_000), null))
+        val model = model()
 
-            model.onAction(GoalsAction.StartGoals)
-            advanceUntilIdle()
-            val sheet = requireNotNull(model.ready().sheet)
-            assertTrue(sheet.editing)
-            assertEquals("1000000", sheet.salesText)
-            assertEquals("", sheet.profitText)
+        model.onAction(GoalsAction.StartGoals)
+        advanceUntilIdle()
+        val sheet = requireNotNull(model.ready().sheet)
+        assertTrue(sheet.editing)
+        assertEquals("1000000", sheet.salesText)
+        assertEquals("", sheet.profitText)
 
-            model.onAction(GoalsAction.ProfitText("3000,5"))
-            model.onAction(GoalsAction.SaveGoals)
-            advanceUntilIdle()
+        model.onAction(GoalsAction.ProfitText("3000,5"))
+        model.onAction(GoalsAction.SaveGoals)
+        advanceUntilIdle()
 
-            assertEquals(listOf(Triple(november, Money(100_000_000), Money(300_050))), saved)
-            assertNull(model.ready().sheet)
-            assertEquals(GoalMessage.Saved, model.ready().message)
-        }
+        assertEquals(listOf(Triple(november, Money(100_000_000), Money(300_050))), saved)
+        assertNull(model.ready().sheet)
+        assertEquals(GoalMessage.Saved, model.ready().message)
+    }
 
     @Test
-    fun `a zero or a malformed amount stays in the sheet with its problem`() =
-        runTest(dispatcher) {
-            val model = model()
-            model.onAction(GoalsAction.StartGoals)
-            model.onAction(GoalsAction.SalesText("0"))
-            model.onAction(GoalsAction.ProfitText("1,2,3"))
-            model.onAction(GoalsAction.SaveGoals)
-            advanceUntilIdle()
+    fun `a zero or a malformed amount stays in the sheet with its problem`() = runTest(dispatcher) {
+        val model = model()
+        model.onAction(GoalsAction.StartGoals)
+        model.onAction(GoalsAction.SalesText("0"))
+        model.onAction(GoalsAction.ProfitText("1,2,3"))
+        model.onAction(GoalsAction.SaveGoals)
+        advanceUntilIdle()
 
-            val sheet = requireNotNull(model.ready().sheet)
-            assertEquals(GoalFieldProblem.NOT_POSITIVE, sheet.salesProblem)
-            assertEquals(GoalFieldProblem.NOT_A_NUMBER, sheet.profitProblem)
-            assertTrue(saved.isEmpty())
-        }
+        val sheet = requireNotNull(model.ready().sheet)
+        assertEquals(GoalFieldProblem.NOT_POSITIVE, sheet.salesProblem)
+        assertEquals(GoalFieldProblem.NOT_A_NUMBER, sheet.profitProblem)
+        assertTrue(saved.isEmpty())
+    }
 
     @Test
     fun `both fields empty remove the goals of the month`() = runTest(dispatcher) {
@@ -210,23 +208,22 @@ class GoalsViewModelTest {
     }
 
     @Test
-    fun `a new limit opens with twelve months and saves amount and months`() =
-        runTest(dispatcher) {
-            val model = model()
-            model.onAction(GoalsAction.StartLimit)
-            advanceUntilIdle()
-            val sheet = requireNotNull(model.ready().limitSheet)
-            assertFalse(sheet.editing)
-            assertEquals("12", sheet.monthsText)
+    fun `a new limit opens with twelve months and saves amount and months`() = runTest(dispatcher) {
+        val model = model()
+        model.onAction(GoalsAction.StartLimit)
+        advanceUntilIdle()
+        val sheet = requireNotNull(model.ready().limitSheet)
+        assertFalse(sheet.editing)
+        assertEquals("12", sheet.monthsText)
 
-            model.onAction(GoalsAction.LimitAmountText("100000"))
-            model.onAction(GoalsAction.SaveLimit)
-            advanceUntilIdle()
+        model.onAction(GoalsAction.LimitAmountText("100000"))
+        model.onAction(GoalsAction.SaveLimit)
+        advanceUntilIdle()
 
-            assertEquals(listOf<RevenueLimit?>(RevenueLimit(Money(10_000_000), 12)), savedLimits)
-            assertNull(model.ready().limitSheet)
-            assertEquals(GoalMessage.LimitSaved, model.ready().message)
-        }
+        assertEquals(listOf<RevenueLimit?>(RevenueLimit(Money(10_000_000), 12)), savedLimits)
+        assertNull(model.ready().limitSheet)
+        assertEquals(GoalMessage.LimitSaved, model.ready().message)
+    }
 
     @Test
     fun `an empty amount and months out of range stay in the sheet`() = runTest(dispatcher) {

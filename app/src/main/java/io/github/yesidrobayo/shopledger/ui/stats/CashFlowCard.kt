@@ -72,9 +72,7 @@ sealed interface CashFlowUiState {
  * @param observe el flujo de hoy.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class CashFlowViewModel(
-    observe: () -> Flow<CashFlowProjection?>,
-) : ViewModel() {
+class CashFlowViewModel(observe: () -> Flow<CashFlowProjection?>) : ViewModel() {
     /** Cada vuelta a primer plano y cada reintento vuelve a leer. */
     private val checks = MutableStateFlow(0)
 

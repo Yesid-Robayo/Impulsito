@@ -215,20 +215,19 @@ class ManagementSummaryRulesTest {
         assertEquals(methods, ManagementSummaryRules.screenMethods(methods))
     }
 
-    private fun sketchTotals() =
-        PeriodTotals(
-            ProfitTotals(
-                salesNetTotal = Money(4_400_000),
-                returnsNetRefund = Money(150_000),
-                salesTotalCost = Money(2_800_000),
-                returnsCostReturned = Money(80_000),
-                recordedExpenses = Money(640_000),
-                netShrinkage = Money(50_000),
-                paymentFees = Money(35_000),
-                cashRoundingTotal = Money.ZERO,
-            ),
-            salesCount = 42,
-        )
+    private fun sketchTotals() = PeriodTotals(
+        ProfitTotals(
+            salesNetTotal = Money(4_400_000),
+            returnsNetRefund = Money(150_000),
+            salesTotalCost = Money(2_800_000),
+            returnsCostReturned = Money(80_000),
+            recordedExpenses = Money(640_000),
+            netShrinkage = Money(50_000),
+            paymentFees = Money(35_000),
+            cashRoundingTotal = Money.ZERO,
+        ),
+        salesCount = 42,
+    )
 
     private fun date(year: Int, month: Int, day: Int) = BusinessDate(LocalDate(year, month, day))
 

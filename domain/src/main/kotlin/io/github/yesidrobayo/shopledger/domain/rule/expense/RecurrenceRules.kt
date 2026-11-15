@@ -139,8 +139,7 @@ object RecurrenceRules {
     }
 
     /** El número del día de [month] y [dayOfMonth] en un año bisiesto: el 29 de febrero es 60. */
-    fun yearDayOf(month: Int, dayOfMonth: Int): Int =
-        LEAP_YEAR_MONTH_STARTS[month - 1] + dayOfMonth
+    fun yearDayOf(month: Int, dayOfMonth: Int): Int = LEAP_YEAR_MONTH_STARTS[month - 1] + dayOfMonth
 
     /** El mes y el día del número [yearDay] de un año bisiesto: 60 es el 29 de febrero. */
     fun monthAndDayOf(yearDay: Int): Pair<Int, Int> {
