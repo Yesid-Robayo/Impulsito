@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.stats
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,7 +19,6 @@ import io.github.yesidrobayo.shopledger.domain.model.report.PeriodAnalysis
 import io.github.yesidrobayo.shopledger.domain.model.report.ProfitConcentration
 import io.github.yesidrobayo.shopledger.domain.model.report.ProfitLeader
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
-import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -97,9 +97,12 @@ class AnalysisSectionTest {
         show(AnalysisUiState.Ready(FULL), discreet = true)
 
         compose.onNodeWithText("Café molido").assertExists()
+        // La cifra oculta no deja texto: TalkBack la lee como oculta.
         assertTrue(
-            compose.onAllNodesWithText(DISCREET_TEXT, substring = true)
-                .fetchSemanticsNodes().isNotEmpty(),
+            compose.onAllNodesWithContentDescription(
+                text(R.string.a11y_discreet_hidden),
+                substring = true,
+            ).fetchSemanticsNodes().isNotEmpty(),
         )
     }
 

@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.data.repository
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.yesidrobayo.shopledger.data.local.TEST_BUSINESS_CURRENCY
+import io.github.yesidrobayo.shopledger.data.local.TEST_BUSINESS_DECIMALS
 import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -46,6 +49,18 @@ internal class CashFlowOnDatabaseTest : RepositoryTest() {
     private val void by lazy { VoidMoneyMovementUseCase(runner, settings, ledger, writer, clock) }
     private val source by lazy { RoomCashFlowSource(database) }
     private val time = RecordTime(AT, DATE)
+
+    /**
+     * Como al confirmar la moneda del negocio en la app: la caja inicial, sin movimientos, la toma
+     * en la misma transacción. La base de pruebas la deja en `XXX` a propósito.
+     */
+    @Before
+    fun confirmCashCurrency() = runBlocking {
+        val dao = database.moneyAccountDao()
+        val cash = requireNotNull(dao.findBySystemKey("CASH"))
+        val at = AT.toEpochMilliseconds()
+        check(dao.setCurrency(cash.id, TEST_BUSINESS_CURRENCY, TEST_BUSINESS_DECIMALS, at) == 1)
+    }
 
     private suspend fun created(
         name: String,

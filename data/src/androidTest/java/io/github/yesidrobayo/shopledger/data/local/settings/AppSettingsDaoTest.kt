@@ -185,6 +185,8 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 // Cambian solo sus columnas y updated_at, cada una con su consulta de una línea.
                 "updateExpiryNoticeDays",
                 "updateReceiptTemplate",
+                "updateDailySummaryTime",
+                "updateRevenueLimit",
                 "markOnboardingCompleted",
             ),
             functionsOf(AppSettingsDao::class.java),

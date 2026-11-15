@@ -5,6 +5,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -16,7 +17,6 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.report.BreakEven
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
-import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -83,7 +83,12 @@ class BreakEvenToolTest {
         show(BreakEven.NoMargin(Money(640_000)))
 
         compose.onNodeWithText(text(R.string.stats_break_even_no_margin)).assertIsDisplayed()
-        assertTrue(count(NO_VALUE_TEXT) >= 1)
+        // La raya no queda como texto: TalkBack la lee como sin valor.
+        assertTrue(
+            compose.onAllNodes(
+                hasContentDescription(text(R.string.a11y_no_value), substring = true),
+            ).fetchSemanticsNodes().isNotEmpty(),
+        )
     }
 
     @Test
