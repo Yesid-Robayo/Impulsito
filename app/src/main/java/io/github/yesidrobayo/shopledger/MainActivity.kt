@@ -40,6 +40,9 @@ import io.github.yesidrobayo.shopledger.lock.rememberDiscreetModeSwitch
 import io.github.yesidrobayo.shopledger.lock.rememberSensitiveCheck
 import io.github.yesidrobayo.shopledger.navigation.AppNavHost
 import io.github.yesidrobayo.shopledger.navigation.AppOpenRequest
+import io.github.yesidrobayo.shopledger.ui.backup.restartForRestore
+import io.github.yesidrobayo.shopledger.ui.components.DemoFrame
+import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
 import io.github.yesidrobayo.shopledger.ui.components.LocalDiscreetModeSwitch
 import io.github.yesidrobayo.shopledger.ui.format.BusinessDisplay
 import io.github.yesidrobayo.shopledger.ui.format.ProvideBusinessFormats
@@ -95,6 +98,10 @@ class MainActivity : AppCompatActivity() {
     private val openingStage = mutableStateOf(OpeningStage.OPENING)
     private val onboardingPending = mutableStateOf(false)
     private val openRequest = mutableStateOf<AppOpenRequest?>(null)
+
+    /** Si este proceso muestra la demostración, y si ya se pidió salir de ella. */
+    private val demoActive = mutableStateOf(false)
+    private val demoExiting = mutableStateOf(false)
 
     /** Lo que la ventana protege: capturas, superposiciones y toques tapados. */
     private var protection: WindowProtection? = null
@@ -153,14 +160,20 @@ class MainActivity : AppCompatActivity() {
             }
             when (val access = container.data.open()) {
                 is DataAccess.Ready -> {
+                    // Con datos de ejemplo no sale ningún aviso: la banda lo dice arriba de todo.
+                    val demo = container.demoMode.isActive()
+                    demoActive.value = demo
                     // Desde aquí se avisa lo que quedó pendiente y cada alerta nueva.
-                    container.lowStockAlertDelivery.follow(access.ports)
-                    container.expiryNoticeDelivery.follow(access.ports)
-                    container.dailySummaryDelivery.follow(access.ports)
-                    container.recurringReminderDelivery.follow(access.ports)
-                    container.revenueLimitNoticeDelivery.follow(access.ports)
-                    // El widget se redibuja con cada venta y con la paleta o el modo discreto.
-                    container.quickSaleWidget.follow(access.ports)
+                    if (!demo) {
+                        container.lowStockAlertDelivery.follow(access.ports)
+                        container.expiryNoticeDelivery.follow(access.ports)
+                        container.dailySummaryDelivery.follow(access.ports)
+                        container.recurringReminderDelivery.follow(access.ports)
+                        container.revenueLimitNoticeDelivery.follow(access.ports)
+                        // El widget se redibuja con cada venta y con la paleta o el modo discreto. Lee
+                        // siempre la base real, así que en la demostración no sigue la de ejemplo.
+                        container.quickSaleWidget.follow(access.ports)
+                    }
                     lockSettings = ChangePreferenceUseCase(access.ports.settings, container.clock)
                     launch {
                         ObserveAppLockUseCase(access.ports.settings)().collect {
@@ -255,16 +268,50 @@ class MainActivity : AppCompatActivity() {
                                         })
                                     },
                                 ) {
-                                    AppNavHost(
-                                        onboardingPending = onboardingPending.value,
-                                        openRequest = openRequest.value,
-                                        onOpenHandled = { openRequest.value = null },
-                                    )
+                                    // Con datos de ejemplo, la banda fija va encima de toda
+                                    // pantalla, y lo que depende de la nube se desactiva.
+                                    DemoFrame(
+                                        active = demoActive.value,
+                                        onExit = { exitDemo(container) },
+                                        exiting = demoExiting.value,
+                                    ) {
+                                        CompositionLocalProvider(
+                                            LocalDemoMode provides demoActive.value,
+                                        ) {
+                                            // Un aviso es del negocio real: con datos de ejemplo
+                                            // no abre nada, porque el número sería de otra base.
+                                            AppNavHost(
+                                                onboardingPending = onboardingPending.value,
+                                                openRequest =
+                                                    openRequest.value.takeUnless {
+                                                        demoActive.value
+                                                    },
+                                                onOpenHandled = { openRequest.value = null },
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * `Salir` de la banda: borra la marca de la demostración y reinicia la app, que abre la base del
+     * negocio tal como estaba. Se pide una sola vez; si la marca no se pudo borrar, se puede tocar
+     * otra vez.
+     */
+    private fun exitDemo(container: AppContainer) {
+        if (demoExiting.value) return
+        demoExiting.value = true
+        lifecycleScope.launch {
+            if (container.demoMode.stop()) {
+                restartForRestore(this@MainActivity)
+            } else {
+                demoExiting.value = false
             }
         }
     }

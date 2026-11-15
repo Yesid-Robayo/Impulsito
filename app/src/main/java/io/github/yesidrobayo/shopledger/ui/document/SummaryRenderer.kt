@@ -28,11 +28,15 @@ import kotlin.math.max
 /**
  * Lo que el PDF del resumen de gestión dibuja: las cifras del período, el nombre del negocio que
  * lo encabeza, si lo tiene, y el día en que se creó.
+ *
+ * @property sampleData si sale de la demostración: el PDF empieza con `Datos de ejemplo`, para
+ *   que nunca se confunda con el resumen de un negocio real.
  */
 data class SummaryDocument(
     val summary: ManagementSummary,
     val businessName: String?,
     val createdOn: BusinessDate,
+    val sampleData: Boolean = false,
 )
 
 /**
@@ -159,6 +163,11 @@ class SummaryRenderer(context: Context, private val formats: AppFormats, palette
         val width = paper.width - 2 * MARGIN
         val summary = document.summary
         val profit = summary.profit
+        // De la demostración: lo primero que se lee es que son datos de ejemplo.
+        if (document.sampleData) {
+            val demo = resources.getString(R.string.report_doc_demo)
+            add(TextBlock(demo, width, NAME_SIZE, BOLD, ink, GAP))
+        }
         document.businessName?.let { add(TextBlock(it, width, NAME_SIZE, BOLD, ink, GAP)) }
         add(text(R.string.report_doc_title, width, TITLE_SIZE, BOLD, ink))
         add(

@@ -6,6 +6,7 @@ import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.DataGraph
 import io.github.yesidrobayo.shopledger.data.UserTextPort
+import io.github.yesidrobayo.shopledger.demo.DemoMode
 import io.github.yesidrobayo.shopledger.domain.model.backup.AppOpenUpload
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.port.Clock
@@ -252,8 +253,16 @@ class AppContainer(application: Application) {
             scope = applicationScope,
             appOpenUpload = {
                 when (val access = data.open()) {
+                    // Con datos de ejemplo, el estado que se lee es el de la base de ejemplo, que
+                    // nunca se respalda: no decide ninguna subida. Lo pendiente de la base del
+                    // negocio sigue en la biblioteca de trabajos.
                     is DataAccess.Ready ->
-                        ObserveBackupStatusUseCase(access.ports.backupStatus, clock).onAppOpen()
+                        if (data.demo.isActive()) {
+                            AppOpenUpload.NONE
+                        } else {
+                            ObserveBackupStatusUseCase(access.ports.backupStatus, clock)
+                                .onAppOpen()
+                        }
 
                     is DataAccess.Rescue -> AppOpenUpload.NONE
                 }
@@ -267,6 +276,14 @@ class AppContainer(application: Application) {
      * que arrancó el teléfono: cambiar la hora no lo engaña.
      */
     val appLock: AppLock = AppLock { android.os.SystemClock.elapsedRealtime() }
+
+    /**
+     * El modo demostración: la base de ejemplo que usa la interfaz, aparte de la del negocio, con
+     * sus nombres en el idioma de la interfaz. Crearlo no toca el disco.
+     */
+    val demoMode: DemoMode by lazy {
+        DemoMode(data.demo, { localizedContext.context().resources }, paymentMethodNames)
+    }
 
     /**
      * Las miniaturas de las fotos ya decodificadas, una caché para todas las pantallas: así volver a

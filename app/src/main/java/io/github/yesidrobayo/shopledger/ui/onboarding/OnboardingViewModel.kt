@@ -52,6 +52,8 @@ import kotlinx.coroutines.withContext
  * @param localCopies el segundo destino, para `Buscar mi copia en este teléfono`; nulo donde no
  *   se ofrece.
  * @param appName el nombre de la app sin traducir: da la carpeta de las copias.
+ * @param enterDemo prepara la base de ejemplo de `Ver con datos de ejemplo`, sin tocar la del
+ *   negocio: `true` si quedó lista y la app debe reiniciarse.
  */
 class OnboardingViewModel(
     private val resume: suspend () -> OnboardingResume,
@@ -65,6 +67,7 @@ class OnboardingViewModel(
     private val computation: CoroutineDispatcher,
     private val localCopies: SecondDestinationUseCase? = null,
     private val appName: String = "",
+    private val enterDemo: suspend () -> Boolean = { false },
 ) : ViewModel() {
     private val state = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = state.asStateFlow()
@@ -185,6 +188,8 @@ class OnboardingViewModel(
 
             OnboardingAction.RestoreLocalCopy -> restoreLocal()
 
+            OnboardingAction.SeeSampleData -> startDemo()
+
             // Lo resuelve la navegación.
             OnboardingAction.ChooseDestination,
             OnboardingAction.BringWithWebDav,
@@ -291,6 +296,21 @@ class OnboardingViewModel(
             read { use.reconnectAndAdopt(search.treeUri, appName) }
             localRestoring = true
             restoring.picked(copy.documentUri)
+        }
+    }
+
+    /**
+     * Prepara la demostración una sola vez a la vez. Si falla, lo dice y la bienvenida sigue
+     * igual: los datos del negocio no cambiaron.
+     */
+    private fun startDemo() {
+        if (state.value.demo == DemoStartUi.WORKING || state.value.demo == DemoStartUi.READY) {
+            return
+        }
+        state.update { it.copy(demo = DemoStartUi.WORKING, bringSheet = false) }
+        viewModelScope.launch {
+            val ready = read { enterDemo() } == true
+            state.update { it.copy(demo = if (ready) DemoStartUi.READY else DemoStartUi.FAILED) }
         }
     }
 

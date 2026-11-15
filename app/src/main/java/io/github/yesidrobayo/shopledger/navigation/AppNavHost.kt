@@ -49,6 +49,7 @@ import io.github.yesidrobayo.shopledger.ui.combo.RecipeRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
+import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
 import io.github.yesidrobayo.shopledger.ui.components.LocalSettingsOpener
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
@@ -287,6 +288,11 @@ private fun entryOf(key: NavKey, navigator: AppNavigator): NavEntry<NavKey> {
  */
 @Composable
 private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
+    // Con datos de ejemplo, lo que depende de la nube se muestra desactivado, con la razón.
+    if (LocalDemoMode.current && key.needsCloud()) {
+        DemoUnavailableRoute(key, navigator)
+        return
+    }
     when (key) {
         AppNavKey.Home -> HomeRoute(navigator)
 

@@ -76,6 +76,18 @@ class SummaryRendererTest {
     }
 
     @Test
+    fun aSummaryFromTheDemoStartsSayingItIsSampleData() {
+        val demo = context.getString(R.string.report_doc_demo)
+
+        val sample = renderer.textsOf(document(tax = TAX).copy(sampleData = true))
+        val real = renderer.textsOf(document(tax = TAX))
+
+        assertEquals(demo, sample.first())
+        assertEquals(real, sample.drop(1))
+        assertFalse(real.contains(demo))
+    }
+
+    @Test
     fun withoutTaxInTheBusinessThePdfHasNoTaxSection() {
         val texts = renderer.textsOf(document(tax = null)).map { it.substringBefore('\t') }
 

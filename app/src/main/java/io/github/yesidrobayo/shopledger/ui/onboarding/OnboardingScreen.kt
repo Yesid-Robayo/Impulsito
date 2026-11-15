@@ -74,7 +74,8 @@ private const val PROTECTION_STEP = 4
 /**
  * La bienvenida, paso 3 del primer uso: la promesa en el bloque de marca, lo que hace la app con
  * los datos, lo que se puede perder con cada destino, y abajo, fijos, `Elegir dónde guardar`,
- * `Traer datos de otro teléfono` y `Ahora no`.
+ * `Traer datos de otro teléfono` y `Ahora no`, y debajo `Ver con datos de ejemplo`, que abre la
+ * demostración aparte de los datos del negocio.
  *
  * Es pura: recibe el estado y avisa cada acción. [zone] da la fecha de las copias encontradas.
  */
@@ -138,6 +139,9 @@ private fun WelcomeContent(
                 (uiState.restore as? RestoreUi.Stopped)?.let { stopped ->
                     RestoreStoppedNotice(stopped) { onAction(OnboardingAction.Restore(it)) }
                 }
+                if (uiState.demo == DemoStartUi.FAILED) {
+                    NoticeCard(stringResource(R.string.demo_entry_failed), NoticeVariant.ERROR)
+                }
                 LocalCopy(uiState, app, onAction)
                 NoticeCard(
                     stringResource(R.string.permission_destination_rationale, app),
@@ -198,6 +202,17 @@ private fun WelcomeContent(
                     { onAction(OnboardingAction.NotNow) },
                 )
             }
+            // Mientras se prepara la base de ejemplo, la acción dice qué hace y no se repite.
+            InlineTextButton(
+                stringResource(
+                    if (uiState.demo == DemoStartUi.WORKING) {
+                        R.string.demo_entry_working
+                    } else {
+                        R.string.onboarding_demo_action
+                    },
+                ),
+                { onAction(OnboardingAction.SeeSampleData) },
+            )
         }
     }
 }

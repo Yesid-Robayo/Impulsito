@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Modo demostración: la entrada en la bienvenida, la banda fija, lo que no está disponible y
+         el negocio de ejemplo, en el idioma de la interfaz. Textos de la guía de redacción. -->
+    <string name="onboarding_demo_action">Ver com dados de exemplo</string>
+    <string name="demo_entry_working">Preparando os dados de exemplo</string>
+    <string name="demo_entry_failed">Não foi possível preparar os dados de exemplo. Os dados do negócio não mudaram.</string>
+    <string name="demo_banner_title">Dados de exemplo</string>
+    <string name="demo_banner_exit">Sair</string>
+    <string name="demo_not_saved">O que for registrado aqui não fica salvo.</string>
+    <string name="demo_backup_title">Dados de exemplo: sem cópia de segurança</string>
+    <string name="demo_backup_unavailable">Indisponível com dados de exemplo</string>
+    <string name="demo_business_name">Loja de exemplo</string>
+    <string name="demo_product_rice">Arroz 1 kg</string>
+    <string name="demo_product_oil">Óleo 900 ml</string>
+    <string name="demo_product_eggs">Ovos x 30</string>
+    <string name="demo_product_coffee">Café moído 500 g</string>
+    <string name="demo_product_cheese">Queijo fresco</string>
+    <string name="demo_product_soap">Sabonete de aveia</string>
+    <string name="demo_supplier">Distribuidora Sol</string>
+    <string name="demo_customer">Ana Rios</string>
+    <string name="demo_expense">Luz e água</string>
+    <string name="report_doc_demo">Dados de exemplo</string>
+    <string name="report_file_name_demo">dados-de-exemplo-resumo-de-gestao-%1$s</string>
+</resources>

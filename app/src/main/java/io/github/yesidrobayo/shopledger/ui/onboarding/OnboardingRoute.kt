@@ -94,6 +94,7 @@ fun OnboardingRoute(navigator: AppNavigator) {
                 computation = container.dispatchers.io,
                 localCopies = SecondDestinationUseCase(container.data.secondDestination),
                 appName = appName,
+                enterDemo = container.demoMode::start,
             )
         }
     when (model) {
@@ -121,6 +122,10 @@ fun OnboardingRoute(navigator: AppNavigator) {
             }
             LaunchedEffect(uiState.restore) {
                 if (uiState.restore == RestoreUi.Ready) restartForRestore(context)
+            }
+            // La base de ejemplo quedó lista: se reinicia como tras restaurar, y abre en ella.
+            LaunchedEffect(uiState.demo) {
+                if (uiState.demo == DemoStartUi.READY) restartForRestore(context)
             }
             val authenticator = LocalDeviceAuthenticator.current
             LifecycleResumeEffect(viewModel, authenticator) {
@@ -196,6 +201,7 @@ fun OnboardingRoute(navigator: AppNavigator) {
                     is OnboardingAction.LockChecked,
                     is OnboardingAction.LocalFolderPicked,
                     OnboardingAction.RestoreLocalCopy,
+                    OnboardingAction.SeeSampleData,
                     -> Unit
                 }
             }

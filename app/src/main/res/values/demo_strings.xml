@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Modo demostración: la entrada en la bienvenida, la banda fija, lo que no está disponible y
+         el negocio de ejemplo, en el idioma de la interfaz. Textos de la guía de redacción. -->
+    <string name="onboarding_demo_action">See it with sample data</string>
+    <string name="demo_entry_working">Preparing the sample data</string>
+    <string name="demo_entry_failed">The sample data could not be prepared. The business data did not change.</string>
+    <string name="demo_banner_title">Sample data</string>
+    <string name="demo_banner_exit">Exit</string>
+    <string name="demo_not_saved">Nothing recorded here is kept.</string>
+    <string name="demo_backup_title">Sample data: not backed up</string>
+    <string name="demo_backup_unavailable">Not available with sample data</string>
+    <string name="demo_business_name">Sample store</string>
+    <string name="demo_product_rice">Rice 1 kg</string>
+    <string name="demo_product_oil">Oil 900 ml</string>
+    <string name="demo_product_eggs">Eggs x 30</string>
+    <string name="demo_product_coffee">Ground coffee 500 g</string>
+    <string name="demo_product_cheese">Fresh cheese</string>
+    <string name="demo_product_soap">Oat soap</string>
+    <string name="demo_supplier">Sun Distributors</string>
+    <string name="demo_customer">Ana Rivers</string>
+    <string name="demo_expense">Power and water</string>
+    <string name="report_doc_demo">Sample data</string>
+    <string name="report_file_name_demo">sample-data-management-summary-%1$s</string>
+</resources>

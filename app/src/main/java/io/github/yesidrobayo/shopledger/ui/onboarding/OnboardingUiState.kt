@@ -51,6 +51,21 @@ sealed interface LocalCopySearch {
     data object Failed : LocalCopySearch
 }
 
+/** `Ver con datos de ejemplo`: cómo va la preparación de la base de ejemplo. */
+enum class DemoStartUi {
+    /** Nada pedido. */
+    IDLE,
+
+    /** Escribiendo el negocio de ejemplo: la acción no se repite. */
+    WORKING,
+
+    /** Lista: la navegación reinicia la app, que abre en la demostración. */
+    READY,
+
+    /** No se pudo. Los datos del negocio no cambiaron, y se puede intentar otra vez. */
+    FAILED,
+}
+
 /**
  * El estado del primer uso.
  *
@@ -73,6 +88,7 @@ sealed interface LocalCopySearch {
  * @param lockCheck `Continuar` con el bloqueo marcado pide la verificación del sistema: la navegación
  *   la abre y entrega su resultado.
  * @param localCopy lo que se encontró con `Buscar mi copia en este teléfono`, o nulo.
+ * @param demo cómo va `Ver con datos de ejemplo`.
  */
 data class OnboardingUiState(
     val step: OnboardingStepId? = null,
@@ -91,6 +107,7 @@ data class OnboardingUiState(
     val lockChosen: Boolean = true,
     val lockCheck: Boolean = false,
     val localCopy: LocalCopySearch? = null,
+    val demo: DemoStartUi = DemoStartUi.IDLE,
 )
 
 /** Lo que la persona hace en el primer uso. */
@@ -164,4 +181,7 @@ sealed interface OnboardingAction {
 
     /** `Restaurar` la copia propuesta de la carpeta. */
     data object RestoreLocalCopy : OnboardingAction
+
+    /** `Ver con datos de ejemplo`: prepara la base de ejemplo, aparte de la del negocio. */
+    data object SeeSampleData : OnboardingAction
 }

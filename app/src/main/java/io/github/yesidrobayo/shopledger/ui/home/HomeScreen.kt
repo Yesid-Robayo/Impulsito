@@ -73,6 +73,7 @@ import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
@@ -359,6 +360,8 @@ private fun BackupSummary(
     photosPending: Int,
     onAction: (HomeAction) -> Unit,
 ) {
+    // Con datos de ejemplo no hay copias: ni el chip ni sus avisos, solo la banda de arriba.
+    if (LocalDemoMode.current) return
     val report = backup.overview.report
     val status = report.status
     BackupStatusChip(backupChipLook(backup), onClick = { onAction(HomeAction.OpenBackup) })

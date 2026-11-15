@@ -111,6 +111,8 @@ class OnboardingViewModelTest {
     private var completes = 0
     private var lockResult: ChangePreferenceResult = ChangePreferenceResult.Saved
     private var locks = 0
+    private var demoReady: () -> Boolean = { true }
+    private var demoStarts = 0
     private val saved = SavedStateHandle()
 
     @Before
@@ -136,6 +138,10 @@ class OnboardingViewModelTest {
             restore = RestoreBackupUseCase(restore),
             savedState = saved,
             computation = dispatcher,
+            enterDemo = {
+                demoStarts += 1
+                demoReady()
+            },
         )
         advanceUntilIdle()
         return model
@@ -405,5 +411,51 @@ class OnboardingViewModelTest {
         model().onAction(OnboardingAction.LockChoice(enabled = false))
 
         assertFalse(model().uiState.value.lockChosen)
+    }
+
+    @Test
+    fun `sample data is prepared once and then the app restarts into it`() = runTest(dispatcher) {
+        resume = OnboardingResume.WELCOME
+        val model = model()
+
+        model.onAction(OnboardingAction.SeeSampleData)
+        assertEquals(DemoStartUi.WORKING, model.uiState.value.demo)
+        // Un segundo toque mientras se prepara no la prepara otra vez.
+        model.onAction(OnboardingAction.SeeSampleData)
+        advanceUntilIdle()
+
+        assertEquals(1, demoStarts)
+        assertEquals(DemoStartUi.READY, model.uiState.value.demo)
+        // El primer uso del negocio sigue sin terminar: la demostración no lo toca.
+        assertEquals(OnboardingStepId.WELCOME, model.uiState.value.step)
+        assertEquals(0, completes)
+        assertFalse(model.uiState.value.done)
+        model.onAction(OnboardingAction.SeeSampleData)
+        advanceUntilIdle()
+        assertEquals(1, demoStarts)
+    }
+
+    @Test
+    fun `sample data that cannot be prepared can be asked again`() = runTest(dispatcher) {
+        resume = OnboardingResume.WELCOME
+        demoReady = { false }
+        val model = model()
+
+        model.onAction(OnboardingAction.SeeSampleData)
+        advanceUntilIdle()
+        assertEquals(DemoStartUi.FAILED, model.uiState.value.demo)
+        assertEquals(OnboardingStepId.WELCOME, model.uiState.value.step)
+
+        demoReady = { error("La base de ejemplo falló") }
+        model.onAction(OnboardingAction.SeeSampleData)
+        advanceUntilIdle()
+        assertEquals(DemoStartUi.FAILED, model.uiState.value.demo)
+
+        demoReady = { true }
+        model.onAction(OnboardingAction.SeeSampleData)
+        advanceUntilIdle()
+        assertEquals(DemoStartUi.READY, model.uiState.value.demo)
+        assertEquals(3, demoStarts)
+        assertEquals(0, completes)
     }
 }

@@ -83,6 +83,32 @@ class WelcomeStepTest {
     }
 
     @Test
+    fun sampleDataIsOffered() {
+        show(PREVIEW_WELCOME)
+
+        compose.onNodeWithText(text(R.string.onboarding_demo_action)).performClick()
+
+        assertEquals(listOf<OnboardingAction>(OnboardingAction.SeeSampleData), actions)
+    }
+
+    @Test
+    fun whileTheSampleDataIsPreparedTheActionSaysSo() {
+        show(PREVIEW_WELCOME.copy(demo = DemoStartUi.WORKING))
+
+        compose.onNodeWithText(text(R.string.demo_entry_working)).assertIsDisplayed()
+    }
+
+    @Test
+    fun sampleDataThatCouldNotBePreparedSaysSoAndCanBeAskedAgain() {
+        show(PREVIEW_WELCOME.copy(demo = DemoStartUi.FAILED))
+
+        compose.onNodeWithText(text(R.string.demo_entry_failed)).performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.onboarding_demo_action)).performClick()
+        assertEquals(listOf<OnboardingAction>(OnboardingAction.SeeSampleData), actions)
+    }
+
+    @Test
     fun theBringSheetOffersAServiceOrAFile() {
         show(PREVIEW_WELCOME.copy(bringSheet = true))
 

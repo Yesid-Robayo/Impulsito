@@ -37,6 +37,7 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
 import io.github.yesidrobayo.shopledger.ui.document.SummaryDocument
 import io.github.yesidrobayo.shopledger.ui.document.SummaryRenderer
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
@@ -187,15 +188,17 @@ private fun rememberSummaryFiles(
             }
         }
     val job by viewModel.job.collectAsStateWithLifecycle()
+    // Con datos de ejemplo, el PDF y el nombre del archivo lo dicen.
+    val sampleData = LocalDemoMode.current
     LaunchedEffect(job, writer) {
         val current = job ?: return@LaunchedEffect
         val ready = writer ?: return@LaunchedEffect
         val baseName = context.resources.getString(
-            R.string.report_file_name,
+            if (sampleData) R.string.report_file_name_demo else R.string.report_file_name,
             ManagementSummaryRules.fileStamp(current.summary.period),
         )
         val (outcome, result) = withContext(Dispatchers.IO) {
-            writePackage(context, renderer, ready, current, baseName)
+            writePackage(context, renderer, ready, current, baseName, sampleData)
         }
         written = result
         viewModel.onAction(SummaryAction.Finished(outcome))
@@ -224,7 +227,7 @@ private class WrittenPackage(val file: File, val uri: Uri)
 
 /**
  * Dibuja el PDF de [job] en la carpeta temporal y escribe el paquete en `cache/exports/`, con el
- * nombre [baseName]. El PDF temporal se borra siempre. Lee y escribe el disco: va fuera del hilo
+ * nombre [baseName]. Con [sampleData], el PDF dice que son datos de ejemplo. El PDF temporal se borra siempre. Lee y escribe el disco: va fuera del hilo
  * principal.
  */
 private suspend fun writePackage(
@@ -233,6 +236,7 @@ private suspend fun writePackage(
     writer: SummaryWriter,
     job: SummaryJob,
     baseName: String,
+    sampleData: Boolean = false,
 ): Pair<SummaryOutcome, WrittenPackage?> {
     val work = File(context.cacheDir, WORK_FOLDER)
     val pdf = File(work, PDF_TEMPORARY)
@@ -241,7 +245,8 @@ private suspend fun writePackage(
     var target: File? = null
     try {
         if (!work.isDirectory && !work.mkdirs()) return SummaryOutcome.Failed to null
-        val document = SummaryDocument(job.summary, writer.businessName(), job.today)
+        val document =
+            SummaryDocument(job.summary, writer.businessName(), job.today, sampleData)
         if (!renderer.writePdf(document, pdf)) return SummaryOutcome.Failed to null
         val uri = exportFile(context, name) { file ->
             target = file
