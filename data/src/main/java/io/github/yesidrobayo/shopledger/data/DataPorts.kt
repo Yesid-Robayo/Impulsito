@@ -46,6 +46,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomPayablesSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomPaymentMethodRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodBreakdownRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPeriodReportRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomPlanningReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceHistoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceIndexRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPriceListRepository
@@ -125,6 +126,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PayablesSource
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.port.PeriodBreakdownRepository
 import io.github.yesidrobayo.shopledger.domain.port.PeriodReportRepository
+import io.github.yesidrobayo.shopledger.domain.port.PlanningReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceHistoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceIndexRepository
 import io.github.yesidrobayo.shopledger.domain.port.PriceListRepository
@@ -461,8 +463,11 @@ class DataPorts internal constructor(
     val managementSummaries: ManagementSummaryRepository =
         RoomManagementSummaryRepository(database)
 
-    /** Las metas de cada mes que escribe la persona. */
+    /** Las metas de cada mes y el límite de ingresos que escribe la persona. */
     val goals: GoalRepository = RoomGoalRepository(database)
+
+    /** Lo que suman el límite de ingresos y el punto de equilibrio. Solo lee. */
+    val planningReports: PlanningReportRepository = RoomPlanningReportRepository(database)
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()

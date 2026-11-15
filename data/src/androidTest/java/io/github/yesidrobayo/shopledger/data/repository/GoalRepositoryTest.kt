@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.report.MonthGoals
+import io.github.yesidrobayo.shopledger.domain.model.settings.RevenueLimit
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.YearMonth
@@ -56,6 +57,28 @@ internal class GoalRepositoryTest : RepositoryTest() {
         assertEquals(MonthGoals(november, null, Money(300_000)), goals.find(november))
         assertNull(goals.find(YearMonth(2026, 12)))
         assertEquals(1L, count("SELECT COUNT(*) FROM business_goals WHERE month = '2027-01'"))
+    }
+
+    @Test
+    fun theRevenueLimitIsWrittenWithItsMonthsAndRemovedTogether() = runBlocking {
+        val before = changeSeq()
+        commit { goals.saveRevenueLimit(RevenueLimit(Money(10_000_000), 12), AT) }
+
+        assertEquals(before + 1, changeSeq())
+        assertEquals(
+            10_000_000L,
+            count("SELECT revenue_limit_amount FROM app_settings WHERE id = 1"),
+        )
+        assertEquals(12L, count("SELECT revenue_limit_months FROM app_settings WHERE id = 1"))
+
+        commit { goals.saveRevenueLimit(null, LATER_AT) }
+        assertEquals(
+            1L,
+            count(
+                "SELECT COUNT(*) FROM app_settings WHERE id = 1 " +
+                    "AND revenue_limit_amount IS NULL AND revenue_limit_months IS NULL",
+            ),
+        )
     }
 
     @Test

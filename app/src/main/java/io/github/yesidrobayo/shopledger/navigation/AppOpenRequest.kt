@@ -67,6 +67,16 @@ sealed interface AppOpenRequest {
         }
     }
 
+    /** `Metas y límites`, desde el aviso del límite de ingresos. */
+    data object GoalsAndLimits : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.GoalsAndLimits
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_OPEN_LIMITS
+        }
+    }
+
     companion object {
         /** Abre el detalle del producto de [EXTRA_PRODUCT_ID]. */
         const val ACTION_OPEN_PRODUCT = "io.github.yesidrobayo.shopledger.action.OPEN_PRODUCT"
@@ -79,6 +89,9 @@ sealed interface AppOpenRequest {
 
         /** Abre los gastos recurrentes. */
         const val ACTION_OPEN_RECURRING = "io.github.yesidrobayo.shopledger.action.OPEN_RECURRING"
+
+        /** Abre `Metas y límites`. */
+        const val ACTION_OPEN_LIMITS = "io.github.yesidrobayo.shopledger.action.OPEN_LIMITS"
 
         /** El id del producto que abre [ACTION_OPEN_PRODUCT]. */
         const val EXTRA_PRODUCT_ID = "product_id"
@@ -102,6 +115,8 @@ sealed interface AppOpenRequest {
                     ACTION_OPEN_EXPIRING -> Expiring
 
                     ACTION_OPEN_RECURRING -> Recurring
+
+                    ACTION_OPEN_LIMITS -> GoalsAndLimits
 
                     else -> null
                 }

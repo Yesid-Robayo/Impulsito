@@ -2,7 +2,9 @@ package io.github.yesidrobayo.shopledger.ui.goal
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -21,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
@@ -34,7 +37,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSo
 import io.github.yesidrobayo.shopledger.domain.usecase.report.MonthGoalView
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveMonthGoalsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodReportUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveRevenueLimitUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.SaveMonthGoalsUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.report.SaveRevenueLimitUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
@@ -83,6 +88,9 @@ fun GoalsRoute(navigator: AppNavigator) {
             val report = ObservePeriodReportUseCase(ports.periodReports)
             val observe = ObserveMonthGoalsUseCase(ports.goals, report)
             val save = SaveMonthGoalsUseCase(ports.transactions, ports.goals, clock)
+            val limit = ObserveRevenueLimitUseCase(ports.settings, ports.planningReports, report)
+            val saveLimit =
+                SaveRevenueLimitUseCase(ports.transactions, ports.goals, ports.settings, clock)
             GoalsViewModel(
                 today = BusinessCalendarSource(ports.settings).observe().map { result ->
                     when (result) {
@@ -95,6 +103,8 @@ fun GoalsRoute(navigator: AppNavigator) {
                 observe = { observe(it) },
                 save = { month, sales, profit -> save(month, sales, profit) },
                 numbers = numbers,
+                limit = { limit(it) },
+                saveLimit = { saveLimit(it) },
             )
         }
     when (model) {
@@ -106,7 +116,7 @@ fun GoalsRoute(navigator: AppNavigator) {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val ready = uiState as? GoalsUiState.Ready
-            BackHandler(enabled = ready?.sheet != null) {
+            BackHandler(enabled = ready?.sheet != null || ready?.limitSheet != null) {
                 viewModel.onAction(GoalsAction.DismissSheet)
             }
             ShowMessage(ready?.message) { viewModel.onAction(GoalsAction.MessageShown) }
@@ -124,8 +134,9 @@ fun GoalsRoute(navigator: AppNavigator) {
 }
 
 /**
- * `Metas y límites`, sin ViewModel: las metas del mes elegido, cada una con su avance, y la hoja
- * para definirlas. Las metas son de la persona: la app no propone ninguna.
+ * `Metas y límites`, sin ViewModel: las metas del mes elegido, cada una con su avance, el límite
+ * de ingresos con lo acumulado, y las hojas para definirlos. Metas y límite son de la persona: la
+ * app no propone ninguno ni conoce ningún régimen. Desde una ventana mediana, en dos columnas.
  *
  * Es de lectura. La acción principal es `Definir metas` solo si el mes no tiene metas.
  */
@@ -147,7 +158,7 @@ fun GoalsScreen(
                 Modifier
                     .weight(1f)
                     .align(Alignment.CenterHorizontally)
-                    .widthIn(max = AppTheme.sizes.maxContentWidth)
+                    .widthIn(max = AppTheme.sizes.maxContentWidth * 2)
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
@@ -160,13 +171,35 @@ fun GoalsScreen(
 
                     GoalsUiState.UnknownZone -> UnknownZone(onAction)
 
-                    is GoalsUiState.Ready -> GoalsSection(uiState, onAction)
+                    is GoalsUiState.Ready -> ReadyBody(uiState, onAction)
                 }
             }
         }
     }
     val ready = uiState as? GoalsUiState.Ready
     ready?.sheet?.let { GoalSheetHost(it, onAction) }
+    ready?.limitSheet?.let { LimitSheetHost(it, onAction) }
+}
+
+/** Las metas y el límite: una columna en el teléfono, y dos desde una ventana mediana. */
+@Composable
+private fun ReadyBody(state: GoalsUiState.Ready, onAction: (GoalsAction) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth >= MEDIUM_WIDTH) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
+            ) {
+                Column(Modifier.weight(1f)) { GoalsSection(state, onAction) }
+                Column(Modifier.weight(1f)) { LimitSection(state.limit, onAction) }
+            }
+        } else {
+            Column(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth)) {
+                GoalsSection(state, onAction)
+                LimitSection(state.limit, onAction)
+            }
+        }
+    }
 }
 
 /** El esqueleto de dos barras, solo si la espera se nota. */
@@ -325,6 +358,8 @@ private fun ShowMessage(message: GoalMessage?, onShown: () -> Unit) {
             when (it) {
                 GoalMessage.Saved -> R.string.goal_saved
                 GoalMessage.Removed -> R.string.goal_removed
+                GoalMessage.LimitSaved -> R.string.limit_saved
+                GoalMessage.LimitRemoved -> R.string.limit_removed
             },
         )
     }
@@ -337,6 +372,9 @@ private fun ShowMessage(message: GoalMessage?, onShown: () -> Unit) {
 }
 
 private const val SKELETON_BARS = 2
+
+/** Desde este ancho, metas y límite van en dos columnas: la ventana mediana. */
+private val MEDIUM_WIDTH = 600.dp
 
 private val PREVIEW_MONTH = YearMonth(2026, 11)
 private val PREVIEW_TODAY = BusinessDate(LocalDate(2026, 11, 14))

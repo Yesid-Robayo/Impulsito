@@ -21,4 +21,34 @@
     <string name="hub_tool_goals_desc">Monthly goals and an income limit of your own</string>
     <string name="a11y_goal_progress">%1$s: %2$s of the goal, %3$s of %4$s</string>
     <string name="a11y_goal_progress_hidden">%1$s, %2$s</string>
+
+    <!-- Límite de ingresos: lo escribe la persona, y el aviso es una orientación. -->
+    <string name="limit_section">Income limit</string>
+    <plurals name="limit_accumulated">
+        <item quantity="one">Total over %1$s month</item>
+        <item quantity="other">Total over %1$s months</item>
+    </plurals>
+    <string name="limit_progress">%1$s of %2$s</string>
+    <string name="limit_define_action">Set limit</string>
+    <string name="limit_edit_action">Edit limit</string>
+    <string name="limit_amount_field">Limit amount</string>
+    <string name="limit_months_field">Months it adds up</string>
+    <string name="limit_months_help">Includes the current month</string>
+    <string name="limit_save_action">Save limit</string>
+    <string name="limit_remove_action">Remove limit</string>
+    <string name="limit_disclaimer">This limit is a reference written by the person. %1$s knows no rule and does not say whether anything is met.</string>
+    <string name="limit_notice_reached">%1$s of the written limit reached</string>
+    <string name="limit_notice_over">The written limit was exceeded</string>
+    <string name="limit_since">Since %1$s</string>
+    <string name="limit_empty_title">No income limit</string>
+    <string name="limit_empty_body">Use it to follow a ceiling the person knows and writes here.</string>
+    <string name="limit_error_months">Use a number from %1$s to %2$s</string>
+    <string name="limit_saved">Limit saved</string>
+    <string name="limit_removed">Limit removed</string>
+    <string name="a11y_limit_meter">Income limit: %1$s used, %2$s of %3$s</string>
+    <string name="notif_channel_limits">Goals and limits</string>
+    <string name="notif_limit_title">Income limit notice</string>
+    <string name="notif_limit_body_reached">%1$s of the written limit reached.</string>
+    <string name="notif_limit_body_over">The written limit was exceeded.</string>
+    <string name="notif_limit_public">There is a notice in %1$s</string>
 </resources>

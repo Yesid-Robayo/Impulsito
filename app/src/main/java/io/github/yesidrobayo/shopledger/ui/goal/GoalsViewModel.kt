@@ -6,9 +6,13 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.report.RevenueLimitView
+import io.github.yesidrobayo.shopledger.domain.model.settings.RevenueLimit
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.rule.report.RevenueLimitRules
 import io.github.yesidrobayo.shopledger.domain.usecase.report.MonthGoalView
 import io.github.yesidrobayo.shopledger.domain.usecase.report.SaveGoalsResult
+import io.github.yesidrobayo.shopledger.domain.usecase.report.SaveLimitResult
 import io.github.yesidrobayo.shopledger.ui.payment.plainNumberText
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +24,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -40,6 +43,8 @@ import kotlinx.datetime.yearMonth
  * @param today hoy en la zona del negocio, o `null` si este teléfono no conoce esa zona.
  * @param observe las metas de un mes con su avance.
  * @param save guarda las metas de un mes; las dos vacías las quitan.
+ * @param limit el límite de ingresos y lo acumulado en la ventana que termina en un mes.
+ * @param saveLimit guarda el límite que escribió la persona, o lo quita con `null`.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GoalsViewModel(
@@ -47,6 +52,8 @@ class GoalsViewModel(
     private val observe: (YearMonth) -> Flow<MonthGoalView>,
     private val save: suspend (YearMonth, Money?, Money?) -> SaveGoalsResult,
     private val numbers: GoalNumbers,
+    private val limit: (YearMonth) -> Flow<RevenueLimitView?> = { flowOf(null) },
+    private val saveLimit: suspend (RevenueLimit?) -> SaveLimitResult = { SaveLimitResult.Saved },
 ) : ViewModel() {
     private val attempts = MutableStateFlow(0)
     private val local = MutableStateFlow(Local())
@@ -66,7 +73,10 @@ class GoalsViewModel(
                     flowOf<Read>(Read.UnknownZone)
                 } else {
                     val shown = month ?: date.date.yearMonth
-                    observe(shown).map<MonthGoalView, Read> { Read.Ready(date, shown, it) }
+                    // El límite siempre suma hasta el mes en curso, sin importar el mes elegido.
+                    combine(observe(shown), limit(date.date.yearMonth)) { goals, written ->
+                        Read.Ready(date, shown, goals, written)
+                    }
                 }
             }
             // Al reintentar, la pantalla deja el error mientras vuelve a leer.
@@ -90,6 +100,8 @@ class GoalsViewModel(
                 goals = current.goals,
                 sheet = shown.sheet,
                 message = shown.message,
+                limit = current.limit,
+                limitSheet = shown.limitSheet,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), GoalsUiState.Loading)
@@ -117,9 +129,104 @@ class GoalsViewModel(
 
             GoalsAction.SaveGoals -> saveGoals()
 
-            GoalsAction.DismissSheet -> local.update { it.copy(sheet = null) }
+            GoalsAction.DismissSheet -> local.update { it.copy(sheet = null, limitSheet = null) }
 
             GoalsAction.MessageShown -> local.update { it.copy(message = null) }
+
+            GoalsAction.StartLimit -> startLimit()
+
+            is GoalsAction.LimitAmountText -> editLimitSheet {
+                it.copy(amountText = action.text, amountProblem = null, saveFailed = null)
+            }
+
+            is GoalsAction.LimitMonthsText -> editLimitSheet {
+                it.copy(monthsText = action.text, monthsInvalid = false, saveFailed = null)
+            }
+
+            GoalsAction.SaveLimit -> saveLimitSheet()
+
+            GoalsAction.RemoveLimit -> persistLimit(null)
+        }
+    }
+
+    /**
+     * Abre la hoja del límite con el que ya hay, o vacía con 12 meses: lo más común es seguir un
+     * año.
+     */
+    private fun startLimit() {
+        val ready = uiState.value as? GoalsUiState.Ready ?: return
+        val saved = ready.limit?.limit
+        local.update {
+            it.copy(
+                limitSheet = LimitSheet(
+                    editing = saved != null,
+                    amountText = saved?.amount?.let(::text).orEmpty(),
+                    monthsText = (saved?.months ?: DEFAULT_LIMIT_MONTHS).toString(),
+                ),
+            )
+        }
+    }
+
+    private fun saveLimitSheet() {
+        val sheet = local.value.limitSheet ?: return
+        if (sheet.saving) return
+        val amount = readGoal(sheet.amountText)
+        val months = sheet.monthsText.trim().toIntOrNull()
+            ?.takeIf { RevenueLimitRules.isValidMonths(it) }
+        val amountProblem = when (amount) {
+            GoalRead.Empty -> GoalFieldProblem.NOT_POSITIVE
+            is GoalRead.Invalid -> amount.problem
+            is GoalRead.Valid -> null
+        }
+        if (amountProblem != null || months == null) {
+            editLimitSheet {
+                it.copy(amountProblem = amountProblem, monthsInvalid = months == null)
+            }
+            return
+        }
+        persistLimit(RevenueLimit(requireNotNull(amount.valueOrNull()), months))
+    }
+
+    /** Guarda [written], o quita el límite con `null`, desde la hoja abierta. */
+    private fun persistLimit(written: RevenueLimit?) {
+        val sheet = local.value.limitSheet ?: return
+        if (sheet.saving) return
+        editLimitSheet { it.copy(saving = true, saveFailed = null) }
+        viewModelScope.launch {
+            val result = saveLimit(written)
+            local.update { shown ->
+                val open = shown.limitSheet ?: return@update shown
+                when (result) {
+                    SaveLimitResult.Saved ->
+                        shown.copy(limitSheet = null, message = GoalMessage.LimitSaved)
+
+                    SaveLimitResult.Removed ->
+                        shown.copy(limitSheet = null, message = GoalMessage.LimitRemoved)
+
+                    // La hoja ya lee los mismos topes: si llega, cambió algo por debajo.
+                    is SaveLimitResult.Invalid -> shown.copy(
+                        limitSheet = open.copy(
+                            saving = false,
+                            amountProblem =
+                                GoalFieldProblem.NOT_POSITIVE.takeIf { result.amount },
+                            monthsInvalid = result.months,
+                        ),
+                    )
+
+                    is SaveLimitResult.Failed -> shown.copy(
+                        limitSheet = open.copy(
+                            saving = false,
+                            saveFailed = GoalSaveFailure(result.failure.isOutOfSpace),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    private fun editLimitSheet(change: (LimitSheet) -> LimitSheet) {
+        local.update { shown ->
+            shown.limitSheet?.let { shown.copy(limitSheet = change(it)) } ?: shown
         }
     }
 
@@ -240,15 +347,26 @@ class GoalsViewModel(
 
         data object UnknownZone : Read
 
-        data class Ready(val today: BusinessDate, val month: YearMonth, val goals: MonthGoalView) :
-            Read
+        data class Ready(
+            val today: BusinessDate,
+            val month: YearMonth,
+            val goals: MonthGoalView,
+            val limit: RevenueLimitView?,
+        ) : Read
     }
 
-    private data class Local(val sheet: GoalSheet? = null, val message: GoalMessage? = null)
+    private data class Local(
+        val sheet: GoalSheet? = null,
+        val message: GoalMessage? = null,
+        val limitSheet: LimitSheet? = null,
+    )
 
     private companion object {
         /** Cuántos meses después del mes en curso se pueden dejar definidos. Valor de diseño. */
         const val MONTHS_AHEAD = 12
+
+        /** Los meses con que abre la hoja de un límite nuevo: un año. Valor de diseño. */
+        const val DEFAULT_LIMIT_MONTHS = 12
 
         /** Tras girar la pantalla, las lecturas siguen vivas este tiempo y no se repiten. */
         const val STOP_AFTER_MS = 5_000L

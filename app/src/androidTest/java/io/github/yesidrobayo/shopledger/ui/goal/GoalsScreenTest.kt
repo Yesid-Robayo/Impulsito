@@ -10,15 +10,20 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.report.GoalAdvance
+import io.github.yesidrobayo.shopledger.domain.model.report.LimitLevel
 import io.github.yesidrobayo.shopledger.domain.model.report.MonthGoals
+import io.github.yesidrobayo.shopledger.domain.model.report.RevenueLimitView
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
+import io.github.yesidrobayo.shopledger.domain.model.settings.RevenueLimit
 import io.github.yesidrobayo.shopledger.domain.usecase.report.MonthGoalView
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
@@ -131,6 +136,56 @@ class GoalsScreenTest {
         )
 
         compose.onNodeWithText(text(R.string.goal_error_value)).assertIsDisplayed()
+    }
+
+    private fun limitView(used: Long, level: LimitLevel) = RevenueLimitView(
+        limit = RevenueLimit(Money(10_000_000), 12),
+        window = ReportPeriod.Range(
+            BusinessDate(LocalDate(2025, 12, 1)),
+            BusinessDate(LocalDate(2026, 11, 30)),
+        ),
+        accumulated = Money(used * 1_000),
+        used = BasisPoints(used),
+        level = level,
+        since = null,
+    )
+
+    @Test
+    fun withoutALimitItLeadsToDefineOneAndSaysItIsAReference() {
+        show(ready(null))
+
+        compose.onNodeWithText(text(R.string.limit_empty_title)).performScrollTo()
+            .assertIsDisplayed()
+        val disclaimer =
+            resources.getString(R.string.limit_disclaimer, text(R.string.app_name))
+        compose.onNodeWithText(disclaimer).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.limit_define_action)).performScrollTo()
+            .performClick()
+        assertEquals(listOf<GoalsAction>(GoalsAction.StartLimit), actions)
+    }
+
+    @Test
+    fun theFirstNoticeAndTheExceededOneAreWords() {
+        show(ready(null).copy(limit = limitView(8_200, LimitLevel.FIRST_NOTICE)))
+        val reached = text(R.string.limit_notice_reached).substringAfter("%1\$s")
+        compose.onNodeWithText(reached, substring = true).performScrollTo().assertIsDisplayed()
+
+        show(ready(null).copy(limit = limitView(10_400, LimitLevel.EXCEEDED)))
+        compose.onNodeWithText(text(R.string.limit_notice_over)).performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun theLimitSheetSaysTheMonthsRange() {
+        show(
+            ready(null).copy(
+                limitSheet = LimitSheet(editing = true, monthsText = "61", monthsInvalid = true),
+            ),
+        )
+
+        compose.onNodeWithText(text(R.string.limit_remove_action)).assertIsDisplayed()
+        val range = text(R.string.limit_error_months).substringBefore("%1")
+        compose.onNodeWithText(range, substring = true).assertIsDisplayed()
     }
 
     private fun show(state: GoalsUiState, discreet: Boolean = false) {

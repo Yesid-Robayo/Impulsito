@@ -21,4 +21,35 @@
     <string name="hub_tool_goals_desc">Metas do mês e limite de receita próprio</string>
     <string name="a11y_goal_progress">%1$s: %2$s da meta, %3$s de %4$s</string>
     <string name="a11y_goal_progress_hidden">%1$s, %2$s</string>
+
+    <!-- Límite de ingresos: lo escribe la persona, y el aviso es una orientación. -->
+    <string name="limit_section">Limite de receita</string>
+    <plurals name="limit_accumulated">
+        <item quantity="one">Acumulado em %1$s mês</item>
+        <item quantity="many">Acumulado em %1$s de meses</item>
+        <item quantity="other">Acumulado em %1$s meses</item>
+    </plurals>
+    <string name="limit_progress">%1$s de %2$s</string>
+    <string name="limit_define_action">Definir limite</string>
+    <string name="limit_edit_action">Editar limite</string>
+    <string name="limit_amount_field">Valor do limite</string>
+    <string name="limit_months_field">Meses somados</string>
+    <string name="limit_months_help">Inclui o mês atual</string>
+    <string name="limit_save_action">Salvar limite</string>
+    <string name="limit_remove_action">Remover limite</string>
+    <string name="limit_disclaimer">Este limite é uma referência escrita pela pessoa. %1$s não conhece nenhuma norma e não indica se algo é atendido.</string>
+    <string name="limit_notice_reached">%1$s do limite escrito foi atingido</string>
+    <string name="limit_notice_over">O limite escrito foi ultrapassado</string>
+    <string name="limit_since">Desde %1$s</string>
+    <string name="limit_empty_title">Sem limite de receita</string>
+    <string name="limit_empty_body">Serve para acompanhar um teto que a pessoa conhece e escreve aqui.</string>
+    <string name="limit_error_months">Usar um número de %1$s a %2$s</string>
+    <string name="limit_saved">Limite salvo</string>
+    <string name="limit_removed">Limite removido</string>
+    <string name="a11y_limit_meter">Limite de receita: %1$s usado, %2$s de %3$s</string>
+    <string name="notif_channel_limits">Metas e limites</string>
+    <string name="notif_limit_title">Aviso de limite de receita</string>
+    <string name="notif_limit_body_reached">%1$s do limite escrito foi atingido.</string>
+    <string name="notif_limit_body_over">O limite escrito foi ultrapassado.</string>
+    <string name="notif_limit_public">Há um aviso em %1$s</string>
 </resources>

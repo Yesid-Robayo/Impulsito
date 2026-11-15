@@ -97,6 +97,7 @@ import io.github.yesidrobayo.shopledger.data.local.report.CollectionReportDao
 import io.github.yesidrobayo.shopledger.data.local.report.ManagementSummaryDao
 import io.github.yesidrobayo.shopledger.data.local.report.PeriodBreakdownDao
 import io.github.yesidrobayo.shopledger.data.local.report.PeriodReportDao
+import io.github.yesidrobayo.shopledger.data.local.report.PlanningReportDao
 import io.github.yesidrobayo.shopledger.data.local.report.PriceIndexEntryDao
 import io.github.yesidrobayo.shopledger.data.local.report.PriceIndexEntryEntity
 import io.github.yesidrobayo.shopledger.data.local.report.ReplacementReportDao
@@ -375,6 +376,8 @@ internal abstract class AppDatabase : RoomDatabase() {
     abstract fun saleFiscalMarkDao(): SaleFiscalMarkDao
 
     abstract fun managementSummaryDao(): ManagementSummaryDao
+
+    abstract fun planningReportDao(): PlanningReportDao
 
     companion object {
         /**

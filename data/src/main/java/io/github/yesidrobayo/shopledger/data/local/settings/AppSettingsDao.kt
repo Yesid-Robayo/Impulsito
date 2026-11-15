@@ -235,6 +235,16 @@ internal interface AppSettingsDao {
         updatedAt: Long,
     ): Int
 
+    /**
+     * El límite de ingresos que escribió la persona: el monto y los meses van juntos, o los dos en
+     * nulo para quitarlo.
+     */
+    @Query(
+        "UPDATE app_settings SET revenue_limit_amount = :amount, " +
+            "revenue_limit_months = :months, updated_at = :updatedAt WHERE id = 1",
+    )
+    suspend fun updateRevenueLimit(amount: Long?, months: Long?, updatedAt: Long): Int
+
     /** Marca el fin del primer uso en [completedAt], que también queda como último cambio. */
     @Query(
         "UPDATE app_settings SET onboarding_completed_at = :completedAt, " +

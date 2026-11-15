@@ -27,12 +27,15 @@ import io.github.yesidrobayo.shopledger.notification.AndroidBackupNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidLowStockNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidRecurringNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidReminderNotifier
+import io.github.yesidrobayo.shopledger.notification.AndroidRevenueLimitNotifier
 import io.github.yesidrobayo.shopledger.notification.DailySummaryDelivery
 import io.github.yesidrobayo.shopledger.notification.DailySummaryScheduler
 import io.github.yesidrobayo.shopledger.notification.ExpiryNoticeDelivery
+import io.github.yesidrobayo.shopledger.notification.LimitNoticeFile
 import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
 import io.github.yesidrobayo.shopledger.notification.RecurringReminderDelivery
+import io.github.yesidrobayo.shopledger.notification.RevenueLimitNoticeDelivery
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeFile
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
 import io.github.yesidrobayo.shopledger.ui.components.PhotoState
@@ -176,6 +179,26 @@ class AppContainer(application: Application) {
                         is DataAccess.Rescue -> error("Sin base no hay alertas que avisar")
                     }
                 },
+            log = log,
+        )
+    }
+
+    /**
+     * El aviso del límite de ingresos, una vez por nivel y por ventana, mientras la base está
+     * abierta. El último aviso se guarda fuera de la base, en este teléfono.
+     */
+    val revenueLimitNoticeDelivery: RevenueLimitNoticeDelivery by lazy {
+        RevenueLimitNoticeDelivery(
+            scope = applicationScope,
+            notifier =
+                AndroidRevenueLimitNotifier(application, localizedContext) {
+                    when (val access = data.open()) {
+                        is DataAccess.Ready -> access.ports.settings.get()
+                        is DataAccess.Rescue -> error("Sin base no hay límite que avisar")
+                    }
+                },
+            store = LimitNoticeFile({ application.noBackupFilesDir }, dispatchers.io),
+            clock = clock,
             log = log,
         )
     }

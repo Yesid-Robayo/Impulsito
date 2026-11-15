@@ -61,6 +61,9 @@ class NotificationChannels(
         /** El canal de los recordatorios de gastos recurrentes que esperan confirmación. */
         const val RECURRING_CHANNEL_ID = "recurring"
 
+        /** El canal del aviso del límite de ingresos que escribió la persona. */
+        const val LIMITS_CHANNEL_ID = "limits"
+
         /**
          * Los canales de la app. Cada aviso suma aquí su canal cuando llega, con un ID que no cambia
          * nunca.
@@ -94,6 +97,12 @@ class NotificationChannels(
                 NotificationChannelSpec(
                     id = RECURRING_CHANNEL_ID,
                     name = R.string.notif_channel_recurring,
+                    description = null,
+                    importance = ChannelImportance.DEFAULT,
+                ),
+                NotificationChannelSpec(
+                    id = LIMITS_CHANNEL_ID,
+                    name = R.string.notif_channel_limits,
                     description = null,
                     importance = ChannelImportance.DEFAULT,
                 ),

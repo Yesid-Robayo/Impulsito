@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.report.BusinessGoalEntity
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.report.MonthGoals
+import io.github.yesidrobayo.shopledger.domain.model.settings.RevenueLimit
 import io.github.yesidrobayo.shopledger.domain.port.GoalRepository
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -13,13 +14,15 @@ import kotlinx.datetime.YearMonth
 import kotlinx.datetime.number
 
 /**
- * Las metas de cada mes sobre `business_goals`, una fila por mes `AAAA-MM`.
+ * Las metas de cada mes sobre `business_goals`, una fila por mes `AAAA-MM`, y el límite de
+ * ingresos sobre la única fila de `app_settings`.
  *
  * Un mes nuevo se inserta y uno que ya tiene metas se actualiza: nunca `INSERT OR REPLACE`, que
  * borraría la fila y escribiría otra. Las escrituras exigen la transacción del caso de uso.
  */
 internal class RoomGoalRepository(database: AppDatabase) : GoalRepository {
     private val rows = database.businessGoalDao()
+    private val settings = database.appSettingsDao()
     private val writes = RepositoryWrites(database)
 
     override fun observe(month: YearMonth): Flow<MonthGoals?> = rows
@@ -53,6 +56,18 @@ internal class RoomGoalRepository(database: AppDatabase) : GoalRepository {
 
     override suspend fun remove(month: YearMonth) {
         writes.inTransaction { rows.delete(month.toStoredMonth()) }
+    }
+
+    override suspend fun saveRevenueLimit(limit: RevenueLimit?, updatedAt: Instant) {
+        writes.inTransaction {
+            requireOneRow(
+                settings.updateRevenueLimit(
+                    amount = limit?.amount?.minor,
+                    months = limit?.months?.toLong(),
+                    updatedAt = updatedAt.toStoredMillis(),
+                ),
+            )
+        }
     }
 
     /** La fila leída como las metas de [month], que es el mes por el que se buscó. */

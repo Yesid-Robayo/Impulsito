@@ -9,4 +9,5 @@ internal enum class AppEvent(override val text: String) : LogEvent {
     EXPIRY_DELIVERY_FAILED("Falló la entrega de los avisos de vencimiento"),
     DAILY_SUMMARY_FAILED("Falló el resumen del día"),
     RECURRING_DELIVERY_FAILED("Falló la entrega de los recordatorios de gastos recurrentes"),
+    LIMIT_DELIVERY_FAILED("Falló la entrega del aviso del límite de ingresos"),
 }

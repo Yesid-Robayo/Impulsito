@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.goal
 import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.report.RevenueLimitView
 import io.github.yesidrobayo.shopledger.domain.usecase.report.MonthGoalView
 import kotlinx.datetime.YearMonth
 
@@ -42,11 +43,31 @@ data class GoalSheet(
     val saveFailed: GoalSaveFailure? = null,
 )
 
+/**
+ * La hoja del límite de ingresos: el monto y los meses tal como se escribieron, el problema de
+ * cada campo y si quedó guardando o falló. [editing] si ya hay un límite, que entonces se puede
+ * quitar.
+ */
+@Immutable
+data class LimitSheet(
+    val editing: Boolean,
+    val amountText: String = "",
+    val monthsText: String = "",
+    val amountProblem: GoalFieldProblem? = null,
+    val monthsInvalid: Boolean = false,
+    val saving: Boolean = false,
+    val saveFailed: GoalSaveFailure? = null,
+)
+
 /** Lo que se avisa con un mensaje de la navegación. */
 sealed interface GoalMessage {
     data object Saved : GoalMessage
 
     data object Removed : GoalMessage
+
+    data object LimitSaved : GoalMessage
+
+    data object LimitRemoved : GoalMessage
 }
 
 /** El estado de `Metas y límites`. */
@@ -67,6 +88,9 @@ sealed interface GoalsUiState {
      * @param canGoNext si se puede pasar al mes siguiente: aquí sí se avanza a meses futuros, para
      *   dejarlos definidos, hasta un año después del mes en curso.
      * @param sheet la hoja de metas abierta, o `null`.
+     * @param limit el límite de ingresos y lo acumulado en su ventana, que siempre termina en el
+     *   mes en curso, o `null` si la persona no escribió uno.
+     * @param limitSheet la hoja del límite abierta, o `null`.
      */
     @Immutable
     data class Ready(
@@ -76,6 +100,8 @@ sealed interface GoalsUiState {
         val goals: MonthGoalView,
         val sheet: GoalSheet? = null,
         val message: GoalMessage? = null,
+        val limit: RevenueLimitView? = null,
+        val limitSheet: LimitSheet? = null,
     ) : GoalsUiState
 }
 
@@ -101,8 +127,20 @@ sealed interface GoalsAction {
 
     data object SaveGoals : GoalsAction
 
-    /** Cierra la hoja abierta sin guardar. */
+    /** Cierra la hoja abierta, de metas o de límite, sin guardar. */
     data object DismissSheet : GoalsAction
 
     data object MessageShown : GoalsAction
+
+    /** `Definir límite` o `Editar límite`: abre la hoja del límite. */
+    data object StartLimit : GoalsAction
+
+    data class LimitAmountText(val text: String) : GoalsAction
+
+    data class LimitMonthsText(val text: String) : GoalsAction
+
+    data object SaveLimit : GoalsAction
+
+    /** `Quitar límite`, desde la hoja de un límite guardado. */
+    data object RemoveLimit : GoalsAction
 }

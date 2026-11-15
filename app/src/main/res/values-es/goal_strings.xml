@@ -21,4 +21,35 @@
     <string name="hub_tool_goals_desc">Objetivos del mes y límite de ingresos propio</string>
     <string name="a11y_goal_progress">%1$s: %2$s de la meta, %3$s de %4$s</string>
     <string name="a11y_goal_progress_hidden">%1$s, %2$s</string>
+
+    <!-- Límite de ingresos: lo escribe la persona, y el aviso es una orientación. -->
+    <string name="limit_section">Límite de ingresos</string>
+    <plurals name="limit_accumulated">
+        <item quantity="one">Acumulado en %1$s mes</item>
+        <item quantity="many">Acumulado en %1$s de meses</item>
+        <item quantity="other">Acumulado en %1$s meses</item>
+    </plurals>
+    <string name="limit_progress">%1$s de %2$s</string>
+    <string name="limit_define_action">Definir límite</string>
+    <string name="limit_edit_action">Editar límite</string>
+    <string name="limit_amount_field">Monto del límite</string>
+    <string name="limit_months_field">Meses que suma</string>
+    <string name="limit_months_help">Incluye el mes en curso</string>
+    <string name="limit_save_action">Guardar límite</string>
+    <string name="limit_remove_action">Quitar límite</string>
+    <string name="limit_disclaimer">Este límite es una referencia escrita por la persona. %1$s no conoce ninguna norma y no indica si se cumple o no.</string>
+    <string name="limit_notice_reached">Se llegó al %1$s del límite escrito</string>
+    <string name="limit_notice_over">Se superó el límite escrito</string>
+    <string name="limit_since">Desde el %1$s</string>
+    <string name="limit_empty_title">Sin límite de ingresos</string>
+    <string name="limit_empty_body">Sirve para seguir un tope que la persona conoce y escribe aquí.</string>
+    <string name="limit_error_months">Usar un número de %1$s a %2$s</string>
+    <string name="limit_saved">Límite guardado</string>
+    <string name="limit_removed">Límite quitado</string>
+    <string name="a11y_limit_meter">Límite de ingresos: %1$s usado, %2$s de %3$s</string>
+    <string name="notif_channel_limits">Metas y límites</string>
+    <string name="notif_limit_title">Aviso de límite de ingresos</string>
+    <string name="notif_limit_body_reached">Se llegó al %1$s del límite escrito.</string>
+    <string name="notif_limit_body_over">Se superó el límite escrito.</string>
+    <string name="notif_limit_public">Hay un aviso en %1$s</string>
 </resources>

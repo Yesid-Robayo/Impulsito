@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.domain.testing
 
 import io.github.yesidrobayo.shopledger.domain.model.report.MonthGoals
+import io.github.yesidrobayo.shopledger.domain.model.settings.RevenueLimit
 import io.github.yesidrobayo.shopledger.domain.port.GoalRepository
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -10,9 +11,11 @@ import kotlinx.datetime.YearMonth
 
 /**
  * Las metas en memoria, un mes por fila como la tabla real. Cada escritura queda anotada en
- * [writes], y [failNextWrite] hace fallar la siguiente con esa excepción.
+ * [writes], y [failNextWrite] hace fallar la siguiente con esa excepción. El límite de ingresos se
+ * escribe en [settings], como en la base vive en los ajustes.
  */
-internal class FakeGoalRepository : GoalRepository {
+internal class FakeGoalRepository(private val settings: FakeAppSettingsRepository? = null) :
+    GoalRepository {
     val goals = MutableStateFlow(emptyMap<YearMonth, MonthGoals>())
     val writes = mutableListOf<String>()
     var failNextWrite: Throwable? = null
@@ -32,6 +35,15 @@ internal class FakeGoalRepository : GoalRepository {
         failIfAsked()
         writes += "remove $month"
         goals.value = goals.value - month
+    }
+
+    override suspend fun saveRevenueLimit(limit: RevenueLimit?, updatedAt: Instant) {
+        failIfAsked()
+        writes += "limit $limit"
+        val fake = requireNotNull(settings) { "Esta prueba no escribe el límite" }
+        val current = fake.settings.value
+        fake.settings.value =
+            current.copy(notices = current.notices.copy(revenueLimit = limit))
     }
 
     private fun failIfAsked() {
