@@ -28,6 +28,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomDocumentAttachmentRe
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomExpenseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomFxRateRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomGoalRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomHeldSaleRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLocationRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLocationStockSource
@@ -105,6 +106,7 @@ import io.github.yesidrobayo.shopledger.domain.port.DocumentAttachmentRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.FxRateRepository
+import io.github.yesidrobayo.shopledger.domain.port.GoalRepository
 import io.github.yesidrobayo.shopledger.domain.port.HeldSaleRepository
 import io.github.yesidrobayo.shopledger.domain.port.HumanCheckRecorder
 import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
@@ -458,6 +460,9 @@ class DataPorts internal constructor(
     /** Si hay compras, stock y clientes o proveedores, para el resumen de gestión. Solo lee. */
     val managementSummaries: ManagementSummaryRepository =
         RoomManagementSummaryRepository(database)
+
+    /** Las metas de cada mes que escribe la persona. */
+    val goals: GoalRepository = RoomGoalRepository(database)
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()

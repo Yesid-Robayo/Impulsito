@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Metas y límites: las metas del mes, su tarjeta en Inicio y su entrada en Negocio. -->
+    <string name="goal_section">Metas del mes</string>
+    <string name="goal_sales">Ventas</string>
+    <string name="goal_profit">Ganancia final</string>
+    <string name="goal_progress">%1$s de %2$s</string>
+    <string name="goal_define_action">Definir metas</string>
+    <string name="goal_edit_action">Editar metas</string>
+    <string name="goal_sales_field">Meta de ventas</string>
+    <string name="goal_profit_field">Meta de ganancia final</string>
+    <string name="goal_save_action">Guardar metas</string>
+    <string name="goal_reached">Meta alcanzada</string>
+    <string name="goal_empty_title">Sin metas para este mes</string>
+    <string name="goal_empty_body">Sirve para comparar el mes con un objetivo propio.</string>
+    <string name="goal_error_value">Escribir un valor mayor que 0</string>
+    <string name="goal_saved">Metas guardadas</string>
+    <string name="goal_removed">Metas quitadas</string>
+    <string name="home_goal_label">Meta del mes</string>
+    <string name="hub_tool_goals">Metas y límites</string>
+    <string name="hub_tool_goals_desc">Objetivos del mes y límite de ingresos propio</string>
+    <string name="a11y_goal_progress">%1$s: %2$s de la meta, %3$s de %4$s</string>
+    <string name="a11y_goal_progress_hidden">%1$s, %2$s</string>
+</resources>

@@ -49,6 +49,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupNotice
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
+import io.github.yesidrobayo.shopledger.domain.model.report.GoalAdvance
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationNotice
@@ -110,6 +111,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * - Bajo el héroe, la ganancia final de la semana y del mes, después de gastos: la misma cifra que
  *   las estadísticas. Es ganancia, así que el modo discreto la oculta.
  *
+ * - Bajo los atajos, la meta de ventas del mes, solo si el mes tiene una, según [goal].
+ *
  * Es pura: recibe el estado y avisa cada acción.
  */
 @Composable
@@ -122,6 +125,7 @@ fun HomeScreen(
     profit: HomeProfit? = null,
     noDestinationNotice: NoDestinationNotice? = NoDestinationNotice.FULL,
     photosPending: Int = 0,
+    goal: GoalAdvance? = null,
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -189,6 +193,7 @@ fun HomeScreen(
                                 onAction,
                                 bottom,
                                 Modifier.weight(1f),
+                                goal = goal,
                             )
                         } else {
                             OnePane(
@@ -199,6 +204,7 @@ fun HomeScreen(
                                 onAction,
                                 bottom,
                                 Modifier.weight(1f),
+                                goal = goal,
                             )
                         }
                 }
@@ -228,6 +234,7 @@ private fun OnePane(
     onAction: (HomeAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
+    goal: GoalAdvance? = null,
 ) {
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
@@ -239,7 +246,7 @@ private fun OnePane(
                     Modifier.padding(horizontal = AppTheme.spacing.s16),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
                 ) {
-                    Overview(content, backup, lowStock, profit, onAction)
+                    Overview(content, backup, lowStock, profit, onAction, goal = goal)
                 }
             }
             recentSales(content, onAction)
@@ -257,6 +264,7 @@ private fun TwoPanes(
     onAction: (HomeAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
+    goal: GoalAdvance? = null,
 ) {
     Row(
         modifier.fillMaxWidth().padding(horizontal = AppTheme.spacing.s8),
@@ -270,7 +278,7 @@ private fun TwoPanes(
                 .padding(start = AppTheme.spacing.s8, bottom = bottom),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
         ) {
-            Overview(content, backup, lowStock, profit, onAction)
+            Overview(content, backup, lowStock, profit, onAction, goal = goal)
         }
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -292,6 +300,7 @@ private fun ColumnScope.Overview(
     lowStock: HomeLowStock?,
     profit: HomeProfit?,
     onAction: (HomeAction) -> Unit,
+    goal: GoalAdvance? = null,
 ) {
     backup.wording?.let { BackupSummary(it, backup.notice, backup.photosPending, onAction) }
     TodayHeroBlock(content.hero, Modifier.padding(top = AppTheme.spacing.s8))
@@ -313,6 +322,7 @@ private fun ColumnScope.Overview(
         }
     }
     Shortcuts(onAction)
+    goal?.let { HomeGoalCard(it) { onAction(HomeAction.OpenGoals) } }
     lowStock?.let { LowStockCard(it, onAction) }
 }
 

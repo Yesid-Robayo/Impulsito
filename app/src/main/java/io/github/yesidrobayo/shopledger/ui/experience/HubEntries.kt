@@ -191,6 +191,12 @@ val HUB_ENTRIES: List<HubEntry> =
             R.string.hub_tool_recurring_desc,
             AppNavKey.RecurringExpenses,
         ),
+        HubEntry(
+            BusinessTool.GOALS_AND_LIMITS,
+            R.string.hub_tool_goals,
+            R.string.hub_tool_goals_desc,
+            AppNavKey.GoalsAndLimits,
+        ),
     )
 
 /** El nombre de cada grupo, de la redacción. */

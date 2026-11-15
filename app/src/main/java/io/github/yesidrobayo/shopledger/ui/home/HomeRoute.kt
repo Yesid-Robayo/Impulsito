@@ -11,6 +11,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverv
 import io.github.yesidrobayo.shopledger.domain.usecase.home.ObserveHomeProfitUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.home.ObserveTodaySalesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveCurrentMonthGoalUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveMonthGoalsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodComparisonUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodReportUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
@@ -68,6 +70,16 @@ fun HomeRoute(navigator: AppNavigator) {
                 noticeStore = container.noDestinationNotice,
                 now = container.clock::now,
                 photoBackup = { container.data.photoBackup.facts() },
+                monthGoal = { checks ->
+                    ObserveCurrentMonthGoalUseCase(
+                        BusinessCalendarSource(ports.settings),
+                        ObserveMonthGoalsUseCase(
+                            ports.goals,
+                            ObservePeriodReportUseCase(ports.periodReports),
+                        ),
+                        container.clock,
+                    )(checks)
+                },
             )
         }
     when (model) {
@@ -83,6 +95,7 @@ fun HomeRoute(navigator: AppNavigator) {
             val profit by viewModel.profit.collectAsStateWithLifecycle()
             val noDestinationNotice by viewModel.noDestinationNotice.collectAsStateWithLifecycle()
             val photosPending by viewModel.photosPending.collectAsStateWithLifecycle()
+            val goal by viewModel.goal.collectAsStateWithLifecycle()
             val policy = LocalPolicyPrompt.current
             LifecycleResumeEffect(viewModel) {
                 viewModel.onReturnToForeground()
@@ -94,6 +107,7 @@ fun HomeRoute(navigator: AppNavigator) {
                 profit = profit,
                 noDestinationNotice = noDestinationNotice,
                 photosPending = photosPending,
+                goal = goal,
                 uiState = uiState,
                 onAction = { action ->
                     when (action) {
@@ -134,6 +148,8 @@ fun HomeRoute(navigator: AppNavigator) {
 
                         is HomeAction.OpenProduct ->
                             navigator.open(AppNavKey.ProductDetail(action.productId))
+
+                        HomeAction.OpenGoals -> navigator.open(AppNavKey.GoalsAndLimits)
 
                         HomeAction.Retry,
                         HomeAction.AcknowledgeNoDestination,

@@ -65,6 +65,7 @@ import io.github.yesidrobayo.shopledger.ui.expense.RecurringExpensesRoute
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
 import io.github.yesidrobayo.shopledger.ui.extra.ExtrasRoute
 import io.github.yesidrobayo.shopledger.ui.extras.CustomFieldsRoute
+import io.github.yesidrobayo.shopledger.ui.goal.GoalsRoute
 import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.imports.ImportRoute
@@ -450,6 +451,7 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.ManagementSummary ->
             ManagementSummaryRoute(AppNavKey.ManagementSummary, navigator)
         AppNavKey.PriceIndex -> PriceIndexRoute(navigator)
+        AppNavKey.GoalsAndLimits -> GoalsRoute(navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }

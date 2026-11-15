@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Metas y límites: las metas del mes, su tarjeta en Inicio y su entrada en Negocio. -->
+    <string name="goal_section">Goals for the month</string>
+    <string name="goal_sales">Sales</string>
+    <string name="goal_profit">Final profit</string>
+    <string name="goal_progress">%1$s of %2$s</string>
+    <string name="goal_define_action">Set goals</string>
+    <string name="goal_edit_action">Edit goals</string>
+    <string name="goal_sales_field">Sales goal</string>
+    <string name="goal_profit_field">Final profit goal</string>
+    <string name="goal_save_action">Save goals</string>
+    <string name="goal_reached">Goal reached</string>
+    <string name="goal_empty_title">No goals for this month</string>
+    <string name="goal_empty_body">Use it to compare the month with a goal of your own.</string>
+    <string name="goal_error_value">Enter an amount greater than 0</string>
+    <string name="goal_saved">Goals saved</string>
+    <string name="goal_removed">Goals removed</string>
+    <string name="home_goal_label">Monthly goal</string>
+    <string name="hub_tool_goals">Goals and limits</string>
+    <string name="hub_tool_goals_desc">Monthly goals and an income limit of your own</string>
+    <string name="a11y_goal_progress">%1$s: %2$s of the goal, %3$s of %4$s</string>
+    <string name="a11y_goal_progress_hidden">%1$s, %2$s</string>
+</resources>

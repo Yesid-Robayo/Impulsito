@@ -90,6 +90,9 @@ sealed interface HomeAction {
 
     /** Un producto de la tarjeta por agotarse: abre su detalle. */
     data class OpenProduct(val productId: Long) : HomeAction
+
+    /** La tarjeta de la meta del mes: abre `Metas y límites`. */
+    data object OpenGoals : HomeAction
 }
 
 /**

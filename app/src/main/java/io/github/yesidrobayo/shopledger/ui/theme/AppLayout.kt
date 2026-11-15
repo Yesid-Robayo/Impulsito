@@ -214,6 +214,12 @@ class AppSizes internal constructor() {
      * por dp. Más ancha, el papel se agranda sin mostrar nada más.
      */
     val receiptPreviewMaxWidth: Dp = 408.dp
+
+    /** Alto de la barra de una meta del mes y del límite de ingresos. */
+    val goalBar: Dp = 8.dp
+
+    /** Ancho de una marca vertical sobre una barra, como el 80 % del límite de ingresos. */
+    val meterMark: Dp = 2.dp
 }
 
 /**

@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoBackupFacts
+import io.github.yesidrobayo.shopledger.domain.model.report.GoalAdvance
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
@@ -65,6 +66,8 @@ import kotlinx.coroutines.withContext
  * @param noticeStore dónde se guarda cuándo se aceptó el aviso sin destino, fuera de la base.
  * @param photoBackup lo que se sabe del respaldo de las fotos, para su línea aparte.
  * @param now el reloj, para contar los días desde que se aceptó ese aviso.
+ * @param monthGoal la meta de ventas del mes en curso; recibe las veces que se vuelve a mirar la
+ *   fecha.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
@@ -80,6 +83,7 @@ class HomeViewModel(
     private val noticeStore: NoDestinationNoticeStore? = null,
     private val now: () -> Instant = { kotlin.time.Clock.System.now() },
     private val photoBackup: suspend () -> PhotoBackupFacts? = { null },
+    monthGoal: (Flow<Unit>) -> Flow<GoalAdvance?> = { flowOf(null) },
 ) : ViewModel() {
     // La primera mirada a la fecha es al abrir; las demás, al volver a primer plano. Un contador,
     // y no un evento, porque dos vueltas seguidas sin leer entre ellas valen por una.
@@ -161,6 +165,15 @@ class HomeViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
 
     /**
+     * La meta de ventas del mes en curso, aparte de las ventas: sin meta, o si no se puede leer,
+     * Inicio sigue igual, sin la tarjeta.
+     */
+    val goal: StateFlow<GoalAdvance?> =
+        monthGoal(dayChecks.map {})
+            .catch { emit(null) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
+
+    /**
      * Cómo va el aviso sin destino: entero, reducido a una línea, o `null` mientras se lee si se
      * aceptó. Se vuelve a mirar al volver a primer plano, para contar los días.
      */
@@ -208,6 +221,7 @@ class HomeViewModel(
             HomeAction.OpenExpense,
             is HomeAction.OpenLowStock,
             is HomeAction.OpenProduct,
+            HomeAction.OpenGoals,
             -> Unit
         }
     }
