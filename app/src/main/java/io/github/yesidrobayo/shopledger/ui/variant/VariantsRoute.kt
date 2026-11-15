@@ -13,9 +13,11 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSo
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
+import io.github.yesidrobayo.shopledger.navigation.MarkUnsavedWork
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
+import io.github.yesidrobayo.shopledger.navigation.discardChangesTexts
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.product.ProductNumberFormat
@@ -50,6 +52,7 @@ fun VariantsRoute(key: AppNavKey.Variants, navigator: AppNavigator) {
             LaunchedEffect(uiState.createdCount, uiState.closed) {
                 if (uiState.createdCount != null || uiState.closed) navigator.back()
             }
+            MarkUnsavedWork(key, uiState.dirty, discardChangesTexts(withExit = false))
             BackHandler(enabled = uiState.dirty) { viewModel.onAction(VariantsAction.Close) }
             VariantsScreen(
                 uiState = uiState,

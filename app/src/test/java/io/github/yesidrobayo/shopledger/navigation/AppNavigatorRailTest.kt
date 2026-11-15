@@ -85,4 +85,62 @@ class AppNavigatorRailTest {
         navigator.open(AppNavKey.NewSale())
         assertTrue(navigator.showsRail)
     }
+
+    @Test
+    fun aTabDropsWhatIsAboveTheSharedPrefix() {
+        navigator.openFromRail(AppNavKey.ProductList)
+        navigator.open(AppNavKey.ProductDetail(7L))
+        navigator.open(AppNavKey.ProductEdit(7L))
+
+        assertEquals(
+            listOf(AppNavKey.ProductDetail(7L), AppNavKey.ProductEdit(7L)),
+            navigator.railDrops(AppNavKey.ProductList),
+        )
+        assertEquals(
+            listOf(AppNavKey.ProductList, AppNavKey.ProductDetail(7L), AppNavKey.ProductEdit(7L)),
+            navigator.railDrops(AppNavKey.Home),
+        )
+        assertEquals(stack.drop(1), navigator.railDrops(AppNavKey.Statistics))
+    }
+
+    @Test
+    fun theSameTabAtItsRootDropsNothing() {
+        assertEquals(emptyList<NavKey>(), navigator.railDrops(AppNavKey.Home))
+
+        navigator.openFromRail(AppNavKey.SaleHistory)
+        assertEquals(emptyList<NavKey>(), navigator.railDrops(AppNavKey.SaleHistory))
+    }
+
+    @Test
+    fun openingOnTopDropsNothingAndReturningDropsWhatIsAbove() {
+        navigator.open(AppNavKey.NewSale())
+        assertEquals(emptyList<NavKey>(), navigator.railDrops(AppNavKey.BusinessHub))
+
+        navigator.openFromRail(AppNavKey.BusinessHub)
+        navigator.open(AppNavKey.Units)
+        assertEquals(listOf(AppNavKey.Units), navigator.railDrops(AppNavKey.BusinessHub))
+    }
+
+    @Test
+    fun sellFromTheRailReturnsToTheOpenSaleInsteadOfOpeningAnother() {
+        assertEquals(emptyList<NavKey>(), navigator.railDrops(AppNavKey.NewSale()))
+        navigator.openFromRail(AppNavKey.NewSale())
+        assertEquals(listOf(AppNavKey.Home, AppNavKey.NewSale()), stack)
+
+        navigator.open(AppNavKey.Checkout)
+        assertEquals(listOf(AppNavKey.Checkout), navigator.railDrops(AppNavKey.NewSale()))
+
+        navigator.openFromRail(AppNavKey.NewSale())
+        assertEquals(listOf(AppNavKey.Home, AppNavKey.NewSale()), stack)
+    }
+
+    @Test
+    fun aSalePrefilledFromAProductCountsAsTheOpenSale() {
+        navigator.open(AppNavKey.NewSale(prefillProductId = 4L))
+        navigator.open(AppNavKey.Checkout)
+
+        navigator.openFromRail(AppNavKey.NewSale())
+
+        assertEquals(listOf(AppNavKey.Home, AppNavKey.NewSale(prefillProductId = 4L)), stack)
+    }
 }

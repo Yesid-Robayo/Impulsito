@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.sale.ObserveSaleDetailUse
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
+import io.github.yesidrobayo.shopledger.navigation.MarkUnsavedWork
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
@@ -130,6 +131,7 @@ fun SaleReturnRoute(key: AppNavKey.SaleReturn, navigator: AppNavigator) {
                 if (closed) navigator.back()
             }
             // Con algo elegido, atrás pregunta antes de descartarlo; sin nada, sale sin más.
+            MarkUnsavedWork(key, uiState.hasInput && uiState.registered == null)
             BackHandler(enabled = uiState.hasInput && uiState.registered == null) {
                 viewModel.onAction(SaleReturnAction.Close)
             }

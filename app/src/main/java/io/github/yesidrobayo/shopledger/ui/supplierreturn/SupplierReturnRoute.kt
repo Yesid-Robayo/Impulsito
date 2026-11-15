@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.returns.RegisterSupplierR
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
+import io.github.yesidrobayo.shopledger.navigation.MarkUnsavedWork
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
@@ -128,6 +129,7 @@ fun SupplierReturnRoute(key: AppNavKey.SupplierReturn, navigator: AppNavigator) 
                 if (closed) navigator.back()
             }
             // Con algo escrito, atrás pregunta antes de descartarlo; sin nada, sale sin más.
+            MarkUnsavedWork(key, uiState.hasInput && uiState.registered == null)
             BackHandler(enabled = uiState.hasInput && uiState.registered == null) {
                 viewModel.onAction(SupplierReturnAction.Close)
             }

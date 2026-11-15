@@ -53,7 +53,6 @@ import io.github.yesidrobayo.shopledger.ui.category.CategoriesRoute
 import io.github.yesidrobayo.shopledger.ui.combo.CombosRoute
 import io.github.yesidrobayo.shopledger.ui.combo.RecipeRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
-import io.github.yesidrobayo.shopledger.ui.components.AppNavigationRail
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
@@ -61,7 +60,6 @@ import io.github.yesidrobayo.shopledger.ui.components.LocalNavigationLayout
 import io.github.yesidrobayo.shopledger.ui.components.LocalSettingsOpener
 import io.github.yesidrobayo.shopledger.ui.components.NavigationLayout
 import io.github.yesidrobayo.shopledger.ui.components.RailInsets
-import io.github.yesidrobayo.shopledger.ui.components.RailMark
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.navigationLayoutForWindow
@@ -197,6 +195,8 @@ fun AppNavHost(
     val openHelp = remember(navigator) { { topic: HelpTopic -> navigator.open(topic.navKey()) } }
     val messageScope = rememberCoroutineScope()
     val messages = remember(messageScope) { AppMessages(messageScope) }
+    // Lo que cada pantalla tiene sin guardar, para que el riel pregunte antes de quitarla.
+    val unsavedWork = remember(backStack) { UnsavedWork() }
     val container = (LocalContext.current.applicationContext as ShopLedgerApp).container
     val policy =
         remember(messageScope) {
@@ -229,7 +229,12 @@ fun AppNavHost(
         // El riel y la pantalla van siempre en la misma fila, aunque el riel no se vea: así la
         // pantalla no cambia de lugar en el árbol al cambiar de clase y conserva su estado.
         Row(Modifier.fillMaxSize()) {
-            AppRail(visible = rail, navigator = navigator)
+            RailHost(
+                visible = rail,
+                navigator = navigator,
+                stack = backStack,
+                unsavedWork = unsavedWork,
+            )
             Box(
                 Modifier
                     .weight(1f)
@@ -249,6 +254,7 @@ fun AppNavHost(
                     LocalSettingsOpener provides openSettings,
                     LocalHelpOpener provides openHelp,
                     LocalNavigationLayout provides layout,
+                    LocalUnsavedWork provides unsavedWork,
                 ) {
                     NavDisplay(
                         backStack = backStack,
@@ -301,45 +307,6 @@ fun AppNavHost(
             }
         }
     }
-}
-
-/** Lo que el riel muestra, en orden: las cuatro pestañas y Negocio. Ajustes va aparte, al pie. */
-private val railKeys: List<AppNavKey> =
-    TopLevelDestination.entries.map { it.root } + AppNavKey.BusinessHub
-
-/**
- * El riel lateral, si [visible]. Sus entradas se abren con [AppNavigator.openFromRail], y marca lo
- * que está abierto con [AppNavigator.railSection].
- */
-@Composable
-private fun AppRail(visible: Boolean, navigator: AppNavigator) {
-    if (!visible) return
-    val tabs = TopLevelDestination.entries.map {
-        BottomBarItem(stringResource(it.label), it.icon, it.selectedIcon)
-    }
-    val section = navigator.railSection
-    AppNavigationRail(
-        items = tabs + BottomBarItem(
-            stringResource(R.string.hub_title),
-            R.drawable.ic_business_center,
-            R.drawable.ic_business_center,
-        ),
-        settings = BottomBarItem(
-            stringResource(R.string.settings_title),
-            R.drawable.ic_settings,
-            R.drawable.ic_settings,
-        ),
-        selected =
-            if (section == AppNavKey.Settings) {
-                RailMark.Settings
-            } else {
-                railKeys.indexOf(section).takeIf { it >= 0 }?.let(RailMark::Entry)
-            },
-        onSelect = { navigator.openFromRail(railKeys[it]) },
-        onSettings = { navigator.openFromRail(AppNavKey.Settings) },
-        sellLabel = stringResource(R.string.nav_sell),
-        onSell = navigator::sell,
-    )
 }
 
 // Las raíces llevan esta marca: entre dos raíces, el cambio es de pestaña y no de profundidad.

@@ -80,14 +80,7 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
      * activa es la forma de salir de lo profundo.
      */
     fun selectTab(tab: TopLevelDestination) {
-        val target: List<NavKey> =
-            if (tab ==
-                TopLevelDestination.HOME
-            ) {
-                listOf(AppNavKey.Home)
-            } else {
-                listOf(AppNavKey.Home, tab.root)
-            }
+        val target = tabStack(tab)
         if (backStack.toList() == target) return
         replaceWith(target)
     }
@@ -173,16 +166,47 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
     /**
      * Abre [key] desde el riel. Una raíz es su pestaña, como en la barra. Negocio y Ajustes, si ya
      * están en la pila, vuelven a ellos sin apilarse dos veces; si no, se abren encima de lo
-     * visible, como el engranaje.
+     * visible, como el engranaje. Vender, con una venta nueva ya abierta, vuelve a ella en vez de
+     * abrir otra.
      */
     fun openFromRail(key: AppNavKey) {
-        val index = backStack.indexOfLast { it == key }
+        val index = railIndex(key)
         when {
             TopLevelDestination.ofRoot(key) != null -> open(key)
             index < 0 -> backStack.add(key)
             else -> while (backStack.size > index + 1) backStack.removeAt(backStack.lastIndex)
         }
     }
+
+    /**
+     * Lo que [openFromRail] con [key] quitaría de la pila, de abajo arriba: así el riel pregunta
+     * antes si alguna de esas pantallas tiene trabajo sin guardar. Abrir encima no quita nada.
+     */
+    fun railDrops(key: AppNavKey): List<NavKey> {
+        val tab = TopLevelDestination.ofRoot(key)
+        if (tab == null) {
+            val index = railIndex(key)
+            return if (index < 0) emptyList() else backStack.drop(index + 1)
+        }
+        val target = tabStack(tab)
+        val common = backStack.zip(target).takeWhile { (a, b) -> a == b }.size
+        return backStack.drop(common)
+    }
+
+    /** Dónde está [key] en la pila para el riel: cualquier venta nueva cuenta como Vender. */
+    private fun railIndex(key: AppNavKey): Int = if (key is AppNavKey.NewSale) {
+        backStack.indexOfLast { it is AppNavKey.NewSale }
+    } else {
+        backStack.indexOfLast { it == key }
+    }
+
+    /** La pila de [tab]: Inicio solo, o Inicio y la raíz de la pestaña encima. */
+    private fun tabStack(tab: TopLevelDestination): List<NavKey> =
+        if (tab == TopLevelDestination.HOME) {
+            listOf(AppNavKey.Home)
+        } else {
+            listOf(AppNavKey.Home, tab.root)
+        }
 
     private fun replaceWith(target: List<NavKey>) {
         // Se conserva el prefijo común para que Navigation 3 no recree la entrada de Inicio.

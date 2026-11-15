@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveRecipeUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
+import io.github.yesidrobayo.shopledger.navigation.MarkUnsavedWork
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
@@ -78,6 +79,7 @@ fun RecipeRoute(key: AppNavKey.Components, navigator: AppNavigator) {
                 if (closed) navigator.back()
             }
             // Con cambios, atrás pregunta antes de descartarlos; sin ellos, sale sin más.
+            MarkUnsavedWork(key, uiState.dirty && !uiState.saved)
             BackHandler(enabled = uiState.dirty && !uiState.saved) {
                 viewModel.onAction(RecipeAction.Close)
             }

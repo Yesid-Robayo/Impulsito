@@ -31,10 +31,12 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSo
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
+import io.github.yesidrobayo.shopledger.navigation.MarkUnsavedWork
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScanPurpose
 import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
+import io.github.yesidrobayo.shopledger.navigation.discardChangesTexts
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.media.ProvidePhotos
@@ -138,6 +140,7 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                 }
             }
             // Con algo escrito, atrás pregunta antes de descartarlo.
+            MarkUnsavedWork(key, uiState.dirty, discardChangesTexts(withExit = false))
             BackHandler(enabled = uiState.dirty) { viewModel.onAction(ProductEditAction.Close) }
             // El selector de fotos del sistema: no pide permisos, y en Android viejos abre el de
             // documentos. Lo elegido solo se lee una vez, al recodificarlo.

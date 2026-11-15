@@ -23,6 +23,7 @@ import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.DocumentUndoTexts
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
+import io.github.yesidrobayo.shopledger.navigation.MarkUnsavedWork
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScanPurpose
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
@@ -179,6 +180,7 @@ fun NewPurchaseRoute(key: AppNavKey.Purchase, navigator: AppNavigator) {
                 if (uiState.closed) navigator.back()
             }
             // Con líneas, atrás pregunta antes de descartarlas; sin ellas, sale sin más.
+            MarkUnsavedWork(key, uiState.hasLines && uiState.registered == null)
             BackHandler(enabled = uiState.hasLines && uiState.registered == null) {
                 viewModel.onAction(NewPurchaseAction.Close)
             }

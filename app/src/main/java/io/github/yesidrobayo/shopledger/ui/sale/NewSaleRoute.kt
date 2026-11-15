@@ -7,6 +7,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
@@ -44,7 +45,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.LoadLotChoicesUseCa
 import io.github.yesidrobayo.shopledger.navigation.AppMessages
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
+import io.github.yesidrobayo.shopledger.navigation.DiscardTexts
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
+import io.github.yesidrobayo.shopledger.navigation.MarkUnsavedWork
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScanPurpose
 import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
@@ -328,6 +331,11 @@ fun NewSaleRoute(key: AppNavKey.NewSale, navigator: AppNavigator) {
                 if (uiState.closed) navigator.back()
             }
             // Con productos, o en un cambio, atrás pregunta antes de descartarlos; sin ellos, sale.
+            MarkUnsavedWork(
+                key,
+                !uiState.cart.isEmpty || uiState.exchange != null,
+                leaveSaleTexts(uiState.cart, exchange = uiState.exchange != null),
+            )
             BackHandler(enabled = !uiState.cart.isEmpty || uiState.exchange != null) {
                 viewModel.onAction(NewSaleAction.Close)
             }
@@ -445,4 +453,29 @@ private class SaleQuoteOperations(dependencies: ScreenDependencies) : SaleDocume
     override suspend fun order(orderId: Long): OrderView? = observeOrders.detail(orderId).first()
 
     override suspend fun delivery(orderId: Long): OrderDeliveryResult = prepareDelivery(orderId)
+}
+
+/**
+ * La pregunta de salir de la venta, la misma que muestra cerrarla: en un cambio, la de dejar el
+ * cambio; con productos, la de salir sin registrar, con cuántos lleva.
+ */
+@Composable
+internal fun leaveSaleTexts(cart: SaleCartState, exchange: Boolean): DiscardTexts = if (exchange) {
+    DiscardTexts(
+        title = stringResource(R.string.sale_return_exchange_exit_confirm_title),
+        body = stringResource(R.string.sale_return_exchange_exit_confirm_body),
+        confirm = stringResource(R.string.sale_return_exchange_exit_confirm_action),
+        dismiss = stringResource(R.string.sale_return_exchange_exit_keep_action),
+        destructive = true,
+    )
+} else {
+    // La misma cuenta del cierre: las unidades de la venta, o sus líneas si aún no hay cuentas.
+    val count = (cart.itemCount.takeIf { it > 0 } ?: cart.lines.size.toLong()).toInt()
+    DiscardTexts(
+        title = stringResource(R.string.dialog_leave_sale_title),
+        body = pluralStringResource(R.plurals.dialog_leave_sale_body, count, count),
+        confirm = stringResource(R.string.dialog_leave_sale_action),
+        dismiss = stringResource(R.string.dialog_leave_sale_exit),
+        destructive = true,
+    )
 }

@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.settings.SaveReceiptTempl
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
+import io.github.yesidrobayo.shopledger.navigation.MarkUnsavedWork
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
@@ -74,6 +75,7 @@ fun ReceiptTemplateRoute(key: AppNavKey.ReceiptTemplate, navigator: AppNavigator
             LaunchedEffect(editing?.left) {
                 if (editing?.left == true) navigator.back()
             }
+            MarkUnsavedWork(key, editing?.changed == true)
             BackHandler(enabled = editing?.changed == true) {
                 viewModel.onAction(ReceiptTemplateAction.Leave)
             }

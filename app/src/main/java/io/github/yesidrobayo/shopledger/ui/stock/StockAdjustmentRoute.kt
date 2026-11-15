@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveStockAdjustm
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
+import io.github.yesidrobayo.shopledger.navigation.MarkUnsavedWork
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenDependencies
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
@@ -85,6 +86,7 @@ fun StockAdjustmentRoute(key: AppNavKey.StockAdjustment, navigator: AppNavigator
                 if (outcome != null || uiState.closed) navigator.back()
             }
             // Con algo escrito, atrás pregunta antes de descartarlo.
+            MarkUnsavedWork(key, uiState.dirty)
             BackHandler(enabled = uiState.dirty) {
                 viewModel.onAction(StockAdjustmentAction.Close)
             }
