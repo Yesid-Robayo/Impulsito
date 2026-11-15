@@ -13,4 +13,10 @@
     <string name="widget_hide_amounts">Hide amounts</string>
     <string name="widget_backup_failed">Backup failed</string>
     <string name="tile_new_sale">New sale</string>
+    <string name="shortcut_sale_short">Sell</string>
+    <string name="shortcut_sale_long">New sale</string>
+    <string name="shortcut_expense_short">Expense</string>
+    <string name="shortcut_expense_long">New expense</string>
+    <string name="shortcut_purchase_short">Purchase</string>
+    <string name="shortcut_purchase_long">New purchase</string>
 </resources>

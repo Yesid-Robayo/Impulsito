@@ -14,4 +14,10 @@
     <string name="widget_hide_amounts">Ocultar montos</string>
     <string name="widget_backup_failed">No se pudo respaldar</string>
     <string name="tile_new_sale">Nueva venta</string>
+    <string name="shortcut_sale_short">Vender</string>
+    <string name="shortcut_sale_long">Nueva venta</string>
+    <string name="shortcut_expense_short">Gasto</string>
+    <string name="shortcut_expense_long">Nuevo gasto</string>
+    <string name="shortcut_purchase_short">Compra</string>
+    <string name="shortcut_purchase_long">Nueva compra</string>
 </resources>

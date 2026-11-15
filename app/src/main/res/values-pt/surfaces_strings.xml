@@ -14,4 +14,10 @@
     <string name="widget_hide_amounts">Ocultar valores</string>
     <string name="widget_backup_failed">Falha na cópia de segurança</string>
     <string name="tile_new_sale">Nova venda</string>
+    <string name="shortcut_sale_short">Vender</string>
+    <string name="shortcut_sale_long">Nova venda</string>
+    <string name="shortcut_expense_short">Despesa</string>
+    <string name="shortcut_expense_long">Nova despesa</string>
+    <string name="shortcut_purchase_short">Compra</string>
+    <string name="shortcut_purchase_long">Nova compra</string>
 </resources>

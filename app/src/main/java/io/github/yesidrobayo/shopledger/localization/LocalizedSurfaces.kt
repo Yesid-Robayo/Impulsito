@@ -21,8 +21,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * Algo que vive fuera de la app y muestra textos suyos: Android los guarda tal como llegaron, así
- * que un cambio de idioma no los alcanza solo. Hoy son los canales de avisos. El widget, el mosaico
- * y los atajos se suman igual cuando lleguen.
+ * que un cambio de idioma no los alcanza solo: los canales de avisos, el widget, el mosaico y los
+ * atajos de la app.
  */
 fun interface LocalizedSurface {
     /**
