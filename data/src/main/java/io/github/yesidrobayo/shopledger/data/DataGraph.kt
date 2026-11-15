@@ -79,6 +79,8 @@ import io.github.yesidrobayo.shopledger.data.crypto.RecoveryKeyRead
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryKeyStore
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryState
 import io.github.yesidrobayo.shopledger.data.crypto.RecoveryStateStore
+import io.github.yesidrobayo.shopledger.data.demo.DemoFiles
+import io.github.yesidrobayo.shopledger.data.demo.DemoSession
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkService
 import io.github.yesidrobayo.shopledger.data.destination.DestinationLinkStore
 import io.github.yesidrobayo.shopledger.data.destination.DestinationMemory
@@ -225,6 +227,8 @@ import kotlinx.coroutines.withContext
  *   pruebas la cambian, para ver qué pasa cuando sube una versión.
  * @param notifier las notificaciones del respaldo, que la interfaz implementa con sus textos. Se
  *   pide al lanzar una, no al crear esta clase.
+ * @param demoFiles los archivos del modo demostración, siempre aparte de los de la base. Se
+ *   piden en [ioContext], como [files].
  */
 class DataGraph internal constructor(
     private val context: Context,
@@ -240,6 +244,7 @@ class DataGraph internal constructor(
     private val workQueue: ((Context) -> BackupWorkQueue)? = null,
     private val currentPolicy: PolicyVersions = PolicyVersions.CURRENT,
     private val notifier: () -> BackupNotifier = { BackupNotifier.None },
+    private val demoFiles: () -> DemoFiles = { DemoFiles(context.noBackupFilesDir) },
 ) {
     private val mutex = Mutex()
 
@@ -311,7 +316,7 @@ class DataGraph internal constructor(
     val encryption: EncryptionPort by lazy {
         val pending =
             PendingPlainUpload(
-                state = { (open() as? DataAccess.Ready)?.ports?.backupState },
+                state = { businessPorts()?.backupState },
                 staging = {
                     BackupStaging(
                         File(files().noBackupDirectory, BackupStaging.DIRECTORY_NAME),
@@ -329,7 +334,7 @@ class DataGraph internal constructor(
                     custody = recoveryCustody,
                     backupMutex = backupMutex,
                     recordChanged = {
-                        (open() as? DataAccess.Ready)?.ports?.let {
+                        businessPorts()?.let {
                             recordEncryptionChanged(
                                 it,
                                 clock,
@@ -339,7 +344,7 @@ class DataGraph internal constructor(
                         }
                     },
                     forceUpload = {
-                        (open() as? DataAccess.Ready)?.ports?.backupState?.forceUpload(
+                        businessPorts()?.backupState?.forceUpload(
                             clock.nowEpochMillis(),
                         )
                         backupScheduler.onDataChanged()
@@ -347,7 +352,7 @@ class DataGraph internal constructor(
                     nowUtcMillis = clock::nowEpochMillis,
                 ),
             keyUnavailableFailure = {
-                (open() as? DataAccess.Ready)?.ports?.backupState?.get()?.failureCode ==
+                businessPorts()?.backupState?.get()?.failureCode ==
                     BackupFailureCode.ENCRYPTION_KEY_UNAVAILABLE.name
             },
             custody = recoveryCustody,
@@ -357,7 +362,7 @@ class DataGraph internal constructor(
                     backupMutex = backupMutex,
                     discardPendingPlainUpload = { pending.discard() },
                     forceUpload = {
-                        (open() as? DataAccess.Ready)?.ports?.backupState?.forceUpload(
+                        businessPorts()?.backupState?.forceUpload(
                             clock.nowEpochMillis(),
                         )
                         backupScheduler.onDataChanged()
@@ -493,10 +498,10 @@ class DataGraph internal constructor(
      */
     val backupSettings: BackupSettingsPort by lazy {
         BackupSettingsService(
-            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            state = { businessPorts()?.backupState?.get() },
             destinations = destinations,
             usage = uploadUsage,
-            month = { (open() as? DataAccess.Ready)?.ports?.let { businessMonth(it.settings) } },
+            month = { businessPorts()?.let { businessMonth(it.settings) } },
             backupLock = backupMutex,
             rescheduled = backupScheduler::onMeteredPolicyChanged,
             encryption = ::localEncryption,
@@ -509,11 +514,11 @@ class DataGraph internal constructor(
      */
     val fullCopyExport: FullCopyExportPort by lazy {
         FullCopyExporter(
-            builder = { (open() as? DataAccess.Ready)?.ports?.let(::localCopyBuilder) },
+            builder = { businessPorts()?.let(::localCopyBuilder) },
             exportsDirectory = { File(context.cacheDir, FullCopyExporter.DIRECTORY_NAME) },
             sinkFor = { uri -> DocumentExportSink(context.contentResolver, Uri.parse(uri)) },
             recordExport = {
-                (open() as? DataAccess.Ready)?.ports?.let { recordFullCopyExported(it, clock, log) }
+                businessPorts()?.let { recordFullCopyExported(it, clock, log) }
             },
             ioContext = ioContext,
         )
@@ -576,7 +581,7 @@ class DataGraph internal constructor(
      */
     val slotFilesSetup: SlotFilesSetupPort by lazy {
         SlotFilesSetup(
-            open = ::open,
+            open = ::openBusiness,
             mutex = backupMutex,
             slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
             pending = SlotPendingStore.inNoBackupDir(context, ioContext),
@@ -605,12 +610,12 @@ class DataGraph internal constructor(
                     webDavCredentials,
                     DestinationLinkStore({ context.noBackupFilesDir }, ioContext),
                 ),
-            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            state = { businessPorts()?.backupState?.get() },
             slotsLabel = {
                 (backupDestination.describe() as? BackupDestinationInfo.Slots)?.providerLabel
             },
             record = { link ->
-                val ports = (open() as? DataAccess.Ready)?.ports
+                val ports = businessPorts()
                 ports?.backupState?.connectDestination(
                     kind = link.kind.name,
                     account = link.account,
@@ -635,7 +640,7 @@ class DataGraph internal constructor(
     internal val destinationLinks: DestinationLinkService by lazy {
         val slots = FileSlotStateStore.inNoBackupDir(context, ioContext)
         DestinationLinkService(
-            open = ::open,
+            open = ::openBusiness,
             mutex = backupMutex,
             credentials = webDavCredentials,
             links = DestinationLinkStore({ context.noBackupFilesDir }, ioContext),
@@ -688,7 +693,11 @@ class DataGraph internal constructor(
      * 30 días y su mismo cerrojo. Crearlo no toca el disco.
      */
     val safetyCopyBeforeChange: SafetyCopyPort by lazy {
-        SafetyCopyPort { restoreCoordinator().saveSafetyCopyBeforeChange() }
+        SafetyCopyPort {
+            // En la demostración el cambio cae en la base de ejemplo, que se descarta al salir:
+            // la base real no cambia y no hace falta copiarla.
+            if (demo.isActive()) null else restoreCoordinator().saveSafetyCopyBeforeChange()
+        }
     }
 
     /**
@@ -696,7 +705,30 @@ class DataGraph internal constructor(
      * la moneda. Sin la base abierta no anota nada, y una falla al anotar nunca detiene nada.
      */
     val auditRecorder: AuditRecorder by lazy {
-        RoomAuditRecorder(ports = { ready?.ports }, clock = clock, log = log)
+        // En la demostración se anota en la base de ejemplo: lo que se hace ahí nunca llega a la
+        // auditoría del negocio.
+        RoomAuditRecorder(
+            ports = { if (demo.isActiveNow) demo.currentPorts else ready?.ports },
+            clock = clock,
+            log = log,
+        )
+    }
+
+    /**
+     * El modo demostración de este proceso: la base de ejemplo que usa la interfaz mientras
+     * existe su marca. Nunca se respalda ni se mezcla: los trabajos en segundo plano y el respaldo
+     * siguen con la base del negocio. Crearlo no toca el disco.
+     */
+    val demo: DemoSession by lazy {
+        DemoSession(
+            files = demoFiles,
+            ioContext = ioContext,
+            clock = clock,
+            log = log,
+            schemaVersion = schemaVersion,
+            openDatabase = { file -> AppDatabase.open(context, file, ioContext, clock) },
+            businessRegion = { businessPorts()?.settings?.get()?.regional },
+        )
     }
 
     /** La copia previa a migrar. Pedir los archivos de la base toca el disco. */
@@ -705,7 +737,7 @@ class DataGraph internal constructor(
 
     /** El destino conectado según la base abierta. */
     private suspend fun savedInDatabase(): SavedDestination? =
-        (open() as? DataAccess.Ready)?.ports?.backupState?.get()?.savedDestination()
+        businessPorts()?.backupState?.get()?.savedDestination()
 
     /** `link.json`: el destino que se conectó, sin secretos, para cuando la base no se lee. */
     private val links by lazy { DestinationLinkStore({ files().noBackupDirectory }, ioContext) }
@@ -858,7 +890,7 @@ class DataGraph internal constructor(
         val exporter =
             MediaExporter(
                 photos = {
-                    (open() as? DataAccess.Ready)?.ports?.mediaAssetRows?.findInUse()
+                    businessPorts()?.mediaAssetRows?.findInUse()
                         ?.map { it.toStoredImage() }
                 },
                 mediaDirectory = ::mediaDirectory,
@@ -879,7 +911,7 @@ class DataGraph internal constructor(
 
     /** Lee lo que [photoBackup] dice de las fotos. */
     private suspend fun photoBackupFacts(): PhotoBackupFacts? {
-        val ports = (open() as? DataAccess.Ready)?.ports ?: return null
+        val ports = businessPorts() ?: return null
         val destination =
             when (ports.backupState.get()?.let(::connectedOf)?.kind) {
                 BackupDestinationKind.WEBDAV -> PhotoDestination.WEBDAV
@@ -915,7 +947,7 @@ class DataGraph internal constructor(
      * Solo lee archivos y la base, sin red.
      */
     suspend fun photoMayArrive(sha256: String): Boolean {
-        val ports = (open() as? DataAccess.Ready)?.ports ?: return false
+        val ports = businessPorts() ?: return false
         val link = ports.backupState.get()?.let(::connectedOf) ?: return false
         if (link.kind != BackupDestinationKind.WEBDAV) return false
         return sha256 !in mediaSyncStore().unavailable()
@@ -967,7 +999,7 @@ class DataGraph internal constructor(
      */
     val dataHealth: DataHealthSource by lazy {
         DataHealthReader(
-            state = { (open() as? DataAccess.Ready)?.ports?.backupState?.get() },
+            state = { businessPorts()?.backupState?.get() },
             deviceLocked = {
                 context.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
             },
@@ -1314,17 +1346,36 @@ class DataGraph internal constructor(
      * - **Una base que no se puede abrir sin riesgo no se toca.** Devuelve [DataAccess.Rescue], con
      *   la causa en el registro, y de una falla solo su clase. La llamada siguiente lo intenta de
      *   nuevo.
+     * - **En la demostración, la base de ejemplo.** Con la marca del modo demostración, la
+     *   interfaz recibe los puertos de la base de ejemplo, que nunca se respalda. Si esa base no
+     *   abre, se descarta y llega la del negocio. El respaldo y los trabajos nunca pasan por
+     *   aquí: usan la base del negocio con [openForWork].
      */
-    suspend fun open(): DataAccess = when (val access = enter(GateCaller.APP_IN_FOREGROUND)) {
-        is DataAccess.Ready -> access
+    suspend fun open(): DataAccess {
+        if (!demo.isActive()) return openBusiness()
+        return demo.open() ?: openBusiness()
+    }
 
-        is DataAccess.Rescue -> access
+    /**
+     * La base del negocio para la app en primer plano, con o sin demostración: lo que el
+     * respaldo, el destino, el cifrado y las fotos leen desde la interfaz. Igual que [open] sin
+     * demostración.
+     */
+    private suspend fun openBusiness(): DataAccess {
+        val access = enter(GateCaller.APP_IN_FOREGROUND)
+        return when (access) {
+            is DataAccess.Ready -> access
 
-        // La app en primer plano es quien migra: la compuerta nunca le pide esperar.
-        WorkAccess.MigrationPending -> error("La app en primer plano nunca espera una migración")
+            is DataAccess.Rescue -> access
 
-        // Tampoco una restauración: es ella quien verifica la base nueva.
-        WorkAccess.RestorePending -> error("La app en primer plano nunca espera una restauración")
+            // La app en primer plano es quien migra: la compuerta nunca le pide esperar.
+            WorkAccess.MigrationPending ->
+                error("La app en primer plano nunca espera una migración")
+
+            // Tampoco una restauración: es ella quien verifica la base nueva.
+            WorkAccess.RestorePending ->
+                error("La app en primer plano nunca espera una restauración")
+        }
     }
 
     /**
@@ -1334,6 +1385,9 @@ class DataGraph internal constructor(
      * devuelve `retry()`. Si la app ya está migrando, espera a que termine y recibe los puertos.
      */
     suspend fun openForWork(): WorkAccess = enter(GateCaller.BACKGROUND_WORK)
+
+    /** Los puertos de la base del negocio, o `null` si no abre sin riesgo. */
+    private suspend fun businessPorts(): DataPorts? = (openBusiness() as? DataAccess.Ready)?.ports
 
     private suspend fun enter(caller: GateCaller): WorkAccess {
         ready?.let { return it }

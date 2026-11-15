@@ -42,4 +42,12 @@ internal enum class DataEvent(override val text: String) : LogEvent {
     SAFETY_COPY_SAVED("Copia de seguridad guardada antes de un cambio"),
     SAFETY_COPY_NOT_SAVED("No se guardó la copia de seguridad previa a un cambio, que no se hizo"),
     CURRENCY_AUDIT_FAILED("No se pudo anotar la corrección de la moneda en la auditoría"),
+    DEMO_PREPARED("Base de ejemplo lista, falta reiniciar"),
+    DEMO_PREPARE_FAILED("No se pudo preparar la base de ejemplo, y se descartó"),
+    DEMO_OPENED("Base de ejemplo abierta"),
+    DEMO_OPEN_FAILED("La base de ejemplo no abrió, se descarta y sigue la base real"),
+    DEMO_LEFT("Fin de la demostración, falta reiniciar"),
+    DEMO_EXIT_FAILED("No se pudo terminar la demostración"),
+    DEMO_LEFTOVERS_DISCARDED("Se borraron los restos de una demostración"),
+    DEMO_DISCARD_FAILED("No se pudieron borrar los restos de una demostración"),
 }

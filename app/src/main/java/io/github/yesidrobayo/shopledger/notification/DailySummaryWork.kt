@@ -107,13 +107,16 @@ class DailySummaryDelivery(
  *   muestra nada; el siguiente se programa igual si sigue encendido.
  * - **Ninguna excepción sale con su mensaje:** todo corre dentro de [EventLog.contain], y una
  *   falla queda en el registro solo con su clase.
+ * - **Siempre la base del negocio:** abre como todo trabajo, nunca la base de ejemplo de una
+ *   demostración, y nunca migra. Si la base espera una migración, no muestra nada: la app la
+ *   programa otra vez al abrir.
  */
 class DailySummaryWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val container = (applicationContext as ShopLedgerApp).container
         container.log.contain(AppEvent.DAILY_SUMMARY_FAILED) {
-            val access = container.data.open()
+            val access = container.data.openForWork()
             if (access is DataAccess.Ready) {
                 val ports = access.ports
                 val clock = container.clock
