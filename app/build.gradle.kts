@@ -121,6 +121,20 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // Las pruebas de captura: cada vista previa marcada con @PreviewTest en la carpeta
+        // src/screenshotTest/ se dibuja en la JVM y se compara con su referencia versionada. La
+        // herramienta todavía es experimental y nunca entra en la app; si su DSL cambia y deja de
+        // compilar, este bloque se quita sin tocar lo demás.
+        screenshotTests.create("screenshotTest") {
+            engineVersion = libs.versions.screenshot.get()
+            targetVariants.add("debug")
+            dependencies {
+                implementation(libs.androidx.compose.ui.tooling)
+                implementation(libs.android.tools.screenshot.validation.api)
+            }
+        }
+    }
 }
 
 dependencies {
