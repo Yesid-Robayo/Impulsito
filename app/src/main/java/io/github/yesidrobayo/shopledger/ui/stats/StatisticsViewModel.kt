@@ -251,9 +251,11 @@ class StatisticsViewModel(
             StatisticsAction.Retry -> attempts.value += 1
 
             // Lo resuelve la navegación.
-            StatisticsAction.NewSale, StatisticsAction.ChooseZone -> Unit
-
-            StatisticsAction.OpenSummary -> Unit
+            StatisticsAction.NewSale,
+            StatisticsAction.ChooseZone,
+            StatisticsAction.OpenSummary,
+            StatisticsAction.OpenPriceIndex,
+            -> Unit
         }
     }
 

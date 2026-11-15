@@ -139,6 +139,9 @@ fun StatisticsScreen(
                                     OverflowAction(stringResource(R.string.report_title), {
                                         onAction(StatisticsAction.OpenSummary)
                                     }),
+                                    OverflowAction(stringResource(R.string.index_title), {
+                                        onAction(StatisticsAction.OpenPriceIndex)
+                                    }),
                                 ),
                             )
                         }
@@ -561,6 +564,7 @@ private fun ColumnScope.Detail(
         ByPaymentMethod(breakdown.methods, rows)
         breakdown.expenses?.let { ByExpenseCategory(it, rows) }
     }
+    tools.comparison(this, content)
     content.replacement?.let { ReplacementTool(it, rows) }
     tools.analysis(this, content)
     val tax = content.tax

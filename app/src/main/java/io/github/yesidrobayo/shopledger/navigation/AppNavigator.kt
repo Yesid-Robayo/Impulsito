@@ -143,6 +143,9 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
     /** Lo que pasa entre el escáner y la pantalla que lo abrió. */
     val scans: ScanHandoff = ScanHandoff()
 
+    /** Lo que pasa entre `Índice de precios` y la comparación real de `Números`. */
+    val realComparison: RealComparisonHandoff = RealComparisonHandoff()
+
     /**
      * Vuelve a la pantalla anterior. En Inicio no hace nada y devuelve `false`: ahí atrás le toca al
      * sistema, que cierra la app.

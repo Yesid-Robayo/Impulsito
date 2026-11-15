@@ -158,4 +158,7 @@ sealed interface StatisticsAction {
 
     /** Abre el resumen de gestión, desde el menú. */
     data object OpenSummary : StatisticsAction
+
+    /** Abre `Índice de precios`, desde el menú o desde la comparación real. */
+    data object OpenPriceIndex : StatisticsAction
 }

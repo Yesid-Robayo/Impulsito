@@ -88,6 +88,7 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderAction
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderScreen
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
+import io.github.yesidrobayo.shopledger.ui.priceindex.PriceIndexRoute
 import io.github.yesidrobayo.shopledger.ui.pricing.PriceListsRoute
 import io.github.yesidrobayo.shopledger.ui.printer.PrintersRoute
 import io.github.yesidrobayo.shopledger.ui.product.BulkPriceRoute
@@ -445,6 +446,7 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         AppNavKey.ManagementSummary ->
             ManagementSummaryRoute(AppNavKey.ManagementSummary, navigator)
+        AppNavKey.PriceIndex -> PriceIndexRoute(navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }

@@ -12,8 +12,10 @@ import androidx.compose.runtime.Immutable
  * vistas previas y en las pruebas de la pantalla, no aparece nada.
  *
  * @param analysis `Análisis`, en `Herramientas`, después de la ganancia si se repone.
+ * @param comparison `Comparar`, después de los desgloses y antes de `Herramientas`.
  */
 @Immutable
 class StatisticsTools(
     val analysis: @Composable ColumnScope.(StatisticsUiState.Content) -> Unit = {},
+    val comparison: @Composable ColumnScope.(StatisticsUiState.Content) -> Unit = {},
 )

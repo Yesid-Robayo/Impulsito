@@ -179,6 +179,12 @@ val HUB_ENTRIES: List<HubEntry> =
             R.string.hub_tool_report_desc,
             AppNavKey.ManagementSummary,
         ),
+        HubEntry(
+            BusinessTool.PRICE_INDEX,
+            R.string.hub_tool_price_index,
+            R.string.hub_tool_price_index_desc,
+            AppNavKey.PriceIndex,
+        ),
     )
 
 /** El nombre de cada grupo, de la redacción. */

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Índice de precios y comparación en términos reales en Números. -->
+    <string name="stats_compare">Compare</string>
+    <string name="stats_compare_nominal">Normal</string>
+    <string name="stats_compare_real">Real</string>
+    <string name="stats_compare_variation">Change %1$s</string>
+    <string name="stats_compare_real_value">%1$s, at %2$s prices</string>
+    <string name="stats_compare_estimate">Estimate</string>
+    <string name="stats_compare_real_help">An estimate that removes the price change entered in Price index. It is not a recorded figure.</string>
+    <string name="stats_compare_no_base">No sales in %1$s: there is nothing to compare with.</string>
+    <string name="index_import_action">Import from a file</string>
+    <string name="index_intro">The price change for each month, entered by hand. Use it to compare periods without the effect of rising prices.</string>
+    <string name="index_add_action">Add month</string>
+    <string name="index_compare_action">View comparison in Numbers</string>
+    <string name="index_field_month">Month</string>
+    <string name="index_field_change">Change for the month</string>
+    <string name="index_field_source">Source</string>
+    <string name="index_save_action">Save month</string>
+    <string name="index_delete_action">Delete month</string>
+    <string name="index_empty_title">No index data</string>
+    <string name="index_empty_body">Use it to know whether selling more really means selling more.</string>
+    <string name="index_error_month_exists">That month already has a value</string>
+    <string name="index_error_future">Choose this month or an earlier one</string>
+    <string name="index_error_percent">Use a percentage greater than %1$s</string>
+    <string name="index_error_percent_max">Use a percentage of up to %1$s</string>
+    <string name="index_error_decimals">Use at most 2 decimals</string>
+    <string name="index_delete_confirm_title">Delete this month?</string>
+    <string name="index_delete_confirm_body">The real comparison will no longer cover %1$s.</string>
+    <string name="hub_tool_price_index">Price index</string>
+    <string name="hub_tool_price_index_desc">Compare periods without the effect of rising prices</string>
+    <plurals name="index_missing">
+        <item quantity="one">%1$s month missing: %2$s</item>
+        <item quantity="other">%1$s months missing: %2$s</item>
+    </plurals>
+</resources>

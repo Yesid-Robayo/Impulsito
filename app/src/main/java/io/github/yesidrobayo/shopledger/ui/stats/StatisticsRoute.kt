@@ -86,6 +86,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
                             navigator.open(AppNavKey.RegionalSettings())
 
                         StatisticsAction.OpenSummary -> navigator.open(AppNavKey.ManagementSummary)
+                        StatisticsAction.OpenPriceIndex -> navigator.open(AppNavKey.PriceIndex)
 
                         is StatisticsAction.SelectKind,
                         is StatisticsAction.SelectRanking,
@@ -103,7 +104,11 @@ fun StatisticsRoute(navigator: AppNavigator) {
                     }
                 },
                 backupBanner = { RootBackupBanner(navigator::open) },
-                tools = StatisticsTools(analysis = { StatisticsAnalysis(it) }),
+                tools =
+                    StatisticsTools(
+                        analysis = { StatisticsAnalysis(it) },
+                        comparison = { StatisticsComparison(it, navigator) },
+                    ),
             )
         }
     }
