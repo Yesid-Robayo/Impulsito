@@ -62,7 +62,7 @@
     <string name="hub_tool_lots_desc">Saber qué vence primero</string>
     <string name="product_tab_lots">Lotes</string>
     <string name="lot_picker_label">Lote</string>
-    <string name="lot_picker_auto">Asignar automático</string>
+    <string name="lot_picker_auto">Asignar automáticamente</string>
     <string name="lot_picker_auto_help">Sale primero lo que vence antes</string>
     <string name="lot_expiry_location">%1$s · %2$s</string>
     <string name="lot_error_code_blank">Falta el código del lote</string>

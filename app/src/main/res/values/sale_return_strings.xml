@@ -43,7 +43,7 @@
     <string name="sale_return_error_max">Maximum %1$s</string>
     <string name="sale_return_error_no_customer">Choose the customer who gets the credit balance</string>
     <string name="sale_return_credit_debt_help">Reduces what %1$s owes</string>
-    <string name="sale_return_other_month_notice">The return counts on %1$s. That month\'s figures do not change</string>
+    <string name="sale_return_other_month_notice">The return counts on %1$s. That month\'s figures do not change.</string>
     <string name="sale_return_points_notice">The points from this sale do not change</string>
     <string name="sale_return_error_register">Could not record the return. The selection is kept.</string>
     <string name="sale_return_success">Return recorded: %1$s</string>

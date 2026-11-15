@@ -11,7 +11,7 @@
     <string name="backup_last_copy">Last backup: %1$s</string>
     <string name="backup_last_copy_moment">Last backup: just now</string>
     <string name="backup_state_up_to_date_title">All saved</string>
-    <string name="backup_state_handed_off">Backup handed to %1$s. Still to check that it appears.</string>
+    <string name="backup_state_handed_off">Backup handed to %1$s. It still needs to be checked there.</string>
     <string name="backup_last_handoff">Last handoff: %1$s</string>
     <string name="backup_last_handoff_moment">Last handoff: just now</string>
     <string name="backup_state_check_due">The backup in %1$s needs checking</string>
@@ -67,7 +67,7 @@
     <string name="backup_reason_clock">The phone\'s clock looks behind. Check it.</string>
     <string name="backup_list_no_internet">Viewing backups needs internet.</string>
     <string name="backup_list_error">The backups could not be viewed. That does not mean they do not exist.</string>
-    <string name="backup_destination_low">The cloud is running out of space. Freeing some keeps backups being saved.</string>
+    <string name="backup_destination_low">The cloud is running out of space. Free up some space to keep saving backups.</string>
     <string name="backup_device_low">The phone is running out of space. Freeing some keeps backups from stopping.</string>
     <string name="backup_near_limit">The data is nearing the size %1$s can restore. It still saves fine. Ask for help before it stops fitting.</string>
     <string name="backup_near_limit_slots">The data is nearing the size %1$s can restore. It is still handed off fine. Ask for help before it stops fitting.</string>

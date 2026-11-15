@@ -33,7 +33,7 @@
     <string name="price_list_error_base_unavailable">Choose an active base list</string>
     <string name="price_list_error_adjustment_missing">Enter the adjustment</string>
     <string name="price_list_error_adjustment_range">Enter an adjustment between %1$s and %2$s</string>
-    <string name="price_list_error_has_own_prices">This list has its own prices. Remove them before making it relative</string>
+    <string name="price_list_error_has_own_prices">This list has its own prices. Remove them before making it relative.</string>
     <string name="price_list_price_saved">Price saved</string>
     <string name="bulk_mode_label">How</string>
     <string name="price_list_bulk_mode_percent">Percent</string>

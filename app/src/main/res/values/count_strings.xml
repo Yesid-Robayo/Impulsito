@@ -34,7 +34,7 @@
         <item quantity="other">Apply %1$d adjustments</item>
     </plurals>
     <string name="count_empty_title">Count what is really there</string>
-    <string name="count_empty_body">By location or by category. Differences are applied at the end</string>
+    <string name="count_empty_body">By location or by category. Differences are applied at the end.</string>
     <string name="count_scope_empty">There are no products with stock in that scope</string>
     <string name="count_no_differences">No differences</string>
     <string name="count_close_action">Close count</string>

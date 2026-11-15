@@ -15,7 +15,7 @@
     <string name="form_email">E-mail</string>
     <string name="form_notes">Notas</string>
     <string name="error_phone_format">Somente números, espaços e os sinais + - ( )</string>
-    <string name="error_email_format">O e-mail precisa de um @ com texto de cada lado</string>
+    <string name="error_email_format">O e-mail precisa de uma @ com texto de cada lado</string>
     <string name="purchase_total_bought">Total comprado</string>
     <string name="supplier_new_title">Novo fornecedor</string>
     <string name="supplier_edit_title">Editar fornecedor</string>

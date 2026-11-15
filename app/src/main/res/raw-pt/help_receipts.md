@@ -10,7 +10,7 @@ Em **Modelo de comprovante**, em **Configurações**, são escolhidos o logo, o 
 
 ## Imprimir
 
-- Com uma impressora térmica Bluetooth: primeiro ela é pareada nos ajustes do telefone, depois é adicionada em **Impressoras**, com a largura do papel, e testada com **Imprimir teste**.
+- Com uma impressora térmica Bluetooth: primeiro ela é pareada nas configurações do telefone, depois é adicionada em **Impressoras**, com a largura do papel, e testada com **Imprimir teste**.
 - Com uma impressora Wi-Fi ou USB: **Imprimir com o sistema** usa o serviço de impressão do Android.
 
 {app} imprime só em impressoras já pareadas com este telefone, e só ao tocar em **Imprimir**.

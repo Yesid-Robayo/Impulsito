@@ -34,7 +34,7 @@
     <string name="location_error_no_lines">Adicionar pelo menos um produto</string>
     <string name="location_error_name_empty">Escrever o nome do local</string>
     <string name="location_error_name_repeated">Já existe um local com esse nome</string>
-    <string name="location_error_archive_with_stock">Tem estoque. Primeiro transferir para outro local</string>
+    <string name="location_error_archive_with_stock">Tem estoque. Primeiro transferi-lo para outro local.</string>
     <string name="location_archive_confirm_title">Arquivar %1$s?</string>
     <string name="location_archive_confirm_body">Deixa de ser oferecido em vendas, compras e transferências. O histórico é mantido.</string>
     <string name="location_archive_confirm_action">Arquivar local</string>

@@ -32,7 +32,7 @@
     <string name="limit_define_action">Set limit</string>
     <string name="limit_edit_action">Edit limit</string>
     <string name="limit_amount_field">Limit amount</string>
-    <string name="limit_months_field">Months it adds up</string>
+    <string name="limit_months_field">Months included</string>
     <string name="limit_months_help">Includes the current month</string>
     <string name="limit_save_action">Save limit</string>
     <string name="limit_remove_action">Remove limit</string>

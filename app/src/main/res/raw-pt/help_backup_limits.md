@@ -29,7 +29,7 @@ Em **Início** e em **Cópia de segurança**:
 ## O que nunca se deve fazer
 
 - Desinstalar {app} para resolver um problema: apaga o que está no telefone, que pode ser mais novo que a última cópia.
-- Usar **Limpar dados** ou **Limpar armazenamento** nos ajustes do telefone. **Limpar cache** é seguro.
+- Usar **Limpar dados** ou **Limpar armazenamento** nas configurações do telefone. **Limpar cache** é seguro.
 - Redefinir o telefone para a configuração de fábrica sem confirmar que há uma cópia recente.
 - Apagar, mover ou renomear as cópias na nuvem, ou os três arquivos da nuvem do telefone.
 - Usar {app} em dois telefones ao mesmo tempo.

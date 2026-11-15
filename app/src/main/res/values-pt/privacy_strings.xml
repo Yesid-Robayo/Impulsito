@@ -9,7 +9,7 @@
     <string name="transparency_now_title">Neste momento</string>
     <string name="transparency_now_backups_webdav">Cópias: em %1$s</string>
     <string name="transparency_now_backups_slots">Cópias: entregues a %1$s</string>
-    <string name="transparency_now_backups_off">Cópias: não conectado</string>
+    <string name="transparency_now_backups_off">Cópias: sem conexão</string>
     <string name="transparency_now_backups_paused">Cópias em pausa até aceitar a política</string>
     <string name="transparency_now_encryption_on">Criptografia das cópias: ativa</string>
     <string name="transparency_now_encryption_off">Criptografia das cópias: desligada</string>

@@ -13,7 +13,7 @@
     <string name="region_correcting_currency">Saving a safety copy and correcting the currency…</string>
     <string name="region_currency_corrected">Currency corrected. Amounts did not change.</string>
     <string name="region_correct_error_reference">That is the reference currency. To use it as the business currency, it must first be removed as the reference.</string>
-    <string name="region_correct_error_account">An own account already uses that currency. The currency did not change.</string>
+    <string name="region_correct_error_account">A money account already uses that currency. The currency did not change.</string>
     <string name="region_correct_error_other_currency">Some payments, purchases or rates are saved with that currency as another currency. The currency did not change.</string>
     <string name="region_correct_error_unavailable">That currency cannot be used for the correction. The currency did not change.</string>
     <string name="region_correct_error_no_space">There is no space for the safety copy. The currency did not change.</string>

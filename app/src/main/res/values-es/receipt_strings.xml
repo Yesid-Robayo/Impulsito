@@ -33,7 +33,7 @@
     <string name="receipt_save_action">Guardar plantilla</string>
     <string name="receipt_saved">Plantilla guardada</string>
     <string name="receipt_error_image">No se pudo usar esa imagen. Probar con otra.</string>
-    <string name="receipt_error_length">Usar máximo %1$d caracteres</string>
+    <string name="receipt_error_length">Usar como máximo %1$d caracteres</string>
     <string name="receipt_sample_product_first">Arroz 1 kg</string>
     <string name="receipt_sample_product_second">Aceite 900 ml</string>
     <string name="a11y_receipt_preview">Vista previa del comprobante. %1$s</string>

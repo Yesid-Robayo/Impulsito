@@ -133,7 +133,7 @@
     <string name="offsite_title">Copias locales</string>
     <string name="storage_title">Almacenamiento y borrado</string>
     <string name="transparency_title">Qué datos hay y adónde van</string>
-    <string name="update_title">Actualizaciones y verificar APK</string>
+    <string name="update_title">Actualizaciones y verificación de APK</string>
     <string name="audit_title">Registro de auditoría</string>
     <string name="account_title">Seguridad de la cuenta de la nube</string>
     <string name="hub_title">Negocio</string>

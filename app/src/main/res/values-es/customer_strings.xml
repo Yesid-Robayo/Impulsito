@@ -30,7 +30,7 @@
     <string name="customer_create_action">Crear cliente</string>
     <string name="customer_filter_empty">Sin clientes con este filtro</string>
     <string name="customer_error_name_empty">Escribir el nombre del cliente</string>
-    <string name="customer_error_name_long">Usar máximo 80 caracteres</string>
+    <string name="customer_error_name_long">Usar como máximo 80 caracteres</string>
     <string name="customer_duplicate_warning">Ya existe un cliente con ese nombre. Se puede guardar igual.</string>
     <string name="customer_no_contacts_app">No hay una app de contactos disponible.</string>
     <string name="customer_anonymous">Cliente anónimo</string>

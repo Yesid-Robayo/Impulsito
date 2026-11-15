@@ -21,7 +21,7 @@
     <string name="import_file_format">Formato do arquivo</string>
     <string name="import_column_separator">Separador de colunas</string>
     <string name="import_decimal_separator">Separador decimal</string>
-    <string name="import_column_unmatched">Sem relação</string>
+    <string name="import_column_unmatched">Não relacionada</string>
     <string name="import_column_recognized">Reconhecida</string>
     <string name="import_column_example">Exemplo: %1$s</string>
     <string name="import_column_choose">Escolher dado</string>

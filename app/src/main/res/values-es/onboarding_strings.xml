@@ -18,7 +18,7 @@
     <string name="welcome_point_backup">Las copias van a la nube elegida</string>
     <string name="welcome_point_offline">Funciona sin internet</string>
     <!-- permission_destination_rationale: %1$s = app -->
-    <string name="permission_destination_rationale">%1$s envía a la nube elegida una copia de todos los datos del negocio. Solo toca su carpeta o sus tres archivos: lo demás queda por fuera. Las copias no llevan cifrado propio, salvo que se active: las protege la cuenta de esa nube. Sin copias, los datos solo están en este teléfono. %1$s no tiene servidores ni acceso a esta información.</string>
+    <string name="permission_destination_rationale">%1$s envía a la nube elegida una copia de todos los datos del negocio. Solo toca su carpeta o sus tres archivos: lo demás queda fuera. Las copias no llevan cifrado propio, salvo que se active: las protege la cuenta de esa nube. Sin copias, los datos solo están en este teléfono. %1$s no tiene servidores ni acceso a esta información.</string>
     <string name="permission_destination_no_internet">Sin internet ahora. Se puede empezar y elegir dónde guardar después.</string>
     <!-- permission_destination_copy_found: %1$s = date, %2$s = device, %3$s = records -->
     <string name="permission_destination_copy_found">Hay una copia del %1$s, de %2$s, con %3$s. ¿Traer esos datos?</string>

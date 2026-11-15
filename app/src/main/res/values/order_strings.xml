@@ -40,7 +40,7 @@
     <string name="order_deposit_recorded">Deposit recorded</string>
     <string name="order_mark_ready_action">Mark as ready</string>
     <string name="order_deliver_action">Record delivery</string>
-    <string name="order_back_to_pending_action">Back to pending</string>
+    <string name="order_back_to_pending_action">Move back to pending</string>
     <string name="order_view_sale_action">View sale</string>
     <string name="order_empty_title">No orders yet</string>
     <string name="order_empty_body">Use it to follow what was ordered, with its delivery and deposit.</string>

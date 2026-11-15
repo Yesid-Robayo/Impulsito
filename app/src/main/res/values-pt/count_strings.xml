@@ -22,7 +22,7 @@
     <string name="count_start_action">Iniciar contagem</string>
     <string name="count_cancel_action">Cancelar contagem</string>
     <string name="count_expected">Esperado: %1$s</string>
-    <string name="count_filter_pending">Sem contar</string>
+    <string name="count_filter_pending">Não contados</string>
     <string name="count_filter_done">Contados</string>
     <string name="count_review_action">Revisar diferenças</string>
     <string name="count_surplus">Sobra %1$s</string>
@@ -36,7 +36,7 @@
         <item quantity="other">Aplicar %1$d ajustes</item>
     </plurals>
     <string name="count_empty_title">Contar o que há de verdade</string>
-    <string name="count_empty_body">Por local ou por categoria. No final, as diferenças são aplicadas</string>
+    <string name="count_empty_body">Por local ou por categoria. No final, as diferenças são aplicadas.</string>
     <string name="count_scope_empty">Não há produtos com estoque nesse escopo</string>
     <string name="count_no_differences">Sem diferenças</string>
     <string name="count_close_action">Fechar contagem</string>

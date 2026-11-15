@@ -31,7 +31,7 @@
     <string name="empty_sales_body">Each sale is saved with what was sold and the profit.</string>
     <string name="empty_sales_action">Record sale</string>
     <string name="empty_catalog_title">The catalog is empty</string>
-    <string name="empty_catalog_body">A product with a price and a cost shows what each sale leaves.</string>
+    <string name="empty_catalog_body">A product with a price and a cost shows what each sale earns.</string>
     <string name="empty_catalog_action">Create product</string>
     <string name="empty_search_body">Check the spelling or create the product.</string>
     <string name="empty_search_action">Create product</string>

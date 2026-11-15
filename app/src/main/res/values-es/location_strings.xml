@@ -34,7 +34,7 @@
     <string name="location_error_no_lines">Agregar al menos un producto</string>
     <string name="location_error_name_empty">Escribir el nombre de la ubicación</string>
     <string name="location_error_name_repeated">Ya hay una ubicación con ese nombre</string>
-    <string name="location_error_archive_with_stock">Tiene stock. Primero transferirlo a otra ubicación</string>
+    <string name="location_error_archive_with_stock">Tiene stock. Primero transferirlo a otra ubicación.</string>
     <string name="location_archive_confirm_title">¿Archivar %1$s?</string>
     <string name="location_archive_confirm_body">Deja de ofrecerse en ventas, compras y transferencias. Su historial se conserva.</string>
     <string name="location_archive_confirm_action">Archivar ubicación</string>

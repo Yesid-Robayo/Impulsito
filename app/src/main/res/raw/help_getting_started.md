@@ -5,7 +5,7 @@
 1. The app language. It can be changed later in **Settings**.
 2. Region and currency: the number and date format, the time zone and the business currency. {app} assumes no country: the person confirms everything.
 3. Welcome: choose where to save backups, bring the data from another phone, or continue with **Not now**.
-4. Protection: the fingerprint or PIN lock, and backup encryption, which starts off.
+4. Protection: the fingerprint or PIN lock, and backup encryption, which is off by default.
 
 ## Next
 

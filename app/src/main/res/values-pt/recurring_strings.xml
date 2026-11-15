@@ -32,7 +32,7 @@
     <string name="recurring_field_account">Conta de dinheiro</string>
     <string name="recurring_field_reminder">Lembrete</string>
     <!-- recurring_help: %1$s = app -->
-    <string name="recurring_help">%1$s propõe esta despesa na data. Só é registrada ao ser confirmada.</string>
+    <string name="recurring_help">O %1$s propõe esta despesa na data. Só é registrada ao ser confirmada.</string>
     <string name="recurring_month_end_help">Se o mês não tiver esse dia, usa-se o último.</string>
     <string name="recurring_empty_title">Sem despesas recorrentes</string>
     <string name="recurring_empty_body">Serve para não esquecer o aluguel, as contas e outros pagamentos que se repetem.</string>

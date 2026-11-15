@@ -1,4 +1,4 @@
-Encrypting backups is optional and starts off. With encryption, nobody can open the backups without the code, even if they get into the cloud account or the backup folder.
+Encrypting backups is optional and off by default. With encryption, nobody can open the backups without the code, even if they get into the cloud account or the backup folder.
 
 ## Turn on
 

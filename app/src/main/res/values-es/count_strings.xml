@@ -36,7 +36,7 @@
         <item quantity="other">Aplicar %1$d ajustes</item>
     </plurals>
     <string name="count_empty_title">Contar lo que hay de verdad</string>
-    <string name="count_empty_body">Por ubicación o por categoría. Al final se aplican las diferencias</string>
+    <string name="count_empty_body">Por ubicación o por categoría. Al final se aplican las diferencias.</string>
     <string name="count_scope_empty">No hay productos con stock en ese alcance</string>
     <string name="count_no_differences">Sin diferencias</string>
     <string name="count_close_action">Cerrar conteo</string>

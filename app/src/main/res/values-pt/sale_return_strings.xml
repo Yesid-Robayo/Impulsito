@@ -44,7 +44,7 @@
     <string name="sale_return_error_max">Máximo %1$s</string>
     <string name="sale_return_error_no_customer">Escolher o cliente para deixar o saldo a favor</string>
     <string name="sale_return_credit_debt_help">Reduz a dívida de %1$s</string>
-    <string name="sale_return_other_month_notice">A devolução conta em %1$s. Os números desse mês não mudam</string>
+    <string name="sale_return_other_month_notice">A devolução conta em %1$s. Os números desse mês não mudam.</string>
     <string name="sale_return_points_notice">Os pontos desta venda não mudam</string>
     <string name="sale_return_error_register">Não foi possível registrar a devolução. A seleção foi mantida.</string>
     <string name="sale_return_success">Devolução registrada: %1$s</string>
@@ -55,7 +55,7 @@
     <string name="sale_return_void_action">Anular devolução</string>
     <string name="sale_return_void_confirm_title">Anular esta devolução?</string>
     <string name="sale_return_void_confirm_body">O estoque e o dinheiro ou o saldo a favor voltam a como estavam. A devolução fica no histórico.</string>
-    <string name="sale_return_void_exchange_locked">Faz parte de uma troca: desfaz-se anulando primeiro a venda %1$s.</string>
+    <string name="sale_return_void_exchange_locked">Faz parte de uma troca: para desfazer, é preciso anular primeiro a venda %1$s.</string>
     <string name="sale_return_voided">Devolução anulada</string>
     <string name="error_sale_return_void">Não foi possível anular. A devolução continua ativa.</string>
 </resources>

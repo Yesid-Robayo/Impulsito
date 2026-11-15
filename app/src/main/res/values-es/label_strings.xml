@@ -40,9 +40,9 @@
     <string name="label_code_too_long">Este código no cabe legible en ese ancho.</string>
     <string name="label_use_wider_action">Usar el tamaño mayor</string>
     <plurals name="label_excluded_no_price">
-        <item quantity="one">%1$d producto sin precio queda por fuera</item>
-        <item quantity="many">%1$d de productos sin precio quedan por fuera</item>
-        <item quantity="other">%1$d productos sin precio quedan por fuera</item>
+        <item quantity="one">%1$d producto sin precio queda fuera</item>
+        <item quantity="many">%1$d de productos sin precio quedan fuera</item>
+        <item quantity="other">%1$d productos sin precio quedan fuera</item>
     </plurals>
     <string name="label_error_print">No se pudo imprimir. Nada se perdió.</string>
     <plurals name="a11y_label_copies">

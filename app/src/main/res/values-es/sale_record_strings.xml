@@ -8,8 +8,8 @@
     <string name="dialog_correct_action">Anular y corregir</string>
     <string name="dialog_correct_sale_body">Se anula esta venta y se abre una nueva con los mismos datos. Si la nueva no se guarda, esta queda anulada igual.</string>
     <plurals name="notice_fix_archived_products">
-        <item quantity="one">%1$d línea quedó por fuera porque su producto está archivado.</item>
-        <item quantity="many">%1$d de líneas quedaron por fuera porque su producto está archivado.</item>
-        <item quantity="other">%1$d líneas quedaron por fuera porque su producto está archivado.</item>
+        <item quantity="one">%1$d línea quedó fuera porque su producto está archivado.</item>
+        <item quantity="many">%1$d de líneas quedaron fuera porque su producto está archivado.</item>
+        <item quantity="other">%1$d líneas quedaron fuera porque su producto está archivado.</item>
     </plurals>
 </resources>

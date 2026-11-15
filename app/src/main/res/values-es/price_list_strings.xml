@@ -33,7 +33,7 @@
     <string name="price_list_error_base_unavailable">Elegir una lista base vigente</string>
     <string name="price_list_error_adjustment_missing">Escribir el ajuste</string>
     <string name="price_list_error_adjustment_range">Escribir un ajuste entre %1$s y %2$s</string>
-    <string name="price_list_error_has_own_prices">Esta lista tiene precios propios. Quitarlos antes de hacerla relativa</string>
+    <string name="price_list_error_has_own_prices">Esta lista tiene precios propios. Quitarlos antes de hacerla relativa.</string>
     <string name="price_list_price_saved">Precio guardado</string>
     <string name="bulk_mode_label">Cómo</string>
     <string name="price_list_bulk_mode_percent">Porcentaje</string>

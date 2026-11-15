@@ -34,7 +34,7 @@
     <string name="location_error_no_lines">Add at least one product</string>
     <string name="location_error_name_empty">Enter the location name</string>
     <string name="location_error_name_repeated">A location with that name already exists</string>
-    <string name="location_error_archive_with_stock">It has stock. Transfer it to another location first</string>
+    <string name="location_error_archive_with_stock">It has stock. Transfer it to another location first.</string>
     <string name="location_archive_confirm_title">Archive %1$s?</string>
     <string name="location_archive_confirm_body">It is no longer offered in sales, purchases and transfers. Its history is kept.</string>
     <string name="location_archive_confirm_action">Archive location</string>

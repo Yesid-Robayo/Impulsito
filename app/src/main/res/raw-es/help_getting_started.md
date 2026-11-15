@@ -1,4 +1,4 @@
-{app} lleva productos, stock, costos, ventas, gastos y ganancias de un negocio desde este teléfono. Funciona sin internet: registrar nunca espera a la red. Los datos viven en el teléfono, y {app} guarda copias en la nube que se elija. No tiene servidores ni cuentas propias, y quien lo desarrolla no recibe ningún dato.
+{app} lleva productos, stock, costos, ventas, gastos y ganancias de un negocio desde este teléfono. Funciona sin internet: registrar nunca espera a la red. Los datos viven en el teléfono, y {app} guarda copias en la nube que se elija. No tiene servidores ni cuentas propias, y quien la desarrolla no recibe ningún dato.
 
 ## El primer uso
 

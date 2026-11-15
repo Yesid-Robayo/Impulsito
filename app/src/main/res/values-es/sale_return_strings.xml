@@ -44,7 +44,7 @@
     <string name="sale_return_error_max">Máximo %1$s</string>
     <string name="sale_return_error_no_customer">Elegir el cliente para dejar el saldo a favor</string>
     <string name="sale_return_credit_debt_help">Reduce la deuda de %1$s</string>
-    <string name="sale_return_other_month_notice">La devolución cuenta el %1$s. Las cifras de ese mes no cambian</string>
+    <string name="sale_return_other_month_notice">La devolución cuenta el %1$s. Las cifras de ese mes no cambian.</string>
     <string name="sale_return_points_notice">Los puntos de esta venta no cambian</string>
     <string name="sale_return_error_register">No se pudo registrar la devolución. Lo elegido se conserva.</string>
     <string name="sale_return_success">Devolución registrada: %1$s</string>

@@ -4,7 +4,7 @@
     <string name="offsite_second_title">Automatic second destination</string>
     <string name="offsite_second_body">Once a day, if anything changed, %1$s makes a backup in a folder on this phone, a card or a USB drive, with or without a connected cloud. It keeps the last 3.</string>
     <string name="offsite_second_follow_row">Keep this folder up to date</string>
-    <string name="offsite_second_follow_help">Every cloud backup is also kept here, and without a cloud or internet one is made a few minutes after each change. Keeps the last 3 and the last one from each of the two previous days.</string>
+    <string name="offsite_second_follow_help">Every cloud backup is also kept here, and without a cloud or internet one is made a few minutes after each change. It keeps the last 3 and the last one from each of the two previous days.</string>
     <string name="offsite_second_folder_rejected">That folder is not on the phone, an SD card or a USB drive. Choose another one.</string>
     <string name="offsite_choose_folder_action">Choose folder</string>
     <string name="offsite_folder_value">Folder: %1$s</string>
@@ -19,8 +19,8 @@
     <string name="offsite_key_unavailable">The backup for this folder could not be encrypted. The recovery code is needed.</string>
     <string name="offsite_fatal_skipped">Today\'s backup was not saved here because it could not be restored. Earlier ones are still in the folder.</string>
     <string name="onboarding_local_copy_action">Find my backup on this phone</string>
-    <string name="onboarding_local_copy_help">Local backups stay on the phone even after %1$s was uninstalled. Choose their folder and allow access.</string>
+    <string name="onboarding_local_copy_help">Local backups stay on the phone even if %1$s is uninstalled. Choose their folder and allow access.</string>
     <string name="onboarding_local_copy_found">Newest backup in this folder: %1$s, %2$s</string>
-    <string name="onboarding_local_copy_none">This folder has no %1$s backups. Another folder can be chosen, or a file can be found.</string>
+    <string name="onboarding_local_copy_none">This folder has no %1$s backups. Choose another folder or find a file.</string>
     <string name="onboarding_local_copy_reconnected">The folder is connected again as the second destination.</string>
 </resources>
