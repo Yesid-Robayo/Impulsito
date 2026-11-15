@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitTotals
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.report.BreakEven
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodNoticeCounts
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodTotals
@@ -89,6 +90,7 @@ class StatisticsViewModelTest {
         otherIncome: (ReportPeriod) -> Flow<Money> = { flowOf(Money.ZERO) },
         collection: (ReportPeriod) -> Flow<SoldAndCollectedView?> = { flowOf(null) },
         replacement: (ReportPeriod) -> Flow<ReplacementProfit?> = { flowOf(null) },
+        breakEven: (ReportPeriod) -> Flow<BreakEven?> = { flowOf(null) },
     ): StatisticsViewModel {
         val model =
             StatisticsViewModel(
@@ -109,6 +111,7 @@ class StatisticsViewModelTest {
                 otherIncome = otherIncome,
                 collection = collection,
                 replacement = replacement,
+                breakEven = breakEven,
                 tax = { _ ->
                     taxed.map {
                         if (it) {
@@ -165,6 +168,22 @@ class StatisticsViewModelTest {
             advanceUntilIdle()
             assertNull(model.content().replacement)
         }
+
+    @Test
+    fun `the break-even point of the period shown reaches the screen`() = runTest(dispatcher) {
+        val november = ReportPeriod.Month(YearMonth(2026, 11))
+        totals.value = mapOf(november to totals(net = 16_000, count = 1))
+        val asked = mutableListOf<ReportPeriod>()
+        val model = viewModel(
+            breakEven = { period ->
+                asked += period
+                flowOf(BreakEven.NoMargin(Money(640_000)))
+            },
+        )
+
+        assertEquals(BreakEven.NoMargin(Money(640_000)), model.content().breakEven)
+        assertEquals(november, asked.last())
+    }
 
     @Test
     fun `other income shows apart only when the period has some`() = runTest(dispatcher) {

@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.report.BreakEven
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodMetrics
@@ -54,6 +55,7 @@ sealed interface StatisticsUiState {
      *   a crédito.
      * @param replacement la ganancia si se repone, aparte de la ganancia en ventas, o `null` sin
      *   ventas en el período o si una cifra no cabe.
+     * @param breakEven el punto de equilibrio del período, o `null` sin ventas ni gastos fijos.
      */
     @Immutable
     data class Content(
@@ -78,6 +80,7 @@ sealed interface StatisticsUiState {
         val otherIncome: Money? = null,
         val collection: SoldAndCollectedView? = null,
         val replacement: ReplacementProfit? = null,
+        val breakEven: BreakEven? = null,
     ) : StatisticsUiState {
         /** Las métricas que se ofrecen: `Cobrado` solo si el negocio vende a crédito. */
         val offeredMetrics: List<ChartMetric>
@@ -161,4 +164,7 @@ sealed interface StatisticsAction {
 
     /** Abre `Índice de precios`, desde el menú o desde la comparación real. */
     data object OpenPriceIndex : StatisticsAction
+
+    /** Abre las categorías, para marcar cuáles son gastos fijos. */
+    data object OpenCategories : StatisticsAction
 }

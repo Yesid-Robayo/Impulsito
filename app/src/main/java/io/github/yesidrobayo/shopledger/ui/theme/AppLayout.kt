@@ -220,6 +220,9 @@ class AppSizes internal constructor() {
 
     /** Ancho de una marca vertical sobre una barra, como el 80 % del límite de ingresos. */
     val meterMark: Dp = 2.dp
+
+    /** Alto de la barra del punto de equilibrio. */
+    val breakEvenBar: Dp = 12.dp
 }
 
 /**

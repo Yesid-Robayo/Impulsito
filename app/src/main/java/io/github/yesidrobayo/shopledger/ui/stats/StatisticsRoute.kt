@@ -7,6 +7,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.ObserveCustomersUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.money.ObserveOtherIncomeUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveBreakEvenUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveDailySeriesUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodBreakdownUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodComparisonUseCase
@@ -50,6 +51,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
                 ObservePeriodBreakdownUseCase(ports.periodReports, ports.periodBreakdowns)
             val replacement =
                 ObserveReplacementProfitUseCase(ports.periodReports, ports.replacementReports)
+            val breakEven = ObserveBreakEvenUseCase(ports.planningReports, report)
             StatisticsViewModel(
                 calendar = { checks -> calendar(checks) },
                 lastActiveDate = ports.periodReports.observeLastActiveDate(),
@@ -62,6 +64,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
                 otherIncome = { ObserveOtherIncomeUseCase(ports.settings, ports.moneyLedger)(it) },
                 collection = { collection(it) },
                 replacement = { period -> replacement(period).map { it.replacement } },
+                breakEven = { breakEven(it) },
             )
         }
     when (model) {
@@ -87,6 +90,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
 
                         StatisticsAction.OpenSummary -> navigator.open(AppNavKey.ManagementSummary)
                         StatisticsAction.OpenPriceIndex -> navigator.open(AppNavKey.PriceIndex)
+                        StatisticsAction.OpenCategories -> navigator.open(AppNavKey.Categories)
 
                         is StatisticsAction.SelectKind,
                         is StatisticsAction.SelectRanking,

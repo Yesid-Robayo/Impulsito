@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.domain.port
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -13,4 +15,10 @@ interface PlanningReportRepository {
      * venta o anulación confirmada.
      */
     fun observeFirstSaleDate(): Flow<BusinessDate?>
+
+    /**
+     * Los gastos activos de [period] cuya categoría está marcada como fija, por su fecha de
+     * negocio. Cero si no hay ninguno. De nuevo con cada gasto, anulación o categoría que cambia.
+     */
+    fun observeFixedExpenses(period: ReportPeriod): Flow<Money>
 }

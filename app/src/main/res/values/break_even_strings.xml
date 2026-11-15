@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Punto de equilibrio en Números: con el margen real del período y los gastos fijos. -->
+    <string name="stats_tool_break_even">Break-even point</string>
+    <string name="stats_break_even_fixed">Fixed expenses</string>
+    <string name="stats_break_even_sales">Sales to cover them</string>
+    <string name="stats_break_even_missing">%1$s more in sales to cover the fixed expenses</string>
+    <string name="stats_break_even_covered">The period\'s sales already cover the fixed expenses</string>
+    <string name="stats_break_even_no_margin">It needs a margin above 0 in the period to be calculated.</string>
+    <string name="stats_break_even_no_fixed">To calculate it, mark as fixed expense the categories that do not depend on how much is sold.</string>
+    <string name="stats_break_even_no_fixed_action">Mark categories</string>
+    <string name="stats_break_even_help">It uses this period\'s margin and the expenses in categories marked as fixed.</string>
+    <string name="a11y_break_even_bar">Break-even point: %1$s. Sold: %2$s.</string>
+</resources>

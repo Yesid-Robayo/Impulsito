@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Punto de equilibrio en Números: con el margen real del período y los gastos fijos. -->
+    <string name="stats_tool_break_even">Punto de equilibrio</string>
+    <string name="stats_break_even_fixed">Gastos fijos</string>
+    <string name="stats_break_even_sales">Ventas para cubrirlos</string>
+    <string name="stats_break_even_missing">Faltan %1$s en ventas para cubrir los gastos fijos</string>
+    <string name="stats_break_even_covered">Las ventas del período ya cubren los gastos fijos</string>
+    <string name="stats_break_even_no_margin">Hace falta un margen mayor que 0 en el período para calcularlo.</string>
+    <string name="stats_break_even_no_fixed">Para calcularlo, marcar como gasto fijo las categorías que no dependen de cuánto se vende.</string>
+    <string name="stats_break_even_no_fixed_action">Marcar categorías</string>
+    <string name="stats_break_even_help">Sale del margen de este período y de los gastos de las categorías marcadas como fijas.</string>
+    <string name="a11y_break_even_bar">Punto de equilibrio: %1$s. Vendido: %2$s.</string>
+</resources>

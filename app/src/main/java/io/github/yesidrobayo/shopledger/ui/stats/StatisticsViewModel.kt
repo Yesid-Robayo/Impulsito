@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
+import io.github.yesidrobayo.shopledger.domain.model.report.BreakEven
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.ReplacementProfit
@@ -54,6 +55,7 @@ import kotlinx.coroutines.flow.stateIn
  * @param collection lo vendido y lo cobrado de un período, o `null` si el negocio no vende a
  *   crédito.
  * @param replacement la ganancia si se repone de un período, o `null` si una cifra no cabe.
+ * @param breakEven el punto de equilibrio de un período, o `null` sin ventas ni gastos fijos.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class StatisticsViewModel(
@@ -72,6 +74,7 @@ class StatisticsViewModel(
     private val otherIncome: (ReportPeriod) -> Flow<Money> = { flowOf(Money.ZERO) },
     private val collection: (ReportPeriod) -> Flow<SoldAndCollectedView?> = { flowOf(null) },
     private val replacement: (ReportPeriod) -> Flow<ReplacementProfit?> = { flowOf(null) },
+    private val breakEven: (ReportPeriod) -> Flow<BreakEven?> = { flowOf(null) },
 ) : ViewModel() {
     private val unitsById = units.map { all -> all.associateBy { it.id } }.distinctUntilChanged()
 
@@ -162,7 +165,12 @@ class StatisticsViewModel(
             ) { compared, explained, units, income, collected ->
                 Details(compared, explained, units, income, collected)
             }
-        return combine(figures, details, choice) { figures, details, chosen ->
+        return combine(figures, details, choice, breakEven(period)) {
+                figures,
+                details,
+                chosen,
+                balance,
+            ->
             StatisticsUiState.Content(
                 kind = PeriodNavigation.kindOf(period),
                 period = period,
@@ -191,6 +199,7 @@ class StatisticsViewModel(
                 collection = details.collection,
                 // Sin ventas no hay nada que reponer: la herramienta no aparece.
                 replacement = figures.replacement?.takeIf { it.netSales != Money.ZERO },
+                breakEven = balance,
             )
         }
     }
@@ -255,6 +264,7 @@ class StatisticsViewModel(
             StatisticsAction.ChooseZone,
             StatisticsAction.OpenSummary,
             StatisticsAction.OpenPriceIndex,
+            StatisticsAction.OpenCategories,
             -> Unit
         }
     }

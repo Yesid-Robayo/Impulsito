@@ -567,6 +567,9 @@ private fun ColumnScope.Detail(
     tools.comparison(this, content)
     content.replacement?.let { ReplacementTool(it, rows) }
     tools.cashFlow(this, content)
+    content.breakEven?.let {
+        BreakEvenTool(it, { onAction(StatisticsAction.OpenCategories) }, rows)
+    }
     tools.analysis(this, content)
     val tax = content.tax
     if (tax != null) EstimatedTax(tax, rows)
