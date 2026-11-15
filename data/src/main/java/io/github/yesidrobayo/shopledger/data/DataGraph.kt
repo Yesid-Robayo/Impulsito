@@ -98,6 +98,13 @@ import io.github.yesidrobayo.shopledger.data.destination.slots.FileSlotStateStor
 import io.github.yesidrobayo.shopledger.data.destination.slots.ResolverSlotFileDocuments
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotFilesSetup
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotPendingStore
+import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
+import io.github.yesidrobayo.shopledger.data.erase.EraseEvent
+import io.github.yesidrobayo.shopledger.data.erase.EraseJournalStore
+import io.github.yesidrobayo.shopledger.data.erase.EraseService
+import io.github.yesidrobayo.shopledger.data.erase.LocalEraser
+import io.github.yesidrobayo.shopledger.data.erase.RemoteEraser
+import io.github.yesidrobayo.shopledger.data.erase.ResolverSlotDocumentDeleter
 import io.github.yesidrobayo.shopledger.data.export.ContentCsvDocument
 import io.github.yesidrobayo.shopledger.data.export.CsvExporter
 import io.github.yesidrobayo.shopledger.data.export.SummaryPackageWriter
@@ -110,6 +117,7 @@ import io.github.yesidrobayo.shopledger.data.local.GateCaller
 import io.github.yesidrobayo.shopledger.data.local.GateOutcome
 import io.github.yesidrobayo.shopledger.data.local.PreMigrationCopy
 import io.github.yesidrobayo.shopledger.data.local.VacuumPreMigrationCopy
+import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateEntity
 import io.github.yesidrobayo.shopledger.data.log.AndroidEventLog
 import io.github.yesidrobayo.shopledger.data.log.DataEvent
 import io.github.yesidrobayo.shopledger.data.media.MediaCleanup
@@ -146,6 +154,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoBackupFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoDestination
 import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoExport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
+import io.github.yesidrobayo.shopledger.domain.model.erase.ErasePhase
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.AuditRecorder
@@ -158,6 +167,7 @@ import io.github.yesidrobayo.shopledger.domain.port.CloudAccountChecklistPort
 import io.github.yesidrobayo.shopledger.domain.port.CsvExportPort
 import io.github.yesidrobayo.shopledger.domain.port.DataHealthSource
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
+import io.github.yesidrobayo.shopledger.domain.port.EraseMyDataPort
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.FullCopyExportPort
 import io.github.yesidrobayo.shopledger.domain.port.FullVerifyPort
@@ -751,6 +761,107 @@ class DataGraph internal constructor(
             openDatabase = { file -> AppDatabase.open(context, file, ioContext, clock) },
             businessRegion = { businessPorts()?.settings?.get()?.regional },
         )
+    }
+
+    /** El registro de un `Borrar mis datos` confirmado, en `noBackupFilesDir`. */
+    private val eraseJournal by lazy {
+        EraseJournalStore({ files().noBackupDirectory }, DurableFileOps(), ioContext)
+    }
+
+    /**
+     * Lo de este teléfono que borra `Borrar mis datos`, también al retomarlo al abrir: primero la
+     * credencial sellada y los permisos de las ranuras, después los archivos.
+     */
+    private val localEraser by lazy {
+        val slots = FileSlotStateStore.inNoBackupDir(context, ioContext)
+        val permissions = ResolverSlotFileDocuments(context.contentResolver)
+        LocalEraser(
+            files = files,
+            appFolders = { listOf(context.filesDir, context.cacheDir) },
+            ops = DurableFileOps(),
+            releaseAccess = {
+                webDavCredentials.delete()
+                webDavCredentials.deleteNext()
+                val loaded = slots.load() as? SlotStateLoad.Loaded
+                loaded?.state?.slots?.values?.forEach { permissions.releasePermission(it.uri) }
+            },
+            ioContext = ioContext,
+            log = log,
+        )
+    }
+
+    /**
+     * `Borrar mis datos`: primero las copias del destino conectado, después todo este teléfono,
+     * con su fase guardada para retomarlo. Crearlo no toca el disco ni la red.
+     */
+    val eraseMyData: EraseMyDataPort by lazy {
+        val webDav = WebDavDestinationOpener(http, webDavCredentials)
+        val state: suspend () -> BackupStateEntity? = {
+            (open() as? DataAccess.Ready)?.ports?.backupState?.get()
+        }
+        EraseService(
+            journal = eraseJournal,
+            state = state,
+            restoreInProgress = {
+                withContext(ioContext) {
+                    val restore = RestoreFiles(files())
+                    restore.lock.exists() || restore.journal.exists()
+                }
+            },
+            hasNetwork = { backupNetworkOf(context).validated },
+            remote =
+                RemoteEraser(
+                    state = state,
+                    openWebDav = { link ->
+                        val folder = link.folderUrl
+                        if (folder == null) {
+                            MediaOpen.Unavailable
+                        } else {
+                            webDav.openMedia(link.destinationId, folder)
+                        }
+                    },
+                    slots = FileSlotStateStore.inNoBackupDir(context, ioContext),
+                    deleter = ResolverSlotDocumentDeleter(context.contentResolver),
+                    ioContext = ioContext,
+                ),
+            local = localEraser,
+            mutex = backupMutex,
+            stopWork = { backupScheduler.cancelForRestore() },
+            exclusive = { block ->
+                mutex.withLock {
+                    closeForErase()
+                    block()
+                }
+            },
+            log = log,
+        )
+    }
+
+    /**
+     * Cierra la base para borrarla. Desde aquí nada de sus puertos sirve, y la app se reinicia; si
+     * algo la pide antes, espera a que termine el borrado.
+     */
+    private suspend fun closeForErase() {
+        val opened = ready ?: return
+        ready = null
+        try {
+            opened.ports.closeForRestore()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: Exception) {
+            log.warn(DataEvent.ERASE_CLOSE_FAILED, failure)
+        }
+    }
+
+    /**
+     * Un borrado de este teléfono que una muerte dejó a medias se termina antes de abrir la base:
+     * Room nunca abre, ni crea, una base sobre datos a medio borrar. Un borrado que espera a la
+     * nube no se toca aquí: lo retoma la persona en su pantalla.
+     */
+    private suspend fun finishPendingErase() {
+        if (eraseJournal.read() != ErasePhase.LOCAL) return
+        log.info(EraseEvent.RESUMED_AT_START)
+        localEraser.erase()
     }
 
     /** La copia previa a migrar. Pedir los archivos de la base toca el disco. */
@@ -1433,6 +1544,15 @@ class DataGraph internal constructor(
                 log.error(DataEvent.DATABASE_OPEN_FAILED, failure)
                 return DataAccess.Rescue(RescueCause.OpenFailed)
             }
+        // Un borrado local a medias termina antes que nada abra la base.
+        try {
+            finishPendingErase()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: Exception) {
+            log.error(DataEvent.DATABASE_OPEN_FAILED, failure)
+            return DataAccess.Rescue(RescueCause.OpenFailed)
+        }
         val restoreFiles = RestoreFiles(databaseFiles)
         val foreground = caller == GateCaller.APP_IN_FOREGROUND
         // Con un diario, la compuerta termina primero el reemplazo de una restauración.
