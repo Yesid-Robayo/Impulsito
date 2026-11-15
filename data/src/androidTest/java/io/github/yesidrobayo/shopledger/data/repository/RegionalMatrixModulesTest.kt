@@ -554,6 +554,7 @@ internal class RegionalMatrixModulesTest(
         val oilAfter = when (row.taxMode) {
             // 56.000 + 29.412 = 85.412, y 85.412 / 13 = 6.570,2.
             TaxMode.INCLUDED -> "13000 6570 85412"
+
             // 56.000 + 35.000 = 91.000, y 91.000 / 13 = 7.000.
             TaxMode.NONE, TaxMode.ADDED -> "13000 7000 91000"
         }
@@ -590,6 +591,7 @@ internal class RegionalMatrixModulesTest(
         assertEquals(
             when (row.taxMode) {
                 TaxMode.NONE -> null
+
                 TaxMode.INCLUDED, TaxMode.ADDED ->
                     TaxEstimate(collected = Money(sale.tax), paid = Money(purchase.tax))
             },

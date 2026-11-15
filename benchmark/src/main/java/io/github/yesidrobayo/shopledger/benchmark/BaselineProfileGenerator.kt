@@ -28,12 +28,11 @@ class BaselineProfileGenerator {
     }
 
     @Test
-    fun generate() =
-        rule.collect(packageName = BenchmarkTarget.packageName) {
-            pressHome()
-            startActivityAndWait()
-            waitForHome()
-            openSaleHistory()
-            scrollSaleHistory(BenchmarkTarget.PROFILE_SCROLL_MS)
-        }
+    fun generate() = rule.collect(packageName = BenchmarkTarget.packageName) {
+        pressHome()
+        startActivityAndWait()
+        waitForHome()
+        openSaleHistory()
+        scrollSaleHistory(BenchmarkTarget.PROFILE_SCROLL_MS)
+    }
 }

@@ -17,13 +17,10 @@ class UpdateCheckRuleTest {
     private val published = Instant.parse("2026-11-10T00:00:00Z")
     private val hash = "ab".repeat(32)
 
-    private fun manifest(
-        versionCode: Long,
-        minSafe: Long = 1,
-        publishedAt: Instant = published,
-    ) = ManifestRead.Verified(
-        VersionManifest(versionCode, "1.0.$versionCode", hash, minSafe, publishedAt),
-    )
+    private fun manifest(versionCode: Long, minSafe: Long = 1, publishedAt: Instant = published) =
+        ManifestRead.Verified(
+            VersionManifest(versionCode, "1.0.$versionCode", hash, minSafe, publishedAt),
+        )
 
     private fun evaluate(read: ManifestRead, installed: Long = 3, built: Instant? = builtAt) =
         UpdateCheckRule.evaluate(read, installed, built)

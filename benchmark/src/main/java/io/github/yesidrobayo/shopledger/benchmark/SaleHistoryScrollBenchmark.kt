@@ -33,19 +33,18 @@ class SaleHistoryScrollBenchmark {
     }
 
     @Test
-    fun scrollSaleHistory() =
-        rule.measureRepeated(
-            packageName = BenchmarkTarget.packageName,
-            metrics = listOf(FrameTimingMetric()),
-            compilationMode = CompilationMode.Partial(BaselineProfileMode.UseIfAvailable),
-            startupMode = StartupMode.COLD,
-            iterations = BenchmarkTarget.SCROLL_ITERATIONS,
-            setupBlock = {
-                startActivityAndWait()
-                waitForHome()
-                openSaleHistory()
-            },
-        ) {
-            scrollSaleHistory(BenchmarkTarget.SCROLL_MS)
-        }
+    fun scrollSaleHistory() = rule.measureRepeated(
+        packageName = BenchmarkTarget.packageName,
+        metrics = listOf(FrameTimingMetric()),
+        compilationMode = CompilationMode.Partial(BaselineProfileMode.UseIfAvailable),
+        startupMode = StartupMode.COLD,
+        iterations = BenchmarkTarget.SCROLL_ITERATIONS,
+        setupBlock = {
+            startActivityAndWait()
+            waitForHome()
+            openSaleHistory()
+        },
+    ) {
+        scrollSaleHistory(BenchmarkTarget.SCROLL_MS)
+    }
 }

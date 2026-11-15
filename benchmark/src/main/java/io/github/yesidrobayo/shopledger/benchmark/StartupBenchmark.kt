@@ -38,16 +38,15 @@ class StartupBenchmark {
     fun coldStartWithProfile() =
         coldStart(CompilationMode.Partial(BaselineProfileMode.UseIfAvailable))
 
-    private fun coldStart(mode: CompilationMode) =
-        rule.measureRepeated(
-            packageName = BenchmarkTarget.packageName,
-            metrics = listOf(StartupTimingMetric()),
-            compilationMode = mode,
-            startupMode = StartupMode.COLD,
-            iterations = BenchmarkTarget.STARTUP_ITERATIONS,
-            setupBlock = { pressHome() },
-        ) {
-            startActivityAndWait()
-            waitForHome()
-        }
+    private fun coldStart(mode: CompilationMode) = rule.measureRepeated(
+        packageName = BenchmarkTarget.packageName,
+        metrics = listOf(StartupTimingMetric()),
+        compilationMode = mode,
+        startupMode = StartupMode.COLD,
+        iterations = BenchmarkTarget.STARTUP_ITERATIONS,
+        setupBlock = { pressHome() },
+    ) {
+        startActivityAndWait()
+        waitForHome()
+    }
 }

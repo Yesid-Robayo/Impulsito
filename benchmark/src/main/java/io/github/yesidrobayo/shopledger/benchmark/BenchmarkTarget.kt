@@ -71,7 +71,7 @@ internal object BenchmarkTarget {
     const val PROFILE_SCROLL_MS = 5_000L
 
     /** El borde que deja libre el gesto, en partes del ancho: así no abre el gesto de volver. */
-    private const val GESTURE_MARGIN_PARTS = 5
+    const val GESTURE_MARGIN_PARTS = 5
 
     private val arguments get() = InstrumentationRegistry.getArguments()
 
@@ -118,7 +118,7 @@ internal fun MacrobenchmarkScope.scrollSaleHistory(durationMs: Long) {
             Until.findObject(By.res(BenchmarkTarget.SALE_HISTORY_LIST)),
             BenchmarkTarget.WAIT_MS,
         ) ?: error("No apareció el historial de ventas")
-    list.setGestureMargin(device.displayWidth / GESTURE_MARGIN_PARTS)
+    list.setGestureMargin(device.displayWidth / BenchmarkTarget.GESTURE_MARGIN_PARTS)
     var direction = Direction.DOWN
     val end = SystemClock.uptimeMillis() + durationMs
     while (SystemClock.uptimeMillis() < end) {

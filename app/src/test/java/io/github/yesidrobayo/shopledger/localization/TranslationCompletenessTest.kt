@@ -70,8 +70,10 @@ class TranslationCompletenessTest {
                 when {
                     text.kind == PLURALS && !text.items.keys.containsAll(REQUIRED_QUANTITIES) ->
                         "${folder.name}: $key solo tiene ${text.items.keys}"
+
                     text.kind == ARRAY && text.items.size != base[key]?.items?.size ->
                         "${folder.name}: $key tiene ${text.items.size} elementos"
+
                     else -> null
                 }
             }
@@ -91,8 +93,10 @@ class TranslationCompletenessTest {
                 val twin = raw.resolve(article.name)
                 when {
                     !twin.isFile -> "${raw.name}: falta ${article.name}"
+
                     lines(twin) != lines(article) ->
                         "${raw.name}: ${article.name} tiene ${lines(twin)} líneas"
+
                     else -> null
                 }
             }

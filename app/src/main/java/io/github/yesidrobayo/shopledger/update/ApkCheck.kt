@@ -42,8 +42,4 @@ sealed interface ApkCheckResult {
  * @property fingerprint la huella SHA-256 de su certificado, en grupos de dos cifras separados por
  *   `:`, o nula si no se pudo leer. Con varios firmantes, una huella por línea.
  */
-data class InstalledApp(
-    val versionName: String?,
-    val versionCode: Long,
-    val fingerprint: String?,
-)
+data class InstalledApp(val versionName: String?, val versionCode: Long, val fingerprint: String?)

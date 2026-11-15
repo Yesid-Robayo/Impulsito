@@ -41,7 +41,7 @@ class VersionManifestClientTest {
         (
             """{"version_code":2,"version_name":"1.0.1","apk_sha256":"$hash",""" +
                 """"min_safe_version_code":1,"published_at":1793000000000}"""
-        ).toByteArray(Charsets.UTF_8)
+            ).toByteArray(Charsets.UTF_8)
 
     @After
     fun closeServers() {
@@ -66,8 +66,10 @@ class VersionManifestClientTest {
         server { path ->
             when (path) {
                 MANIFEST_PATH -> FakeResponse.Reply(200, body = body)
+
                 MANIFEST_PATH + VersionManifestSource.SIGNATURE_SUFFIX ->
                     FakeResponse.Reply(200, body = signature)
+
                 else -> FakeResponse.status(404)
             }
         }
@@ -196,7 +198,7 @@ class VersionManifestClientTest {
             (
                 """{"version_code":2.5,"version_name":"1.0.1","apk_sha256":"$hash",""" +
                     """"min_safe_version_code":1,"published_at":1793000000000}"""
-            ).toByteArray(Charsets.UTF_8)
+                ).toByteArray(Charsets.UTF_8)
         assertEquals(ManifestRead.Unreadable, read(sourceOf(serving(decimal))))
     }
 

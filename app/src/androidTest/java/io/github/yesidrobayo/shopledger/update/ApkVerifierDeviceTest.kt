@@ -57,8 +57,7 @@ class ApkVerifierDeviceTest {
         verifier(maxBytes).verify(Uri.fromFile(file))
     }
 
-    private fun assertNoLeftover() =
-        assertFalse(File(work, ApkVerifier.CANDIDATE_NAME).exists())
+    private fun assertNoLeftover() = assertFalse(File(work, ApkVerifier.CANDIDATE_NAME).exists())
 
     @Before
     fun cleanFolder() {

@@ -95,8 +95,10 @@ class RegionalMatrixReceiptTest(private val row: RegionalMatrixRow) {
             add(ReceiptAmount.Adjustment(Money(RegionalMatrixSale.ORDER_ADJUSTMENT)))
             when (row.taxMode) {
                 TaxMode.NONE -> Unit
+
                 TaxMode.INCLUDED ->
                     add(ReceiptAmount.Tax(TAX_NAME, rate, Money(sale.tax), included = true))
+
                 TaxMode.ADDED ->
                     add(ReceiptAmount.Tax(TAX_NAME, rate, Money(sale.tax), included = false))
             }
