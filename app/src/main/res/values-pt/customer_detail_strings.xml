@@ -37,8 +37,8 @@
     <string name="customer_archive_confirm_body_balance">Tem um saldo de %1$s, que continua contando em A receber. O histórico é mantido.</string>
     <string name="customer_archive_confirm_action">Arquivar cliente</string>
     <string name="customer_anonymize_confirm_title">Anonimizar %1$s?</string>
-    <string name="customer_anonymize_confirm_body">Nome, telefone, e-mail e observações são apagados, e isso não pode ser desfeito. Os movimentos são mantidos, sem dados pessoais.</string>
-    <string name="customer_anonymize_confirm_body_balance">Tem um saldo de %1$s. Nome, telefone, e-mail e observações são apagados, e isso não pode ser desfeito. Os movimentos são mantidos, sem dados pessoais.</string>
+    <string name="customer_anonymize_confirm_body">Nome, telefone, e-mail, observações e dados de entrega dos pedidos são apagados, e isso não pode ser desfeito. Os movimentos são mantidos, com suas observações.</string>
+    <string name="customer_anonymize_confirm_body_balance">Tem um saldo de %1$s. Nome, telefone, e-mail, observações e dados de entrega dos pedidos são apagados, e isso não pode ser desfeito. Os movimentos são mantidos, com suas observações.</string>
     <string name="customer_anonymize_confirm_action">Anonimizar cliente</string>
     <string name="customer_anonymize_copies_notice">Estes dados continuam em cópias anteriores até saírem pela retenção.</string>
     <string name="customer_update_copies_action">Atualizar cópias</string>

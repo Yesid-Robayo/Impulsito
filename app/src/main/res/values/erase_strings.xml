@@ -59,7 +59,7 @@
     <string name="erase_stage_destination">Deleting backups and photos from the cloud</string>
     <string name="erase_stage_local">Deleting this phone</string>
     <string name="erase_trash_note">Depending on the cloud, this deletion may be permanent. %1$s cannot tell whether it keeps a trash.</string>
-    <string name="erase_password_note">The service password stays valid there. It is cancelled on that service.</string>
+    <string name="erase_password_note">The service password stays valid there. It must be revoked on that service.</string>
     <string name="erase_slots_cloud_note">%1$s asks %2$s to delete the three files, and cannot tell whether that deletion reached the cloud. Check it from another device or the web.</string>
     <string name="erase_error_destination">The cloud could not be reached. This phone was not touched.</string>
     <string name="erase_error_partial">Some backups are still in the cloud. This phone was not touched.</string>

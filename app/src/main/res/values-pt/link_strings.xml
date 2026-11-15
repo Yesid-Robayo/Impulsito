@@ -4,7 +4,7 @@
     <string name="backup_action_disconnect">Desconectar</string>
     <string name="dialog_disconnect_destination_title">Desconectar %1$s?</string>
     <string name="dialog_disconnect_destination_body">Os dados e as cópias ficam intactos, mas não serão salvas novas cópias. Para usar as anteriores, há a opção Buscar um arquivo.</string>
-    <string name="dialog_disconnect_webdav_note">A senha é apagada deste telefone, mas continua válida no serviço. Ela é cancelada lá.</string>
+    <string name="dialog_disconnect_webdav_note">A senha é apagada deste telefone, mas continua válida no serviço. É preciso cancelá-la lá.</string>
     <string name="confirm_destination_disconnected">Nuvem desconectada</string>
     <string name="error_disconnect">Não foi possível desconectar. Tudo continua como estava.</string>
     <string name="backup_session_lost_title">Entrar em %1$s</string>

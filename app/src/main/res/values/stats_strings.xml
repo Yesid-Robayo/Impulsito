@@ -45,7 +45,7 @@
     <string name="stats_metric_collected">Collected</string>
     <string name="stats_chart_summary_collected">Collected chart, %1$s. Total %2$s. Highest: %3$s, %4$s. Lowest: %5$s, %6$s.</string>
     <string name="stats_sold_amount">Sold %1$s</string>
-    <string name="stats_on_account_amount">On account %1$s</string>
+    <string name="stats_on_account_amount">Payments on account %1$s</string>
     <string name="stats_receivable_amount">Receivable %1$s</string>
     <string name="stats_tool_replacement">Profit at replacement cost</string>
     <string name="stats_replacement_help">Sales profit uses the average cost. This one uses what it would cost to buy again what was sold.</string>

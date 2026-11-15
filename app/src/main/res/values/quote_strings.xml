@@ -37,7 +37,7 @@
     <string name="quote_error_convert">The quote could not be converted. It is still open.</string>
     <string name="quote_error_no_lines">Add at least one product</string>
     <string name="quote_error_past_date">Choose today or a later date</string>
-    <string name="quote_error_extras">A quote does not keep add-ons. Add them as separate products.</string>
+    <string name="quote_error_extras">A quote cannot include add-ons. Add them as separate products.</string>
     <string name="quote_expired_notice">This quote expired on %1$s.</string>
     <string name="quote_cancel_confirm_title">Cancel this quote?</string>
     <string name="quote_cancel_confirm_body">It stays in the history and can no longer be converted or reopened.</string>

@@ -37,8 +37,8 @@
     <string name="customer_archive_confirm_body_balance">Has a balance of %1$s, which still counts in Receivable. The history is kept.</string>
     <string name="customer_archive_confirm_action">Archive customer</string>
     <string name="customer_anonymize_confirm_title">Anonymize %1$s?</string>
-    <string name="customer_anonymize_confirm_body">Name, phone, email and notes are deleted, and this cannot be undone. Movements are kept, without personal data.</string>
-    <string name="customer_anonymize_confirm_body_balance">Has a balance of %1$s. Name, phone, email and notes are deleted, and this cannot be undone. Movements are kept, without personal data.</string>
+    <string name="customer_anonymize_confirm_body">Name, phone, email, notes and the delivery details of their orders are deleted, and this cannot be undone. Movements are kept, with their notes.</string>
+    <string name="customer_anonymize_confirm_body_balance">Has a balance of %1$s. Name, phone, email, notes and the delivery details of their orders are deleted, and this cannot be undone. Movements are kept, with their notes.</string>
     <string name="customer_anonymize_confirm_action">Anonymize customer</string>
     <string name="customer_anonymize_copies_notice">This data stays in earlier backups until they age out through retention.</string>
     <string name="customer_update_copies_action">Update backups</string>

@@ -11,7 +11,7 @@
     <string name="supplier_return_line_total_label">Line total</string>
     <string name="supplier_return_cost_effect">Average cost goes from %1$s to %2$s</string>
     <string name="supplier_return_how_title">How it is settled</string>
-    <string name="supplier_return_resolution_cash_refund">Cash refund</string>
+    <string name="supplier_return_resolution_cash_refund">Refund</string>
     <string name="supplier_return_resolution_supplier_credit">Credit with supplier</string>
     <string name="supplier_return_refund_to">Paid into</string>
     <string name="supplier_return_balance_after">Payable after: %1$s</string>

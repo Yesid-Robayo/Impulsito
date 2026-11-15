@@ -32,7 +32,7 @@
     <string name="money_movement_saved">Movimento salvo</string>
     <string name="money_from">De</string>
     <string name="money_to">Para</string>
-    <string name="money_fx_rate">Taxa de câmbio</string>
+    <string name="money_fx_rate">Cotação</string>
     <string name="money_fx_arrives">Chegam %1$s</string>
     <string name="money_edit_title">Editar conta</string>
     <string name="money_account_name">Nome</string>
@@ -68,7 +68,7 @@
     <string name="money_empty_movements">Ainda sem movimentos</string>
     <string name="money_negative_warning">Esta conta fica com saldo negativo: %1$s</string>
     <string name="money_error_same_account">Escolher duas contas diferentes</string>
-    <string name="money_error_fx_rate">Informar a taxa de câmbio</string>
+    <string name="money_error_fx_rate">Informar a cotação</string>
     <string name="money_error_amount_zero">Informar um valor maior que zero</string>
     <string name="money_error_name_empty">Informar o nome da conta</string>
     <string name="money_error_name_duplicate">Já existe uma conta com esse nome</string>

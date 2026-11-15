@@ -2,7 +2,7 @@
 <resources>
     <!-- English: producción, su lista, su formulario y su detalle. -->
     <string name="hub_tool_production">Production</string>
-    <string name="hub_tool_production_desc">Turn supplies into finished products</string>
+    <string name="hub_tool_production_desc">Turn inputs into finished products</string>
     <string name="production_new_action">New production</string>
     <string name="production_total_cost_label">Total cost</string>
     <string name="production_detail_title">Production on %1$s</string>

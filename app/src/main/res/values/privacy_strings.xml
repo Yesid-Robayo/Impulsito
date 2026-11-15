@@ -73,7 +73,7 @@
     <string name="account_password_title">If something asks for the password</string>
     <string name="account_password_body">%1$s only asks for it in Connect the service, after that option is tapped. If it appears at any other time, it is not %1$s: close that screen and review the account activity.</string>
     <string name="account_app_password_title">App password</string>
-    <string name="account_app_password_body">If the service offers an app password, use it here: it can be cancelled without changing the account password.</string>
+    <string name="account_app_password_body">If the service offers an app password, use it here: it can be revoked without changing the account password.</string>
     <string name="account_empty_title">No account connected</string>
     <string name="account_guides_title">Google guides</string>
     <string name="account_guides_help">They open in the browser. %1$s does not read those pages.</string>

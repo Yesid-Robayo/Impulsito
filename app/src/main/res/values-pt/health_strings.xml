@@ -8,7 +8,7 @@
     <string name="health_row_cloud_check">Revisão na nuvem</string>
     <string name="health_cloud_check_value">Conforme o que a pessoa viu: %1$s</string>
     <string name="health_row_full_verify">Verificação completa</string>
-    <string name="health_row_offsite">Cópia de segurança local</string>
+    <string name="health_row_offsite">Cópia local</string>
     <string name="health_row_code">Código testado</string>
     <string name="health_row_device_lock">Bloqueio de tela</string>
     <string name="health_row_phone_space">Espaço no telefone</string>

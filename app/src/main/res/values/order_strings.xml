@@ -49,7 +49,7 @@
     <string name="order_error_deliver">The delivery could not be recorded. The order has not changed.</string>
     <string name="order_error_no_lines">Add at least one product</string>
     <string name="order_error_deposit_amount">Enter an amount greater than 0</string>
-    <string name="order_error_extras">An order does not keep add-ons. Add them as separate products.</string>
+    <string name="order_error_extras">An order cannot include add-ons. Add them as separate products.</string>
     <string name="order_cancel_confirm_title">Cancel this order?</string>
     <string name="order_cancel_confirm_body">The units stop being reserved. It stays in the history.</string>
     <string name="order_cancel_confirm_body_deposit">The units stop being reserved. The deposit stays as a credit balance for %1$s.</string>

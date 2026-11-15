@@ -2,7 +2,7 @@ Encrypting backups is optional and starts off. With encryption, nobody can open 
 
 ## Turn on
 
-In **Backup encryption**, **Turn on encryption** creates a 28-character recovery code. For security, it cannot be copied or captured in a screenshot: write it down by hand or save it with **Save recovery kit**, outside this phone and outside that same cloud account. Then enter it once, to confirm it was saved correctly. Before turning on, {app} tests that an encrypted backup can be opened.
+In **Backup encryption**, **Turn on encryption** creates a 28-character recovery code. For security, it cannot be copied or captured in a screenshot: write it down by hand or save it with **Save recovery kit**, outside this phone and outside that same cloud account. Then enter it once, to confirm it was saved correctly. Before encryption is turned on, {app} tests that an encrypted backup can be opened.
 
 ## Good to know
 

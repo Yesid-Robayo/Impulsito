@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Portugués: la pantalla de variantes de un producto y su fila en el formulario. -->
-    <string name="product_variants_row">Variações</string>
+    <string name="product_variants_row">Variantes</string>
     <string name="variant_axis_1_label">Eixo 1</string>
     <string name="variant_axis_2_label">Eixo 2</string>
     <string name="variant_axis_1_hint">Por exemplo: tamanho</string>

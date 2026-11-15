@@ -59,7 +59,7 @@
     <string name="erase_stage_destination">Apagando cópias e fotos da nuvem</string>
     <string name="erase_stage_local">Apagando este telefone</string>
     <string name="erase_trash_note">Conforme a nuvem, esta exclusão pode ser definitiva. %1$s não consegue saber se ela mantém uma lixeira.</string>
-    <string name="erase_password_note">A senha do serviço continua válida lá. Ela é cancelada nesse serviço.</string>
+    <string name="erase_password_note">A senha do serviço continua válida lá. É preciso cancelá-la nesse serviço.</string>
     <string name="erase_slots_cloud_note">%1$s pede a %2$s que apague os três arquivos, e não consegue saber se isso chegou à nuvem. Convém conferir em outro dispositivo ou na web.</string>
     <string name="erase_error_destination">Não foi possível acessar a nuvem. Este telefone não foi alterado.</string>
     <string name="erase_error_partial">Algumas cópias continuam na nuvem. Este telefone não foi alterado.</string>

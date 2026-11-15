@@ -34,7 +34,7 @@
     <string name="payable_ledger_adjustment">Adjustment</string>
     <string name="payable_ledger_entry_void">Void</string>
     <string name="hub_tool_payables">Accounts payable</string>
-    <string name="hub_tool_payables_desc">Purchases on terms and supplier payments</string>
+    <string name="hub_tool_payables_desc">Purchases on credit and supplier payments</string>
     <string name="supplier_payment_terms">Payment terms</string>
     <string name="purchase_payment_label">Payment</string>
     <string name="purchase_payment_paid">Paid</string>

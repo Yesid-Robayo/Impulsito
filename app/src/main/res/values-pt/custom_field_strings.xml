@@ -50,6 +50,6 @@
     <string name="tag_saved">Marcador salvo</string>
     <string name="field_move_up">Mover para cima</string>
     <string name="field_move_down">Mover para baixo</string>
-    <string name="hub_tool_fields">Campos e etiquetas</string>
+    <string name="hub_tool_fields">Campos e marcadores</string>
     <string name="hub_tool_fields_desc">Dados próprios para os produtos</string>
 </resources>

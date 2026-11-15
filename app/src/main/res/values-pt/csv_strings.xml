@@ -113,8 +113,8 @@
     <string name="csv_file_product_modifiers">adicionais.csv</string>
     <string name="csv_file_custom_fields">campos-proprios.csv</string>
     <string name="csv_file_product_custom_values">valores-de-campos.csv</string>
-    <string name="csv_file_tags">etiquetas.csv</string>
-    <string name="csv_file_product_tags">etiquetas-por-produto.csv</string>
+    <string name="csv_file_tags">marcadores.csv</string>
+    <string name="csv_file_product_tags">marcadores-por-produto.csv</string>
     <string name="csv_file_media_assets">fotos-e-arquivos.csv</string>
     <string name="csv_file_sale_line_components">componentes-vendidos.csv</string>
     <string name="csv_file_locations">locais.csv</string>
@@ -155,7 +155,7 @@
     <string name="csv_header_tender_currency_code">Moeda entregue</string>
     <string name="csv_header_tender_currency_decimals">Casas decimais da moeda entregue</string>
     <string name="csv_header_tender_amount">Valor entregue</string>
-    <string name="csv_header_fx_rate">Taxa de câmbio</string>
+    <string name="csv_header_fx_rate">Cotação da moeda</string>
     <string name="csv_header_points_balance">Saldo de pontos</string>
     <string name="csv_header_anonymized_at">Anonimizado em</string>
     <string name="csv_header_balance_after">Saldo depois</string>
@@ -205,7 +205,7 @@
     <string name="csv_header_field_type">Tipo de campo</string>
     <string name="csv_header_custom_field">Campo</string>
     <string name="csv_header_value">Valor</string>
-    <string name="csv_header_tag">Etiqueta</string>
+    <string name="csv_header_tag">Marcador</string>
     <string name="csv_header_sha256">SHA-256</string>
     <string name="csv_header_mime_type">Tipo de arquivo</string>
     <string name="csv_header_width_px">Largura em pixels</string>

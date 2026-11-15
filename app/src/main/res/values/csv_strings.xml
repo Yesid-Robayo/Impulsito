@@ -38,7 +38,7 @@
     <string name="csv_header_price_list">Price list</string>
     <string name="csv_header_net_total">Total before tax</string>
     <string name="csv_header_tax_total">Total tax</string>
-    <string name="csv_header_order_adjustment">Order adjustment</string>
+    <string name="csv_header_order_adjustment">Overall adjustment</string>
     <string name="csv_header_tip_amount">Tip</string>
     <string name="csv_header_cash_rounding_amount">Cash rounding</string>
     <string name="csv_header_total">Total</string>
@@ -56,7 +56,7 @@
     <string name="csv_header_unit_price">Unit price</string>
     <string name="csv_header_unit_cost">Unit cost</string>
     <string name="csv_header_line_discount">Line discount</string>
-    <string name="csv_header_order_adjustment_share">Share of order adjustment</string>
+    <string name="csv_header_order_adjustment_share">Share of overall adjustment</string>
     <string name="csv_header_net_amount">Amount before tax</string>
     <string name="csv_header_tax_rate">Tax rate</string>
     <string name="csv_header_tax_amount">Tax amount</string>
@@ -87,7 +87,7 @@
     <string name="csv_header_new_price">New price</string>
     <string name="csv_header_source">Source</string>
     <string name="csv_header_month">Month</string>
-    <string name="csv_header_change_percent">Change</string>
+    <string name="csv_header_change_percent">Percent change</string>
     <string name="csv_file_tax_rates">tax-rates.csv</string>
     <string name="csv_file_payment_methods">payment-methods.csv</string>
     <string name="csv_file_sale_payments">sale-payments.csv</string>

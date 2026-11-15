@@ -130,7 +130,7 @@
     <string name="index_title">Índice de preços</string>
     <string name="help_title">Ajuda</string>
     <string name="encryption_title">Criptografia das cópias</string>
-    <string name="offsite_title">Cópias de segurança locais</string>
+    <string name="offsite_title">Cópias locais</string>
     <string name="storage_title">Armazenamento e exclusão</string>
     <string name="transparency_title">Quais dados existem e para onde vão</string>
     <string name="update_title">Atualizações e verificação de APK</string>

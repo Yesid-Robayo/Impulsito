@@ -18,7 +18,7 @@
     <string name="loyalty_off_confirm_body">Os saldos são mantidos. Nada é ganho nem resgatado até ativar novamente.</string>
     <string name="loyalty_off_confirm_action">Desativar programa</string>
     <string name="hub_tool_loyalty">Programa de pontos</string>
-    <string name="hub_tool_loyalty_desc">Pontos por compra, trocados por descontos</string>
+    <string name="hub_tool_loyalty_desc">Pontos por venda, resgatáveis como descontos</string>
     <plurals name="loyalty_example_earn">
         <item quantity="one">Uma venda de %1$s ganha %2$s ponto</item>
         <item quantity="many">Uma venda de %1$s ganha %2$s de pontos</item>

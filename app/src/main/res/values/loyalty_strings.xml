@@ -18,7 +18,7 @@
     <string name="loyalty_off_confirm_body">Balances are kept. Nothing is earned or redeemed until it is turned on again.</string>
     <string name="loyalty_off_confirm_action">Turn off program</string>
     <string name="hub_tool_loyalty">Points program</string>
-    <string name="hub_tool_loyalty_desc">Points per purchase, redeemable for discounts</string>
+    <string name="hub_tool_loyalty_desc">Points per sale, redeemable for discounts</string>
     <plurals name="loyalty_example_earn">
         <item quantity="one">A sale of %1$s earns %2$s point</item>
         <item quantity="other">A sale of %1$s earns %2$s points</item>

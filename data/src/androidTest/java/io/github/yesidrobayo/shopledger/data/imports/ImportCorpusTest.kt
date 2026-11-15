@@ -50,7 +50,7 @@ class ImportCorpusTest {
         "sale_price" to listOf("Sale price", "Precio de venta", "Preço de venda"),
         "on_hand" to listOf("Stock", "Stock", "Estoque"),
         "month" to listOf("Month", "Mes", "Mês"),
-        "change_percent" to listOf("Change", "Variación", "Variação"),
+        "change_percent" to listOf("Percent change", "Variación", "Variação"),
     )
     private val matcher = ImportColumnMatcher { key -> headers[key].orEmpty() }
 

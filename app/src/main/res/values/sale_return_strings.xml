@@ -22,7 +22,7 @@
         <item quantity="one">%1$d product</item>
         <item quantity="other">%1$d products</item>
     </plurals>
-    <string name="sale_return_total_label">Total to refund</string>
+    <string name="sale_return_total_label">Return total</string>
     <string name="sale_return_net_label">Amount before tax</string>
     <string name="sale_return_tax_label">Tax</string>
     <string name="sale_return_register_action">Record return</string>
@@ -41,14 +41,14 @@
     <string name="sale_return_empty_title">Everything has already been returned</string>
     <string name="sale_return_error_none_selected">Choose at least one product</string>
     <string name="sale_return_error_max">Maximum %1$s</string>
-    <string name="sale_return_error_no_customer">Choose the customer to keep the credit balance</string>
+    <string name="sale_return_error_no_customer">Choose the customer who gets the credit balance</string>
     <string name="sale_return_credit_debt_help">Reduces what %1$s owes</string>
     <string name="sale_return_other_month_notice">The return counts on %1$s. That month\'s figures do not change</string>
     <string name="sale_return_points_notice">The points from this sale do not change</string>
     <string name="sale_return_error_register">Could not record the return. The selection is kept.</string>
     <string name="sale_return_success">Return recorded: %1$s</string>
     <string name="a11y_sale_return_line">%1$s, sold %2$s, already returned %3$s, to return %4$s</string>
-    <string name="a11y_sale_return_total">Total to refund: %1$s</string>
+    <string name="a11y_sale_return_total">Return total: %1$s</string>
     <string name="sale_return_returned_and_left">Already returned: %1$s · Left: %2$s</string>
     <string name="sale_return_exchange_success">Exchange recorded</string>
     <string name="sale_return_void_action">Void return</string>

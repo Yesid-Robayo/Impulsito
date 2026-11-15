@@ -47,7 +47,7 @@
     <string name="money_kind_wallet">Wallet</string>
     <string name="money_kind_other">Other</string>
     <string name="money_movement_opening_balance">Opening balance</string>
-    <string name="money_movement_sale_receipt">Sale receipt</string>
+    <string name="money_movement_sale_receipt">Sale payment</string>
     <string name="money_movement_customer_payment">Customer payment on account</string>
     <string name="money_movement_refund">Refund</string>
     <string name="money_movement_fee">Fee</string>
@@ -82,7 +82,7 @@
     <string name="money_archive_confirm_body_balance">It still holds %1$s. It is best to transfer that balance before archiving.</string>
     <string name="money_archive_confirm_action">Archive account</string>
     <string name="hub_tool_money_accounts">Money accounts</string>
-    <string name="hub_tool_money_accounts_desc">Balances, draws, contributions and transfers</string>
+    <string name="hub_tool_money_accounts_desc">Balances, withdrawals, contributions and transfers</string>
     <string name="a11y_money_account_row">%1$s, %2$s, balance %3$s</string>
     <string name="a11y_money_pending">To settle: %1$s</string>
 </resources>

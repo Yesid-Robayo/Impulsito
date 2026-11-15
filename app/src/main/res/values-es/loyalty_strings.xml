@@ -18,7 +18,7 @@
     <string name="loyalty_off_confirm_body">Los saldos se conservan. No se gana ni se canjea hasta activarlo otra vez.</string>
     <string name="loyalty_off_confirm_action">Apagar programa</string>
     <string name="hub_tool_loyalty">Programa de puntos</string>
-    <string name="hub_tool_loyalty_desc">Puntos por compra, canjeables por descuentos</string>
+    <string name="hub_tool_loyalty_desc">Puntos por venta, canjeables por descuentos</string>
     <plurals name="loyalty_example_earn">
         <item quantity="one">Una venta de %1$s gana %2$s punto</item>
         <item quantity="many">Una venta de %1$s gana %2$s de puntos</item>
