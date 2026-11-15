@@ -152,6 +152,7 @@ import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
+import io.github.yesidrobayo.shopledger.ui.update.UpdatesRoute
 import io.github.yesidrobayo.shopledger.ui.variant.VariantsRoute
 import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
 import kotlinx.coroutines.flow.first
@@ -527,6 +528,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.AuditLog -> AuditLogRoute(navigator)
 
         is AppNavKey.StorageAndDeletion -> StorageRoute(key, navigator)
+
+        AppNavKey.UpdatesAndApkCheck -> UpdatesRoute(navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }

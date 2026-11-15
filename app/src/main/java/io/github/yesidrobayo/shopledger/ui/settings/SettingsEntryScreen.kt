@@ -517,6 +517,11 @@ private fun AboutGroup(
         summary = version,
         action = SettingsRowAction.Value {},
     )
+    // Buscar una versión nueva y verificar un APK antes de instalarlo: nunca instala nada.
+    SettingsRow(
+        title = stringResource(R.string.update_title),
+        action = SettingsRowAction.Navigation { links.onOpen(AppNavKey.UpdatesAndApkCheck) },
+    )
     // El aviso de alcance legal: no reemplaza la contabilidad, un comprobante no es factura, y no
     // emite documentos fiscales ni está certificada por nadie.
     Column(

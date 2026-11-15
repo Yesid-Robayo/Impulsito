@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Actualizaciones y verificar APK. Textos de la guía de redacción. -->
+    <string name="update_version">Versão %1$s (%2$s)</string>
+    <string name="update_fingerprint_title">Impressão digital da assinatura</string>
+    <string name="update_fingerprint_help">Pode ser comparada com a impressão publicada na página do %1$s.</string>
+    <string name="update_how_title">Como atualizar</string>
+    <string name="update_how_step_backup">Fazer uma cópia com Fazer cópia agora.</string>
+    <string name="update_how_step_download">Baixar o APK da página do %1$s.</string>
+    <string name="update_how_step_verify">Conferir aqui com Verificar um APK.</string>
+    <string name="update_how_step_install">Instalar por cima, sem desinstalar o %1$s: desinstalar apaga o que não tiver cópia.</string>
+    <string name="update_how_backup_note">O ideal é ter uma cópia recente antes de instalar.</string>
+    <string name="verify_title">Verificar um APK</string>
+    <string name="verify_body">Serve para verificar se um arquivo tem a assinatura do %1$s. O %1$s não instala nada.</string>
+    <string name="verify_choose_action">Escolher arquivo</string>
+    <string name="verify_checking">Verificando o arquivo</string>
+    <string name="verify_ok">Assinatura correta</string>
+    <string name="verify_version">Versão %1$s</string>
+    <string name="verify_manifest_match">Também confere com o aviso de versão</string>
+    <string name="verify_older_title">Arquivo de uma versão anterior</string>
+    <string name="verify_older_body">O Android não o instala por cima da versão atual.</string>
+    <string name="verify_mismatch_title">Não instalar este arquivo</string>
+    <string name="verify_mismatch_body">A assinatura não é a do %1$s. Não desinstalar o %1$s: desinstalar apaga o que não tiver cópia.</string>
+    <string name="verify_not_apk">Este arquivo não é um APK.</string>
+    <string name="verify_error_read">Não foi possível ler o arquivo.</string>
+</resources>

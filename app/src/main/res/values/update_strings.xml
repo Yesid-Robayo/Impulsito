@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Actualizaciones y verificar APK. Textos de la guía de redacción. Inglés, el respaldo. -->
+    <!-- %1$s es la versión y %2$s el número de compilación. -->
+    <string name="update_version">Version %1$s (%2$s)</string>
+    <string name="update_fingerprint_title">Signature fingerprint</string>
+    <!-- %1$s es el nombre de la app. -->
+    <string name="update_fingerprint_help">It can be compared with the fingerprint published on the %1$s page.</string>
+    <string name="update_how_title">How to update</string>
+    <string name="update_how_step_backup">Make a backup with Back up now.</string>
+    <string name="update_how_step_download">Download the APK from the %1$s page.</string>
+    <string name="update_how_step_verify">Check it here with Check an APK.</string>
+    <string name="update_how_step_install">Install it over the current app, without uninstalling %1$s: uninstalling deletes anything without a backup.</string>
+    <string name="update_how_backup_note">Have a recent backup before installing.</string>
+    <string name="verify_title">Check an APK</string>
+    <string name="verify_body">This checks that a file has the %1$s signature. %1$s installs nothing.</string>
+    <string name="verify_choose_action">Choose file</string>
+    <string name="verify_checking">Checking the file</string>
+    <string name="verify_ok">Signature is correct</string>
+    <!-- %1$s es la versión que declara el archivo. -->
+    <string name="verify_version">Version %1$s</string>
+    <string name="verify_manifest_match">It also matches the version notice</string>
+    <string name="verify_older_title">File from an older version</string>
+    <string name="verify_older_body">Android does not install it over the current version.</string>
+    <string name="verify_mismatch_title">Do not install this file</string>
+    <string name="verify_mismatch_body">Its signature is not the %1$s signature. Do not uninstall %1$s: uninstalling deletes anything without a backup.</string>
+    <string name="verify_not_apk">This file is not an APK.</string>
+    <string name="verify_error_read">The file could not be read.</string>
+    <!-- El nombre del algoritmo, delante de la huella del archivo: no se traduce. -->
+    <string name="verify_sha256_label" translatable="false">SHA-256</string>
+</resources>
