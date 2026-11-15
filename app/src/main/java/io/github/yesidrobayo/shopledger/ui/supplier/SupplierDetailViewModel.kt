@@ -83,6 +83,9 @@ sealed interface SupplierDetailAction {
     data object Retry : SupplierDetailAction
 
     data object MessageShown : SupplierDetailAction
+
+    /** `Actualizar copias`, tras vaciar datos de contacto: pide una copia nueva. */
+    data object UpdateCopies : SupplierDetailAction
 }
 
 /**
@@ -105,6 +108,7 @@ class SupplierDetailViewModel(
             scope = viewModelScope,
             save = operations::save,
             onSaved = { show(SupplierMessage.Saved) },
+            onContactCleared = { show(SupplierMessage.ContactCleared) },
         )
 
     private val content = attempts.flatMapLatest {
@@ -162,6 +166,9 @@ class SupplierDetailViewModel(
             SupplierDetailAction.Retry -> attempts.update { it + 1 }
 
             SupplierDetailAction.MessageShown -> extra.update { it.copy(message = null) }
+
+            SupplierDetailAction.UpdateCopies ->
+                viewModelScope.launch { operations.updateCopies() }
 
             // Las resuelve la pantalla con la navegación o con otra app.
             SupplierDetailAction.Back, is SupplierDetailAction.Dial,

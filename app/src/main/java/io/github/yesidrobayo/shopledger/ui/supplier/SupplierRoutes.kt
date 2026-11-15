@@ -161,7 +161,10 @@ private fun SupplierDetailPane(
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val editor by viewModel.editor.editor.collectAsStateWithLifecycle()
             val context = LocalContext.current
-            ShowMessage(uiState.message) { viewModel.onAction(SupplierDetailAction.MessageShown) }
+            ShowMessage(
+                uiState.message,
+                onUpdateCopies = { viewModel.onAction(SupplierDetailAction.UpdateCopies) },
+            ) { viewModel.onAction(SupplierDetailAction.MessageShown) }
             LaunchedEffect(uiState.closed) { if (uiState.closed) onClose() }
             BackHandler(enabled = editor != null) {
                 viewModel.editor.onAction(SupplierEditorAction.Dismiss)
@@ -194,6 +197,7 @@ private fun SupplierDetailPane(
                         SupplierDetailAction.AskDelete, SupplierDetailAction.Reactivate,
                         SupplierDetailAction.ConfirmDialog, SupplierDetailAction.DismissDialog,
                         SupplierDetailAction.Retry, SupplierDetailAction.MessageShown,
+                        SupplierDetailAction.UpdateCopies,
                         -> viewModel.onAction(action)
                     }
                 },
@@ -208,13 +212,21 @@ private fun SupplierDetailPane(
  * `Proveedor eliminado` se ve en la lista a la que se vuelve.
  */
 @Composable
-private fun ShowMessage(message: SupplierMessage?, onShown: () -> Unit) {
+private fun ShowMessage(
+    message: SupplierMessage?,
+    onUpdateCopies: () -> Unit = {},
+    onShown: () -> Unit,
+) {
     val messages = LocalAppMessages.current
     val text = message?.let { messageText(it) }
+    // Tras vaciar datos de contacto, el aviso ofrece pedir una copia nueva.
+    val action =
+        stringResource(R.string.supplier_update_copies_action)
+            .takeIf { message == SupplierMessage.ContactCleared }
     val variant =
         when (message) {
             null, SupplierMessage.Saved, SupplierMessage.Archived, SupplierMessage.Reactivated,
-            SupplierMessage.Deleted,
+            SupplierMessage.Deleted, SupplierMessage.ContactCleared,
             -> SnackbarVariant.SUCCESS
 
             SupplierMessage.NameTaken, SupplierMessage.HasHistory, is SupplierMessage.Failed ->
@@ -222,7 +234,7 @@ private fun ShowMessage(message: SupplierMessage?, onShown: () -> Unit) {
         }
     LaunchedEffect(message) {
         if (text != null) {
-            messages.show(AppSnackbarVisuals(text, variant))
+            messages.show(AppSnackbarVisuals(text, variant, action), onUpdateCopies)
             onShown()
         }
     }
@@ -235,6 +247,7 @@ private fun messageText(message: SupplierMessage): String = stringResource(
         SupplierMessage.Archived -> R.string.supplier_archived
         SupplierMessage.Reactivated -> R.string.supplier_reactivated
         SupplierMessage.Deleted -> R.string.supplier_deleted
+        SupplierMessage.ContactCleared -> R.string.supplier_cleared_copies_notice
         SupplierMessage.NameTaken -> R.string.error_supplier_reactivate_duplicate
         SupplierMessage.HasHistory -> R.string.supplier_error_has_history
         is SupplierMessage.Failed -> saveErrorText(message.outOfSpace)

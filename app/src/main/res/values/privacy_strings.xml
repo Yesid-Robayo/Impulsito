@@ -86,4 +86,7 @@
     <string name="account_guide_inactivity_url" translatable="false">https://support.google.com/accounts/answer/12418290</string>
     <!-- Espacio de la cuenta. -->
     <string name="account_guide_quota_url" translatable="false">https://support.google.com/accounts/answer/9312312</string>
+    <!-- Proveedor con datos vaciados: siguen en las copias anteriores. -->
+    <string name="supplier_cleared_copies_notice">Supplier saved. The cleared data stays in earlier backups until they age out through retention.</string>
+    <string name="supplier_update_copies_action">Update backups</string>
 </resources>

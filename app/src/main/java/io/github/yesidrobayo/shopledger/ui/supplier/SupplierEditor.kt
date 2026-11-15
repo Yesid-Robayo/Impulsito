@@ -71,24 +71,31 @@ sealed interface SupplierEditorAction {
  * Guardar corre una sola vez a la vez.
  *
  * @param onSaved recibe el id del proveedor guardado, con la hoja ya cerrada.
+ * @param onContactCleared, si se da, recibe el id en lugar de [onSaved] cuando la edición vació un
+ *   teléfono, un correo o unas notas que tenían algo: esos datos siguen en las copias anteriores.
  */
 class SupplierEditorModel(
     private val scope: CoroutineScope,
     private val save: suspend (Long?, SupplierForm) -> SaveSupplierResult,
     private val onSaved: (Long) -> Unit,
+    private val onContactCleared: ((Long) -> Unit)? = null,
 ) {
     private val state = MutableStateFlow<SupplierEditor?>(null)
     val editor: StateFlow<SupplierEditor?> = state.asStateFlow()
 
+    /** Cómo abrió la hoja de editar, para saber si guardar vació algún dato de contacto. */
+    private var opened: SupplierEditor? = null
+
     /** Abre la hoja vacía, con [name] ya escrito si viene de una búsqueda sin resultados. */
     fun openNew(name: String = "") {
+        opened = null
         state.value = SupplierEditor(editingId = null, name = name)
     }
 
     /** Abre la hoja con los datos de [supplier] para editarlos. */
     fun openEdit(supplier: Supplier) {
         val details = supplier.details
-        state.value =
+        val editor =
             SupplierEditor(
                 editingId = supplier.id,
                 name = details.name,
@@ -97,6 +104,8 @@ class SupplierEditorModel(
                 notes = details.notes.orEmpty(),
                 paymentTermsText = details.paymentTermsDays?.toString().orEmpty(),
             )
+        opened = editor
+        state.value = editor
     }
 
     fun onAction(action: SupplierEditorAction) {
@@ -157,7 +166,12 @@ class SupplierEditorModel(
             when (val result = save(current.editingId, current.form)) {
                 is SaveSupplierResult.Saved -> {
                     state.value = null
-                    onSaved(result.supplierId)
+                    val cleared = onContactCleared
+                    if (cleared != null && clearedContact(opened, current)) {
+                        cleared(result.supplierId)
+                    } else {
+                        onSaved(result.supplierId)
+                    }
                 }
 
                 is SaveSupplierResult.Invalid ->
@@ -176,6 +190,19 @@ class SupplierEditorModel(
                     }
             }
         }
+    }
+
+    /**
+     * Si guardar [now] vació un teléfono, un correo o unas notas que [before] tenía. Un proveedor
+     * nuevo no vacía nada.
+     */
+    private fun clearedContact(before: SupplierEditor?, now: SupplierEditor): Boolean {
+        if (before == null || before.editingId != now.editingId) return false
+        return listOf(
+            before.phone to now.phone,
+            before.email to now.email,
+            before.notes to now.notes,
+        ).any { (was, written) -> was.isNotBlank() && written.isBlank() }
     }
 
     private companion object {

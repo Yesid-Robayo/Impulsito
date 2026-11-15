@@ -78,4 +78,7 @@
     <string name="account_guide_two_step">Verificación en dos pasos</string>
     <string name="account_guide_inactivity">Cuentas sin uso</string>
     <string name="account_guide_quota">Espacio de la cuenta</string>
+    <!-- Proveedor con datos vaciados: siguen en las copias anteriores. -->
+    <string name="supplier_cleared_copies_notice">Proveedor guardado. Los datos vaciados siguen en copias anteriores hasta que salgan por retención.</string>
+    <string name="supplier_update_copies_action">Actualizar copias</string>
 </resources>

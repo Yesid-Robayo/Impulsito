@@ -45,6 +45,12 @@ interface SupplierOperations {
      * hay libro que leer.
      */
     fun payableDue(supplierId: Long): Flow<PayableDue?> = flowOf(null)
+
+    /**
+     * `Actualizar copias`: pide una copia nueva ya, para que los datos vaciados dejen de estar en
+     * la más reciente. No poda ninguna antes de tiempo.
+     */
+    suspend fun updateCopies() {}
 }
 
 /** Las operaciones sobre los casos de uso de proveedores. */
@@ -57,6 +63,7 @@ class SupplierUseCases(
     private val reactivateUseCase: ReactivateSupplierUseCase,
     private val deleteUseCase: DeleteSupplierUseCase,
     private val observePayableDue: (Long) -> Flow<PayableDue?> = { flowOf(null) },
+    private val requestBackup: suspend () -> Unit = {},
 ) : SupplierOperations {
     override fun suppliers(): Flow<SuppliersOverview> = observeSuppliers()
 
@@ -76,6 +83,8 @@ class SupplierUseCases(
 
     override fun payableDue(supplierId: Long): Flow<PayableDue?> = observePayableDue(supplierId)
 
+    override suspend fun updateCopies() = requestBackup()
+
     companion object {
         /** Arma las operaciones con los puertos de la base abierta. */
         fun of(dependencies: ScreenDependencies): SupplierUseCases {
@@ -92,6 +101,7 @@ class SupplierUseCases(
                 reactivateUseCase = ReactivateSupplierUseCase(tx, ports.suppliers, clock),
                 deleteUseCase = DeleteSupplierUseCase(tx, ports.suppliers),
                 observePayableDue = payableDueOf(dependencies),
+                requestBackup = { dependencies.container.data.backupScheduler.backupNow() },
             )
         }
     }
@@ -129,6 +139,12 @@ sealed interface SupplierMessage {
     data object Reactivated : SupplierMessage
 
     data object Deleted : SupplierMessage
+
+    /**
+     * Se guardó, y se vaciaron datos de contacto que siguen en las copias anteriores: el aviso
+     * ofrece `Actualizar copias`.
+     */
+    data object ContactCleared : SupplierMessage
 
     /** Reactivar no se pudo: otro vigente ya usa su nombre. */
     data object NameTaken : SupplierMessage
