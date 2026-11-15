@@ -770,12 +770,10 @@ internal class PrivacyDrillTest {
     private fun decide(chosen: Boolean, lock: DeviceLockState, discreet: Boolean) =
         AmountVisibilityPolicy.decide(chosenByOwner = chosen, lock = lock, discreetMode = discreet)
 
-    private fun amountOf(content: WidgetContent): Money? =
-        (content as WidgetContent.Summary).amount
+    private fun amountOf(content: WidgetContent): Money? = (content as WidgetContent.Summary).amount
 
     /** Los archivos de la app en el servicio, en el orden en que llegaron. */
-    private fun appFilesInTheCloud(): List<String> =
-        dav.files.keys.filter { it !in FOREIGN_FILES }
+    private fun appFilesInTheCloud(): List<String> = dav.files.keys.filter { it !in FOREIGN_FILES }
 
     private fun journalText(): String? =
         File(fixture.noBackup, EraseJournalStore.FILE_NAME).takeIf { it.exists() }?.readText()
