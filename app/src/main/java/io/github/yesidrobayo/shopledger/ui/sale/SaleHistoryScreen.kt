@@ -51,11 +51,13 @@ import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
+import io.github.yesidrobayo.shopledger.ui.components.PerformanceTags
 import io.github.yesidrobayo.shopledger.ui.components.PeriodSelector
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
+import io.github.yesidrobayo.shopledger.ui.components.performanceTag
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.purchase.EXPENSES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.PURCHASES_SEGMENT
@@ -271,7 +273,8 @@ private fun DayList(
         }.collect { near -> if (near) onAction(SaleHistoryAction.LoadMore) }
     }
     LazyColumn(
-        Modifier.fillMaxSize(),
+        // La medición de la fluidez la desplaza desde fuera, sin depender del idioma.
+        Modifier.fillMaxSize().performanceTag(PerformanceTags.SALE_HISTORY_LIST),
         state = listState,
         contentPadding = PaddingValues(bottom = bottom),
     ) {

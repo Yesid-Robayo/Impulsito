@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Impulsito"
 include(":app", ":data", ":domain")
+// Las mediciones de rendimiento: un módulo de pruebas que nunca entra en el APK.
+include(":benchmark")

@@ -60,6 +60,7 @@ import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
 import io.github.yesidrobayo.shopledger.ui.components.LocalNavigationLayout
 import io.github.yesidrobayo.shopledger.ui.components.LocalSettingsOpener
 import io.github.yesidrobayo.shopledger.ui.components.NavigationLayout
+import io.github.yesidrobayo.shopledger.ui.components.PerformanceTags
 import io.github.yesidrobayo.shopledger.ui.components.RailInsets
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
@@ -299,7 +300,12 @@ fun AppNavHost(
             Box(Modifier.padding(top = sizes.sellButtonOverhang + sizes.sellButtonShadow)) {
                 AppBottomBar(
                     items = tabs.map {
-                        BottomBarItem(stringResource(it.label), it.icon, it.selectedIcon)
+                        BottomBarItem(
+                            stringResource(it.label),
+                            it.icon,
+                            it.selectedIcon,
+                            tag = PerformanceTags.tab(it.name),
+                        )
                     },
                     selected = tabs.indexOf(navigator.currentTab),
                     onSelect = { navigator.selectTab(tabs[it]) },

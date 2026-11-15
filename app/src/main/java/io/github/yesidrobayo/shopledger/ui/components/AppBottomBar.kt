@@ -58,11 +58,15 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 // La sombra de Vender lleva el color de la marca, no negro: se ve como luz del botón y no como hueco.
 private const val SELL_SHADOW_ALPHA = 0.4f
 
-/** Una pestaña de la barra inferior: su etiqueta y su icono de contorno y de relleno. */
+/**
+ * Una pestaña de la barra inferior: su etiqueta y su icono de contorno y de relleno. [tag] es la
+ * marca fija con que la encuentran las mediciones de rendimiento, o `null` si no la lleva.
+ */
 data class BottomBarItem(
     val label: String,
     @param:DrawableRes val icon: Int,
     @param:DrawableRes val selectedIcon: Int,
+    val tag: String? = null,
 )
 
 /**
@@ -160,6 +164,7 @@ private fun RowScope.BottomBarTab(item: BottomBarItem, selected: Boolean, onClic
             Column(
                 modifier =
                     Modifier
+                        .then(item.tag?.let { Modifier.performanceTag(it) } ?: Modifier)
                         .fillMaxWidth()
                         .heightIn(min = sizes.bottomBar - sizes.hairline)
                         .selectable(selected = selected, onClick = onClick, role = Role.Tab)

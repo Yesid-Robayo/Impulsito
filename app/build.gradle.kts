@@ -1,4 +1,5 @@
 import com.android.build.api.artifact.SingleArtifact
+import com.android.build.api.variant.HostTestBuilder
 import java.util.Properties
 import javax.inject.Inject
 import javax.xml.parsers.DocumentBuilderFactory
@@ -96,6 +97,22 @@ android {
                 enable = true
             }
         }
+        // Lo que miden las pruebas de rendimiento: igual que release, con R8 y sin depuración,
+        // pero firmada con la clave de debug y con el identificador de debug. Así se instala
+        // encima de una debug que ya tiene un negocio inventado, sin perderlo, y nunca toca la app
+        // real, que tiene otro identificador y otra firma. Puede perfilarse desde la consola, que
+        // es lo que necesita la medición para leer sus cuadros y su arranque.
+        create("benchmark") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-benchmark"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isProfileable = true
+            optimization {
+                enable = true
+            }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -149,6 +166,10 @@ dependencies {
     // La clase de ventana decide entre la barra inferior y el riel lateral. Es de AndroidX, sin
     // red ni permisos.
     implementation(libs.androidx.compose.material3.adaptive)
+    // Instala el perfil de compilación que trae el APK la primera vez que se abre, también fuera
+    // de una tienda, y deja que la medición de rendimiento compile la app como lo haría el
+    // teléfono. Ya llegaba con AndroidX: aquí se declara con su versión. Sin red ni permisos.
+    implementation(libs.androidx.profileinstaller)
     testImplementation(libs.junit)
     // Los ViewModel se prueban en JVM: dispatchers de prueba en lugar del principal, y Turbine para leer cada estado.
     testImplementation(libs.kotlinx.coroutines.test)
@@ -253,6 +274,11 @@ abstract class VerifyNoDebugHarness : DefaultTask() {
 }
 
 androidComponents {
+    // La variante de las mediciones no repite las pruebas en la JVM: son las mismas que corren en
+    // debug y en release, y su código es el de release.
+    beforeVariants(selector().withBuildType("benchmark")) { variant ->
+        variant.hostTests[HostTestBuilder.UNIT_TEST_TYPE]?.enable = false
+    }
     onVariants(selector().withBuildType("release")) { variant ->
         val capitalized = variant.name.replaceFirstChar(Char::uppercaseChar)
         val verify =

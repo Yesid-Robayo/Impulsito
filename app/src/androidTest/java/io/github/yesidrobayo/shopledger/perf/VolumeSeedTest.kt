@@ -53,14 +53,15 @@ import org.junit.runner.RunWith
  *
  * Escribe todo por los casos de uso, igual que la app: categorías, productos con precio, costo y
  * stock, compras, ventas de una a cuatro líneas y gastos. Las ventas, compras y gastos se reparten
- * a lo largo de [HISTORY_DAYS] días con un reloj que avanza, de modo que hoy, la semana y el mes
- * tienen datos. Los nombres se arman de listas de palabras inventadas, con algunos largos, y la
- * semilla del azar es fija: dos corridas dan la misma base.
+ * a lo largo de [HISTORY_DAYS] días, o de los que se pidan, con un reloj que avanza, de modo que
+ * hoy, la semana y el mes tienen datos. Los nombres se arman de listas de palabras inventadas, con
+ * algunos largos, y la semilla del azar es fija: dos corridas dan la misma base.
  *
  * Escribe datos en la base de la app y fija su moneda, así que solo corre si se pide con el
  * argumento `volumeSeed=true` del runner de instrumentación. Las cantidades se cambian con
- * `volumeProducts`, `volumeSales`, `volumePurchases` y `volumeExpenses`. Registra solo conteos y
- * duraciones: ningún dato del negocio.
+ * `volumeProducts`, `volumeSales`, `volumePurchases` y `volumeExpenses`, y los días de historia
+ * con `volumeDays`: las mediciones de rendimiento la llenan con el volumen de referencia, cinco
+ * años incluidos. Registra solo conteos y duraciones: ningún dato del negocio.
  */
 @RunWith(AndroidJUnit4::class)
 class VolumeSeedTest {
@@ -77,11 +78,12 @@ class VolumeSeedTest {
         val saleCount = count("volumeSales", SALES)
         val purchaseCount = count("volumePurchases", PURCHASES)
         val expenseCount = count("volumeExpenses", EXPENSES)
+        val historyDays = count("volumeDays", HISTORY_DAYS)
         // Un reloj que empieza en el pasado y avanza un paso por documento, hasta llegar a hoy.
         val end = app.container.clock.now()
         val documents = saleCount + purchaseCount + expenseCount
-        val step = HISTORY_DAYS.days / documents.coerceAtLeast(1)
-        val clock = SteppingClock(end - HISTORY_DAYS.days, step)
+        val step = historyDays.days / documents.coerceAtLeast(1)
+        val clock = SteppingClock(end - historyDays.days, step)
         val started = SystemClock.elapsedRealtime()
 
         confirmCurrency(ports, clock)

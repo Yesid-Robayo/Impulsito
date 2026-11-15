@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Solo el APK de las mediciones, nunca el de la app. Desde Android 11, una app solo ve a otra si la
+  declara: las mediciones necesitan ver la compilación benchmark de la app, que usa el identificador
+  de debug.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <queries>
+        <package android:name="io.github.yesidrobayo.shopledger.debug" />
+    </queries>
+
+</manifest>

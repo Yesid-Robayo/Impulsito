@@ -1,7 +1,9 @@
 package io.github.yesidrobayo.shopledger.ui.home
 
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
@@ -24,6 +26,8 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.TopLevelDestination
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.components.PerformanceTags
+import io.github.yesidrobayo.shopledger.ui.components.performanceTag
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 import kotlinx.coroutines.flow.map
 
@@ -101,7 +105,13 @@ fun HomeRoute(navigator: AppNavigator) {
                 viewModel.onReturnToForeground()
                 onPauseOrDispose {}
             }
+            // El arranque termina cuando Inicio muestra las cifras leídas de la base, no con su
+            // primer cuadro: así lo cuenta la medición de rendimiento, como dibujo completo.
+            val ready = uiState is HomeUiState.Content
+            ReportDrawnWhen { ready }
             HomeScreen(
+                modifier =
+                    if (ready) Modifier.performanceTag(PerformanceTags.HOME_READY) else Modifier,
                 backup = backup,
                 lowStock = lowStock,
                 profit = profit,
