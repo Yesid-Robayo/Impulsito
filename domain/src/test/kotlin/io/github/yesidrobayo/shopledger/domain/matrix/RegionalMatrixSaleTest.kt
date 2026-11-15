@@ -1,15 +1,20 @@
 package io.github.yesidrobayo.shopledger.domain.matrix
 
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
+import io.github.yesidrobayo.shopledger.domain.model.sale.LineDiscount
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
+import io.github.yesidrobayo.shopledger.domain.model.sale.SalePaymentRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.settings.TaxMode
 import io.github.yesidrobayo.shopledger.domain.testing.ForeignSystemDefaults
 import io.github.yesidrobayo.shopledger.domain.testing.ForeignSystemDefaultsRule
 import io.github.yesidrobayo.shopledger.domain.testing.RegionalMatrix
 import io.github.yesidrobayo.shopledger.domain.testing.RegionalMatrixRow
+import io.github.yesidrobayo.shopledger.domain.testing.RegionalMatrixSale
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleWorld
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.method
@@ -27,6 +32,11 @@ import org.junit.runners.Parameterized
  * mismos enteros en unidad menor con cualquier moneda, decimales, formato o zona, según el modo de
  * impuesto de la fila. En todas, el total es lo neto más el impuesto. Una moneda sin confirmar no
  * vende.
+ *
+ * La venta completa que la matriz recorre en el dispositivo, con dos descuentos de línea, uno de
+ * toda la venta, dos pagos y el redondeo del efectivo, da aquí las cifras escritas a mano de
+ * [RegionalMatrixSale]: así un error de cuenta en esas cifras se ve en `check`, antes del
+ * teléfono.
  *
  * Corre con zonas e idiomas extraños de la JVM, que cambiarían el resultado si una regla los
  * leyera.
@@ -54,6 +64,24 @@ class RegionalMatrixSaleTest(private val row: RegionalMatrixRow, defaults: Forei
             product(
                 2,
                 salePrice = 2_000,
+                stockMode = ProductStockMode.UNTRACKED,
+                unitId = SaleWorld.KILOGRAM,
+            ),
+        )
+        // La venta de la matriz en el dispositivo: el aceite y el queso, con la tasa por defecto,
+        // y la tarjeta para el segundo pago.
+        addMethod(method(id = CARD, kind = PaymentMethodKind.CARD))
+        addProduct(
+            product(
+                OIL,
+                salePrice = RegionalMatrixSale.OIL_PRICE,
+                stockMode = ProductStockMode.UNTRACKED,
+            ),
+        )
+        addProduct(
+            product(
+                CHEESE,
+                salePrice = RegionalMatrixSale.CHEESE_PRICE,
                 stockMode = ProductStockMode.UNTRACKED,
                 unitId = SaleWorld.KILOGRAM,
             ),
@@ -96,10 +124,78 @@ class RegionalMatrixSaleTest(private val row: RegionalMatrixRow, defaults: Forei
         assertEquals(sale.total + sale.cashRoundingAmount, sale.amountDue)
     }
 
+    @Test
+    fun `the full sale of the device matrix gives the hand written minor units`() = runTest {
+        val expected = RegionalMatrixSale.saleFor(row.taxMode)
+        val request = SaleRequest(
+            lines = listOf(
+                SaleLineRequest(
+                    OIL,
+                    QuantityMilli(RegionalMatrixSale.OIL_SOLD_MILLI),
+                    discount =
+                        LineDiscount.Percent(BasisPoints(RegionalMatrixSale.OIL_DISCOUNT_BP)),
+                ),
+                SaleLineRequest(
+                    CHEESE,
+                    QuantityMilli(RegionalMatrixSale.CHEESE_SOLD_MILLI),
+                    discount = LineDiscount.Amount(Money(RegionalMatrixSale.CHEESE_DISCOUNT)),
+                ),
+            ),
+            paymentMethodId = SaleWorld.CASH,
+            payments = listOf(
+                SalePaymentRequest(SaleWorld.CASH, Money(expected.cashPart)),
+                SalePaymentRequest(CARD, Money(RegionalMatrixSale.CARD_PAYMENT)),
+            ),
+            orderAdjustment = Money(RegionalMatrixSale.ORDER_ADJUSTMENT),
+        )
+
+        val result = world.registerSale()(request)
+
+        if (!row.currencyCode.isConfirmed) {
+            assertEquals(RegisterSaleResult.CurrencyNotConfirmed, result)
+            return@runTest
+        }
+        val saleId = (result as RegisterSaleResult.Registered).saleId
+        val sale = world.tables.sales.getValue(saleId).content
+        val lines = world.tables.lines.values.sortedBy { it.id }.map { it.content }
+        val discounts = listOf(2_420L, RegionalMatrixSale.CHEESE_DISCOUNT)
+        val shares = listOf(RegionalMatrixSale.OIL_SHARE, RegionalMatrixSale.CHEESE_SHARE)
+        assertEquals(
+            expected.lines.mapIndexed { index, line ->
+                listOf(discounts[index], shares[index], line.net, line.tax, line.total)
+            },
+            lines.map {
+                listOf(
+                    it.lineDiscount.minor,
+                    it.orderAdjustmentShare.minor,
+                    it.netAmount.minor,
+                    it.taxAmount.minor,
+                    it.lineTotal.minor,
+                )
+            },
+        )
+        assertEquals(Money(expected.net), sale.netTotal)
+        assertEquals(Money(expected.tax), sale.taxTotal)
+        assertEquals(Money(expected.total), sale.total)
+        val rounding =
+            RegionalMatrixSale.cashRoundingOf(expected.cashPart, row.cashRounding.minor)
+        assertEquals(Money(rounding), sale.cashRoundingAmount)
+        assertEquals(Money(expected.total + rounding), sale.amountDue)
+        // El efectivo lleva su redondeo; la tarjeta cobra lo escrito.
+        assertEquals(
+            listOf(expected.cashPart + rounding, RegionalMatrixSale.CARD_PAYMENT),
+            world.tables.payments.values.sortedBy { it.id }.map { it.content.amount.minor },
+        )
+    }
+
     /** Lo que deja cada modo, escrito a mano: neto, impuesto y total por línea, y la cabecera. */
     private data class Expected(val lines: List<List<Long>>, val net: Long, val tax: Long)
 
     companion object {
+        private const val CARD = 2L
+        private const val OIL = 3L
+        private const val CHEESE = 4L
+
         private val EXPECTED = mapOf(
             TaxMode.NONE to
                 Expected(
