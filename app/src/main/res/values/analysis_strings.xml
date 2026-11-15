@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Análisis de productos y clientes en Números. -->
+    <string name="stats_tool_analysis">Analysis</string>
+    <string name="stats_analysis_leaders_title">Leave %1$s of the profit</string>
+    <plurals name="stats_analysis_leaders_summary">
+        <item quantity="one">%1$s of %2$s products leaves %3$s of the sales profit</item>
+        <item quantity="other">%1$s of %2$s products leave %3$s of the sales profit</item>
+    </plurals>
+    <string name="stats_analysis_no_profit">No sales profit in this period: there is nothing to split.</string>
+    <string name="stats_analysis_idle_title">No movement</string>
+    <string name="stats_analysis_idle_help">With stock and no sales in this period</string>
+    <plurals name="stats_analysis_idle_more">
+        <item quantity="one">And %1$s more</item>
+        <item quantity="other">And %1$s more</item>
+    </plurals>
+    <string name="stats_analysis_customers_title">Top customers</string>
+</resources>

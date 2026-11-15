@@ -104,6 +104,7 @@ private val KINDS = listOf(PeriodKind.DAY, PeriodKind.WEEK, PeriodKind.MONTH)
  *
  * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
  *   atención.
+ * @param tools los bloques que viven en su propio archivo, con su propio estado.
  */
 @Composable
 fun StatisticsScreen(
@@ -111,6 +112,7 @@ fun StatisticsScreen(
     onAction: (StatisticsAction) -> Unit,
     modifier: Modifier = Modifier,
     backupBanner: @Composable () -> Unit = {},
+    tools: StatisticsTools = StatisticsTools(),
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -196,9 +198,9 @@ fun StatisticsScreen(
 
                     is StatisticsUiState.Content -> {
                         if (expanded) {
-                            TwoPanes(uiState, onAction, bottom, rest)
+                            TwoPanes(uiState, onAction, bottom, rest, tools)
                         } else {
-                            OnePane(uiState, onAction, bottom, rest)
+                            OnePane(uiState, onAction, bottom, rest, tools)
                         }
                         val weekStartDay = uiState.weekStartDay
                         if (uiState.choosingRange && weekStartDay != null) {
@@ -246,6 +248,7 @@ private fun OnePane(
     onAction: (StatisticsAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
+    tools: StatisticsTools,
 ) {
     Box(modifier, contentAlignment = Alignment.TopCenter) {
         LazyColumn(
@@ -256,7 +259,7 @@ private fun OnePane(
                 PaneColumn { Overview(content, onAction, AppTheme.sizes.chartArea) }
             }
             dayList(content)
-            item(key = DETAIL) { Column { Detail(content, onAction) } }
+            item(key = DETAIL) { Column { Detail(content, onAction, tools) } }
         }
     }
 }
@@ -268,6 +271,7 @@ private fun TwoPanes(
     onAction: (StatisticsAction) -> Unit,
     bottom: Dp,
     modifier: Modifier,
+    tools: StatisticsTools,
 ) {
     Row(
         modifier.padding(horizontal = AppTheme.spacing.s8),
@@ -289,7 +293,7 @@ private fun TwoPanes(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = bottom),
         ) {
-            Detail(content, onAction)
+            Detail(content, onAction, tools)
         }
     }
 }
@@ -530,6 +534,7 @@ private fun DayRow(point: DayPoint, metric: ChartMetric) {
 private fun ColumnScope.Detail(
     content: StatisticsUiState.Content,
     onAction: (StatisticsAction) -> Unit,
+    tools: StatisticsTools,
 ) {
     val metrics = content.metrics
     val rows = Modifier.padding(horizontal = AppTheme.spacing.s16)
@@ -557,6 +562,7 @@ private fun ColumnScope.Detail(
         breakdown.expenses?.let { ByExpenseCategory(it, rows) }
     }
     content.replacement?.let { ReplacementTool(it, rows) }
+    tools.analysis(this, content)
     val tax = content.tax
     if (tax != null) EstimatedTax(tax, rows)
     content.otherIncome?.let { OtherIncome(it, rows) }

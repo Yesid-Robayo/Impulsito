@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Análisis de productos y clientes en Números. -->
+    <string name="stats_tool_analysis">Análise</string>
+    <string name="stats_analysis_leaders_title">Deixam %1$s do lucro</string>
+    <plurals name="stats_analysis_leaders_summary">
+        <item quantity="one">%1$s de %2$s produtos deixa %3$s do lucro nas vendas</item>
+        <item quantity="many">%1$s de %2$s produtos deixam %3$s do lucro nas vendas</item>
+        <item quantity="other">%1$s de %2$s produtos deixam %3$s do lucro nas vendas</item>
+    </plurals>
+    <string name="stats_analysis_no_profit">Sem lucro nas vendas neste período: não há o que dividir.</string>
+    <string name="stats_analysis_idle_title">Sem movimento</string>
+    <string name="stats_analysis_idle_help">Com estoque e sem vendas neste período</string>
+    <plurals name="stats_analysis_idle_more">
+        <item quantity="one">E mais %1$s</item>
+        <item quantity="many">E mais %1$s</item>
+        <item quantity="other">E mais %1$s</item>
+    </plurals>
+    <string name="stats_analysis_customers_title">Melhores clientes</string>
+</resources>

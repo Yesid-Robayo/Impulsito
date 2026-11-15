@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventDao
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.MediaAssetDao
+import io.github.yesidrobayo.shopledger.data.repository.RoomAnalysisReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashDenominationRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashSessionRepository
@@ -82,6 +83,7 @@ import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
 import io.github.yesidrobayo.shopledger.data.transaction.DatabaseStorageSpace
 import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.data.transaction.RoomTransactionRunner
+import io.github.yesidrobayo.shopledger.domain.port.AnalysisReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
 import io.github.yesidrobayo.shopledger.domain.port.CashDenominationRepository
@@ -391,6 +393,12 @@ class DataPorts internal constructor(
      * al stock. Va aparte de la ganancia en ventas, para que no la toque. Solo lee.
      */
     val replacementReports: ReplacementReportRepository = RoomReplacementReportRepository(database)
+
+    /**
+     * Lo que el análisis de las estadísticas lee de un período, además de lo vendido por producto:
+     * los productos con stock y sin ventas, y los mejores clientes. Solo lee.
+     */
+    val analysisReports: AnalysisReportRepository = RoomAnalysisReportRepository(database)
 
     /** Las cotizaciones manuales de la moneda de referencia: solo se agregan, nunca se descargan. */
     val fxRates: FxRateRepository = RoomFxRateRepository(database)

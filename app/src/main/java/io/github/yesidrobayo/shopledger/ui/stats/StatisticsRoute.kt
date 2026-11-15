@@ -103,6 +103,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
                     }
                 },
                 backupBanner = { RootBackupBanner(navigator::open) },
+                tools = StatisticsTools(analysis = { StatisticsAnalysis(it) }),
             )
         }
     }
