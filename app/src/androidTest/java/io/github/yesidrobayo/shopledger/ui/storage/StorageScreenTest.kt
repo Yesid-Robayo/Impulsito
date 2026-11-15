@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.ui.storage
 
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -47,7 +49,10 @@ class StorageScreenTest {
 
         compose.onNodeWithText(text(R.string.storage_opened_from_android)).assertExists()
         compose.onNodeWithText(text(R.string.storage_not_available)).assertExists()
-        compose.onNodeWithText(text(R.string.erase_action)).performScrollTo().performClick()
+        // El título de la sección dice lo mismo que el botón: se toca el que tiene acción.
+        compose.onNode(hasText(text(R.string.erase_action)) and hasClickAction())
+            .performScrollTo()
+            .performClick()
 
         assertTrue(StorageAction.OpenErase in actions)
     }
