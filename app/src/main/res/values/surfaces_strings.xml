@@ -12,4 +12,5 @@
     <string name="widget_show_amounts">Show amounts</string>
     <string name="widget_hide_amounts">Hide amounts</string>
     <string name="widget_backup_failed">Backup failed</string>
+    <string name="tile_new_sale">New sale</string>
 </resources>

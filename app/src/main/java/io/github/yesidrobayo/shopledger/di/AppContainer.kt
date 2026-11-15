@@ -39,6 +39,7 @@ import io.github.yesidrobayo.shopledger.notification.NotificationChannels
 import io.github.yesidrobayo.shopledger.notification.RecurringReminderDelivery
 import io.github.yesidrobayo.shopledger.notification.RevenueLimitNoticeDelivery
 import io.github.yesidrobayo.shopledger.surface.LockStateWatcher
+import io.github.yesidrobayo.shopledger.tile.NewSaleTileSurface
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeFile
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
 import io.github.yesidrobayo.shopledger.ui.components.PhotoState
@@ -219,6 +220,7 @@ class AppContainer(application: Application) {
                         override suspend fun refresh(texts: Context) =
                             quickSaleWidget.refresh(texts)
                     },
+                    NewSaleTileSurface(application, log),
                 ),
             directory = { application.noBackupFilesDir },
             installedVersion = { installedVersionOf(application) },

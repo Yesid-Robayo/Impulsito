@@ -116,6 +116,20 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/quick_sale_widget_info" />
         </receiver>
+
+        <!-- El mosaico Nueva venta del panel rápido. Exportado porque lo enlaza el sistema, y solo el sistema puede:
+             lo protege su permiso. Nunca muestra datos del negocio, y con el teléfono bloqueado abre la app solo tras
+             el desbloqueo. -->
+        <service
+            android:name=".tile.NewSaleTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_sell"
+            android:label="@string/tile_new_sale"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

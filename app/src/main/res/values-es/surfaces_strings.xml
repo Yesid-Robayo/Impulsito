@@ -13,4 +13,5 @@
     <string name="widget_show_amounts">Mostrar montos</string>
     <string name="widget_hide_amounts">Ocultar montos</string>
     <string name="widget_backup_failed">No se pudo respaldar</string>
+    <string name="tile_new_sale">Nueva venta</string>
 </resources>
