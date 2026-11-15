@@ -153,13 +153,15 @@ private fun ColumnScope.ReturnForm(
     onAction: (SupplierReturnAction) -> Unit,
 ) {
     BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+        // El ancho del bloque, leído aquí: dentro de una fila o columna no se alcanza.
+        val boxWidth = maxWidth
         if (maxWidth >= MEDIUM_WIDTH) {
             Row(Modifier.fillMaxSize()) {
                 ReturnLines(uiState, onAction, Modifier.weight(1f).fillMaxHeight())
                 // A lo sumo la mitad: en una ventana mediana, las líneas no quedan angostas.
                 Column(
                     Modifier
-                        .width(minOf(AppTheme.sizes.sideSheet, maxWidth / 2))
+                        .width(minOf(AppTheme.sizes.sideSheet, boxWidth / 2))
                         .fillMaxHeight()
                         .padding(AppTheme.spacing.s16),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),

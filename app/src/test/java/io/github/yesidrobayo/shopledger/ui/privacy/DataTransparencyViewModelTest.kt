@@ -187,15 +187,14 @@ class DataTransparencyViewModelTest {
     }
 
     @Test
-    fun `an older accepted policy shows the notice and pauses the backups`() =
-        runTest(dispatcher) {
-            consent = PolicyConsentStatus.OUTDATED
+    fun `an older accepted policy shows the notice and pauses the backups`() = runTest(dispatcher) {
+        consent = PolicyConsentStatus.OUTDATED
 
-            val state = started().uiState.value
+        val state = started().uiState.value
 
-            assertTrue(state.showPolicyNotice)
-            assertTrue(state.uploadsPaused)
-        }
+        assertTrue(state.showPolicyNotice)
+        assertTrue(state.uploadsPaused)
+    }
 
     @Test
     fun `never accepted pauses the backups but shows no notice`() = runTest(dispatcher) {

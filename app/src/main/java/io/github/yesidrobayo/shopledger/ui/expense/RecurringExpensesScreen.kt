@@ -113,6 +113,8 @@ fun RecurringExpensesScreen(
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
+            // El ancho del bloque, leído aquí: dentro de una fila o columna no se alcanza.
+            val boxWidth = maxWidth
             val wide = maxWidth >= EXPANDED_WIDTH
             Column(Modifier.fillMaxSize()) {
                 AppTopBar(
@@ -148,7 +150,7 @@ fun RecurringExpensesScreen(
                 )
                 Row(Modifier.weight(1f)) {
                     val listWidth = if (wide) {
-                        Modifier.width(minOf(AppTheme.sizes.maxContentWidth, maxWidth * 2 / 5))
+                        Modifier.width(minOf(AppTheme.sizes.maxContentWidth, boxWidth * 2 / 5))
                     } else {
                         Modifier.weight(1f)
                     }

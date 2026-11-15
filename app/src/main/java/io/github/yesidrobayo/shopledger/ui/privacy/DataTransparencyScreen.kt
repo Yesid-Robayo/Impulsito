@@ -185,6 +185,7 @@ private fun NowSection(uiState: DataTransparencyUiState) {
             when (val second = uiState.second) {
                 is Fact.Known -> when (val value = second.value) {
                     SecondFact.None -> stringResource(R.string.transparency_now_second_none)
+
                     is SecondFact.Folder ->
                         stringResource(
                             R.string.transparency_now_second_folder,

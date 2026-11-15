@@ -36,7 +36,6 @@ class DemoMode(
      */
     suspend fun start(): Boolean = when (session.enter(texts(resources()))) {
         DemoEntry.Ready, DemoEntry.AlreadyActive -> true
-
         DemoEntry.BusinessUnavailable, DemoEntry.CurrencyMissing, DemoEntry.Failed -> false
     }
 

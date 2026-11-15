@@ -73,7 +73,7 @@ fun HelpRoute(key: AppNavKey.Help, navigator: AppNavigator) {
         )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var supportOpen by rememberSaveable { mutableStateOf(false) }
-    HelpScreen(uiState, titles) { action ->
+    HelpScreen(uiState, titles, onAction = { action ->
         when (action) {
             HelpAction.Back -> navigator.back()
 
@@ -89,7 +89,7 @@ fun HelpRoute(key: AppNavKey.Help, navigator: AppNavigator) {
             is HelpAction.Select,
             -> viewModel.onAction(action)
         }
-    }
+    })
     if (supportOpen) SupportSheet(onDismiss = { supportOpen = false })
 }
 

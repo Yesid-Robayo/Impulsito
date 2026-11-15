@@ -176,11 +176,10 @@ private fun <T : Any> Fact<T?>.nullAsUnavailable(): Fact<T> = when (this) {
 }
 
 /** El dato de las preferencias, o que no está disponible mientras no llegan o si fallaron. */
-private fun <T> Fact<AppPreferences>?.mapFact(pick: (AppPreferences) -> T): Fact<T> =
-    when (this) {
-        is Fact.Known -> Fact.Known(pick(value))
-        Fact.Unavailable, null -> Fact.Unavailable
-    }
+private fun <T> Fact<AppPreferences>?.mapFact(pick: (AppPreferences) -> T): Fact<T> = when (this) {
+    is Fact.Known -> Fact.Known(pick(value))
+    Fact.Unavailable, null -> Fact.Unavailable
+}
 
 /**
  * Si las copias salen cifradas. Con el código perdido el cifrado sigue activo: las copias se
