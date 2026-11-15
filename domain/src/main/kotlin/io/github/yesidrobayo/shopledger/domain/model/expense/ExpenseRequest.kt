@@ -10,7 +10,8 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
  * otros gastos, que siempre existe y nunca se archiva. [description] es opcional; en blanco no se
  * guarda. [date] es la fecha de negocio elegida, o `null` para hoy: puede ser pasada, nunca futura.
  * [moneyAccountId] es la cuenta de la que sale el dinero, o `null` si la persona no usa cuentas: el
- * gasto queda sin movimiento de dinero.
+ * gasto queda sin movimiento de dinero. [recurring] es el vencimiento de un gasto recurrente que
+ * este gasto confirma, o `null` si es un gasto suelto.
  */
 data class ExpenseRequest(
     val amount: Money,
@@ -18,6 +19,7 @@ data class ExpenseRequest(
     val description: String? = null,
     val date: BusinessDate? = null,
     val moneyAccountId: Long? = null,
+    val recurring: RecurringOccurrence? = null,
 )
 
 /** Lo que impide registrar un gasto tal como se escribió. */

@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.testing.FakeExpenseCategoryReposi
 import io.github.yesidrobayo.shopledger.domain.testing.FakeExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeMoneyAccountRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeMoneyLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeRecurringExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeTransactionRunner
 import io.github.yesidrobayo.shopledger.domain.testing.FixedClock
 import io.github.yesidrobayo.shopledger.domain.testing.InMemoryDatabase
@@ -56,6 +57,7 @@ internal class ExpenseWorld(
 
     val moneyAccounts = FakeMoneyAccountRepository(database)
     val moneyLedger = FakeMoneyLedgerRepository(database)
+    val recurring = FakeRecurringExpenseRepository(database)
 
     fun register() = RegisterExpenseUseCase(
         transactions,
@@ -64,6 +66,7 @@ internal class ExpenseWorld(
         categories,
         clock,
         DocumentMoney(moneyAccounts, moneyLedger),
+        recurring,
     )
 
     /** Anula con el reloj del negocio, o con [at] si la anulación es otro día. */

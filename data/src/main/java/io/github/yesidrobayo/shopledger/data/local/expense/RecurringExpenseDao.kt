@@ -19,6 +19,10 @@ internal interface RecurringExpenseDao {
     @Query("SELECT * FROM recurring_expenses WHERE archived_at IS NULL ORDER BY id")
     fun observeActive(): Flow<List<RecurringExpenseEntity>>
 
+    /** Las archivadas: ya no se proponen, y se pueden reactivar. */
+    @Query("SELECT * FROM recurring_expenses WHERE archived_at IS NOT NULL ORDER BY id")
+    fun observeArchived(): Flow<List<RecurringExpenseEntity>>
+
     @Query("SELECT * FROM recurring_expenses WHERE id = :id")
     suspend fun findById(id: Long): RecurringExpenseEntity?
 

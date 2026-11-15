@@ -435,6 +435,11 @@ class ExpensesViewModel(
                 // Un saldo que no cabe en la cuenta no se corrige escribiendo: se reintenta.
                 RegisterExpenseResult.AccountOverflow ->
                     fail(notice = ExpenseFormNotice.SaveFailed(outOfSpace = false))
+
+                // Esta pantalla todavía no confirma gastos recurrentes.
+                RegisterExpenseResult.RecurringUnavailable,
+                RegisterExpenseResult.RecurringAlreadyHandled,
+                -> fail(notice = ExpenseFormNotice.SaveFailed(outOfSpace = false))
             }
         }
     }

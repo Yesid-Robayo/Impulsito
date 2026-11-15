@@ -56,6 +56,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseHistorySourc
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomPurchaseReturnRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomQuoteRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomRecurringExpenseRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomReplacementReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFiscalMarkRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomSaleFrequencySource
@@ -134,6 +135,7 @@ import io.github.yesidrobayo.shopledger.domain.port.PurchaseHistorySource
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseRepository
 import io.github.yesidrobayo.shopledger.domain.port.PurchaseReturnRepository
 import io.github.yesidrobayo.shopledger.domain.port.QuoteRepository
+import io.github.yesidrobayo.shopledger.domain.port.RecurringExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.ReplacementReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFiscalMarkRepository
 import io.github.yesidrobayo.shopledger.domain.port.SaleFrequencySource
@@ -345,6 +347,9 @@ class DataPorts internal constructor(
     val expenseCategories: ExpenseCategoryRepository = RoomExpenseCategoryRepository(database)
 
     val expenses: ExpenseRepository = RoomExpenseRepository(database)
+
+    /** Los gastos recurrentes: se proponen en su fecha, y solo se registran al confirmarlos. */
+    val recurringExpenses: RecurringExpenseRepository = RoomRecurringExpenseRepository(database)
 
     val paymentMethods: PaymentMethodRepository = RoomPaymentMethodRepository(database)
 

@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.domain.model.customer.Customer
 import io.github.yesidrobayo.shopledger.domain.model.customer.CustomerLedgerEntry
 import io.github.yesidrobayo.shopledger.domain.model.expense.Expense
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
+import io.github.yesidrobayo.shopledger.domain.model.expense.RecurringExpense
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyMovement
 import io.github.yesidrobayo.shopledger.domain.model.payable.SupplierLedgerEntry
@@ -90,6 +91,8 @@ internal data class Tables(
     val heldSales: Map<Long, HeldSale> = emptyMap(),
     val expenses: Map<Long, Expense> = emptyMap(),
     val expenseCategories: Map<Long, ExpenseCategory> = emptyMap(),
+    /** Los gastos recurrentes, por id. */
+    val recurringExpenses: Map<Long, RecurringExpense> = emptyMap(),
     val customers: Map<Long, Customer> = emptyMap(),
     /** Los clientes con ventas, pedidos, cotizaciones o filas en sus libros. */
     val customersWithHistory: Set<Long> = emptySet(),

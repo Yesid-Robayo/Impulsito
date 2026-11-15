@@ -12,11 +12,13 @@ import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseRepository
+import io.github.yesidrobayo.shopledger.domain.port.RecurringExpenseRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCheck
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseRules
+import io.github.yesidrobayo.shopledger.domain.rule.expense.RecurrenceRules
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.storageSafe
@@ -59,6 +61,15 @@ sealed interface RegisterExpenseResult {
     /** El saldo de la cuenta no cabría en un entero de 64 bits con este gasto. */
     data object AccountOverflow : RegisterExpenseResult
 
+    /** El gasto recurrente que se confirmaba ya no existe o se archivó: no se propone más. */
+    data object RecurringUnavailable : RegisterExpenseResult
+
+    /**
+     * Ese vencimiento del gasto recurrente ya se registró u omitió, quizá en otra pantalla:
+     * registrarlo de nuevo lo contaría dos veces.
+     */
+    data object RecurringAlreadyHandled : RegisterExpenseResult
+
     /** La base no pudo escribir, por [failure]. No quedó nada guardado. */
     data class StorageFailed(val failure: StorageFailure) : RegisterExpenseResult
 }
@@ -79,7 +90,11 @@ sealed interface RegisterExpenseResult {
  *   esta misma transacción y con la fecha del gasto. La cuenta tiene que estar vigente y llevar la
  *   moneda del negocio. Sin cuenta no se escribe ningún movimiento ni se lee ninguna cuenta.
  *
- * Por ahora el gasto no nace de un gasto recurrente: llega con su módulo.
+ * - **Puede confirmar un gasto recurrente.** Con [ExpenseRequest.recurring], el gasto
+ *   lleva `recurring_expense_id`, y en esta misma transacción el gasto recurrente pasa a su fecha
+ *   siguiente, contada desde el vencimiento. Ese vencimiento tiene que seguir pendiente: si otra
+ *   pantalla ya lo registró u omitió, no se registra nada. Así la app nunca registra un gasto
+ *   recurrente sola, y uno confirmado no se cuenta dos veces.
  */
 class RegisterExpenseUseCase(
     private val transactions: TransactionRunner,
@@ -88,6 +103,7 @@ class RegisterExpenseUseCase(
     private val categories: ExpenseCategoryRepository,
     private val clock: Clock,
     private val money: DocumentMoney? = null,
+    private val recurring: RecurringExpenseRepository? = null,
 ) {
     private val currencyLock = CurrencyLock(settings)
 
@@ -113,6 +129,16 @@ class RegisterExpenseUseCase(
         val category = categories.findById(request.categoryId)
             ?: return reject(RegisterExpenseResult.CategoryNotFound)
         if (category.isArchived) return reject(RegisterExpenseResult.CategoryArchived)
+        val confirmed = request.recurring?.let { occurrence ->
+            val templates = checkNotNull(recurring) { "Confirmar necesita los recurrentes" }
+            val template = templates.findById(occurrence.recurringExpenseId)
+                ?.takeIf { !it.isArchived }
+                ?: return reject(RegisterExpenseResult.RecurringUnavailable)
+            if (template.details.nextDueDate != occurrence.dueDate) {
+                return reject(RegisterExpenseResult.RecurringAlreadyHandled)
+            }
+            template
+        }
 
         // Justo antes de escribir: el primer registro con dinero bloquea la moneda en esta misma
         // transacción, y si el gasto se deshace, el bloqueo también.
@@ -137,12 +163,18 @@ class RegisterExpenseUseCase(
                 amount = valid.amount,
                 description = valid.description,
                 moneyAccountId = accountId,
-                recurringExpenseId = null,
+                recurringExpenseId = confirmed?.id,
                 occurredAt = time.occurredAt,
                 businessDate = time.businessDate,
                 createdAt = now,
             ),
         )
+        if (confirmed != null) {
+            val details = confirmed.details
+            val next =
+                RecurrenceRules.next(details.recurrence, details.dayOfPeriod, details.nextDueDate)
+            checkNotNull(recurring).advance(confirmed.id, next, now)
+        }
         if (payer != null) {
             val draft = MoneyMovementDraft(
                 accountId = accountId,
