@@ -125,8 +125,13 @@ sealed interface HubSections {
     data class Search(val results: List<HubTool>) : HubSections
 }
 
-/** Las secciones del centro para [state], con las herramientas ofrecidas [tools]. */
-fun hubSections(state: BusinessHubUiState, tools: List<HubTool>): HubSections {
+/**
+ * Las secciones del centro para [state], con las herramientas ofrecidas [offered]. Siempre en el
+ * orden de [BusinessTool], que es el de la tabla de la pantalla, sea cual sea el orden en que se
+ * agregaron las entradas.
+ */
+fun hubSections(state: BusinessHubUiState, offered: List<HubTool>): HubSections {
+    val tools = offered.sortedBy { it.tool.ordinal }
     val folded = TextNormalizer.normalize(state.query)
     if (folded.isNotEmpty()) return HubSections.Search(tools.filter { folded in it.searchKey })
     val inUse = state.inUse.orEmpty()
