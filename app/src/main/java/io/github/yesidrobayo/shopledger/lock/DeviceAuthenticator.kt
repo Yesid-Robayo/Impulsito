@@ -78,9 +78,15 @@ val LocalDeviceAuthenticator = staticCompositionLocalOf<DeviceAuthenticator> {
  * Con la credencial del teléfono permitida, el diálogo no lleva botón negativo, y quien no tiene
  * huella ni rostro usa su PIN. Mientras se verifica, [lock] no cuenta la salida a la pantalla del PIN
  * como segundo plano.
+ *
+ * Una verificación que el sistema da por fallida, como tras demasiados intentos, avisa con
+ * [onFailed], que la anota en la auditoría sin el texto del sistema. Cancelar no es un fallo.
  */
-class BiometricAuthenticator(private val activity: FragmentActivity, private val lock: AppLock) :
-    DeviceAuthenticator {
+class BiometricAuthenticator(
+    private val activity: FragmentActivity,
+    private val lock: AppLock,
+    private val onFailed: () -> Unit,
+) : DeviceAuthenticator {
     override fun hasDeviceCredential(): Boolean =
         activity.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
 
@@ -96,7 +102,9 @@ class BiometricAuthenticator(private val activity: FragmentActivity, private val
             activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
                 !activity.supportFragmentManager.isStateSaved
         if (!canShow) return AuthOutcome.Canceled
-        return lock.authenticating { prompt(purpose, title, subtitle) }
+        return lock.authenticating { prompt(purpose, title, subtitle) }.also { outcome ->
+            if (outcome is AuthOutcome.Failed) onFailed()
+        }
     }
 
     private suspend fun prompt(

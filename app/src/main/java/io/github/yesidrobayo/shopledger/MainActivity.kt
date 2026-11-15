@@ -26,6 +26,8 @@ import io.github.yesidrobayo.shopledger.data.OpeningStep
 import io.github.yesidrobayo.shopledger.data.RescueCause
 import io.github.yesidrobayo.shopledger.data.safety.BootGuard
 import io.github.yesidrobayo.shopledger.di.AppContainer
+import io.github.yesidrobayo.shopledger.domain.model.audit.AuditEventType
+import io.github.yesidrobayo.shopledger.domain.model.audit.AuditResult
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.usecase.settings.ChangePreferenceResult
@@ -212,7 +214,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        val authenticator = BiometricAuthenticator(this, appLock)
+        // Una verificación fallida queda en la auditoría, sin el texto del sistema.
+        val authenticator =
+            BiometricAuthenticator(this, appLock) {
+                record(container, AuditEventType.AUTH_FAILED, AuditResult.FAILURE)
+            }
         setContent {
             val appearance = shownAppearance.value
             val darkTheme = appearance.isDark(systemDark = isSystemInDarkTheme())
@@ -324,7 +330,16 @@ class MainActivity : AppCompatActivity() {
     private fun turnLockOffWithoutCredential(container: AppContainer) {
         container.appLock.noDeviceCredential()
         val change = lockSettings ?: return
-        container.applicationScope.launch { change(PreferenceChange.AppLock(false)) }
+        container.applicationScope.launch {
+            val saved = change(PreferenceChange.AppLock(false)) == ChangePreferenceResult.Saved
+            val result = if (saved) AuditResult.SUCCESS else AuditResult.FAILURE
+            container.data.auditRecorder.record(AuditEventType.APP_LOCK_CHANGED, result)
+        }
+    }
+
+    /** Anota [type] en la auditoría, aparte: una falla al anotar nunca detiene nada. */
+    private fun record(container: AppContainer, type: AuditEventType, result: AuditResult) {
+        container.applicationScope.launch { container.data.auditRecorder.record(type, result) }
     }
 
     /**

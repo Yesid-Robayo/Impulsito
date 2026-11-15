@@ -132,8 +132,8 @@ class EncryptedRestoreTest {
             assertTrue(state.enabled)
             assertEquals(key.keyIdHex, state.keyIdHex)
             assertEquals(
-                listOf("ENCRYPTION_CHANGED SUCCESS"),
-                texts("SELECT event_type || ' ' || result FROM audit_events"),
+                listOf("RESTORE SUCCESS", "ENCRYPTION_CHANGED SUCCESS"),
+                texts("SELECT event_type || ' ' || result FROM audit_events ORDER BY id"),
             )
         }
 
@@ -194,7 +194,11 @@ class EncryptedRestoreTest {
 
         assertEquals(1L, count("products"))
         assertTrue(sealed.contentEquals(files.sealedKey.readBytes()))
-        assertEquals(0L, count("audit_events"))
+        // Solo queda la restauración: el código no cambió.
+        assertEquals(
+            listOf("RESTORE SUCCESS"),
+            texts("SELECT event_type || ' ' || result FROM audit_events"),
+        )
     }
 
     @Test
@@ -289,7 +293,11 @@ class EncryptedRestoreTest {
         )
         val state = custody().alignAtStartup()
         assertEquals(otherKey.keyIdHex, state.keyIdHex)
-        assertEquals(0L, count("audit_events"))
+        // La restauración que volvió atrás queda como fallo, y el código no cambió.
+        assertEquals(
+            listOf("RESTORE FAILURE"),
+            texts("SELECT event_type || ' ' || result FROM audit_events"),
+        )
     }
 
     @Test

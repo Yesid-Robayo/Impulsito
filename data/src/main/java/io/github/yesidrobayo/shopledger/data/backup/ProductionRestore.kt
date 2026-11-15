@@ -32,6 +32,7 @@ import kotlinx.coroutines.sync.Mutex
  * @param backupMutex el cerrojo del respaldo, el mismo de cada ejecución.
  * @param scheduledWork los trabajos programados del respaldo, que la pausa cancela.
  * @param keys el código de recuperación de este teléfono, para abrir copias cifradas.
+ * @param recordRejected anota en la auditoría que se rechazó una copia. Nunca lanza.
  */
 internal fun productionRestoreCoordinator(
     context: Context,
@@ -44,6 +45,7 @@ internal fun productionRestoreCoordinator(
     backupMutex: Mutex,
     scheduledWork: ScheduledBackupWork,
     keys: RestoreKeys = RestoreKeys.None,
+    recordRejected: suspend () -> Unit = {},
 ): RestoreCoordinator {
     val ops = DurableFileOps()
     val validator = CandidateValidator(ioContext)
@@ -73,6 +75,7 @@ internal fun productionRestoreCoordinator(
         log = log,
         ioContext = ioContext,
         keys = keys,
+        recordRejected = recordRejected,
     )
 }
 

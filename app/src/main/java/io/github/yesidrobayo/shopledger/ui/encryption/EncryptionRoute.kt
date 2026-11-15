@@ -62,7 +62,8 @@ fun EncryptionRoute(navigator: AppNavigator) {
             val container = dependencies.container
             val kit = RecoveryKitWriter(context)
             EncryptionViewModel(
-                port = EncryptionUseCase(container.data.encryption),
+                port =
+                    EncryptionUseCase(container.data.encryption, container.data.auditRecorder),
                 writeKit = { uri, groups, date ->
                     kit.write(uri, groups, formats.date.longDate(date))
                 },

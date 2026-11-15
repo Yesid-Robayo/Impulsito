@@ -36,6 +36,7 @@ class SecuritySettingsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val lock = MutableStateFlow(AppLockSettings(false, AppLockTimeout.ONE_MINUTE))
     private val changes = mutableListOf<PreferenceChange>()
+    private val recorded = mutableListOf<Boolean>()
     private var result: ChangePreferenceResult = ChangePreferenceResult.Saved
 
     @Before
@@ -64,6 +65,7 @@ class SecuritySettingsViewModelTest {
             }
             result
         },
+        recordLockChange = { recorded += it },
     )
 
     private fun TestScope.started(): SecuritySettingsViewModel {
@@ -89,6 +91,8 @@ class SecuritySettingsViewModelTest {
 
         assertEquals(listOf<PreferenceChange>(PreferenceChange.AppLock(true)), changes)
         assertEquals(true, model.uiState.value.lock?.enabled)
+        // El cambio queda en la auditoría, después de guardarlo.
+        assertEquals(listOf(true), recorded)
     }
 
     @Test
@@ -102,6 +106,7 @@ class SecuritySettingsViewModelTest {
         assertEquals(emptyList<PreferenceChange>(), changes)
         assertEquals(false, model.uiState.value.lock?.enabled)
         assertFalse(model.uiState.value.needsDeviceLock)
+        assertEquals(emptyList<Boolean>(), recorded)
     }
 
     @Test
@@ -176,6 +181,8 @@ class SecuritySettingsViewModelTest {
         advanceUntilIdle()
         assertFalse(model.uiState.value.saveFailed)
         assertEquals(true, model.uiState.value.lock?.enabled)
+        // El intento fallido también queda, como fallo.
+        assertEquals(listOf(false, true), recorded)
     }
 
     @Test

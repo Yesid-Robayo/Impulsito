@@ -83,6 +83,9 @@ internal enum class SlotConfirmStep {
  *   cortar ahí.
  * @param change cambia a las ranuras de un estado ya armado, desde otro destino. Nulo donde no se
  *   ofrece.
+ * @param onConnected corre después de conectar las ranuras sin cambiar de destino, fuera de la
+ *   escritura y del cerrojo: anota la conexión en la auditoría. El cambio de destino la anota
+ *   por su cuenta.
  */
 internal class SlotFilesSetup(
     private val open: suspend () -> DataAccess,
@@ -98,6 +101,7 @@ internal class SlotFilesSetup(
     private val providers: List<SlotProvider> = SLOT_PROVIDERS,
     private val checkpoint: suspend (SlotConfirmStep) -> Unit = {},
     private val change: (suspend (SlotState) -> ChangeOutcome)? = null,
+    private val onConnected: suspend () -> Unit = {},
 ) : SlotFilesSetupPort {
     override suspend fun look(): SlotSetupLook? {
         val state = backupState() ?: return null
@@ -156,7 +160,10 @@ internal class SlotFilesSetup(
                 val state = backupState() ?: return@withLock null
                 confirmLocked(state)
             } ?: return SlotSetupConfirm.Failed
-        if (outcome is ConfirmOutcome.Connected) afterConfirm(outcome.hasData)
+        if (outcome is ConfirmOutcome.Connected) {
+            onConnected()
+            afterConfirm(outcome.hasData)
+        }
         return outcome.result
     }
 

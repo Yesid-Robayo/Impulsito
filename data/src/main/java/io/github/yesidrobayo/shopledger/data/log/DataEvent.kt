@@ -50,4 +50,5 @@ internal enum class DataEvent(override val text: String) : LogEvent {
     DEMO_EXIT_FAILED("No se pudo terminar la demostración"),
     DEMO_LEFTOVERS_DISCARDED("Se borraron los restos de una demostración"),
     DEMO_DISCARD_FAILED("No se pudieron borrar los restos de una demostración"),
+    AUDIT_FAILED("No se pudo anotar un evento en la auditoría"),
 }

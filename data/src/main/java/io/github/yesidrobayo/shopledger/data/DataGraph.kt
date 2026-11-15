@@ -124,6 +124,7 @@ import io.github.yesidrobayo.shopledger.data.media.MediaSyncStore
 import io.github.yesidrobayo.shopledger.data.print.BluetoothPrinters
 import io.github.yesidrobayo.shopledger.data.print.PrinterSetupFile
 import io.github.yesidrobayo.shopledger.data.repository.RoomAuditRecorder
+import io.github.yesidrobayo.shopledger.data.repository.recordAuditEvent
 import io.github.yesidrobayo.shopledger.data.repository.toStoredImage
 import io.github.yesidrobayo.shopledger.data.rescue.RescueData
 import io.github.yesidrobayo.shopledger.data.safety.CloudAccountChecklistFile
@@ -135,6 +136,8 @@ import io.github.yesidrobayo.shopledger.data.work.DeferredWorkerFactory
 import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
 import io.github.yesidrobayo.shopledger.data.work.backupNetworkOf
 import io.github.yesidrobayo.shopledger.data.work.productionBackupStatusEnvironment
+import io.github.yesidrobayo.shopledger.domain.model.audit.AuditEventType
+import io.github.yesidrobayo.shopledger.domain.model.audit.AuditResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
@@ -595,6 +598,9 @@ class DataGraph internal constructor(
             clock = clock,
             ioContext = ioContext,
             change = { state -> destinationLinks.changeToSlots(state) },
+            onConnected = {
+                auditRecorder.record(AuditEventType.DESTINATION_CHANGED, AuditResult.SUCCESS)
+            },
         )
     }
 
@@ -616,13 +622,27 @@ class DataGraph internal constructor(
             },
             record = { link ->
                 val ports = businessPorts()
-                ports?.backupState?.connectDestination(
-                    kind = link.kind.name,
-                    account = link.account,
-                    destinationId = link.destinationId,
-                    folder = link.folderUrl,
-                    now = link.connectedAtMillis,
-                ) == 1
+                val recorded =
+                    ports?.backupState?.connectDestination(
+                        kind = link.kind.name,
+                        account = link.account,
+                        destinationId = link.destinationId,
+                        folder = link.folderUrl,
+                        now = link.connectedAtMillis,
+                    ) == 1
+                // Conectar también cambia adónde van las copias: queda en la auditoría después de
+                // guardarlo, fuera de esa escritura, sin dirección ni usuario.
+                if (recorded && ports != null) {
+                    recordAuditEvent(
+                        ports.auditEvents,
+                        AuditEventType.DESTINATION_CHANGED,
+                        AuditResult.SUCCESS,
+                        clock,
+                        log,
+                        DataEvent.DESTINATION_AUDIT_FAILED,
+                    )
+                }
+                recorded
             },
             backupLock = backupMutex,
             onConnected = { backupScheduler.onLinkRestored() },
@@ -708,7 +728,9 @@ class DataGraph internal constructor(
         // En la demostración se anota en la base de ejemplo: lo que se hace ahí nunca llega a la
         // auditoría del negocio.
         RoomAuditRecorder(
-            ports = { if (demo.isActiveNow) demo.currentPorts else ready?.ports },
+            events = {
+                if (demo.isActiveNow) demo.currentPorts?.auditEvents else ready?.ports?.auditEvents
+            },
             clock = clock,
             log = log,
         )
@@ -1068,6 +1090,9 @@ class DataGraph internal constructor(
                 backupMutex = backupMutex,
                 scheduledWork = scheduledBackupWork,
                 keys = CustodyRestoreKeys(recoveryCustody),
+                recordRejected = {
+                    auditRecorder.record(AuditEventType.RESTORE_REJECTED, AuditResult.FAILURE)
+                },
             )
         }.also { restoreCoordinator = it }
     }
@@ -1460,6 +1485,18 @@ class DataGraph internal constructor(
                             ),
                         commitListener = commitListener,
                     )
+                // La restauración que terminó al abrir queda en la base que sigue: la nueva, o la
+                // anterior si volvió. Antes del cifrado, que es su consecuencia.
+                pendingRestore.takeRestoreOutcome()?.let { restored ->
+                    recordAuditEvent(
+                        ports.auditEvents,
+                        AuditEventType.RESTORE,
+                        if (restored) AuditResult.SUCCESS else AuditResult.FAILURE,
+                        clock,
+                        log,
+                        DataEvent.RESTORE_AUDIT_FAILED,
+                    )
+                }
                 if (pendingRestore.takeEncryptionChanged()) {
                     recordEncryptionChanged(ports, clock, log)
                     restoredCodeSaved = true

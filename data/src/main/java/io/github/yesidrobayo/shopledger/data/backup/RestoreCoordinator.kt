@@ -116,6 +116,8 @@ internal fun interface CandidateMigrator {
  * @param freeSpace los bytes libres para la app en la carpeta dada.
  * @param appSchemaVersion la versión del esquema que compila la app.
  * @param keys el código de recuperación de este teléfono, para las copias cifradas.
+ * @param recordRejected anota en la auditoría que se rechazó una copia, después de abandonar la
+ *   preparación. Nunca lanza: una falla al anotar no cambia el rechazo.
  */
 internal class RestoreCoordinator(
     private val files: RestoreFiles,
@@ -140,6 +142,7 @@ internal class RestoreCoordinator(
     private val freeSpace: (File) -> Long = File::getUsableSpace,
     private val appSchemaVersion: Int = AppDatabase.SCHEMA_VERSION,
     private val keys: RestoreKeys = RestoreKeys.None,
+    private val recordRejected: suspend () -> Unit = {},
 ) {
     private val mutex = Mutex()
     private var session: Session? = null
@@ -256,9 +259,22 @@ internal class RestoreCoordinator(
             -> {
                 session?.let { withContext(NonCancellable) { abandon(it) } }
                 logStop(stage)
+                if (stage.rejectsTheCopy()) recordRejected()
             }
         }
         return stage
+    }
+
+    /**
+     * Si la preparación se detuvo porque la copia misma no se acepta: inválida, marcada como
+     * imposible de restaurar o demasiado grande. Lo demás, como el espacio o la red, no es un
+     * rechazo de la copia.
+     */
+    private fun RestoreStage.rejectsTheCopy(): Boolean {
+        val reason = (this as? RestoreStage.Refused)?.reason
+        return reason is RestoreRefusal.Candidate ||
+            reason == RestoreRefusal.MarkedFatal ||
+            reason == RestoreRefusal.TooLarge
     }
 
     private suspend fun begin(source: RestoreSource): RestoreStage {

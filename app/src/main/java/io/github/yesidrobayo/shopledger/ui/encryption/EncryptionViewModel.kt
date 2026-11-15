@@ -364,8 +364,8 @@ class EncryptionViewModel(
     }
 
     /**
-     * Abre el código sellado para mostrarlo. Solo lee: no escribe nada ni cambia el estado del
-     * cifrado. El registro de la auditoría llega cuando exista.
+     * Abre el código sellado para mostrarlo. No cambia el estado del cifrado: lo único que escribe
+     * es el evento de la auditoría, que anota el caso de uso, sin el código.
      */
     private fun viewCode() {
         if (state.value.step != null || viewing?.isActive == true) return

@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.ui.encryption
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.audit.AuditEventType
+import io.github.yesidrobayo.shopledger.domain.model.audit.AuditResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.ActivationOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.CodeCheckOutcome
 import io.github.yesidrobayo.shopledger.domain.model.backup.DeactivationOutcome
@@ -43,6 +45,7 @@ class EncryptionViewModelTest {
     private val groups = listOf("G7K2", "M9PQ", "R4ST", "V6WX", "Y8Z3", "ABCD", "EF51")
     private val port = FakePort()
     private val kits = mutableListOf<Pair<String, BusinessDate>>()
+    private val audits = mutableListOf<Pair<AuditEventType, AuditResult>>()
 
     /** Un reloj fijo: con `On(2L)`, activado a los 2 ms de 1970, la prueba todavía no toca. */
     private var clockNow = Instant.fromEpochMilliseconds(5)
@@ -60,7 +63,7 @@ class EncryptionViewModelTest {
     private fun TestScope.viewModel(): EncryptionViewModel {
         val model =
             EncryptionViewModel(
-                port = EncryptionUseCase(port),
+                port = EncryptionUseCase(port) { type, result -> audits += type to result },
                 writeKit = { uri, written, date ->
                     assertEquals(groups, written)
                     kits += uri to date
@@ -471,6 +474,11 @@ class EncryptionViewModelTest {
             model.onAction(EncryptionAction.CloseCode)
             assertNull(model.uiState.value.codeView)
             assertEquals(EncryptionStatusUi.On, model.uiState.value.status)
+            // Ver el código queda en la auditoría una vez, sin el código.
+            assertEquals(
+                listOf(AuditEventType.RECOVERY_CODE_VIEWED to AuditResult.SUCCESS),
+                audits,
+            )
         }
 
     @Test
@@ -499,6 +507,10 @@ class EncryptionViewModelTest {
             model.onAction(EncryptionAction.ViewCodeAuthorized)
             advanceUntilIdle()
             assertEquals(CodeViewUi.Unavailable, model.uiState.value.codeView)
+            assertEquals(
+                listOf(AuditEventType.RECOVERY_CODE_VIEWED to AuditResult.FAILURE),
+                audits,
+            )
 
             model.onAction(EncryptionAction.CloseCode)
             port.failView = true
@@ -525,6 +537,7 @@ class EncryptionViewModelTest {
         advanceUntilIdle()
         assertNull(model.uiState.value.codeView)
         assertEquals(0, port.views)
+        assertTrue(audits.none { it.first == AuditEventType.RECOVERY_CODE_VIEWED })
     }
 
     /** Activado en este instante, para el calendario de la prueba. */

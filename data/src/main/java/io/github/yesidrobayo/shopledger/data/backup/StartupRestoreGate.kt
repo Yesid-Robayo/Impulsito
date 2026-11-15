@@ -36,6 +36,15 @@ internal class StartupRestoreGate<D>(
      */
     fun takeEncryptionChanged(): Boolean = encryptionChanged.also { encryptionChanged = false }
 
+    @Volatile private var restoreOutcome: Boolean? = null
+
+    /**
+     * Cómo terminó el reemplazo de una restauración en este proceso, para anotarlo en la
+     * auditoría de la base que queda abierta: `true` si la base nueva quedó en su sitio, `false`
+     * si volvió la anterior, y `null` si no hubo reemplazo o ya se pidió. Lo da una sola vez.
+     */
+    fun takeRestoreOutcome(): Boolean? = restoreOutcome.also { restoreOutcome = null }
+
     override suspend fun finish(caller: GateCaller, open: suspend (File) -> D): RestoreStep<D> =
         when (val files = startupRestore.runFileSteps()) {
             StartupRestoreResult.NoRestore -> RestoreStep.Continue
@@ -50,6 +59,7 @@ internal class StartupRestoreGate<D>(
             is StartupRestoreResult.Restored -> {
                 log.info(DataEvent.RESTORE_FINISHED)
                 if (files.encryptionChanged) encryptionChanged = true
+                restoreOutcome = true
                 RestoreStep.Continue
             }
 
@@ -68,6 +78,7 @@ internal class StartupRestoreGate<D>(
             is StartupRestoreResult.Restored -> {
                 log.info(DataEvent.RESTORE_FINISHED)
                 if (result.encryptionChanged) encryptionChanged = true
+                restoreOutcome = true
                 result.database?.let { RestoreStep.Restored(it) } ?: RestoreStep.Continue
             }
 
@@ -87,6 +98,7 @@ internal class StartupRestoreGate<D>(
 
     private fun rolledBack(databasePresent: Boolean): RestoreStep<D> = if (databasePresent) {
         log.info(DataEvent.RESTORE_ROLLED_BACK)
+        restoreOutcome = false
         RestoreStep.Continue
     } else {
         // Sin base que devolver, abrir Room crearía una vacía: toca restaurar de nuevo.

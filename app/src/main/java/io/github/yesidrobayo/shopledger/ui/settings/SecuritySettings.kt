@@ -79,10 +79,13 @@ sealed interface SecurityAction {
  *
  * @param lockSource el bloqueo guardado, de nuevo cada vez que cambia.
  * @param changePreference guarda una preferencia.
+ * @param recordLockChange anota en la auditoría un cambio del bloqueo o de su tiempo, después de
+ *   intentar guardarlo: `true` si quedó guardado. Nunca lanza.
  */
 class SecuritySettingsViewModel(
     lockSource: () -> Flow<AppLockSettings>,
     private val changePreference: suspend (PreferenceChange) -> ChangePreferenceResult,
+    private val recordLockChange: suspend (saved: Boolean) -> Unit,
 ) : ViewModel() {
     private val needsDeviceLock = MutableStateFlow(false)
     private val saveFailed = MutableStateFlow(false)
@@ -133,10 +136,13 @@ class SecuritySettingsViewModel(
     private fun save(change: PreferenceChange) {
         saveFailed.value = false
         viewModelScope.launch {
-            when (changePreference(change)) {
-                ChangePreferenceResult.Saved -> Unit
-                is ChangePreferenceResult.Failed -> saveFailed.value = true
-            }
+            val saved =
+                when (changePreference(change)) {
+                    ChangePreferenceResult.Saved -> true
+                    is ChangePreferenceResult.Failed -> false
+                }
+            if (!saved) saveFailed.value = true
+            recordLockChange(saved)
         }
     }
 

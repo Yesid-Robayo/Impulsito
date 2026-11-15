@@ -305,6 +305,8 @@ class RestoreCoordinatorTest {
         )
         assertNothingLeft()
         assertFalse(backupMutex.isLocked)
+        // El rechazo queda en la auditoría, una vez.
+        assertEquals(1, rejections)
         fixture.addProduct("Leche de prueba")
         assertEquals(2L, count("products"))
     }
@@ -529,13 +531,13 @@ class RestoreCoordinatorTest {
 
         assertTrue(files.sealedKey.exists())
         assertFalse(files.pendingKey.exists())
+        // La restauración y luego el código que trajo, cada uno una sola vez.
         assertEquals(
-            listOf("ENCRYPTION_CHANGED SUCCESS"),
-            texts("SELECT event_type || ' ' || result FROM audit_events"),
+            listOf("RESTORE SUCCESS", "ENCRYPTION_CHANGED SUCCESS"),
+            texts("SELECT event_type || ' ' || result FROM audit_events ORDER BY id"),
         )
-        // Se anota una sola vez.
         reopen()
-        assertEquals(1L, count("audit_events"))
+        assertEquals(2L, count("audit_events"))
     }
 
     @Test
@@ -793,8 +795,12 @@ class RestoreCoordinatorTest {
             ioContext = Dispatchers.IO,
             freeSpace = freeSpace,
             appSchemaVersion = appSchemaVersion,
+            recordRejected = { rejections += 1 },
         )
     }
+
+    /** Cuántas veces la preparación anotó un rechazo de la copia. */
+    private var rejections = 0
 
     /** La copia [generation] de este teléfono, tal como la lista el destino. */
     private suspend fun listed(generation: Long): ListedCopy {

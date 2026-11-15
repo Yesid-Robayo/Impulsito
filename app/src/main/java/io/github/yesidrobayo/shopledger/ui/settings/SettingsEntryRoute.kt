@@ -22,6 +22,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
+import io.github.yesidrobayo.shopledger.domain.model.audit.AuditEventType
+import io.github.yesidrobayo.shopledger.domain.model.audit.AuditResult
 import io.github.yesidrobayo.shopledger.domain.model.region.DecimalSeparator
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
@@ -114,9 +116,14 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
         rememberAppViewModel { dependencies ->
             val settings = dependencies.ports.settings
             val change = ChangePreferenceUseCase(settings, dependencies.container.clock)
+            val audit = dependencies.container.data.auditRecorder
             SecuritySettingsViewModel(
                 lockSource = { ObserveAppLockUseCase(settings)() },
                 changePreference = { change(it) },
+                recordLockChange = { saved ->
+                    val result = if (saved) AuditResult.SUCCESS else AuditResult.FAILURE
+                    audit.record(AuditEventType.APP_LOCK_CHANGED, result)
+                },
             )
         }
     val overviewModel =
