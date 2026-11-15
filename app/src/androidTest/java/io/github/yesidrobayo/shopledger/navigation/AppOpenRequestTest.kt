@@ -44,6 +44,14 @@ class AppOpenRequestTest {
     }
 
     @Test
+    fun aRecurringReminderOpensTheRecurringExpenses() {
+        val request = readBack(AppOpenRequest.Recurring)
+
+        assertEquals(AppOpenRequest.Recurring, request)
+        assertEquals(AppNavKey.RecurringExpenses, request?.key)
+    }
+
+    @Test
     fun anythingElseOpensNothing() {
         assertNull(AppOpenRequest.readFrom(null))
         assertNull(AppOpenRequest.readFrom(toMain()))

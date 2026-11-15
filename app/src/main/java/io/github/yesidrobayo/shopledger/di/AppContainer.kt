@@ -25,12 +25,14 @@ import io.github.yesidrobayo.shopledger.localization.installedVersionOf
 import io.github.yesidrobayo.shopledger.lock.AppLock
 import io.github.yesidrobayo.shopledger.notification.AndroidBackupNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidLowStockNotifier
+import io.github.yesidrobayo.shopledger.notification.AndroidRecurringNotifier
 import io.github.yesidrobayo.shopledger.notification.AndroidReminderNotifier
 import io.github.yesidrobayo.shopledger.notification.DailySummaryDelivery
 import io.github.yesidrobayo.shopledger.notification.DailySummaryScheduler
 import io.github.yesidrobayo.shopledger.notification.ExpiryNoticeDelivery
 import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
+import io.github.yesidrobayo.shopledger.notification.RecurringReminderDelivery
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeFile
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
 import io.github.yesidrobayo.shopledger.ui.components.PhotoState
@@ -139,6 +141,25 @@ class AppContainer(application: Application) {
      */
     val dailySummaryDelivery: DailySummaryDelivery by lazy {
         DailySummaryDelivery(applicationScope, DailySummaryScheduler(application), clock, log)
+    }
+
+    /**
+     * Los recordatorios de gastos recurrentes por confirmar, mientras la base está abierta. Solo
+     * avisan: nunca registran el gasto.
+     */
+    val recurringReminderDelivery: RecurringReminderDelivery by lazy {
+        RecurringReminderDelivery(
+            scope = applicationScope,
+            notifier =
+                AndroidRecurringNotifier(application, localizedContext) {
+                    when (val access = data.open()) {
+                        is DataAccess.Ready -> access.ports.settings.get()
+                        is DataAccess.Rescue -> error("Sin base no hay gastos que recordar")
+                    }
+                },
+            clock = clock,
+            log = log,
+        )
     }
 
     /**

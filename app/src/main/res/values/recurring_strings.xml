@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de los gastos recurrentes, copiados de ux-writing.md. -->
+<resources>
+    <string name="recurring_archived_filter">Archived</string>
+    <string name="recurring_section_due">To confirm</string>
+    <string name="recurring_section_scheduled">Scheduled</string>
+    <!-- recurring_due_since: %1$s = date -->
+    <string name="recurring_due_since">Since %1$s</string>
+    <string name="recurring_register_action">Record</string>
+    <string name="recurring_skip_action">Skip</string>
+    <string name="recurring_new_action">New recurring expense</string>
+    <string name="recurring_new_title">New recurring expense</string>
+    <string name="recurring_save_action">Save recurring expense</string>
+    <!-- recurring_every_weekly: %1$s = weekday -->
+    <string name="recurring_every_weekly">Every week, %1$s</string>
+    <!-- recurring_every_monthly: %1$d = day -->
+    <string name="recurring_every_monthly">Every month, day %1$d</string>
+    <!-- recurring_every_yearly: %1$s = date -->
+    <string name="recurring_every_yearly">Every year, %1$s</string>
+    <!-- recurring_next: %1$s = date -->
+    <string name="recurring_next">Next: %1$s</string>
+    <string name="recurring_field_amount">Amount</string>
+    <string name="recurring_field_category">Category</string>
+    <string name="recurring_field_description">Description</string>
+    <string name="recurring_field_repeats">Repeats</string>
+    <string name="recurring_recurrence_weekly">Every week</string>
+    <string name="recurring_recurrence_monthly">Every month</string>
+    <string name="recurring_recurrence_yearly">Every year</string>
+    <string name="recurring_field_weekday">Day of the week</string>
+    <string name="recurring_field_day_of_month">Day of the month</string>
+    <string name="recurring_field_next_date">Next date</string>
+    <string name="recurring_field_account">Money account</string>
+    <string name="recurring_field_reminder">Reminder</string>
+    <!-- recurring_help: %1$s = app -->
+    <string name="recurring_help">%1$s proposes this expense on its date. It is only recorded once confirmed.</string>
+    <string name="recurring_month_end_help">If the month does not have that day, the last day is used.</string>
+    <string name="recurring_empty_title">No recurring expenses</string>
+    <string name="recurring_empty_body">Use it to remember rent, utilities and other payments that repeat.</string>
+    <string name="recurring_error_value">Enter an amount greater than 0</string>
+    <string name="recurring_error_day">Choose a valid day</string>
+    <string name="recurring_category_archived">The original category is archived. Choose another.</string>
+    <string name="recurring_skip_confirm_title">Skip this expense?</string>
+    <!-- recurring_skip_confirm_body: %1$s = date -->
+    <string name="recurring_skip_confirm_body">Nothing is recorded and the date moves to %1$s.</string>
+    <!-- recurring_archive_confirm_title: %1$s = expense -->
+    <string name="recurring_archive_confirm_title">Archive %1$s?</string>
+    <string name="recurring_archive_confirm_body">It stops being proposed. Expenses already recorded do not change.</string>
+    <string name="notif_channel_recurring">Recurring expenses</string>
+    <string name="notif_recurring_title">Expense to confirm</string>
+    <!-- notif_recurring_body: %1$s = expense, %2$s = app -->
+    <string name="notif_recurring_body">%1$s: waiting to be confirmed in %2$s.</string>
+    <string name="notif_recurring_public">There is an expense to confirm</string>
+    <string name="hub_tool_recurring">Recurring expenses</string>
+    <string name="hub_tool_recurring_desc">Repeating payments, so they are not forgotten</string>
+    <string name="recurring_edit_title">Edit recurring expense</string>
+    <!-- recurring_schedule_line: %1$s = every, %2$s = next -->
+    <string name="recurring_schedule_line">%1$s · %2$s</string>
+    <string name="recurring_archived_empty">No archived recurring expenses</string>
+    <string name="recurring_saved">Recurring expense saved</string>
+    <!-- recurring_skipped: %1$s = date -->
+    <string name="recurring_skipped">Skipped. Next: %1$s</string>
+    <string name="recurring_archived_done">Recurring expense archived</string>
+    <string name="recurring_reactivated">Recurring expense reactivated</string>
+    <string name="recurring_handled_elsewhere">That expense was already handled on another screen. Nothing changed.</string>
+    <string name="recurring_handled">That due date was already recorded or skipped, or the recurring expense was archived. Nothing was saved.</string>
+    <plurals name="expense_recurring_due">
+        <item quantity="one">%1$d recurring expense to confirm</item>
+        <item quantity="other">%1$d recurring expenses to confirm</item>
+    </plurals>
+    <plurals name="notif_recurring_many_title">
+        <item quantity="one">%1$d expense to confirm</item>
+        <item quantity="other">%1$d expenses to confirm</item>
+    </plurals>
+</resources>

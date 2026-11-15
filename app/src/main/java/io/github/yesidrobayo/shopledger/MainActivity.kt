@@ -157,6 +157,7 @@ class MainActivity : AppCompatActivity() {
                     container.lowStockAlertDelivery.follow(access.ports)
                     container.expiryNoticeDelivery.follow(access.ports)
                     container.dailySummaryDelivery.follow(access.ports)
+                    container.recurringReminderDelivery.follow(access.ports)
                     lockSettings = ChangePreferenceUseCase(access.ports.settings, container.clock)
                     launch {
                         ObserveAppLockUseCase(access.ports.settings)().collect {

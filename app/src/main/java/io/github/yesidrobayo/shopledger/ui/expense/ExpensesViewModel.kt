@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrection
+import io.github.yesidrobayo.shopledger.domain.rule.expense.RecurringRegistration
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
@@ -61,6 +62,9 @@ import kotlinx.datetime.yearMonth
  * @param void anula un gasto en una sola transacción.
  * @param createCategory crea una categoría de gasto desde el gasto nuevo.
  * @param loadCorrection lee lo que trae corregir un gasto, o `null` si ya no existe.
+ * @param loadRecurring lee lo que trae registrar un gasto recurrente, o `null` si ya no se
+ *   propone.
+ * @param dueRecurring cuántos gastos recurrentes esperan confirmación.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExpensesViewModel(
@@ -75,6 +79,8 @@ class ExpensesViewModel(
     },
     private val loadCorrection: suspend (Long) -> ExpenseCorrection? = { null },
     payingAccounts: Flow<List<MoneyAccount>> = flowOf(emptyList()),
+    private val loadRecurring: suspend (Long) -> RecurringRegistration? = { null },
+    dueRecurring: Flow<Int> = flowOf(0),
 ) : ViewModel() {
     private val state = MutableStateFlow(ExpensesUiState())
     val uiState: StateFlow<ExpensesUiState> = state.asStateFlow()
@@ -106,6 +112,12 @@ class ExpensesViewModel(
             // Sin cuentas legibles, el gasto no ofrece ninguna: se guarda sin dinero.
             payingAccounts.catch { emit(emptyList()) }.collect { accounts ->
                 state.update { it.copy(accounts = accounts) }
+            }
+        }
+        viewModelScope.launch {
+            // Sin poder leerlos, el aviso de gastos recurrentes por confirmar no aparece.
+            dueRecurring.catch { emit(0) }.collect { count ->
+                state.update { it.copy(dueRecurring = count) }
             }
         }
         viewModelScope.launch {
@@ -168,6 +180,8 @@ class ExpensesViewModel(
             ExpensesAction.NewExpense -> state.update {
                 it.copy(form = ExpenseForm(categoryId = defaultCategory(it.categories)?.id))
             }
+
+            is ExpensesAction.StartRecurring -> startRecurring(action.recurringExpenseId)
 
             is ExpensesAction.AmountChange -> editForm { it.copy(amountText = action.text) }
 
@@ -366,6 +380,39 @@ class ExpensesViewModel(
         proposeCategory = !correction.categoryLeftOut,
     )
 
+    /**
+     * Abre el gasto nuevo con el valor, la categoría si sigue vigente, la descripción, la cuenta y
+     * la fecha del vencimiento de un gasto recurrente: todo se puede cambiar antes de guardar. Si
+     * ya no se propone, o no se puede leer, no abre nada.
+     */
+    private fun startRecurring(recurringExpenseId: Long) {
+        viewModelScope.launch {
+            val registration = (
+                readOutcome {
+                    loadRecurring(recurringExpenseId)
+                } as? ReadOutcome.Read
+                )?.value ?: return@launch
+            state.update { it.copy(form = formOf(registration, it.today)) }
+        }
+    }
+
+    private fun formOf(registration: RecurringRegistration, today: BusinessDate?) = ExpenseForm(
+        amountText = fixedPointInputText(
+            registration.amount.minor,
+            numbers.currencyDecimals,
+            numbers.moneySymbols,
+        ),
+        categoryId = registration.categoryId,
+        description = registration.description.orEmpty(),
+        date = registration.occurrence.dueDate.takeIf { it != today },
+        notice = ExpenseFormNotice.RecurringCategoryLeftOut.takeIf {
+            registration.categoryLeftOut
+        },
+        proposeCategory = !registration.categoryLeftOut,
+        accountId = registration.moneyAccountId,
+        recurring = registration.occurrence,
+    )
+
     private fun save() {
         val current = state.value
         val form = current.form ?: return
@@ -397,6 +444,7 @@ class ExpensesViewModel(
             date = form.date,
             // Una cuenta que dejó de ofrecerse mientras tanto no se usa.
             moneyAccountId = form.accountId?.takeIf { id -> current.accounts.any { it.id == id } },
+            recurring = form.recurring,
         )
         viewModelScope.launch {
             val result = register(request)
@@ -436,10 +484,10 @@ class ExpensesViewModel(
                 RegisterExpenseResult.AccountOverflow ->
                     fail(notice = ExpenseFormNotice.SaveFailed(outOfSpace = false))
 
-                // Esta pantalla todavía no confirma gastos recurrentes.
+                // Otra pantalla ya lo resolvió: guardar de nuevo lo contaría dos veces.
                 RegisterExpenseResult.RecurringUnavailable,
                 RegisterExpenseResult.RecurringAlreadyHandled,
-                -> fail(notice = ExpenseFormNotice.SaveFailed(outOfSpace = false))
+                -> fail(notice = ExpenseFormNotice.RecurringHandled)
             }
         }
     }

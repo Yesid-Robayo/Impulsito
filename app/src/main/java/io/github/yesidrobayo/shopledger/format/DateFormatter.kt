@@ -134,6 +134,18 @@ class DateFormatter(val formatLocale: FormatLocale, val uiLocale: Locale) {
     private val weekdayNames: Array<String> =
         DateFormatSymbols(locale).getWeekdays(DateFormatSymbols.STANDALONE, DateFormatSymbols.SHORT)
 
+    /**
+     * El nombre entero de [day], como va dentro de una frase en el idioma de la interfaz: `lunes`
+     * o `Monday`, para `Cada semana, lunes`.
+     */
+    fun weekdayLong(day: DayOfWeek): String {
+        val icuIndex = day.isoDayNumber % DAYS_IN_WEEK + 1
+        return IcuTextNormalizer.normalizeText(weekdayLongNames[icuIndex])
+    }
+
+    private val weekdayLongNames: Array<String> =
+        DateFormatSymbols(locale).getWeekdays(DateFormatSymbols.FORMAT, DateFormatSymbols.WIDE)
+
     private fun dateFormat(skeleton: String): DateFormat =
         DateFormat.getInstanceForSkeleton(skeleton, locale).apply {
             calendar = gregorianUtc(locale)

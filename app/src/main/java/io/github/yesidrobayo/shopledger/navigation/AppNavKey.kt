@@ -125,6 +125,11 @@ sealed interface AppNavKey : NavKey {
         val prefillFromExpenseId: Long? = null,
         /** Abrir con la hoja del gasto nuevo, como desde el atajo `Gasto` de Inicio. */
         val startNew: Boolean = false,
+        /**
+         * Con [startNew], el gasto recurrente cuyo vencimiento actual se registra: la hoja abre
+         * con sus datos puestos.
+         */
+        val recurringExpenseId: Long? = null,
     ) : AppNavKey
 
     /** Números: raíz de su pestaña. */

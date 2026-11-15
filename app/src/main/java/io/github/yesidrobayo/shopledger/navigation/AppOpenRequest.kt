@@ -57,6 +57,16 @@ sealed interface AppOpenRequest {
         }
     }
 
+    /** Los gastos recurrentes, desde un recordatorio de uno por confirmar. */
+    data object Recurring : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.RecurringExpenses
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_OPEN_RECURRING
+        }
+    }
+
     companion object {
         /** Abre el detalle del producto de [EXTRA_PRODUCT_ID]. */
         const val ACTION_OPEN_PRODUCT = "io.github.yesidrobayo.shopledger.action.OPEN_PRODUCT"
@@ -66,6 +76,9 @@ sealed interface AppOpenRequest {
 
         /** Abre la lista de lotes por vencer. */
         const val ACTION_OPEN_EXPIRING = "io.github.yesidrobayo.shopledger.action.OPEN_EXPIRING"
+
+        /** Abre los gastos recurrentes. */
+        const val ACTION_OPEN_RECURRING = "io.github.yesidrobayo.shopledger.action.OPEN_RECURRING"
 
         /** El id del producto que abre [ACTION_OPEN_PRODUCT]. */
         const val EXTRA_PRODUCT_ID = "product_id"
@@ -87,6 +100,8 @@ sealed interface AppOpenRequest {
                     ACTION_OPEN_LOW_STOCK -> LowStock
 
                     ACTION_OPEN_EXPIRING -> Expiring
+
+                    ACTION_OPEN_RECURRING -> Recurring
 
                     else -> null
                 }

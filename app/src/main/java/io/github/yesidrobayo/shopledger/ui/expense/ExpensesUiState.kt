@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.VoidReason
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
+import io.github.yesidrobayo.shopledger.domain.model.expense.RecurringOccurrence
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListDay
@@ -18,6 +19,7 @@ import kotlinx.datetime.YearMonth
  *
  * [month] y [today] faltan hasta conocer el calendario del negocio. [categories] son todas, vigentes
  * y archivadas: un gasto viejo puede estar en una archivada, y el filtro también la ofrece.
+ * [dueRecurring] es cuántos gastos recurrentes esperan confirmación.
  */
 @Immutable
 data class ExpensesUiState(
@@ -35,6 +37,7 @@ data class ExpensesUiState(
     val message: ExpenseMessage? = null,
     val newCategory: NewExpenseCategory? = null,
     val accounts: List<MoneyAccount> = emptyList(),
+    val dueRecurring: Int = 0,
 ) {
     /** Las categorías que se ofrecen en un gasto nuevo: solo las vigentes. */
     val activeCategories: List<ExpenseCategory> get() = categories.filter { !it.isArchived }
@@ -110,7 +113,8 @@ enum class ExpenseSheetStatus {
  * El gasto nuevo, tal como lo escribe la persona. [date] falta mientras sea hoy. [errors] solo se
  * muestran después de intentar guardar, para no marcar en rojo un campo que se está llenando. Con
  * [proposeCategory], sin categoría elegida se propone la de otros gastos; al corregir un gasto cuya
- * categoría se archivó no se propone ninguna: la persona elige.
+ * categoría se archivó no se propone ninguna: la persona elige. Con [recurring], el gasto confirma
+ * ese vencimiento de un gasto recurrente.
  */
 @Immutable
 data class ExpenseForm(
@@ -123,6 +127,7 @@ data class ExpenseForm(
     val notice: ExpenseFormNotice? = null,
     val proposeCategory: Boolean = true,
     val accountId: Long? = null,
+    val recurring: RecurringOccurrence? = null,
 ) {
     val descriptionTooLong: Boolean
         get() = description.trim().codePointLength() > MAX_DESCRIPTION_LENGTH
@@ -170,6 +175,15 @@ sealed interface ExpenseFormNotice {
 
     /** La cuenta elegida ya no puede pagar el gasto: se elige otra o ninguna. */
     data object AccountUnavailable : ExpenseFormNotice
+
+    /** La categoría del gasto recurrente está archivada y no se trajo: hay que elegir otra. */
+    data object RecurringCategoryLeftOut : ExpenseFormNotice
+
+    /**
+     * El vencimiento que se confirmaba ya se registró u omitió, o el gasto recurrente se archivó:
+     * no se guardó nada.
+     */
+    data object RecurringHandled : ExpenseFormNotice
 }
 
 /**
@@ -241,6 +255,9 @@ sealed interface ExpensesAction {
     data object ConfirmCorrect : ExpensesAction
 
     data object NewExpense : ExpensesAction
+
+    /** Abre el gasto nuevo con los datos del vencimiento actual de un gasto recurrente. */
+    data class StartRecurring(val recurringExpenseId: Long) : ExpensesAction
 
     data class AmountChange(val text: String) : ExpensesAction
 

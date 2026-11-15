@@ -229,6 +229,16 @@ private fun MonthHeader(uiState: ExpensesUiState, onAction: (ExpensesAction) -> 
                 today = today,
             )
         }
+        // Los gastos recurrentes que esperan confirmación: la app nunca los registra sola.
+        val due = uiState.dueRecurring
+        if (due > 0) {
+            NoticeCard(
+                text = pluralStringResource(R.plurals.expense_recurring_due, due, due),
+                variant = NoticeVariant.INFO,
+                actionLabel = stringResource(R.string.action_view),
+                onAction = { onAction(ExpensesAction.OpenRecurring) },
+            )
+        }
         StatTile(
             label = stringResource(R.string.expense_month_total),
             amount = uiState.total ?: Money.ZERO.takeIf {
@@ -774,6 +784,16 @@ private fun FormNotice(notice: ExpenseFormNotice, onAction: (ExpensesAction) -> 
 
         ExpenseFormNotice.AccountUnavailable -> NoticeCard(
             text = stringResource(R.string.document_account_unavailable),
+            variant = NoticeVariant.WARNING,
+        )
+
+        ExpenseFormNotice.RecurringCategoryLeftOut -> NoticeCard(
+            text = stringResource(R.string.recurring_category_archived),
+            variant = NoticeVariant.WARNING,
+        )
+
+        ExpenseFormNotice.RecurringHandled -> NoticeCard(
+            text = stringResource(R.string.recurring_handled),
             variant = NoticeVariant.WARNING,
         )
     }

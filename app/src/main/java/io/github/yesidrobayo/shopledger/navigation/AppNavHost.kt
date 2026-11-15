@@ -61,6 +61,7 @@ import io.github.yesidrobayo.shopledger.ui.destination.SlotSetupRoute
 import io.github.yesidrobayo.shopledger.ui.document.FiscalRoute
 import io.github.yesidrobayo.shopledger.ui.encryption.EncryptionRoute
 import io.github.yesidrobayo.shopledger.ui.expense.ExpensesRoute
+import io.github.yesidrobayo.shopledger.ui.expense.RecurringExpensesRoute
 import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
 import io.github.yesidrobayo.shopledger.ui.extra.ExtrasRoute
 import io.github.yesidrobayo.shopledger.ui.extras.CustomFieldsRoute
@@ -318,6 +319,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.PurchaseDetail -> PurchaseDetailRoute(key, navigator)
 
         is AppNavKey.Expenses -> ExpensesRoute(key, navigator)
+
+        AppNavKey.RecurringExpenses -> RecurringExpensesRoute(navigator)
 
         AppNavKey.Categories -> CategoriesRoute(key, navigator)
 

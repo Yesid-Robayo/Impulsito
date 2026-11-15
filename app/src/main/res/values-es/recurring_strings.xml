@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de los gastos recurrentes, copiados de ux-writing.md. -->
+<resources>
+    <string name="recurring_archived_filter">Archivados</string>
+    <string name="recurring_section_due">Por confirmar</string>
+    <string name="recurring_section_scheduled">Programados</string>
+    <!-- recurring_due_since: %1$s = date -->
+    <string name="recurring_due_since">Desde el %1$s</string>
+    <string name="recurring_register_action">Registrar</string>
+    <string name="recurring_skip_action">Omitir</string>
+    <string name="recurring_new_action">Nuevo gasto recurrente</string>
+    <string name="recurring_new_title">Nuevo gasto recurrente</string>
+    <string name="recurring_save_action">Guardar gasto recurrente</string>
+    <!-- recurring_every_weekly: %1$s = weekday -->
+    <string name="recurring_every_weekly">Cada semana, %1$s</string>
+    <!-- recurring_every_monthly: %1$d = day -->
+    <string name="recurring_every_monthly">Cada mes, día %1$d</string>
+    <!-- recurring_every_yearly: %1$s = date -->
+    <string name="recurring_every_yearly">Cada año, %1$s</string>
+    <!-- recurring_next: %1$s = date -->
+    <string name="recurring_next">Próximo: %1$s</string>
+    <string name="recurring_field_amount">Valor</string>
+    <string name="recurring_field_category">Categoría</string>
+    <string name="recurring_field_description">Descripción</string>
+    <string name="recurring_field_repeats">Se repite</string>
+    <string name="recurring_recurrence_weekly">Cada semana</string>
+    <string name="recurring_recurrence_monthly">Cada mes</string>
+    <string name="recurring_recurrence_yearly">Cada año</string>
+    <string name="recurring_field_weekday">Día de la semana</string>
+    <string name="recurring_field_day_of_month">Día del mes</string>
+    <string name="recurring_field_next_date">Próxima fecha</string>
+    <string name="recurring_field_account">Cuenta de dinero</string>
+    <string name="recurring_field_reminder">Recordatorio</string>
+    <!-- recurring_help: %1$s = app -->
+    <string name="recurring_help">%1$s propone este gasto en su fecha. Solo se registra al confirmarlo.</string>
+    <string name="recurring_month_end_help">Si el mes no tiene ese día, se usa el último.</string>
+    <string name="recurring_empty_title">Sin gastos recurrentes</string>
+    <string name="recurring_empty_body">Sirve para no olvidar el alquiler, los servicios y otros pagos que se repiten.</string>
+    <string name="recurring_error_value">Escribir un valor mayor que 0</string>
+    <string name="recurring_error_day">Elegir un día válido</string>
+    <string name="recurring_category_archived">La categoría original está archivada. Elegir otra.</string>
+    <string name="recurring_skip_confirm_title">¿Omitir este gasto?</string>
+    <!-- recurring_skip_confirm_body: %1$s = date -->
+    <string name="recurring_skip_confirm_body">No se registra nada y la fecha pasa al %1$s.</string>
+    <!-- recurring_archive_confirm_title: %1$s = expense -->
+    <string name="recurring_archive_confirm_title">¿Archivar %1$s?</string>
+    <string name="recurring_archive_confirm_body">Deja de proponerse. Los gastos ya registrados no cambian.</string>
+    <string name="notif_channel_recurring">Gastos recurrentes</string>
+    <string name="notif_recurring_title">Gasto por confirmar</string>
+    <!-- notif_recurring_body: %1$s = expense, %2$s = app -->
+    <string name="notif_recurring_body">%1$s: pendiente de confirmar en %2$s.</string>
+    <string name="notif_recurring_public">Hay un gasto por confirmar</string>
+    <string name="hub_tool_recurring">Gastos recurrentes</string>
+    <string name="hub_tool_recurring_desc">Pagos que se repiten, para no olvidarlos</string>
+    <string name="recurring_edit_title">Editar gasto recurrente</string>
+    <!-- recurring_schedule_line: %1$s = every, %2$s = next -->
+    <string name="recurring_schedule_line">%1$s · %2$s</string>
+    <string name="recurring_archived_empty">Sin gastos recurrentes archivados</string>
+    <string name="recurring_saved">Gasto recurrente guardado</string>
+    <!-- recurring_skipped: %1$s = date -->
+    <string name="recurring_skipped">Omitido. Próximo: %1$s</string>
+    <string name="recurring_archived_done">Gasto recurrente archivado</string>
+    <string name="recurring_reactivated">Gasto recurrente reactivado</string>
+    <string name="recurring_handled_elsewhere">Ese gasto ya se resolvió en otra pantalla. Nada cambió.</string>
+    <string name="recurring_handled">Ese vencimiento ya se registró u omitió, o el gasto recurrente se archivó. No se guardó nada.</string>
+    <plurals name="expense_recurring_due">
+        <item quantity="one">%1$d gasto recurrente por confirmar</item>
+        <item quantity="many">%1$d de gastos recurrentes por confirmar</item>
+        <item quantity="other">%1$d gastos recurrentes por confirmar</item>
+    </plurals>
+    <plurals name="notif_recurring_many_title">
+        <item quantity="one">%1$d gasto por confirmar</item>
+        <item quantity="many">%1$d de gastos por confirmar</item>
+        <item quantity="other">%1$d gastos por confirmar</item>
+    </plurals>
+</resources>

@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryDeta
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
+import io.github.yesidrobayo.shopledger.domain.model.expense.RecurringOccurrence
 import io.github.yesidrobayo.shopledger.domain.model.money.AccountCurrency
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
@@ -18,6 +19,7 @@ import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrection
+import io.github.yesidrobayo.shopledger.domain.rule.expense.RecurringRegistration
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListDay
@@ -140,6 +142,8 @@ class ExpensesViewModelTest {
     private val newCategories = mutableListOf<String>()
     private var categoryResult: SaveExpenseCategoryResult = SaveExpenseCategoryResult.Saved(30)
     private var correction: ExpenseCorrection? = null
+    private var registration: RecurringRegistration? = null
+    private val dueRecurring = MutableStateFlow(0)
 
     private val payingAccounts = MutableStateFlow<List<MoneyAccount>>(emptyList())
 
@@ -176,10 +180,82 @@ class ExpensesViewModelTest {
             },
             loadCorrection = { correction },
             payingAccounts = payingAccounts,
+            loadRecurring = { registration },
+            dueRecurring = dueRecurring,
         )
         advanceUntilIdle()
         return model
     }
+
+    @Test
+    fun `registering a recurring expense opens the sheet with its data and confirms it`() =
+        runTest(dispatcher) {
+            payingAccounts.value = listOf(account(3))
+            val occurrence = RecurringOccurrence(5, BusinessDate(LocalDate(2026, 11, 1)))
+            registration = RecurringRegistration(
+                occurrence = occurrence,
+                amount = Money(80_000),
+                categoryId = rent.id,
+                description = "Luz inventada",
+                moneyAccountId = 3,
+                categoryLeftOut = false,
+            )
+            val model = viewModel()
+
+            model.onAction(ExpensesAction.StartRecurring(5))
+            advanceUntilIdle()
+            val form = requireNotNull(model.uiState.value.form)
+            assertEquals("800", form.amountText)
+            assertEquals(rent.id, form.categoryId)
+            assertEquals(BusinessDate(LocalDate(2026, 11, 1)), form.date)
+            assertEquals(occurrence, form.recurring)
+            model.onAction(ExpensesAction.Save)
+            advanceUntilIdle()
+
+            val request = requests.single()
+            assertEquals(occurrence, request.recurring)
+            assertEquals(3L, request.moneyAccountId)
+        }
+
+    @Test
+    fun `a recurring expense already handled elsewhere keeps the sheet with its notice`() =
+        runTest(dispatcher) {
+            registration = RecurringRegistration(
+                occurrence = RecurringOccurrence(5, today),
+                amount = Money(80_000),
+                categoryId = null,
+                description = null,
+                moneyAccountId = null,
+                categoryLeftOut = true,
+            )
+            val model = viewModel()
+            model.onAction(ExpensesAction.StartRecurring(5))
+            advanceUntilIdle()
+            val opened = requireNotNull(model.uiState.value.form)
+            assertNull(opened.categoryId)
+            assertNull(opened.date)
+            assertEquals(ExpenseFormNotice.RecurringCategoryLeftOut, opened.notice)
+
+            model.onAction(ExpensesAction.FormCategoryChange(other.id))
+            registerResult = RegisterExpenseResult.RecurringAlreadyHandled
+            model.onAction(ExpensesAction.Save)
+            advanceUntilIdle()
+
+            assertEquals(ExpenseFormNotice.RecurringHandled, model.uiState.value.form?.notice)
+        }
+
+    @Test
+    fun `a recurring expense that is gone opens nothing, and the due count follows`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            model.onAction(ExpensesAction.StartRecurring(5))
+            advanceUntilIdle()
+            assertNull(model.uiState.value.form)
+
+            dueRecurring.value = 2
+            advanceUntilIdle()
+            assertEquals(2, model.uiState.value.dueRecurring)
+        }
 
     @Test
     fun `without accounts in use the expense asks for none and saves without one`() =

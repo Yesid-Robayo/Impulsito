@@ -12,6 +12,8 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.document.AttachmentTarget
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ObserveExpenseMonthUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.expense.ObserveRecurringExpensesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.expense.PrepareRecurringRegistrationUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.SaveExpenseCategoryUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.VoidExpenseUseCase
@@ -34,6 +36,7 @@ import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.media.ReceiptPhotosRoute
 import io.github.yesidrobayo.shopledger.ui.sale.RecordsTab
+import kotlinx.coroutines.flow.map
 
 /**
  * Los gastos en la navegación: arma su ViewModel con los casos de uso y resuelve adónde se va.
@@ -41,9 +44,10 @@ import io.github.yesidrobayo.shopledger.ui.sale.RecordsTab
  * Como segmento de Registros, con [onSegment], `Ventas` y `Compras` cambian el contenido ahí
  * mismo, sin abrir otra pantalla. Como destino propio, como desde el atajo `Gasto` de Inicio, va
  * sin segmentos y atrás vuelve; desde ese atajo abre con la hoja del gasto nuevo, y guardar
- * vuelve a Inicio. Confirmar la moneda abre la región y, al volver, la hoja sigue con lo
- * escrito. Guardar o anular deja su aviso en la navegación. Si la base va al rescate, la pantalla
- * no lee nada.
+ * vuelve a Inicio. Desde `Registrar` de un gasto recurrente abre con sus datos puestos, y guardar
+ * vuelve a los gastos recurrentes. Confirmar la moneda abre la región y, al volver, la hoja sigue
+ * con lo escrito. Guardar o anular deja su aviso en la navegación. Si la base va al rescate, la
+ * pantalla no lee nada.
  *
  * @param onSegment elige otro segmento de Registros, o `null` si los gastos van como destino
  *   propio.
@@ -69,6 +73,7 @@ fun ExpensesRoute(
                 categories = ports.expenseCategories,
                 clock = clock,
                 money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
+                recurring = ports.recurringExpenses,
             )
             val void = VoidExpenseUseCase(
                 transactions = ports.transactions,
@@ -81,6 +86,15 @@ fun ExpensesRoute(
                 ObservePayingAccountsUseCase(ports.moduleUsage, ports.settings, ports.moneyAccounts)
             val saveCategory =
                 SaveExpenseCategoryUseCase(ports.transactions, ports.expenseCategories, clock)
+            val recurring = ObserveRecurringExpensesUseCase(
+                ports.recurringExpenses,
+                BusinessCalendarSource(ports.settings),
+                clock,
+            )
+            val prepareRecurring = PrepareRecurringRegistrationUseCase(
+                ports.recurringExpenses,
+                ports.expenseCategories,
+            )
             ExpensesViewModel(
                 observeMonth = { month, categoryId -> observe(month, categoryId) },
                 calendar = BusinessCalendarSource(ports.settings).observe(),
@@ -99,6 +113,8 @@ fun ExpensesRoute(
                     }
                 },
                 payingAccounts = payingAccounts(),
+                loadRecurring = { prepareRecurring(it) },
+                dueRecurring = recurring().map { it.due.size },
             )
         }
     when (model) {
@@ -148,7 +164,14 @@ fun ExpensesRoute(
             LaunchedEffect(Unit) {
                 if (key.startNew && !opened) {
                     opened = true
-                    viewModel.onAction(ExpensesAction.NewExpense)
+                    val recurringId = key.recurringExpenseId
+                    viewModel.onAction(
+                        if (recurringId == null) {
+                            ExpensesAction.NewExpense
+                        } else {
+                            ExpensesAction.StartRecurring(recurringId)
+                        },
+                    )
                 }
             }
             ExpensesScreen(
@@ -182,6 +205,7 @@ fun ExpensesRoute(
                         ExpensesAction.ConfirmVoid,
                         ExpensesAction.CloseDetail,
                         ExpensesAction.NewExpense,
+                        is ExpensesAction.StartRecurring,
                         is ExpensesAction.AmountChange,
                         is ExpensesAction.FormCategoryChange,
                         is ExpensesAction.DescriptionChange,
