@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
 import io.github.yesidrobayo.shopledger.data.local.catalog.MediaAssetDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAnalysisReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomAuditLogRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashDenominationRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashFlowSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashSessionRepository
@@ -89,6 +90,7 @@ import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.data.transaction.RoomTransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.AnalysisReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
+import io.github.yesidrobayo.shopledger.domain.port.AuditLogRepository
 import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
 import io.github.yesidrobayo.shopledger.domain.port.CashDenominationRepository
 import io.github.yesidrobayo.shopledger.domain.port.CashFlowSource
@@ -480,6 +482,9 @@ class DataPorts internal constructor(
 
     /** La base leída para exportar a CSV, en una sola transacción de lectura. */
     internal val csvRows: CsvRowSource = RoomCsvRowSource(database)
+
+    /** El registro de auditoría para su pantalla. Solo lee. */
+    val auditLog: AuditLogRepository = RoomAuditLogRepository(auditEvents)
 
     /**
      * Cierra la base para que el arranque siguiente la reemplace: pasa el `-wal` al archivo y

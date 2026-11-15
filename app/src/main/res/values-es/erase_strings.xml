@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Registro de auditoría: la pantalla de solo lectura y el nombre de cada evento. -->
+    <string name="audit_intro">Aquí queda qué pasó y cuándo, sin montos ni nombres. No indica quién lo hizo.</string>
+    <string name="audit_filter_all">Todos</string>
+    <string name="audit_filter_failures">Solo fallos</string>
+    <string name="audit_retention_note">Se conservan los últimos %1$s eventos.</string>
+    <string name="audit_empty_title">Sin eventos todavía</string>
+    <string name="audit_empty_body">Aquí aparecerán exportaciones, restauraciones y cambios de seguridad.</string>
+    <string name="audit_empty_failures">Sin fallos registrados</string>
+    <string name="audit_event_export_csv">Exportación a CSV</string>
+    <string name="audit_event_export_full_copy">Copia completa exportada</string>
+    <string name="audit_event_restore">Restauración</string>
+    <string name="audit_event_restore_rejected">Restauración rechazada</string>
+    <string name="audit_event_destination_disconnected">Nube desconectada</string>
+    <string name="audit_event_destination_changed">Cambio de nube</string>
+    <string name="audit_event_app_lock_changed">Bloqueo de la app cambiado</string>
+    <string name="audit_event_encryption_changed">Cifrado de copias cambiado</string>
+    <string name="audit_event_recovery_code_viewed">Código de recuperación visto</string>
+    <string name="audit_event_delete_my_data">Borrar mis datos</string>
+    <string name="audit_event_auth_failed">Autenticación fallida</string>
+    <string name="audit_event_currency_corrected">Moneda corregida</string>
+    <string name="audit_result_success">Correcto</string>
+    <string name="audit_result_failure">Fallo</string>
+    <!-- BORRAR-MIS-DATOS -->
+</resources>

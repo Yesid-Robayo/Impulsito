@@ -31,6 +31,10 @@ internal interface AuditEventDao {
     @Query("SELECT * FROM audit_events ORDER BY id DESC LIMIT :limit")
     fun observeLatest(limit: Int): Flow<List<AuditEventEntity>>
 
+    /** Los [limit] eventos más nuevos que terminaron en fallo, primero el último. */
+    @Query("SELECT * FROM audit_events WHERE result = 'FAILURE' ORDER BY id DESC LIMIT :limit")
+    fun observeLatestFailures(limit: Int): Flow<List<AuditEventEntity>>
+
     /** Agrega el evento y devuelve su id. */
     @Insert
     suspend fun insert(event: AuditEventEntity): Long

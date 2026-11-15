@@ -46,6 +46,7 @@ import io.github.yesidrobayo.shopledger.ShopLedgerApp
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.safety.PolicyConsentUseCase
+import io.github.yesidrobayo.shopledger.ui.audit.AuditLogRoute
 import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
 import io.github.yesidrobayo.shopledger.ui.cash.CashRegisterRoute
 import io.github.yesidrobayo.shopledger.ui.catalog.CatalogRoute
@@ -515,6 +516,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.CloudAccountSecurity -> CloudAccountRoute(navigator)
 
         is AppNavKey.Help -> HelpRoute(key, navigator)
+
+        AppNavKey.AuditLog -> AuditLogRoute(navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }

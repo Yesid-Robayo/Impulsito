@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogLevel
 import io.github.yesidrobayo.shopledger.domain.port.LogLine
 import java.io.IOException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -86,6 +87,25 @@ internal class RoomAuditRecorderTest : CatalogDatabaseTest() {
         assertEquals(0L, count("SELECT COUNT(*) FROM audit_events"))
         assertEquals(1, lines.size)
         assertFalse(lines.single().contains("secreta"))
+    }
+
+    @Test
+    fun theLogReadsNewestFirstAndCanShowOnlyTheFailures() = runBlocking {
+        val recorder = recorder()
+        recorder.record(AuditEventType.EXPORT_CSV, AuditResult.SUCCESS)
+        recorder.record(AuditEventType.AUTH_FAILED, AuditResult.FAILURE)
+        recorder.record(AuditEventType.RESTORE, AuditResult.SUCCESS)
+        val log = RoomAuditLogRepository(database.auditEventDao())
+
+        val all = log.observeLatest(limit = 2, failuresOnly = false).first()
+        val failures = log.observeLatest(limit = 10, failuresOnly = true).first()
+
+        assertEquals(
+            listOf(AuditEventType.RESTORE, AuditEventType.AUTH_FAILED),
+            all.map { it.type },
+        )
+        assertEquals(listOf(AuditEventType.AUTH_FAILED), failures.map { it.type })
+        assertEquals(AuditResult.FAILURE, failures.single().result)
     }
 
     @Test

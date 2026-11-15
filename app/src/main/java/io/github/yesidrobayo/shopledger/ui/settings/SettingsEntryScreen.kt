@@ -227,6 +227,11 @@ fun SettingsEntryScreen(
                             action =
                                 SettingsRowAction.Navigation { onOpen(AppNavKey.BackupEncryption) },
                         )
+                        // `Registro de auditoría` cierra `Seguridad`.
+                        SettingsRow(
+                            title = stringResource(R.string.audit_title),
+                            action = SettingsRowAction.Navigation { onOpen(AppNavKey.AuditLog) },
+                        )
                     }
                     // Cómo proteger la cuenta de la nube de la que dependen las copias.
                     SettingsRow(

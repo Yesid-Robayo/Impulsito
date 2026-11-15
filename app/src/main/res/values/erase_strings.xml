@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Registro de auditoría: la pantalla de solo lectura y el nombre de cada evento. -->
+    <string name="audit_intro">This shows what happened and when, without amounts or names. It does not show who did it.</string>
+    <string name="audit_filter_all">All</string>
+    <string name="audit_filter_failures">Failures only</string>
+    <string name="audit_retention_note">The last %1$s events are kept.</string>
+    <string name="audit_empty_title">No events yet</string>
+    <string name="audit_empty_body">Exports, restores and security changes will appear here.</string>
+    <string name="audit_empty_failures">No failures recorded</string>
+    <string name="audit_event_export_csv">CSV export</string>
+    <string name="audit_event_export_full_copy">Full backup exported</string>
+    <string name="audit_event_restore">Restore</string>
+    <string name="audit_event_restore_rejected">Restore rejected</string>
+    <string name="audit_event_destination_disconnected">Cloud disconnected</string>
+    <string name="audit_event_destination_changed">Cloud changed</string>
+    <string name="audit_event_app_lock_changed">App lock changed</string>
+    <string name="audit_event_encryption_changed">Backup encryption changed</string>
+    <string name="audit_event_recovery_code_viewed">Recovery code viewed</string>
+    <string name="audit_event_delete_my_data">Delete my data</string>
+    <string name="audit_event_auth_failed">Authentication failed</string>
+    <string name="audit_event_currency_corrected">Currency corrected</string>
+    <string name="audit_result_success">Success</string>
+    <string name="audit_result_failure">Failure</string>
+    <!-- BORRAR-MIS-DATOS -->
+</resources>
