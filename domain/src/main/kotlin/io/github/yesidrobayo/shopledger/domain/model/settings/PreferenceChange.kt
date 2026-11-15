@@ -21,4 +21,7 @@ sealed interface PreferenceChange {
 
     /** Oculta o muestra en pantalla las cifras sensibles del negocio. */
     data class DiscreetMode(val enabled: Boolean) : PreferenceChange
+
+    /** Ofrece o quita `Buscar actualización` y su recordatorio. Apagada, no se consulta nada. */
+    data class UpdateCheck(val enabled: Boolean) : PreferenceChange
 }

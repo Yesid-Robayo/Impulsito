@@ -28,4 +28,32 @@
     <string name="verify_error_read">The file could not be read.</string>
     <!-- El nombre del algoritmo, delante de la huella del archivo: no se traduce. -->
     <string name="verify_sha256_label" translatable="false">SHA-256</string>
+    <!-- La búsqueda de versión, solo al tocar el botón. Textos de la guía de redacción. -->
+    <string name="update_search_action">Check for update</string>
+    <!-- %1$s es la fecha de la última búsqueda. -->
+    <string name="update_last_search">Last check: %1$s</string>
+    <string name="update_allow_search">Allow update checks</string>
+    <string name="update_allow_search_help">It only checks when the button is tapped. No data is sent.</string>
+    <string name="update_latest">This is the latest version</string>
+    <!-- %1$s es la versión publicada. -->
+    <string name="update_new">A new version is available: %1$s</string>
+    <!-- %1$s es la fecha en que se publicó. -->
+    <string name="update_new_date">Published on %1$s</string>
+    <string name="update_view_how_action">See how to update</string>
+    <string name="update_important_title">Important update</string>
+    <string name="update_important_body">An important fix is available. Nothing is blocked: the app and the data keep working.</string>
+    <string name="update_bad_signature">The version notice failed the signature check and was ignored.</string>
+    <string name="update_searching">Checking</string>
+    <string name="update_empty">No checks yet</string>
+    <string name="update_error_read">The version notice could not be read.</string>
+    <!-- %1$s es el nombre de la app. -->
+    <string name="update_search_off">Checking is off. %1$s does not connect for this.</string>
+    <string name="state_no_connection">No connection. Try again</string>
+    <!-- El recordatorio de cada 60 días, sin red. %1$s es el nombre de la app. -->
+    <string name="notif_update_reminder_title">Check for a new version</string>
+    <string name="notif_update_reminder_body">Open Updates in %1$s to check.</string>
+    <!-- La dirección https de version.json en las páginas públicas. Vacía hasta publicarlas: mientras tanto, la búsqueda dice que no se pudo leer el aviso, sin bloquear nada. -->
+    <string name="update_manifest_url" translatable="false"></string>
+    <!-- La clave pública del aviso de versión, en Base64, con la forma X.509 de una clave de curva P-256. La llena a mano la tarea de la clave del manifiesto: sin ella, la búsqueda dice que no se pudo leer el aviso, sin bloquear nada. -->
+    <string name="update_manifest_public_key" translatable="false"></string>
 </resources>

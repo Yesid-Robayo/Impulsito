@@ -273,6 +273,61 @@ class DailyMaintenanceTest {
         assertTrue(shown.none { it == BackupNotification.RecoveryCheckDue })
     }
 
+    @Test
+    fun theUpdateReminderGoesOutWhenDueAndOnlyTheOneShownIsMarked() = runBlocking {
+        var due = true
+        var throws = false
+        val asked = mutableListOf<Instant>()
+        val marked = mutableListOf<Instant>()
+        val withReminder =
+            DailyMaintenance(
+                clock = Clock { now },
+                log = log,
+                mutex = mutex,
+                restorePending = { false },
+                open = { access },
+                reconcile = { },
+                notifier = { notifier },
+                cleanUp = { },
+                updateReminderDue = { at ->
+                    asked += at
+                    if (throws) throw IOException("ajustes")
+                    due
+                },
+                markUpdateReminder = { at -> marked += at },
+            )
+
+        withReminder.run()
+        assertEquals(listOf<BackupNotification>(BackupNotification.UpdateCheckDue), shown)
+        assertEquals(listOf(now), asked)
+        assertEquals(listOf(now), marked)
+
+        // Sin tocar, no sale ni se anota.
+        due = false
+        withReminder.run()
+        assertEquals(1, shown.size)
+        assertEquals(1, marked.size)
+
+        // Sin permiso de avisos no sale, y no se anota: mañana se intenta de nuevo.
+        due = true
+        notificationsAllowed = false
+        withReminder.run()
+        assertEquals(1, shown.size)
+        assertEquals(1, marked.size)
+        assertTrue(log.lines.any { "no puede salir" in it })
+
+        // Unos ajustes que no se leen no detienen el mantenimiento ni dejan su mensaje.
+        throws = true
+        assertEquals(MaintenanceRun.DONE, withReminder.run())
+        assertTrue(log.lines.none { "ajustes" in it })
+    }
+
+    @Test
+    fun withoutTheUpdateReminderWiredNothingIsReminded() = runBlocking {
+        maintenance.run()
+        assertTrue(shown.none { it == BackupNotification.UpdateCheckDue })
+    }
+
     private class FakeMaintenanceDatabase : MaintenanceDatabase {
         var invariants: ActiveInvariants = ActiveInvariants.Checked(repairCases = 0)
         var checks = 0

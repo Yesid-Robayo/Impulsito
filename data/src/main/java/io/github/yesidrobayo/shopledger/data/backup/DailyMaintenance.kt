@@ -47,6 +47,8 @@ import kotlinx.coroutines.withContext
  * 6. **Pide la prueba del código** con el cifrado activo, cuando toca: a los 7 y 30 días de activar
  *    o cambiar el código, y luego cada 90 desde la última prueba correcta. Sale una vez en cada
  *    mantenimiento mientras toque, sin anotar nada, y nunca bloquea.
+ * 7. **Recuerda buscar una versión nueva** cada 60 días, sin red y solo con la búsqueda encendida.
+ *    Solo cuenta el que salió: si el sistema no lo deja salir, se intenta al día siguiente.
  *
  * Los dos primeros pasos van bajo el cerrojo del respaldo, sin esperarlo: con una copia en curso,
  * esa copia ya corre la misma revisión sobre lo que sube, y con una restauración en curso la base y
@@ -63,6 +65,8 @@ import kotlinx.coroutines.withContext
  * @param notifier lanza las notificaciones del respaldo.
  * @param cleanUp borra lo local vencido en el instante que recibe.
  * @param recoveryCheckDue si toca la prueba periódica del código. Solo lee `recovery/state.json`.
+ * @param updateReminderDue si en ese instante toca recordar la búsqueda de versión. No usa la red.
+ * @param markUpdateReminder anota que el recordatorio salió en ese instante.
  */
 internal class DailyMaintenance(
     private val clock: Clock,
@@ -74,6 +78,8 @@ internal class DailyMaintenance(
     private val notifier: () -> BackupNotifier,
     private val cleanUp: suspend (Instant) -> Unit,
     private val recoveryCheckDue: suspend () -> Boolean = { false },
+    private val updateReminderDue: suspend (Instant) -> Boolean = { false },
+    private val markUpdateReminder: suspend (Instant) -> Unit = {},
 ) {
     /** Corre el mantenimiento de hoy. */
     suspend fun run(): MaintenanceRun {
@@ -108,6 +114,9 @@ internal class DailyMaintenance(
         }
         log.contain(MaintenanceEvent.NOTICE_FAILED) {
             if (recoveryCheckDue()) noticeRecoveryCheck()
+        }
+        log.contain(MaintenanceEvent.NOTICE_FAILED) {
+            if (updateReminderDue(now)) noticeUpdateCheck(now)
         }
         return MaintenanceRun.DONE
     }
@@ -152,6 +161,16 @@ internal class DailyMaintenance(
         val provider = database.providerLabel() ?: return
         if (notifier().show(BackupNotification.CheckDue(provider))) {
             log.info(MaintenanceEvent.CHECK_DUE_NOTIFIED)
+        } else {
+            log.info(MaintenanceEvent.NOTIFICATION_BLOCKED)
+        }
+    }
+
+    /** El recordatorio de buscar una versión nueva. Solo se anota el que salió. */
+    private suspend fun noticeUpdateCheck(now: Instant) {
+        if (notifier().show(BackupNotification.UpdateCheckDue)) {
+            markUpdateReminder(now)
+            log.info(MaintenanceEvent.UPDATE_REMINDER_NOTIFIED)
         } else {
             log.info(MaintenanceEvent.NOTIFICATION_BLOCKED)
         }
@@ -287,6 +306,7 @@ internal enum class MaintenanceEvent(override val text: String) : LogEvent {
     STALE_NOTIFIED("Notificación de un día sin copia lanzada"),
     CHECK_DUE_NOTIFIED("Notificación de revisar la copia en la nube lanzada"),
     RECOVERY_CHECK_NOTIFIED("Notificación de comprobar el código de recuperación lanzada"),
+    UPDATE_REMINDER_NOTIFIED("Recordatorio de buscar una versión nueva lanzado"),
     NOTIFICATION_BLOCKED("La notificación del respaldo no puede salir"),
     NOTICE_FAILED("Falla no prevista al avisar un día sin copia"),
     WORKER_FAILED("Falla no prevista del mantenimiento diario"),

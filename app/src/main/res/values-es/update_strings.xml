@@ -23,4 +23,23 @@
     <string name="verify_mismatch_body">Su firma no es la de %1$s. No desinstalar %1$s: desinstalar borra lo que no tenga copia.</string>
     <string name="verify_not_apk">Este archivo no es un APK.</string>
     <string name="verify_error_read">No se pudo leer el archivo.</string>
+    <!-- La búsqueda de versión, solo al tocar el botón. Textos de la guía de redacción. -->
+    <string name="update_search_action">Buscar actualización</string>
+    <string name="update_last_search">Última búsqueda: %1$s</string>
+    <string name="update_allow_search">Permitir buscar actualizaciones</string>
+    <string name="update_allow_search_help">Solo se consulta al tocar el botón. No se envía ningún dato.</string>
+    <string name="update_latest">Esta es la versión más reciente</string>
+    <string name="update_new">Hay una versión nueva: %1$s</string>
+    <string name="update_new_date">Publicada el %1$s</string>
+    <string name="update_view_how_action">Ver cómo actualizar</string>
+    <string name="update_important_title">Actualización importante</string>
+    <string name="update_important_body">Hay una corrección importante disponible. Nada se bloquea: la app y los datos siguen funcionando.</string>
+    <string name="update_bad_signature">El aviso de versión no pasó la comprobación de firma y se ignoró.</string>
+    <string name="update_searching">Buscando</string>
+    <string name="update_empty">Sin búsquedas todavía</string>
+    <string name="update_error_read">No se pudo leer el aviso de versión.</string>
+    <string name="update_search_off">Búsqueda apagada. %1$s no se conecta para esto.</string>
+    <string name="state_no_connection">Sin conexión. Se puede reintentar</string>
+    <string name="notif_update_reminder_title">Revisar si hay versión nueva</string>
+    <string name="notif_update_reminder_body">Abrir Actualizaciones en %1$s para buscarla.</string>
 </resources>

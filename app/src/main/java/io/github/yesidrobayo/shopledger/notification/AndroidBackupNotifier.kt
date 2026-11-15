@@ -48,7 +48,7 @@ class AndroidBackupNotifier(
                 .Builder(app, NotificationChannels.BACKUP_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(context.getString(content.title, *content.titleArgs))
-                .setContentText(context.getString(content.body))
+                .setContentText(bodyText(context, content))
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 // No lleva datos del negocio: se puede ver entera con el teléfono bloqueado.
@@ -64,6 +64,14 @@ class AndroidBackupNotifier(
             false
         }
     }
+
+    /** El texto, con el nombre de la app si lo pide. */
+    private fun bodyText(context: Context, content: BackupNotificationContent): String =
+        if (content.bodyNamesApp) {
+            context.getString(content.body, context.getString(R.string.app_name))
+        } else {
+            context.getString(content.body)
+        }
 
     // El permiso se comprueba antes, con areNotificationsEnabled, y su rechazo se atrapa al llamar.
     @SuppressLint("MissingPermission", "NotificationPermission")
@@ -103,12 +111,14 @@ class AndroidBackupNotifier(
  * El número fijo y los textos de una notificación.
  *
  * @property titleArgs los valores del título, como el nombre de la nube, que no se traducen.
+ * @property bodyNamesApp si el texto lleva el nombre de la app.
  */
 private class BackupNotificationContent(
     val id: Int,
     @param:StringRes val title: Int,
     @param:StringRes val body: Int,
     val titleArgs: Array<Any> = emptyArray(),
+    val bodyNamesApp: Boolean = false,
 )
 
 /** Los textos de cada notificación. Una nueva sin textos no compila. */
@@ -126,6 +136,15 @@ private fun BackupNotification.content(): BackupNotificationContent = when (this
             id = 3,
             title = R.string.notif_recovery_check_title,
             body = R.string.notif_recovery_check_body,
+        )
+
+    // Sin red ni resultado: solo pide abrir la pantalla de actualizaciones.
+    BackupNotification.UpdateCheckDue ->
+        BackupNotificationContent(
+            id = 4,
+            title = R.string.notif_update_reminder_title,
+            body = R.string.notif_update_reminder_body,
+            bodyNamesApp = true,
         )
 
     is BackupNotification.CheckDue ->

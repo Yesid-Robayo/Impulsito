@@ -39,6 +39,12 @@ sealed interface BackupNotification {
     data object RecoveryCheckDue : BackupNotification
 
     /**
+     * Pasaron 60 días sin buscar una versión nueva, con la búsqueda encendida. Sale sin red: solo
+     * pide abrir la pantalla de actualizaciones, y no dice si hay una.
+     */
+    data object UpdateCheckDue : BackupNotification
+
+    /**
      * Con la nube del teléfono, toca revisar en esa nube que la copia aparezca. Sale con cualquier
      * estado, también con un fallo: entregada no es subida, y solo la persona puede comprobarlo.
      *

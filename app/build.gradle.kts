@@ -34,6 +34,21 @@ if (keystorePassword != null && configurationCacheRequested) {
     throw GradleException("Para firmar release, compila con --no-configuration-cache.")
 }
 
+// La fecha del último commit, en milisegundos UTC: la búsqueda de versión ignora un aviso publicado antes de ella. Sale de
+// Git y no del reloj, para que compilar dos veces el mismo código dé el mismo APK. Sin Git, vale 0 y esa comparación no
+// descarta nada.
+val sourceDateMillis: Long =
+    runCatching {
+        providers
+            .exec {
+                commandLine("git", "log", "-1", "--format=%ct")
+                isIgnoreExitValue = true
+            }.standardOutput.asText
+            .get()
+            .trim()
+            .toLong() * 1000L
+    }.getOrDefault(0L)
+
 android {
     namespace = "io.github.yesidrobayo.shopledger"
     compileSdk {
@@ -48,6 +63,9 @@ android {
         versionName = "1.0.0-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // La fecha de compilación con que la búsqueda de versión descarta un aviso viejo reenviado.
+        buildConfigField("long", "SOURCE_DATE_MILLIS", "${sourceDateMillis}L")
     }
 
     androidResources {
@@ -120,6 +138,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // Solo para la fecha de compilación de la búsqueda de versión.
+        buildConfig = true
     }
     testOptions {
         // Las pruebas de captura: cada vista previa marcada con @PreviewTest en la carpeta

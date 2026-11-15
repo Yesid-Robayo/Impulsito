@@ -74,6 +74,7 @@ class UsageSettingsViewModelTest {
                     is PreferenceChange.AppLockDelay,
                     is PreferenceChange.MeteredBackup,
                     is PreferenceChange.DiscreetMode,
+                    is PreferenceChange.UpdateCheck,
                     -> preferences.value
                 }
             }

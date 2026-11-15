@@ -284,6 +284,10 @@ class FakeAppSettingsRepository(initial: AppSettings) : AppSettingsRepository {
             is PreferenceChange.DiscreetMode -> preferences.copy(
                 discreetModeEnabled = change.enabled,
             )
+
+            is PreferenceChange.UpdateCheck -> preferences.copy(
+                updateCheckEnabled = change.enabled,
+            )
         }
         settings.value = current.copy(updatedAt = updatedAt, preferences = changed)
     }

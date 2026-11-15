@@ -140,6 +140,10 @@ import io.github.yesidrobayo.shopledger.data.safety.CloudAccountChecklistFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
+import io.github.yesidrobayo.shopledger.data.update.InstalledPackage
+import io.github.yesidrobayo.shopledger.data.update.UpdateCheckMarks
+import io.github.yesidrobayo.shopledger.data.update.VersionManifestClient
+import io.github.yesidrobayo.shopledger.data.update.VersionManifestSource
 import io.github.yesidrobayo.shopledger.data.work.DataWorkerFactory
 import io.github.yesidrobayo.shopledger.data.work.DeferredWorkerFactory
 import io.github.yesidrobayo.shopledger.data.work.WorkManagerBackupQueue
@@ -157,6 +161,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoExport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.erase.ErasePhase
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
+import io.github.yesidrobayo.shopledger.domain.model.update.UpdateCheckOutcome
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.AuditRecorder
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
@@ -195,6 +200,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.backup.HeadProbeRule
 import io.github.yesidrobayo.shopledger.domain.rule.backup.UploadUsageRule
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
+import io.github.yesidrobayo.shopledger.domain.rule.update.UpdateCheckRule
+import io.github.yesidrobayo.shopledger.domain.rule.update.UpdateReminderRule
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.CoroutineContext
@@ -448,6 +455,54 @@ class DataGraph internal constructor(
      */
     val cloudAccountChecklist: CloudAccountChecklistPort by lazy {
         CloudAccountChecklistFile({ files().noBackupDirectory }, ioContext)
+    }
+
+    /**
+     * Cuándo se buscó una versión nueva y cuándo salió el último recordatorio, en este teléfono.
+     * No necesita la base abierta ni usa la red.
+     */
+    internal val updateCheckMarks: UpdateCheckMarks by lazy {
+        UpdateCheckMarks({ files().noBackupDirectory }, ioContext)
+    }
+
+    /**
+     * `Buscar actualización`: lee el aviso de versión de [manifestUrl], comprueba su firma con
+     * [publicKey] y lo compara con la app instalada, compilada en [builtAt]. Es la única consulta
+     * de red que no va al servicio WebDAV, y solo corre cuando la persona toca el botón. Sin la
+     * dirección o sin la clave, dice que no se pudo comprobar. Nunca bloquea nada, y anota cuándo
+     * se buscó, para el recordatorio.
+     */
+    suspend fun checkForUpdate(
+        manifestUrl: String,
+        publicKey: String,
+        builtAt: Instant?,
+    ): UpdateCheckOutcome {
+        val source = withContext(ioContext) { VersionManifestSource.parse(manifestUrl, publicKey) }
+        val read = VersionManifestClient(http).read(source)
+        updateCheckMarks.markCheck(clock.now())
+        val installed = withContext(ioContext) { InstalledPackage.of(context) }
+        return UpdateCheckRule.evaluate(read, installed?.versionCode ?: 0L, builtAt)
+    }
+
+    /** Cuándo se buscó una versión nueva por última vez, o nulo si nunca. Sin red. */
+    suspend fun lastUpdateCheckAt(): Instant? = updateCheckMarks.read().lastCheckAt
+
+    /**
+     * Si en [now] toca recordar la búsqueda de versión: con la búsqueda encendida en los ajustes,
+     * 60 días después de instalar, buscar o recordar. Sin la base, no toca.
+     */
+    private suspend fun updateReminderDue(now: Instant): Boolean {
+        val ports = (openForWork() as? DataAccess.Ready)?.ports ?: return false
+        val enabled = ports.settings.get().preferences.updateCheckEnabled
+        val installed = withContext(ioContext) { InstalledPackage.of(context) } ?: return false
+        val marks = updateCheckMarks.read()
+        return UpdateReminderRule.isDue(
+            enabled = enabled,
+            installedAt = installed.updatedAt,
+            lastCheckAt = marks.lastCheckAt,
+            lastReminderAt = marks.lastReminderAt,
+            now = now,
+        )
     }
 
     /**
@@ -1383,6 +1438,8 @@ class DataGraph internal constructor(
                 }
             },
             recoveryCheckDue = { recoveryCustody.checkFacts().due },
+            updateReminderDue = { now -> updateReminderDue(now) },
+            markUpdateReminder = { now -> updateCheckMarks.markReminder(now) },
         )
     }
 

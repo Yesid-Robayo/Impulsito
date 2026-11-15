@@ -27,6 +27,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
+import io.github.yesidrobayo.shopledger.domain.model.update.UpdateCheckOutcome
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
@@ -41,6 +43,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
 import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -48,17 +51,22 @@ import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 import io.github.yesidrobayo.shopledger.update.ApkCheckResult
 import io.github.yesidrobayo.shopledger.update.InstalledApp
+import kotlin.time.Instant
 
 /**
  * `Actualizaciones y verificar APK`, de arriba abajo:
  *
  * 1. La versión instalada y la huella de su firma, para compararla a mano con la publicada. La
  *    huella no se copia: solo la información para soporte usa el portapapeles.
- * 2. `Cómo actualizar`, con sus cuatro pasos en una hoja.
- * 3. `Verificar un APK`: `Elegir archivo` abre el selector del sistema, y debajo va el resultado.
+ * 2. `Buscar actualización`, solo con la búsqueda permitida, con la fecha de la última búsqueda.
+ *    Apagada, dice que la app no se conecta para esto.
+ * 3. `Permitir buscar actualizaciones` y, debajo, el resultado de la búsqueda de esta visita.
+ * 4. `Cómo actualizar`, con sus cuatro pasos en una hoja.
+ * 5. `Verificar un APK`: `Elegir archivo` abre el selector del sistema, y debajo va el resultado.
  *    Con otra firma dice `No instalar este archivo` y que no se desinstale la app.
  *
- * La app nunca instala nada. Columna centrada de 600 dp en una ventana ancha.
+ * Nada bloquea la app ni los datos, y la app nunca instala nada. Columna centrada de 600 dp en una
+ * ventana ancha.
  */
 @Composable
 fun UpdatesScreen(
@@ -100,6 +108,7 @@ fun UpdatesScreen(
                     } else {
                         InstalledSection(uiState.installed)
                     }
+                    SearchSection(uiState, onAction, onOpenHow = { howOpen = true })
                     SettingsRow(
                         title = stringResource(R.string.update_how_title),
                         action = SettingsRowAction.Navigation { howOpen = true },
@@ -180,6 +189,146 @@ private fun NoValueText(description: String, style: TextStyle) {
         style = style,
         modifier = Modifier.semantics { contentDescription = description },
     )
+}
+
+/**
+ * `Buscar actualización`, su interruptor y el resultado. Mientras no se saben los ajustes, no se
+ * ofrece nada: ni un botón que quizá no se debe mostrar, ni un interruptor con un valor inventado.
+ */
+@Composable
+private fun SearchSection(
+    uiState: UpdatesUiState,
+    onAction: (UpdatesAction) -> Unit,
+    onOpenHow: () -> Unit,
+) {
+    val enabled = uiState.searchEnabled ?: return
+    val app = stringResource(R.string.app_name)
+    val spacing = AppTheme.spacing
+    Column(
+        Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
+        verticalArrangement = Arrangement.spacedBy(spacing.s8),
+    ) {
+        if (enabled) {
+            val searching = uiState.search == SearchUi.Searching
+            PrimaryActionButton(
+                text = stringResource(R.string.update_search_action),
+                onClick = { if (!searching) onAction(UpdatesAction.Search) },
+                variant = ActionVariant.TONAL,
+                state = if (searching) ActionState.WORKING else ActionState.IDLE,
+            )
+            Text(
+                lastSearchText(uiState),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                stringResource(R.string.update_search_off, app),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+    SettingsRow(
+        title = stringResource(R.string.update_allow_search),
+        summary = stringResource(R.string.update_allow_search_help),
+        action =
+            SettingsRowAction.Toggle(enabled) { onAction(UpdatesAction.SetSearchEnabled(it)) },
+    )
+    if (enabled) {
+        // TalkBack lo dice al aparecer, sin mover el foco.
+        Column(
+            Modifier
+                .padding(horizontal = spacing.s16, vertical = spacing.s8)
+                .semantics { liveRegion = LiveRegionMode.Polite },
+            verticalArrangement = Arrangement.spacedBy(spacing.s8),
+        ) {
+            SearchResult(uiState, onAction, onOpenHow)
+        }
+    }
+}
+
+/** `Última búsqueda: 28 oct`, o que todavía no se buscó. */
+@Composable
+private fun lastSearchText(uiState: UpdatesUiState): String {
+    val at = uiState.lastSearchAt ?: return stringResource(R.string.update_empty)
+    return stringResource(R.string.update_last_search, shortDate(at, uiState))
+}
+
+/** La fecha de [at] en la zona del negocio, sin el año si es de este año. */
+@Composable
+private fun shortDate(at: Instant, uiState: UpdatesUiState): String {
+    val zone = uiState.zone
+    val today = BusinessDate.of(uiState.now ?: at, zone)
+    return LocalAppFormats.current.date.shortDate(BusinessDate.of(at, zone), today)
+}
+
+/** El resultado de la búsqueda de esta visita. Ninguno bloquea nada. */
+@Composable
+private fun SearchResult(
+    uiState: UpdatesUiState,
+    onAction: (UpdatesAction) -> Unit,
+    onOpenHow: () -> Unit,
+) {
+    val retry = stringResource(R.string.action_retry)
+    when (val search = uiState.search) {
+        SearchUi.Idle -> Unit
+
+        SearchUi.Searching ->
+            Text(
+                stringResource(R.string.update_searching),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+        is SearchUi.Done -> when (val outcome = search.outcome) {
+            is UpdateCheckOutcome.Latest ->
+                NoticeCard(
+                    text = stringResource(R.string.update_latest),
+                    variant = NoticeVariant.INFO,
+                    icon = R.drawable.ic_check_circle,
+                )
+
+            is UpdateCheckOutcome.NewVersion -> {
+                NoticeCard(
+                    text =
+                        stringResource(R.string.update_new, outcome.versionName) + "\n" +
+                            stringResource(
+                                R.string.update_new_date,
+                                shortDate(outcome.publishedAt, uiState),
+                            ),
+                    variant = NoticeVariant.INFO,
+                    actionLabel = stringResource(R.string.update_view_how_action),
+                    onAction = onOpenHow,
+                )
+                if (outcome.important) {
+                    NoticeCard(
+                        text =
+                            stringResource(R.string.update_important_title) + "\n" +
+                                stringResource(R.string.update_important_body),
+                        variant = NoticeVariant.WARNING,
+                    )
+                }
+            }
+
+            UpdateCheckOutcome.BadSignature ->
+                NoticeCard(stringResource(R.string.update_bad_signature), NoticeVariant.WARNING)
+
+            UpdateCheckOutcome.Offline ->
+                NoticeCard(
+                    text = stringResource(R.string.state_no_connection),
+                    variant = NoticeVariant.ERROR,
+                    actionLabel = retry,
+                    onAction = { onAction(UpdatesAction.Search) },
+                )
+
+            UpdateCheckOutcome.Unreadable ->
+                NoticeCard(
+                    text = stringResource(R.string.update_error_read),
+                    variant = NoticeVariant.ERROR,
+                    actionLabel = retry,
+                    onAction = { onAction(UpdatesAction.Search) },
+                )
+        }
+    }
 }
 
 /** `Verificar un APK`: la explicación, `Elegir archivo` y el resultado del último archivo. */
@@ -322,6 +471,18 @@ private fun UpdatesScreenPreview() {
                             versionCode = 1,
                             fingerprint = "3F:9A:21:7C:44:D0:8E:1B",
                         ),
+                    searchEnabled = true,
+                    lastSearchAt = Instant.parse("2026-10-28T15:00:00Z"),
+                    search =
+                        SearchUi.Done(
+                            UpdateCheckOutcome.NewVersion(
+                                versionName = "1.0.1",
+                                publishedAt = Instant.parse("2026-11-10T12:00:00Z"),
+                                apkSha256 = "0123456789abcdef",
+                                important = true,
+                            ),
+                        ),
+                    now = Instant.parse("2026-11-15T12:00:00Z"),
                     verify = VerifyUi.Done(ApkCheckResult.Mismatch("0123456789abcdef")),
                 ),
             onAction = {},

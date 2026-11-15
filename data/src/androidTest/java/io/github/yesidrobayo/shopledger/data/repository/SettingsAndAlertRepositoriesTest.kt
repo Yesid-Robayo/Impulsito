@@ -125,6 +125,7 @@ internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
                     PreferenceChange.AppLockDelay(AppLockTimeout.FIVE_MINUTES),
                     PreferenceChange.MeteredBackup(MeteredBackupPolicy.WIFI_ONLY),
                     PreferenceChange.DiscreetMode(true),
+                    PreferenceChange.UpdateCheck(false),
                 )
             for (change in changes) settings.updatePreference(change, LATER_AT)
             settings.markOnboardingCompleted(LATER_AT)
@@ -138,7 +139,7 @@ internal class SettingsAndAlertRepositoriesTest : RepositoryTest() {
                     MeteredBackupPolicy.WIFI_ONLY,
                     discreetModeEnabled = true,
                     mediaOnMetered = false,
-                    updateCheckEnabled = true,
+                    updateCheckEnabled = false,
                 )
             awaitValue(
                 initial.copy(

@@ -227,6 +227,9 @@ internal class RoomAppSettingsRepository(database: AppDatabase, restoreLock: Res
 
                     is PreferenceChange.DiscreetMode ->
                         settings.updateDiscreetModeEnabled(change.enabled.toStoredFlag(), at)
+
+                    is PreferenceChange.UpdateCheck ->
+                        settings.updateUpdateCheckEnabled(change.enabled.toStoredFlag(), at)
                 }
             }
         requireOneRow(changed)
