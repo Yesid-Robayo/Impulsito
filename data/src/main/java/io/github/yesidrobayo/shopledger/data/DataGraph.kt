@@ -124,6 +124,7 @@ import io.github.yesidrobayo.shopledger.data.print.PrinterSetupFile
 import io.github.yesidrobayo.shopledger.data.repository.RoomAuditRecorder
 import io.github.yesidrobayo.shopledger.data.repository.toStoredImage
 import io.github.yesidrobayo.shopledger.data.rescue.RescueData
+import io.github.yesidrobayo.shopledger.data.safety.CloudAccountChecklistFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
@@ -148,6 +149,7 @@ import io.github.yesidrobayo.shopledger.domain.port.BackupLinkPort
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import io.github.yesidrobayo.shopledger.domain.port.BackupSettingsPort
 import io.github.yesidrobayo.shopledger.domain.port.Clock
+import io.github.yesidrobayo.shopledger.domain.port.CloudAccountChecklistPort
 import io.github.yesidrobayo.shopledger.domain.port.CsvExportPort
 import io.github.yesidrobayo.shopledger.domain.port.DataHealthSource
 import io.github.yesidrobayo.shopledger.domain.port.EncryptionPort
@@ -419,6 +421,14 @@ class DataGraph internal constructor(
      * copia sale a la nube, y lo demás sigue igual. No necesita la base abierta.
      */
     val policyConsent: PolicyConsentPort get() = consentGate
+
+    /**
+     * Lo que la persona marcó de la cuenta de la nube, en este teléfono. No necesita la base
+     * abierta ni usa la red, y no viaja en una copia.
+     */
+    val cloudAccountChecklist: CloudAccountChecklistPort by lazy {
+        CloudAccountChecklistFile({ files().noBackupDirectory }, ioContext)
+    }
 
     /**
      * Programa el respaldo: traduce cada cambio confirmado, la app que se abre o pasa a segundo

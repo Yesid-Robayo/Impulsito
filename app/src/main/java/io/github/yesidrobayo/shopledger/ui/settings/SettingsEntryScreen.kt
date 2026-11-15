@@ -225,6 +225,14 @@ fun SettingsEntryScreen(
                                 SettingsRowAction.Navigation { onOpen(AppNavKey.BackupEncryption) },
                         )
                     }
+                    // Cómo proteger la cuenta de la nube de la que dependen las copias.
+                    SettingsRow(
+                        title = stringResource(R.string.account_title),
+                        action =
+                            SettingsRowAction.Navigation {
+                                onOpen(AppNavKey.CloudAccountSecurity)
+                            },
+                    )
                 }
                 usage?.let { AppearanceGroup(it, onUsageAction) { colorsOpen = true } }
                 if (overview != null) {

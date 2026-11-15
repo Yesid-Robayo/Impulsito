@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -28,6 +29,10 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  *
  * Marcada, la casilla va en el color de acción. La casilla de la confirmación reforzada de
  * [ConfirmDialog] va en el color de error, porque confirma algo que no se deshace.
+ *
+ * @param supporting una ayuda debajo del texto, que crece en alto con la letra grande. TalkBack la
+ *   lee junto con la casilla, en el mismo foco.
+ * @param enabled apagada, la casilla no cambia y se ve atenuada.
  */
 @Composable
 fun CheckboxRow(
@@ -35,6 +40,8 @@ fun CheckboxRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    supporting: String? = null,
+    enabled: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
@@ -42,13 +49,19 @@ fun CheckboxRow(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = AppTheme.sizes.touchTarget)
-                .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange),
-        verticalAlignment = Alignment.CenterVertically,
+                .toggleable(
+                    value = checked,
+                    enabled = enabled,
+                    role = Role.Checkbox,
+                    onValueChange = onCheckedChange,
+                ),
+        verticalAlignment = if (supporting == null) Alignment.CenterVertically else Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
     ) {
         Checkbox(
             checked = checked,
             onCheckedChange = null,
+            enabled = enabled,
             colors =
                 CheckboxDefaults.colors(
                     checkedColor = scheme.primary,
@@ -56,7 +69,21 @@ fun CheckboxRow(
                     uncheckedColor = scheme.outline,
                 ),
         )
-        Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+        if (supporting == null) {
+            Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+        } else {
+            Column(
+                Modifier.padding(vertical = AppTheme.spacing.s12),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s2),
+            ) {
+                Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+                Text(
+                    supporting,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -69,6 +96,13 @@ private fun CheckboxRowPreview() {
             var second by remember { mutableStateOf(false) }
             CheckboxRow(PreviewSamples.LONG_NAME, first, { first = it })
             CheckboxRow("Para comprar", second, { second = it })
+            CheckboxRow(
+                PreviewSamples.SETTING_TITLE,
+                checked = true,
+                onCheckedChange = {},
+                supporting = PreviewSamples.NOTICE_TEXT,
+            )
+            CheckboxRow("Para vender", false, {}, enabled = false)
         }
     }
 }

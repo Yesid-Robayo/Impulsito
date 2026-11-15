@@ -51,4 +51,31 @@
     <string name="transparency_other_apps_body">Al tocar un enlace o compartir un archivo, ese trabajo pasa a otra app, con sus propias reglas. %1$s no lee su respuesta.</string>
     <string name="transparency_policy_section_title">Política y términos</string>
     <string name="transparency_no_browser">No hay una app para abrir este enlace</string>
+    <!-- Seguridad de la cuenta de la nube. Textos de la guía de redacción; las guías, nuevos. -->
+    <string name="account_password_notice">%1$s nunca pide la contraseña de Google. La única contraseña que se escribe aquí es la de un servicio WebDAV, al conectarlo.</string>
+    <string name="account_connected">Cuenta: %1$s</string>
+    <string name="account_list_title">Lista de la cuenta</string>
+    <string name="account_list_progress">%1$s de %2$s marcados</string>
+    <string name="account_item_two_step">Verificación en dos pasos activa</string>
+    <string name="account_item_two_step_help">Un segundo paso al entrar a la cuenta. En algunos servicios puede detener las copias hasta aprobar una ubicación nueva. Tras activarla, conviene tocar Respaldar ahora y mirar que la hora cambie.</string>
+    <string name="account_item_email">Correo de recuperación al día</string>
+    <string name="account_item_email_help">Sirve para volver a entrar si se pierde el acceso.</string>
+    <string name="account_item_phone">Teléfono de recuperación al día</string>
+    <string name="account_item_phone_help">Conviene que sea un número que siga en uso.</string>
+    <string name="account_self_marked">Marcado por la persona. %1$s no lo comprueba.</string>
+    <string name="account_keep_title">Para no perder la cuenta</string>
+    <string name="account_inactivity_title">Inactividad</string>
+    <string name="account_inactivity_body">Una cuenta sin uso durante mucho tiempo se puede borrar, según las reglas de cada servicio. Conviene entrar a la cuenta de vez en cuando.</string>
+    <string name="account_quota_title">Espacio</string>
+    <string name="account_quota_body">Las copias ocupan espacio de la cuenta. Sin espacio, las copias se detienen.</string>
+    <string name="account_password_title">Si algo pide la contraseña</string>
+    <string name="account_password_body">%1$s solo la pide en Conectar el servicio, después de tocar esa opción. Si aparece en otro momento, no es %1$s: conviene cerrar esa pantalla y revisar la actividad de la cuenta.</string>
+    <string name="account_app_password_title">Contraseña para apps</string>
+    <string name="account_app_password_body">Si el servicio ofrece una contraseña para apps, conviene usarla aquí: se puede anular sin cambiar la de la cuenta.</string>
+    <string name="account_empty_title">Sin cuenta conectada</string>
+    <string name="account_guides_title">Guías de Google</string>
+    <string name="account_guides_help">Se abren en el navegador. %1$s no lee esas páginas.</string>
+    <string name="account_guide_two_step">Verificación en dos pasos</string>
+    <string name="account_guide_inactivity">Cuentas sin uso</string>
+    <string name="account_guide_quota">Espacio de la cuenta</string>
 </resources>

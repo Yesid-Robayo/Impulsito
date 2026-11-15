@@ -264,6 +264,9 @@ sealed interface BackupAction {
     /** `Cifrado de copias`: lo resuelve la navegación. */
     data object OpenEncryption : BackupAction
 
+    /** `Seguridad de la cuenta de la nube`: lo resuelve la navegación. */
+    data object OpenAccountSecurity : BackupAction
+
     /** `Desconectar`: pide confirmar. */
     data object Disconnect : BackupAction
 

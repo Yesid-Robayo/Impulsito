@@ -53,4 +53,37 @@
     <string name="transparency_no_browser">No app can open this link</string>
     <!-- Quien aloja el archivo público de versión, como lo nombra la tabla de destinos de la app. -->
     <string name="transparency_manifest_host" translatable="false">GitHub</string>
+    <!-- Seguridad de la cuenta de la nube. Textos de la guía de redacción; las guías, nuevos. -->
+    <string name="account_password_notice">%1$s never asks for the Google password. The only password entered here is that of a WebDAV service, when connecting it.</string>
+    <string name="account_connected">Account: %1$s</string>
+    <string name="account_list_title">Account checklist</string>
+    <string name="account_list_progress">%1$s of %2$s checked</string>
+    <string name="account_item_two_step">Two-step verification on</string>
+    <string name="account_item_two_step_help">It asks for a second step when signing in. On some services it may stop backups until a new location is approved. After turning it on, tap Back up now and check that the time changes.</string>
+    <string name="account_item_email">Recovery email up to date</string>
+    <string name="account_item_email_help">It helps to get back in if access is lost.</string>
+    <string name="account_item_phone">Recovery phone up to date</string>
+    <string name="account_item_phone_help">It should be a number still in use.</string>
+    <string name="account_self_marked">Marked by the person. %1$s does not check it.</string>
+    <string name="account_keep_title">To keep the account</string>
+    <string name="account_inactivity_title">Inactivity</string>
+    <string name="account_inactivity_body">An account unused for a long time may be deleted, under each service\'s rules. Sign in to the account from time to time.</string>
+    <string name="account_quota_title">Space</string>
+    <string name="account_quota_body">Backups use account space. Without space, backups stop.</string>
+    <string name="account_password_title">If something asks for the password</string>
+    <string name="account_password_body">%1$s only asks for it in Connect the service, after that option is tapped. If it appears at any other time, it is not %1$s: close that screen and review the account activity.</string>
+    <string name="account_app_password_title">App password</string>
+    <string name="account_app_password_body">If the service offers an app password, use it here: it can be cancelled without changing the account password.</string>
+    <string name="account_empty_title">No account connected</string>
+    <string name="account_guides_title">Google guides</string>
+    <string name="account_guides_help">They open in the browser. %1$s does not read those pages.</string>
+    <string name="account_guide_two_step">Two-step verification</string>
+    <string name="account_guide_inactivity">Inactive accounts</string>
+    <string name="account_guide_quota">Account storage</string>
+    <!-- Las guías de Google que cita la seguridad de la cuenta. Solo las abre el navegador, por un toque. -->
+    <string name="account_guide_two_step_url" translatable="false">https://support.google.com/accounts/answer/185839</string>
+    <!-- Inactividad de la cuenta. -->
+    <string name="account_guide_inactivity_url" translatable="false">https://support.google.com/accounts/answer/12418290</string>
+    <!-- Espacio de la cuenta. -->
+    <string name="account_guide_quota_url" translatable="false">https://support.google.com/accounts/answer/9312312</string>
 </resources>

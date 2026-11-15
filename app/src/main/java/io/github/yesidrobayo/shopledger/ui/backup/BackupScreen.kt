@@ -728,6 +728,14 @@ private fun Destination(info: BackupDestinationInfo?, onAction: (BackupAction) -
                 onClick = { onAction(BackupAction.ChooseDestination) },
             )
         }
+        // Con un destino, debajo, cómo proteger la cuenta de la que dependen las copias.
+        if (info != null) {
+            SettingsRow(
+                title = stringResource(R.string.account_title),
+                action =
+                    SettingsRowAction.Navigation { onAction(BackupAction.OpenAccountSecurity) },
+            )
+        }
     }
 }
 
