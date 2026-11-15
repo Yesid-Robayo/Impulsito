@@ -108,6 +108,9 @@ class ShopLedgerApp :
         }
         // El bloqueo cuenta el tiempo en segundo plano de la app entera: rotar no es salir.
         ProcessLifecycleOwner.get().lifecycle.addObserver(container.appLock)
+        // Mientras el proceso viva, bloquear y desbloquear redibujan el widget: un monto pedido
+        // nunca queda a la vista con el teléfono bloqueado. Registrarlo no toca el disco.
+        container.lockWatcher.register(this)
         // Paso 2, en la última línea: el arranque del proceso terminó bien.
         withDiskPermit { bootGuard.afterApplicationCreated() }
     }

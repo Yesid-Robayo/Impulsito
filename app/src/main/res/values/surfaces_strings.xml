@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget, mosaico y atajos: los textos que viven fuera de la app, en el idioma de la interfaz. -->
+    <string name="widget_description">Sell and check the day</string>
+    <string name="widget_today">Today</string>
+    <plurals name="widget_low_stock_count">
+        <item quantity="one">%1$d running low</item>
+        <item quantity="other">%1$d running low</item>
+    </plurals>
+    <string name="widget_counts">%1$s · %2$s</string>
+    <string name="widget_sales_amount">Today\'s sales: %1$s</string>
+    <string name="widget_show_amounts">Show amounts</string>
+    <string name="widget_hide_amounts">Hide amounts</string>
+    <string name="widget_backup_failed">Backup failed</string>
+</resources>

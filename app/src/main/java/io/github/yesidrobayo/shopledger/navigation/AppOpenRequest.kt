@@ -77,6 +77,56 @@ sealed interface AppOpenRequest {
         }
     }
 
+    /** Una venta nueva, desde `Vender` del widget, el mosaico o su atajo. */
+    data object NewSale : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.NewSale()
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_NEW_SALE
+        }
+    }
+
+    /** La hoja del gasto nuevo en Gastos, desde `Gasto` del widget o su atajo. */
+    data object NewExpense : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.Expenses(startNew = true)
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_NEW_EXPENSE
+        }
+    }
+
+    /** Una compra nueva, desde `Compra` del widget o su atajo. */
+    data object NewPurchase : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.Purchase()
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_NEW_PURCHASE
+        }
+    }
+
+    /** La creación del primer producto, desde el widget de un negocio sin productos. */
+    data object NewProduct : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.ProductEdit()
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_NEW_PRODUCT
+        }
+    }
+
+    /** La pantalla del respaldo, desde la línea `No se pudo respaldar` del widget. */
+    data object Backup : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.Backup
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_OPEN_BACKUP
+        }
+    }
+
     companion object {
         /** Abre el detalle del producto de [EXTRA_PRODUCT_ID]. */
         const val ACTION_OPEN_PRODUCT = "io.github.yesidrobayo.shopledger.action.OPEN_PRODUCT"
@@ -92,6 +142,21 @@ sealed interface AppOpenRequest {
 
         /** Abre `Metas y límites`. */
         const val ACTION_OPEN_LIMITS = "io.github.yesidrobayo.shopledger.action.OPEN_LIMITS"
+
+        /** Abre una venta nueva. */
+        const val ACTION_NEW_SALE = "io.github.yesidrobayo.shopledger.action.NEW_SALE"
+
+        /** Abre la hoja del gasto nuevo. */
+        const val ACTION_NEW_EXPENSE = "io.github.yesidrobayo.shopledger.action.NEW_EXPENSE"
+
+        /** Abre una compra nueva. */
+        const val ACTION_NEW_PURCHASE = "io.github.yesidrobayo.shopledger.action.NEW_PURCHASE"
+
+        /** Abre la creación de un producto. */
+        const val ACTION_NEW_PRODUCT = "io.github.yesidrobayo.shopledger.action.NEW_PRODUCT"
+
+        /** Abre el respaldo. */
+        const val ACTION_OPEN_BACKUP = "io.github.yesidrobayo.shopledger.action.OPEN_BACKUP"
 
         /** El id del producto que abre [ACTION_OPEN_PRODUCT]. */
         const val EXTRA_PRODUCT_ID = "product_id"
@@ -117,6 +182,16 @@ sealed interface AppOpenRequest {
                     ACTION_OPEN_RECURRING -> Recurring
 
                     ACTION_OPEN_LIMITS -> GoalsAndLimits
+
+                    ACTION_NEW_SALE -> NewSale
+
+                    ACTION_NEW_EXPENSE -> NewExpense
+
+                    ACTION_NEW_PURCHASE -> NewPurchase
+
+                    ACTION_NEW_PRODUCT -> NewProduct
+
+                    ACTION_OPEN_BACKUP -> Backup
 
                     else -> null
                 }

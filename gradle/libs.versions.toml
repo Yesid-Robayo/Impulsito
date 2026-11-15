@@ -29,6 +29,7 @@ ktlint = "1.8.0"
 ktlintGradle = "14.2.0"
 camerax = "1.6.2"
 zxingCpp = "3.1.1"
+glance = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -74,6 +75,8 @@ androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.r
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
 androidx-camera-compose = { module = "androidx.camera:camera-compose", version.ref = "camerax" }
 zxing-cpp-android = { module = "io.github.zxing-cpp:android", version.ref = "zxingCpp" }
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

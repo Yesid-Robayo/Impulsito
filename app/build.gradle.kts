@@ -143,6 +143,9 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.compose)
     implementation(libs.zxing.cpp.android)
+    // El widget de la pantalla de inicio. Glance está entre las dependencias de ejecución permitidas: dibuja sin red, y
+    // corre sus sesiones en la biblioteca de trabajos, que ya es la del catálogo.
+    implementation(libs.androidx.glance.appwidget)
     testImplementation(libs.junit)
     // Los ViewModel se prueban en JVM: dispatchers de prueba en lugar del principal, y Turbine para leer cada estado.
     testImplementation(libs.kotlinx.coroutines.test)

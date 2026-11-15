@@ -159,6 +159,8 @@ class MainActivity : AppCompatActivity() {
                     container.dailySummaryDelivery.follow(access.ports)
                     container.recurringReminderDelivery.follow(access.ports)
                     container.revenueLimitNoticeDelivery.follow(access.ports)
+                    // El widget se redibuja con cada venta y con la paleta o el modo discreto.
+                    container.quickSaleWidget.follow(access.ports)
                     lockSettings = ChangePreferenceUseCase(access.ports.settings, container.clock)
                     launch {
                         ObserveAppLockUseCase(access.ports.settings)().collect {

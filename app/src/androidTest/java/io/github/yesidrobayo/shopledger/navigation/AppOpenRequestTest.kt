@@ -52,6 +52,29 @@ class AppOpenRequestTest {
     }
 
     @Test
+    fun theWidgetActionsOpenTheirForms() {
+        assertEquals(AppNavKey.NewSale(), readBack(AppOpenRequest.NewSale)?.key)
+        assertEquals(
+            AppNavKey.Expenses(startNew = true),
+            readBack(AppOpenRequest.NewExpense)?.key,
+        )
+        assertEquals(AppNavKey.Purchase(), readBack(AppOpenRequest.NewPurchase)?.key)
+        assertEquals(AppNavKey.ProductEdit(), readBack(AppOpenRequest.NewProduct)?.key)
+        assertEquals(AppNavKey.Backup, readBack(AppOpenRequest.Backup)?.key)
+    }
+
+    @Test
+    fun theWidgetActionsIgnoreTheirExtras() {
+        // Otra app puede lanzar la actividad con la acción y algo más: solo cuenta la acción.
+        val intent =
+            toMain()
+                .setAction(AppOpenRequest.ACTION_NEW_SALE)
+                .putExtra(AppOpenRequest.EXTRA_PRODUCT_ID, 7L)
+
+        assertEquals(AppOpenRequest.NewSale, AppOpenRequest.readFrom(intent))
+    }
+
+    @Test
     fun anythingElseOpensNothing() {
         assertNull(AppOpenRequest.readFrom(null))
         assertNull(AppOpenRequest.readFrom(toMain()))

@@ -102,6 +102,20 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+
+        <!-- El widget de venta rápida. Sin exportar: el sistema le entrega igual sus difusiones, y ninguna otra app le
+             puede enviar nada. Solo redibuja y no lee el Intent. Sin montos por defecto y nunca en la pantalla de
+             bloqueo. -->
+        <receiver
+            android:name=".widget.QuickSaleWidgetReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_sale_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

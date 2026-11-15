@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.di
 
 import android.app.Application
+import android.content.Context
 import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.DataGraph
@@ -20,6 +21,7 @@ import io.github.yesidrobayo.shopledger.localization.AndroidUserTextPort
 import io.github.yesidrobayo.shopledger.localization.AppLanguage
 import io.github.yesidrobayo.shopledger.localization.LanguagePreferenceFile
 import io.github.yesidrobayo.shopledger.localization.LocalizedContextProvider
+import io.github.yesidrobayo.shopledger.localization.LocalizedSurface
 import io.github.yesidrobayo.shopledger.localization.LocalizedSurfaces
 import io.github.yesidrobayo.shopledger.localization.installedVersionOf
 import io.github.yesidrobayo.shopledger.lock.AppLock
@@ -36,10 +38,12 @@ import io.github.yesidrobayo.shopledger.notification.LowStockAlertDelivery
 import io.github.yesidrobayo.shopledger.notification.NotificationChannels
 import io.github.yesidrobayo.shopledger.notification.RecurringReminderDelivery
 import io.github.yesidrobayo.shopledger.notification.RevenueLimitNoticeDelivery
+import io.github.yesidrobayo.shopledger.surface.LockStateWatcher
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeFile
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
 import io.github.yesidrobayo.shopledger.ui.components.PhotoState
 import io.github.yesidrobayo.shopledger.ui.media.PhotoCache
+import io.github.yesidrobayo.shopledger.widget.QuickSaleWidgetUpdater
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -207,7 +211,15 @@ class AppContainer(application: Application) {
     val localizedSurfaces: LocalizedSurfaces =
         LocalizedSurfaces(
             contexts = localizedContext,
-            surfaces = listOf(NotificationChannels(application, NotificationChannels.APP_CHANNELS)),
+            surfaces =
+                listOf(
+                    NotificationChannels(application, NotificationChannels.APP_CHANNELS),
+                    // Se pide al refrescar, cuando ya existe: se declara más abajo.
+                    object : LocalizedSurface {
+                        override suspend fun refresh(texts: Context) =
+                            quickSaleWidget.refresh(texts)
+                    },
+                ),
             directory = { application.noBackupFilesDir },
             installedVersion = { installedVersionOf(application) },
             log = log,
@@ -265,5 +277,21 @@ class AppContainer(application: Application) {
                 if (data.photoMayArrive(sha256)) PhotoState.Pending else PhotoState.Unavailable
             },
         )
+    }
+
+    /**
+     * Redibuja el widget de venta rápida cuando cambia lo que muestra. La actividad principal
+     * empieza a seguir la base al abrirla; sin widgets puestos no hace nada.
+     */
+    val quickSaleWidget: QuickSaleWidgetUpdater by lazy {
+        QuickSaleWidgetUpdater(application, applicationScope, clock, log)
+    }
+
+    /**
+     * El receptor de pantalla: redibuja el widget al bloquear y al desbloquear, para que un monto
+     * no quede a la vista con el teléfono bloqueado. Lo registra el proceso al arrancar.
+     */
+    val lockWatcher: LockStateWatcher by lazy {
+        LockStateWatcher(applicationScope, log) { quickSaleWidget.refresh() }
     }
 }

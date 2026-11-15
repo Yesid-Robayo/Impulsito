@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget de venta rápida. Solo en la pantalla de inicio: not_keyguard pide, desde Android 16, que
+  ninguna pantalla de bloqueo lo ofrezca aunque acepte widgets de inicio; antes se ignora. Arranca
+  en 4 x 2, con el día y las acciones, y se achica a 4 x 1, solo con las acciones. Nunca se
+  actualiza solo por tiempo: lo redibujan la app y el bloqueo.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="48dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen|not_keyguard" />
