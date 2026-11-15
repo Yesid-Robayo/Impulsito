@@ -31,6 +31,7 @@ import io.github.yesidrobayo.shopledger.data.repository.RoomLocationRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLocationStockSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomLowStockAlertRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomLoyaltyLedgerRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomManagementSummaryRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMediaAssetRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomMessageTemplateRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomModuleUsageSource
@@ -105,6 +106,7 @@ import io.github.yesidrobayo.shopledger.domain.port.LocationRepository
 import io.github.yesidrobayo.shopledger.domain.port.LocationStockSource
 import io.github.yesidrobayo.shopledger.domain.port.LowStockAlertRepository
 import io.github.yesidrobayo.shopledger.domain.port.LoyaltyLedgerRepository
+import io.github.yesidrobayo.shopledger.domain.port.ManagementSummaryRepository
 import io.github.yesidrobayo.shopledger.domain.port.MediaAssetRepository
 import io.github.yesidrobayo.shopledger.domain.port.MessageTemplateRepository
 import io.github.yesidrobayo.shopledger.domain.port.ModuleUsageSource
@@ -431,6 +433,10 @@ class DataPorts internal constructor(
 
     /** El índice de precios mensual que escribe o importa la persona. */
     val priceIndex: PriceIndexRepository = RoomPriceIndexRepository(database)
+
+    /** Si hay compras, stock y clientes o proveedores, para el resumen de gestión. Solo lee. */
+    val managementSummaries: ManagementSummaryRepository =
+        RoomManagementSummaryRepository(database)
 
     /** El estado del respaldo, para el motor de respaldo: no es un puerto de los casos de uso. */
     internal val backupState: BackupStateDao = database.backupStateDao()

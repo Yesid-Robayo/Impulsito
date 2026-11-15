@@ -98,6 +98,7 @@ import io.github.yesidrobayo.shopledger.data.destination.slots.SlotFilesSetup
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotPendingStore
 import io.github.yesidrobayo.shopledger.data.export.ContentCsvDocument
 import io.github.yesidrobayo.shopledger.data.export.CsvExporter
+import io.github.yesidrobayo.shopledger.data.export.SummaryPackageWriter
 import io.github.yesidrobayo.shopledger.data.export.recordCsvExported
 import io.github.yesidrobayo.shopledger.data.imports.DocumentImportReader
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
@@ -156,6 +157,7 @@ import io.github.yesidrobayo.shopledger.domain.port.FullVerifyPort
 import io.github.yesidrobayo.shopledger.domain.port.ImageImporter
 import io.github.yesidrobayo.shopledger.domain.port.ImportFileReader
 import io.github.yesidrobayo.shopledger.domain.port.LogField
+import io.github.yesidrobayo.shopledger.domain.port.ManagementSummaryPackagePort
 import io.github.yesidrobayo.shopledger.domain.port.PhotoBackupPort
 import io.github.yesidrobayo.shopledger.domain.port.PolicyConsentPort
 import io.github.yesidrobayo.shopledger.domain.port.PrinterSetupStore
@@ -515,6 +517,21 @@ class DataGraph internal constructor(
         CsvExporter(
             rows = { (open() as? DataAccess.Ready)?.ports?.csvRows },
             documentFor = { uri -> ContentCsvDocument(context.contentResolver, Uri.parse(uri)) },
+            recordExport = {
+                (open() as? DataAccess.Ready)?.ports?.let { recordCsvExported(it, clock, log) }
+            },
+            log = log,
+            ioContext = ioContext,
+        )
+    }
+
+    /**
+     * El paquete del resumen de gestión: PDF y CSV del período en un `.zip`, en la carpeta de lo
+     * que sale de la app y sin red. Solo lee la base. Crearlo no toca el disco.
+     */
+    val managementSummaryPackage: ManagementSummaryPackagePort by lazy {
+        SummaryPackageWriter(
+            rows = { (open() as? DataAccess.Ready)?.ports?.csvRows },
             recordExport = {
                 (open() as? DataAccess.Ready)?.ports?.let { recordCsvExported(it, clock, log) }
             },

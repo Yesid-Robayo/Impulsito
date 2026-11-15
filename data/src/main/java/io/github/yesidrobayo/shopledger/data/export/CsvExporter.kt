@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.data.destination.newSha256
 import io.github.yesidrobayo.shopledger.data.destination.toLowerHex
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.data.local.audit.AuditEventEntity
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.audit.AuditEventType
 import io.github.yesidrobayo.shopledger.domain.model.audit.AuditResult
@@ -231,6 +232,16 @@ internal interface CsvRowReader {
         range: CsvDateRange?,
         each: (List<CsvCell>) -> Unit,
     ): Long
+
+    /**
+     * Llama a [each] con las celdas de lo que había de cada producto al terminar el día [through]:
+     * la suma de su libro de stock hasta esa fecha de negocio. Devuelve cuántos productos fueron.
+     */
+    suspend fun forEachClosingStock(
+        through: BusinessDate,
+        seedName: (SeedTable, String) -> String,
+        each: (List<CsvCell>) -> Unit,
+    ): Long
 }
 
 /**
@@ -264,6 +275,20 @@ internal class RoomCsvRowSource(private val database: AppDatabase) : CsvRowSourc
                             }
                             count
                         }
+                    }
+
+                    override suspend fun forEachClosingStock(
+                        through: BusinessDate,
+                        seedName: (SeedTable, String) -> String,
+                        each: (List<CsvCell>) -> Unit,
+                    ): Long = connection.usePrepared(ClosingStockQuery.SQL) { statement ->
+                        statement.bindText(1, through.toString())
+                        var count = 0L
+                        while (statement.step()) {
+                            each(ClosingStockQuery.cells(CsvRow(statement, seedName)))
+                            count++
+                        }
+                        count
                     }
                 },
             )
@@ -320,7 +345,7 @@ internal class ContentCsvDocument(private val resolver: ContentResolver, private
 }
 
 /** Cuenta y suma lo que pasa hacia [out], sin cerrarlo antes de tiempo. */
-private class MeasuringOutputStream(out: OutputStream, val digest: MessageDigest) :
+internal class MeasuringOutputStream(out: OutputStream, val digest: MessageDigest) :
     FilterOutputStream(out) {
     var size = 0L
         private set
