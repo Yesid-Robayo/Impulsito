@@ -13,6 +13,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -47,12 +53,18 @@ import io.github.yesidrobayo.shopledger.ui.category.CategoriesRoute
 import io.github.yesidrobayo.shopledger.ui.combo.CombosRoute
 import io.github.yesidrobayo.shopledger.ui.combo.RecipeRoute
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
+import io.github.yesidrobayo.shopledger.ui.components.AppNavigationRail
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
+import io.github.yesidrobayo.shopledger.ui.components.LocalNavigationLayout
 import io.github.yesidrobayo.shopledger.ui.components.LocalSettingsOpener
+import io.github.yesidrobayo.shopledger.ui.components.NavigationLayout
+import io.github.yesidrobayo.shopledger.ui.components.RailInsets
+import io.github.yesidrobayo.shopledger.ui.components.RailMark
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.navigationLayoutForWindow
 import io.github.yesidrobayo.shopledger.ui.count.StockCountRoute
 import io.github.yesidrobayo.shopledger.ui.customer.CustomerDetailRoute
 import io.github.yesidrobayo.shopledger.ui.customer.CustomerListRoute
@@ -145,6 +157,8 @@ import kotlinx.coroutines.flow.first
 
 /**
  * La navegación de la app: la pila de Navigation 3 y la barra inferior encima de las cuatro raíces.
+ * Desde una ventana mediana, el riel lateral reemplaza a la barra y se ve también en los detalles;
+ * la pila es la misma, y cambiar de clase de ventana no pierde nada de lo abierto.
  *
  * Cambiar de pestaña es un fundido corto, sin deslizamiento lateral. Abrir un detalle es un eje
  * compartido: la pantalla de abajo se corre a la izquierda y se apaga, y el detalle llega desde
@@ -209,34 +223,55 @@ fun AppNavHost(
         policy.checkOnOpen()
         onStopOrDispose {}
     }
-    NavigationMessages(messages.host, navigator.showsBottomBar, modifier) {
-        CompositionLocalProvider(
-            LocalAppMessages provides messages,
-            LocalPolicyPrompt provides policy,
-            LocalNotificationPermission provides notificationPermission,
-            LocalSettingsOpener provides openSettings,
-            LocalHelpOpener provides openHelp,
-        ) {
-            NavDisplay(
-                backStack = backStack,
-                onBack = { navigator.back() },
-                entryDecorators =
-                    listOf(
-                        rememberSaveableStateHolderNavEntryDecorator(),
-                        rememberViewModelStoreNavEntryDecorator(),
+    val rail = navigationLayoutForWindow() == NavigationLayout.RAIL && navigator.showsRail
+    val layout = if (rail) NavigationLayout.RAIL else NavigationLayout.BAR
+    NavigationMessages(messages.host, navigator.showsBottomBar && !rail, modifier) {
+        // El riel y la pantalla van siempre en la misma fila, aunque el riel no se vea: así la
+        // pantalla no cambia de lugar en el árbol al cambiar de clase y conserva su estado.
+        Row(Modifier.fillMaxSize()) {
+            AppRail(visible = rail, navigator = navigator)
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .then(
+                        if (rail) {
+                            Modifier.consumeWindowInsets(RailInsets.only(WindowInsetsSides.Start))
+                        } else {
+                            Modifier
+                        },
                     ),
-                transitionSpec = { forward(density) },
-                popTransitionSpec = { backward(density) },
-                predictivePopTransitionSpec = { backward(density) },
-                entryProvider = { key -> entryOf(key, navigator) },
-            )
-            PolicyPromptHost(policy)
-            NotificationPermissionHost(notificationPermission)
+            ) {
+                CompositionLocalProvider(
+                    LocalAppMessages provides messages,
+                    LocalPolicyPrompt provides policy,
+                    LocalNotificationPermission provides notificationPermission,
+                    LocalSettingsOpener provides openSettings,
+                    LocalHelpOpener provides openHelp,
+                    LocalNavigationLayout provides layout,
+                ) {
+                    NavDisplay(
+                        backStack = backStack,
+                        onBack = { navigator.back() },
+                        entryDecorators =
+                            listOf(
+                                rememberSaveableStateHolderNavEntryDecorator(),
+                                rememberViewModelStoreNavEntryDecorator(),
+                            ),
+                        transitionSpec = { forward(density) },
+                        popTransitionSpec = { backward(density) },
+                        predictivePopTransitionSpec = { backward(density) },
+                        entryProvider = { key -> entryOf(key, navigator) },
+                    )
+                    PolicyPromptHost(policy)
+                    NotificationPermissionHost(notificationPermission)
+                }
+            }
         }
         // La barra sigue el paso de las pantallas: se apaga con la raíz que sale y vuelve cuando
         // se enciende la que entra. Sin animaciones en el teléfono, Compose la cambia de golpe.
         AnimatedVisibility(
-            visible = navigator.showsBottomBar,
+            visible = navigator.showsBottomBar && !rail,
             modifier = Modifier.align(Alignment.BottomCenter),
             enter =
                 fadeIn(
@@ -266,6 +301,45 @@ fun AppNavHost(
             }
         }
     }
+}
+
+/** Lo que el riel muestra, en orden: las cuatro pestañas y Negocio. Ajustes va aparte, al pie. */
+private val railKeys: List<AppNavKey> =
+    TopLevelDestination.entries.map { it.root } + AppNavKey.BusinessHub
+
+/**
+ * El riel lateral, si [visible]. Sus entradas se abren con [AppNavigator.openFromRail], y marca lo
+ * que está abierto con [AppNavigator.railSection].
+ */
+@Composable
+private fun AppRail(visible: Boolean, navigator: AppNavigator) {
+    if (!visible) return
+    val tabs = TopLevelDestination.entries.map {
+        BottomBarItem(stringResource(it.label), it.icon, it.selectedIcon)
+    }
+    val section = navigator.railSection
+    AppNavigationRail(
+        items = tabs + BottomBarItem(
+            stringResource(R.string.hub_title),
+            R.drawable.ic_business_center,
+            R.drawable.ic_business_center,
+        ),
+        settings = BottomBarItem(
+            stringResource(R.string.settings_title),
+            R.drawable.ic_settings,
+            R.drawable.ic_settings,
+        ),
+        selected =
+            if (section == AppNavKey.Settings) {
+                RailMark.Settings
+            } else {
+                railKeys.indexOf(section).takeIf { it >= 0 }?.let(RailMark::Entry)
+            },
+        onSelect = { navigator.openFromRail(railKeys[it]) },
+        onSettings = { navigator.openFromRail(AppNavKey.Settings) },
+        sellLabel = stringResource(R.string.nav_sell),
+        onSell = navigator::sell,
+    )
 }
 
 // Las raíces llevan esta marca: entre dos raíces, el cambio es de pestaña y no de profundidad.

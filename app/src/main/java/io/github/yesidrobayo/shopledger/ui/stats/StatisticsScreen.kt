@@ -77,6 +77,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SegmentedTabs
 import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
 import io.github.yesidrobayo.shopledger.ui.components.periodLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
@@ -233,9 +234,8 @@ fun StatisticsScreen(
  */
 @Composable
 private fun bottomSpace(): Dp {
-    val sizes = AppTheme.sizes
     val system = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    return system + sizes.bottomBar + sizes.sellButtonOverhang + AppTheme.spacing.s16
+    return system + bottomBarClearance() + AppTheme.spacing.s16
 }
 
 @Composable

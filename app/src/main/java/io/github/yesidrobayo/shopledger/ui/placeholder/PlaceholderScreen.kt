@@ -27,6 +27,7 @@ import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -98,7 +99,6 @@ fun PlaceholderScreen(
     onAction: (PlaceholderAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val sizes = AppTheme.sizes
     Column(
         modifier =
             modifier
@@ -136,7 +136,7 @@ fun PlaceholderScreen(
                     // Las raíces dejan libre el alto de la barra inferior, más lo que sobresale Vender.
                     .then(
                         if (content.withBottomBar) {
-                            Modifier.padding(bottom = sizes.bottomBar + sizes.sellButtonOverhang)
+                            Modifier.padding(bottom = bottomBarClearance())
                         } else {
                             Modifier
                         },

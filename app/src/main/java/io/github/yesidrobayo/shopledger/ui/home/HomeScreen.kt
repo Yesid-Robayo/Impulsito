@@ -88,6 +88,7 @@ import io.github.yesidrobayo.shopledger.ui.components.StatTile
 import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.periodLabel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
@@ -223,9 +224,8 @@ fun HomeScreen(
  */
 @Composable
 private fun bottomSpace(): Dp {
-    val sizes = AppTheme.sizes
     val system = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    return system + sizes.bottomBar + sizes.sellButtonOverhang + AppTheme.spacing.s16
+    return system + bottomBarClearance() + AppTheme.spacing.s16
 }
 
 /** Una columna de hasta 600 dp, centrada: el teléfono y la ventana mediana. */

@@ -54,6 +54,7 @@ import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
 import io.github.yesidrobayo.shopledger.ui.components.PeriodSelector
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
+import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.purchase.EXPENSES_SEGMENT
@@ -194,9 +195,8 @@ private fun HistoryList(
     onAction: (SaleHistoryAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val sizes = AppTheme.sizes
     // Las raíces dejan libre el alto de la barra inferior, más lo que sobresale Vender.
-    val bottom = sizes.bottomBar + sizes.sellButtonOverhang + AppTheme.spacing.s16
+    val bottom = bottomBarClearance() + AppTheme.spacing.s16
     Box(modifier.fillMaxWidth()) {
         when (val content = uiState.content) {
             HistoryContent.Loading -> DelayedSkeleton { HistorySkeleton() }

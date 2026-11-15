@@ -9,12 +9,19 @@ import android.provider.ContactsContract
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -24,15 +31,19 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
+import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
+import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
+import io.github.yesidrobayo.shopledger.ui.payment.ListDetailPanes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
  * La lista de clientes en la navegación. Abrir un cliente lleva a su detalle; `Programa de puntos`
- * abre su pantalla. Atrás con la hoja abierta la cierra primero.
+ * abre su pantalla. Atrás con la hoja abierta la cierra primero. En una ventana `Expanded`, el
+ * cliente elegido se abre en el panel derecho en vez de encima, y atrás cierra primero ese panel.
  *
  * Abierta desde el cobro con `pickForSale`, tocar un cliente que se puede vender lo deja elegido y
  * vuelve al cobro, y el que se crea en la hoja vuelve elegido. Atrás vuelve sin elegir.
@@ -65,28 +76,71 @@ fun CustomerListRoute(key: AppNavKey.Customers, navigator: AppNavigator) {
             BackHandler(enabled = editor != null) {
                 viewModel.editor.onAction(CustomerEditorAction.Dismiss)
             }
-            CustomerListScreen(uiState, { action ->
-                when (action) {
-                    CustomerListAction.Back -> navigator.back()
+            var selectedId by rememberSaveable { mutableStateOf<Long?>(null) }
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                // Al elegir para el cobro no hay panel: tocar un cliente vuelve al cobro.
+                val expanded = maxWidth >= EXPANDED_WIDTH && !key.pickForSale
+                BackHandler(enabled = expanded && selectedId != null && editor == null) {
+                    selectedId = null
+                }
+                val onAction: (CustomerListAction) -> Unit = { action ->
+                    when (action) {
+                        CustomerListAction.Back -> navigator.back()
 
-                    is CustomerListAction.OpenCustomer ->
-                        if (key.pickForSale &&
-                            CustomerListViewModel.pickable(uiState.content, action.customerId)
-                        ) {
-                            navigator.pickCustomerForSale(action.customerId)
-                        } else {
-                            navigator.open(AppNavKey.CustomerDetail(action.customerId))
+                        is CustomerListAction.OpenCustomer -> {
+                            val id = action.customerId
+                            val picks = key.pickForSale &&
+                                CustomerListViewModel.pickable(uiState.content, id)
+                            if (picks) {
+                                navigator.pickCustomerForSale(id)
+                            } else if (expanded) {
+                                selectedId = id
+                            } else {
+                                navigator.open(AppNavKey.CustomerDetail(id))
+                            }
                         }
 
-                    CustomerListAction.OpenLoyalty -> navigator.open(AppNavKey.LoyaltyProgram)
+                        CustomerListAction.OpenLoyalty ->
+                            navigator.open(AppNavKey.LoyaltyProgram)
 
-                    is CustomerListAction.QueryChange, is CustomerListAction.FilterChange,
-                    CustomerListAction.ClearFilters, CustomerListAction.Retry,
-                    is CustomerListAction.NewCustomer, is CustomerListAction.Reactivate,
-                    CustomerListAction.MessageShown, CustomerListAction.PickedShown,
-                    -> viewModel.onAction(action)
+                        is CustomerListAction.QueryChange, is CustomerListAction.FilterChange,
+                        CustomerListAction.ClearFilters, CustomerListAction.Retry,
+                        is CustomerListAction.NewCustomer, is CustomerListAction.Reactivate,
+                        CustomerListAction.MessageShown, CustomerListAction.PickedShown,
+                        -> viewModel.onAction(action)
+                    }
                 }
-            })
+                if (!expanded) {
+                    CustomerListScreen(uiState, onAction)
+                } else {
+                    ListDetailPanes(
+                        list = { paneModifier ->
+                            CustomerListScreen(
+                                uiState = uiState,
+                                onAction = onAction,
+                                modifier = paneModifier,
+                                selectedId = selectedId,
+                            )
+                        },
+                        detail = {
+                            val id = selectedId
+                            if (id == null) {
+                                EmptyState(
+                                    icon = R.drawable.ic_group,
+                                    title = stringResource(R.string.customer_title),
+                                )
+                            } else {
+                                CustomerDetailPane(
+                                    customerId = id,
+                                    navigator = navigator,
+                                    navigation = TopBarNavigation.NONE,
+                                    onClose = { selectedId = null },
+                                )
+                            }
+                        },
+                    )
+                }
+            }
             editor?.let {
                 CustomerEditorSheet(it, { action ->
                     when (action) {
@@ -106,6 +160,9 @@ fun CustomerListRoute(key: AppNavKey.Customers, navigator: AppNavigator) {
         }
     }
 }
+
+/** Desde este ancho la ventana es `Expanded`: lista a la izquierda y cliente a la derecha. */
+private val EXPANDED_WIDTH = 840.dp
 
 /**
  * El selector de contactos del sistema, que lleva el nombre y el teléfono del contacto elegido a la

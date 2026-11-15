@@ -55,6 +55,7 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TonalFabDefaults
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
+import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -87,7 +88,7 @@ fun ProductListScreen(
     val spacing = AppTheme.spacing
     val sizes = AppTheme.sizes
     // Las raíces dejan libre el alto de la barra inferior, más lo que sobresale Vender.
-    val bottomClearance = sizes.bottomBar + sizes.sellButtonOverhang
+    val bottomClearance = bottomBarClearance()
     Box(
         modifier
             .fillMaxSize()

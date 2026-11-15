@@ -80,6 +80,9 @@ class AppSizes internal constructor() {
     /** Alto de la píldora que marca la pestaña activa. */
     val tabIndicatorHeight: Dp = 28.dp
 
+    /** Ancho del riel lateral, que reemplaza a la barra inferior desde una ventana mediana. */
+    val navigationRail: Dp = 80.dp
+
     /** Alto del botón principal. */
     val primaryButton: Dp = 56.dp
 

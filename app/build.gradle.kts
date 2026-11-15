@@ -146,6 +146,9 @@ dependencies {
     // El widget de la pantalla de inicio. Glance está entre las dependencias de ejecución permitidas: dibuja sin red, y
     // corre sus sesiones en la biblioteca de trabajos, que ya es la del catálogo.
     implementation(libs.androidx.glance.appwidget)
+    // La clase de ventana decide entre la barra inferior y el riel lateral. Es de AndroidX, sin
+    // red ni permisos.
+    implementation(libs.androidx.compose.material3.adaptive)
     testImplementation(libs.junit)
     // Los ViewModel se prueban en JVM: dispatchers de prueba en lugar del principal, y Turbine para leer cada estado.
     testImplementation(libs.kotlinx.coroutines.test)

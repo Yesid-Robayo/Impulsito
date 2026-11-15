@@ -66,6 +66,7 @@ import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.StatusTone
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.sale.FilterSheetLabel
@@ -109,7 +110,7 @@ fun PurchaseHistoryScreen(
 ) {
     val sizes = AppTheme.sizes
     // Como segmento, el botón y el final de la lista dejan libre la barra inferior y Vender.
-    val barClearance = if (asTab) sizes.bottomBar + sizes.sellButtonOverhang else 0.dp
+    val barClearance = if (asTab) bottomBarClearance() else 0.dp
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,

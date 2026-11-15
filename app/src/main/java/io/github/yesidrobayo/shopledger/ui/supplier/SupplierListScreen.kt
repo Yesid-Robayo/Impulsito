@@ -53,6 +53,7 @@ import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TonalFabDefaults
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -84,7 +85,7 @@ fun SupplierListScreen(
     val sizes = AppTheme.sizes
     val isRoot = navigation == TopBarNavigation.NONE
     // Una raíz deja libre el alto de la barra inferior, más lo que sobresale Vender.
-    val bottomClearance = if (isRoot) sizes.bottomBar + sizes.sellButtonOverhang else 0.dp
+    val bottomClearance = if (isRoot) bottomBarClearance() else 0.dp
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxSize()) {
             AppTopBar(

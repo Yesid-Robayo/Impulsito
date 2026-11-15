@@ -49,9 +49,16 @@ import kotlinx.coroutines.flow.Flow
  * El detalle de un producto en la navegación. Resuelve vender, comprar, ajustar, editar y abrir el
  * documento de una fila; al eliminarlo, vuelve atrás con su aviso. Atrás con la hoja abierta la
  * cierra primero.
+ *
+ * @param onBack cómo se sale: en su propia pantalla, atrás; en el panel derecho de una ventana
+ *   ancha, cerrar el panel.
  */
 @Composable
-fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
+fun ProductDetailRoute(
+    key: AppNavKey.ProductDetail,
+    navigator: AppNavigator,
+    onBack: () -> Unit = { navigator.back() },
+) {
     val formats = LocalAppFormats.current
     val numbers =
         ProductNumberFormat(
@@ -79,7 +86,7 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
             val viewModel = model.viewModel
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             ShowMessage(uiState.message) { viewModel.onAction(ProductDetailAction.MessageShown) }
-            LaunchedEffect(uiState.closed) { if (uiState.closed) navigator.back() }
+            LaunchedEffect(uiState.closed) { if (uiState.closed) onBack() }
             BackHandler(enabled = uiState.priceSheet != null) {
                 viewModel.onAction(ProductDetailAction.DismissPriceSheet)
             }
@@ -90,7 +97,7 @@ fun ProductDetailRoute(key: AppNavKey.ProductDetail, navigator: AppNavigator) {
                 uiState = uiState,
                 onAction = { action ->
                     when (action) {
-                        ProductDetailAction.Back -> navigator.back()
+                        ProductDetailAction.Back -> onBack()
 
                         ProductDetailAction.Edit ->
                             navigator.open(AppNavKey.ProductEdit(key.productId))

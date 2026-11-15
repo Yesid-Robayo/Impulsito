@@ -156,6 +156,34 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
         return true
     }
 
+    /** El riel se ve en toda pantalla salvo el primer uso, que ocupa la ventana entera. */
+    val showsRail: Boolean get() = current != AppNavKey.Onboarding
+
+    /**
+     * Lo que marca el riel: Ajustes o Negocio si están en la pila, el último abierto de los dos, o
+     * la raíz de la pestaña de lo visible.
+     */
+    val railSection: AppNavKey
+        get() {
+            val opened =
+                backStack.lastOrNull { it == AppNavKey.Settings || it == AppNavKey.BusinessHub }
+            return opened as? AppNavKey ?: currentTab.root
+        }
+
+    /**
+     * Abre [key] desde el riel. Una raíz es su pestaña, como en la barra. Negocio y Ajustes, si ya
+     * están en la pila, vuelven a ellos sin apilarse dos veces; si no, se abren encima de lo
+     * visible, como el engranaje.
+     */
+    fun openFromRail(key: AppNavKey) {
+        val index = backStack.indexOfLast { it == key }
+        when {
+            TopLevelDestination.ofRoot(key) != null -> open(key)
+            index < 0 -> backStack.add(key)
+            else -> while (backStack.size > index + 1) backStack.removeAt(backStack.lastIndex)
+        }
+    }
+
     private fun replaceWith(target: List<NavKey>) {
         // Se conserva el prefijo común para que Navigation 3 no recree la entrada de Inicio.
         val common = backStack.zip(target).takeWhile { (a, b) -> a == b }.size

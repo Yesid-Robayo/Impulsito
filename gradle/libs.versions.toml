@@ -30,6 +30,7 @@ ktlintGradle = "14.2.0"
 camerax = "1.6.2"
 zxingCpp = "3.1.1"
 glance = "1.2.0"
+adaptive = "1.3.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -77,6 +78,7 @@ androidx-camera-compose = { module = "androidx.camera:camera-compose", version.r
 zxing-cpp-android = { module = "io.github.zxing-cpp:android", version.ref = "zxingCpp" }
 androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
+androidx-compose-material3-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "adaptive" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

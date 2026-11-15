@@ -77,6 +77,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.StatTile
 import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
+import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
@@ -123,7 +124,7 @@ fun ExpensesScreen(
 ) {
     val sizes = AppTheme.sizes
     // Como segmento, el botón y el final de la lista dejan libre la barra inferior y Vender.
-    val barClearance = if (asTab) sizes.bottomBar + sizes.sellButtonOverhang else 0.dp
+    val barClearance = if (asTab) bottomBarClearance() else 0.dp
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
