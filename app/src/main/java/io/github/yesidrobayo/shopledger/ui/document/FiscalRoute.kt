@@ -139,8 +139,8 @@ fun FiscalRoute(key: AppNavKey.PendingFiscal, navigator: AppNavigator) {
 
 /**
  * Abre [url] en la app que la persona tenga para eso, con `ACTION_VIEW` y sin WebView: la app no
- * lee la respuesta. Solo llega aquí un enlace `https` validado al guardarlo. `false` si ninguna
- * app lo abre.
+ * lee la respuesta. Solo llega aquí un enlace `https` validado al guardarlo y otra vez al leerlo,
+ * porque también puede venir de una copia restaurada. `false` si ninguna app lo abre.
  */
 private fun openLink(context: Context, url: String): Boolean = try {
     context.startActivity(

@@ -64,6 +64,25 @@ class FiscalPortalLinkUseCasesTest {
     }
 
     @Test
+    fun `a stored link that is not https, as from a restored copy, is never offered`() = runTest {
+        for (stored in listOf(
+            "intent://example.com#Intent;end",
+            "file:///sdcard/a.html",
+            "javascript:alert(1)",
+            "http://example.com",
+            "content://example/a",
+            "https://",
+        )) {
+            settings.updateFiscalPortalUrl(stored, NOW)
+
+            assertNull(stored, observe().first())
+        }
+
+        settings.updateFiscalPortalUrl(LINK, NOW)
+        assertEquals(LINK, observe().first())
+    }
+
+    @Test
     fun `a storage failure is returned`() = runTest {
         runner.restoreInProgress = true
 

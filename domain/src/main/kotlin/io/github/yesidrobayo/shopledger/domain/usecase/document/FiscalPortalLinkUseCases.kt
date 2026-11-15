@@ -60,8 +60,17 @@ class SaveFiscalPortalLinkUseCase(
     }
 }
 
-/** El enlace al sistema externo que guardó la persona, o `null` si no hay. No usa la red. */
+/**
+ * El enlace al sistema externo que guardó la persona, o `null` si no hay. No usa la red.
+ *
+ * Lo guardado pasa otra vez por la regla de guardar, porque también puede venir de una copia
+ * restaurada, que la base acepta con cualquier texto: un `intent:`, un `file:` o un `http:` nunca
+ * se entrega a otra app. Un valor que no pasa la regla cuenta como sin enlace.
+ */
 class ObserveFiscalPortalLinkUseCase(private val settings: AppSettingsRepository) {
     operator fun invoke(): Flow<String?> =
-        settings.observe().map { it.receipt.fiscalPortalUrl }.distinctUntilChanged()
+        settings.observe().map { openable(it.receipt.fiscalPortalUrl) }.distinctUntilChanged()
+
+    private fun openable(stored: String?): String? =
+        stored?.let { (FiscalInputs.portalUrl(it) as? PortalUrlInput.Valid)?.value }
 }
