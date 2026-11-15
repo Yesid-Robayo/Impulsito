@@ -40,6 +40,37 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    lint {
+        // Las mismas reglas de seguridad que en :app, que detienen la compilación en vez
+        // de avisar: aquí viven el cliente de red, el cifrado y lo sellado. Si la lista
+        // cambia en :app, cambia aquí.
+        val securityChecks =
+            setOf(
+                "AcceptsUserCertificates",
+                "BadHostnameVerifier",
+                "DataExtractionRules",
+                "ExportedContentProvider",
+                "ExportedReceiver",
+                "ExportedService",
+                "ExposedRootPath",
+                "GetInstance",
+                "GrantAllUris",
+                "HardcodedDebugMode",
+                "InsecureBaseConfiguration",
+                "MutableImplicitPendingIntent",
+                "PackagedPrivateKey",
+                "SSLCertificateSocketFactoryCreateSocket",
+                "SSLCertificateSocketFactoryGetInsecure",
+                "SecureRandom",
+                "SetJavaScriptEnabled",
+                "TrustAllX509TrustManager",
+                "UnsafeImplicitIntentLaunch",
+                "UnsafeIntentLaunch",
+            )
+        enable += securityChecks
+        fatal += securityChecks
+    }
+
     sourceSets {
         // El destino falso de las copias y el servidor WebDAV falso sirven a las pruebas en la JVM y
         // a las del dispositivo: viven una sola vez, en una carpeta que ven las dos.

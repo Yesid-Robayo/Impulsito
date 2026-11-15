@@ -77,6 +77,37 @@ android {
     lint {
         // Una clave sin traducir saldría en inglés sin aviso a quien usa la app en otro idioma: check falla.
         error += "MissingTranslation"
+        // Las reglas de seguridad de lint detienen la compilación, no solo avisan: casi
+        // todas vienen como aviso, y un aviso no hace fallar check. Sin esto, un validador
+        // de certificados propio, un componente exportado sin permiso, un Intent recibido
+        // que se relanza, un PendingIntent mutable o un proveedor de archivos con la raíz
+        // entrarían sin que nada falle. La misma lista vive en :data, donde están la red y
+        // el cifrado: si cambia aquí, cambia allá.
+        val securityChecks =
+            setOf(
+                "AcceptsUserCertificates",
+                "BadHostnameVerifier",
+                "DataExtractionRules",
+                "ExportedContentProvider",
+                "ExportedReceiver",
+                "ExportedService",
+                "ExposedRootPath",
+                "GetInstance",
+                "GrantAllUris",
+                "HardcodedDebugMode",
+                "InsecureBaseConfiguration",
+                "MutableImplicitPendingIntent",
+                "PackagedPrivateKey",
+                "SSLCertificateSocketFactoryCreateSocket",
+                "SSLCertificateSocketFactoryGetInsecure",
+                "SecureRandom",
+                "SetJavaScriptEnabled",
+                "TrustAllX509TrustManager",
+                "UnsafeImplicitIntentLaunch",
+                "UnsafeIntentLaunch",
+            )
+        enable += securityChecks
+        fatal += securityChecks
     }
 
     signingConfigs {
