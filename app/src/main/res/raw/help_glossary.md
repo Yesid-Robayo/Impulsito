@@ -1,1 +1,31 @@
-Glossário
+The words of {app}, always with the same meaning in the app, in documents and in this help.
+
+- **Sale**: what is sold to a customer, with one or more products.
+- **Purchase**: goods that come into inventory, with their cost.
+- **Expense**: money that goes out and is not goods, such as rent.
+- **Cost**: what each unit cost.
+- **Average cost**: the cost of the stock, averaging the purchases. Buying at a different price changes it.
+- **Replacement cost**: what it would cost to buy one unit again today.
+- **Cost of goods sold**: the cost of the units sold in a period.
+- **Margin**: out of every 100 sold, what is left after paying for the product.
+- **Sales profit**: what was sold minus what those goods cost.
+- **Final profit**: sales profit minus expenses, fees, and damage and loss.
+- **Damage and loss**: what left inventory without being sold: expired, damaged, lost or given away.
+- **Stock**: the units of a product on hand.
+- **Opening stock**: the stock a product starts with.
+- **Inventory value**: the stock valued at its average cost.
+- **Fee**: what the payment processor charges.
+- **Net received**: what was collected minus the fee.
+- **Sale on credit**: a sale that the customer pays later.
+- **Payment on account**: a payment toward what is owed.
+- **Receivable**: what customers owe the business.
+- **Payable**: what the business owes its suppliers.
+- **Credit balance**: a customer's money that stays for future purchases.
+- **Cash register**: the cash of a shift, which is opened and closed by counting.
+- **Void**: cancel a record with another one that offsets it. Nothing is deleted.
+- **Return**: what comes back from a sale, or what goes back to a supplier.
+- **Receipt**: the summary of a sale for the customer. It is not an invoice.
+- **Batch**: one shipment of a product, with its expiry date.
+- **Backup**: all the business data, saved outside the phone so it can be restored.
+- **Recovery code**: the code that opens encrypted backups.
+- **Discreet mode**: hides costs, profits, balances and totals on the screen.

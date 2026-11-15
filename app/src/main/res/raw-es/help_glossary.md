@@ -1,1 +1,31 @@
-Glosario
+Las palabras de {app}, siempre con el mismo sentido en la app, en los documentos y en esta ayuda.
+
+- **Venta**: lo que se vende a un cliente, con uno o varios productos.
+- **Compra**: mercancía que entra al inventario, con su costo.
+- **Gasto**: dinero que sale y no es mercancía, como el alquiler.
+- **Costo**: lo que costó cada unidad.
+- **Costo promedio**: el costo del stock, promediando las compras. Al comprar a otro precio, cambia.
+- **Costo de reposición**: lo que costaría volver a comprar una unidad hoy.
+- **Costo de lo vendido**: el costo de las unidades vendidas en un período.
+- **Margen**: de cada 100 vendidos, lo que queda después de pagar el producto.
+- **Ganancia en ventas**: lo vendido menos lo que costó esa mercancía.
+- **Ganancia final**: la ganancia en ventas menos los gastos, las comisiones y los daños y pérdidas.
+- **Daños y pérdidas**: lo que salió del inventario sin venderse: vencido, dañado, perdido o regalado.
+- **Stock**: las unidades que hay de un producto.
+- **Inventario inicial**: el stock con que empieza un producto.
+- **Valor del inventario**: el stock por su costo promedio.
+- **Comisión**: lo que cobra quien procesa un pago.
+- **Neto recibido**: lo cobrado menos la comisión.
+- **Venta a crédito**: una venta que el cliente paga después.
+- **Abono**: un pago a cuenta de lo que se debe.
+- **Por cobrar**: lo que los clientes deben al negocio.
+- **Por pagar**: lo que el negocio debe a sus proveedores.
+- **Saldo a favor**: dinero de un cliente que queda para compras futuras.
+- **Caja**: el efectivo de un turno, que se abre y se cierra contando.
+- **Anular**: dejar sin efecto un registro con otro que lo compensa. Nada se borra.
+- **Devolución**: lo que vuelve de una venta, o lo que vuelve a un proveedor.
+- **Comprobante**: el resumen de una venta para el cliente. No es una factura.
+- **Lote**: una partida de un producto, con su vencimiento.
+- **Copia**: todos los datos del negocio, guardados fuera del teléfono para restaurarlos.
+- **Código de recuperación**: el código que abre las copias cifradas.
+- **Modo discreto**: oculta en la pantalla costos, ganancias, saldos y totales.

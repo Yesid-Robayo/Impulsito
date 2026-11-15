@@ -1,1 +1,31 @@
-Glossary
+As palavras de {app}, sempre com o mesmo sentido no app, nos documentos e nesta ajuda.
+
+- **Venda**: o que se vende a um cliente, com um ou vários produtos.
+- **Compra**: mercadoria que entra no estoque, com o custo dela.
+- **Despesa**: dinheiro que sai e não é mercadoria, como o aluguel.
+- **Custo**: quanto custou cada unidade.
+- **Custo médio**: o custo do estoque, pela média das compras. Ao comprar por outro preço, muda.
+- **Custo de reposição**: quanto custaria comprar de novo uma unidade hoje.
+- **Custo do que foi vendido**: o custo das unidades vendidas em um período.
+- **Margem**: de cada 100 vendidos, o que sobra depois de pagar o produto.
+- **Lucro nas vendas**: o que foi vendido menos o que custou essa mercadoria.
+- **Lucro final**: o lucro nas vendas menos as despesas, as taxas e os danos e perdas.
+- **Danos e perdas**: o que saiu do estoque sem ser vendido: vencido, danificado, perdido ou dado de presente.
+- **Estoque**: as unidades que há de um produto.
+- **Estoque inicial**: o estoque com que um produto começa.
+- **Valor do estoque**: o estoque multiplicado pelo custo médio.
+- **Taxa**: o que cobra quem processa um pagamento.
+- **Valor líquido**: o que foi cobrado menos a taxa.
+- **Venda a prazo**: uma venda que o cliente paga depois.
+- **Pagamento parcial**: um pagamento por conta do que se deve.
+- **A receber**: o que os clientes devem ao negócio.
+- **A pagar**: o que o negócio deve aos fornecedores.
+- **Saldo a favor**: dinheiro de um cliente que fica para compras futuras.
+- **Caixa**: o dinheiro de um turno, que se abre e se fecha contando.
+- **Anular**: deixar sem efeito um registro com outro que o compensa. Nada é apagado.
+- **Devolução**: o que volta de uma venda, ou o que volta para um fornecedor.
+- **Comprovante**: o resumo de uma venda para o cliente. Não é uma nota fiscal.
+- **Lote**: uma remessa de um produto, com a validade dela.
+- **Cópia de segurança**: todos os dados do negócio, guardados fora do telefone para restaurá-los.
+- **Código de recuperação**: o código que abre as cópias criptografadas.
+- **Modo discreto**: oculta na tela custos, lucros, saldos e totais.
