@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Qué datos hay y adónde van, con el estado real. Textos de la guía de redacción. -->
+    <string name="transparency_policy_changed_title">The policy has changed</string>
+    <string name="transparency_policy_changed_body">Until it is accepted, cloud backups stay paused. Data, sales and exports keep working.</string>
+    <string name="transparency_accept_action">Accept the new policy</string>
+    <string name="transparency_decide_later_action">Decide later</string>
+    <string name="transparency_intro">Everything lives on this phone. This screen shows the real state, not a promise.</string>
+    <string name="transparency_now_title">Right now</string>
+    <string name="transparency_now_backups_webdav">Backups: in %1$s</string>
+    <string name="transparency_now_backups_slots">Backups: handed to %1$s</string>
+    <string name="transparency_now_backups_off">Backups: not connected</string>
+    <string name="transparency_now_backups_paused">Backups paused until the policy is accepted</string>
+    <string name="transparency_now_encryption_on">Backup encryption: on</string>
+    <string name="transparency_now_encryption_off">Backup encryption: off</string>
+    <string name="transparency_now_second_none">Second destination: none</string>
+    <string name="transparency_now_second_folder">Second destination: %1$s</string>
+    <string name="transparency_now_lock_on">App lock: on</string>
+    <string name="transparency_now_lock_off">App lock: off</string>
+    <string name="transparency_now_update_on">Version check: on</string>
+    <string name="transparency_now_update_off">Version check: off</string>
+    <string name="transparency_unavailable">This information is not available right now</string>
+    <string name="transparency_backup_plain">Backups have no encryption of their own: the cloud account protects them.</string>
+    <string name="transparency_backup_encrypted">Backups are encrypted with the recovery code.</string>
+    <string name="transparency_data_title">What data exists</string>
+    <string name="transparency_data_business">Business</string>
+    <string name="transparency_data_business_body">Products, prices, costs, sales, purchases, expenses, accounts and settings.</string>
+    <string name="transparency_data_customers">Customers</string>
+    <string name="transparency_data_customers_body">Data about other people: customers and suppliers, with name, phone, email, notes and balances. Note down only what is needed.</string>
+    <string name="transparency_data_photos">Photos</string>
+    <string name="transparency_data_photos_body">Photos of products and receipts, saved without location or camera data.</string>
+    <string name="transparency_data_technical">Technical</string>
+    <string name="transparency_data_technical_body">Version, phone model and a local failure log, without business data. None of this leaves on its own.</string>
+    <string name="transparency_where_title">Where it goes</string>
+    <string name="transparency_dest_webdav_title">Chosen service: %1$s</string>
+    <string name="transparency_dest_webdav_purpose">What for: upload and download backups and photos</string>
+    <string name="transparency_dest_webdav_sends">What it sends: user name, password and the business files</string>
+    <string name="transparency_dest_webdav_off">How to turn it off: disconnect in Backup</string>
+    <string name="transparency_dest_slots_title">Cloud on the phone: %1$s</string>
+    <string name="transparency_dest_slots_purpose">What for: write three backup files</string>
+    <string name="transparency_dest_slots_sends">What it sends: nothing. That cloud\'s app uploads those files</string>
+    <string name="transparency_dest_manifest_title">Public version file on %1$s</string>
+    <string name="transparency_dest_manifest_purpose">What for: find out whether there is a new version</string>
+    <string name="transparency_dest_manifest_sends">What it sends: no data</string>
+    <string name="transparency_dest_manifest_ip">%1$s sees the IP address when that file is read.</string>
+    <string name="transparency_dest_manifest_off">How to turn it off: in Updates</string>
+    <string name="transparency_no_other">%1$s does not connect to any other destination.</string>
+    <string name="transparency_none_title">What is not here</string>
+    <string name="transparency_none_body">No %1$s accounts, no ads, no analytics and no %1$s servers.</string>
+    <string name="transparency_other_apps_title">Other apps</string>
+    <string name="transparency_other_apps_body">When a link is tapped or a file is shared, another app does that work, under its own rules. %1$s does not read its response.</string>
+    <string name="transparency_policy_section_title">Policy and terms</string>
+    <string name="transparency_no_browser">No app can open this link</string>
+    <!-- Quien aloja el archivo público de versión, como lo nombra la tabla de destinos de la app. -->
+    <string name="transparency_manifest_host" translatable="false">GitHub</string>
+</resources>

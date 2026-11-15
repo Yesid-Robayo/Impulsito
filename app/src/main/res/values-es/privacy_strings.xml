@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Qué datos hay y adónde van, con el estado real. Textos de la guía de redacción. -->
+    <string name="transparency_policy_changed_title">Hay cambios en la política</string>
+    <string name="transparency_policy_changed_body">Sin aceptar, las copias en la nube quedan en pausa. Los datos, las ventas y exportar siguen funcionando.</string>
+    <string name="transparency_accept_action">Aceptar la política nueva</string>
+    <string name="transparency_decide_later_action">Decidir después</string>
+    <string name="transparency_intro">Todo vive en este teléfono. Esta pantalla muestra el estado real, no una promesa.</string>
+    <string name="transparency_now_title">Ahora mismo</string>
+    <string name="transparency_now_backups_webdav">Copias: en %1$s</string>
+    <string name="transparency_now_backups_slots">Copias: entregadas a %1$s</string>
+    <string name="transparency_now_backups_off">Copias: sin conectar</string>
+    <string name="transparency_now_backups_paused">Copias en pausa hasta aceptar la política</string>
+    <string name="transparency_now_encryption_on">Cifrado de copias: activo</string>
+    <string name="transparency_now_encryption_off">Cifrado de copias: apagado</string>
+    <string name="transparency_now_second_none">Segundo destino: ninguno</string>
+    <string name="transparency_now_second_folder">Segundo destino: %1$s</string>
+    <string name="transparency_now_lock_on">Bloqueo de la app: activo</string>
+    <string name="transparency_now_lock_off">Bloqueo de la app: apagado</string>
+    <string name="transparency_now_update_on">Búsqueda de versión: activa</string>
+    <string name="transparency_now_update_off">Búsqueda de versión: apagada</string>
+    <string name="transparency_unavailable">Este dato no está disponible ahora</string>
+    <string name="transparency_backup_plain">Las copias no llevan cifrado propio: las protege la cuenta de la nube.</string>
+    <string name="transparency_backup_encrypted">Las copias salen cifradas con el código de recuperación.</string>
+    <string name="transparency_data_title">Qué datos hay</string>
+    <string name="transparency_data_business">Negocio</string>
+    <string name="transparency_data_business_body">Productos, precios, costos, ventas, compras, gastos, cuentas y ajustes.</string>
+    <string name="transparency_data_customers">Clientes</string>
+    <string name="transparency_data_customers_body">Datos de otras personas: clientes y proveedores, con nombre, teléfono, correo, notas y saldos. Conviene anotar solo lo necesario.</string>
+    <string name="transparency_data_photos">Fotos</string>
+    <string name="transparency_data_photos_body">Fotos de productos y comprobantes, guardadas sin ubicación ni datos de la cámara.</string>
+    <string name="transparency_data_technical">Técnicos</string>
+    <string name="transparency_data_technical_body">Versión, modelo del teléfono y registro local de fallos, sin datos del negocio. Nada de esto sale solo.</string>
+    <string name="transparency_where_title">Adónde van</string>
+    <string name="transparency_dest_webdav_title">Servicio elegido: %1$s</string>
+    <string name="transparency_dest_webdav_purpose">Para qué: subir y bajar copias y fotos</string>
+    <string name="transparency_dest_webdav_sends">Qué envía: usuario, contraseña y archivos propios</string>
+    <string name="transparency_dest_webdav_off">Cómo se apaga: desconectar en Respaldo</string>
+    <string name="transparency_dest_slots_title">Nube del teléfono: %1$s</string>
+    <string name="transparency_dest_slots_purpose">Para qué: escribir tres archivos de copia</string>
+    <string name="transparency_dest_slots_sends">Qué envía: nada. Esos archivos los sube la app de esa nube</string>
+    <string name="transparency_dest_manifest_title">Archivo público de versión en %1$s</string>
+    <string name="transparency_dest_manifest_purpose">Para qué: saber si hay versión nueva</string>
+    <string name="transparency_dest_manifest_sends">Qué envía: ningún dato</string>
+    <string name="transparency_dest_manifest_ip">%1$s ve la dirección IP al consultar ese archivo.</string>
+    <string name="transparency_dest_manifest_off">Cómo se apaga: en Actualizaciones</string>
+    <string name="transparency_no_other">%1$s no se conecta a ningún otro destino.</string>
+    <string name="transparency_none_title">Lo que no hay</string>
+    <string name="transparency_none_body">Sin cuentas propias, sin anuncios, sin analítica y sin servidores de %1$s.</string>
+    <string name="transparency_other_apps_title">Otras apps</string>
+    <string name="transparency_other_apps_body">Al tocar un enlace o compartir un archivo, ese trabajo pasa a otra app, con sus propias reglas. %1$s no lee su respuesta.</string>
+    <string name="transparency_policy_section_title">Política y términos</string>
+    <string name="transparency_no_browser">No hay una app para abrir este enlace</string>
+</resources>

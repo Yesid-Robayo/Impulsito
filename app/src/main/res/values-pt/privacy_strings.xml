@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Qué datos hay y adónde van, con el estado real. Textos de la guía de redacción. -->
+    <string name="transparency_policy_changed_title">A política mudou</string>
+    <string name="transparency_policy_changed_body">Sem aceitar, as cópias na nuvem ficam em pausa. Os dados, as vendas e a exportação continuam funcionando.</string>
+    <string name="transparency_accept_action">Aceitar a nova política</string>
+    <string name="transparency_decide_later_action">Decidir depois</string>
+    <string name="transparency_intro">Tudo fica neste telefone. Esta tela mostra o estado real, não uma promessa.</string>
+    <string name="transparency_now_title">Neste momento</string>
+    <string name="transparency_now_backups_webdav">Cópias: em %1$s</string>
+    <string name="transparency_now_backups_slots">Cópias: entregues a %1$s</string>
+    <string name="transparency_now_backups_off">Cópias: não conectado</string>
+    <string name="transparency_now_backups_paused">Cópias em pausa até aceitar a política</string>
+    <string name="transparency_now_encryption_on">Criptografia das cópias: ativa</string>
+    <string name="transparency_now_encryption_off">Criptografia das cópias: desligada</string>
+    <string name="transparency_now_second_none">Segundo destino: nenhum</string>
+    <string name="transparency_now_second_folder">Segundo destino: %1$s</string>
+    <string name="transparency_now_lock_on">Bloqueio do app: ativo</string>
+    <string name="transparency_now_lock_off">Bloqueio do app: desligado</string>
+    <string name="transparency_now_update_on">Busca de versão: ativa</string>
+    <string name="transparency_now_update_off">Busca de versão: desligada</string>
+    <string name="transparency_unavailable">Esta informação não está disponível agora</string>
+    <string name="transparency_backup_plain">As cópias não têm criptografia própria: a conta da nuvem as protege.</string>
+    <string name="transparency_backup_encrypted">As cópias saem criptografadas com o código de recuperação.</string>
+    <string name="transparency_data_title">Quais dados existem</string>
+    <string name="transparency_data_business">Negócio</string>
+    <string name="transparency_data_business_body">Produtos, preços, custos, vendas, compras, despesas, contas e ajustes.</string>
+    <string name="transparency_data_customers">Clientes</string>
+    <string name="transparency_data_customers_body">Dados de outras pessoas: clientes e fornecedores, com nome, telefone, e-mail, notas e saldos. O ideal é anotar só o necessário.</string>
+    <string name="transparency_data_photos">Fotos</string>
+    <string name="transparency_data_photos_body">Fotos de produtos e comprovantes, salvas sem localização nem dados da câmera.</string>
+    <string name="transparency_data_technical">Técnicos</string>
+    <string name="transparency_data_technical_body">Versão, modelo do telefone e registro local de falhas, sem dados do negócio. Nada disso sai sozinho.</string>
+    <string name="transparency_where_title">Para onde vão</string>
+    <string name="transparency_dest_webdav_title">Serviço escolhido: %1$s</string>
+    <string name="transparency_dest_webdav_purpose">Para quê: enviar e baixar cópias e fotos</string>
+    <string name="transparency_dest_webdav_sends">O que envia: usuário, senha e arquivos próprios</string>
+    <string name="transparency_dest_webdav_off">Como desligar: desconectar em Cópia de segurança</string>
+    <string name="transparency_dest_slots_title">Nuvem do telefone: %1$s</string>
+    <string name="transparency_dest_slots_purpose">Para quê: gravar três arquivos de cópia</string>
+    <string name="transparency_dest_slots_sends">O que envia: nada. Esses arquivos são enviados pelo app dessa nuvem</string>
+    <string name="transparency_dest_manifest_title">Arquivo público de versão em %1$s</string>
+    <string name="transparency_dest_manifest_purpose">Para quê: saber se há uma nova versão</string>
+    <string name="transparency_dest_manifest_sends">O que envia: nenhum dado</string>
+    <string name="transparency_dest_manifest_ip">%1$s vê o endereço IP ao consultar esse arquivo.</string>
+    <string name="transparency_dest_manifest_off">Como desligar: em Atualizações</string>
+    <string name="transparency_no_other">O %1$s não se conecta a nenhum outro destino.</string>
+    <string name="transparency_none_title">O que não existe</string>
+    <string name="transparency_none_body">Sem contas próprias, sem anúncios, sem análise de uso e sem servidores do %1$s.</string>
+    <string name="transparency_other_apps_title">Outros apps</string>
+    <string name="transparency_other_apps_body">Ao tocar em um link ou compartilhar um arquivo, outro app faz esse trabalho, com suas próprias regras. O %1$s não lê a resposta.</string>
+    <string name="transparency_policy_section_title">Política e termos</string>
+    <string name="transparency_no_browser">Não há um app para abrir este link</string>
+</resources>

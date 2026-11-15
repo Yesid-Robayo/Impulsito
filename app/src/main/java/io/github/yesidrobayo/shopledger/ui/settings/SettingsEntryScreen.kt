@@ -252,6 +252,12 @@ fun SettingsEntryScreen(
                             aboutSheet = AboutSheet.DELETE_GUIDE
                         },
                     )
+                    // Qué datos guarda la app y adónde van, con el estado real.
+                    SettingsRow(
+                        title = stringResource(R.string.transparency_title),
+                        action =
+                            SettingsRowAction.Navigation { onOpen(AppNavKey.DataTransparency) },
+                    )
                 }
                 AboutGroup(
                     version = version,
