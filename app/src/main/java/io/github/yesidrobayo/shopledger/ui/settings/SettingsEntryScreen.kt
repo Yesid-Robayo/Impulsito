@@ -46,6 +46,8 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.i18n.ownName
 import io.github.yesidrobayo.shopledger.ui.rescue.SupportInfoSheet
 import io.github.yesidrobayo.shopledger.ui.rescue.SupportLine
@@ -148,6 +150,7 @@ fun SettingsEntryScreen(
             onNavigate = onBack,
             navigationLabel = stringResource(R.string.a11y_back),
             titleStyle = MaterialTheme.typography.titleLarge,
+            actions = { ScreenHelpLink(HelpTopic.LOCK_DISCREET) },
         )
         Column(
             Modifier
@@ -497,6 +500,11 @@ private fun AboutGroup(
 ) {
     val app = stringResource(R.string.app_name)
     SectionHeader(stringResource(R.string.settings_group_help_about))
+    // La ayuda va primera: funciona sin internet y sin la base.
+    SettingsRow(
+        title = stringResource(R.string.help_title),
+        action = SettingsRowAction.Navigation { links.onOpen(AppNavKey.Help()) },
+    )
     SettingsRow(
         title = stringResource(R.string.support_field_version, app),
         summary = version,

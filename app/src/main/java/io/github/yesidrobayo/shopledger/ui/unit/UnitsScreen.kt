@@ -65,6 +65,8 @@ import io.github.yesidrobayo.shopledger.ui.components.unitKindLabel
 import io.github.yesidrobayo.shopledger.ui.components.unitName
 import io.github.yesidrobayo.shopledger.ui.components.unitSymbol
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /** Desde este ancho la ventana es `Expanded`: la lista va a la izquierda y la hoja como panel. */
@@ -152,6 +154,7 @@ private fun UnitsList(uiState: UnitsUiState, onAction: (UnitsAction) -> Unit, mo
                 onNavigate = { onAction(UnitsAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
                 titleStyle = MaterialTheme.typography.titleLarge,
+                actions = { ScreenHelpLink(HelpTopic.UNITS) },
             )
             Column(
                 Modifier

@@ -94,6 +94,8 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.media.LocalPhotoSource
 import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
 import io.github.yesidrobayo.shopledger.ui.media.photoDescription
@@ -156,6 +158,7 @@ fun ProductEditScreen(
             onNavigate = { onAction(ProductEditAction.Close) },
             navigationLabel = stringResource(R.string.a11y_close),
             titleStyle = MaterialTheme.typography.titleLarge,
+            actions = { ScreenHelpLink(HelpTopic.PRODUCT_EDIT) },
         )
         when {
             uiState.loading -> DelayedSkeleton { FormSkeleton() }

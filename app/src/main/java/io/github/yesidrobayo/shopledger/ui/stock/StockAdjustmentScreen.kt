@@ -58,6 +58,8 @@ import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -80,6 +82,7 @@ fun StockAdjustmentScreen(
             onNavigate = { onAction(StockAdjustmentAction.Close) },
             navigationLabel = stringResource(R.string.a11y_close),
             titleStyle = MaterialTheme.typography.titleLarge,
+            actions = { ScreenHelpLink(HelpTopic.INVENTORY) },
         )
         when (val content = uiState.content) {
             StockAdjustmentContent.Loading ->

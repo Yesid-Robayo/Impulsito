@@ -71,6 +71,8 @@ import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.product.usageTagText
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -155,6 +157,7 @@ private fun InventoryBody(
                     stringResource(R.string.a11y_back)
                 },
         ) {
+            ScreenHelpLink(HelpTopic.INVENTORY)
             // Como pestaña de Productos es una raíz, con los ajustes al borde como las demás.
             if (navigation == TopBarNavigation.NONE) SettingsButton()
         }

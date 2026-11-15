@@ -50,6 +50,8 @@ import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stats.RangeSheet
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -88,6 +90,7 @@ fun ManagementSummaryScreen(
                     onNavigate = { onAction(SummaryAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
                     actions = {
+                        ScreenHelpLink(HelpTopic.NOT_ACCOUNTING)
                         // Sin calendario no hay fechas que elegir.
                         if (uiState.period != null) {
                             OverflowMenu(

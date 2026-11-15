@@ -34,6 +34,8 @@ import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -58,6 +60,7 @@ fun PrintersScreen(
             navigation = TopBarNavigation.BACK,
             onNavigate = { onAction(PrintersAction.Back) },
             navigationLabel = stringResource(R.string.a11y_back),
+            actions = { ScreenHelpLink(HelpTopic.RECEIPTS) },
         )
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             LazyColumn(

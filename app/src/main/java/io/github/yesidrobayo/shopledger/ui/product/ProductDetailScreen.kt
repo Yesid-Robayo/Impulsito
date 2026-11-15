@@ -100,6 +100,8 @@ import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
 import io.github.yesidrobayo.shopledger.ui.stock.locationName
 import io.github.yesidrobayo.shopledger.ui.stock.reasonLabel
@@ -136,6 +138,7 @@ fun ProductDetailScreen(
             navigationLabel = stringResource(R.string.a11y_back),
             titleStyle = MaterialTheme.typography.titleLarge,
         ) {
+            ScreenHelpLink(HelpTopic.PRODUCT_DETAIL)
             if (ready != null) TopBarActions(ready, onAction)
         }
         Box(

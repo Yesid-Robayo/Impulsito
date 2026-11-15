@@ -58,6 +58,8 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -93,6 +95,7 @@ fun WebDavConnectScreen(
                 onNavigate = { onAction(WebDavConnectAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
                 titleStyle = MaterialTheme.typography.titleLarge,
+                actions = { ScreenHelpLink(HelpTopic.DESTINATIONS) },
             )
             BoxWithConstraints(
                 Modifier.weight(1f).fillMaxWidth(),

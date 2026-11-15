@@ -76,6 +76,8 @@ import io.github.yesidrobayo.shopledger.ui.components.WholeNumberField
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.money.ProvideAccountCurrency
 import io.github.yesidrobayo.shopledger.ui.payment.rememberStoredPhoto
 import io.github.yesidrobayo.shopledger.ui.reference.rateProblemText
@@ -120,6 +122,7 @@ fun CheckoutScreen(
                     navigation = TopBarNavigation.BACK,
                     onNavigate = onBack,
                     navigationLabel = stringResource(R.string.a11y_back),
+                    actions = { ScreenHelpLink(HelpTopic.PAYMENTS) },
                 )
                 if (uiState.content == CheckoutContent.Ready) {
                     Box(Modifier.weight(1f).fillMaxWidth()) {

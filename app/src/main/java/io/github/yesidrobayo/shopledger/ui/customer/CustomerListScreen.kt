@@ -44,6 +44,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TonalFabDefaults
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -82,6 +84,7 @@ fun CustomerListScreen(
                 onNavigate = { onAction(CustomerListAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
                 actions = {
+                    ScreenHelpLink(HelpTopic.CUSTOMERS)
                     OverflowMenu(
                         listOf(
                             OverflowAction(pointsLabel, {

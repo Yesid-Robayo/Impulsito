@@ -66,6 +66,9 @@ import io.github.yesidrobayo.shopledger.ui.experience.BusinessHubRoute
 import io.github.yesidrobayo.shopledger.ui.extra.ExtrasRoute
 import io.github.yesidrobayo.shopledger.ui.extras.CustomFieldsRoute
 import io.github.yesidrobayo.shopledger.ui.goal.GoalsRoute
+import io.github.yesidrobayo.shopledger.ui.help.HelpRoute
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.LocalHelpOpener
 import io.github.yesidrobayo.shopledger.ui.home.HomeRoute
 import io.github.yesidrobayo.shopledger.ui.i18n.LanguageSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.imports.ImportRoute
@@ -175,6 +178,8 @@ fun AppNavHost(
     val density = LocalDensity.current
     // El engranaje de cada pestaña abre los ajustes encima de ella.
     val openSettings = remember(navigator) { { navigator.open(AppNavKey.Settings) } }
+    // El enlace de ayuda de cada pantalla abre su artículo encima de ella.
+    val openHelp = remember(navigator) { { topic: HelpTopic -> navigator.open(topic.navKey()) } }
     val messageScope = rememberCoroutineScope()
     val messages = remember(messageScope) { AppMessages(messageScope) }
     val container = (LocalContext.current.applicationContext as ShopLedgerApp).container
@@ -209,6 +214,7 @@ fun AppNavHost(
             LocalPolicyPrompt provides policy,
             LocalNotificationPermission provides notificationPermission,
             LocalSettingsOpener provides openSettings,
+            LocalHelpOpener provides openHelp,
         ) {
             NavDisplay(
                 backStack = backStack,
@@ -460,6 +466,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.DataTransparency -> DataTransparencyRoute(navigator)
 
         AppNavKey.CloudAccountSecurity -> CloudAccountRoute(navigator)
+
+        is AppNavKey.Help -> HelpRoute(key, navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }

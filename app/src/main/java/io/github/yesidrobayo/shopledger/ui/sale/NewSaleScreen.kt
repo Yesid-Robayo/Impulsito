@@ -88,6 +88,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.media.ProductPhoto
 import io.github.yesidrobayo.shopledger.ui.stock.locationChoices
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -167,7 +169,10 @@ fun NewSaleScreen(
                     navigation = TopBarNavigation.CLOSE,
                     onNavigate = { onAction(NewSaleAction.Close) },
                     navigationLabel = stringResource(R.string.a11y_close),
-                    actions = { HeldSaleActions(uiState, onAction) },
+                    actions = {
+                        ScreenHelpLink(HelpTopic.NEW_SALE)
+                        HeldSaleActions(uiState, onAction)
+                    },
                 )
                 uiState.exchange?.let { ExchangeBanner(it) }
                 // Solo con más de una ubicación: con una sola, la venta no pregunta dónde.

@@ -67,6 +67,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TonalFabDefaults
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlin.math.roundToInt
 
@@ -111,6 +113,7 @@ fun PaymentMethodsScreen(
                 stringResource(if (sorting == null) R.string.a11y_back else R.string.a11y_close),
             titleStyle = MaterialTheme.typography.titleLarge,
             actions = {
+                ScreenHelpLink(HelpTopic.PAYMENTS)
                 // Ordenar tiene sentido con dos o más vigentes.
                 if (ready != null && sorting == null && ready.active.size > 1) {
                     OverflowMenu(

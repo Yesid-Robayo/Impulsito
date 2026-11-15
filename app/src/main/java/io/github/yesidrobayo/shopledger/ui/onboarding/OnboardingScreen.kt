@@ -61,6 +61,8 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.LocalHelpOpener
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlin.time.Instant
 
@@ -153,6 +155,12 @@ private fun WelcomeContent(
                 InlineTextButton(
                     stringResource(R.string.transparency_title),
                     { onAction(OnboardingAction.OpenDataTransparency) },
+                )
+                // La ayuda funciona sin internet ni copia: sirve antes de elegir dónde guardar.
+                val openHelp = LocalHelpOpener.current
+                InlineTextButton(
+                    stringResource(R.string.help_title),
+                    { openHelp(HelpTopic.ONBOARDING) },
                 )
             }
         }

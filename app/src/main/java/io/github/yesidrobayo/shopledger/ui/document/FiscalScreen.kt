@@ -75,6 +75,8 @@ import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -157,6 +159,7 @@ private fun TopBar(uiState: FiscalUiState, onAction: (FiscalAction) -> Unit) {
             onNavigate = { onAction(FiscalAction.Back) },
             navigationLabel = stringResource(R.string.a11y_back),
             actions = {
+                ScreenHelpLink(HelpTopic.NOT_ACCOUNTING)
                 OverflowMenu(
                     listOf(
                         OverflowAction(stringResource(R.string.fiscal_configure_link_action), {

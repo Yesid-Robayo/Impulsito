@@ -30,6 +30,8 @@ import io.github.yesidrobayo.shopledger.ui.components.DestinationOption
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /** El paso de esta pantalla en el primer uso, de cuatro. */
@@ -68,6 +70,7 @@ fun DestinationChoiceScreen(
                 onNavigate = { onAction(DestinationChoiceAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
                 titleStyle = MaterialTheme.typography.titleLarge,
+                actions = { ScreenHelpLink(HelpTopic.DESTINATIONS) },
             )
             BoxWithConstraints(
                 Modifier.weight(1f).fillMaxWidth(),

@@ -314,9 +314,12 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object PriceIndex : AppNavKey
 
-    /** La ayuda, o un artículo suyo por su clave estable. */
+    /**
+     * La ayuda, o un artículo suyo por su clave estable. [topicKey] dice desde qué pantalla se
+     * llegó por su enlace de ayuda, o es `null` si se abrió desde Ajustes o Negocio.
+     */
     @Serializable
-    data class Help(val articleKey: String? = null) : AppNavKey
+    data class Help(val articleKey: String? = null, val topicKey: String? = null) : AppNavKey
 
     @Serializable
     data object BackupEncryption : AppNavKey

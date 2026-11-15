@@ -75,6 +75,8 @@ import io.github.yesidrobayo.shopledger.ui.components.ProductRowTrailing
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -156,6 +158,7 @@ private fun TopBar(uiState: ImportUiState, onAction: (ImportAction) -> Unit) {
         navigationLabel = stringResource(if (back) R.string.a11y_back else R.string.a11y_close),
         titleStyle = MaterialTheme.typography.titleLarge,
     ) {
+        ScreenHelpLink(HelpTopic.IMPORT)
         Text(
             stringResource(R.string.import_step, uiState.step.number, ImportStep.TOTAL),
             style = MaterialTheme.typography.labelMedium,

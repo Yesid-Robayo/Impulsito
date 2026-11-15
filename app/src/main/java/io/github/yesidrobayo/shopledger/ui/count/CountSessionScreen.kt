@@ -63,6 +63,8 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stock.locationName
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -107,6 +109,7 @@ fun CountSessionScreen(
                 navigationLabel = stringResource(R.string.a11y_back),
                 titleStyle = MaterialTheme.typography.titleLarge,
                 actions = {
+                    ScreenHelpLink(HelpTopic.INVENTORY)
                     if (!uiState.readOnly && !uiState.loading && !uiState.missing) {
                         OverflowMenu(
                             listOf(

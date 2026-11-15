@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ayuda: búsqueda, grupos, artículos y su pie. Textos de la guía de redacción. -->
+    <string name="help_search_hint">Search help</string>
+    <string name="help_section_this_screen">For this screen</string>
+    <string name="help_group_start">Getting started</string>
+    <string name="help_group_money">Money</string>
+    <string name="help_group_inventory">Inventory</string>
+    <string name="help_group_documents">Documents</string>
+    <string name="help_group_backup_security">Backups and security</string>
+    <string name="help_group_glossary">Glossary</string>
+    <string name="help_article_getting_started_title">Getting started</string>
+    <string name="help_article_first_sale_title">Record a sale</string>
+    <string name="help_article_products_costs_title">Products, costs and prices</string>
+    <string name="help_article_margin_profit_title">Margin and profit</string>
+    <string name="help_article_replacement_cost_title">Average cost and replacement cost</string>
+    <string name="help_article_payments_fees_title">Payment methods and fees</string>
+    <string name="help_article_credit_title">Sales on credit and payments on account</string>
+    <string name="help_article_money_accounts_title">Money accounts and cash register</string>
+    <string name="help_article_taxes_title">Taxes</string>
+    <string name="help_article_stock_counts_title">Stock, adjustments and counts</string>
+    <string name="help_article_units_title">Units and conversions</string>
+    <string name="help_article_lots_title">Batches and expiry dates</string>
+    <string name="help_article_receipts_title">Receipts and printing</string>
+    <string name="help_article_import_export_title">Import and export</string>
+    <!-- help_article_not_accounting_title: %1$s = app -->
+    <string name="help_article_not_accounting_title">What %1$s does not cover</string>
+    <string name="help_article_backup_limits_title">How backup works and its limits</string>
+    <string name="help_article_restore_title">Restore on a new phone</string>
+    <string name="help_article_recovery_code_title">Encryption and recovery code</string>
+    <string name="help_article_destinations_title">Where to save backups</string>
+    <string name="help_article_cloud_check_title">Check the cloud every week</string>
+    <string name="help_article_offsite_title">Local backups</string>
+    <string name="help_article_lock_discreet_title">Lock and discreet mode</string>
+    <string name="help_article_delete_data_title">Delete my data</string>
+    <string name="help_article_cloud_account_title">Cloud account: inactivity and storage</string>
+    <string name="help_article_updates_title">Install and update</string>
+    <string name="help_article_glossary_title">Glossary</string>
+    <string name="help_related">Related</string>
+    <!-- help_open_screen_action: %1$s = screen -->
+    <string name="help_open_screen_action">Open %1$s</string>
+    <string name="help_view_all_action">View all articles</string>
+    <string name="help_support_action">Support information</string>
+    <!-- help_empty_search: %1$s = text -->
+    <string name="help_empty_search">No results for \"%1$s\"</string>
+    <string name="help_error_open">This article could not be opened.</string>
+    <!-- a11y_help_article: %1$s = title -->
+    <string name="a11y_help_article">Help article: %1$s</string>
+</resources>

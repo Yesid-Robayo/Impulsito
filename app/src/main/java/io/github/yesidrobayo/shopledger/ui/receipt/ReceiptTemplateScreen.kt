@@ -54,6 +54,8 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.document.ReceiptAssets
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.payment.rememberStoredPhoto
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -80,6 +82,7 @@ fun ReceiptTemplateScreen(
             onNavigate = { onAction(ReceiptTemplateAction.Leave) },
             navigationLabel = stringResource(R.string.a11y_close),
             titleStyle = MaterialTheme.typography.titleLarge,
+            actions = { ScreenHelpLink(HelpTopic.RECEIPTS) },
         )
         when (uiState) {
             ReceiptTemplateUiState.Loading ->

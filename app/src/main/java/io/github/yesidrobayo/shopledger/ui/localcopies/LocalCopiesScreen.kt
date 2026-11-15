@@ -43,6 +43,8 @@ import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -92,6 +94,7 @@ fun LocalCopiesScreen(
                 onNavigate = { onAction(LocalCopiesAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
                 titleStyle = MaterialTheme.typography.titleLarge,
+                actions = { ScreenHelpLink(HelpTopic.LOCAL_COPIES) },
             )
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 LazyColumn(

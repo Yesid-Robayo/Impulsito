@@ -1,0 +1,1 @@
+Cópias locais

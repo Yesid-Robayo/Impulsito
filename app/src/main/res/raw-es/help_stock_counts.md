@@ -1,0 +1,1 @@
+Stock, ajustes y conteos

@@ -56,6 +56,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -82,6 +84,7 @@ fun CashRegisterScreen(
                 onNavigate = { onAction(CashRegisterAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
                 actions = {
+                    ScreenHelpLink(HelpTopic.MONEY_ACCOUNTS)
                     OverflowMenu(
                         listOf(
                             OverflowAction(stringResource(R.string.cash_menu_denominations), {

@@ -55,6 +55,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.payment.ListDetailPanes
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -128,6 +130,7 @@ fun MoneyAccountsScreen(
                     },
                     navigationLabel = stringResource(R.string.a11y_back),
                     actions = {
+                        ScreenHelpLink(HelpTopic.MONEY_ACCOUNTS)
                         if (view != null && view.archived.isNotEmpty() && !archivedMode) {
                             OverflowMenu(
                                 listOf(

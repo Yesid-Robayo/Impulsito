@@ -1,0 +1,1 @@
+Registrar una venta

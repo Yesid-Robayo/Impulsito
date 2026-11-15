@@ -56,6 +56,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stock.locationName
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -83,6 +85,7 @@ fun CountHomeScreen(
                     onNavigate = { onAction(CountHomeAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
                     titleStyle = MaterialTheme.typography.titleLarge,
+                    actions = { ScreenHelpLink(HelpTopic.INVENTORY) },
                 )
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                     Box(Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxSize()) {

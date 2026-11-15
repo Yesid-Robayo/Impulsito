@@ -82,6 +82,8 @@ import io.github.yesidrobayo.shopledger.ui.components.periodLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /** Desde este ancho, cifras y gráfica a la izquierda, y el detalle a la derecha. */
@@ -128,6 +130,7 @@ fun StatisticsScreen(
                     onNavigate = {},
                     navigationLabel = null,
                     actions = {
+                        ScreenHelpLink(HelpTopic.STATISTICS)
                         DiscreetModeButton()
                         // Solo con cifras se elige un rango: sin datos no hay nada que mirar.
                         if (uiState is StatisticsUiState.Content) {

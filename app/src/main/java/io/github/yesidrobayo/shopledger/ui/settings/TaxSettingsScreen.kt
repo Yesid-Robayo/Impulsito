@@ -73,6 +73,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFabDefaults
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -137,6 +139,7 @@ fun TaxSettingsScreen(
                 navigation = TopBarNavigation.BACK,
                 onNavigate = { onAction(TaxSettingsAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
+                actions = { ScreenHelpLink(HelpTopic.TAXES) },
             )
             when (uiState) {
                 TaxSettingsUiState.Loading -> LoadingRows()

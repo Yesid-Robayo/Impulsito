@@ -1,0 +1,1 @@
+Bloqueio e modo discreto

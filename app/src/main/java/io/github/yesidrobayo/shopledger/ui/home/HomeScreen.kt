@@ -89,6 +89,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.periodLabel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stock.inventoryRowData
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -143,6 +145,7 @@ fun HomeScreen(
                     onNavigate = {},
                     navigationLabel = null,
                     actions = {
+                        ScreenHelpLink(HelpTopic.HOME)
                         DiscreetModeButton()
                         TopBarAction(
                             R.drawable.ic_settings,

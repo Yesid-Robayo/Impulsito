@@ -47,6 +47,8 @@ import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stock.locationName
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -74,6 +76,7 @@ fun LotsScreen(
                 onNavigate = { onAction(LotsAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
                 titleStyle = MaterialTheme.typography.titleLarge,
+                actions = { ScreenHelpLink(HelpTopic.LOTS) },
             )
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 val width = Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxWidth()
