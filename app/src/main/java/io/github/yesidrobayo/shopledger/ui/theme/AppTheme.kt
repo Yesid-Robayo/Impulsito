@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.theme
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -22,12 +23,16 @@ fun AppTheme(palette: ColorPalette, darkTheme: Boolean, content: @Composable () 
         LocalAppColors provides if (darkTheme) set.darkColors else set.lightColors,
         LocalColorPalette provides palette,
     ) {
-        MaterialTheme(
-            colorScheme = if (darkTheme) set.darkScheme else set.lightScheme,
-            typography = AppTypography,
-            shapes = AppShapes,
-            content = content,
-        )
+        val scheme = if (darkTheme) set.darkScheme else set.lightScheme
+        MaterialTheme(colorScheme = scheme, typography = AppTypography, shapes = AppShapes) {
+            // Un texto sin color propio, sobre un fondo pintado con `background` y no con
+            // `Surface`, tomaría el negro de fábrica y desaparecería en oscuro. Toma la tinta del
+            // tema; cada `Surface` la sigue cambiando por la suya.
+            CompositionLocalProvider(
+                LocalContentColor provides scheme.onBackground,
+                content = content,
+            )
+        }
     }
 }
 

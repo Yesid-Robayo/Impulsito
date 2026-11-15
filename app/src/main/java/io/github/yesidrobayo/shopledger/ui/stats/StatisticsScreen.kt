@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -458,20 +459,27 @@ private fun AverageTicket(ticket: Money?) {
     )
 }
 
-/** El valor del día tocado, como texto bajo la gráfica: `vie 14: ¤ 210.000`. */
+/**
+ * El valor del día tocado, como texto bajo la gráfica: `vie 14: ¤ 210.000`. Su renglón queda
+ * reservado aunque no haya día tocado: al tocar o soltar una barra, lo de abajo no salta.
+ */
 @Composable
 private fun SelectedDay(points: List<DayPoint>, content: StatisticsUiState.Content) {
-    val point = points.firstOrNull { it.date == content.selectedDay } ?: return
-    val day = LocalAppFormats.current.date.weekdayDayMonth(point.date)
-    val pattern = stringResource(R.string.stats_bar_value)
-    val (shown, spoken) = moneyInText(point.valueOf(content.metric))
-    val description = stringResource(R.string.stats_bar_value, day, spoken)
-    Text(
-        text = formatAnnotated(pattern, day, shown),
-        style = AppTheme.amounts.caption,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.semantics { contentDescription = description },
-    )
+    val style = AppTheme.amounts.caption
+    val line = with(LocalDensity.current) { style.lineHeight.toDp() }
+    Box(Modifier.fillMaxWidth().heightIn(min = line)) {
+        val point = points.firstOrNull { it.date == content.selectedDay } ?: return@Box
+        val day = LocalAppFormats.current.date.weekdayDayMonth(point.date)
+        val pattern = stringResource(R.string.stats_bar_value)
+        val (shown, spoken) = moneyInText(point.valueOf(content.metric))
+        val description = stringResource(R.string.stats_bar_value, day, spoken)
+        Text(
+            text = formatAnnotated(pattern, day, shown),
+            style = style,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { contentDescription = description },
+        )
+    }
 }
 
 /** Los mismos días de la gráfica, como filas: el camino accesible a cada dato. */

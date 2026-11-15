@@ -240,11 +240,10 @@ class StatisticsViewModel(
             is StatisticsAction.SelectMetric ->
                 choice.value = choice.value.copy(metric = action.metric)
 
+            // Guarda lo que dice la gráfica, sin alternar: ella repite el mismo día en cada
+            // redibujo, y soltar la barra llega como `null` cuando la persona la toca otra vez.
             is StatisticsAction.SelectDay ->
-                choice.value =
-                    choice.value.copy(
-                        selectedDay = action.date.takeIf { it != choice.value.selectedDay },
-                    )
+                choice.value = choice.value.copy(selectedDay = action.date)
 
             StatisticsAction.ToggleList ->
                 choice.value = choice.value.copy(showList = !choice.value.showList)

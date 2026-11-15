@@ -274,7 +274,7 @@ class StatisticsViewModelTest {
         }
 
     @Test
-    fun `a tapped bar is selected, released by tapping it again and dropped on move`() =
+    fun `a tapped bar is selected, released when the chart lets go and dropped on move`() =
         runTest(dispatcher) {
             val model = viewModel()
             val day = date("2026-11-03")
@@ -282,7 +282,11 @@ class StatisticsViewModelTest {
             model.onAction(StatisticsAction.SelectDay(day))
             advanceUntilIdle()
             assertEquals(day, model.content().selectedDay)
+            // La gráfica repite el mismo día en cada redibujo: eso no suelta la barra, o parpadea.
             model.onAction(StatisticsAction.SelectDay(day))
+            advanceUntilIdle()
+            assertEquals(day, model.content().selectedDay)
+            model.onAction(StatisticsAction.SelectDay(null))
             advanceUntilIdle()
             assertNull(model.content().selectedDay)
 

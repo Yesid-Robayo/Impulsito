@@ -31,6 +31,7 @@ import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarkerController
 import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarkerVisibilityListener
 import com.patrykandpatrick.vico.compose.cartesian.marker.DefaultCartesianMarker
+import com.patrykandpatrick.vico.compose.cartesian.marker.Interaction
 import com.patrykandpatrick.vico.compose.cartesian.marker.rememberDefaultCartesianMarker
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
@@ -56,6 +57,13 @@ private const val MONTH_LABEL_SPACING = 7
 
 /** Hasta cuántas columnas se dibujan como semana, anchas y con el nombre del día. */
 private const val WEEK_COLUMNS = 7
+
+/**
+ * Las etiquetas del eje de días viajan dentro del modelo de la gráfica, no en el composable: al
+ * cambiar de mes a semana, la gráfica sigue un instante con el modelo anterior, y unas etiquetas
+ * tomadas del período nuevo no alcanzarían para todas sus columnas.
+ */
+private val DayLabels = ExtraStore.Key<List<String>>()
 
 /**
  * La gráfica de barras por día de un período: una barra por día, cero en los días sin ventas, sin
@@ -119,9 +127,20 @@ private fun ChartContent(
     val selectedIndex = points.indexOfFirst { it.date == selectedDay }.takeIf { it >= 0 }
 
     val producer = remember { CartesianChartModelProducer() }
-    LaunchedEffect(values) {
+    val labels =
+        remember(points, formats.date, week) {
+            points.map { point ->
+                if (week) {
+                    formats.date.weekdayShort(point.date.date.dayOfWeek)
+                } else {
+                    point.date.date.day.toString()
+                }
+            }
+        }
+    LaunchedEffect(values, labels) {
         producer.runTransaction {
             columnSeries { series(values.indices.toList(), values) }
+            extras { it[DayLabels] = labels }
         }
     }
 
@@ -168,15 +187,13 @@ private fun ChartContent(
         remember(formats.money) {
             CartesianValueFormatter { _, value, _ -> formats.money.compact(Money(value.toLong())) }
         }
+    // La gráfica rechaza una etiqueta en blanco: cada columna del modelo trae la suya, y el número
+    // de la columna solo queda como respaldo.
     val dayFormatter =
-        remember(points, formats.date, week) {
-            CartesianValueFormatter { _, value, _ ->
-                val point = points.getOrNull(value.toInt())
-                when {
-                    point == null -> ""
-                    week -> formats.date.weekdayShort(point.date.date.dayOfWeek)
-                    else -> point.date.date.day.toString()
-                }
+        remember {
+            CartesianValueFormatter { context, value, _ ->
+                context.model.extraStore.getOrNull(DayLabels)?.getOrNull(value.toInt())
+                    ?: (value.toInt() + 1).toString()
             }
         }
 
@@ -226,7 +243,7 @@ private fun ChartContent(
             marker = marker,
             markerVisibilityListener = listener,
             persistentMarkers = { _ -> selectedIndex?.let { marker at it } },
-            markerController = CartesianMarkerController.rememberToggleOnTap(),
+            markerController = remember(points) { DayToggle() },
         )
 
     Box(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = summary }) {
@@ -281,6 +298,30 @@ private class DayColumns(
     }
 
     override fun getWidestSeriesColumn(seriesIndex: Int, extraStore: ExtraStore): LineComponent = up
+}
+
+/**
+ * Tocar una barra la marca y tocarla otra vez la suelta. El de Vico compara los objetivos enteros,
+ * color de la columna incluido, y la barra tocada cambia de color: nunca la soltaría. Este compara
+ * solo la posición del día.
+ */
+private class DayToggle : CartesianMarkerController {
+    private var lastX: Double? = null
+
+    override fun shouldAcceptInteraction(
+        interaction: Interaction,
+        targets: List<CartesianMarker.Target>,
+    ): Boolean = interaction is Interaction.Tap && targets.isNotEmpty()
+
+    override fun shouldShowMarker(
+        interaction: Interaction,
+        targets: List<CartesianMarker.Target>,
+    ): Boolean {
+        val x = targets.firstOrNull()?.x
+        val show = x != lastX
+        lastX = if (show) x else null
+        return show
+    }
 }
 
 /**

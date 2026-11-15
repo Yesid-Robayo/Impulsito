@@ -12,6 +12,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -125,6 +127,7 @@ import io.github.yesidrobayo.shopledger.ui.supplier.SupplierListRoute
 import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnDetailRoute
 import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
+import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
 import io.github.yesidrobayo.shopledger.ui.variant.VariantsRoute
 import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
@@ -233,15 +236,21 @@ fun AppNavHost(
             exit = fadeOut(tween(AppMotion.SCREEN_EXIT, easing = AppMotion.ExitEasing)),
         ) {
             val tabs = TopLevelDestination.entries
-            AppBottomBar(
-                items = tabs.map {
-                    BottomBarItem(stringResource(it.label), it.icon, it.selectedIcon)
-                },
-                selected = tabs.indexOf(navigator.currentTab),
-                onSelect = { navigator.selectTab(tabs[it]) },
-                sellLabel = stringResource(R.string.nav_sell),
-                onSell = navigator::sell,
-            )
+            // Mientras se funde, la barra se dibuja en una capa aparte del tamaño de su caja, y
+            // lo que sobresale se recortaría: Vender saldría partido. La caja reserva arriba el
+            // alto que sobresale el botón y su sombra; ese margen es transparente y no recibe toques.
+            val sizes = AppTheme.sizes
+            Box(Modifier.padding(top = sizes.sellButtonOverhang + sizes.sellButtonShadow)) {
+                AppBottomBar(
+                    items = tabs.map {
+                        BottomBarItem(stringResource(it.label), it.icon, it.selectedIcon)
+                    },
+                    selected = tabs.indexOf(navigator.currentTab),
+                    onSelect = { navigator.selectTab(tabs[it]) },
+                    sellLabel = stringResource(R.string.nav_sell),
+                    onSell = navigator::sell,
+                )
+            }
         }
     }
 }

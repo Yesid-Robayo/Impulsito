@@ -126,7 +126,7 @@ sealed interface StatisticsAction {
     /** Cambia la serie de la gráfica y la cifra grande. */
     data class SelectMetric(val metric: ChartMetric) : StatisticsAction
 
-    /** Toca una barra, o la misma otra vez para soltarla. */
+    /** El día de la barra tocada, o `null` cuando la gráfica la suelta. */
     data class SelectDay(val date: BusinessDate?) : StatisticsAction
 
     /** Muestra u oculta la gráfica como lista. */
