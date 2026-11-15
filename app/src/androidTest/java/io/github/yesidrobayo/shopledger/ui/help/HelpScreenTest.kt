@@ -42,7 +42,9 @@ class HelpScreenTest {
     )
 
     private fun show(state: HelpUiState) {
-        compose.setContent { PreviewTheme { HelpScreen(state, titles, onAction = { actions += it }) } }
+        compose.setContent {
+            PreviewTheme { HelpScreen(state, titles, onAction = { actions += it }) }
+        }
     }
 
     private fun article(id: HelpArticleId, topic: HelpTopic? = null) = HelpUiState(

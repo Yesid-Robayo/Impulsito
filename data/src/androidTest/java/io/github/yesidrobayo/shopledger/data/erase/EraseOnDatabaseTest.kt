@@ -95,8 +95,10 @@ internal class EraseOnDatabaseTest {
                 deletes += 1
                 when {
                     refuseDeletes -> FakeResponse.status(FORBIDDEN)
+
                     // La primera copia y su `.slmeta` se borran; desde ahí, el servicio falla.
                     failAfterFirstCopy && deletes >= 3 -> FakeResponse.status(UNAVAILABLE)
+
                     else -> null
                 }
             })

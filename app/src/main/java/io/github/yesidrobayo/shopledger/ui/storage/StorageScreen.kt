@@ -355,6 +355,7 @@ private fun ColumnScope.ReviewStep(
     if (scope == EraseScope.DEVICE_AND_COPIES) {
         when (summary?.destination) {
             EraseDestination.WEBDAV -> BodyText(stringResource(R.string.erase_trash_note, app))
+
             EraseDestination.SLOTS ->
                 BodyText(
                     stringResource(
@@ -433,8 +434,11 @@ private fun ColumnScope.StoppedStep(
     val text =
         when (reason) {
             EraseStop.OFFLINE -> stringResource(R.string.erase_offline)
+
             EraseStop.UNREACHABLE -> stringResource(R.string.erase_error_destination)
+
             EraseStop.PARTIAL -> stringResource(R.string.erase_error_partial)
+
             EraseStop.REFUSED ->
                 if (summary?.destination == EraseDestination.SLOTS) {
                     stringResource(R.string.erase_error_slots, provider, app)
@@ -443,6 +447,7 @@ private fun ColumnScope.StoppedStep(
                 }
 
             EraseStop.ACCESS_LOST -> stringResource(R.string.erase_error_access_lost, app)
+
             EraseStop.LOCAL_FAILED ->
                 stringResource(R.string.erase_error_local) + " " +
                     stringResource(R.string.erase_error_local_help, app)

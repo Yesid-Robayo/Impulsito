@@ -241,6 +241,7 @@ class StorageViewModel(
                 }
             when (outcome) {
                 EraseOutcome.Finished -> state.update { it.copy(finished = true) }
+
                 is EraseOutcome.Stopped ->
                     state.update { it.copy(flow = EraseFlow.Stopped(outcome.reason)) }
             }

@@ -50,8 +50,7 @@ class EncryptionUseCaseTest {
             override suspend fun reseal(typed: String): ResealOutcome =
                 ResealOutcome.OTHER_CODE.also { calls += "reseal:$typed" }
 
-            override suspend fun viewCode(): RecoveryCodeView =
-                view.also { calls += "view" }
+            override suspend fun viewCode(): RecoveryCodeView = view.also { calls += "view" }
 
             override suspend fun checkCode(typed: String): CodeCheckOutcome =
                 CodeCheckOutcome.MISMATCH.also { calls += "test:$typed" }

@@ -131,26 +131,25 @@ class StorageViewModelTest {
     }
 
     @Test
-    fun `it only erases with the word typed, and then the app starts over`() =
-        runTest(dispatcher) {
-            val model = model()
-            model.toConfirm(EraseScope.DEVICE_AND_COPIES)
-            model.onAction(StorageAction.Typed("borra"))
-            model.onAction(StorageAction.EraseAuthorized)
-            advanceUntilIdle()
-            assertTrue(calls.isEmpty())
+    fun `it only erases with the word typed, and then the app starts over`() = runTest(dispatcher) {
+        val model = model()
+        model.toConfirm(EraseScope.DEVICE_AND_COPIES)
+        model.onAction(StorageAction.Typed("borra"))
+        model.onAction(StorageAction.EraseAuthorized)
+        advanceUntilIdle()
+        assertTrue(calls.isEmpty())
 
-            model.onAction(StorageAction.Typed(" borrar "))
-            model.onAction(StorageAction.EraseAuthorized)
-            assertEquals(EraseFlow.Running(cloud = true), model.uiState.value.flow)
-            // Mientras borra no se cierra.
-            model.onAction(StorageAction.Dismiss)
-            assertEquals(EraseFlow.Running(cloud = true), model.uiState.value.flow)
-            advanceUntilIdle()
+        model.onAction(StorageAction.Typed(" borrar "))
+        model.onAction(StorageAction.EraseAuthorized)
+        assertEquals(EraseFlow.Running(cloud = true), model.uiState.value.flow)
+        // Mientras borra no se cierra.
+        model.onAction(StorageAction.Dismiss)
+        assertEquals(EraseFlow.Running(cloud = true), model.uiState.value.flow)
+        advanceUntilIdle()
 
-            assertEquals(listOf("erase:DEVICE_AND_COPIES"), calls)
-            assertTrue(model.uiState.value.finished)
-        }
+        assertEquals(listOf("erase:DEVICE_AND_COPIES"), calls)
+        assertTrue(model.uiState.value.finished)
+    }
 
     @Test
     fun `a stop says why, retry resumes, and this phone only asks again`() = runTest(dispatcher) {
@@ -203,17 +202,16 @@ class StorageViewModelTest {
     }
 
     @Test
-    fun `an erase waiting for the cloud is offered when the screen opens`() =
-        runTest(dispatcher) {
-            summary = summary.copy(pending = ErasePhase.REMOTE)
+    fun `an erase waiting for the cloud is offered when the screen opens`() = runTest(dispatcher) {
+        summary = summary.copy(pending = ErasePhase.REMOTE)
 
-            val model = model()
+        val model = model()
 
-            assertEquals(EraseFlow.Stopped(EraseStop.PARTIAL), model.uiState.value.flow)
-            model.onAction(StorageAction.Retry)
-            advanceUntilIdle()
-            assertEquals(listOf("resume"), calls)
-        }
+        assertEquals(EraseFlow.Stopped(EraseStop.PARTIAL), model.uiState.value.flow)
+        model.onAction(StorageAction.Retry)
+        advanceUntilIdle()
+        assertEquals(listOf("resume"), calls)
+    }
 
     @Test
     fun `a pending local erase is offered as unfinished`() = runTest(dispatcher) {
@@ -223,20 +221,19 @@ class StorageViewModelTest {
     }
 
     @Test
-    fun `during a restore erasing does not open, and back up now is asked`() =
-        runTest(dispatcher) {
-            summary = summary.copy(restoreInProgress = true, destination = EraseDestination.NONE)
-            val model = model()
+    fun `during a restore erasing does not open, and back up now is asked`() = runTest(dispatcher) {
+        summary = summary.copy(restoreInProgress = true, destination = EraseDestination.NONE)
+        val model = model()
 
-            model.onAction(StorageAction.OpenErase)
-            model.onAction(StorageAction.BackupNow)
-            model.onAction(StorageAction.Refresh)
-            advanceUntilIdle()
+        model.onAction(StorageAction.OpenErase)
+        model.onAction(StorageAction.BackupNow)
+        model.onAction(StorageAction.Refresh)
+        advanceUntilIdle()
 
-            assertFalse(model.uiState.value.eraseAvailable)
-            assertNull(model.uiState.value.flow)
-            assertEquals(listOf("backup"), calls)
-        }
+        assertFalse(model.uiState.value.eraseAvailable)
+        assertNull(model.uiState.value.flow)
+        assertEquals(listOf("backup"), calls)
+    }
 
     @Test
     fun `this phone only without copies does not go through the cloud`() = runTest(dispatcher) {

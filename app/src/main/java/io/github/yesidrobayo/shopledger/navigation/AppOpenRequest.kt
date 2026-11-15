@@ -124,6 +124,8 @@ sealed interface AppOpenRequest {
 
         override fun writeTo(intent: Intent) {
             intent.action = ACTION_OPEN_BACKUP
+        }
+    }
 
     /**
      * `Almacenamiento y borrado`, desde el botón de borrar datos de los ajustes de Android: la app

@@ -209,10 +209,7 @@ private fun EventList(state: AuditLogUiState.Ready, onAction: (AuditLogAction) -
 }
 
 /** Los días con su encabezado fijo, y al final el tramo siguiente si lo hay. */
-private fun LazyListScope.days(
-    state: AuditLogUiState.Ready,
-    onAction: (AuditLogAction) -> Unit,
-) {
+private fun LazyListScope.days(state: AuditLogUiState.Ready, onAction: (AuditLogAction) -> Unit) {
     for (day in state.days) {
         stickyHeader(key = "day-${day.date}", contentType = DAY) { DayHeader(day.date) }
         items(day.events, key = { it.id }, contentType = { ROW }) { event ->

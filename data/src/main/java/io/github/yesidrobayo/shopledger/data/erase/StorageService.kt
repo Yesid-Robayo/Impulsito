@@ -2,8 +2,8 @@ package io.github.yesidrobayo.shopledger.data.erase
 
 import io.github.yesidrobayo.shopledger.data.local.DatabaseFiles
 import io.github.yesidrobayo.shopledger.data.local.backup.BackupStateDao
-import io.github.yesidrobayo.shopledger.domain.model.erase.EraseSummary
 import io.github.yesidrobayo.shopledger.domain.model.erase.ErasePhase
+import io.github.yesidrobayo.shopledger.domain.model.erase.EraseSummary
 import io.github.yesidrobayo.shopledger.domain.model.erase.StorageUsage
 import io.github.yesidrobayo.shopledger.domain.port.StoragePort
 import java.io.File
@@ -84,9 +84,7 @@ internal class StorageService(
         /** Lo que pesa [file], sin lo de [skipped] y sin seguir enlaces. */
         fun sizeOf(file: File, skipped: Set<File>): Long = when {
             file in skipped || Files.isSymbolicLink(file.toPath()) -> 0L
-
             file.isDirectory -> file.listFiles().orEmpty().sumOf { sizeOf(it, skipped) }
-
             else -> file.length()
         }
 
