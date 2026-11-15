@@ -207,14 +207,12 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun theDeletionStepsOpenInTheirSheet() {
+    fun storageAndDeletionOpensItsScreen() {
         show(overview = connected())
 
-        compose.onNodeWithText(text(R.string.settings_delete_data)).performScrollTo().performClick()
+        compose.onNodeWithText(text(R.string.storage_title)).performScrollTo().performClick()
 
-        compose.onNodeWithText(text(R.string.delete_guide_before)).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.delete_guide_step_1, app)).assertExists()
-        compose.onNodeWithText(text(R.string.delete_guide_step_4, app)).assertExists()
+        assertEquals(listOf<AppNavKey>(AppNavKey.StorageAndDeletion()), opened)
     }
 
     @Test

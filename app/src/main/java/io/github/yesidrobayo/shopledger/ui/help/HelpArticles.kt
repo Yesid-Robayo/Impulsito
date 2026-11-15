@@ -220,7 +220,7 @@ fun HelpArticleId.target(): HelpTarget? = when (this) {
 
     HelpArticleId.LOCK_DISCREET -> HelpTarget(AppNavKey.Settings, R.string.settings_title)
 
-    HelpArticleId.DELETE_DATA -> HelpTarget(AppNavKey.StorageAndDeletion, R.string.storage_title)
+    HelpArticleId.DELETE_DATA -> HelpTarget(AppNavKey.StorageAndDeletion(), R.string.storage_title)
 
     HelpArticleId.CLOUD_ACCOUNT ->
         HelpTarget(AppNavKey.CloudAccountSecurity, R.string.account_title)

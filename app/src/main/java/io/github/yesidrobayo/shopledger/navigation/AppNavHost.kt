@@ -143,6 +143,7 @@ import io.github.yesidrobayo.shopledger.ui.settings.TaxSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.stats.StatisticsRoute
 import io.github.yesidrobayo.shopledger.ui.stock.InventoryRoute
 import io.github.yesidrobayo.shopledger.ui.stock.StockAdjustmentRoute
+import io.github.yesidrobayo.shopledger.ui.storage.StorageRoute
 import io.github.yesidrobayo.shopledger.ui.supplier.SupplierDetailRoute
 import io.github.yesidrobayo.shopledger.ui.supplier.SupplierListRoute
 import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnDetailRoute
@@ -518,6 +519,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.Help -> HelpRoute(key, navigator)
 
         AppNavKey.AuditLog -> AuditLogRoute(navigator)
+
+        is AppNavKey.StorageAndDeletion -> StorageRoute(key, navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }

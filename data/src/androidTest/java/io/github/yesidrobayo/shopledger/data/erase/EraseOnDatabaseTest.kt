@@ -81,6 +81,11 @@ internal class EraseOnDatabaseTest {
         File(appFolder, "media/ab").mkdirs()
         File(appFolder, "media/ab/foto.webp").writeBytes(byteArrayOf(1, 2, 3))
         File(fixture.noBackup, "link.json").writeText("{}")
+        // Las marcas de la higiene de la cuenta, por su ruta: se borran con lo demás.
+        File(fixture.noBackup, ACCOUNT_CHECKLIST).writeText("{}")
+        // Lo que dejó una demostración, en su carpeta: también se borra.
+        File(fixture.noBackup, "demo").mkdirs()
+        File(fixture.noBackup, "demo/demo.db").writeBytes(byteArrayOf(4))
         File(fixture.noBackup, "recovery").mkdirs()
         File(fixture.noBackup, "recovery/state.json").writeText("{}")
         var deletes = 0
@@ -179,6 +184,7 @@ internal class EraseOnDatabaseTest {
         assertTrue(fixture.file.exists())
         assertTrue(File(fixture.noBackup, DatabaseFiles.INITIALIZED_MARKER_NAME).exists())
         assertTrue(File(fixture.noBackup, "link.json").exists())
+        assertTrue(File(fixture.noBackup, ACCOUNT_CHECKLIST).exists())
         assertTrue(File(appFolder, "media/ab/foto.webp").exists())
         assertEquals(0, released)
     }
@@ -186,6 +192,8 @@ internal class EraseOnDatabaseTest {
     private fun assertThisPhoneIsEmpty() {
         assertFalse(fixture.file.exists())
         assertFalse(File(fixture.file.path + "-wal").exists())
+        assertFalse(File(fixture.noBackup, ACCOUNT_CHECKLIST).exists())
+        assertFalse(File(fixture.noBackup, "demo").exists())
         assertEquals(emptyList<String>(), fixture.noBackup.list().orEmpty().toList())
         assertEquals(emptyList<String>(), appFolder.list().orEmpty().toList())
         assertEquals(1, released)
@@ -344,6 +352,7 @@ internal class EraseOnDatabaseTest {
     }
 
     private companion object {
+        const val ACCOUNT_CHECKLIST = "account-checklist.json"
         const val FORBIDDEN = 403
         const val UNAVAILABLE = 503
         const val PHOTO = "ab0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcd"

@@ -50,6 +50,7 @@
         android:name=".ShopLedgerApp"
         android:allowBackup="false"
         android:hasFragileUserData="true"
+        android:manageSpaceActivity="io.github.yesidrobayo.shopledger.ManageSpaceActivity"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -78,6 +79,15 @@
             </intent-filter>
         </activity>
 
+        <!-- El botón de borrar datos de los ajustes de Android abre Almacenamiento y borrado en vez de borrar sin mirar.
+             Sin exportar ni intent-filter: solo el sistema la abre, por el nombre completo de manageSpaceActivity. No muestra
+             nada propio y se cierra al abrir la actividad principal. -->
+        <activity
+            android:name="io.github.yesidrobayo.shopledger.ManageSpaceActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
         <!-- Comparte lo que la persona decide sacar por el selector del sistema, solo desde cache/exports/ y solo para leer.
              Sin exportar y sin intent-filter: cada dirección lleva su permiso, que la app concede al compartir. -->
         <provider

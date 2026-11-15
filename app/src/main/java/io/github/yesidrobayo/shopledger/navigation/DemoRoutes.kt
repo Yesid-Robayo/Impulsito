@@ -15,9 +15,13 @@ import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderUiState
  * la nube y conectar un destino. Con datos de ejemplo no hay copias: se muestran desactivadas, con
  * la razón, y ninguna llega a la base del negocio ni a un destino.
  */
-internal fun AppNavKey.needsCloud(): Boolean = this in CLOUD_SCREENS ||
-    this is AppNavKey.BackupDestinationChoice ||
-    this is AppNavKey.WebDavConnect
+internal fun AppNavKey.needsCloud(): Boolean =
+    this in CLOUD_SCREENS ||
+        this is AppNavKey.BackupDestinationChoice ||
+        this is AppNavKey.WebDavConnect ||
+        // Borrar mis datos y la auditoría son del negocio real: con la demostración, apagados.
+        this is AppNavKey.StorageAndDeletion ||
+        this == AppNavKey.AuditLog
 
 private val CLOUD_SCREENS: Set<AppNavKey> =
     setOf(

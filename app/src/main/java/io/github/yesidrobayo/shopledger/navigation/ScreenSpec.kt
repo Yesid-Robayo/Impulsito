@@ -197,7 +197,7 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     AppNavKey.LocalCopies -> detail(R.string.offsite_title, settings)
 
-    AppNavKey.StorageAndDeletion -> detail(R.string.storage_title, settings)
+    is AppNavKey.StorageAndDeletion -> detail(R.string.storage_title, settings)
 
     AppNavKey.DataTransparency -> detail(R.string.transparency_title, settings)
 

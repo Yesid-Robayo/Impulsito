@@ -262,11 +262,13 @@ fun SettingsEntryScreen(
                         title = stringResource(R.string.offsite_title),
                         action = SettingsRowAction.Navigation { onOpen(AppNavKey.LocalCopies) },
                     )
+                    // `Cómo borrar los datos` vive ahora en `Almacenamiento y borrado`.
                     SettingsRow(
-                        title = stringResource(R.string.settings_delete_data),
-                        action = SettingsRowAction.Navigation {
-                            aboutSheet = AboutSheet.DELETE_GUIDE
-                        },
+                        title = stringResource(R.string.storage_title),
+                        action =
+                            SettingsRowAction.Navigation {
+                                onOpen(AppNavKey.StorageAndDeletion())
+                            },
                     )
                     // Qué datos guarda la app y adónde van, con el estado real.
                     SettingsRow(

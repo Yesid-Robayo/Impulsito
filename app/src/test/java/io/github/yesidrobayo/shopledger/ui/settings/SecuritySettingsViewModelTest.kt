@@ -194,6 +194,7 @@ class SecuritySettingsViewModelTest {
                     if (failing) flow { throw IllegalStateException("Sin base") } else lock
                 },
                 changePreference = { ChangePreferenceResult.Saved },
+                recordLockChange = {},
             )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()

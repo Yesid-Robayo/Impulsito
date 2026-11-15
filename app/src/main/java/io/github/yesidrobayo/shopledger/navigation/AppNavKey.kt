@@ -327,8 +327,12 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object LocalCopies : AppNavKey
 
+    /**
+     * `Almacenamiento y borrado`. [fromAndroid] dice que llegó desde el botón de los ajustes de
+     * Android, para recordar mirar las copias antes de borrar.
+     */
     @Serializable
-    data object StorageAndDeletion : AppNavKey
+    data class StorageAndDeletion(val fromAndroid: Boolean = false) : AppNavKey
 
     @Serializable
     data object DataTransparency : AppNavKey

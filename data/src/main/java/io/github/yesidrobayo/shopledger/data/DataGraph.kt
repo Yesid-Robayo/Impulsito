@@ -105,6 +105,7 @@ import io.github.yesidrobayo.shopledger.data.erase.EraseService
 import io.github.yesidrobayo.shopledger.data.erase.LocalEraser
 import io.github.yesidrobayo.shopledger.data.erase.RemoteEraser
 import io.github.yesidrobayo.shopledger.data.erase.ResolverSlotDocumentDeleter
+import io.github.yesidrobayo.shopledger.data.erase.StorageService
 import io.github.yesidrobayo.shopledger.data.export.ContentCsvDocument
 import io.github.yesidrobayo.shopledger.data.export.CsvExporter
 import io.github.yesidrobayo.shopledger.data.export.SummaryPackageWriter
@@ -182,6 +183,7 @@ import io.github.yesidrobayo.shopledger.domain.port.RestoreDrillPort
 import io.github.yesidrobayo.shopledger.domain.port.SafetyCopyPort
 import io.github.yesidrobayo.shopledger.domain.port.SecondDestinationPort
 import io.github.yesidrobayo.shopledger.domain.port.SlotFilesSetupPort
+import io.github.yesidrobayo.shopledger.domain.port.StoragePort
 import io.github.yesidrobayo.shopledger.domain.port.WebDavConnectionPort
 import io.github.yesidrobayo.shopledger.domain.port.contain
 import io.github.yesidrobayo.shopledger.domain.port.error
@@ -763,6 +765,14 @@ class DataGraph internal constructor(
         )
     }
 
+    /**
+     * La auditoría de la base del negocio, también durante una demostración: lo que anota
+     * `Borrar mis datos` nunca va a la base de ejemplo.
+     */
+    val businessAuditRecorder: AuditRecorder by lazy {
+        RoomAuditRecorder(events = { ready?.ports?.auditEvents }, clock = clock, log = log)
+    }
+
     /** El registro de un `Borrar mis datos` confirmado, en `noBackupFilesDir`. */
     private val eraseJournal by lazy {
         EraseJournalStore({ files().noBackupDirectory }, DurableFileOps(), ioContext)
@@ -796,9 +806,8 @@ class DataGraph internal constructor(
      */
     val eraseMyData: EraseMyDataPort by lazy {
         val webDav = WebDavDestinationOpener(http, webDavCredentials)
-        val state: suspend () -> BackupStateEntity? = {
-            (open() as? DataAccess.Ready)?.ports?.backupState?.get()
-        }
+        // Siempre la base y el destino del negocio, nunca la base de ejemplo.
+        val state: suspend () -> BackupStateEntity? = { businessPorts()?.backupState?.get() }
         EraseService(
             journal = eraseJournal,
             state = state,
@@ -834,6 +843,33 @@ class DataGraph internal constructor(
                 }
             },
             log = log,
+        )
+    }
+
+    /**
+     * Lo que mide `Almacenamiento y borrado`: tamaños y conteos, sin red y sin nombres. Crearlo no
+     * toca el disco.
+     */
+    val storage: StoragePort by lazy {
+        StorageService(
+            files = files,
+            mediaDirectory = ::mediaDirectory,
+            appFolders = { listOf(context.filesDir, context.cacheDir) },
+            state = { businessPorts()?.backupState },
+            photosPending = {
+                photoBackupFacts()?.takeIf { it.destination == PhotoDestination.WEBDAV }?.pending
+            },
+            providerLabel = {
+                (backupDestination.describe() as? BackupDestinationInfo.Slots)?.providerLabel
+            },
+            pending = { eraseJournal.read() },
+            restoreInProgress = {
+                withContext(ioContext) {
+                    val restore = RestoreFiles(files())
+                    restore.lock.exists() || restore.journal.exists()
+                }
+            },
+            ioContext = ioContext,
         )
     }
 

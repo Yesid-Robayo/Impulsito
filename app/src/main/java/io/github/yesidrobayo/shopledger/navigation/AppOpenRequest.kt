@@ -124,6 +124,17 @@ sealed interface AppOpenRequest {
 
         override fun writeTo(intent: Intent) {
             intent.action = ACTION_OPEN_BACKUP
+
+    /**
+     * `Almacenamiento y borrado`, desde el botón de borrar datos de los ajustes de Android: la app
+     * muestra antes qué hay y si tiene copia.
+     */
+    data object ManageSpace : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.StorageAndDeletion(fromAndroid = true)
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_OPEN_STORAGE
         }
     }
 
@@ -157,6 +168,9 @@ sealed interface AppOpenRequest {
 
         /** Abre el respaldo. */
         const val ACTION_OPEN_BACKUP = "io.github.yesidrobayo.shopledger.action.OPEN_BACKUP"
+
+        /** Abre `Almacenamiento y borrado`, desde los ajustes de Android. */
+        const val ACTION_OPEN_STORAGE = "io.github.yesidrobayo.shopledger.action.OPEN_STORAGE"
 
         /** El id del producto que abre [ACTION_OPEN_PRODUCT]. */
         const val EXTRA_PRODUCT_ID = "product_id"
@@ -192,6 +206,8 @@ sealed interface AppOpenRequest {
                     ACTION_NEW_PRODUCT -> NewProduct
 
                     ACTION_OPEN_BACKUP -> Backup
+
+                    ACTION_OPEN_STORAGE -> ManageSpace
 
                     else -> null
                 }
