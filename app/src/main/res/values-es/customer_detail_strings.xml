@@ -43,6 +43,7 @@
     <string name="customer_anonymize_copies_notice">Estos datos siguen en copias anteriores hasta que salgan por retención.</string>
     <string name="customer_update_copies_action">Actualizar copias</string>
     <string name="customer_statement_doc_title">Extracto de cuenta</string>
+    <string name="statement_doc_legend">Este extracto no es un comprobante de venta ni una factura.</string>
     <string name="customer_overdue_since">Vencido desde el %1$s</string>
     <string name="customer_due_on">Vence el %1$s</string>
     <string name="customer_no_due">Sin vencimiento</string>

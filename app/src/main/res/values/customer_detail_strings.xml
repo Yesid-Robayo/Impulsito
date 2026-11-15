@@ -43,6 +43,7 @@
     <string name="customer_anonymize_copies_notice">This data stays in earlier backups until they age out through retention.</string>
     <string name="customer_update_copies_action">Update backups</string>
     <string name="customer_statement_doc_title">Account statement</string>
+    <string name="statement_doc_legend">This statement is not a sales receipt or an invoice.</string>
     <string name="customer_overdue_since">Overdue since %1$s</string>
     <string name="customer_due_on">Due on %1$s</string>
     <string name="customer_no_due">No due date</string>

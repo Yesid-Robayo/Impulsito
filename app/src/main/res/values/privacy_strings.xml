@@ -30,7 +30,7 @@
     <string name="transparency_data_photos">Photos</string>
     <string name="transparency_data_photos_body">Photos of products and receipts, saved without location or camera data.</string>
     <string name="transparency_data_technical">Technical</string>
-    <string name="transparency_data_technical_body">Version, phone model and a local failure log, without business data. None of this leaves on its own.</string>
+    <string name="transparency_data_technical_body">Version, phone model and a local failure log, without business data. Without encryption, the version and the model go with each WebDAV backup; the rest does not leave on its own.</string>
     <string name="transparency_where_title">Where it goes</string>
     <string name="transparency_dest_webdav_title">Chosen service: %1$s</string>
     <string name="transparency_dest_webdav_purpose">What for: upload and download backups and photos</string>

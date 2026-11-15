@@ -338,6 +338,7 @@ val verifyWording = tasks.register("verifyWording") {
                 "order_doc_legend",
                 "quote_doc_legend",
                 "report_doc_legend",
+                "statement_doc_legend",
             )
         // Ningún texto cita una autoridad, un documento fiscal de un país ni una ley con número: la app no afirma cumplir ninguna
         // norma, y nombrarlas la ataría a un país. Son nombres que ningún texto neutro necesita.

@@ -123,7 +123,7 @@ internal class CustomerStatementWriter(
                 finishPage()
                 newPage()
             }
-            text(string(R.string.legal_receipt_not_invoice), y + GAP_LARGE, SMALL_SIZE)
+            text(string(R.string.statement_doc_legend), y + GAP_LARGE, SMALL_SIZE)
         }
 
         fun finish() = finishPage()

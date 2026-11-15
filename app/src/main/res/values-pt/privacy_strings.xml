@@ -30,7 +30,7 @@
     <string name="transparency_data_photos">Fotos</string>
     <string name="transparency_data_photos_body">Fotos de produtos e comprovantes, salvas sem localização nem dados da câmera.</string>
     <string name="transparency_data_technical">Técnicos</string>
-    <string name="transparency_data_technical_body">Versão, modelo do telefone e registro local de falhas, sem dados do negócio. Nada disso sai sozinho.</string>
+    <string name="transparency_data_technical_body">Versão, modelo do telefone e registro local de falhas, sem dados do negócio. Sem criptografia, a versão e o modelo acompanham cada cópia no WebDAV; o resto não sai sozinho.</string>
     <string name="transparency_where_title">Para onde vão</string>
     <string name="transparency_dest_webdav_title">Serviço escolhido: %1$s</string>
     <string name="transparency_dest_webdav_purpose">Para quê: enviar e baixar cópias e fotos</string>

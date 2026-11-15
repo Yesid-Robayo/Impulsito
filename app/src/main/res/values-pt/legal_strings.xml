@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Textos con efecto legal y vocabulario de documentos. Textos de la guía de redacción; los revisa una persona en cada idioma antes de la primera versión. -->
+    <!-- Textos con efecto legal y vocabulario de documentos. Textos de la guía de redacción, revisados frase por frase en los tres idiomas antes de la primera versión. -->
     <!-- legal_universal_notice: %1$s = app -->
     <string name="legal_universal_notice">O %1$s não emite notas fiscais nem documentos fiscais, não é certificado por nenhuma autoridade e não substitui nenhum sistema exigido por lei. Cada pessoa deve consultar quem a assessora sobre suas obrigações.</string>
     <string name="legal_quote_not_invoice">Este orçamento não é uma nota fiscal</string>
