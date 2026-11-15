@@ -18,7 +18,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -136,10 +140,17 @@ internal fun TransferSheetHost(
             sheet.arrives?.let { arrives ->
                 ProvideAccountCurrency(to.currency) {
                     val amount = rememberMoneyDisplay(arrives, LocalAppFormats.current.money)
+                    val description = stringResource(R.string.money_fx_arrives, amount.description)
                     Text(
                         stringResource(R.string.money_fx_arrives, amount.text.text),
                         style = AppTheme.amounts.small,
                         color = MaterialTheme.colorScheme.onSurface,
+                        // Cambia al escribir el monto o la cotización: se anuncia sin mover
+                        // el foco.
+                        modifier = Modifier.semantics {
+                            contentDescription = description
+                            liveRegion = LiveRegionMode.Polite
+                        },
                     )
                 }
             }

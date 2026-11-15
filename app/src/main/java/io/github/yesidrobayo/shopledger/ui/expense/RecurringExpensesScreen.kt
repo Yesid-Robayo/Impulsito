@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -40,6 +41,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -61,6 +64,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DateField
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.LedgerLineLayout
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
@@ -308,12 +312,26 @@ private fun DueRow(
     } else {
         formats.date.shortDate(due, today)
     }
+    val registerLabel = stringResource(R.string.recurring_register_action)
+    val skipLabel = stringResource(R.string.recurring_skip_action)
     Column {
+        // TalkBack recorre la fila como un foco y ofrece `Registrar` y `Omitir` como acciones,
+        // sin tener que llegar a los botones.
         RowBody(
             name = recurringName(item, uiState),
             detail = stringResource(R.string.recurring_due_since, since),
             amount = item.details.amount,
             onClick = { onAction(RecurringExpensesAction.Edit(item.id)) },
+            actions = listOf(
+                CustomAccessibilityAction(registerLabel) {
+                    onAction(RecurringExpensesAction.Register(item.id))
+                    true
+                },
+                CustomAccessibilityAction(skipLabel) {
+                    onAction(RecurringExpensesAction.StartSkip(item.id))
+                    true
+                },
+            ),
         )
         Row(
             Modifier
@@ -323,13 +341,13 @@ private fun DueRow(
             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
         ) {
             PrimaryActionButton(
-                text = stringResource(R.string.recurring_register_action),
+                text = registerLabel,
                 onClick = { onAction(RecurringExpensesAction.Register(item.id)) },
                 variant = ActionVariant.TONAL,
                 modifier = Modifier.weight(1f),
             )
             PrimaryActionButton(
-                text = stringResource(R.string.recurring_skip_action),
+                text = skipLabel,
                 onClick = { onAction(RecurringExpensesAction.StartSkip(item.id)) },
                 variant = ActionVariant.OUTLINED,
                 modifier = Modifier.weight(1f),
@@ -374,7 +392,13 @@ private fun ArchivedRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.s12),
         ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s4)) {
+            // El nombre y su estado son un foco; `Reactivar` es otro, porque es un botón.
+            Column(
+                Modifier
+                    .weight(1f)
+                    .semantics(mergeDescendants = true) {},
+                verticalArrangement = Arrangement.spacedBy(spacing.s4),
+            ) {
                 Text(
                     recurringName(item, uiState),
                     style = MaterialTheme.typography.titleSmall,
@@ -383,45 +407,63 @@ private fun ArchivedRow(
                 )
                 StatusTag(stringResource(R.string.status_archived))
             }
+            // Un ancho mínimo y no fijo: con letra grande, la palabra no se corta.
             PrimaryActionButton(
                 text = stringResource(R.string.action_reactivate),
                 onClick = { onAction(RecurringExpensesAction.Reactivate(item.id)) },
                 variant = ActionVariant.TEXT,
                 state = if (uiState.working) ActionState.WORKING else ActionState.IDLE,
-                modifier = Modifier.width(REACTIVATE_WIDTH),
+                modifier = Modifier.widthIn(min = REACTIVATE_WIDTH),
             )
         }
         RowDivider()
     }
 }
 
-/** El nombre, una línea debajo y el valor a la derecha. Toda la fila es un solo toque. */
+/**
+ * El nombre, una línea debajo y el valor a la derecha. Toda la fila es un solo toque y un solo
+ * foco. Si con letra grande el valor no cabe al lado, baja debajo del nombre: nunca se corta.
+ *
+ * @param actions las acciones que TalkBack ofrece en la fila, además de tocarla.
+ */
 @Composable
-private fun RowBody(name: String, detail: String, amount: Money, onClick: () -> Unit) {
+private fun RowBody(
+    name: String,
+    detail: String,
+    amount: Money,
+    onClick: () -> Unit,
+    actions: List<CustomAccessibilityAction> = emptyList(),
+) {
     val spacing = AppTheme.spacing
     Row(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
+            .semantics { if (actions.isNotEmpty()) customActions = actions }
             .heightIn(min = AppTheme.sizes.listRow)
             .padding(horizontal = spacing.s16, vertical = spacing.s12),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.s12),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
-            Text(
-                name,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        MoneyText(amount, MoneySize.ROW)
+        LedgerLineLayout(
+            gap = spacing.s12,
+            modifier = Modifier.weight(1f),
+            leading = {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
+                    Text(
+                        name,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            trailing = { MoneyText(amount, MoneySize.ROW) },
+        )
     }
 }
 

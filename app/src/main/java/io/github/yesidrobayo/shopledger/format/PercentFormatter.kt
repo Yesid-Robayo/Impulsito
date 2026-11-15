@@ -64,6 +64,12 @@ class PercentFormatter(val formatLocale: FormatLocale) {
      */
     fun formatPointsChange(change: BasisPoints): String = signed(tenths(change), ::points)
 
+    /**
+     * El número de un porcentaje, sin su signo: `8,0` de `8,0 %`. Es para TalkBack, que lo lee
+     * dentro de una frase que ya dice `por ciento`; con el signo, lo diría dos veces.
+     */
+    fun formatNumber(rate: BasisPoints): String = points(tenths(rate))
+
     private fun percent(tenths: Long): String {
         // ICU multiplica por cien, así que recibe la fracción: 200 décimos son 0,200, y 20,0 %.
         val fraction = BigDecimal.valueOf(tenths, 3)

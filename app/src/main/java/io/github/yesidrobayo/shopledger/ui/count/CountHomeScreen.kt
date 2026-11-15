@@ -27,6 +27,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.stock.CountSessionStatus
@@ -200,14 +202,19 @@ private fun OpenCard(
                 )
                 StatusTag(stringResource(R.string.count_status_open))
             }
+            val progress = stringResource(R.string.count_progress, summary.counted, summary.total)
+            // La barra lee el progreso como su valor: el texto no se repite como otro foco.
             Text(
-                stringResource(R.string.count_progress, summary.counted, summary.total),
+                progress,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clearAndSetSemantics {},
             )
             LinearProgressIndicator(
                 progress = { progressOf(summary.counted, summary.total) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { stateDescription = progress },
             )
             PrimaryActionButton(
                 text = stringResource(R.string.count_continue_action),

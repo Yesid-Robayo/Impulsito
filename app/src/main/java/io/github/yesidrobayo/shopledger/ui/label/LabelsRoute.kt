@@ -36,6 +36,7 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.LabelPreview
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
+import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.document.FilePrintAdapter
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.rescue.ExportFolder
@@ -128,7 +129,15 @@ private fun RenderedPreview(
             renderer.render(item, template, size).asImageBitmap()
         }
     }
-    LabelPreview(image, stringResource(R.string.a11y_label_preview, item.name), modifier)
+    // TalkBack lee lo que lleva la etiqueta: el precio con el nombre de la moneda y el código.
+    val title = stringResource(R.string.a11y_label_preview, item.name)
+    val price = rememberMoneyDisplay(item.price, LocalAppFormats.current.money).description
+    val withPrice =
+        if (template.showsPrice) stringResource(R.string.a11y_label_value, title, price) else title
+    val code = item.code?.takeIf { template.showsCode }
+    val description =
+        if (code == null) withPrice else stringResource(R.string.a11y_label_value, withPrice, code)
+    LabelPreview(image, description, modifier)
 }
 
 /**

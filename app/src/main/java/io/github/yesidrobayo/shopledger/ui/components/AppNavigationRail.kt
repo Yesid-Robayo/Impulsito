@@ -165,7 +165,8 @@ private fun RailEntry(
         modifier =
             modifier
                 .width(sizes.navigationRail)
-                .heightIn(min = sizes.touchTarget)
+                // Un destino del riel mide 56 dp de alto, más que el mínimo táctil de 48 dp.
+                .heightIn(min = sizes.listRowSingle)
                 .selectable(selected = selected, onClick = onClick, role = Role.Tab)
                 .padding(horizontal = AppTheme.spacing.s4, vertical = AppTheme.spacing.s4),
         horizontalAlignment = Alignment.CenterHorizontally,

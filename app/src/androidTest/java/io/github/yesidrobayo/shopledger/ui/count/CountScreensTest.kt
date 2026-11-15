@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -59,6 +60,12 @@ class CountScreensTest {
 
     private fun matching(value: String): SemanticsMatcher =
         hasText(value, substring = true) or hasContentDescription(value, substring = true)
+
+    // Lo esperado se lee dentro de la frase de la fila, con la palabra en minúscula.
+    private fun mentions(value: String) = compose.onAllNodes(
+        hasText(value, substring = true, ignoreCase = true) or
+            hasContentDescription(value, substring = true, ignoreCase = true),
+    ).fetchSemanticsNodes().size
 
     // Con letra al 200 % la lista perezosa no compone lo que queda fuera: se desplaza hasta ahí.
     private fun scrollTo(value: String) {
@@ -124,11 +131,13 @@ class CountScreensTest {
     @Test
     fun aBlindCountHidesTheExpectedQuantity() {
         show { CountSessionScreen(CountSamples.counting(blind = true), {}) }
-        assertEquals(0, count(text(R.string.count_expected_label)))
-        compose.onNodeWithText(text(R.string.count_progress).format(3, 4)).assertIsDisplayed()
+        assertEquals(0, mentions(text(R.string.count_expected_label)))
+        // La barra lee el progreso como su valor.
+        compose.onNode(hasStateDescription(text(R.string.count_progress).format(3, 4)))
+            .assertIsDisplayed()
 
         show { CountSessionScreen(CountSamples.counting(blind = false), {}) }
-        assertTrue(count(text(R.string.count_expected_label)) > 0)
+        assertTrue(mentions(text(R.string.count_expected_label)) > 0)
     }
 
     @Test
@@ -147,7 +156,7 @@ class CountScreensTest {
         val unassigned = text(R.string.lot_unassigned_name)
         scrollTo(unassigned)
         assertTrue(count(text(R.string.count_row_lot).format(soap.name, unassigned)) >= 1)
-        assertEquals(0, count(text(R.string.count_expected_label)))
+        assertEquals(0, mentions(text(R.string.count_expected_label)))
     }
 
     @Test

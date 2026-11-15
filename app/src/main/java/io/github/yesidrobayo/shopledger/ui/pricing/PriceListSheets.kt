@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Margin
@@ -222,8 +224,9 @@ fun ListPriceEditorSheet(editor: ListPriceEditor, onAction: (ListPriceEditorActi
                         )
                 },
         )
+        // Rótulo y margen, un solo foco.
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -233,6 +236,7 @@ fun ListPriceEditorSheet(editor: ListPriceEditor, onAction: (ListPriceEditorActi
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val margin = editor.typedPrice?.let(editor.pricing::marginOf) ?: Margin.NoData
+            val noValue = stringResource(R.string.a11y_no_value)
             DiscreetValue {
                 Text(
                     when (margin) {
@@ -240,6 +244,12 @@ fun ListPriceEditorSheet(editor: ListPriceEditor, onAction: (ListPriceEditorActi
                         Margin.NoData, Margin.OutOfRange -> NO_VALUE_TEXT
                     },
                     style = AppTheme.amounts.row,
+                    // La raya sin margen se lee «Sin dato».
+                    modifier = if (margin is Margin.Defined) {
+                        Modifier
+                    } else {
+                        Modifier.semantics { contentDescription = noValue }
+                    },
                 )
             }
         }

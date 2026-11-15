@@ -17,6 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.print.PaperWidth
 import io.github.yesidrobayo.shopledger.domain.model.print.PrintFailure
@@ -168,14 +174,35 @@ private fun SavedPrinterRow(
             ),
         )
     }
+    // Un foco con las acciones del menú también como acciones de TalkBack. Región viva educada:
+    // `Imprimiendo…` se anuncia sin mover el foco.
+    val accessibilityActions = actions.map { action ->
+        CustomAccessibilityAction(action.label) {
+            action.onClick()
+            true
+        }
+    }
+    val name = printerName(printer.name)
+    val paper = paperLabel(printer.paper)
+    val defaultLabel = stringResource(R.string.printer_status_default).takeIf { isDefault }
+    val status = stringResource(R.string.printer_status_printing).takeIf {
+        uiState.printing == printer.address
+    }
+    // `Caja principal, papel de 58 mm, Predeterminada`: el ancho solo no dice que es el papel.
+    val spoken = (status ?: defaultLabel)?.let {
+        stringResource(R.string.a11y_printer_row, name, paper, it)
+    } ?: stringResource(R.string.a11y_printer_row_plain, name, paper)
     PrinterRow(
-        name = printerName(printer.name),
-        paper = paperLabel(printer.paper),
+        name = name,
+        paper = paper,
         actions = actions,
-        defaultLabel = stringResource(R.string.printer_status_default).takeIf { isDefault },
-        status = stringResource(R.string.printer_status_printing).takeIf {
-            uiState.printing == printer.address
+        modifier = Modifier.semantics(mergeDescendants = true) {
+            contentDescription = spoken
+            customActions = accessibilityActions
+            liveRegion = LiveRegionMode.Polite
         },
+        defaultLabel = defaultLabel,
+        status = status,
     )
 }
 

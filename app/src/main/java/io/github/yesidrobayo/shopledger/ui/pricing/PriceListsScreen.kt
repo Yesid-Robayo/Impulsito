@@ -30,10 +30,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceListPricing
@@ -233,6 +237,8 @@ private fun ListRow(
                     .clearAndSetSemantics {
                         contentDescription = reading
                         role = Role.Button
+                        // La elegida, al lado de su detalle, no se distingue solo por el fondo.
+                        if (selected) this.selected = true
                     }
                     .padding(horizontal = spacing.s16, vertical = spacing.s12),
                 verticalArrangement = Arrangement.spacedBy(spacing.s2),
@@ -345,7 +351,12 @@ private fun Detail(
                             R.string.price_list_search_no_results,
                             uiState.query.trim(),
                         ),
-                        modifier = Modifier.padding(AppTheme.spacing.s16),
+                        // Se anuncia al escribir, sin mover el foco del campo.
+                        modifier = Modifier
+                            .padding(AppTheme.spacing.s16)
+                            .semantics(mergeDescendants = true) {
+                                liveRegion = LiveRegionMode.Polite
+                            },
                     )
 
                 else -> ProductRows(
@@ -380,7 +391,11 @@ private fun Detail(
 private fun KindCard(selected: PriceListSummary, onClick: (() -> Unit)?) {
     val spacing = AppTheme.spacing
     AppCard(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.s16, vertical = spacing.s8),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spacing.s16, vertical = spacing.s8)
+            // Tipo y ajuste, un solo foco aunque la tarjeta no se pueda tocar.
+            .semantics(mergeDescendants = true) {},
         onClick = onClick,
     ) {
         val kind =

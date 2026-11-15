@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,6 +42,7 @@ import io.github.yesidrobayo.shopledger.ui.components.periodLabel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.priceindex.missingText
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
+import kotlin.math.abs
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -262,8 +264,15 @@ private fun Real(compared: RealComparison, today: BusinessDate, onOpenIndex: () 
                 onAction = onOpenIndex,
             )
 
-        RealValue.OutOfRange ->
-            Text(NO_VALUE_TEXT, style = MaterialTheme.typography.bodyLarge)
+        RealValue.OutOfRange -> {
+            // TalkBack lee `Sin dato`, no el guion.
+            val noValue = stringResource(R.string.a11y_no_value)
+            Text(
+                NO_VALUE_TEXT,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.semantics { contentDescription = noValue },
+            )
+        }
     }
 }
 
@@ -273,6 +282,7 @@ private fun Real(compared: RealComparison, today: BusinessDate, onOpenIndex: () 
  */
 @Composable
 private fun Variation(compared: RealComparison, variation: BasisPoints?, today: BusinessDate) {
+    val percent = LocalAppFormats.current.percent
     val text =
         if (variation == null) {
             stringResource(
@@ -280,15 +290,26 @@ private fun Variation(compared: RealComparison, variation: BasisPoints?, today: 
                 periodLabel(compared.comparedTo, today),
             )
         } else {
-            stringResource(
-                R.string.stats_compare_variation,
-                LocalAppFormats.current.percent.formatChange(variation),
-            )
+            stringResource(R.string.stats_compare_variation, percent.formatChange(variation))
         }
+    // TalkBack dice la dirección en palabras, `Variación sube 6,8 %`: el signo puede no leerse.
+    val spoken = variation?.let { change ->
+        val magnitude = percent.format(BasisPoints(abs(change.bp)))
+        when {
+            magnitude == percent.format(BasisPoints.ZERO) -> null
+            change > BasisPoints.ZERO -> stringResource(R.string.a11y_change_rises, magnitude)
+            else -> stringResource(R.string.a11y_change_falls, magnitude)
+        }
+    }?.let { stringResource(R.string.stats_compare_variation, it) }
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = if (spoken == null) {
+            Modifier
+        } else {
+            Modifier.semantics { contentDescription = spoken }
+        },
     )
 }
 

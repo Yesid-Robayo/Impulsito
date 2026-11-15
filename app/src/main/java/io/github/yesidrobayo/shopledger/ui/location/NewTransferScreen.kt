@@ -24,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
@@ -213,11 +216,14 @@ private fun EndField(label: String, value: String, error: Boolean, onClick: () -
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4)) {
         PickerField(label = label, value = value, onClick = onClick)
         if (error) {
+            // El error de campo se anuncia al aparecer.
             Text(
                 stringResource(R.string.location_error_same),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
+                modifier = Modifier
+                    .padding(horizontal = AppTheme.spacing.s16)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
     }
@@ -308,10 +314,12 @@ private fun BottomBar(uiState: NewTransferUiState, onAction: (NewTransferAction)
                 null -> Unit
             }
             if (uiState.showNoLines) {
+                // Aparece al tocar registrar sin líneas: se anuncia, el foco sigue en el botón.
                 Text(
                     stringResource(R.string.location_error_no_lines),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
             PrimaryActionButton(

@@ -15,6 +15,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -165,24 +169,32 @@ private fun ColumnScope.PaymentFields(
     sheet.notice?.let { FormNotice(it, onAction) }
 }
 
-/** `Saldo después del abono: …` o `Queda saldo a favor de …`, mientras se escribe el monto. */
+/**
+ * `Saldo después del abono: …` o `Queda saldo a favor de …`, mientras se escribe el monto.
+ * TalkBack lo anuncia al cambiar, con el nombre de la moneda en lugar del símbolo.
+ */
 @Composable
 private fun PreviewLine(preview: PaymentPreview?) {
     val money = LocalAppFormats.current.money
-    val text = when (preview) {
+    val (template, display) = when (preview) {
         null, PaymentPreview.Overflow -> return
 
-        is PaymentPreview.RemainingDebt -> stringResource(
-            R.string.customer_payment_balance_after,
-            rememberMoneyDisplay(preview.balance, money).text.text,
-        )
+        is PaymentPreview.RemainingDebt ->
+            R.string.customer_payment_balance_after to rememberMoneyDisplay(preview.balance, money)
 
-        is PaymentPreview.CreditLeft -> stringResource(
-            R.string.customer_payment_credit_left,
-            rememberMoneyDisplay(preview.credit, money).text.text,
-        )
+        is PaymentPreview.CreditLeft ->
+            R.string.customer_payment_credit_left to rememberMoneyDisplay(preview.credit, money)
     }
-    Text(text, style = AppTheme.amounts.small, color = MaterialTheme.colorScheme.onSurface)
+    val reading = stringResource(template, display.description)
+    Text(
+        stringResource(template, display.text.text),
+        style = AppTheme.amounts.small,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.semantics {
+            contentDescription = reading
+            liveRegion = LiveRegionMode.Polite
+        },
+    )
 }
 
 /**

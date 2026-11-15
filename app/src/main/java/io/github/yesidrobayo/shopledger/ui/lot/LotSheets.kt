@@ -27,6 +27,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.DateField
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LedgerLineLayout
 import io.github.yesidrobayo.shopledger.ui.components.LotRow
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
@@ -135,7 +136,10 @@ internal fun LotDetailSheet(
     }
 }
 
-/** Una línea de dos columnas: el nombre a la izquierda y el valor a la derecha, un solo foco. */
+/**
+ * Una línea de dos columnas: el nombre a la izquierda y el valor a la derecha, un solo foco. Con
+ * letra grande, el valor que no cabe al lado baja bajo el nombre: nunca se corta.
+ */
 @Composable
 private fun LabeledLine(label: String, value: String) {
     Row(
@@ -144,15 +148,20 @@ private fun LabeledLine(label: String, value: String) {
             .heightIn(min = AppTheme.sizes.listRowSingle)
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(
-            value,
-            style = AppTheme.amounts.row,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            softWrap = false,
+        LedgerLineLayout(
+            gap = AppTheme.spacing.s12,
+            modifier = Modifier.weight(1f),
+            leading = { Text(label, style = MaterialTheme.typography.bodyLarge) },
+            trailing = {
+                Text(
+                    value,
+                    style = AppTheme.amounts.row,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            },
         )
     }
 }

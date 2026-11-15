@@ -28,7 +28,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
@@ -309,7 +313,10 @@ private fun CloseFigures(form: CloseCashForm) {
             amount = form.count.counted,
             variant = StatTileVariant.PLAIN,
         )
-        Column(Modifier.semantics(mergeDescendants = true) {}) {
+        // Cambia mientras se cuenta: TalkBack la anuncia sin mover el foco, con la palabra.
+        Column(
+            Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        ) {
             Text(
                 stringResource(R.string.cash_difference),
                 style = MaterialTheme.typography.labelLarge,
@@ -373,17 +380,20 @@ internal fun ClosedDetailSheet(
                 stringResource(R.string.cash_detail_counts),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { heading() },
             )
             detail.counts.forEach { count ->
                 val value = values[count.denominationId]?.value ?: return@forEach
+                val pieces = formats.quantity.formatCount(count.count)
+                val display = rememberMoneyDisplay(value, formats.money)
+                // TalkBack lee el nombre de la moneda, nunca el símbolo.
+                val description =
+                    stringResource(R.string.cash_denomination_count, pieces, display.description)
                 Text(
-                    stringResource(
-                        R.string.cash_denomination_count,
-                        formats.quantity.formatCount(count.count),
-                        rememberMoneyDisplay(value, formats.money).text.text,
-                    ),
+                    stringResource(R.string.cash_denomination_count, pieces, display.text.text),
                     style = AppTheme.amounts.small,
                     color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.semantics { contentDescription = description },
                 )
             }
         }
@@ -464,13 +474,14 @@ fun DenominationsScreen(
 @Composable
 private fun DenominationRow(denomination: CashDenomination, onClick: () -> Unit) {
     val spacing = AppTheme.spacing
-    Column(Modifier.clickable(role = Role.Button, onClick = onClick)) {
+    Column {
+        // Un foco por denominación, en el mismo nodo que se toca: el clic ya junta valor y estado.
         Row(
             Modifier
                 .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = onClick)
                 .heightIn(min = AppTheme.sizes.listRow)
-                .padding(horizontal = spacing.s16, vertical = spacing.s12)
-                .semantics(mergeDescendants = true) {},
+                .padding(horizontal = spacing.s16, vertical = spacing.s12),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.s12),
         ) {

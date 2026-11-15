@@ -23,6 +23,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Margin
@@ -239,9 +245,24 @@ private fun ComponentCard(row: RecipeRowUi, onAction: (RecipeAction) -> Unit) {
     // Una receta puede llevar media unidad, así que toda unidad admite milésimas aquí.
     val unit = row.unit?.let { unitLabel(it).copy(allowsFraction = true) }
         ?: UnitLabel("", allowsFraction = true)
+    val removeLabel = stringResource(R.string.a11y_combo_remove_component, row.name)
+    val remove = { onAction(RecipeAction.RemoveComponent(row.key)) }
     AppCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s4)) {
+            // Nombre y marcas en un solo foco, con quitar también como acción de TalkBack.
+            Column(
+                Modifier
+                    .weight(1f)
+                    .semantics(mergeDescendants = true) {
+                        customActions = listOf(
+                            CustomAccessibilityAction(removeLabel) {
+                                remove()
+                                true
+                            },
+                        )
+                    },
+                verticalArrangement = Arrangement.spacedBy(spacing.s4),
+            ) {
                 Text(text = row.name, style = MaterialTheme.typography.titleMedium)
                 if (row.archived) StatusTag(stringResource(R.string.status_archived))
                 if (!row.tracked) {
@@ -254,7 +275,8 @@ private fun ComponentCard(row: RecipeRowUi, onAction: (RecipeAction) -> Unit) {
             }
             InlineTextButton(
                 text = stringResource(R.string.action_remove),
-                onClick = { onAction(RecipeAction.RemoveComponent(row.key)) },
+                onClick = remove,
+                modifier = Modifier.semantics { contentDescription = removeLabel },
             )
         }
         // La cantidad ocupa todo el ancho y el costo va debajo, a la derecha: con letra grande y un
@@ -281,24 +303,40 @@ private fun ComponentCard(row: RecipeRowUi, onAction: (RecipeAction) -> Unit) {
 private fun FiguresCard(uiState: RecipeUiState) {
     val spacing = AppTheme.spacing
     val money = LocalAppFormats.current.money
-    AppCard {
+    val noValue = stringResource(R.string.a11y_no_value)
+    // Un foco que se vuelve a leer, sin mover el foco, cada vez que cambia una cifra.
+    AppCard(
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
             LabeledAmount(stringResource(R.string.combo_cost_label), uiState.unitCost, true)
             LabeledAmount(stringResource(R.string.combo_price_label), uiState.salePrice, false)
-            val profit = uiState.profit
+            // TalkBack lee la moneda con su nombre, no el símbolo, y `—` como sin dato.
+            val profit = uiState.profit?.let { rememberMoneyDisplay(it, money) }
+            val profitReading =
+                stringResource(R.string.combo_profit_per_unit, profit?.description ?: noValue)
             DiscreetValue(style = MaterialTheme.typography.bodyLarge) {
                 Text(
                     text = stringResource(
                         R.string.combo_profit_per_unit,
-                        profit?.let { rememberMoneyDisplay(it, money).text.text } ?: NO_VALUE_TEXT,
+                        profit?.text?.text ?: NO_VALUE_TEXT,
                     ),
                     style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.semantics { contentDescription = profitReading },
                 )
             }
+            val margin = uiState.margin
+            val marginReading = stringResource(R.string.combo_margin, noValue)
+                .takeUnless { margin is Margin.Defined }
             DiscreetValue(style = MaterialTheme.typography.bodyLarge) {
                 Text(
-                    text = stringResource(R.string.combo_margin, marginText(uiState.margin)),
+                    text = stringResource(R.string.combo_margin, marginText(margin)),
                     style = MaterialTheme.typography.bodyLarge,
+                    modifier = if (marginReading == null) {
+                        Modifier
+                    } else {
+                        Modifier.semantics { contentDescription = marginReading }
+                    },
                 )
             }
             if (uiState.hasUncosted) {
@@ -329,7 +367,10 @@ private fun LabeledAmount(label: String, amount: Money?, sensitive: Boolean) {
 private fun Availability(uiState: RecipeUiState) {
     val available = uiState.available ?: return
     val formats = LocalAppFormats.current
-    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4)) {
+    Column(
+        Modifier.semantics(mergeDescendants = true) {},
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
+    ) {
         Text(
             text = stringResource(
                 R.string.combo_available_now,

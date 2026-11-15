@@ -18,6 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyConsentStatus
@@ -122,8 +125,11 @@ private fun PolicyNotice(accepting: Boolean, onAction: (DataTransparencyAction) 
         onAction = { if (!accepting) onAction(DataTransparencyAction.AcceptPolicy) },
         secondaryLabel = stringResource(R.string.transparency_decide_later_action),
         onSecondary = { onAction(DataTransparencyAction.DecideLater) },
+        // TalkBack lo dice al aparecer, sin mover el foco: las dos salidas siguen siendo botones.
         modifier =
-            Modifier.padding(horizontal = AppTheme.spacing.s16, vertical = AppTheme.spacing.s8),
+            Modifier
+                .padding(horizontal = AppTheme.spacing.s16, vertical = AppTheme.spacing.s8)
+                .semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
 
@@ -161,7 +167,7 @@ private fun NowSection(uiState: DataTransparencyUiState) {
             )
         }
         when (val encryption = uiState.encryptionOn) {
-            is Fact.Known -> {
+            is Fact.Known -> FactPair {
                 FactLine(
                     stringResource(
                         if (encryption.value) {
@@ -224,7 +230,7 @@ private fun NowSection(uiState: DataTransparencyUiState) {
 private fun BackupsFact(destination: Fact<BackupDestinationInfo?>, unavailable: String) {
     when (destination) {
         is Fact.Known -> when (val value = destination.value) {
-            is BackupDestinationInfo.WebDav -> {
+            is BackupDestinationInfo.WebDav -> FactPair {
                 FactLine(
                     stringResource(
                         R.string.transparency_now_backups_webdav,
@@ -254,6 +260,19 @@ private fun BackupsFact(destination: Fact<BackupDestinationInfo?>, unavailable: 
 private fun Fact<Boolean>.text(on: Int, off: Int, unavailable: String): String = when (this) {
     is Fact.Known -> stringResource(if (value) on else off)
     Fact.Unavailable -> unavailable
+}
+
+/**
+ * Una fila de `Ahora mismo` con su detalle debajo: TalkBack la lee como un solo foco, etiqueta y
+ * valor juntos. Conserva la separación de las filas sueltas.
+ */
+@Composable
+private fun FactPair(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier.semantics(mergeDescendants = true) {},
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+        content = content,
+    )
 }
 
 @Composable
@@ -291,7 +310,10 @@ private fun DataSection() {
 
 @Composable
 private fun TitledText(title: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s2)) {
+    Column(
+        Modifier.semantics(mergeDescendants = true) {},
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s2),
+    ) {
         Text(title, style = MaterialTheme.typography.titleSmall)
         Text(
             body,
@@ -368,7 +390,11 @@ private fun DestinationsSection(uiState: DataTransparencyUiState) {
 @Composable
 private fun DestinationCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     AppCard(Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4)) {
+        // Un foco por tarjeta, en orden: destino, para qué, qué envía y cómo se apaga.
+        Column(
+            Modifier.semantics(mergeDescendants = true) {},
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
+        ) {
             Text(title, style = MaterialTheme.typography.titleSmall)
             content()
         }

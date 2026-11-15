@@ -32,6 +32,9 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isSensitiveData
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -235,7 +238,13 @@ private fun DetailBody(view: PayableDetailView, onAction: (PayableDetailAction) 
 private fun BalanceBlock(view: PayableDetailView) {
     val spacing = AppTheme.spacing
     val balance = view.supplier.balance
-    AppCard(Modifier.fillMaxWidth().padding(horizontal = spacing.s16, vertical = spacing.s8)) {
+    // Un foco: lo que se debe, la insignia y el vencimiento se leen juntos.
+    AppCard(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spacing.s16, vertical = spacing.s8)
+            .semantics(mergeDescendants = true) {},
+    ) {
         Text(
             stringResource(R.string.payable_total),
             style = MaterialTheme.typography.labelLarge,
@@ -461,22 +470,29 @@ internal fun SupplierPaymentSheetHost(
 @Composable
 private fun PreviewLine(preview: PayablePreview?) {
     val money = LocalAppFormats.current.money
-    val text = when (preview) {
+    val (phrase, display) = when (preview) {
         null -> return
 
-        is PayablePreview.Remaining -> stringResource(
-            R.string.payable_payment_balance_after,
-            rememberMoneyDisplay(preview.balance, money).text.text,
-        )
+        is PayablePreview.Remaining ->
+            R.string.payable_payment_balance_after to rememberMoneyDisplay(preview.balance, money)
 
-        is PayablePreview.CreditLeft -> stringResource(
-            R.string.payable_credit_left,
-            rememberMoneyDisplay(preview.credit, money).text.text,
-        )
+        is PayablePreview.CreditLeft ->
+            R.string.payable_credit_left to rememberMoneyDisplay(preview.credit, money)
     }
+    val text = stringResource(phrase, display.text.text)
+    // TalkBack lee el nombre de la moneda, nunca el símbolo.
+    val description = stringResource(phrase, display.description)
     // Dice lo que se debe: con el modo discreto se oculta, aunque el monto escrito siga a la vista.
     DiscreetValue(style = AppTheme.amounts.small) {
-        Text(text, style = AppTheme.amounts.small, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            text,
+            style = AppTheme.amounts.small,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics {
+                contentDescription = description
+                isSensitiveData = true
+            },
+        )
     }
 }
 

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -101,7 +102,13 @@ fun ColumnScope.LocationSwitcherOptions(
     onSelect: (Long?) -> Unit,
     onManage: (() -> Unit)?,
 ) {
-    Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+    // Un grupo de opciones excluyentes: TalkBack dice cuál es y de cuántas, como `1 de 3`.
+    Column(
+        Modifier
+            .weight(1f, fill = false)
+            .verticalScroll(rememberScrollState())
+            .selectableGroup(),
+    ) {
         if (allowAll) {
             OptionRow(
                 text = stringResource(R.string.location_switcher_all),

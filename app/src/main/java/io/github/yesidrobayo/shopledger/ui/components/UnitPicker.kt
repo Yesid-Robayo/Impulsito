@@ -21,8 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
@@ -55,7 +57,10 @@ fun UnitPicker(
         }.orEmpty()
     Column(modifier) {
         PickerField(label = label, value = value, onClick = onClick, lockedReason = lockedReason)
-        if (error != null) FieldError(error)
+        // Región viva educada: el error se anuncia al aparecer, sin mover el foco.
+        if (error != null) {
+            FieldError(error, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        }
     }
 }
 

@@ -30,9 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -253,7 +256,12 @@ private fun ReturnLines(
                 NoticeCard(
                     text = stringResource(R.string.sale_return_error_none_selected),
                     variant = NoticeVariant.WARNING,
-                    modifier = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s4),
+                    // Aparece al tocar `Registrar devolución`: TalkBack lo dice sin mover el foco.
+                    modifier = Modifier
+                        .padding(horizontal = spacing.s16, vertical = spacing.s4)
+                        .semantics(mergeDescendants = true) {
+                            liveRegion = LiveRegionMode.Polite
+                        },
                 )
             }
         }
@@ -313,8 +321,9 @@ private fun LineRow(line: SaleReturnLineUi, onAction: (SaleReturnAction) -> Unit
     // por renglón.
     val stacked = LocalDensity.current.fontScale >= STACKED_FONT_SCALE
     val texts: @Composable (Modifier) -> Unit = { modifier ->
+        // Un solo foco por línea, que TalkBack lee con la frase completa.
         Column(
-            modifier.semantics { contentDescription = spoken },
+            modifier.semantics(mergeDescendants = true) { contentDescription = spoken },
             verticalArrangement = Arrangement.spacedBy(spacing.s2),
         ) {
             Text(line.name, style = MaterialTheme.typography.titleSmall)
@@ -381,6 +390,7 @@ private fun LineRow(line: SaleReturnLineUi, onAction: (SaleReturnAction) -> Unit
                         text = stringResource(R.string.sale_return_no_restock_help),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
             }
@@ -407,7 +417,7 @@ private fun Resolution(uiState: SaleReturnUiState, onAction: (SaleReturnAction) 
         Text(
             stringResource(R.string.sale_return_how_title),
             style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = spacing.s24),
+            modifier = Modifier.padding(top = spacing.s24).semantics { heading() },
         )
         CompactChipRow(
             options = ReturnResolution.entries,
@@ -477,18 +487,20 @@ private fun StoreCredit(uiState: SaleReturnUiState, onAction: (SaleReturnAction)
     )
     if (customer == null) return
     val after = customer.balanceAfter
+    val display = rememberMoneyDisplay(after, money)
+    // TalkBack lee el saldo con el nombre de la moneda, no con su símbolo.
+    val afterSpoken = stringResource(R.string.sale_return_balance_after, display.description)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
     ) {
         Text(
-            text = stringResource(
-                R.string.sale_return_balance_after,
-                rememberMoneyDisplay(after, money).text.text,
-            ),
+            text = stringResource(R.string.sale_return_balance_after, display.text.text),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .semantics { contentDescription = afterSpoken },
         )
         BalanceBadge(BalanceBadgeVariant.forCustomer(after), after)
     }
@@ -530,7 +542,8 @@ private fun Footer(uiState: SaleReturnUiState, onAction: (SaleReturnAction) -> U
                         Modifier
                     },
                 )
-                .semantics(mergeDescendants = true) {},
+                // El total cambia con cada cantidad: TalkBack lo anuncia sin mover el foco.
+                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.s8),
         ) {
@@ -571,7 +584,10 @@ private fun Footer(uiState: SaleReturnUiState, onAction: (SaleReturnAction) -> U
 
 @Composable
 private fun BreakdownRow(label: String, amount: Money) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
             label,
             style = MaterialTheme.typography.bodySmall,

@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import io.github.yesidrobayo.shopledger.R
@@ -54,7 +55,8 @@ data class CustomerRowData(
  * lleva la suya y, con [onReactivate], el botón `Reactivar`. Con letra grande, el saldo baja debajo
  * del nombre para no dejarlo sin ancho. Una fila, un foco.
  *
- * @param selected si es el cliente abierto en el panel derecho de una ventana ancha.
+ * @param selected si es el cliente abierto en el panel derecho de una ventana ancha. TalkBack lo
+ *   dice con palabras, no solo con el fondo.
  */
 @Composable
 fun CustomerRow(
@@ -75,7 +77,9 @@ fun CustomerRow(
                     .clickable(role = Role.Button, onClick = onClick)
                     .heightIn(min = AppTheme.sizes.listRow)
                     .padding(horizontal = spacing.s16, vertical = spacing.s12)
-                    .semantics(mergeDescendants = true) {},
+                    .semantics(mergeDescendants = true) {
+                        if (selected) this.selected = true
+                    },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(spacing.s12),
             ) {

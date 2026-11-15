@@ -21,8 +21,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.isSensitiveData
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -131,7 +133,10 @@ fun RecoveryCodeField(
                     )
                 }
             }
-            if (error != null) FieldError(error)
+            // Región viva educada: TalkBack dice qué grupo revisar sin mover el foco del campo.
+            if (error != null) {
+                FieldError(error, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            }
         }
     }
 }

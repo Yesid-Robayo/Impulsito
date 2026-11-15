@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
@@ -241,7 +244,12 @@ private fun LoadingSkeleton() {
 
 @Composable
 private fun ReadFailed(onAction: (ReferenceCurrencyAction) -> Unit) {
-    EmptyState(icon = R.drawable.ic_error, title = stringResource(R.string.state_error_read)) {
+    EmptyState(
+        icon = R.drawable.ic_error,
+        title = stringResource(R.string.state_error_read),
+        // Con letra grande, el botón no queda fuera de la pantalla.
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+    ) {
         PrimaryActionButton(
             text = stringResource(R.string.action_retry),
             onClick = { onAction(ReferenceCurrencyAction.Retry) },
@@ -252,7 +260,11 @@ private fun ReadFailed(onAction: (ReferenceCurrencyAction) -> Unit) {
 
 @Composable
 private fun NoReference(onAction: (ReferenceCurrencyAction) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16)) {
+    // Se desplaza: con letra grande, el aviso y el botón no se cortan.
+    Column(
+        Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
+    ) {
         EmptyState(
             icon = R.drawable.ic_trending_up,
             title = stringResource(R.string.reference_empty_title),
@@ -346,15 +358,15 @@ private fun CurrentRate(latest: RateRow?, reference: ReferenceCurrency, modifier
         return
     }
     val formats = LocalAppFormats.current
+    val rate = formats.quantity.formatMicro(latest.rate.content.rateMicro)
+    // TalkBack nunca lee el signo igual.
+    val rateSpoken = stringResource(R.string.a11y_reference_rate, reference.code.code, rate)
     Column(modifier.semantics(mergeDescendants = true) {}) {
         Text(
-            stringResource(
-                R.string.reference_rate_current,
-                reference.code.code,
-                formats.quantity.formatMicro(latest.rate.content.rateMicro),
-            ),
+            stringResource(R.string.reference_rate_current, reference.code.code, rate),
             style = AppTheme.amounts.tile,
             color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { contentDescription = rateSpoken },
         )
         Text(
             stringResource(
@@ -372,6 +384,8 @@ private fun CurrentRate(latest: RateRow?, reference: ReferenceCurrency, modifier
 private fun RateRowView(row: RateRow, reference: ReferenceCurrency, modifier: Modifier) {
     val formats = LocalAppFormats.current
     val content = row.rate.content
+    val rate = formats.quantity.formatMicro(content.rateMicro)
+    val rateSpoken = stringResource(R.string.a11y_reference_rate, reference.code.code, rate)
     Row(
         modifier.fillMaxWidth().heightIn(
             min = AppTheme.sizes.listRow,
@@ -396,15 +410,12 @@ private fun RateRowView(row: RateRow, reference: ReferenceCurrency, modifier: Mo
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                stringResource(
-                    R.string.reference_rate_current,
-                    reference.code.code,
-                    formats.quantity.formatMicro(content.rateMicro),
-                ),
+                stringResource(R.string.reference_rate_current, reference.code.code, rate),
                 style = AppTheme.amounts.row,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 softWrap = false,
+                modifier = Modifier.semantics { contentDescription = rateSpoken },
             )
             row.variation?.let {
                 Text(
@@ -555,17 +566,19 @@ private fun RateSheetHost(
 private fun ColumnScope.Previous(latest: RateRow?, sheet: RateSheet, reference: ReferenceCurrency) {
     val previous = latest ?: return
     val formats = LocalAppFormats.current
+    val rate = formats.quantity.formatMicro(previous.rate.content.rateMicro)
+    val previousSpoken = stringResource(
+        R.string.reference_previous,
+        stringResource(R.string.a11y_reference_rate, reference.code.code, rate),
+    )
     Text(
         stringResource(
             R.string.reference_previous,
-            stringResource(
-                R.string.reference_rate_current,
-                reference.code.code,
-                formats.quantity.formatMicro(previous.rate.content.rateMicro),
-            ),
+            stringResource(R.string.reference_rate_current, reference.code.code, rate),
         ),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.semantics { contentDescription = previousSpoken },
     )
     sheet.variation?.let {
         Text(

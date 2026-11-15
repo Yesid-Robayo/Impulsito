@@ -58,9 +58,17 @@ import kotlinx.coroutines.delay
  * - Buscando, las esquinas quedan fijas: ninguna línea se mueve sin parar. Con cada lectura,
  *   [readPulse] sube y las esquinas se cierran 8 dp un instante; sin animaciones del sistema, solo
  *   cambia el texto.
+ *
+ * @param assertive si la etiqueta interrumpe lo que TalkBack esté diciendo, como un código que no
+ *   es de ningún producto. Una lectura correcta va como región viva educada.
  */
 @Composable
-fun ScannerOverlay(label: String, readPulse: Int, modifier: Modifier = Modifier) {
+fun ScannerOverlay(
+    label: String,
+    readPulse: Int,
+    modifier: Modifier = Modifier,
+    assertive: Boolean = false,
+) {
     val sizes = AppTheme.sizes
     val spacing = AppTheme.spacing
     var closing by remember { mutableStateOf(false) }
@@ -117,7 +125,14 @@ fun ScannerOverlay(label: String, readPulse: Int, modifier: Modifier = Modifier)
                     modifier =
                         Modifier
                             .padding(horizontal = spacing.s12, vertical = spacing.s8)
-                            .semantics { liveRegion = LiveRegionMode.Polite },
+                            .semantics {
+                                liveRegion =
+                                    if (assertive) {
+                                        LiveRegionMode.Assertive
+                                    } else {
+                                        LiveRegionMode.Polite
+                                    }
+                            },
                 )
             }
         }

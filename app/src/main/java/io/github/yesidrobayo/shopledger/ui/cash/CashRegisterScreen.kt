@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isSensitiveData
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
@@ -302,13 +304,14 @@ private fun ClosedRow(session: CashSession, onClick: () -> Unit) {
     val closing = session.closing ?: return
     val spacing = AppTheme.spacing
     val formats = LocalAppFormats.current
-    Column(Modifier.clickable(role = Role.Button, onClick = onClick)) {
+    Column {
+        // Un foco por cierre, en el mismo nodo que se toca: el clic ya junta lo que dice la fila.
         Row(
             Modifier
                 .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = onClick)
                 .heightIn(min = AppTheme.sizes.listRow)
-                .padding(horizontal = spacing.s16, vertical = spacing.s12)
-                .semantics(mergeDescendants = true) {},
+                .padding(horizontal = spacing.s16, vertical = spacing.s12),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.s12),
         ) {
@@ -345,19 +348,31 @@ private fun ClosedRow(session: CashSession, onClick: () -> Unit) {
 internal fun DifferenceText(difference: Money, sensitive: Boolean) {
     val money = LocalAppFormats.current.money
     val magnitude = if (difference < Money.ZERO) -difference else difference
-    val amount = rememberMoneyDisplay(magnitude, money).text.text
-    val text = when {
-        difference == Money.ZERO -> stringResource(R.string.cash_no_difference)
-        difference > Money.ZERO -> stringResource(R.string.cash_over, amount)
-        else -> stringResource(R.string.cash_short, amount)
+    val display = rememberMoneyDisplay(magnitude, money)
+    val phrase = when {
+        difference == Money.ZERO -> null
+        difference > Money.ZERO -> R.string.cash_over
+        else -> R.string.cash_short
     }
+    val text = phrase?.let { stringResource(it, display.text.text) }
+        ?: stringResource(R.string.cash_no_difference)
+    // TalkBack lee el nombre de la moneda, nunca el símbolo.
+    val description = phrase?.let { stringResource(it, display.description) } ?: text
     val color = if (difference < Money.ZERO) {
         AppTheme.colors.loss
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
     val shown: @Composable () -> Unit = {
-        Text(text, style = AppTheme.amounts.small, color = color)
+        Text(
+            text,
+            style = AppTheme.amounts.small,
+            color = color,
+            modifier = Modifier.semantics {
+                contentDescription = description
+                if (sensitive) isSensitiveData = true
+            },
+        )
     }
     if (sensitive) DiscreetValue(style = AppTheme.amounts.small, content = shown) else shown()
 }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
@@ -40,6 +43,7 @@ import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LedgerLineLayout
 import io.github.yesidrobayo.shopledger.ui.components.LotPicker
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
@@ -356,26 +360,45 @@ private fun OutputLotFields(
 
 /**
  * Costo total, costo por unidad y cómo cambia el costo promedio, con el aviso de insumos sin
- * costo.
+ * costo. Los dos costos son un solo foco que TalkBack anuncia al cambiar, y los montos se leen con
+ * el nombre de la moneda.
  */
 @Composable
 private fun FiguresCard(figures: ProductionFiguresUi, uiState: ProductionFormUiState) {
     val spacing = AppTheme.spacing
     val money = LocalAppFormats.current.money
     val unitName = uiState.product?.unit?.let { labelOf(it).symbol }.orEmpty()
+    val before = rememberMoneyDisplay(figures.averageBefore, money)
+    val after = rememberMoneyDisplay(figures.averageAfter, money)
+    val effectSpoken =
+        stringResource(R.string.production_cost_effect, before.description, after.description)
     AppCard {
         Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
-            LabeledAmount(stringResource(R.string.production_total_cost_label), figures.totalCost)
-            LabeledAmount(stringResource(R.string.production_cost_per, unitName), figures.unitCost)
+            Column(
+                Modifier.semantics(mergeDescendants = true) {
+                    liveRegion = LiveRegionMode.Polite
+                },
+                verticalArrangement = Arrangement.spacedBy(spacing.s8),
+            ) {
+                LabeledAmount(
+                    stringResource(R.string.production_total_cost_label),
+                    figures.totalCost,
+                )
+                LabeledAmount(
+                    stringResource(R.string.production_cost_per, unitName),
+                    figures.unitCost,
+                )
+            }
             DiscreetValue(style = MaterialTheme.typography.bodyMedium) {
                 Text(
                     text = stringResource(
                         R.string.production_cost_effect,
-                        rememberMoneyDisplay(figures.averageBefore, money).text.text,
-                        rememberMoneyDisplay(figures.averageAfter, money).text.text,
+                        before.text.text,
+                        after.text.text,
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { contentDescription = effectSpoken },
                 )
             }
             if (figures.hasUncosted) {
@@ -388,17 +411,21 @@ private fun FiguresCard(figures: ProductionFiguresUi, uiState: ProductionFormUiS
     }
 }
 
+/** Un costo con su nombre. Con letra grande, el monto que no cabe al lado baja bajo el nombre. */
 @Composable
 private fun LabeledAmount(label: String, amount: Money) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        MoneyText(amount, MoneySize.ROW, sensitive = true)
-    }
+    LedgerLineLayout(
+        gap = AppTheme.spacing.s12,
+        modifier = Modifier.fillMaxWidth(),
+        leading = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        trailing = { MoneyText(amount, MoneySize.ROW, sensitive = true) },
+    )
 }
 
 @Composable

@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -53,6 +54,7 @@ import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
+import io.github.yesidrobayo.shopledger.ui.components.FieldError
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.MoneyField
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
@@ -73,6 +75,7 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitKindLabel
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.components.unitName
+import io.github.yesidrobayo.shopledger.ui.currency.MoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
@@ -417,9 +420,10 @@ private fun FixedValue(label: String, value: String) {
     }
 }
 
+/** Un error de campo con su icono, no solo el color, y anunciado al aparecer. */
 @Composable
 private fun FieldMessage(text: String) {
-    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    FieldError(text, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
 }
 
 @Composable
@@ -478,11 +482,12 @@ private fun ConversionResult(
             ),
         )
     val cost = rememberUnitCost(product)
+    val discreet = LocalDiscreetMode.current
     val text: AnnotatedString =
         if (cost == null) {
             AnnotatedString(stringResource(R.string.unit_conversion_row, alternate, quantity))
         } else {
-            val amount = if (LocalDiscreetMode.current) AnnotatedString(DISCREET_TEXT) else cost
+            val amount = if (discreet) AnnotatedString(DISCREET_TEXT) else cost.text
             formatAnnotated(
                 stringResource(R.string.unit_conversion_result),
                 alternate,
@@ -491,17 +496,43 @@ private fun ConversionResult(
                 amount,
             )
         }
+    // TalkBack lee la frase sin el signo igual, el costo con el nombre de la moneda, y «Oculto» en
+    // modo discreto, nunca los puntos.
+    val uiLocale = LocalAppFormats.current.uiLocale
+    val conversionSpoken = stringResource(
+        R.string.a11y_unit_conversion,
+        product.details.name,
+        spokenQuantity(factor, base),
+        unitName(unit).lowercase(uiLocale),
+    )
+    val spoken =
+        if (cost == null) {
+            conversionSpoken
+        } else {
+            stringResource(
+                R.string.a11y_unit_conversion_cost,
+                conversionSpoken,
+                unitName(base).lowercase(uiLocale),
+                if (discreet) stringResource(R.string.a11y_discreet_hidden) else cost.description,
+            )
+        }
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        modifier = Modifier.semantics {
+            contentDescription = spoken
+            liveRegion = LiveRegionMode.Polite
+        },
     )
 }
 
-/** El costo por unidad base de [product], con su símbolo, o `null` si no tiene costo que mostrar. */
+/**
+ * El costo por unidad base de [product], con su símbolo y su lectura para TalkBack, o `null` si no
+ * tiene costo que mostrar.
+ */
 @Composable
-private fun rememberUnitCost(product: Product): AnnotatedString? {
+private fun rememberUnitCost(product: Product): MoneyDisplay? {
     val money = LocalAppFormats.current.money
     val exact = UnitCostDisplay.costOf(product) ?: return null
     val maxExtra = MoneyFormatter.MAX_CURRENCY_DECIMALS - money.currencyDecimals
@@ -520,7 +551,7 @@ private fun rememberUnitCost(product: Product): AnnotatedString? {
                 )
             }
         }
-    return rememberMoneyDisplay(Money(scaled.minor), formatter).text
+    return rememberMoneyDisplay(Money(scaled.minor), formatter)
 }
 
 /** El texto del problema de [field], si lo tiene. */

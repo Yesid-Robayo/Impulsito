@@ -13,6 +13,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -183,10 +185,17 @@ internal fun AnalysisSection(
     }
 }
 
-/** El título de una parte del análisis, con su línea de ayuda debajo si la tiene. */
+/**
+ * El título de una parte del análisis, con su línea de ayuda debajo si la tiene. Es un encabezado,
+ * para llegar a cada parte navegando por encabezados.
+ */
 @Composable
 private fun PartTitle(title: String, help: String?, modifier: Modifier) {
-    Column(modifier.padding(top = AppTheme.spacing.s8).semantics(mergeDescendants = true) {}) {
+    Column(
+        modifier
+            .padding(top = AppTheme.spacing.s8)
+            .semantics(mergeDescendants = true) { heading() },
+    ) {
         Text(title, style = MaterialTheme.typography.titleSmall)
         help?.let {
             Text(
@@ -210,12 +219,19 @@ private fun Leaders(concentration: ProfitConcentration, modifier: Modifier) {
             R.string.stats_analysis_leaders_title,
             percent.format(ProfitConcentrationRules.THRESHOLD),
         )
+    // El guion se lee `Sin dato`.
+    val noValueText = stringResource(R.string.a11y_no_value)
+    val noValue = Modifier.semantics { contentDescription = noValueText }
     when (concentration) {
         ProfitConcentration.NoSales -> Unit
 
         ProfitConcentration.NoProfit -> {
             PartTitle(title, null, modifier)
-            Text(NO_VALUE_TEXT, style = MaterialTheme.typography.bodyLarge, modifier = modifier)
+            Text(
+                NO_VALUE_TEXT,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = modifier.then(noValue),
+            )
             NoticeCard(
                 stringResource(R.string.stats_analysis_no_profit),
                 NoticeVariant.INFO,
@@ -225,7 +241,11 @@ private fun Leaders(concentration: ProfitConcentration, modifier: Modifier) {
 
         ProfitConcentration.OutOfRange -> {
             PartTitle(title, null, modifier)
-            Text(NO_VALUE_TEXT, style = MaterialTheme.typography.bodyLarge, modifier = modifier)
+            Text(
+                NO_VALUE_TEXT,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = modifier.then(noValue),
+            )
         }
 
         is ProfitConcentration.Leaders -> {

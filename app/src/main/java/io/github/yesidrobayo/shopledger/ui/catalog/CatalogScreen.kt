@@ -82,7 +82,7 @@ fun CatalogScreen(
                     DelayedSkeleton {
                         ReceiptPreview(
                             null,
-                            stringResource(R.string.catalog_title),
+                            stringResource(R.string.a11y_loading),
                             Modifier.padding(AppTheme.spacing.s16),
                         )
                     }
@@ -206,6 +206,11 @@ private fun Options(
                 modifier = Modifier.padding(horizontal = spacing.s16),
             )
             val count = ready.document.productCount
+            val summary = when {
+                count == 0 -> stringResource(R.string.catalog_filter_empty)
+                pages != null -> stringResource(R.string.catalog_summary, count, pages)
+                else -> null
+            }
             if (count == 0) {
                 Text(
                     stringResource(R.string.catalog_filter_empty),
@@ -221,9 +226,13 @@ private fun Options(
                     modifier = Modifier.padding(horizontal = spacing.s16),
                 )
             }
+            // Un foco: `Vista previa del catálogo. Productos: 24 · Páginas: 3`.
             ReceiptPreview(
                 image = preview,
-                description = stringResource(R.string.catalog_title),
+                description = stringResource(
+                    R.string.a11y_catalog_preview,
+                    summary ?: stringResource(R.string.a11y_loading),
+                ),
                 modifier = Modifier.padding(spacing.s16),
             )
         }

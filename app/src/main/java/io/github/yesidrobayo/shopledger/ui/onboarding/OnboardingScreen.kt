@@ -29,8 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
@@ -140,7 +142,12 @@ private fun WelcomeContent(
                     RestoreStoppedNotice(stopped) { onAction(OnboardingAction.Restore(it)) }
                 }
                 if (uiState.demo == DemoStartUi.FAILED) {
-                    NoticeCard(stringResource(R.string.demo_entry_failed), NoticeVariant.ERROR)
+                    // Llega sin que la persona toque nada más: TalkBack lo dice al aparecer.
+                    NoticeCard(
+                        stringResource(R.string.demo_entry_failed),
+                        NoticeVariant.ERROR,
+                        Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
                 }
                 LocalCopy(uiState, app, onAction)
                 NoticeCard(
@@ -212,6 +219,8 @@ private fun WelcomeContent(
                     },
                 ),
                 { onAction(OnboardingAction.SeeSampleData) },
+                // TalkBack dice `Preparando los datos de ejemplo` al cambiar el texto.
+                Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
     }

@@ -136,7 +136,12 @@ private fun CameraLayout(
         val camera: @Composable (Modifier) -> Unit = { modifier ->
             Box(modifier) {
                 cameraContent(Modifier.fillMaxSize().semantics { contentDescription = preview })
-                ScannerOverlay(label = overlayLabel(uiState), readPulse = uiState.readPulse)
+                // Un código que no es de ningún producto interrumpe: se anuncia como asertivo.
+                ScannerOverlay(
+                    label = overlayLabel(uiState),
+                    readPulse = uiState.readPulse,
+                    assertive = uiState.sheet is ScanSheet.Unknown,
+                )
                 ScannerTopBar(uiState, onAction)
             }
         }
@@ -174,7 +179,9 @@ private fun overlayLabel(uiState: ScannerUiState): String {
 /** Cerrar, el título y la linterna, sobre una franja del velo que los deja leer. */
 @Composable
 private fun ScannerTopBar(uiState: ScannerUiState, onAction: (ScannerAction) -> Unit) {
-    val onImage = MaterialTheme.colorScheme.inverseOnSurface
+    // `onHero` es blanco en los dos temas: sobre el velo, con la imagen más clara, da 5,74:1.
+    // `inverseOnSurface` es oscuro en el tema oscuro y se perdía sobre el velo negro.
+    val onImage = AppTheme.colors.onHero
     Row(
         modifier =
             Modifier

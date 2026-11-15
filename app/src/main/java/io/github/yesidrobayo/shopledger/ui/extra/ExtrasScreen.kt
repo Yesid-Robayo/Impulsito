@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
@@ -184,7 +185,11 @@ private fun ExtraRow(row: ExtraRowUi, enabled: Boolean, onAction: (ExtrasAction)
         horizontalArrangement = Arrangement.spacedBy(spacing.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s4)) {
+        // Nombre, marca y precio en un solo foco; `Quitar` va aparte, con el suyo.
+        Column(
+            Modifier.weight(1f).semantics(mergeDescendants = true) {},
+            verticalArrangement = Arrangement.spacedBy(spacing.s4),
+        ) {
             Text(row.name, style = MaterialTheme.typography.titleMedium)
             if (row.archived) StatusTag(stringResource(R.string.status_archived))
             MoneyText(row.price, MoneySize.ROW)

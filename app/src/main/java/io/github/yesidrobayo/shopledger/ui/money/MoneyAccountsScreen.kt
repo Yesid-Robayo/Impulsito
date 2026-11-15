@@ -29,6 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isSensitiveData
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,6 +59,7 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
 import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.payment.ListDetailPanes
@@ -316,14 +321,22 @@ private fun AccountListRow(row: AccountRow, selected: Boolean, onClick: () -> Un
     val account = row.account
     val stacked = LocalDensity.current.fontScale >= STACKED_FONT_SCALE
     ProvideAccountCurrency(account.currency) {
+        val description = accountRowDescription(row)
         Surface(color = if (selected) scheme.secondaryContainer else scheme.surface) {
-            Column(Modifier.clickable(role = Role.Button, onClick = onClick)) {
+            Column {
                 Row(
                     Modifier
                         .fillMaxWidth()
+                        .clickable(role = Role.Button, onClick = onClick)
                         .heightIn(min = AppTheme.sizes.listRow)
                         .padding(horizontal = spacing.s16, vertical = spacing.s12)
-                        .semantics(mergeDescendants = true) {},
+                        // Una fila, un foco, en el mismo nodo que se toca: la cuenta, su clase, el
+                        // saldo y lo que falta por acreditar, con el nombre de la moneda.
+                        .clearAndSetSemantics {
+                            contentDescription = description
+                            isSensitiveData = true
+                            if (selected) this.selected = true
+                        },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(spacing.s12),
                 ) {
@@ -368,16 +381,49 @@ private fun Balance(account: MoneyAccount) {
     )
 }
 
+/**
+ * Lo que dice TalkBack de una cuenta: el nombre, la clase, `saldo …` y, si algo falta por llegar,
+ * `Por acreditar: …`. Con el modo discreto, cada cifra se dice `Oculto` y el rótulo se conserva.
+ */
+@Composable
+private fun accountRowDescription(row: AccountRow): String {
+    val account = row.account
+    val money = LocalAppFormats.current.money
+    val discreet = LocalDiscreetMode.current
+    val hidden = stringResource(R.string.a11y_discreet_hidden)
+    val balance = rememberMoneyDisplay(account.balance, money).description
+    val pending = row.pending?.let { rememberMoneyDisplay(it, money).description }
+    val base = stringResource(
+        R.string.a11y_money_account_row,
+        accountName(account),
+        stringResource(kindLabel(account.details.kind)),
+        if (discreet) hidden else balance,
+    )
+    return pending?.let {
+        stringResource(
+            R.string.a11y_label_value,
+            base,
+            stringResource(R.string.a11y_money_pending, if (discreet) hidden else it),
+        )
+    } ?: base
+}
+
 /** `Por acreditar: …`, lo que ya está en el saldo pero todavía no llega. */
 @Composable
 internal fun PendingLine(pending: Money) {
-    val amount = rememberMoneyDisplay(pending, LocalAppFormats.current.money).text.text
+    val display = rememberMoneyDisplay(pending, LocalAppFormats.current.money)
     val style = AppTheme.amounts.small
+    // TalkBack lee el nombre de la moneda, nunca el símbolo.
+    val description = stringResource(R.string.a11y_money_pending, display.description)
     DiscreetValue(style = style) {
         Text(
-            stringResource(R.string.money_pending_settlement, amount),
+            stringResource(R.string.money_pending_settlement, display.text.text),
             style = style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.semantics {
+                contentDescription = description
+                isSensitiveData = true
+            },
         )
     }
 }

@@ -17,6 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -115,11 +118,14 @@ private fun ComboList(uiState: CombosUiState, onAction: (CombosAction) -> Unit) 
         modifier = Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
     )
     if (uiState.items.isEmpty()) {
+        // Región viva educada: con TalkBack, se oye que la búsqueda no encontró nada.
         Text(
             text = stringResource(R.string.combo_search_no_results, uiState.query.trim()),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(spacing.s16),
+            modifier = Modifier
+                .padding(spacing.s16)
+                .semantics { liveRegion = LiveRegionMode.Polite },
         )
         return
     }

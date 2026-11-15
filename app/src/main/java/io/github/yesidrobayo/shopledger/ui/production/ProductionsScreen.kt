@@ -40,6 +40,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.LedgerLineLayout
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
 import io.github.yesidrobayo.shopledger.ui.components.MoneyTone
@@ -288,28 +289,42 @@ private fun ProductionDetailSheet(
         },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
-            Text(detail.productName, style = MaterialTheme.typography.titleMedium)
-            Text(
-                quantityText(detail.quantity, labelOf(detail.unit)),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            if (detail.voided) StatusTag(stringResource(R.string.status_voided))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // Lo producido es un solo foco: el producto, la cantidad y si se anuló.
+            Column(
+                Modifier.semantics(mergeDescendants = true) {},
+                verticalArrangement = Arrangement.spacedBy(spacing.s8),
+            ) {
+                Text(detail.productName, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    stringResource(R.string.production_total_cost_label),
+                    quantityText(detail.quantity, labelOf(detail.unit)),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
                 )
-                MoneyText(detail.totalCost, MoneySize.ROW, sensitive = true)
+                if (detail.voided) StatusTag(stringResource(R.string.status_voided))
             }
+            // Con letra grande, el costo que no cabe al lado baja bajo su nombre: nunca se corta.
+            LedgerLineLayout(
+                gap = spacing.s12,
+                modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+                leading = {
+                    Text(
+                        stringResource(R.string.production_total_cost_label),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailing = { MoneyText(detail.totalCost, MoneySize.ROW, sensitive = true) },
+            )
             Text(
                 stringResource(R.string.production_inputs_title),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.padding(top = spacing.s8).semantics { heading() },
             )
             detail.lines.forEach { line ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                // Un insumo es un solo foco: su nombre, lo que se usó y su costo.
+                Row(
+                    Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Column(Modifier.weight(1f)) {
                         Text(line.name, style = MaterialTheme.typography.bodyLarge)
                         Text(

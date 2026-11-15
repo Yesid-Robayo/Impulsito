@@ -24,7 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.erase.EraseDestination
@@ -93,8 +96,11 @@ fun StorageScreen(
                     NoticeCard(
                         text = stringResource(R.string.storage_opened_from_android),
                         variant = NoticeVariant.INFO,
+                        // Llegada desde Android: TalkBack lo dice al abrir, antes de borrar nada.
                         modifier =
-                            Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
+                            Modifier
+                                .padding(horizontal = spacing.s16, vertical = spacing.s8)
+                                .semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
                 SectionHeader(stringResource(R.string.storage_backup_status_title))
@@ -371,6 +377,7 @@ private fun ColumnScope.ReviewStep(
     Text(
         stringResource(R.string.erase_out_of_reach_title, app),
         style = MaterialTheme.typography.titleSmall,
+        modifier = Modifier.semantics { heading() },
     )
     BodyText(stringResource(R.string.erase_out_of_reach_body, app))
     InlineTextButton(
@@ -408,16 +415,19 @@ private fun ColumnScope.ConfirmStep(
         onClick = { onAction(StorageAction.EraseAuthorized) },
         variant = ActionVariant.DESTRUCTIVE,
         enabled = flow.typed.trim().equals(word, ignoreCase = true),
-        modifier = Modifier.fillMaxWidth(),
+        // Al coincidir la palabra, TalkBack dice que el botón ya se puede tocar.
+        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
 
 @Composable
 private fun RunningStep(flow: EraseFlow.Running) {
+    // Cada etapa se anuncia al empezar, sin mover el foco: no hay nada que tocar mientras borra.
     BodyText(
         stringResource(
             if (flow.cloud) R.string.erase_stage_destination else R.string.erase_stage_local,
         ),
+        Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
     SkeletonBlock(Modifier.fillMaxWidth().heightIn(min = AppTheme.spacing.s8))
 }
@@ -454,7 +464,8 @@ private fun ColumnScope.StoppedStep(
 
             EraseStop.RESTORE_IN_PROGRESS -> stringResource(R.string.erase_disabled_restore)
         }
-    BodyText(text)
+    // Viene de `Borrando`, sin que la persona toque nada: TalkBack dice por qué se detuvo.
+    BodyText(text, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     when (reason) {
         EraseStop.ACCESS_LOST ->
             PrimaryActionButton(
@@ -484,8 +495,8 @@ private fun ColumnScope.StoppedStep(
 }
 
 @Composable
-private fun BodyText(text: String) {
-    Text(text, style = MaterialTheme.typography.bodyMedium)
+private fun BodyText(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, modifier = modifier)
 }
 
 @ThemePreviews

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
@@ -55,7 +56,11 @@ fun DestinationOption(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = AppTheme.sizes.touchTarget)
-                .semantics(mergeDescendants = true) { role = Role.Button },
+                .semantics(mergeDescendants = true) {
+                    role = Role.Button
+                    // Sin toque, TalkBack la dice desactivada: no un botón que no responde.
+                    if (!enabled) disabled()
+                },
         onClick = if (enabled) onClick else null,
     ) {
         Row(

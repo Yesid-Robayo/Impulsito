@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -49,11 +50,14 @@ fun CountTile(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (loading) {
+                // El esqueleto no tiene texto: la tarjeta dice `Cargando` después de su etiqueta.
+                val loadingText = stringResource(R.string.a11y_loading)
                 SkeletonBlock(
                     Modifier
                         .padding(top = AppTheme.spacing.s4)
                         .width(AppTheme.spacing.s64)
-                        .height(AppTheme.spacing.s20),
+                        .height(AppTheme.spacing.s20)
+                        .semantics { contentDescription = loadingText },
                 )
             } else {
                 Text(

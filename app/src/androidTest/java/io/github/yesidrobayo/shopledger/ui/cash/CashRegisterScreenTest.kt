@@ -97,8 +97,12 @@ class CashRegisterScreenTest {
     fun discreetModeHidesTheFiguresOfTheRegister() {
         show(OPEN_TODAY, discreet = true)
 
-        val hidden = compose.onAllNodesWithContentDescription(text(R.string.a11y_discreet_hidden))
-            .fetchSemanticsNodes()
+        // La tarjeta se lee de una vez: cada cifra oculta se cuenta en el árbol sin fusionar.
+        val hidden =
+            compose.onAllNodesWithContentDescription(
+                text(R.string.a11y_discreet_hidden),
+                useUnmergedTree = true,
+            ).fetchSemanticsNodes()
         // Las cinco cifras de la tarjeta, y lo contado y la diferencia de cada cierre.
         assertTrue(hidden.size >= 5)
     }

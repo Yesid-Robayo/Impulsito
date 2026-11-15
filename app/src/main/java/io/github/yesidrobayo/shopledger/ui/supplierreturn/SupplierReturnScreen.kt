@@ -27,7 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
@@ -253,6 +255,10 @@ private fun Header(uiState: SupplierReturnUiState, onAction: (SupplierReturnActi
             NoticeCard(
                 text = stringResource(R.string.supplier_return_error_no_supplier),
                 variant = NoticeVariant.WARNING,
+                // Aparece al registrar sin proveedor: TalkBack lo dice sin mover el foco.
+                modifier = Modifier.semantics(mergeDescendants = true) {
+                    liveRegion = LiveRegionMode.Polite
+                },
                 actionLabel = supplierLabel,
                 onAction = { onAction(SupplierReturnAction.OpenSuppliers) },
             )
@@ -287,13 +293,16 @@ private fun LineCard(line: SupplierReturnLineUi, onAction: (SupplierReturnAction
     val spacing = AppTheme.spacing
     val money = LocalAppFormats.current.money
     val unit = line.unit?.let { unitLabel(it) } ?: UnitLabel("", allowsFraction = false)
-    // Con el modo discreto, TalkBack tampoco dice el costo: lee la tarjeta como siempre.
-    val spoken = line.unitCost?.takeUnless { LocalDiscreetMode.current }?.let { cost ->
+    // El costo se lee con el nombre de la moneda; con el modo discreto, TalkBack dice «Oculto».
+    val discreet = LocalDiscreetMode.current
+    val hidden = stringResource(R.string.a11y_discreet_hidden)
+    val spoken = line.unitCost?.let { cost ->
+        val costSpoken = rememberMoneyDisplay(cost, money).description
         stringResource(
             R.string.a11y_supplier_return_line,
             line.name,
             line.quantityText,
-            rememberMoneyDisplay(cost, money).text.text,
+            if (discreet) hidden else costSpoken,
         )
     }
     val described = spoken?.let { Modifier.semantics { contentDescription = it } } ?: Modifier
@@ -332,14 +341,26 @@ private fun LineCard(line: SupplierReturnLineUi, onAction: (SupplierReturnAction
                 modifier = Modifier.padding(top = spacing.s4),
                 style = MaterialTheme.typography.bodySmall,
             ) {
+                val beforeDisplay = rememberMoneyDisplay(before, money)
+                val afterDisplay = rememberMoneyDisplay(after, money)
+                // TalkBack lee los costos con el nombre de la moneda, y avisa cuando cambian.
+                val effectSpoken = stringResource(
+                    R.string.supplier_return_cost_effect,
+                    beforeDisplay.description,
+                    afterDisplay.description,
+                )
                 Text(
                     text = stringResource(
                         R.string.supplier_return_cost_effect,
-                        rememberMoneyDisplay(before, money).text.text,
-                        rememberMoneyDisplay(after, money).text.text,
+                        beforeDisplay.text.text,
+                        afterDisplay.text.text,
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics {
+                        contentDescription = effectSpoken
+                        liveRegion = LiveRegionMode.Polite
+                    },
                 )
             }
         }
@@ -359,7 +380,10 @@ private fun LineCard(line: SupplierReturnLineUi, onAction: (SupplierReturnAction
 @Composable
 private fun LabeledAmount(label: String, amount: Money) {
     Row(
-        Modifier.fillMaxWidth().padding(top = AppTheme.spacing.s8),
+        Modifier
+            .fillMaxWidth()
+            .padding(top = AppTheme.spacing.s8)
+            .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -430,13 +454,15 @@ private fun BalanceAfter(after: Money) {
             Modifier.weight(1f, fill = false),
             style = MaterialTheme.typography.bodyMedium,
         ) {
+            val display = rememberMoneyDisplay(after, money)
+            // TalkBack lee el saldo con el nombre de la moneda, no con su símbolo.
+            val spoken =
+                stringResource(R.string.supplier_return_balance_after, display.description)
             Text(
-                stringResource(
-                    R.string.supplier_return_balance_after,
-                    rememberMoneyDisplay(after, money).text.text,
-                ),
+                stringResource(R.string.supplier_return_balance_after, display.text.text),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.semantics { contentDescription = spoken },
             )
         }
         BalanceBadge(BalanceBadgeVariant.forSupplier(after), after)
@@ -448,7 +474,10 @@ private fun BalanceAfter(after: Money) {
 private fun Footer(uiState: SupplierReturnUiState, onAction: (SupplierReturnAction) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
         uiState.notice?.let { ReturnNotice(it, onAction) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 text = stringResource(R.string.supplier_return_total_label),
                 style = MaterialTheme.typography.titleMedium,

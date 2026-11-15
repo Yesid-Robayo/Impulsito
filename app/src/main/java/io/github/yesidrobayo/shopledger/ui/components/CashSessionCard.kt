@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -31,6 +33,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  * Las cifras son de la caja y se ocultan con el modo discreto. El estado nunca depende solo del
  * color: lo dicen el texto y la etiqueta. Con letra grande, cada cifra baja bajo su rótulo.
  *
+ * Toda la tarjeta es un foco para TalkBack: el estado y, en orden, cada rótulo con su cifra.
+ *
  * @param status `Caja abierta desde las …` o `Caja cerrada`, ya con su hora.
  * @param figures las cifras de la caja abierta, o `null` con la caja cerrada.
  */
@@ -38,9 +42,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 fun CashSessionCard(status: String, figures: CashSessionFigures?, modifier: Modifier = Modifier) {
     val spacing = AppTheme.spacing
     val open = figures != null
-    AppCard(modifier.fillMaxWidth()) {
+    AppCard(modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
         Row(
-            Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+            Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.s8),
         ) {
@@ -72,39 +76,61 @@ fun CashSessionCard(status: String, figures: CashSessionFigures?, modifier: Modi
             )
         }
         figures ?: return@AppCard
-        FigureRow(stringResource(R.string.cash_opening), figures.opening)
-        FigureRow(stringResource(R.string.cash_sales), figures.sales)
-        FigureRow(stringResource(R.string.cash_in), figures.cashIn)
-        FigureRow(stringResource(R.string.cash_out), figures.cashOut)
+        FigureRow(stringResource(R.string.cash_opening), figures.opening, merge = false)
+        FigureRow(stringResource(R.string.cash_sales), figures.sales, merge = false)
+        FigureRow(stringResource(R.string.cash_in), figures.cashIn, merge = false)
+        FigureRow(stringResource(R.string.cash_out), figures.cashOut, merge = false)
         HorizontalDivider(
             thickness = AppTheme.sizes.hairline,
             color = MaterialTheme.colorScheme.outlineVariant,
             modifier = Modifier.padding(vertical = spacing.s4),
         )
-        FigureRow(stringResource(R.string.cash_expected), figures.expected, strong = true)
+        FigureRow(
+            stringResource(R.string.cash_expected),
+            figures.expected,
+            strong = true,
+            merge = false,
+        )
     }
 }
 
-/** Un rótulo con su cifra a la derecha, un solo foco; con letra grande, la cifra baja. */
+/**
+ * Un rótulo con su cifra a la derecha, un solo foco; con letra grande, la cifra baja.
+ *
+ * @param merge falso dentro de algo que ya es un foco, como [CashSessionCard]: un foco adentro lo
+ *   partiría en varios.
+ * @param live si la cifra cambia mientras se escribe, como `Total contado`: TalkBack la anuncia en
+ *   una región viva educada.
+ */
 @Composable
 internal fun FigureRow(
     label: String,
     amount: Money?,
     strong: Boolean = false,
     sensitive: Boolean = true,
+    merge: Boolean = true,
+    live: Boolean = false,
 ) {
     val stacked = LocalDensity.current.fontScale >= STACKED_FONT_SCALE
     val typography = MaterialTheme.typography
     val style = if (strong) typography.titleSmall else typography.bodyLarge
     val size = if (strong) MoneySize.TITLE else MoneySize.ROW
+    val focus =
+        if (merge) {
+            Modifier.semantics(mergeDescendants = true) {
+                if (live) liveRegion = LiveRegionMode.Polite
+            }
+        } else {
+            Modifier
+        }
     if (stacked) {
-        Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
+        Column(Modifier.fillMaxWidth().then(focus)) {
             Text(label, style = style, color = MaterialTheme.colorScheme.onSurface)
             MoneyText(amount, size, sensitive = sensitive)
         }
     } else {
         Row(
-            Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+            Modifier.fillMaxWidth().then(focus),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
         ) {

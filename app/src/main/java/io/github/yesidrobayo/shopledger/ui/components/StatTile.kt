@@ -162,7 +162,9 @@ internal fun StatChangeLine(change: StatChange, hero: Boolean) {
             change.favorable -> app.profit
             else -> app.loss
         }
-    val magnitude = percent.format(BasisPoints(if (up) change.change.bp else -change.change.bp))
+    // Sin el signo de porcentaje: la frase de TalkBack ya dice `por ciento`.
+    val magnitude =
+        percent.formatNumber(BasisPoints(if (up) change.change.bp else -change.change.bp))
     val spoken =
         stringResource(
             R.string.format_variation_vs_period,

@@ -24,7 +24,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
@@ -55,6 +58,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
+import io.github.yesidrobayo.shopledger.ui.components.FieldError
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
@@ -330,12 +334,19 @@ private fun EntryRow(entry: PriceIndexEntry, modifier: Modifier, onClick: () -> 
                 )
             }
         }
+        // TalkBack dice hacia dónde fue el cambio, `sube 1,9 %`: el signo puede no leerse.
+        val spoken = changeSpoken(entry.change)
         Text(
             changeText(entry.change),
             style = AppTheme.amounts.row,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             softWrap = false,
+            modifier = if (spoken == null) {
+                Modifier
+            } else {
+                Modifier.semantics { contentDescription = spoken }
+            },
         )
     }
 }
@@ -352,6 +363,24 @@ internal fun changeText(change: BasisPoints): String {
         percent.formatRate(BasisPoints(-change.bp)).replace(IcuTextNormalizer.MINUS_SIGN, '+')
     } else {
         percent.formatRate(change)
+    }
+}
+
+/**
+ * Lo que TalkBack dice de un cambio de mes, con su dirección en palabras: `sube 1,9 %`,
+ * `baja 0,25 %`. Sin cambio no hay dirección: `null`, y se lee lo que se ve.
+ */
+@Composable
+internal fun changeSpoken(change: BasisPoints): String? {
+    val percent = LocalAppFormats.current.percent
+    return when {
+        change > BasisPoints.ZERO ->
+            stringResource(R.string.a11y_change_rises, percent.formatRate(change))
+
+        change < BasisPoints.ZERO ->
+            stringResource(R.string.a11y_change_falls, percent.formatRate(BasisPoints(-change.bp)))
+
+        else -> null
     }
 }
 
@@ -399,12 +428,9 @@ private fun MonthSheet(
                 showNext = currentMonth != null && sheet.month < currentMonth,
                 today = today,
             )
+            // Como el error de un campo: con icono, y anunciado al aparecer.
             monthError(sheet)?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
+                Box(Modifier.semantics { liveRegion = LiveRegionMode.Polite }) { FieldError(it) }
             }
         }
         PercentField(

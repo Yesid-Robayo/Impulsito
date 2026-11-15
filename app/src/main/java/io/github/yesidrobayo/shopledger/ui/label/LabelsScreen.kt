@@ -28,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -246,7 +248,8 @@ private fun ChosenRow(item: LabelItem, tooLong: Boolean, onAction: (LabelsAction
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.s12),
     ) {
-        Column(Modifier.weight(1f)) {
+        // El nombre y su aviso en un solo foco; las copias van en el selector.
+        Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
             Text(
                 item.name,
                 style = MaterialTheme.typography.bodyLarge,
@@ -517,7 +520,7 @@ private fun SectionLabel(res: Int) {
         stringResource(res),
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(top = AppTheme.spacing.s8),
+        modifier = Modifier.padding(top = AppTheme.spacing.s8).semantics { heading() },
     )
 }
 

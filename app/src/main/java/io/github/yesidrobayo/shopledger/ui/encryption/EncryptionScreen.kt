@@ -29,7 +29,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.lock.rejectObscuredTouches
@@ -241,7 +245,16 @@ private fun StatusScreen(
 private fun LazyListScope.offItems(wasOn: Boolean) {
     item(key = OFF_TITLE) {
         Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
-            StatusTag(stringResource(R.string.encryption_status_off))
+            // TalkBack dice de qué es el estado: `Cifrado de copias: apagado`, no solo `Apagado`.
+            val status =
+                stringResource(
+                    R.string.a11y_encryption_status,
+                    stringResource(R.string.encryption_status_off),
+                )
+            StatusTag(
+                stringResource(R.string.encryption_status_off),
+                modifier = Modifier.clearAndSetSemantics { contentDescription = status },
+            )
             Text(
                 stringResource(R.string.encryption_off_title),
                 style = MaterialTheme.typography.headlineSmall,
@@ -309,7 +322,7 @@ private fun TextBlock(title: String, body: String) {
 
 /**
  * `Las copias salen cifradas`, sobre el contenedor del estado bueno del respaldo. Con [dates], dice
- * cuándo se comprobó el código por última vez y cuándo toca la próxima prueba.
+ * cuándo se comprobó el código por última vez y cuándo toca la próxima prueba. Es un solo foco.
  */
 @Composable
 private fun OnBlock(dates: CheckDatesUi? = null) {
@@ -319,7 +332,8 @@ private fun OnBlock(dates: CheckDatesUi? = null) {
         Modifier
             .fillMaxWidth()
             .background(colors.backupOkContainer, MaterialTheme.shapes.medium)
-            .padding(AppTheme.spacing.s16),
+            .padding(AppTheme.spacing.s16)
+            .semantics(mergeDescendants = true) {},
         horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -357,7 +371,10 @@ private fun OnBlock(dates: CheckDatesUi? = null) {
     }
 }
 
-/** El código ya no abre en este teléfono: las copias están detenidas y nunca salen en claro. */
+/**
+ * El código ya no abre en este teléfono: las copias están detenidas y nunca salen en claro. Un
+ * solo foco, que TalkBack anuncia enseguida al aparecer.
+ */
 @Composable
 private fun StoppedBlock() {
     val colors = AppTheme.colors
@@ -365,7 +382,8 @@ private fun StoppedBlock() {
         Modifier
             .fillMaxWidth()
             .background(colors.backupErrorContainer, MaterialTheme.shapes.medium)
-            .padding(AppTheme.spacing.s16),
+            .padding(AppTheme.spacing.s16)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Assertive },
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
     ) {
         Row(
@@ -491,6 +509,7 @@ private fun RiskStep(
         Text(
             stringResource(R.string.legal_encryption_warning_title),
             style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
         )
         Text(
             stringResource(
@@ -661,14 +680,25 @@ private fun TestingStep(
                 Text(stringResource(line), style = MaterialTheme.typography.bodyLarge)
             }
         }
+        // El fallo de la prueba se anuncia al aparecer: la persona puede no estar mirando.
+        val announced =
+            Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
         when (failure) {
             null -> Unit
 
             ActivationFailure.ROUND_TRIP ->
-                NoticeCard(stringResource(R.string.encryption_error_roundtrip), NoticeVariant.ERROR)
+                NoticeCard(
+                    stringResource(R.string.encryption_error_roundtrip),
+                    NoticeVariant.ERROR,
+                    modifier = announced,
+                )
 
             ActivationFailure.SAVE ->
-                NoticeCard(stringResource(R.string.encryption_error_save_code), NoticeVariant.ERROR)
+                NoticeCard(
+                    stringResource(R.string.encryption_error_save_code),
+                    NoticeVariant.ERROR,
+                    modifier = announced,
+                )
         }
         if (failure != null) ExitLink(onAction)
     }

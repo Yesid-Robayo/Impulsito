@@ -24,6 +24,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.catalog.VariantValues
@@ -335,12 +336,17 @@ private fun NewVariantRow(
     val expanded = uiState.expanded == combo.key
     val name = VariantRules.nameOf(uiState.parentName, VariantValues(combo.first, combo.second))
     val price = uiState.prices[combo.key]
+    // TalkBack dice si la fila está abierta: el cambio de los campos debajo no se ve sin mirar.
+    val openState = stringResource(
+        if (expanded) R.string.a11y_ranking_expanded else R.string.a11y_ranking_collapsed,
+    )
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = AppTheme.sizes.touchTarget)
                 .clickable(role = Role.Button) { onAction(VariantsAction.Expand(combo)) }
+                .semantics { stateDescription = openState }
                 .padding(horizontal = spacing.s16, vertical = spacing.s8),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.s12),

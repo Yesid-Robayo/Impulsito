@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -121,41 +122,51 @@ fun ColumnScope.LotPickerOptions(
     allowAuto: Boolean,
     onSelect: (Long?) -> Unit,
 ) {
-    if (allowAuto) {
-        ChoiceRow(selected = selectedId == null, onClick = { onSelect(null) }) {
-            Column(
-                Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s2),
-            ) {
-                Text(
-                    stringResource(R.string.lot_picker_auto),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    stringResource(R.string.lot_picker_auto_help),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+    // Un grupo de opciones excluyentes: TalkBack dice cuál es y de cuántas. Las filas guardan el
+    // espacio de la hoja entre ellas.
+    Column(
+        Modifier.selectableGroup(),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+    ) {
+        if (allowAuto) {
+            ChoiceRow(selected = selectedId == null, onClick = { onSelect(null) }) {
+                Column(
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s2),
+                ) {
+                    Text(
+                        stringResource(R.string.lot_picker_auto),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        stringResource(R.string.lot_picker_auto_help),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
-    }
-    options.forEach { option ->
-        ChoiceRow(selected = option.lotId == selectedId, onClick = { onSelect(option.lotId) }) {
-            LotRow(
-                code = option.code,
-                expiry = option.expiry,
-                onHand = option.onHand,
-                unit = unit,
-                modifier = Modifier.weight(1f),
-                divider = false,
-                name = if (option.unassigned) {
-                    stringResource(
-                        R.string.lot_unassigned_name,
-                    )
-                } else {
-                    null
-                },
-            )
+        options.forEach { option ->
+            ChoiceRow(
+                selected = option.lotId == selectedId,
+                onClick = { onSelect(option.lotId) },
+            ) {
+                LotRow(
+                    code = option.code,
+                    expiry = option.expiry,
+                    onHand = option.onHand,
+                    unit = unit,
+                    modifier = Modifier.weight(1f),
+                    divider = false,
+                    name = if (option.unassigned) {
+                        stringResource(
+                            R.string.lot_unassigned_name,
+                        )
+                    } else {
+                        null
+                    },
+                )
+            }
         }
     }
 }

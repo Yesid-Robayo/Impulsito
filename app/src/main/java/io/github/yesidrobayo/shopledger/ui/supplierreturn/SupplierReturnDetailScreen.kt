@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -24,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.returns.PurchaseReturnResolution
@@ -185,7 +188,9 @@ private fun TotalBlock(detail: SupplierReturnDetail) {
         Modifier
             .fillMaxWidth()
             .background(app.heroContainer, MaterialTheme.shapes.extraLarge)
-            .padding(AppTheme.spacing.s20),
+            .padding(AppTheme.spacing.s20)
+            // El héroe es un solo foco: total, fecha, proveedor y resolución de una vez.
+            .semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
     ) {
         MoneyText(
@@ -236,7 +241,8 @@ private fun TotalBlock(detail: SupplierReturnDetail) {
 @Composable
 private fun LineCard(line: SupplierReturnDetailLine) {
     val unit = line.unit?.let { unitLabel(it) } ?: UnitLabel("", allowsFraction = false)
-    AppCard {
+    // Una línea es un solo foco: producto, cantidad, costo y total.
+    AppCard(Modifier.semantics(mergeDescendants = true) {}) {
         Text(line.productName, style = MaterialTheme.typography.titleMedium)
         Text(
             quantityText(line.line.content.quantity, unit),
@@ -270,7 +276,10 @@ private fun AmountRow(label: String, amount: @Composable () -> Unit) {
 
 @Composable
 private fun ReadProblem(retry: Boolean, onAction: (SupplierReturnDetailAction) -> Unit) {
-    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         EmptyState(icon = R.drawable.ic_error, title = stringResource(R.string.state_error_read)) {
             if (retry) {
                 PrimaryActionButton(

@@ -11,6 +11,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.core.view.WindowCompat
@@ -63,9 +64,12 @@ class MoneyAccountsScreenTest {
 
         compose.onNodeWithText(text(R.string.money_available)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.money_other_currencies)).assertExists()
-        compose.onNodeWithText(text(R.string.money_pending_settlement, ""), substring = true)
-            .assertExists()
-        compose.onNodeWithText("Cuenta corriente").performClick()
+        // Cada fila es un foco: TalkBack lee la cuenta, el saldo y lo que falta por acreditar.
+        compose.onNodeWithContentDescription(
+            text(R.string.a11y_money_pending, ""),
+            substring = true,
+        ).assertExists()
+        compose.onNodeWithContentDescription("Cuenta corriente", substring = true).performClick()
         assertEquals(listOf<MoneyAccountsAction>(MoneyAccountsAction.Select(2)), actions)
     }
 
@@ -100,9 +104,10 @@ class MoneyAccountsScreenTest {
 
         val hidden = compose.onAllNodesWithContentDescription(
             text(R.string.a11y_discreet_hidden),
+            substring = true,
             useUnmergedTree = true,
         ).fetchSemanticsNodes()
-        // El héroe, los saldos a la vista y lo que falta por acreditar, cada uno en su nodo.
+        // El héroe y cada fila de cuenta, que dice su saldo y lo que falta por acreditar ocultos.
         assertTrue("Ocultos: ${hidden.size}", hidden.size >= 4)
     }
 

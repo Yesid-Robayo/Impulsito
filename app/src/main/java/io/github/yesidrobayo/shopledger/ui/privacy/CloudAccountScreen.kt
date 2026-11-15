@@ -17,6 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.model.safety.CloudAccountCheck
@@ -201,6 +204,8 @@ private fun ChecklistSection(
             ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // Al marcar o desmarcar, TalkBack dice cuántos van, sin mover el foco de la casilla.
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
         for (item in ITEMS) {
             CheckboxRow(

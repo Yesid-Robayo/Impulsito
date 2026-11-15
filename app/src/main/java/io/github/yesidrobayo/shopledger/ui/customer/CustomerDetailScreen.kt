@@ -48,6 +48,7 @@ import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
+import io.github.yesidrobayo.shopledger.ui.components.LedgerLineLayout
 import io.github.yesidrobayo.shopledger.ui.components.LedgerRow
 import io.github.yesidrobayo.shopledger.ui.components.MoneySize
 import io.github.yesidrobayo.shopledger.ui.components.MoneyText
@@ -318,7 +319,13 @@ private fun StatusRow(view: CustomerDetailView, onAction: (CustomerDetailAction)
 private fun BalanceBlock(view: CustomerDetailView) {
     val spacing = AppTheme.spacing
     val balance = view.customer.balance
-    AppCard(Modifier.fillMaxWidth().padding(horizontal = spacing.s16, vertical = spacing.s8)) {
+    // Un foco: Saldo, el monto, la palabra de la insignia y el vencimiento.
+    AppCard(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spacing.s16, vertical = spacing.s8)
+            .semantics(mergeDescendants = true) {},
+    ) {
         Text(
             stringResource(R.string.customer_balance),
             style = MaterialTheme.typography.labelLarge,
@@ -478,51 +485,57 @@ private fun LazyListScope.sales(
     }
 }
 
-/** Una venta: su fecha, el primer producto y cuántos más, y el total. Anulada, va tachada. */
+/**
+ * Una venta: su fecha, el primer producto y cuántos más, y el total. Anulada, va tachada. Si el
+ * total no cabe al lado, como con letra grande, pasa debajo del texto.
+ */
 @Composable
 private fun SaleRow(row: SaleHistoryRow, onClick: () -> Unit) {
     val spacing = AppTheme.spacing
     val formats = LocalAppFormats.current
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Column(Modifier.clickable(role = Role.Button, onClick = onClick)) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = AppTheme.sizes.listRow)
-                .padding(horizontal = spacing.s16, vertical = spacing.s12),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(spacing.s12),
-        ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
-                Text(
-                    row.firstProductName.orEmpty(),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = if (row.voided) muted else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+        LedgerLineLayout(
+            gap = spacing.s12,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = AppTheme.sizes.listRow)
+                    .padding(horizontal = spacing.s16, vertical = spacing.s12),
+            leading = {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
+                    Text(
+                        row.firstProductName.orEmpty(),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = if (row.voided) muted else MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    val date = formats.date.dayMonthYear(row.businessDate)
+                    Text(
+                        if (row.lineCount > 1) {
+                            stringResource(
+                                R.string.customer_ledger_row_detail,
+                                date,
+                                stringResource(R.string.sale_more_items, row.lineCount - 1),
+                            )
+                        } else {
+                            date
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = muted,
+                    )
+                }
+            },
+            trailing = {
+                MoneyText(
+                    row.total,
+                    MoneySize.ROW,
+                    tone = if (row.voided) MoneyTone.MUTED else MoneyTone.DEFAULT,
+                    voided = row.voided,
                 )
-                val date = formats.date.dayMonthYear(row.businessDate)
-                Text(
-                    if (row.lineCount > 1) {
-                        stringResource(
-                            R.string.customer_ledger_row_detail,
-                            date,
-                            stringResource(R.string.sale_more_items, row.lineCount - 1),
-                        )
-                    } else {
-                        date
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = muted,
-                )
-            }
-            MoneyText(
-                row.total,
-                MoneySize.ROW,
-                tone = if (row.voided) MoneyTone.MUTED else MoneyTone.DEFAULT,
-                voided = row.voided,
-            )
-        }
+            },
+        )
         HorizontalDivider(
             modifier = Modifier.padding(start = spacing.s16),
             thickness = AppTheme.sizes.hairline,

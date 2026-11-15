@@ -17,6 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
@@ -74,7 +77,7 @@ fun SaleReceiptScreen(
                     DelayedSkeleton {
                         ReceiptPreview(
                             image = null,
-                            description = stringResource(R.string.receipt_view_title),
+                            description = stringResource(R.string.a11y_loading),
                             modifier = Modifier.padding(AppTheme.spacing.s16),
                         )
                     }
@@ -166,7 +169,8 @@ private fun ShareBar(ready: SaleReceiptUiState.Ready, onAction: (SaleReceiptActi
             onClick = { onAction(SaleReceiptAction.Print) },
             variant = ActionVariant.TEXT,
             state = if (ready.printing) ActionState.WORKING else ActionState.IDLE,
-            modifier = width,
+            // Región viva educada: `Imprimiendo…` se anuncia sin mover el foco.
+            modifier = width.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
 }

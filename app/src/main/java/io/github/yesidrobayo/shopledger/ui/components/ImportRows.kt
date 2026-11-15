@@ -58,12 +58,14 @@ fun ColumnMapRow(
     error: String? = null,
 ) {
     val spacing = AppTheme.spacing
+    // TalkBack dice la acción del toque: `Elegir dato`.
+    val chooseLabel = stringResource(R.string.import_column_choose)
     Column(modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = AppTheme.sizes.listRow)
-                .clickable(role = Role.Button, onClick = onClick)
+                .clickable(role = Role.Button, onClickLabel = chooseLabel, onClick = onClick)
                 .padding(
                     start = spacing.s16,
                     end = spacing.s8,

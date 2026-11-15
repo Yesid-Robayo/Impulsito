@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Español: lecturas de TalkBack de la revisión de accesibilidad de las pantallas nuevas. -->
+    <string name="a11y_encryption_status">Cifrado de copias: %1$s</string>
+    <string name="a11y_reference_rate">Una unidad de %1$s equivale a %2$s</string>
+    <string name="a11y_unit_conversion_cost">%1$s. Costo por %2$s: %3$s</string>
+    <string name="a11y_combo_remove_component">Quitar %1$s del combo</string>
+    <string name="a11y_count_row">%1$s, contado %2$s</string>
+    <string name="a11y_count_row_expected">%1$s, esperado %2$s, contado %3$s</string>
+    <string name="a11y_count_difference">%1$s, esperado %2$s, contado %3$s, diferencia %4$s</string>
+    <string name="a11y_import_step">Paso %1$d de %2$d: %3$s</string>
+    <string name="a11y_catalog_preview">Vista previa del catálogo. %1$s</string>
+    <string name="a11y_printer_row">%1$s, papel de %2$s, %3$s</string>
+    <string name="a11y_printer_row_plain">%1$s, papel de %2$s</string>
+    <string name="a11y_change_rises">sube %1$s</string>
+    <string name="a11y_change_falls">baja %1$s</string>
     <!-- Búsqueda de la ayuda y del centro Negocio, y la demostración en la transparencia. -->
     <plurals name="a11y_help_search_results">
         <item quantity="one">%1$d artículo encontrado</item>

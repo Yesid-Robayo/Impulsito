@@ -246,14 +246,16 @@ private fun GroupHeader(group: ReorderGroupUi) {
     val spacing = AppTheme.spacing
     Surface(color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth()) {
+            // Un solo encabezado: el proveedor, cuántos productos y el costo estimado.
             SideBySide(
                 stacked = LocalDensity.current.fontScale >= STACKED_FONT_SCALE,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = AppTheme.sizes.touchTarget)
+                    .semantics(mergeDescendants = true) { heading() }
                     .padding(horizontal = spacing.s16, vertical = spacing.s8),
                 first = { modifier ->
-                    Column(modifier.semantics(mergeDescendants = true) { heading() }) {
+                    Column(modifier) {
                         Text(
                             group.supplierName ?: stringResource(R.string.reorder_no_supplier),
                             style = MaterialTheme.typography.titleMedium,
@@ -270,10 +272,7 @@ private fun GroupHeader(group: ReorderGroupUi) {
                     }
                 },
                 second = {
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        modifier = Modifier.semantics(mergeDescendants = true) {},
-                    ) {
+                    Column(horizontalAlignment = Alignment.End) {
                         Text(
                             stringResource(R.string.reorder_estimated_cost_label),
                             style = MaterialTheme.typography.labelMedium,

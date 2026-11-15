@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.document.QuoteStatus
@@ -211,8 +212,12 @@ private fun DetailBody(quote: QuoteDetail, onAction: (QuoteDetailAction) -> Unit
         )
         quote.lines.forEach { line -> LineRow(line) }
         if (quote.totals.tax != Money.ZERO) {
+            // Un foco: `Impuesto` y su monto.
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = spacing.s16),
+                Modifier
+                    .fillMaxWidth()
+                    .semantics(mergeDescendants = true) {}
+                    .padding(horizontal = spacing.s16),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(

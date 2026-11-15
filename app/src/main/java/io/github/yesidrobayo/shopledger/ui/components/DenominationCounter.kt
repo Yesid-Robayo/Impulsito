@@ -69,6 +69,7 @@ fun DenominationCounter(
             total,
             strong = true,
             sensitive = false,
+            live = true,
         )
     }
 }

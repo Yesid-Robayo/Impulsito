@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
@@ -296,7 +297,11 @@ private fun Logo(
 /** La leyenda de que no es una factura, de solo lectura: siempre va, y aquí se dice. */
 @Composable
 private fun FixedLegend(modifier: Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4)) {
+    // Un foco: el rótulo, la leyenda y que no se puede quitar.
+    Column(
+        modifier.semantics(mergeDescendants = true) {},
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
+    ) {
         Text(
             stringResource(R.string.receipt_fixed_legend),
             style = MaterialTheme.typography.titleSmall,

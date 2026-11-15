@@ -26,6 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
@@ -251,31 +255,54 @@ private fun ProgramFields(
     }
 }
 
+/**
+ * El ejemplo en vivo: un solo foco y región viva educada, que TalkBack anuncia al cambiar los
+ * montos, con el nombre de la moneda en lugar del símbolo.
+ */
 @Composable
 private fun ExampleCard(example: LoyaltyExample) {
     val formats = LocalAppFormats.current
-    val sale = rememberMoneyDisplay(example.saleAmount, formats.money).text.text
-    val discount = rememberMoneyDisplay(example.discount, formats.money).text.text
-    AppCard(Modifier.fillMaxWidth()) {
+    val sale = rememberMoneyDisplay(example.saleAmount, formats.money)
+    val discount = rememberMoneyDisplay(example.discount, formats.money)
+    val earned = formats.quantity.formatCount(example.earnedPoints)
+    val redeemed = formats.quantity.formatCount(example.redeemedPoints)
+    val earnCount = example.earnedPoints.toPluralCount()
+    val redeemCount = example.redeemedPoints.toPluralCount()
+    val earnReading =
+        pluralStringResource(R.plurals.loyalty_example_earn, earnCount, sale.description, earned)
+    val redeemReading =
+        pluralStringResource(
+            R.plurals.loyalty_example_redeem,
+            redeemCount,
+            redeemed,
+            discount.description,
+        )
+    AppCard(
+        Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    ) {
         Text(
             pluralStringResource(
                 R.plurals.loyalty_example_earn,
-                example.earnedPoints.toPluralCount(),
-                sale,
-                formats.quantity.formatCount(example.earnedPoints),
+                earnCount,
+                sale.text.text,
+                earned,
             ),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { contentDescription = earnReading },
         )
         Text(
             pluralStringResource(
                 R.plurals.loyalty_example_redeem,
-                example.redeemedPoints.toPluralCount(),
-                formats.quantity.formatCount(example.redeemedPoints),
-                discount,
+                redeemCount,
+                redeemed,
+                discount.text.text,
             ),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { contentDescription = redeemReading },
         )
     }
 }

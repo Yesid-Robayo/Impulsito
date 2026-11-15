@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
@@ -124,7 +125,7 @@ fun ToolRow(
 /**
  * El encabezado plegable de un grupo del centro `Negocio`: el nombre del grupo, cuántas herramientas
  * guarda y una flecha que apunta abajo si está plegado y arriba si está abierto. Toda la fila se
- * toca; TalkBack la lee como encabezado y dice si está abierta o plegada.
+ * toca; TalkBack la lee como encabezado y dice si está abierta o plegada, con palabras.
  */
 @Composable
 fun ToolGroupRow(
@@ -134,6 +135,9 @@ fun ToolGroupRow(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val state = stringResource(
+        if (expanded) R.string.a11y_ranking_expanded else R.string.a11y_ranking_collapsed,
+    )
     Row(
         modifier =
             modifier
@@ -142,6 +146,7 @@ fun ToolGroupRow(
                 .clickable(role = Role.Button, onClick = onToggle)
                 .semantics(mergeDescendants = true) {
                     heading()
+                    stateDescription = state
                     if (expanded) {
                         collapse {
                             onToggle()

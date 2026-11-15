@@ -73,6 +73,13 @@ class PercentFormatterTest(device: ForeignDevice) {
     }
 
     @Test
+    fun theNumberForTalkBackHasNoPercentSign() {
+        assertEquals("8,0", percent("es-AR").formatNumber(BasisPoints(800)))
+        assertEquals("3.2", percent("en-US").formatNumber(BasisPoints(320)))
+        assertEquals("−1,5", percent("pt-BR").formatNumber(BasisPoints(-150)))
+    }
+
+    @Test
     fun largePercentagesAreGroupedLikeTheRegionDoes() {
         assertEquals("12.345,7%", percent("pt-BR").format(BasisPoints(1_234_567)))
         assertEquals("1,000.0%", percent("en-US").format(BasisPoints(100_000)))

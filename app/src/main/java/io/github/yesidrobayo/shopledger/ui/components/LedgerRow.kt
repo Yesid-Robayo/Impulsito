@@ -72,6 +72,9 @@ fun LedgerRow(
         } else {
             Modifier.clickable(role = Role.Button, onClickLabel = onClickLabel, onClick = onClick)
         }
+    // Una fila es un foco: TalkBack lee tipo, fecha, monto y saldo juntos. Tocable, el clic ya los
+    // junta en un foco con nombre; otro foco adentro lo dejaría sin nombre para TalkBack.
+    val merge = if (onClick == null) Modifier.semantics(mergeDescendants = true) {} else Modifier
     Column(modifier.fillMaxWidth().then(touch)) {
         LedgerLineLayout(
             gap = spacing.s12,
@@ -80,8 +83,7 @@ fun LedgerRow(
                     .fillMaxWidth()
                     .heightIn(min = AppTheme.sizes.listRow)
                     .padding(horizontal = spacing.s16, vertical = spacing.s12)
-                    // Una fila es un foco: TalkBack lee tipo, fecha, monto y saldo juntos.
-                    .semantics(mergeDescendants = true) {},
+                    .then(merge),
             leading = {
                 Column(verticalArrangement = Arrangement.spacedBy(spacing.s2)) {
                     Text(

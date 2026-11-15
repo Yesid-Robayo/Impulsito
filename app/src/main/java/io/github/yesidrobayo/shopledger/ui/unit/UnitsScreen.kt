@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -372,6 +374,8 @@ private fun ConversionsTabContent(uiState: UnitsUiState, onAction: (UnitsAction)
         EmptyState(
             icon = R.drawable.ic_inventory_2,
             title = stringResource(R.string.unit_empty_title),
+            // Con letra grande, el texto y el botón no se cortan.
+            modifier = Modifier.verticalScroll(rememberScrollState()),
             body = stringResource(R.string.unit_empty_body),
         ) {
             PrimaryActionButton(
@@ -440,7 +444,7 @@ internal fun ConversionRow(
 
 /** Una cantidad para TalkBack: con el plural de una unidad inicial, o con su nombre sin declinar. */
 @Composable
-private fun spokenQuantity(quantity: QuantityMilli, unit: MeasureUnit): String {
+internal fun spokenQuantity(quantity: QuantityMilli, unit: MeasureUnit): String {
     val resources = LocalResources.current
     val formats = LocalAppFormats.current
     val spelled =
@@ -504,7 +508,11 @@ private const val SKELETON_ROWS = 6
 /** La lectura falló: se dice, y `Reintentar` vuelve a leer. Nada de lo guardado se tocó. */
 @Composable
 private fun ReadFailed(onAction: (UnitsAction) -> Unit) {
-    EmptyState(icon = R.drawable.ic_error, title = stringResource(R.string.state_error_read)) {
+    EmptyState(
+        icon = R.drawable.ic_error,
+        title = stringResource(R.string.state_error_read),
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+    ) {
         InlineTextButton(stringResource(R.string.action_retry), { onAction(UnitsAction.Retry) })
     }
 }

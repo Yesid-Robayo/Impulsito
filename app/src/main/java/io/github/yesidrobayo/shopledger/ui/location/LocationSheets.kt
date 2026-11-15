@@ -29,6 +29,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTextField
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
+import io.github.yesidrobayo.shopledger.ui.components.LedgerLineLayout
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
@@ -211,9 +212,13 @@ internal fun TransferDetailSheet(
     }
 }
 
-/** Un producto de la transferencia y cuánto se movió, en su unidad. Un solo foco. */
+/**
+ * Un producto de la transferencia y cuánto se movió, en su unidad. Un solo foco. Con letra grande,
+ * la cantidad que no cabe al lado baja bajo el nombre: nunca se corta.
+ */
 @Composable
 private fun LineRow(name: String, quantity: QuantityMilli, unit: MeasureUnit?) {
+    val moved = quantityText(quantity, labelOf(unit))
     Column(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -221,13 +226,14 @@ private fun LineRow(name: String, quantity: QuantityMilli, unit: MeasureUnit?) {
                 .heightIn(min = AppTheme.sizes.listRowSingle)
                 .semantics(mergeDescendants = true) {},
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
         ) {
-            Text(name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text(
-                quantityText(quantity, labelOf(unit)),
-                style = AppTheme.amounts.row,
-                maxLines = 1,
+            LedgerLineLayout(
+                gap = AppTheme.spacing.s12,
+                modifier = Modifier.weight(1f),
+                leading = { Text(name, style = MaterialTheme.typography.bodyLarge) },
+                trailing = {
+                    Text(moved, style = AppTheme.amounts.row, maxLines = 1, softWrap = false)
+                },
             )
         }
         HorizontalDivider(

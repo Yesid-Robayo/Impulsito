@@ -316,8 +316,9 @@ private fun NumberField(
  * todos los campos del catálogo.
  */
 @Composable
-internal fun FieldError(message: String) {
+internal fun FieldError(message: String, modifier: Modifier = Modifier) {
     Row(
+        modifier = modifier,
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
     ) {

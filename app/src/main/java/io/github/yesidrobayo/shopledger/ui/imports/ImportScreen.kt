@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,11 +37,14 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.imports.ImportDraft
@@ -159,13 +163,23 @@ private fun TopBar(uiState: ImportUiState, onAction: (ImportAction) -> Unit) {
         titleStyle = MaterialTheme.typography.titleLarge,
     ) {
         ScreenHelpLink(HelpTopic.IMPORT)
+        // TalkBack dice el paso y su nombre: `Paso 2 de 4: Relacionar columnas`.
+        val spokenStep = stringResource(
+            R.string.a11y_import_step,
+            uiState.step.number,
+            ImportStep.TOTAL,
+            stringResource(stepTitle(uiState.step)),
+        )
         Text(
             stringResource(R.string.import_step, uiState.step.number, ImportStep.TOTAL),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .padding(end = AppTheme.spacing.s16)
-                .semantics { liveRegion = LiveRegionMode.Polite },
+                .semantics {
+                    liveRegion = LiveRegionMode.Polite
+                    contentDescription = spokenStep
+                },
         )
     }
 }
@@ -360,12 +374,21 @@ private fun LazyListScope.mapItems(uiState: ImportUiState, onAction: (ImportActi
 @Composable
 private fun FormatBlock(uiState: ImportUiState, onAction: (ImportAction) -> Unit) {
     val spacing = AppTheme.spacing
+    // El plegado se dice con palabras, no solo con el giro de la flecha.
+    val expandState = stringResource(
+        if (uiState.formatExpanded) {
+            R.string.a11y_ranking_expanded
+        } else {
+            R.string.a11y_ranking_collapsed
+        },
+    )
     Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = AppTheme.sizes.touchTarget)
                 .clickable(role = Role.Button) { onAction(ImportAction.ToggleFormat) }
+                .semantics { stateDescription = expandState }
                 .padding(horizontal = spacing.s16),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -577,14 +600,22 @@ private fun PreviewRow(draft: ImportDraft) {
                 .semantics(mergeDescendants = true) {}
                 .padding(horizontal = spacing.s16, vertical = spacing.s8),
         ) {
+            val percent = LocalAppFormats.current.percent
+            val up = draft.change >= BasisPoints.ZERO
+            // `+8,0 %` se lee `Subió 8,0 por ciento`, no con el signo.
+            val spoken = stringResource(
+                if (up) R.string.a11y_percent_up else R.string.a11y_percent_down,
+                percent.formatNumber(BasisPoints(if (up) draft.change.bp else -draft.change.bp)),
+            )
             Text(
                 draft.month,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f),
             )
             Text(
-                LocalAppFormats.current.percent.formatChange(draft.change),
+                percent.formatChange(draft.change),
                 style = AppTheme.amounts.row,
+                modifier = Modifier.semantics { contentDescription = spoken },
             )
         }
     }
@@ -621,10 +652,11 @@ private fun DoneStep(uiState: ImportUiState) {
         verticalArrangement = Arrangement.spacedBy(spacing.s8),
     ) {
         StepTitle(R.string.import_step_done_title)
+        // Región viva educada: el fin de la importación se anuncia sin mover el foco.
         Column(
             Modifier
                 .padding(horizontal = spacing.s16)
-                .semantics(mergeDescendants = true) {},
+                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
             verticalArrangement = Arrangement.spacedBy(spacing.s4),
         ) {
             val style = MaterialTheme.typography.bodyLarge
@@ -763,10 +795,14 @@ private fun FieldSheet(uiState: ImportUiState, index: Int, onAction: (ImportActi
         onDismissRequest = { onAction(ImportAction.DismissColumn) },
         title = column.header.ifEmpty { NO_VALUE_TEXT },
     ) {
-        (uiState.fields + listOf(null)).forEach { field ->
-            val label = field?.let { fieldLabel(it) } ?: stringResource(R.string.import_column_skip)
-            val selected = column.field == field && (field != null || !column.unmatched)
-            FieldOption(label, selected) { onAction(ImportAction.ChooseField(index, field)) }
+        // Opciones excluyentes: un grupo, para que TalkBack diga `1 de 6`.
+        Column(Modifier.selectableGroup()) {
+            (uiState.fields + listOf(null)).forEach { field ->
+                val label =
+                    field?.let { fieldLabel(it) } ?: stringResource(R.string.import_column_skip)
+                val selected = column.field == field && (field != null || !column.unmatched)
+                FieldOption(label, selected) { onAction(ImportAction.ChooseField(index, field)) }
+            }
         }
     }
 }
@@ -824,6 +860,13 @@ private fun SectionTitle(text: Int) {
             .padding(top = AppTheme.spacing.s8)
             .semantics { heading() },
     )
+}
+
+private fun stepTitle(step: ImportStep): Int = when (step) {
+    ImportStep.FILE -> R.string.import_step_file_title
+    ImportStep.MAP -> R.string.import_step_map_title
+    ImportStep.REVIEW -> R.string.import_step_review_title
+    ImportStep.DONE -> R.string.import_step_done_title
 }
 
 /** El nombre de un dato en el idioma de la app: el mismo encabezado de la exportación. */

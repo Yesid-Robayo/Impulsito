@@ -25,7 +25,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
@@ -38,6 +43,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
+import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
 import io.github.yesidrobayo.shopledger.ui.components.DiscreetValue
 import io.github.yesidrobayo.shopledger.ui.components.EmptyState
@@ -63,6 +69,7 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
 import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stock.locationName
@@ -189,14 +196,24 @@ private fun ColumnScope.CountingContent(
         Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
         verticalArrangement = Arrangement.spacedBy(spacing.s8),
     ) {
+        val progress = stringResource(R.string.count_progress, uiState.counted, uiState.total)
+        // Se anuncia solo cada 10 productos contados, para no interrumpir el conteo.
+        val announces = uiState.counted > 0 && uiState.counted % PROGRESS_ANNOUNCE_STEP == 0
         LinearProgressIndicator(
             progress = { progressOf(uiState.counted, uiState.total) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    stateDescription = progress
+                    if (announces) liveRegion = LiveRegionMode.Polite
+                },
         )
+        // La barra ya lee el progreso: el texto no se repite como otro foco.
         Text(
-            stringResource(R.string.count_progress, uiState.counted, uiState.total),
+            progress,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clearAndSetSemantics {},
         )
         SearchField(
             query = uiState.query,
@@ -257,6 +274,15 @@ private fun CountRow(row: CountRowUi, blind: Boolean, onAction: (CountSessionAct
     val spacing = AppTheme.spacing
     val unit = labelOf(row)
     val title = rowTitle(row)
+    val expected = quantityText(row.expected, unit)
+    val noValue = stringResource(R.string.a11y_no_value)
+    val counted = row.counted?.let { quantityText(it, unit) } ?: noValue
+    // A ciegas, la lectura nunca dice lo esperado.
+    val reading = if (blind) {
+        stringResource(R.string.a11y_count_row, title, counted)
+    } else {
+        stringResource(R.string.a11y_count_row_expected, title, expected, counted)
+    }
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
@@ -266,11 +292,11 @@ private fun CountRow(row: CountRowUi, blind: Boolean, onAction: (CountSessionAct
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.s12),
         ) {
-            Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
+            Column(Modifier.weight(1f).clearAndSetSemantics { contentDescription = reading }) {
                 Text(title, style = MaterialTheme.typography.bodyLarge)
                 if (!blind) {
                     Text(
-                        stringResource(R.string.count_expected, quantityText(row.expected, unit)),
+                        stringResource(R.string.count_expected, expected),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -284,6 +310,7 @@ private fun CountRow(row: CountRowUi, blind: Boolean, onAction: (CountSessionAct
                     onDecrement = { onAction(CountSessionAction.Step(row.lineId, up = false)) },
                     onIncrement = { onAction(CountSessionAction.Step(row.lineId, up = true)) },
                     valueText = if (row.counted == null) NOT_COUNTED else null,
+                    valueDescription = if (row.counted == null) noValue else null,
                 )
             }
         }
@@ -367,7 +394,11 @@ private fun ColumnScope.ReviewContent(
 private fun Summary(differences: Int, review: CountReviewUi?, readOnly: Boolean) {
     val spacing = AppTheme.spacing
     AppCard(Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8)) {
-        Column(verticalArrangement = Arrangement.spacedBy(spacing.s4)) {
+        // El resumen es un solo foco: las diferencias, lo que sobra y lo que falta.
+        Column(
+            Modifier.semantics(mergeDescendants = true) {},
+            verticalArrangement = Arrangement.spacedBy(spacing.s4),
+        ) {
             Text(
                 if (differences == 0) {
                     stringResource(R.string.count_no_differences)
@@ -389,14 +420,25 @@ private fun Summary(differences: Int, review: CountReviewUi?, readOnly: Boolean)
     }
 }
 
-/** `Sobrante` o `Faltante` con su valor, en modo discreto. */
+/**
+ * `Sobrante` o `Faltante` con su valor, en modo discreto. TalkBack lee el monto con el nombre de
+ * la moneda, nunca el símbolo.
+ */
 @Composable
 private fun AmountLine(text: Int, amount: Money?) {
     val money = LocalAppFormats.current.money
-    val shown = amount?.let { rememberMoneyDisplay(it, money).text.text }
-        ?: NO_VALUE_TEXT
+    val display = amount?.let { rememberMoneyDisplay(it, money) }
+    val shown = display?.text?.text ?: NO_VALUE_TEXT
+    val spoken = stringResource(
+        text,
+        display?.description ?: stringResource(R.string.a11y_no_value),
+    )
     DiscreetValue(style = MaterialTheme.typography.bodyLarge) {
-        Text(stringResource(text, shown), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(text, shown),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.semantics { contentDescription = spoken },
+        )
     }
 }
 
@@ -412,16 +454,27 @@ private fun DifferenceRow(row: CountRowUi) {
         ?: NO_VALUE_TEXT
     val difference = row.difference?.let { signed(it, unit) }
         ?: NO_VALUE_TEXT
+    val noValue = stringResource(R.string.a11y_no_value)
+    val title = rowTitle(row)
+    val described = stringResource(
+        R.string.a11y_count_difference,
+        title,
+        quantityText(row.expected, unit),
+        row.counted?.let { quantityText(it, unit) } ?: noValue,
+        row.difference?.let { spokenDifference(it, unit) } ?: noValue,
+    )
+    val moved = stringResource(R.string.count_moved_tag)
+    val reading = if (row.moved) listOf(described, moved).joinToString() else described
     Column(
         Modifier
             .fillMaxWidth()
-            .semantics(mergeDescendants = true) {}
+            .clearAndSetSemantics { contentDescription = reading }
             .padding(horizontal = spacing.s16, vertical = spacing.s8),
         verticalArrangement = Arrangement.spacedBy(spacing.s4),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                rowTitle(row),
+                title,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f),
             )
@@ -474,6 +527,17 @@ private fun Figure(label: Int, value: String) {
 private fun signed(quantity: QuantityMilli, unit: UnitLabel): String {
     val text = quantityText(quantity, unit)
     return if (quantity.milli > 0L) stringResource(R.string.count_positive, text) else text
+}
+
+/** La diferencia como la lee TalkBack, con el signo en palabras: `Más 2 und` o `Menos 1 und`. */
+@Composable
+private fun spokenDifference(quantity: QuantityMilli, unit: UnitLabel): String = when {
+    quantity.milli > 0L -> stringResource(R.string.a11y_plus_amount, quantityText(quantity, unit))
+
+    quantity.milli < 0L ->
+        stringResource(R.string.a11y_minus_amount, quantityText(-quantity, unit))
+
+    else -> quantityText(quantity, unit)
 }
 
 @Composable
@@ -530,8 +594,13 @@ private fun ApplyDialog(uiState: CountSessionUiState, onAction: (CountSessionAct
     val adjustments = review?.adjustments ?: 0
     val money = LocalAppFormats.current.money
     val net = review?.let { net(it) }
-    val value = net?.let { rememberMoneyDisplay(it, money).text.text }
-        ?: NO_VALUE_TEXT
+    val shown = net?.let { rememberMoneyDisplay(it, money).text.text }
+    // En modo discreto el valor de los ajustes tampoco se ve en la confirmación.
+    val value = when {
+        LocalDiscreetMode.current -> DISCREET_TEXT
+        shown != null -> shown
+        else -> NO_VALUE_TEXT
+    }
     ConfirmDialog(
         title = pluralStringResource(R.plurals.count_apply_confirm_title, adjustments, adjustments),
         body = stringResource(R.string.count_apply_confirm_body, value),
@@ -562,6 +631,9 @@ private fun rowErrorText(error: CountRowError): String = when (error) {
 }
 
 private const val SKELETON_ROWS = 6
+
+/** Cada cuántos productos contados se anuncia el progreso. */
+private const val PROGRESS_ANNOUNCE_STEP = 10
 
 /** Lo que muestra el paso de una línea que todavía no se cuenta. */
 private const val NOT_COUNTED = NO_VALUE_TEXT

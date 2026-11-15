@@ -19,7 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.SecondDestinationProblem
@@ -139,9 +142,12 @@ fun LocalCopiesScreen(
                         ),
                     onClick = { onAction(LocalCopiesAction.SaveToFile) },
                     variant = ActionVariant.PRIMARY,
+                    // Región viva: al empezar, TalkBack anuncia `Creando la copia` sin mover
+                    // el foco.
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .semantics { liveRegion = LiveRegionMode.Polite }
                             .rejectObscuredTouches { onAction(LocalCopiesAction.ObscuredTouch) },
                     state = if (working) ActionState.WORKING else ActionState.IDLE,
                 )
@@ -349,18 +355,31 @@ private fun ConnectedFolder(
 ) {
     val formats = LocalAppFormats.current
     val choose = { onAction(LocalCopiesAction.ChooseFolder) }
-    Text(
-        stringResource(R.string.offsite_folder_value, second.folderName ?: NO_VALUE_TEXT),
-        style = MaterialTheme.typography.titleSmall,
-    )
-    val lastCopy = second.lastCopyAt
-    val zone = uiState.zone
-    if (lastCopy != null && zone != null) {
+    // La carpeta y su última copia son un solo foco. Sin nombre, la raya se lee `Sin dato`.
+    Column(
+        Modifier.semantics(mergeDescendants = true) {},
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+    ) {
+        val folder = second.folderName
+        val noValue = stringResource(R.string.a11y_no_value)
+        val folderReading = stringResource(R.string.offsite_folder_value, folder ?: noValue)
         Text(
-            stringResource(R.string.offsite_last_copy, formats.date.dayMonthTime(lastCopy, zone)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            stringResource(R.string.offsite_folder_value, folder ?: NO_VALUE_TEXT),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.semantics { contentDescription = folderReading },
         )
+        val lastCopy = second.lastCopyAt
+        val zone = uiState.zone
+        if (lastCopy != null && zone != null) {
+            Text(
+                stringResource(
+                    R.string.offsite_last_copy,
+                    formats.date.dayMonthTime(lastCopy, zone),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
     second.problem?.let { problem ->
         when (problem) {
