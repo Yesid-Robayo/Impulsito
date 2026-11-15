@@ -173,6 +173,12 @@ val HUB_ENTRIES: List<HubEntry> =
             R.string.hub_tool_import_desc,
             AppNavKey.ImportData,
         ),
+        HubEntry(
+            BusinessTool.MANAGEMENT_SUMMARY,
+            R.string.hub_tool_report,
+            R.string.hub_tool_report_desc,
+            AppNavKey.ManagementSummary,
+        ),
     )
 
 /** El nombre de cada grupo, de la redacción. */

@@ -134,6 +134,9 @@ fun StatisticsScreen(
                                     OverflowAction(stringResource(R.string.stats_choose_dates), {
                                         onAction(StatisticsAction.ChooseRange)
                                     }),
+                                    OverflowAction(stringResource(R.string.report_title), {
+                                        onAction(StatisticsAction.OpenSummary)
+                                    }),
                                 ),
                             )
                         }

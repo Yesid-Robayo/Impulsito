@@ -155,4 +155,7 @@ sealed interface StatisticsAction {
 
     /** Abre la elección de zona, cuando la guardada no existe en este teléfono. */
     data object ChooseZone : StatisticsAction
+
+    /** Abre el resumen de gestión, desde el menú. */
+    data object OpenSummary : StatisticsAction
 }

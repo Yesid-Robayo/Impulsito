@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Resumen de gestión: un .zip por período con un PDF de resumen y CSV, para quien lleva la
+     contabilidad. Material de apoyo: nunca un libro ni una declaración. -->
+<resources>
+    <string name="hub_tool_report">Management summary</string>
+    <string name="hub_tool_report_desc">Period file for whoever keeps the accounts</string>
+    <string name="report_choose_dates">Choose dates</string>
+    <string name="report_sales">Sales</string>
+    <string name="report_tax_estimated">Estimated tax</string>
+    <string name="report_expenses">Expenses</string>
+    <string name="report_sales_profit">Sales profit</string>
+    <string name="report_final_profit">Final profit</string>
+    <string name="report_by_method">By payment method</string>
+    <string name="report_includes">What it includes</string>
+    <string name="report_include_pdf">Summary PDF</string>
+    <string name="report_include_pdf_value">Always</string>
+    <string name="report_include_sales">Sales and payments</string>
+    <string name="report_include_purchases">Purchases and expenses</string>
+    <string name="report_include_inventory">Closing inventory</string>
+    <string name="report_include_parties">Customers and suppliers</string>
+    <string name="report_sensitive_notice">The file contains the period\'s sales, costs and profit, unencrypted. Share it only with the right person.</string>
+    <string name="report_support_note">This summary is supporting material. It is not an accounting book or a tax return.</string>
+    <string name="report_generate_action">Generate summary</string>
+    <string name="report_ready_title">Summary ready</string>
+    <string name="report_ready_file">%1$s · %2$s</string>
+    <string name="report_save_folder_action">Save to a folder</string>
+    <string name="report_file_name">management-summary-%1$s</string>
+    <string name="report_empty_title">No activity in this period</string>
+    <string name="report_empty_reason">There is no data for this period.</string>
+    <string name="report_error_generate">The summary could not be created.</string>
+    <string name="report_error_space">There is no space to create the file.</string>
+    <string name="report_in_progress_notice">This period has not ended. The figures may change.</string>
+    <string name="report_doc_title">Management summary</string>
+    <string name="report_doc_period">Period: %1$s</string>
+    <string name="report_doc_created">Created on %1$s</string>
+    <string name="report_doc_section_sales">Sales</string>
+    <string name="report_doc_section_tax">Estimated tax</string>
+    <string name="report_doc_section_expenses">Expenses</string>
+    <string name="report_doc_section_profit">Profit</string>
+    <string name="report_doc_section_methods">Payment methods</string>
+    <string name="report_doc_tax_note">An estimate based on the rates the person entered. It is not a tax return.</string>
+    <string name="report_doc_legend">%1$s does not replace official accounting. This summary is not an invoice, an accounting book or a tax return.</string>
+    <string name="csv_file_closing_inventory">closing-inventory.csv</string>
+</resources>

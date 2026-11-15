@@ -106,6 +106,7 @@ import io.github.yesidrobayo.shopledger.ui.receipt.SaleReceiptRoute
 import io.github.yesidrobayo.shopledger.ui.reference.ReferenceCurrencyRoute
 import io.github.yesidrobayo.shopledger.ui.region.RegionalSettingsRoute
 import io.github.yesidrobayo.shopledger.ui.reorder.ReorderRoute
+import io.github.yesidrobayo.shopledger.ui.report.ManagementSummaryRoute
 import io.github.yesidrobayo.shopledger.ui.returns.SaleReturnRoute
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 import io.github.yesidrobayo.shopledger.ui.safety.PolicyGated
@@ -441,6 +442,9 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         AppNavKey.Printers -> PrintersRoute(AppNavKey.Printers, navigator)
 
         AppNavKey.ShareableCatalog -> CatalogRoute(AppNavKey.ShareableCatalog, navigator)
+
+        AppNavKey.ManagementSummary ->
+            ManagementSummaryRoute(AppNavKey.ManagementSummary, navigator)
 
         else -> PlaceholderRoute(key, navigator)
     }

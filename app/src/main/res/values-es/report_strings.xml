@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Resumen de gestión: un .zip por período con un PDF de resumen y CSV, para quien lleva la
+     contabilidad. Material de apoyo: nunca un libro ni una declaración. -->
+<resources>
+    <string name="hub_tool_report">Resumen de gestión</string>
+    <string name="hub_tool_report_desc">Archivo del período para quien lleva la contabilidad</string>
+    <string name="report_choose_dates">Elegir fechas</string>
+    <string name="report_sales">Ventas</string>
+    <string name="report_tax_estimated">Impuesto estimado</string>
+    <string name="report_expenses">Gastos</string>
+    <string name="report_sales_profit">Ganancia en ventas</string>
+    <string name="report_final_profit">Ganancia final</string>
+    <string name="report_by_method">Por método de pago</string>
+    <string name="report_includes">Qué incluye</string>
+    <string name="report_include_pdf">PDF de resumen</string>
+    <string name="report_include_pdf_value">Siempre</string>
+    <string name="report_include_sales">Ventas y pagos</string>
+    <string name="report_include_purchases">Compras y gastos</string>
+    <string name="report_include_inventory">Inventario al cierre</string>
+    <string name="report_include_parties">Clientes y proveedores</string>
+    <string name="report_sensitive_notice">El archivo contiene ventas, costos y ganancias del período, sin cifrar. Compartirlo solo con quien corresponda.</string>
+    <string name="report_support_note">Este resumen es material de apoyo. No es un libro contable ni una declaración.</string>
+    <string name="report_generate_action">Generar resumen</string>
+    <string name="report_ready_title">Resumen listo</string>
+    <string name="report_ready_file">%1$s · %2$s</string>
+    <string name="report_save_folder_action">Guardar en una carpeta</string>
+    <string name="report_file_name">resumen-de-gestion-%1$s</string>
+    <string name="report_empty_title">Sin movimientos en este período</string>
+    <string name="report_empty_reason">No hay datos para este período.</string>
+    <string name="report_error_generate">No se pudo crear el resumen.</string>
+    <string name="report_error_space">No hay espacio para crear el archivo.</string>
+    <string name="report_in_progress_notice">Este período aún no termina. Las cifras pueden cambiar.</string>
+    <string name="report_doc_title">Resumen de gestión</string>
+    <string name="report_doc_period">Período: %1$s</string>
+    <string name="report_doc_created">Creado el %1$s</string>
+    <string name="report_doc_section_sales">Ventas</string>
+    <string name="report_doc_section_tax">Impuesto estimado</string>
+    <string name="report_doc_section_expenses">Gastos</string>
+    <string name="report_doc_section_profit">Ganancias</string>
+    <string name="report_doc_section_methods">Métodos de pago</string>
+    <string name="report_doc_tax_note">Cifra estimada a partir de las tasas escritas por la persona. No es una declaración.</string>
+    <string name="report_doc_legend">%1$s no reemplaza la contabilidad oficial. Este resumen no es una factura, un libro contable ni una declaración.</string>
+    <string name="csv_file_closing_inventory">inventario-al-cierre.csv</string>
+</resources>

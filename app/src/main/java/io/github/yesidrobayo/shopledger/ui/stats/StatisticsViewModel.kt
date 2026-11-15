@@ -252,6 +252,8 @@ class StatisticsViewModel(
 
             // Lo resuelve la navegación.
             StatisticsAction.NewSale, StatisticsAction.ChooseZone -> Unit
+
+            StatisticsAction.OpenSummary -> Unit
         }
     }
 

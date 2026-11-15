@@ -85,6 +85,8 @@ fun StatisticsRoute(navigator: AppNavigator) {
                         StatisticsAction.ChooseZone ->
                             navigator.open(AppNavKey.RegionalSettings())
 
+                        StatisticsAction.OpenSummary -> navigator.open(AppNavKey.ManagementSummary)
+
                         is StatisticsAction.SelectKind,
                         is StatisticsAction.SelectRanking,
                         is StatisticsAction.ToggleVariants,
