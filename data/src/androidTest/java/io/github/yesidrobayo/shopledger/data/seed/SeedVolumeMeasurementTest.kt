@@ -19,6 +19,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.port.SystemClock
 import io.github.yesidrobayo.shopledger.domain.rule.ReportPeriods
 import io.github.yesidrobayo.shopledger.domain.rule.report.PeriodNavigation
+import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodAnalysisUseCase
 import java.io.OutputStream
 import java.util.zip.GZIPOutputStream
 import kotlin.time.Instant
@@ -154,6 +155,7 @@ internal class SeedVolumeMeasurementTest {
             }.drop(1)
         log("mes, lista de ventas: ${summary(times)}")
         measureStatistics(ports, month)
+        measureReports(ports, month)
     }
 
     /**
@@ -176,6 +178,54 @@ internal class SeedVolumeMeasurementTest {
                 mark.elapsedNow().inWholeMicroseconds
             }.drop(1)
         log("mes, estadísticas: ${summary(times)}")
+    }
+
+    /**
+     * Los reportes que leen un período, por los puertos, como en la app: el análisis (lo vendido
+     * por producto, los quietos y los mejores clientes), el flujo proyectado a 7 y 30 días, lo que
+     * el resumen de gestión revisa antes de generar y el inventario al cierre de su paquete. Cada
+     * ronda pide un mes distinto, para que ninguna lectura salga de una caché. El tope de
+     * referencia es el de `Números`: 800 ms por período.
+     */
+    private suspend fun measureReports(ports: DataPorts, month: ReportPeriod) {
+        val periods =
+            List(ROUNDS + 1) { round ->
+                (0 until round).fold(month) { shown, _ -> PeriodNavigation.previous(shown) }
+            }
+        val analysis = ObservePeriodAnalysisUseCase(ports.periodBreakdowns, ports.analysisReports)
+        timed("análisis", periods) { period ->
+            val result = analysis(period).first()
+            assertTrue(result.customers.isNotEmpty())
+        }
+        timed("flujo proyectado", periods) { period ->
+            ports.cashFlow.observe(period.end, period.end.plusDays(7), period.end.plusDays(30))
+                .first()
+        }
+        timed("resumen de gestión, revisión", periods) { period ->
+            ports.managementSummaries.observeAvailability(period).first()
+        }
+        timed("resumen de gestión, inventario al cierre", periods) { period ->
+            val products =
+                ports.csvRows.snapshot { rows ->
+                    rows.forEachClosingStock(period.end, { _, name -> name }) { }
+                }
+            assertTrue(products > 0L)
+        }
+    }
+
+    /** Cuánto tarda [read] con cada período de [periods], sin contar el primero, que calienta. */
+    private suspend fun timed(
+        name: String,
+        periods: List<ReportPeriod>,
+        read: suspend (ReportPeriod) -> Unit,
+    ) {
+        val times =
+            periods.map { period ->
+                val mark = TimeSource.Monotonic.markNow()
+                read(period)
+                mark.elapsedNow().inWholeMicroseconds
+            }.drop(1)
+        log("mes, $name: ${summary(times)}")
     }
 
     /**
