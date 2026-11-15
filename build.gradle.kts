@@ -346,6 +346,10 @@ val verifyWording = tasks.register("verifyWording") {
                 "dian", "sat", "sunat", "afip", "arca", "sii", "sri", "seniat", "aeat", "irs", "hmrc", "receita\\s+federal", "cfdi",
                 "nfc-e", "nf-e", "dte", "decreto", "(?:ley|lei|law)\\s+(?:n[º°.]?\\s*)?\\d+",
             )
+        // Ningún texto dice que la app cumple una norma, en ningún idioma: la app no afirma cumplir nada, y quien la usa
+        // responde de sus obligaciones locales. Estas palabras solo van en las claves que lo niegan, en una lista cerrada.
+        val compliance = words("cumpl\\p{L}*", "cumpr\\p{L}*", "compl(?:y|ies|ied|iant|iance)")
+        val complianceKeys = setOf("limit_disclaimer")
         // Los encabezados y nombres de archivo del CSV no siguen la regla impersonal: nombran una columna, como «Vuelve al
         // stock». Los regionalismos y los documentos fiscales sí valen para ellos.
         val csvKey = Regex("""^csv_""")
@@ -398,6 +402,9 @@ val verifyWording = tasks.register("verifyWording") {
                     reject(fiscalDocument, "la app no emite documentos fiscales, y la palabra solo va en las claves que lo niegan")
                 }
                 reject(authority, "cita una autoridad, un documento de un país o una ley, y el texto vale en cualquier país")
+                if (name !in complianceKeys) {
+                    reject(compliance, "dice que se cumple una norma, y la palabra solo va en las claves que lo niegan")
+                }
                 if (spanish && impersonal) {
                     reject(secondPerson, "trata de tú, vos o usted, y el español va en infinitivo o impersonal")
                     reject(imperative, "trata de tú, y una acción va en infinitivo", original)
