@@ -25,6 +25,7 @@ import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
+import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
@@ -149,6 +150,8 @@ private fun NowSection(uiState: DataTransparencyUiState) {
         Modifier.padding(horizontal = AppTheme.spacing.s16),
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
     ) {
+        // Con datos de ejemplo nada se respalda: se dice antes que el estado de las copias.
+        if (LocalDemoMode.current) FactLine(stringResource(R.string.transparency_now_demo))
         BackupsFact(uiState.destination, unavailable)
         if (uiState.uploadsPaused) {
             StatusTag(

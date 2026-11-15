@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Búsqueda de la ayuda y del centro Negocio, y la demostración en la transparencia. -->
+    <plurals name="a11y_help_search_results">
+        <item quantity="one">%1$d article found</item>
+        <item quantity="other">%1$d articles found</item>
+    </plurals>
+    <plurals name="a11y_hub_search_results">
+        <item quantity="one">%1$d tool found</item>
+        <item quantity="other">%1$d tools found</item>
+    </plurals>
+    <string name="transparency_now_demo">Sample data: no backups</string>
+</resources>

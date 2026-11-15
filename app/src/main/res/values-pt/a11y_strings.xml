@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Búsqueda de la ayuda y del centro Negocio, y la demostración en la transparencia. -->
+    <plurals name="a11y_help_search_results">
+        <item quantity="one">%1$d artigo encontrado</item>
+        <item quantity="many">%1$d de artigos encontrados</item>
+        <item quantity="other">%1$d artigos encontrados</item>
+    </plurals>
+    <plurals name="a11y_hub_search_results">
+        <item quantity="one">%1$d ferramenta encontrada</item>
+        <item quantity="many">%1$d de ferramentas encontradas</item>
+        <item quantity="other">%1$d ferramentas encontradas</item>
+    </plurals>
+    <string name="transparency_now_demo">Dados de exemplo: sem cópias</string>
+</resources>

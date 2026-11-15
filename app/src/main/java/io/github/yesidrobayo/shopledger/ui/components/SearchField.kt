@@ -32,6 +32,9 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -128,6 +131,23 @@ fun SearchField(
                 }
             }
         },
+    )
+}
+
+/**
+ * Cuántos resultados dejó la búsqueda, en una línea discreta bajo [SearchField]: TalkBack la lee
+ * al cambiar, como región viva educada, sin mover el foco del campo. Va solo mientras hay algo
+ * escrito, como en `SelectionSheet`.
+ *
+ * @param text el conteo ya escrito, con el sustantivo de lo que se busca y su plural.
+ */
+@Composable
+fun SearchResultCount(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
 

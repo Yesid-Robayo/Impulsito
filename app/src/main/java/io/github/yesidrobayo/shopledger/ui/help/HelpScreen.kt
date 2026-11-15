@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -36,6 +37,7 @@ import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SearchField
+import io.github.yesidrobayo.shopledger.ui.components.SearchResultCount
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
@@ -147,6 +149,17 @@ private fun ArticleList(
                 placeholder = stringResource(R.string.help_search_hint),
                 modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
             )
+            val search = uiState.list as? HelpList.Search
+            if (search != null && uiState.query.isNotBlank()) {
+                val found = search.results.size
+                SearchResultCount(
+                    pluralStringResource(R.plurals.a11y_help_search_results, found, found),
+                    Modifier.padding(
+                        horizontal = AppTheme.spacing.s16,
+                        vertical = AppTheme.spacing.s4,
+                    ),
+                )
+            }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().navigationBarsPadding(),
                 contentPadding = PaddingValues(bottom = AppTheme.spacing.s24),

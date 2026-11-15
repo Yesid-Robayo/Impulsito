@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.experience.BusinessTool
@@ -27,6 +28,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.EmptyStateInline
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.components.SearchField
+import io.github.yesidrobayo.shopledger.ui.components.SearchResultCount
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
@@ -72,6 +74,16 @@ fun BusinessHubScreen(
                     placeholder = stringResource(R.string.hub_search_hint),
                     modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
                 )
+                if (sections is HubSections.Search) {
+                    val found = sections.results.size
+                    SearchResultCount(
+                        pluralStringResource(R.plurals.a11y_hub_search_results, found, found),
+                        Modifier.padding(
+                            horizontal = AppTheme.spacing.s16,
+                            vertical = AppTheme.spacing.s4,
+                        ),
+                    )
+                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().navigationBarsPadding(),
                     contentPadding = PaddingValues(bottom = AppTheme.spacing.s24),
