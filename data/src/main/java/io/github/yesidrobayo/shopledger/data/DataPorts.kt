@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.data.local.catalog.MediaAssetDao
 import io.github.yesidrobayo.shopledger.data.repository.RoomAnalysisReportRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomAppSettingsRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashDenominationRepository
+import io.github.yesidrobayo.shopledger.data.repository.RoomCashFlowSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCashSessionRepository
 import io.github.yesidrobayo.shopledger.data.repository.RoomCatalogPresenceSource
 import io.github.yesidrobayo.shopledger.data.repository.RoomCategoryRepository
@@ -88,6 +89,7 @@ import io.github.yesidrobayo.shopledger.domain.port.AnalysisReportRepository
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.BackupStatusSource
 import io.github.yesidrobayo.shopledger.domain.port.CashDenominationRepository
+import io.github.yesidrobayo.shopledger.domain.port.CashFlowSource
 import io.github.yesidrobayo.shopledger.domain.port.CashSessionRepository
 import io.github.yesidrobayo.shopledger.domain.port.CatalogPresenceSource
 import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
@@ -386,6 +388,12 @@ class DataPorts internal constructor(
 
     /** Lo vendido y lo cobrado por día, aparte, para `Cobrado` en las estadísticas. Solo lee. */
     val collectionReports: CollectionReportRepository = RoomCollectionReportRepository(database)
+
+    /**
+     * Las sumas del flujo de caja proyectado a 7 y 30 días, en una sola consulta agregada. Solo
+     * lee.
+     */
+    val cashFlow: CashFlowSource = RoomCashFlowSource(database)
 
     /**
      * Los destacados, los desgloses por método y por categoría y los avisos de un período, para

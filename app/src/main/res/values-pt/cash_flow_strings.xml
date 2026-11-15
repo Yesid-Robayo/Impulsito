@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos del flujo de caja proyectado de Números, copiados de ux-writing.md. -->
+<resources>
+    <string name="stats_tool_cash_flow">Fluxo projetado</string>
+    <string name="cash_flow_estimate_tag">Estimativa</string>
+    <string name="cash_flow_available_today">Disponível hoje</string>
+    <string name="cash_flow_in_7_days">Em 7 dias</string>
+    <string name="cash_flow_in_30_days">Em 30 dias</string>
+    <string name="cash_flow_help">Soma o que será creditado e o que vence a receber, e subtrai o que vence a pagar e as despesas recorrentes. Só contam as contas na moeda do negócio.</string>
+</resources>

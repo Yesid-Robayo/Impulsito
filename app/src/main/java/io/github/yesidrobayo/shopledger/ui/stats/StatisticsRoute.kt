@@ -108,6 +108,7 @@ fun StatisticsRoute(navigator: AppNavigator) {
                     StatisticsTools(
                         analysis = { StatisticsAnalysis(it) },
                         comparison = { StatisticsComparison(it, navigator) },
+                        cashFlow = { StatisticsCashFlow() },
                     ),
             )
         }

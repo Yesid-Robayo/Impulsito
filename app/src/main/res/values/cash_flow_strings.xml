@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos del flujo de caja proyectado de Números, copiados de ux-writing.md. -->
+<resources>
+    <string name="stats_tool_cash_flow">Projected cash flow</string>
+    <string name="cash_flow_estimate_tag">Estimate</string>
+    <string name="cash_flow_available_today">Available today</string>
+    <string name="cash_flow_in_7_days">In 7 days</string>
+    <string name="cash_flow_in_30_days">In 30 days</string>
+    <string name="cash_flow_help">Adds what settles and what is due to be collected, and subtracts what is due to be paid and recurring expenses. Only accounts in the business currency count.</string>
+</resources>
