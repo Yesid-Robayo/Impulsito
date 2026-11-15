@@ -148,7 +148,7 @@ fun RecurringExpensesScreen(
                 )
                 Row(Modifier.weight(1f)) {
                     val listWidth = if (wide) {
-                        Modifier.width(AppTheme.sizes.maxContentWidth)
+                        Modifier.width(minOf(AppTheme.sizes.maxContentWidth, maxWidth * 2 / 5))
                     } else {
                         Modifier.weight(1f)
                     }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -165,7 +166,9 @@ private fun DetailBody(quote: QuoteDetail, onAction: (QuoteDetailAction) -> Unit
     Column(
         Modifier
             .fillMaxSize()
+            .wrapContentWidth()
             .widthIn(max = AppTheme.sizes.maxContentWidth)
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(vertical = spacing.s16),
         verticalArrangement = Arrangement.spacedBy(spacing.s8),

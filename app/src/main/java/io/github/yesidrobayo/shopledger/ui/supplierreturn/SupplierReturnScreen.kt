@@ -13,9 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -153,14 +156,18 @@ private fun ColumnScope.ReturnForm(
         if (maxWidth >= MEDIUM_WIDTH) {
             Row(Modifier.fillMaxSize()) {
                 ReturnLines(uiState, onAction, Modifier.weight(1f).fillMaxHeight())
+                // A lo sumo la mitad: en una ventana mediana, las líneas no quedan angostas.
                 Column(
                     Modifier
-                        .widthIn(max = AppTheme.sizes.sideSheet)
+                        .width(minOf(AppTheme.sizes.sideSheet, maxWidth / 2))
                         .fillMaxHeight()
                         .padding(AppTheme.spacing.s16),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
                 ) {
-                    Column(Modifier.weight(1f)) { Resolution(uiState, onAction) }
+                    // Se desplaza: en una ventana baja, la nota y las cuentas no se cortan.
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                        Resolution(uiState, onAction)
+                    }
                     Column(Modifier.keepsMessagesAbove().imePadding().navigationBarsPadding()) {
                         Footer(uiState, onAction)
                     }

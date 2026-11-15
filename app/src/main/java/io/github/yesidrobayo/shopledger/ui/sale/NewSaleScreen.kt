@@ -183,7 +183,7 @@ fun NewSaleScreen(
                     modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
                 )
                 if (twoPane) {
-                    TwoPaneSale(uiState, onAction, wide)
+                    TwoPaneSale(uiState, onAction, wide, compact)
                 } else {
                     SinglePaneSale(uiState, onAction, compact)
                 }
@@ -239,12 +239,17 @@ private fun ColumnScope.SinglePaneSale(
     }
 }
 
-/** Una tableta o un plegable abierto: catálogo a la izquierda y la venta entera a la derecha. */
+/**
+ * Una tableta o un plegable abierto: catálogo a la izquierda y la venta entera a la derecha. En
+ * una ventana baja, como un teléfono acostado, el panel de cobro va [compact], como con letra
+ * grande.
+ */
 @Composable
 private fun ColumnScope.TwoPaneSale(
     uiState: NewSaleUiState,
     onAction: (NewSaleAction) -> Unit,
     wide: Boolean,
+    compact: Boolean,
 ) {
     val spacing = AppTheme.spacing
     Row(Modifier.weight(1f).fillMaxWidth()) {
@@ -282,7 +287,7 @@ private fun ColumnScope.TwoPaneSale(
                 SalePanel(
                     uiState,
                     onAction,
-                    compact = isLargeText(),
+                    compact = compact,
                     withSearch = false,
                     opensCart = false,
                     modifier = Modifier.keepsMessagesAbove(),

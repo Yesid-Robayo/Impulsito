@@ -154,9 +154,9 @@ private fun ColumnScope.RecipeForm(uiState: RecipeUiState, onAction: (RecipeActi
     Column(
         Modifier
             .weight(1f)
-            .fillMaxWidth()
             .align(Alignment.CenterHorizontally)
-            .widthIn(max = FORM_WIDTH),
+            .widthIn(max = FORM_WIDTH)
+            .fillMaxWidth(),
     ) {
         LazyColumn(
             Modifier.weight(1f).fillMaxWidth().testTag(RECIPE_LIST_TAG),

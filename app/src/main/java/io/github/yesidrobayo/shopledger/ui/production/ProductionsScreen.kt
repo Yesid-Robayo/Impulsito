@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
@@ -161,7 +163,13 @@ private fun EmptyProductions(hasRecipes: Boolean, onAction: (ProductionsAction) 
 private fun ProductionList(uiState: ProductionsUiState, onAction: (ProductionsAction) -> Unit) {
     val formats = LocalAppFormats.current
     LazyColumn(
-        Modifier.fillMaxSize().testTag(PRODUCTION_LIST_TAG),
+        // En una ventana ancha, la lista se centra a 600 dp, como las demás.
+        Modifier
+            .fillMaxSize()
+            .wrapContentWidth()
+            .widthIn(max = AppTheme.sizes.maxContentWidth)
+            .fillMaxWidth()
+            .testTag(PRODUCTION_LIST_TAG),
         contentPadding = PaddingValues(bottom = AppTheme.sizes.listRow * 2),
     ) {
         for (day in uiState.days) {

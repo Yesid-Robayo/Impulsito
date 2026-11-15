@@ -129,7 +129,9 @@ private fun CameraLayout(
     cameraContent: @Composable (Modifier) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val sidePanel = maxWidth >= EXPANDED_WIDTH
+        // También en una ventana más ancha que alta, como un teléfono acostado: arriba y abajo, la
+        // cámara quedaría en una franja.
+        val sidePanel = maxWidth >= EXPANDED_WIDTH || maxWidth > maxHeight
         val preview = stringResource(R.string.a11y_scanner_preview)
         val camera: @Composable (Modifier) -> Unit = { modifier ->
             Box(modifier) {

@@ -118,9 +118,9 @@ private fun ColumnScope.ExtrasList(uiState: ExtrasUiState, onAction: (ExtrasActi
     Column(
         Modifier
             .weight(1f)
-            .fillMaxWidth()
             .align(Alignment.CenterHorizontally)
-            .widthIn(max = FORM_WIDTH),
+            .widthIn(max = FORM_WIDTH)
+            .fillMaxWidth(),
     ) {
         LazyColumn(
             Modifier.weight(1f).fillMaxWidth().testTag(EXTRAS_LIST_TAG),

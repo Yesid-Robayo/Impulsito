@@ -230,7 +230,6 @@ fun CloseCashScreen(
                 val columns = if (maxWidth >= EXPANDED_WIDTH) 2 else 1
                 Column(
                     Modifier
-                        .fillMaxSize()
                         .align(Alignment.TopCenter)
                         .widthIn(
                             max = if (columns ==
@@ -241,6 +240,7 @@ fun CloseCashScreen(
                                 AppTheme.sizes.maxContentWidth
                             },
                         )
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(spacing.s16),
                     verticalArrangement = Arrangement.spacedBy(spacing.s12),
@@ -430,9 +430,9 @@ fun DenominationsScreen(
                 } else {
                     LazyColumn(
                         Modifier
-                            .fillMaxSize()
                             .align(Alignment.CenterHorizontally)
                             .widthIn(max = AppTheme.sizes.maxContentWidth)
+                            .fillMaxSize()
                             .navigationBarsPadding(),
                         contentPadding = PaddingValues(bottom = TonalFabDefaults.listEndPadding),
                     ) {

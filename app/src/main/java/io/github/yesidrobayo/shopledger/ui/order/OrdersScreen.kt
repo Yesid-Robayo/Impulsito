@@ -101,7 +101,7 @@ fun OrdersScreen(
                 }
                 Row(Modifier.weight(1f)) {
                     val listWidth = if (wide) {
-                        Modifier.width(sizes.maxContentWidth)
+                        Modifier.width(minOf(sizes.maxContentWidth, maxWidth * 2 / 5))
                     } else {
                         Modifier.weight(1f)
                     }

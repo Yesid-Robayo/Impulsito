@@ -150,9 +150,9 @@ private fun ColumnScope.PurchaseForm(
         } else {
             Column(
                 Modifier
-                    .fillMaxSize()
                     .align(Alignment.TopCenter)
-                    .widthIn(max = FORM_WIDTH),
+                    .widthIn(max = FORM_WIDTH)
+                    .fillMaxSize(),
             ) {
                 PurchaseLines(uiState, onAction, Modifier.weight(1f), withHeader = true)
                 Column(Modifier.keepsMessagesAbove().imePadding().navigationBarsPadding()) {
@@ -635,7 +635,11 @@ private fun ColumnScope.PurchaseSummaryContent(
     val spacing = AppTheme.spacing
     val money = LocalAppFormats.current.money
     LazyColumn(
-        Modifier.weight(1f).fillMaxWidth().widthIn(max = FORM_WIDTH),
+        Modifier
+            .weight(1f)
+            .align(Alignment.CenterHorizontally)
+            .widthIn(max = FORM_WIDTH)
+            .fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(spacing.s8),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(spacing.s16),
     ) {

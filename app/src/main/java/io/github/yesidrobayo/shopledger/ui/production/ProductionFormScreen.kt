@@ -145,9 +145,9 @@ private fun ColumnScope.ProductionForm(
     Column(
         Modifier
             .weight(1f)
-            .fillMaxWidth()
             .align(Alignment.CenterHorizontally)
-            .widthIn(max = FORM_WIDTH),
+            .widthIn(max = FORM_WIDTH)
+            .fillMaxWidth(),
     ) {
         LazyColumn(
             Modifier.weight(1f).fillMaxWidth().testTag(PRODUCTION_FORM_TAG),

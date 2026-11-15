@@ -210,9 +210,9 @@ private fun CashBody(
         } else {
             LazyColumn(
                 Modifier
-                    .fillMaxSize()
                     .align(Alignment.TopCenter)
-                    .widthIn(max = AppTheme.sizes.maxContentWidth),
+                    .widthIn(max = AppTheme.sizes.maxContentWidth)
+                    .fillMaxSize(),
                 contentPadding = PaddingValues(bottom = AppTheme.spacing.s16),
             ) {
                 cardItems(view, uiState, onAction)

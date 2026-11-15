@@ -160,9 +160,9 @@ fun MoneyAccountsScreen(
 
                     is MoneyAccountsContent.Ready -> LazyColumn(
                         Modifier
-                            .fillMaxSize()
                             .align(Alignment.CenterHorizontally)
                             .widthIn(max = AppTheme.sizes.maxContentWidth)
+                            .fillMaxSize()
                             .navigationBarsPadding(),
                         contentPadding = PaddingValues(bottom = TonalFabDefaults.listEndPadding),
                     ) {

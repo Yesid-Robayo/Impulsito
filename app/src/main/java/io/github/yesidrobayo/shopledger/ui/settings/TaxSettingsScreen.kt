@@ -209,7 +209,7 @@ private fun TaxContent(state: TaxSettingsUiState.Ready, onAction: (TaxSettingsAc
     val symbols = LocalAppFormats.current.percent.inputSymbols
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().widthIn(max = AppTheme.sizes.maxContentWidth),
+            modifier = Modifier.widthIn(max = AppTheme.sizes.maxContentWidth).fillMaxSize(),
             contentPadding = PaddingValues(bottom = TonalFabDefaults.listEndPadding),
         ) {
             modeSection(state.mode, onAction)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -125,7 +126,9 @@ private fun Ledger(
     LazyColumn(
         Modifier
             .fillMaxSize()
+            .wrapContentWidth()
             .widthIn(max = AppTheme.sizes.maxContentWidth)
+            .fillMaxWidth()
             .navigationBarsPadding(),
         contentPadding = PaddingValues(bottom = AppTheme.spacing.s32),
     ) {
