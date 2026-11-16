@@ -147,9 +147,12 @@ class CustomerListScreenTest {
             ),
         )
 
-        // La etiqueta de la fila, además del filtro elegido.
+        // La etiqueta de la fila y el filtro elegido, cada uno con su texto: en español el filtro
+        // dice `Archivados` y la etiqueta `Archivado`.
         compose.onAllNodesWithText(text(R.string.customer_archived_tag), useUnmergedTree = true)
-            .assertCountEquals(2)
+            .assertCountEquals(if (archivedSameAsFilter()) 2 else 1)
+        compose.onAllNodesWithText(text(R.string.customer_filter_archived), useUnmergedTree = true)
+            .assertCountEquals(if (archivedSameAsFilter()) 2 else 1)
         compose.onNodeWithText(text(R.string.action_reactivate), useUnmergedTree = true)
             .performClick()
 
@@ -286,4 +289,8 @@ class CustomerListScreenTest {
             saveFailed = SaveFailure(outOfSpace = false),
         )
     }
+
+    /** Si el filtro y la etiqueta dicen lo mismo en el idioma de la prueba, como en inglés. */
+    private fun archivedSameAsFilter(): Boolean =
+        text(R.string.customer_archived_tag) == text(R.string.customer_filter_archived)
 }

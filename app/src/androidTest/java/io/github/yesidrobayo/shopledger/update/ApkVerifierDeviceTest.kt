@@ -5,6 +5,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import java.security.MessageDigest
 import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -59,6 +60,20 @@ class ApkVerifierDeviceTest {
 
     private fun assertNoLeftover() = assertFalse(File(work, ApkVerifier.CANDIDATE_NAME).exists())
 
+    /** La huella de [file] leída por partes: un APK entero no cabe en la memoria de la prueba. */
+    private fun sha256Of(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(HASH_BUFFER_BYTES)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return ApkFingerprints.hex(digest.digest())
+    }
+
     @Before
     fun cleanFolder() {
         folder.deleteRecursively()
@@ -82,21 +97,22 @@ class ApkVerifierDeviceTest {
         assertEquals(own.versionName, result.versionName)
         assertEquals(PackageInfoCompat.getLongVersionCode(own), result.versionCode)
         assertFalse(result.older)
-        assertEquals(ApkFingerprints.sha256Hex(file.readBytes()), result.sha256)
+        assertEquals(sha256Of(file), result.sha256)
         assertNoLeftover()
     }
 
     @Test
     fun anApkWithAnotherSignatureSaysNotToInstallIt() {
-        // El de los recursos del sistema: otro paquete, firmado con la clave de la plataforma.
-        val system = File(app.packageManager.getApplicationInfo("android", 0).sourceDir)
+        // Una app del sistema que existe en todas las versiones: otro paquete y otra firma. Los
+        // recursos del sistema (`android`) ya no se leen como un APK común desde Android 13.
+        val system = File(app.packageManager.getApplicationInfo("com.android.shell", 0).sourceDir)
         val file = copyOf(system, "otra-firma.apk")
 
         val result = check(file)
 
         assertTrue(result.toString(), result is ApkCheckResult.Mismatch)
         assertEquals(
-            ApkFingerprints.sha256Hex(file.readBytes()),
+            sha256Of(file),
             (result as ApkCheckResult.Mismatch).sha256,
         )
         assertNoLeftover()
@@ -142,3 +158,6 @@ class ApkVerifierDeviceTest {
         assertTrue(fingerprint, Regex("([0-9A-F]{2}:){31}[0-9A-F]{2}").matches(fingerprint))
     }
 }
+
+/** El tramo con que se calcula una huella en la prueba. */
+private const val HASH_BUFFER_BYTES = 64 * 1024
