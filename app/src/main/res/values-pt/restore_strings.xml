@@ -4,7 +4,7 @@
     <string name="backup_action_find_file">Buscar um arquivo</string>
     <string name="backup_action_restore">Restaurar</string>
     <!-- dialog_restore_title: %1$s = date -->
-    <string name="dialog_restore_title">Restaurar a cópia de %1$s?</string>
+    <string name="dialog_restore_title">Restaurar esta cópia (%1$s)?</string>
     <string name="dialog_restore_body">O que há neste telefone será substituído por essa cópia. O que foi registrado depois dessa data não estará lá. Antes, uma cópia de proteção é salva aqui.</string>
     <string name="dialog_restore_action">Restaurar cópia</string>
     <string name="dialog_restore_file_title">Restaurar este arquivo?</string>

@@ -96,7 +96,7 @@ sealed interface RestoreUi {
     /** La hoja de una copia, con sus datos y `Restaurar`. */
     data class CopySheet(val copy: BackupCopySummary) : RestoreUi
 
-    /** `¿Restaurar la copia del {date}?`. */
+    /** `¿Restaurar esta copia ({date})?`. */
     data class ConfirmCopy(val copy: BackupCopySummary) : RestoreUi
 
     /** `¿Restaurar este archivo?`: un archivo de afuera, del que no se sabe quién lo hizo. */

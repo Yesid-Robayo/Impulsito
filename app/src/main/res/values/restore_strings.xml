@@ -4,7 +4,7 @@
     <string name="backup_action_find_file">Find a file</string>
     <string name="backup_action_restore">Restore</string>
     <!-- dialog_restore_title: %1$s = date -->
-    <string name="dialog_restore_title">Restore the backup from %1$s?</string>
+    <string name="dialog_restore_title">Restore this backup (%1$s)?</string>
     <string name="dialog_restore_body">What is on this phone is replaced by that backup. Anything recorded after that date will be missing. A safety copy is saved here first.</string>
     <string name="dialog_restore_action">Restore backup</string>
     <string name="dialog_restore_file_title">Restore this file?</string>
