@@ -40,6 +40,14 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
         val stringsFile = Regex("""^app/src/main/res/values(-[A-Za-z0-9+-]+)?/strings\.xml$""")
         val appNameLine = Regex("""name="app_name"""")
         val rootProjectNameLine = Regex("""^\s*rootProject\.name = "[I]mpulsito"\s*$""")
+        // Las páginas públicas viven en el repositorio, que se llama como la app, y su dirección lleva ese nombre.
+        // Si el repositorio se renombra, antes se publica una versión con la dirección nueva.
+        val pagesFile = Regex("""^app/src/main/res/values/(update|license)_strings\.xml$""")
+        val pagesUrlLine =
+            Regex(
+                """name="(update_manifest_url|legal_privacy_url|rescue_tool_url)" translatable="false">""" +
+                    """https://[a-z0-9-]+\.github\.io/[I]mpulsito/""",
+            )
         // Una migración destructiva borraría el negocio de la persona al actualizar.
         val destructiveMigration = Regex("fallbackTo[D]estructiveMigration")
         // El cierre automático de Room reabre la conexión de escritura con synchronous = NORMAL, sin el FULL que fija la app
@@ -175,7 +183,8 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 if (commercialName.containsMatchIn(line)) {
                     val allowed =
                         (stringsFile.matches(path) && appNameLine.containsMatchIn(line)) ||
-                            (path == "settings.gradle.kts" && rootProjectNameLine.matches(line))
+                            (path == "settings.gradle.kts" && rootProjectNameLine.matches(line)) ||
+                            (pagesFile.matches(path) && pagesUrlLine.containsMatchIn(line))
                     if (!allowed) problems += "$where: el nombre comercial solo puede estar en app_name y en rootProject.name"
                 }
                 if (destructiveMigration.containsMatchIn(line)) {

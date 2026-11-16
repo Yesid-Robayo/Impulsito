@@ -12,7 +12,7 @@
     <string name="license_apache" translatable="false">Apache 2.0</string>
     <string name="license_ofl" translatable="false">SIL Open Font License 1.1</string>
     <!-- La página publicada de la política de privacidad, en las páginas públicas. -->
-    <string name="legal_privacy_url" translatable="false">https://yesid-robayo.github.io/privacy/</string>
-    <!-- La herramienta de rescate y el formato público de las copias cifradas. Vacía hasta publicarlos: mientras tanto, el kit de recuperación no lleva esa línea. -->
-    <string name="rescue_tool_url" translatable="false"></string>
+    <string name="legal_privacy_url" translatable="false">https://yesid-robayo.github.io/Impulsito/#privacy</string>
+    <!-- La herramienta de rescate y el formato público de las copias cifradas, en las páginas públicas. El kit de recuperación imprime esta dirección. -->
+    <string name="rescue_tool_url" translatable="false">https://yesid-robayo.github.io/Impulsito/backup-format/</string>
 </resources>

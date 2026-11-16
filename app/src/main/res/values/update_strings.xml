@@ -52,8 +52,8 @@
     <!-- El recordatorio de cada 60 días, sin red. %1$s es el nombre de la app. -->
     <string name="notif_update_reminder_title">Check for a new version</string>
     <string name="notif_update_reminder_body">Open Updates in %1$s to check.</string>
-    <!-- La dirección https de version.json en las páginas públicas. Va dentro de la app: cambiarla exige una versión nueva. -->
-    <string name="update_manifest_url" translatable="false">https://yesid-robayo.github.io/version.json</string>
+    <!-- La dirección https de version.json en las páginas públicas del repositorio de la app. Va dentro de la app: si el repositorio se renombra, primero se publica una versión con la dirección nueva. -->
+    <string name="update_manifest_url" translatable="false">https://yesid-robayo.github.io/Impulsito/version.json</string>
     <!-- La clave pública del aviso de versión, en Base64, con la forma X.509 de una clave de curva P-256. Es pública: la privada vive fuera del repositorio, sin conexión. -->
     <string name="update_manifest_public_key" translatable="false">MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpXUuN9pd+UKVdyLxIai2KQtT/I74uxRYsjgvJlkCIHFp+PtXcjbQYYUSJ9dWj/32FMq/J7IjRT2p6zilH810PA==</string>
 </resources>
