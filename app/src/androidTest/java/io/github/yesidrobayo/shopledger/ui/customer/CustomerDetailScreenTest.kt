@@ -11,6 +11,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -140,9 +141,9 @@ class CustomerDetailScreenTest {
 
         compose.onNodeWithText(text(R.string.customer_reminder_note, text(R.string.app_name)))
             .assertExists()
-        compose.onNodeWithText(text(R.string.customer_reminder_attach_details)).performClick()
-        compose.onNodeWithText(text(R.string.customer_reminder_send_action)).performClick()
-        compose.onNodeWithText(text(R.string.action_share)).performClick()
+        tapWhenShown(text(R.string.customer_reminder_attach_details))
+        tapWhenShown(text(R.string.customer_reminder_send_action))
+        tapWhenShown(text(R.string.action_share))
 
         assertEquals(
             listOf(
@@ -201,6 +202,15 @@ class CustomerDetailScreenTest {
         }
     }
 
+    /**
+     * Toca [value] cuando ya se ve. La hoja del recordatorio entra con una animación: con el
+     * equipo cargado, un toque hecho antes de que termine cae fuera del botón y se pierde.
+     */
+    private fun tapWhenShown(value: String) {
+        compose.waitUntil(SHEET_TIMEOUT_MS) { compose.onNodeWithText(value).isDisplayed() }
+        compose.onNodeWithText(value).performClick()
+    }
+
     private fun show(
         state: CustomerDetailUiState,
         dark: Boolean = false,
@@ -247,6 +257,7 @@ class CustomerDetailScreenTest {
     }
 
     private companion object {
+        const val SHEET_TIMEOUT_MS = 5_000L
         const val SETTLE_MILLIS = 700L
         const val NAME = "Cliente de prueba"
         val AT = Instant.parse("2026-11-01T12:00:00Z")
