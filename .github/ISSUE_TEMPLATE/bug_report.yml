@@ -1,0 +1,72 @@
+name: Error / Bug
+description: Algo no funciona como debería / Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por avisar. Si es un problema de seguridad, **no** lo pongas aquí: mira SECURITY.md.
+        Thanks for reporting. Security problems go through SECURITY.md, not here.
+
+        > [!CAUTION]
+        > **Este issue es público. Nunca adjuntes copias (`.db.gz`, `.slbk`), bases, archivos CSV o de hoja de cálculo, ni capturas con datos reales** de un negocio o de sus clientes, ni tu contraseña de WebDAV o tu código de recuperación. Si una captura ayuda, tómala con la demostración (**Ver con datos de ejemplo**) o con datos inventados.
+        >
+        > **This issue is public. Never attach backups (`.db.gz`, `.slbk`), databases, CSV or spreadsheet files, or screenshots with real data** from a business or its customers, nor your WebDAV password or your recovery code. If a screenshot helps, take it with the demo (**See it with sample data**) or with made-up data.
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Impulsito / Impulsito version
+      description: Sale en Ajustes › Actualizaciones y verificación de APK. / Shown in Settings › Updates and APK check.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Versión de Android / Android version
+      placeholder: "Android 15"
+    validations:
+      required: true
+  - type: input
+    id: phone
+    attributes:
+      label: Modelo del celular / Phone model
+      description: Marca y modelo. / Brand and model.
+    validations:
+      required: true
+  - type: dropdown
+    id: destination
+    attributes:
+      label: Destino de las copias / Backup destination
+      options:
+        - WebDAV
+        - Drive (nube del teléfono / phone's cloud)
+        - Ninguno / None
+        - No sé / I don't know
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Qué pasó / What happened
+      description: Qué esperabas y qué viste, con el texto exacto de cualquier mensaje. / What you expected and what you saw, with the exact text of any message.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Cómo repetirlo / How to reproduce
+      description: Con datos inventados. / With made-up data.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: checkboxes
+    id: no_real_data
+    attributes:
+      label: Datos reales / Real data
+      options:
+        - label: Este reporte no incluye copias, bases, CSV ni capturas con datos reales. / This report includes no backups, databases, CSV or screenshots with real data.
+          required: true

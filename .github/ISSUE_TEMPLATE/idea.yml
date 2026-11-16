@@ -1,0 +1,31 @@
+name: Idea o pregunta / Idea or question
+description: Propón algo nuevo o pregunta cómo se usa algo / Suggest something new or ask how something works
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Este issue es público: no incluyas datos reales de un negocio o de sus clientes.
+        This issue is public: don't include real data from a business or its customers.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Tipo / Kind
+      options:
+        - Idea / Idea
+        - Pregunta / Question
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Qué propones o preguntas / What you suggest or ask
+      description: Cuenta qué quieres lograr en tu negocio, no solo la función. / Tell what you want to achieve in your business, not only the feature.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Impulsito / Impulsito version
+      description: Sale en Ajustes › Actualizaciones y verificación de APK. / Shown in Settings › Updates and APK check.
+      placeholder: "1.0.0"

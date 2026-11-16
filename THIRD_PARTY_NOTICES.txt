@@ -1,0 +1,113 @@
+Impulsito - avisos de terceros / third-party notices
+====================================================
+
+Impulsito (MIT) incluye en su APK el código de estas bibliotecas, fuentes e iconos.
+Impulsito (MIT) includes the code of these libraries, fonts and icons in its APK.
+Cada uno conserva su propia licencia; los textos completos están en su repositorio,
+y los de Apache 2.0, SIL Open Font License 1.1 y SQLite también van dentro de la app,
+en Ajustes > Licencias.
+Each one keeps its own license; the full texts are in its repository, and those of
+Apache 2.0, SIL Open Font License 1.1 and SQLite also ship inside the app, under
+Settings > Licenses.
+
+Solo se listan las dependencias de ejecución que van en el APK, no las herramientas
+de compilación ni de pruebas.
+Only the runtime dependencies that ship in the APK are listed, not build or test tools.
+
+
+Fuentes e iconos / Fonts and icons
+----------------------------------
+
+Figtree (variable)                 OFL-1.1
+                                   https://github.com/erikdkennedy/figtree
+Noto Sans (subconjunto de símbolos de moneda / currency symbols subset)
+                                   OFL-1.1
+                                   https://github.com/notofonts/latin-greek-cyrillic
+Material Symbols                   Apache-2.0
+                                   https://github.com/google/material-design-icons
+
+
+AndroidX (Google)
+-----------------
+
+Todas con licencia Apache-2.0 / All licensed Apache-2.0.
+https://developer.android.com/jetpack/androidx
+
+activity 1.13.0                    annotation 1.10.0
+appcompat 1.8.0                    arch.core 2.2.0
+autofill 1.0.0                     biometric 1.1.0
+camera (CameraX) 1.6.2             collection 1.5.0
+compose (animation, foundation, material, runtime, ui) 1.12.1
+compose.material3 1.4.0            compose.material3.adaptive 1.3.0
+concurrent 1.1.0                   core 1.19.1
+cursoradapter 1.0.0                customview 1.0.0
+datastore 1.0.0                    drawerlayout 1.0.0
+emoji2 1.4.0                       exifinterface 1.4.2
+fragment 1.5.4                     glance 1.2.0
+graphics 1.0.1                     interpolator 1.0.0
+lifecycle 2.11.0                   loader 1.0.0
+navigation3 1.2.0                  navigationevent 1.1.1
+profileinstaller 1.4.1             resourceinspection 1.0.1
+room 2.7.0                         room3 3.0.3
+savedstate 1.4.0                   startup 1.2.0
+tracing 1.3.0                      vectordrawable 1.1.0
+versionedparcelable 1.1.1          viewpager 1.0.0
+window 1.5.0                       work (WorkManager) 2.12.0
+sqlite 2.7.1                       Apache-2.0; sqlite-bundled incluye SQLite 3.50.1 /
+                                   includes SQLite 3.50.1, de dominio público / public domain
+                                   https://www.sqlite.org/copyright.html
+
+
+Kotlin y JetBrains / Kotlin and JetBrains
+-----------------------------------------
+
+kotlin-stdlib 2.4.21               Apache-2.0
+                                   https://github.com/JetBrains/kotlin
+kotlinx-coroutines 1.11.0          Apache-2.0
+                                   https://github.com/Kotlin/kotlinx.coroutines
+kotlinx-datetime 0.8.0             Apache-2.0
+                                   https://github.com/Kotlin/kotlinx-datetime
+kotlinx-serialization-core 1.7.3   Apache-2.0
+                                   https://github.com/Kotlin/kotlinx.serialization
+atomicfu 0.28.0                    Apache-2.0
+                                   https://github.com/Kotlin/kotlinx-atomicfu
+Compose Multiplatform 1.12.0       Apache-2.0
+                                   https://github.com/JetBrains/compose-multiplatform
+annotations 23.0.0                 Apache-2.0
+                                   https://github.com/JetBrains/java-annotations
+
+
+Otras / Others
+--------------
+
+OkHttp 5.5.1                       Apache-2.0
+                                   https://github.com/square/okhttp
+Okio 3.18.1                        Apache-2.0
+                                   https://github.com/square/okio
+Tink (tink-android) 1.24.0         Apache-2.0
+                                   https://github.com/tink-crypto/tink-java
+  Incluye una copia reempaquetada de Protocol Buffers / includes a repackaged copy of
+  Protocol Buffers                 BSD-3-Clause
+                                   https://github.com/protocolbuffers/protobuf
+Gson 2.13.2                        Apache-2.0
+                                   https://github.com/google/gson
+zxing-cpp (android) 3.1.1          Apache-2.0
+                                   https://github.com/zxing-cpp/zxing-cpp
+Vico (compose, compose-m3) 3.3.1   Apache-2.0
+                                   https://github.com/patrykandpatrick/vico
+Dagger 2.59                        Apache-2.0
+                                   https://github.com/google/dagger
+Guava listenablefuture 1.0         Apache-2.0
+                                   https://github.com/google/guava
+Error Prone annotations 2.41.0     Apache-2.0
+                                   https://github.com/google/error-prone
+AutoValue annotations 1.6.3        Apache-2.0
+                                   https://github.com/google/auto
+jsr305 annotations 3.0.2           Apache-2.0
+                                   https://github.com/findbugsproject/findbugs
+JSpecify 1.0.0                     Apache-2.0
+                                   https://github.com/jspecify/jspecify
+jakarta.inject-api 2.0.1           Apache-2.0
+                                   https://github.com/jakartaee/inject
+javax.inject 1                     Apache-2.0
+                                   https://github.com/javax-inject/javax-inject
