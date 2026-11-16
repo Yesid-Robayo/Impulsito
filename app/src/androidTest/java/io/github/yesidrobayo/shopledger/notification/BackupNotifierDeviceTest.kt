@@ -108,7 +108,10 @@ class BackupNotifierDeviceTest {
 
         notifier.show(BackupNotification.Stale)
 
-        assertEquals(1, awaitPosted(2).size)
+        // Solo cuentan los de la copia vieja: otro aviso del respaldo, como el recordatorio de
+        // buscar versión, puede estar a la vista y no es lo que se prueba.
+        val stale = awaitPosted(2).filter { it.id == STALE_NOTIFICATION_ID }
+        assertEquals(1, stale.size)
     }
 
     private fun posted(): List<StatusBarNotification> = manager().activeNotifications.toList()
@@ -134,3 +137,6 @@ class BackupNotifierDeviceTest {
     private fun manager(): NotificationManager =
         app.getSystemService(NotificationManager::class.java)
 }
+
+/** El id de la notificación de copia vieja, el mismo que usa `AndroidBackupNotifier`. */
+private const val STALE_NOTIFICATION_ID = 1

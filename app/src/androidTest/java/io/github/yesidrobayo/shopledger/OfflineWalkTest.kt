@@ -118,7 +118,8 @@ class OfflineWalkTest {
             // El centro carga primero qué herramientas están en uso: hasta entonces no hay filas.
             val row = hasText(name) and hasClickAction() and !hasSetTextAction()
             if (!poll(OPEN_MILLIS) { exists(row) }) {
-                problems += "$hub > $name: la fila no apareció en el centro"
+                problems += "$hub > $name: la fila no apareció en el centro; a la vista: " +
+                    texts().take(SHOWN_TEXTS).joinToString(" | ")
                 continue
             }
             visit("$hub > $name") { compose.onAllNodes(row).onFirst().performClick() }
@@ -267,6 +268,9 @@ class OfflineWalkTest {
          */
         const val SETTLE_MILLIS = 5_000L
         const val OPEN_MILLIS = 15_000L
+
+        /** Cuántos textos de la pantalla se anotan cuando una fila no aparece. */
+        const val SHOWN_TEXTS = 12
         const val BACK_MILLIS = 2_000L
         const val POLL_MILLIS = 100L
         const val MAX_BACKS = 3
