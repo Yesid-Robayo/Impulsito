@@ -99,6 +99,12 @@ data class WebDavConnectUiState(
                 phase == WebDavPhase.VERIFYING ||
                 phase == WebDavPhase.SAVING
 
+    /**
+     * Sin la dirección, el usuario ni la contraseña: un registro o un error que imprima el estado
+     * nunca los lleva.
+     */
+    override fun toString(): String = "WebDavConnectUiState(phase=$phase)"
+
     /** Quedó conectado; [hasCopies] dice si la carpeta ya tenía copias de esta app. */
     data class Connected(val hasCopies: Boolean)
 }
@@ -112,7 +118,10 @@ sealed interface WebDavConnectAction {
 
     data class UserChange(val value: String) : WebDavConnectAction
 
-    data class PasswordChange(val value: String) : WebDavConnectAction
+    data class PasswordChange(val value: String) : WebDavConnectAction {
+        /** La contraseña escrita nunca sale en un texto. */
+        override fun toString(): String = "PasswordChange"
+    }
 
     data object TogglePassword : WebDavConnectAction
 
