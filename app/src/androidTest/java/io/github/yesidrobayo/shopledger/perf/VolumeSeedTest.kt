@@ -254,6 +254,8 @@ class VolumeSeedTest {
         taxRates = ports.taxRates,
         clock = clock,
         productUnits = ports.productUnits,
+        // Como en la pantalla de compra: reponer stock resuelve su alerta de stock bajo.
+        alerts = ports.lowStockAlerts,
     )
 
     private fun registerExpense(ports: DataPorts, clock: Clock) = RegisterExpenseUseCase(
