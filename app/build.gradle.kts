@@ -142,6 +142,8 @@ android {
         buildConfig = true
     }
     testOptions {
+        // La herramienta de capturas dibuja con los recursos compilados de la app.
+        unitTests.isIncludeAndroidResources = true
         // Las pruebas de captura: cada vista previa marcada con @PreviewTest en la carpeta
         // src/screenshotTest/ se dibuja en la JVM y se compara con su referencia versionada. La
         // herramienta todavía es experimental y nunca entra en la app; si su DSL cambia y deja de
@@ -305,6 +307,12 @@ abstract class VerifyNoDebugHarness : DefaultTask() {
         }
         logger.lifecycle("$name: ${components.size} componentes, ninguno del arnés")
     }
+}
+
+// Las capturas se dibujan en la JVM de las pruebas: con el tope por defecto, una pantalla grande
+// con letra al 200 % se queda sin memoria.
+tasks.withType<Test>().configureEach {
+    maxHeapSize = "2g"
 }
 
 androidComponents {

@@ -490,18 +490,28 @@ private fun SaleSummary(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
         ) {
-            Text(count, style = MaterialTheme.typography.bodyLarge)
-            if (opensCart) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_keyboard_arrow_up),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(AppTheme.sizes.icon),
+            // El total se mide primero y nunca se corta: el conteo usa lo que queda y baja de
+            // línea si no cabe, con letra grande o en un idioma más largo.
+            Row(
+                Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+            ) {
+                Text(
+                    count,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
+                if (opensCart) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_keyboard_arrow_up),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(AppTheme.sizes.icon),
+                    )
+                }
             }
-            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                MoneyText(cart.total, MoneySize.TITLE)
-            }
+            MoneyText(cart.total, MoneySize.TITLE)
         }
         problemOf(cart)?.let { problem ->
             Text(

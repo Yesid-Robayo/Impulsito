@@ -39,17 +39,17 @@ private const val SCREEN_HEIGHT = 891
     widthDp = PHONE_WIDTH,
     showBackground = true,
 )
-@Preview(name = "en_light", locale = "en", widthDp = PHONE_WIDTH, showBackground = true)
+@Preview(name = "en_light", locale = "en-rUS", widthDp = PHONE_WIDTH, showBackground = true)
 @Preview(
     name = "en_dark",
-    locale = "en",
+    locale = "en-rUS",
     uiMode = NIGHT,
     widthDp = PHONE_WIDTH,
     showBackground = true,
 )
 @Preview(
     name = "en_font200",
-    locale = "en",
+    locale = "en-rUS",
     fontScale = 2f,
     widthDp = PHONE_WIDTH,
     showBackground = true,
@@ -87,17 +87,17 @@ annotation class ComponentMatrix
     widthDp = SCREEN_WIDTH,
     heightDp = SCREEN_HEIGHT,
 )
-@Preview(name = "en_light", locale = "en", widthDp = SCREEN_WIDTH, heightDp = SCREEN_HEIGHT)
+@Preview(name = "en_light", locale = "en-rUS", widthDp = SCREEN_WIDTH, heightDp = SCREEN_HEIGHT)
 @Preview(
     name = "en_dark",
-    locale = "en",
+    locale = "en-rUS",
     uiMode = NIGHT,
     widthDp = SCREEN_WIDTH,
     heightDp = SCREEN_HEIGHT,
 )
 @Preview(
     name = "en_font200",
-    locale = "en",
+    locale = "en-rUS",
     fontScale = 2f,
     widthDp = SCREEN_WIDTH,
     heightDp = SCREEN_HEIGHT,
