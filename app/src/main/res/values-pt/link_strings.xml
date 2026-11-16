@@ -8,7 +8,7 @@
     <string name="confirm_destination_disconnected">Nuvem desconectada</string>
     <string name="error_disconnect">Não foi possível desconectar. Tudo continua como estava.</string>
     <string name="backup_session_lost_title">Entrar em %1$s</string>
-    <string name="backup_session_lost_detail">A sessão de %1$s foi encerrada, e as cópias estão paradas. Ao entrar de novo, elas continuam sozinhas, sem criar arquivos novos. Até lá, o que é novo está apenas neste telefone.</string>
+    <string name="backup_session_lost_detail">A sessão de %1$s foi encerrada, e as cópias estão paradas. Ao entrar de novo, Salvar em %1$s volta a funcionar, sem criar arquivos novos. Até lá, o que é novo está apenas neste telefone.</string>
     <string name="backup_session_open_failed">Não foi possível abrir %1$s daqui. É possível abrir esse app manualmente e entrar.</string>
     <string name="backup_pinned_max">Já há %1$d cópias fixadas. Para continuar, é preciso liberar uma.</string>
     <string name="conflict_body_other_device">A cópia de %1$s vem de outro telefone. As cópias foram paradas para nada se perder.</string>

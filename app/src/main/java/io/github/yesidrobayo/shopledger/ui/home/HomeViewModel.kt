@@ -68,6 +68,8 @@ import kotlinx.coroutines.withContext
  * @param now el reloj, para contar los días desde que se aceptó ese aviso.
  * @param monthGoal la meta de ventas del mes en curso; recibe las veces que se vuelve a mirar la
  *   fecha.
+ * @param requestBackup pide la copia con `Guardar en {provider}`, con la nube del teléfono. Un
+ *   fallo al pedirla no cierra la pantalla: el estado del respaldo sigue diciendo lo pendiente.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
@@ -84,6 +86,7 @@ class HomeViewModel(
     private val now: () -> Instant = { kotlin.time.Clock.System.now() },
     private val photoBackup: suspend () -> PhotoBackupFacts? = { null },
     monthGoal: (Flow<Unit>) -> Flow<GoalAdvance?> = { flowOf(null) },
+    private val requestBackup: suspend () -> Unit = {},
 ) : ViewModel() {
     // La primera mirada a la fecha es al abrir; las demás, al volver a primer plano. Un contador,
     // y no un evento, porque dos vueltas seguidas sin leer entre ellas valen por una.
@@ -208,6 +211,8 @@ class HomeViewModel(
 
             HomeAction.AcknowledgeNoDestination -> acknowledge()
 
+            HomeAction.SaveToProvider -> saveToProvider()
+
             // Lo demás lo resuelve la navegación.
             HomeAction.OpenSettings,
             HomeAction.OpenBusiness,
@@ -223,6 +228,23 @@ class HomeViewModel(
             is HomeAction.OpenProduct,
             HomeAction.OpenGoals,
             -> Unit
+        }
+    }
+
+    /**
+     * `Guardar en {provider}`: pide la copia fuera del hilo principal. Si no se pudo pedir, el
+     * chip sigue mostrando los cambios sin copia, y el botón sigue ahí para intentarlo de
+     * nuevo.
+     */
+    private fun saveToProvider() {
+        viewModelScope.launch {
+            try {
+                withContext(computation) { requestBackup() }
+            } catch (_: IOException) {
+                // Lo pendiente sigue a la vista: nada se da por guardado.
+            } catch (_: IllegalStateException) {
+                // La base todavía no se puede leer: lo mismo.
+            }
         }
     }
 

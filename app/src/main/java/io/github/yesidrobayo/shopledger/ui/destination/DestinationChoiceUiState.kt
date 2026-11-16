@@ -16,9 +16,9 @@ enum class ConnectedDestination {
 }
 
 /**
- * Cómo llegan las copias a la nube del teléfono. La prueba en un teléfono real con esa nube decide
- * si la entrega sale sola o si cada copia se entrega con la app abierta, y con eso cambia el texto de
- * la opción. Hasta que esa prueba corra, la app entrega sola.
+ * Cómo llegan las copias a la nube del teléfono, y con eso el texto de la opción. La prueba con
+ * Drive y la app cerrada no dio escrituras válidas: la app entrega cada copia a mano, con la app
+ * abierta.
  */
 enum class SlotsHandoff {
     /** La app entrega cada copia sola, también en segundo plano. */
@@ -59,7 +59,7 @@ enum class DestinationChoiceTarget {
  */
 data class DestinationChoiceUiState(
     val connected: ConnectedDestination = ConnectedDestination.UNKNOWN,
-    val slotsHandoff: SlotsHandoff = SlotsHandoff.AUTOMATIC,
+    val slotsHandoff: SlotsHandoff = SlotsHandoff.MANUAL,
     val slotsWarning: Boolean = false,
     val firstRun: Boolean = false,
     val target: DestinationChoiceTarget? = null,

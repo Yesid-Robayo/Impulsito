@@ -27,7 +27,8 @@ import org.junit.runner.RunWith
  * uno, en orden, porque entre algunos cambia la red o la app debe cerrarse y volver a abrir:
  *
  * - [step01RecordControl] anota los valores de control.
- * - [step02BackupNow] es `Respaldar ahora` con la app abierta: mide cuánto tarda y cuánto pesa.
+ * - [step02BackupNow] es `Respaldar ahora`, o `Guardar en {provider}` con la nube del teléfono,
+ *   con la app abierta: mide cuánto tarda y cuánto pesa.
  * - [step03OfflineSales] registra tres ventas sin red; el guion cierra la app y devuelve la red.
  * - [step04UploadedWhileClosed] comprueba que la copia subió sola, sin abrir la app.
  * - [step06PrepareRestore] pide restaurar la copia más reciente, hasta "falta reiniciar".
@@ -60,13 +61,16 @@ class RealDrillTest {
             RealAccounts.registerInventedSale(ports)
         }
         val started = System.currentTimeMillis()
-        val request = RealAccounts.app.container.data.backupScheduler.backupNow()
         val waitMs = RealAccounts.argument("waitMinutes", "15").toLong() * MINUTE_MS
-        val done = request == BackupNowRequest.QUEUED && RealAccounts.awaitCondition(waitMs) {
-            val facts = RealAccounts.ports().backupStatus.current()
-            val idle = RealAccounts.uploadWork().none { (_, info) -> !info.state.isFinished }
-            idle && facts.verifiedSeq == facts.changeSeq
-        }
+        // Con la app a la vista, como la persona: con la nube del teléfono solo se escribe así.
+        val (request, done) =
+            RealAccounts.withAppInSight {
+                val request = RealAccounts.app.container.data.backupScheduler.backupNow()
+                val done =
+                    request == BackupNowRequest.QUEUED &&
+                        RealAccounts.awaitCondition(waitMs) { copyChecked() }
+                request to done
+            }
         val elapsed = System.currentTimeMillis() - started
         val status = RealAccounts.visibleStatus()
         val listed = RealAccounts.app.container.data.backupDestination.listCopies()
@@ -218,6 +222,13 @@ class RealDrillTest {
         if (RealAccounts.connectedKind() == BackupDestinationKind.WEBDAV) {
             assertEquals(FullVerifyOutcome.MATCHED, verify)
         }
+    }
+
+    /** Ninguna subida espera ni corre, y todos los cambios tienen su copia comprobada. */
+    private suspend fun copyChecked(): Boolean {
+        val facts = RealAccounts.ports().backupStatus.current()
+        val idle = RealAccounts.uploadWork().none { (_, info) -> !info.state.isFinished }
+        return idle && facts.verifiedSeq == facts.changeSeq
     }
 
     /** Con la nube del teléfono, la app nunca dice que todo está guardado. */

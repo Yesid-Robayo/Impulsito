@@ -25,6 +25,7 @@ import io.github.yesidrobayo.shopledger.data.destination.slots.SlotState
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotTestProvider
 import io.github.yesidrobayo.shopledger.data.destination.slots.WriteMode
+import io.github.yesidrobayo.shopledger.domain.model.backup.AppOpenUpload
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
@@ -44,8 +45,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * La subida con la nube del teléfono en modo avión de verdad, con la radio apagada y ninguna red
- * activa: la app no pide red, porque la decide la app de esa nube.
+ * La copia con la nube del teléfono en modo avión de verdad, con la radio apagada y ninguna red
+ * activa: la app no pide red, porque la decide la app de esa nube. Y nada sale solo: solo
+ * `Guardar en {provider}`, con la app a la vista.
  *
  * El programador real encola en la biblioteca de trabajos, el trabajo de subida corre con la
  * lectura de red de la app y el motor escribe en las tres ranuras de un proveedor de documentos
@@ -64,6 +66,9 @@ class SlotUploadAirplaneModeTest {
     private lateinit var manager: WorkManager
     private lateinit var driver: TestDriver
     private lateinit var scheduler: BackupScheduler
+
+    /** Si la app está a la vista: lo que la compuerta mira antes de escribir en una ranura. */
+    @Volatile private var appVisible = true
 
     @Before
     fun prepare() = runBlocking {
@@ -94,7 +99,10 @@ class SlotUploadAirplaneModeTest {
             fixture.ports.settings.get().preferences.meteredBackupPolicy
         }
         val runner =
-            fixture.runner(destination, uploadGate = PolicyUploadGate(policy, fixture.clock))
+            fixture.runner(
+                destination,
+                uploadGate = PolicyUploadGate(policy, fixture.clock) { appVisible },
+            )
         scheduler =
             BackupScheduler(
                 facts = { ScheduleFacts.of(fixture.ports.backupState.get(), policy()) },
@@ -136,52 +144,42 @@ class SlotUploadAirplaneModeTest {
     }
 
     @Test
-    fun inAirplaneModeTheUploadWritesOncePerHourAndBackupNowWritesAtOnce() = runBlocking {
+    fun inAirplaneModeNothingLeavesOnItsOwnAndSaveToProviderWritesAtOnce() = runBlocking {
         assertTrue(airplane.offline)
         // Sin red, la app la ve como medida: lo prudente con WebDAV, y sin efecto con ranuras.
         assertTrue(isMetered(context))
 
-        // Una venta, y la app pasa a segundo plano: la subida sale ya, sin pedir red.
+        // Una venta, y la app pasa a segundo plano: no queda ningún trabajo de subida.
         fixture.addProduct("Pan de prueba")
+        appVisible = false
+        scheduler.onDataChanged()
         scheduler.onAppBackgrounded()
+        assertTrue(unfinished(BackupWorkNames.UPLOAD).isEmpty())
+        assertTrue(unfinished(BackupWorkNames.DEBOUNCE).isEmpty())
+        assertEquals(emptyList<Long>(), generations())
+
+        // La app vuelve: abrirla tampoco escribe nada.
+        appVisible = true
+        scheduler.onAppOpened(AppOpenUpload.PAST_INTERVAL)
+        assertTrue(unfinished(BackupWorkNames.UPLOAD).isEmpty())
+        assertEquals(emptyList<Long>(), generations())
+
+        // `Guardar en {provider}` escribe ya, sin pedir red.
+        assertEquals(BackupNowRequest.QUEUED, scheduler.backupNow())
         val first = finishedAfter(null)
         assertEquals(WorkInfo.State.SUCCEEDED, first.state)
         assertEquals(NetworkType.NOT_REQUIRED, first.constraints.requiredNetworkType)
         assertEquals(listOf(1L), generations())
         val handedOff = fixture.state()
         assertEquals(handedOff.changeSeq, handedOff.verifiedSeq)
-        assertEquals(fixture.now.toEpochMilliseconds(), handedOff.lastUploadFinishedAt)
 
-        // Un minuto después, otra venta: la subida espera el resto de la hora, sin pedir red.
+        // Un minuto después, otra venta y otra vez el botón: escribe sin esperar ninguna hora.
         fixture.advance(1.minutes)
         fixture.addProduct("Leche de prueba")
-        scheduler.onAppBackgrounded()
-        val waiting = pending(BackupWorkNames.UPLOAD)
-        assertEquals(59.minutes.inWholeMilliseconds, waiting.initialDelayMillis)
-        assertEquals(NetworkType.NOT_REQUIRED, waiting.constraints.requiredNetworkType)
-
-        // Si el sistema la corre antes de tiempo, la compuerta no escribe y deja la espera.
-        driver.setInitialDelayMet(waiting.id)
-        assertEquals(WorkInfo.State.SUCCEEDED, finishedAfter(first.id).state)
-        assertEquals(listOf(1L), generations())
-        val debounce = pending(BackupWorkNames.DEBOUNCE)
-
-        // Pasada la hora, la espera vence y la copia sale, todavía en modo avión.
-        fixture.advance(59.minutes)
-        driver.setInitialDelayMet(debounce.id)
-        val second = finishedAfter(waiting.id)
-        assertEquals(WorkInfo.State.SUCCEEDED, second.state)
-        assertEquals(NetworkType.NOT_REQUIRED, second.constraints.requiredNetworkType)
-        assertEquals(listOf(1L, 2L), generations())
-
-        // Un minuto después, `Respaldar ahora` escribe ya, sin esperar la hora ni la red.
-        fixture.advance(1.minutes)
-        fixture.addProduct("Queso de prueba")
         assertEquals(BackupNowRequest.QUEUED, scheduler.backupNow())
-        val manual = finishedAfter(second.id)
-        assertEquals(WorkInfo.State.SUCCEEDED, manual.state)
-        assertEquals(NetworkType.NOT_REQUIRED, manual.constraints.requiredNetworkType)
-        assertEquals(listOf(1L, 2L, 3L), generations())
+        val second = finishedAfter(first.id)
+        assertEquals(WorkInfo.State.SUCCEEDED, second.state)
+        assertEquals(listOf(1L, 2L), generations())
 
         // La subida que espera una red sin datos móviles nunca existió, y la red nunca volvió.
         assertTrue(
@@ -189,6 +187,10 @@ class SlotUploadAirplaneModeTest {
         )
         assertTrue(airplane.offline)
     }
+
+    /** Los trabajos [name] que todavía esperan o corren. */
+    private fun unfinished(name: String): List<WorkInfo> =
+        manager.getWorkInfosForUniqueWork(name).get().filterNot { it.state.isFinished }
 
     /**
      * La subida, ya terminada, que vino después de [previous]: al encolar una nueva, la biblioteca
@@ -199,14 +201,6 @@ class SlotUploadAirplaneModeTest {
             .getWorkInfosForUniqueWorkFlow(BackupWorkNames.UPLOAD)
             .first { infos -> infos.any { it.id != previous && it.state.isFinished } }
             .single { it.id != previous }
-    }
-
-    /** El trabajo [name] que espera para correr. */
-    private suspend fun pending(name: String): WorkInfo = withTimeout(WAIT) {
-        manager
-            .getWorkInfosForUniqueWorkFlow(name)
-            .first { infos -> infos.any { !it.state.isFinished } }
-            .single { !it.state.isFinished }
     }
 
     /** Las generaciones que guardan las ranuras, en orden. */

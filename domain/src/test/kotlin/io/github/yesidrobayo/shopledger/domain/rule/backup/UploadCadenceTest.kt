@@ -4,12 +4,14 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKin
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind.WEBDAV
 import io.github.yesidrobayo.shopledger.domain.model.backup.UploadGateVerdict.PROCEED
 import io.github.yesidrobayo.shopledger.domain.model.backup.UploadGateVerdict.WAIT_FOR_INTERVAL
+import io.github.yesidrobayo.shopledger.domain.model.backup.UploadGateVerdict.WAIT_FOR_PERSON
 import io.github.yesidrobayo.shopledger.domain.model.backup.UploadGateVerdict.WAIT_FOR_UNMETERED
 import io.github.yesidrobayo.shopledger.domain.model.backup.UploadSchedule
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy.EVERY_30_MIN
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy.EVERY_60_MIN
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy.WIFI_ONLY
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -78,31 +80,25 @@ class UploadCadenceTest {
     }
 
     @Test
-    fun `with the phone cloud only one upload, with no network required and its own interval`() {
-        assertEquals(
-            UploadSchedule(false, 45.minutes, false),
-            UploadCadence.schedule(
-                DOCUMENT_SLOTS,
-                WIFI_ONLY,
-                now - 15.minutes,
-                now,
-                pastInterval = false,
-            ),
-        )
-        assertEquals(
-            UploadSchedule(false, Duration.ZERO, false),
-            UploadCadence.schedule(DOCUMENT_SLOTS, EVERY_30_MIN, null, now, pastInterval = false),
-        )
-        assertEquals(
-            UploadSchedule(false, Duration.ZERO, false),
-            UploadCadence.schedule(
-                DOCUMENT_SLOTS,
-                EVERY_60_MIN,
-                now - 1.minutes,
-                now,
-                pastInterval = true,
-            ),
-        )
+    fun `with the phone cloud no upload is queued, not even a day late`() {
+        val cases = listOf(null, now - 15.minutes, now - 3.hours, now + 5.minutes)
+        for (policy in listOf(EVERY_60_MIN, EVERY_30_MIN, WIFI_ONLY)) {
+            for (last in cases) {
+                for (pastInterval in listOf(false, true)) {
+                    assertEquals(
+                        "$policy $last $pastInterval",
+                        UploadSchedule(false, null, false),
+                        UploadCadence.schedule(DOCUMENT_SLOTS, policy, last, now, pastInterval),
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `only WebDAV has automatic copies`() {
+        assertTrue(UploadCadence.automatic(WEBDAV))
+        assertFalse(UploadCadence.automatic(DOCUMENT_SLOTS))
     }
 
     @Test
@@ -153,17 +149,36 @@ class UploadCadenceTest {
     }
 
     @Test
-    fun `with the phone cloud the gate looks at its interval with any network or none`() {
+    fun `with the phone cloud the gate never lets an automatic copy through`() {
         for (metered in listOf(false, true)) {
-            assertEquals(
-                WAIT_FOR_INTERVAL,
-                UploadCadence.gate(DOCUMENT_SLOTS, WIFI_ONLY, metered, now - 30.minutes, now),
-            )
-            assertEquals(
-                PROCEED,
-                UploadCadence.gate(DOCUMENT_SLOTS, WIFI_ONLY, metered, now - 60.minutes, now),
-            )
+            for (last in listOf(null, now - 30.minutes, now - 3.hours, now + 5.minutes)) {
+                assertEquals(
+                    "$metered $last",
+                    WAIT_FOR_PERSON,
+                    UploadCadence.gate(DOCUMENT_SLOTS, EVERY_60_MIN, metered, last, now),
+                )
+            }
         }
+    }
+
+    @Test
+    fun `a write to the phone cloud needs the request of the person and the app in sight`() {
+        assertEquals(PROCEED, UploadCadence.manualGate(requested = true, appVisible = true))
+        // Pedida, pero la app ya no está a la vista: un reintento que corre después, con la app
+        // cerrada, no escribe.
+        assertEquals(
+            WAIT_FOR_PERSON,
+            UploadCadence.manualGate(requested = true, appVisible = false),
+        )
+        // Con la app abierta, una copia que nadie pidió tampoco sale sola.
+        assertEquals(
+            WAIT_FOR_PERSON,
+            UploadCadence.manualGate(requested = false, appVisible = true),
+        )
+        assertEquals(
+            WAIT_FOR_PERSON,
+            UploadCadence.manualGate(requested = false, appVisible = false),
+        )
     }
 
     @Test

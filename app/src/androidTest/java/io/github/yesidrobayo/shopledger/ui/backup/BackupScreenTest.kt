@@ -99,6 +99,49 @@ class BackupScreenTest {
     }
 
     @Test
+    fun withTheCloudOfThePhoneEachCopyIsSavedByHandWithTheButton() {
+        show(
+            previewBackupState(
+                previewOverview(
+                    BackupStatus.PENDING,
+                    BackupDestinationKind.DOCUMENT_SLOTS,
+                    pending = 3,
+                ),
+            ),
+        )
+
+        // Nada sale solo: el detalle y la nota lo dicen, y el botón es `Guardar en Drive`.
+        compose.onNodeWithText(
+            resources.getString(R.string.backup_state_pending_slots_detail, "Drive"),
+        ).assertIsDisplayed()
+        compose.onNodeWithText(
+            resources.getString(R.string.backup_slots_manual_note, text(R.string.app_name)),
+        ).assertIsDisplayed()
+        assertTrue(
+            compose.onAllNodesWithText(text(R.string.backup_action_now))
+                .fetchSemanticsNodes().isEmpty(),
+        )
+        compose.onNodeWithText(
+            resources.getString(R.string.backup_action_save_to_provider, "Drive"),
+        ).performClick()
+
+        assertEquals(listOf<BackupAction>(BackupAction.BackUpNow), actions)
+    }
+
+    @Test
+    fun withTheCloudOfThePhoneTheButtonIsOffWhileItWrites() {
+        show(
+            previewBackupState(
+                previewOverview(BackupStatus.UPLOADING, BackupDestinationKind.DOCUMENT_SLOTS),
+            ),
+        )
+
+        compose.onNodeWithText(
+            resources.getString(R.string.backup_action_save_to_provider, "Drive"),
+        ).assertIsNotEnabled()
+    }
+
+    @Test
     fun withoutADestinationTheActionIsToChooseOne() {
         show(previewBackupState(previewOverview(BackupStatus.NOT_CONNECTED, kind = null)))
 
@@ -143,6 +186,28 @@ class BackupScreenTest {
         compose.onNodeWithText(text(R.string.backup_action_review)).performClick()
 
         assertEquals(listOf<HomeAction>(HomeAction.OpenBackup), homeActions)
+    }
+
+    @Test
+    fun homeWithTheCloudOfThePhoneAndChangesSavesThemFromThere() {
+        val wording = previewBackupState(
+            previewOverview(
+                BackupStatus.PENDING,
+                BackupDestinationKind.DOCUMENT_SLOTS,
+                pending = 3,
+            ),
+        ).wording
+        compose.setContent {
+            PreviewTheme {
+                HomeScreen(previewHomeContent(), { homeActions += it }, backup = wording)
+            }
+        }
+
+        compose.onNodeWithText(
+            resources.getString(R.string.backup_action_save_to_provider, "Drive"),
+        ).performClick()
+
+        assertEquals(listOf<HomeAction>(HomeAction.SaveToProvider), homeActions)
     }
 
     @Test

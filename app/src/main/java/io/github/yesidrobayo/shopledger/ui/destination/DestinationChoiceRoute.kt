@@ -12,10 +12,11 @@ import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 
 /**
- * La nube del teléfono entrega sola. Si la prueba en un teléfono real dice que no, cambia aquí, y la
- * opción dice que cada copia se entrega con la app abierta.
+ * La nube del teléfono no entrega sola: la prueba con Drive y la app cerrada no dio escrituras
+ * válidas, así que cada copia se entrega a mano, con la app abierta, y la opción lo dice antes de
+ * elegir.
  */
-private val SLOTS_HANDOFF = SlotsHandoff.AUTOMATIC
+private val SLOTS_HANDOFF = SlotsHandoff.MANUAL
 
 /**
  * `Dónde guardar las copias` en la navegación. La política ya se aceptó: la navegación la pregunta

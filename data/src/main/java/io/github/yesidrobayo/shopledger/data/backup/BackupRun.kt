@@ -74,13 +74,19 @@ internal enum class SkipReason {
     UNRESTORABLE_NOT_WRITTEN,
 
     /**
-     * Con datos móviles, o con la nube del teléfono, el intervalo entre copias automáticas sigue
-     * corriendo: la espera vuelve a calcular el retraso al vencer.
+     * Con datos móviles, el intervalo entre copias automáticas sigue corriendo: la espera vuelve a
+     * calcular el retraso al vencer.
      */
     WAITING_FOR_INTERVAL,
 
     /** Con `Solo con Wi-Fi` y datos móviles: espera a la subida que corre sin datos móviles. */
     WAITING_FOR_UNMETERED,
+
+    /**
+     * Con la nube del teléfono, la copia no la pidió la persona, o la app ya no estaba a la vista:
+     * no se escribió nada, y los cambios siguen sin respaldar hasta `Guardar en {provider}`.
+     */
+    WAITING_FOR_PERSON,
 }
 
 /** Por qué una ejecución se reintenta más tarde. */

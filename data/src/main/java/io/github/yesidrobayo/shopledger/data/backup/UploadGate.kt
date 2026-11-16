@@ -26,6 +26,12 @@ internal fun interface UploadGate {
         metered: Boolean,
     ): UploadGateVerdict
 
+    /**
+     * Lo que decide para una escritura en un destino sin copias automáticas, la nube del teléfono:
+     * [requested] dice si la pidió la persona. Por defecto deja pasar todo, como [Open].
+     */
+    suspend fun manual(requested: Boolean): UploadGateVerdict = UploadGateVerdict.PROCEED
+
     companion object {
         /** Deja pasar todo: para las pruebas del motor que no miran el ritmo. */
         val Open = UploadGate { _, _, _ -> UploadGateVerdict.PROCEED }
@@ -36,10 +42,13 @@ internal fun interface UploadGate {
  * La compuerta con la política con datos móviles de la persona y el reloj del teléfono.
  *
  * @param policy cada cuánto se respalda con datos móviles. Lee la base.
+ * @param appVisible si la app está a la vista ahora, con alguna pantalla en primer plano. Con la
+ *   nube del teléfono solo se escribe así: ningún trabajo escribe allí con la app cerrada.
  */
 internal class PolicyUploadGate(
     private val policy: suspend () -> MeteredBackupPolicy,
     private val clock: Clock,
+    private val appVisible: () -> Boolean = { false },
 ) : UploadGate {
     override suspend fun check(
         kind: BackupDestinationKind,
@@ -52,6 +61,9 @@ internal class PolicyUploadGate(
         lastUploadFinishedAt = lastUploadFinishedAt?.let(Instant::fromEpochMilliseconds),
         now = clock.now(),
     )
+
+    override suspend fun manual(requested: Boolean): UploadGateVerdict =
+        UploadCadence.manualGate(requested = requested, appVisible = appVisible())
 }
 
 /**

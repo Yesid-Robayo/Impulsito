@@ -5,7 +5,7 @@
     <string name="backup_state_not_connected_detail">Se este telefone for perdido, os dados serão perdidos.</string>
     <string name="backup_state_nothing">Nada para copiar ainda</string>
     <string name="backup_state_nothing_detail">A primeira cópia será salva sozinha.</string>
-    <string name="backup_state_nothing_slots_detail">A primeira cópia será entregue sozinha a %1$s.</string>
+    <string name="backup_state_nothing_slots_detail">Cada cópia é entregue a %1$s ao tocar em Salvar em %1$s.</string>
     <string name="backup_state_policy_pending">Cópias em pausa até aceitar a política</string>
     <string name="backup_policy_pending_detail">Nenhuma cópia vai para a nuvem, e o que é novo está apenas neste telefone. Os dados e as exportações continuam funcionando.</string>
     <string name="backup_last_copy">Última cópia: %1$s</string>
@@ -22,7 +22,7 @@
         <item quantity="other">%1$d alterações sem cópia</item>
     </plurals>
     <string name="backup_state_pending_detail">Serão salvas em instantes.</string>
-    <string name="backup_state_pending_slots_detail">Serão entregues a %1$s em instantes.</string>
+    <string name="backup_state_pending_slots_detail">São entregues a %1$s ao tocar em Salvar em %1$s.</string>
     <string name="backup_state_pending_late_detail">Ainda não foi possível fazer a cópia. As tentativas continuam.</string>
     <plurals name="backup_waiting_network_title">
         <item quantity="one">%1$d alteração sem cópia. Aguardando conexão</item>
@@ -100,7 +100,7 @@
     <string name="backup_failure_local_storage_low_body">Para fazer a cópia, é preciso liberar espaço. Os dados continuam neste telefone.</string>
     <string name="backup_failure_verify_mismatch_title">Não foi possível verificar a cópia</string>
     <string name="backup_failure_verify_mismatch_body">A cópia não ficou certa na nuvem e não conta como salva. As cópias anteriores não foram tocadas.</string>
-    <string name="backup_failure_verify_mismatch_slots_body">A cópia não ficou certa em %1$s e não conta como entregue. %2$s a repete nesse mesmo arquivo. As outras cópias não foram tocadas.</string>
+    <string name="backup_failure_verify_mismatch_slots_body">A cópia não ficou certa em %1$s e não conta como entregue. Ao tocar em Salvar em %1$s, %2$s a repete nesse mesmo arquivo. As outras cópias não foram tocadas.</string>
     <string name="backup_failure_backup_too_large_title">Os dados não cabem mais em uma cópia</string>
     <string name="backup_failure_backup_too_large_body">Passaram do tamanho que %1$s consegue restaurar. As cópias anteriores continuam na nuvem, mas o que é novo está apenas neste telefone. Convém exportar os dados e pedir ajuda.</string>
     <string name="backup_failure_cloud_schema_newer_title">Atualizar %1$s</string>
@@ -132,4 +132,9 @@
     <!-- Propuesto para la guía de redacción: el origen de una copia con su marca de más reciente. -->
     <string name="backup_copy_origin_newest">%1$s · %2$s</string>
     <string name="backup_copy_encrypted">Criptografada</string>
+    <!-- Con la nube del teléfono nada sale solo: el botón que guarda la copia y la nota que lo explica. -->
+    <!-- backup_action_save_to_provider: %1$s = provider -->
+    <string name="backup_action_save_to_provider">Salvar em %1$s</string>
+    <!-- backup_slots_manual_note: %1$s = app -->
+    <string name="backup_slots_manual_note">%1$s não consegue entregar as cópias sozinho a esta nuvem. Cada uma é entregue manualmente, com o app aberto.</string>
 </resources>

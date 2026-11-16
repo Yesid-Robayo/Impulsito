@@ -84,6 +84,7 @@ fun HomeRoute(navigator: AppNavigator) {
                         container.clock,
                     )(checks)
                 },
+                requestBackup = { container.data.backupScheduler.backupNow() },
             )
         }
     when (model) {
@@ -163,6 +164,7 @@ fun HomeRoute(navigator: AppNavigator) {
 
                         HomeAction.Retry,
                         HomeAction.AcknowledgeNoDestination,
+                        HomeAction.SaveToProvider,
                         -> viewModel.onAction(action)
                     }
                 },

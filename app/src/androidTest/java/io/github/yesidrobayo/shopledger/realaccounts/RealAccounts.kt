@@ -4,9 +4,11 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import io.github.yesidrobayo.shopledger.MainActivity
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.DataPorts
@@ -73,6 +75,13 @@ internal object RealAccounts {
     /** Un argumento de texto del runner, o [default]. */
     fun argument(name: String, default: String): String =
         InstrumentationRegistry.getArguments().getString(name) ?: default
+
+    /**
+     * Corre [block] con la app a la vista, con su pantalla principal abierta, y la cierra al
+     * terminar. Con la nube del teléfono, el motor solo escribe así.
+     */
+    suspend fun <T> withAppInSight(block: suspend () -> T): T =
+        ActivityScenario.launch(MainActivity::class.java).use { block() }
 
     /** Los puertos de la base del negocio. Falla si la base no abre sin riesgo. */
     suspend fun ports(): DataPorts {

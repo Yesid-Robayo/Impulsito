@@ -11,7 +11,7 @@
 **Drive on the phone**, **Easier**:
 
 - It works with the cloud already on the phone, with three files that are created once.
-- {app} hands off each backup, and that cloud uploads it when it can: {app} cannot know whether it arrived. It requires [checking the cloud every week](help_cloud_check).
+- Nothing goes out on its own: each backup is handed off by tapping **Save to Drive**, with the app open, and that cloud uploads it when it can: {app} cannot know whether it arrived. It requires [checking the cloud every week](help_cloud_check).
 - Three backups are kept, without photos. Photos are saved separately with **Export photos**.
 
 ## With another cloud

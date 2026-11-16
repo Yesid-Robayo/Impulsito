@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -193,6 +194,9 @@ class CheckoutScreenTest {
         compose.onNodeWithText(tendered).performScrollTo().performTextInput("20")
         awaitText(text(R.string.checkout_fx_equivalent, "").trim())
         val apply = text(R.string.checkout_fx_apply_action)
+        // La hoja se acomoda al escribir; con el equipo cargado, un toque antes de que el botón
+        // quede a la vista cae fuera de él.
+        compose.waitUntil(TIMEOUT_MS) { compose.onNodeWithText(apply).isDisplayed() }
         compose.onNodeWithText(apply).performClick()
         compose.waitUntil(TIMEOUT_MS) {
             compose.onAllNodesWithText(apply).fetchSemanticsNodes().isEmpty()

@@ -168,6 +168,10 @@ class HomeViewModelTest {
     private val notices = FakeNoticeStore()
     private var clockNow = now
 
+    /** Las veces que Inicio pidió la copia con `Guardar en {provider}`, y la próxima falla. */
+    private var backupRequests = 0
+    private var requestFailure: Exception? = null
+
     private fun TestScope.viewModel(): HomeViewModel {
         val model = HomeViewModel(
             todaySales = { checks ->
@@ -188,6 +192,10 @@ class HomeViewModelTest {
             },
             noticeStore = notices,
             now = { clockNow },
+            requestBackup = {
+                backupRequests += 1
+                requestFailure?.let { throw it }
+            },
         )
         // La pantalla recoge el estado mientras se ve.
         backgroundScope.launch { model.uiState.collect {} }
@@ -353,6 +361,28 @@ class HomeViewModelTest {
         advanceUntilIdle()
         assertEquals(checksAtStart + 1, profitChecks)
     }
+
+    @Test
+    fun `save to the phone cloud asks for the copy and a failure keeps the screen`() =
+        runTest(dispatcher) {
+            backupOverviews.value =
+                backupOverview(BackupDestinationKind.DOCUMENT_SLOTS, BackupStatus.PENDING)
+            val model = viewModel()
+
+            model.onAction(HomeAction.SaveToProvider)
+            advanceUntilIdle()
+            assertEquals(1, backupRequests)
+
+            // Si no se pudo pedir, la pantalla sigue, y el botón también.
+            requestFailure = IOException("Disco inventado")
+            model.onAction(HomeAction.SaveToProvider)
+            advanceUntilIdle()
+            requestFailure = IllegalStateException("Base inventada sin abrir")
+            model.onAction(HomeAction.SaveToProvider)
+            advanceUntilIdle()
+            assertEquals(3, backupRequests)
+            assertEquals(BackupStatus.PENDING, model.backup.value?.overview?.report?.status)
+        }
 
     @Test
     fun `the no destination notice shrinks on acceptance and comes back after seven days`() =

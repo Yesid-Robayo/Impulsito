@@ -22,7 +22,7 @@
     <string name="slots_other_file_action">Criar outro arquivo</string>
     <string name="slots_error_cancelled">O arquivo não foi criado. Os anteriores continuam prontos.</string>
     <string name="slots_ready_title">Arquivos prontos</string>
-    <string name="slots_ready_body">A partir de agora, %1$s entrega as cópias a %2$s. Toda semana é preciso olhar o horário do arquivo nessa nuvem.</string>
+    <string name="slots_ready_body">A partir de agora, %1$s entrega cada cópia a %2$s ao tocar em Salvar em %2$s, com o app aberto. Toda semana é preciso olhar o horário do arquivo nessa nuvem.</string>
     <string name="backup_action_other_service">Escolher outro serviço</string>
     <string name="offsite_export_photos_action">Exportar fotos</string>
     <string name="a11y_help_link">Ajuda: %1$s</string>

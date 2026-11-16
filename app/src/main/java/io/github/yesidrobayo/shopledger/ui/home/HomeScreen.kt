@@ -61,7 +61,9 @@ import io.github.yesidrobayo.shopledger.ui.backup.BackupBannerAction
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.backup.backupBannerLook
 import io.github.yesidrobayo.shopledger.ui.backup.backupChipLook
+import io.github.yesidrobayo.shopledger.ui.backup.backupNowLabel
 import io.github.yesidrobayo.shopledger.ui.backup.needsBanner
+import io.github.yesidrobayo.shopledger.ui.backup.offersSaveToProvider
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppCard
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
@@ -349,6 +351,9 @@ private data class HomeBackup(
  * Con WebDAV y fotos que llevan más de un día sin subir, una línea aparte bajo el chip, que abre
  * la pantalla del respaldo y nunca cambia el chip.
  *
+ * Con la nube del teléfono y cambios sin copia, `Guardar en {provider}` bajo el chip: allí nada
+ * sale solo, y la copia se pide aquí mismo, como en la pantalla del respaldo.
+ *
  * Sin destino, el aviso va entero con `Entendido`; aceptado, es una línea pequeña que también
  * lleva a elegir dónde guardar. Mientras no se sabe cuál toca, [notice] es `null` y no va
  * ninguno, para que el aviso no aparezca entero y se reduzca enseguida.
@@ -372,6 +377,24 @@ private fun BackupSummary(
             actionLabel = stringResource(R.string.backup_action_review),
             onClick = { onAction(HomeAction.OpenBackup) },
         )
+    }
+    // Con la nube del teléfono nada sale solo: con cambios sin copia, el botón que los guarda.
+    if (backup.offersSaveToProvider()) {
+        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+            Text(
+                stringResource(
+                    R.string.backup_state_pending_slots_detail,
+                    backup.providerLabel ?: NO_VALUE_TEXT,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            PrimaryActionButton(
+                text = backupNowLabel(backup),
+                onClick = { onAction(HomeAction.SaveToProvider) },
+                variant = ActionVariant.TONAL,
+            )
+        }
     }
     val noDestination = status == BackupStatus.NOT_CONNECTED
     when {

@@ -39,6 +39,51 @@ data class BackupWording(
     val slots: Boolean get() = overview.destinationKind == BackupDestinationKind.DOCUMENT_SLOTS
 }
 
+/**
+ * Si la pantalla ofrece `Guardar en {provider}` como acción principal: con la nube del teléfono no
+ * hay copias automáticas, y con cambios sin copia es lo único que los lleva a esa nube. Mientras
+ * sube o restaura, o con un estado que pide otra acción, no.
+ */
+fun BackupWording.offersSaveToProvider(): Boolean {
+    val report = overview.report
+    if (!slots || report.pendingChanges <= 0) return false
+    return when (report.status) {
+        BackupStatus.PENDING,
+        BackupStatus.STALE,
+        BackupStatus.FAILED,
+        BackupStatus.CHECK_DUE,
+        -> true
+
+        BackupStatus.RESTORING,
+        BackupStatus.NOT_CONNECTED,
+        BackupStatus.POLICY_PENDING,
+        BackupStatus.PERMISSION_LOST,
+        BackupStatus.CONFLICT,
+        BackupStatus.NOTHING_TO_BACK_UP,
+        BackupStatus.UPLOADING,
+        BackupStatus.HANDED_OFF,
+        BackupStatus.UP_TO_DATE,
+        BackupStatus.BLOCKED_BY_DATA_SAVER,
+        BackupStatus.WAITING_FOR_WIFI,
+        BackupStatus.WAITING_FOR_NETWORK,
+        -> false
+    }
+}
+
+/**
+ * El nombre del botón que pide una copia: `Respaldar ahora`, o con la nube del teléfono
+ * `Guardar en {provider}`, porque allí cada copia es a mano.
+ */
+@Composable
+fun backupNowLabel(wording: BackupWording?): String = if (wording?.slots == true) {
+    stringResource(
+        R.string.backup_action_save_to_provider,
+        wording.providerLabel ?: NO_VALUE_TEXT,
+    )
+} else {
+    stringResource(R.string.backup_action_now)
+}
+
 /** El tono de cada estado, como lo fija el sistema de diseño. */
 fun BackupStatus.tone(): BackupTone = when (this) {
     BackupStatus.UP_TO_DATE -> BackupTone.OK
@@ -249,14 +294,15 @@ fun backupDetail(wording: BackupWording): String? {
 
         BackupStatus.CHECK_DUE -> stringResource(R.string.backup_check_due_detail, app)
 
+        // Con la nube del teléfono nada sale solo: se entrega al tocar `Guardar en {provider}`.
         BackupStatus.PENDING ->
             when {
-                !report.savingSoon -> stringResource(R.string.backup_state_pending_late_detail)
-
                 wording.slots -> stringResource(
                     R.string.backup_state_pending_slots_detail,
                     provider,
                 )
+
+                !report.savingSoon -> stringResource(R.string.backup_state_pending_late_detail)
 
                 else -> stringResource(R.string.backup_state_pending_detail)
             }

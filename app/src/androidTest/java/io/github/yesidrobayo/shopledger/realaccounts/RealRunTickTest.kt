@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKin
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.realaccounts.RealAccounts.report
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -18,11 +19,12 @@ import org.junit.runner.RunWith
  *
  * [tick] primero describe cómo terminó la ejecución anterior del trabajo de respaldo de
  * producción, y después hace lo que hace la persona: registra una venta inventada y deja la app.
- * Con WebDAV, la subida se encola como cuando la app pasa a segundo plano. Con la nube del
- * teléfono, como cuando se abre tras un día sin copia: así la corrida no espera la hora entera
- * entre escrituras que exige la app con ranuras, y el trabajo que corre es el mismo. La
- * instrumentación termina, el proceso de la app muere, y el trabajo corre después, con la app
- * cerrada, cuando el sistema le da turno según el *bucket* y Doze que fijó el guion.
+ * Con WebDAV, la subida se encola como cuando la app pasa a segundo plano. La instrumentación
+ * termina, el proceso de la app muere, y el trabajo corre después, con la app cerrada, cuando el
+ * sistema le da turno según el *bucket* y Doze que fijó el guion.
+ *
+ * Con la nube del teléfono no hay copias automáticas: al dejar la app no queda ninguna subida
+ * encolada, y la prueba lo exige. Esas copias se guardan a mano, con la app abierta.
  *
  * [probe] solo describe la última ejecución, al final de la corrida.
  *
@@ -53,8 +55,10 @@ class RealRunTickTest {
         when (kind) {
             BackupDestinationKind.WEBDAV -> scheduler.onAppBackgrounded()
 
-            BackupDestinationKind.DOCUMENT_SLOTS ->
+            BackupDestinationKind.DOCUMENT_SLOTS -> {
                 scheduler.onAppOpened(AppOpenUpload.PAST_INTERVAL)
+                scheduler.onAppBackgrounded()
+            }
 
             null -> Unit
         }
@@ -76,6 +80,10 @@ class RealRunTickTest {
             "bucket" to RealAccounts.standbyBucket(),
             "atMs" to System.currentTimeMillis(),
         )
+        if (kind == BackupDestinationKind.DOCUMENT_SLOTS) {
+            assertFalse("Con ranuras quedó una subida encolada", queued)
+            return@runBlocking
+        }
         assertTrue("La subida no quedó encolada", queued)
         // Si el sistema ya arrancó la subida en este proceso, se espera a que termine: al acabar la
         // prueba, el sistema mata el proceso y la cortaría a medias. Con Doze forzado no arranca

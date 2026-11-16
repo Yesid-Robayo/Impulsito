@@ -181,25 +181,17 @@ object BackupStatusResolver {
 
     /**
      * La espera es todavía la corta: menos de [BackupTimings.SAVING_SOON] desde el cambio más viejo
-     * sin copia. Con la nube del teléfono y su intervalo corriendo, esperar es lo normal, y el
-     * margen cuenta desde que el intervalo vence.
+     * sin copia. Con la nube del teléfono nada sale solo, así que el texto nunca promete que se
+     * guarda en un momento: dice que se entrega al tocar `Guardar en {provider}`.
      *
      * Solo se pide con [BackupStatus.PENDING]: con la hora anterior al cambio más viejo ya ganó
      * [BackupStatus.STALE]. Sin la hora de ese cambio no hay con qué medir, y el texto no promete
      * que se guarda en un momento.
      */
     private fun savingSoon(facts: BackupStatusFacts, now: Instant): Boolean {
+        if (facts.destinationKind == BackupDestinationKind.DOCUMENT_SLOTS) return false
         val oldest = facts.firstUnsyncedAt ?: return false
-        var start = oldest
-        val lastUpload = facts.lastUploadFinishedAt
-        if (
-            facts.destinationKind == BackupDestinationKind.DOCUMENT_SLOTS &&
-            lastUpload != null &&
-            now >= lastUpload
-        ) {
-            start = maxOf(start, lastUpload + BackupTimings.SLOT_MIN_INTERVAL)
-        }
-        return now - start < BackupTimings.SAVING_SOON
+        return now - oldest < BackupTimings.SAVING_SOON
     }
 
     /** Pasó [period] desde [since], o la hora es anterior a [since]: un reloj raro vence el plazo. */

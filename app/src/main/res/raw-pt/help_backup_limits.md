@@ -1,11 +1,11 @@
-Os dados ficam neste telefone. Uma cópia de segurança os protege se o telefone for perdido ou danificado. {app} faz as cópias sozinho, depois das mudanças, e nunca sobrescreve a última cópia boa.
+Os dados ficam neste telefone. Uma cópia de segurança os protege se o telefone for perdido ou danificado. Com WebDAV, {app} faz as cópias sozinho, depois das mudanças. Com a nuvem do telefone, cada cópia é salva manualmente. Nos dois casos, nunca sobrescreve a última cópia boa.
 
 ## O que pode ser perdido
 
 O que foi registrado depois da última cópia que chegou de verdade.
 
 - Com **Serviço com WebDAV**, {app} envia e confere cada cópia. Com Wi-Fi, o normal é arriscar só os últimos minutos. Com dados móveis pode demorar mais, exceto ao tocar em **Fazer cópia agora**. Sem internet, não sai.
-- Com **Drive do telefone**, {app} entrega cada cópia a essa nuvem e não consegue saber se ela subiu. Se essa nuvem falhar sem avisar e o telefone for perdido, perde-se tudo o que veio depois da última cópia que subiu de verdade: uns 7 dias ou mais. Por isso é preciso [revisar a nuvem toda semana](help_cloud_check).
+- Com **Drive do telefone**, nada sai sozinho: cada cópia é entregue ao tocar em **Salvar em Drive**, com o app aberto, e o que for registrado depois fica só no telefone até a próxima vez. {app} não consegue saber se essa nuvem enviou a cópia. Se essa nuvem falhar sem avisar e o telefone for perdido, perde-se tudo o que veio depois da última cópia que subiu de verdade: uns 7 dias ou mais. Por isso é preciso [revisar a nuvem toda semana](help_cloud_check).
 
 ## A linha que manda
 
@@ -15,7 +15,7 @@ Em **Início** e em **Cópia de segurança**:
 - **Cópia entregue a Drive. Falta revisar se aparece.**, com **Última entrega**: só com a nuvem do telefone. Entregue não é o mesmo que salva.
 - **Fotos: N sem cópia**: há fotos ou comprovantes que ainda não têm cópia. **Tudo salvo** não os inclui.
 - Sem internet, a cópia sai quando a conexão volta. Com dados móveis, {app} diz quando sai a próxima. Até lá, o que é novo só está no telefone.
-- **Mais de um dia sem cópia**: o aviso mais importante. Conectar-se à internet e tocar em **Fazer cópia agora**.
+- **Mais de um dia sem cópia**: o aviso mais importante. Conectar-se à internet e tocar em **Fazer cópia agora**, ou com a nuvem do telefone, em **Salvar em Drive**.
 - **Falha na cópia**: embaixo diz o que aconteceu e o que fazer.
 - **Sem cópia**: não foi escolhido onde salvar. Se o telefone for perdido, os dados são perdidos.
 

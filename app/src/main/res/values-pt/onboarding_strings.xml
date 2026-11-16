@@ -28,7 +28,7 @@
     <string name="legal_not_accounting">O %1$s registra a gestão interna do negócio. Não substitui a contabilidade oficial e não emite documentos fiscais.</string>
     <string name="backup_limits_every_60_min">Com Wi-Fi, o normal é arriscar só os últimos minutos. Com dados móveis, até cerca de uma hora, salvo ao tocar em Fazer cópia agora. Sem internet, se o telefone for perdido, o que foi registrado desde a última cópia será perdido.</string>
     <!-- backup_limits_slots: %1$s = provider -->
-    <string name="backup_limits_slots">Se %1$s enviar bem, o normal é arriscar até cerca de uma hora. Se falhar sem avisar e o telefone for perdido, será perdido tudo o que veio depois da última cópia realmente enviada: cerca de 7 dias ou mais. Isso só se descobre ao revisar.</string>
+    <string name="backup_limits_slots">Nada sai sozinho: o que se arrisca é o registrado desde a última vez que se tocou em Salvar em %1$s. Se %1$s falhar sem avisar e o telefone for perdido, será perdido tudo o que veio depois da última cópia realmente enviada: cerca de 7 dias ou mais. Isso só se descobre ao revisar.</string>
     <string name="dialog_start_over_title">Começar do zero?</string>
     <!-- dialog_start_over_body: %1$s = date -->
     <string name="dialog_start_over_body">A cópia de %1$s continua na nuvem e não é tocada. As cópias ficam paradas até a decisão.</string>

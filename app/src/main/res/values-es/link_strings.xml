@@ -8,7 +8,7 @@
     <string name="confirm_destination_disconnected">Nube desconectada</string>
     <string name="error_disconnect">No se pudo desconectar. Todo sigue como estaba.</string>
     <string name="backup_session_lost_title">Iniciar sesión en %1$s</string>
-    <string name="backup_session_lost_detail">La sesión de %1$s se cerró, y las copias están detenidas. Al iniciar sesión siguen solas, sin crear archivos nuevos. Hasta entonces, lo nuevo solo está en este teléfono.</string>
+    <string name="backup_session_lost_detail">La sesión de %1$s se cerró, y las copias están detenidas. Al iniciar sesión, Guardar en %1$s vuelve a servir, sin crear archivos nuevos. Hasta entonces, lo nuevo solo está en este teléfono.</string>
     <string name="backup_session_open_failed">No se pudo abrir %1$s desde aquí. Se puede abrir esa app a mano e iniciar sesión.</string>
     <string name="backup_pinned_max">Ya hay %1$d copias fijadas. Para seguir se debe liberar una.</string>
     <string name="conflict_body_other_device">La copia del %1$s viene de otro teléfono. Las copias se detuvieron para no perder nada.</string>

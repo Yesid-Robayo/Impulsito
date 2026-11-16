@@ -6,8 +6,9 @@ enum class AppOpenUpload {
     NONE,
 
     /**
-     * Encola la subida de inmediato, con la app a la vista. Con datos móviles, o con la nube del
-     * teléfono, respeta el intervalo entre subidas automáticas.
+     * Encola la subida de inmediato, con la app a la vista. Con datos móviles respeta el intervalo
+     * entre subidas automáticas. Con la nube del teléfono no encola nada: no tiene copias
+     * automáticas, y la persona la pide con `Guardar en {provider}`.
      */
     RESPECTING_INTERVAL,
 

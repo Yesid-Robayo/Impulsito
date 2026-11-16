@@ -25,8 +25,13 @@ import kotlin.time.Instant
  *   subida. Es un trabajo aparte porque reemplazar una subida que corre la cortaría.
  * - **Las dos subidas** de WebDAV: una sin retraso que solo corre con una red sin datos móviles, y
  *   otra con cualquier red y el resto del intervalo de datos móviles como retraso. Las dos se
- *   encolan sin reemplazar la que ya espera o corre. Con la nube del teléfono va solo la segunda,
- *   sin pedir red y con su propio intervalo ([UploadCadence]).
+ *   encolan sin reemplazar la que ya espera o corre.
+ *
+ * **Con la nube del teléfono nada sale solo.** Ningún evento encola una subida ni la espera del
+ * destino: solo `Guardar en {provider}`, que es [backupNow], con la app abierta. Al pasar a
+ * segundo plano se cancela la que todavía no empezó, y la compuerta del motor no deja escribir
+ * una que corra con la app cerrada ([UploadCadence.manualGate]). La sonda de la cabeza y la
+ * carpeta local siguen igual: no escriben en esa nube.
  *
  * **Nada se encola con una restauración en curso o a medias:** la base puede cambiar entera, y el
  * arranque retoma el respaldo al terminar.
@@ -71,6 +76,8 @@ class BackupScheduler internal constructor(
     internal suspend fun onDataChanged() {
         if (!restorePending()) followStreak()
         if (paused()) return
+        // Con la nube del teléfono la espera solo le sirve a la carpeta que sigue a la copia.
+        if (manualOnly() && !followsMainBackup()) return
         queue.restartDebounce(BackupTimings.BACKUP_DEBOUNCE)
         val current = uploadable() ?: return
         if (current.failureCode == BackupFailureCode.LOCAL_INVARIANT_FATAL.name) return
@@ -93,10 +100,23 @@ class BackupScheduler internal constructor(
 
     /**
      * La app pasó a segundo plano: con cambios sin copia, la subida sale ya, sin esperar, salvo lo
-     * que pida la red: con datos móviles respeta el intervalo, y con la nube del teléfono el suyo.
+     * que pida la red: con datos móviles respeta el intervalo.
+     *
+     * Con la nube del teléfono no sale nada: se cancelan la espera y la copia pedida que
+     * todavía no empezó, para que ningún trabajo quede programado para esa nube con la app
+     * cerrada. Una que ya escribe termina. Con `Mantener al día esta carpeta`, la carpeta local
+     * no espera.
      */
     suspend fun onAppBackgrounded() {
         if (restorePending()) return
+        if (manualOnly()) {
+            queue.cancel(BackupWorkNames.DEBOUNCE)
+            if (queue.uploadWork() != BackupUploadWork.RUNNING) {
+                queue.cancel(BackupWorkNames.UPLOAD)
+            }
+            followWithoutUpload()
+            return
+        }
         val current = uploadable() ?: return
         queue.cancel(BackupWorkNames.DEBOUNCE)
         enqueueUpload(current, pastInterval = false)
@@ -122,6 +142,9 @@ class BackupScheduler internal constructor(
     /**
      * `Respaldar ahora`: una subida sin espera ni intervalo, con cualquier red, y aunque la cuota
      * informada diga que no cabe. Sin red queda encolada hasta que vuelva.
+     *
+     * Con la nube del teléfono es `Guardar en {provider}`, la única forma de escribir una copia
+     * allí: no pide red, y solo escribe si la app sigue a la vista cuando empieza.
      */
     suspend fun backupNow(): BackupNowRequest {
         if (restorePending()) return BackupNowRequest.RESTORE_IN_PROGRESS
@@ -172,7 +195,8 @@ class BackupScheduler internal constructor(
                 if (facts()?.connectedKind == BackupDestinationKind.WEBDAV) {
                     queue.keepMediaSync(mediaOnMetered())
                 }
-                if (facts()?.hasPending == true) {
+                // Con la nube del teléfono, lo que quedó espera a que la persona lo guarde.
+                if (facts()?.hasPending == true && !manualOnly()) {
                     queue.restartDebounce(BackupTimings.BACKUP_DEBOUNCE)
                 }
             }
@@ -185,6 +209,8 @@ class BackupScheduler internal constructor(
                     // Con la nube del teléfono, la copia que la app no restauraría no se escribió.
                     SkipReason.UNRESTORABLE_NOT_WRITTEN -> cancelOtherUpload(workName)
 
+                    // Con la nube del teléfono, nada se vuelve a programar: espera a la persona.
+                    SkipReason.WAITING_FOR_PERSON,
                     SkipReason.NOT_CONNECTED,
                     SkipReason.POLICY_PENDING,
                     SkipReason.NOTHING_PENDING,
@@ -308,15 +334,27 @@ class BackupScheduler internal constructor(
     }
 
     /**
-     * Venció la espera: con `Mantener al día esta carpeta`, sin destino conectado o con la copia
-     * principal esperando red, la carpeta no espera. Con red, la escribe el paso 9b.
+     * Venció la espera: con `Mantener al día esta carpeta`, sin un destino con copias
+     * automáticas o con la copia principal esperando red, la carpeta no espera. Con red, la
+     * escribe el paso 9b. Con la nube del teléfono la copia principal espera a la persona, y la
+     * carpeta no.
      */
     private suspend fun followWithoutUpload() {
         val second = secondDestination()?.takeIf { it.followMainBackup } ?: return
         if (second.changeSeq == second.lastCopySeq) return
-        val connected = facts()?.connectedKind != null
-        if (!connected || mainWaitingForNetwork()) queue.keepSecondDestination()
+        val automatic = facts()?.connectedKind?.let(UploadCadence::automatic) == true
+        if (!automatic || mainWaitingForNetwork()) queue.keepSecondDestination()
     }
+
+    /** Si la carpeta local sigue a la copia principal, con `Mantener al día esta carpeta`. */
+    private suspend fun followsMainBackup(): Boolean = secondDestination()?.followMainBackup == true
+
+    /**
+     * Si el destino conectado es la nube del teléfono, sin copias automáticas: nada de lo que va a
+     * ese destino se programa solo.
+     */
+    private suspend fun manualOnly(): Boolean =
+        facts()?.connectedKind?.let { !UploadCadence.automatic(it) } == true
 
     /** La restauración se canceló: lo que quedó pendiente vuelve a encolarse. */
     internal suspend fun resumeAfterRestore() {

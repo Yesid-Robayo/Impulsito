@@ -28,7 +28,7 @@
     <string name="legal_not_accounting">%1$s records the internal management of the business. It does not replace official accounting and does not issue tax documents.</string>
     <string name="backup_limits_every_60_min">On Wi-Fi, usually only the last few minutes are at risk. On mobile data, up to about an hour, unless Back up now is tapped. With no internet, if the phone is lost, everything recorded since the last backup is lost.</string>
     <!-- backup_limits_slots: %1$s = provider -->
-    <string name="backup_limits_slots">If %1$s uploads normally, up to about an hour is usually at risk. If it fails silently and the phone is lost, everything after the last backup that truly uploaded is lost: about 7 days or more. It only comes to light when checking.</string>
+    <string name="backup_limits_slots">Nothing goes out on its own: what is at risk is everything recorded since Save to %1$s was last tapped. If %1$s fails silently and the phone is lost, everything after the last backup that truly uploaded is lost: about 7 days or more. It only comes to light when checking.</string>
     <string name="dialog_start_over_title">Start from scratch?</string>
     <!-- dialog_start_over_body: %1$s = date -->
     <string name="dialog_start_over_body">The backup from %1$s stays in the cloud and is not touched. Backups stay stopped until a decision is made.</string>

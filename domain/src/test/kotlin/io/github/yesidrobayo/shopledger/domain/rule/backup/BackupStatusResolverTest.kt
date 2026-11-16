@@ -409,28 +409,18 @@ class BackupStatusResolverTest {
     }
 
     @Test
-    fun `with slots the fifteen minutes count from the end of the slot interval`() {
-        val waiting =
-            slots.copy(
-                changeSeq = 41,
-                firstUnsyncedAt = now - 40.minutes,
-                lastUploadFinishedAt = now - 50.minutes,
-            )
+    fun `with slots nothing leaves on its own, so pending never says it saves soon`() {
+        val waiting = slots.copy(changeSeq = 41, firstUnsyncedAt = now - 1.minutes)
 
-        // El intervalo vence en diez minutos: esperar es lo normal.
-        assertTrue(BackupStatusResolver.resolve(waiting, now).savingSoon)
-        // Catorce minutos después de vencer, todavía es la espera corta.
-        assertTrue(BackupStatusResolver.resolve(waiting, now + 24.minutes).savingSoon)
-        assertFalse(BackupStatusResolver.resolve(waiting, now + 25.minutes).savingSoon)
-        // Sin subida anterior, cuenta desde el cambio más viejo.
-        assertFalse(
-            BackupStatusResolver.resolve(waiting.copy(lastUploadFinishedAt = null), now).savingSoon,
-        )
-        // Una subida en el futuro es un reloj atrasado: el intervalo ya venció.
-        assertFalse(
-            BackupStatusResolver.resolve(waiting.copy(lastUploadFinishedAt = now + 5.minutes), now)
-                .savingSoon,
-        )
+        // Recién registrado, con una entrega anterior o sin ella: el texto nunca promete un
+        // momento.
+        for (last in listOf(null, now - 50.minutes, now + 5.minutes)) {
+            assertEquals(
+                "$last",
+                BackupStatusReport(BackupStatus.PENDING, 1, savingSoon = false),
+                BackupStatusResolver.resolve(waiting.copy(lastUploadFinishedAt = last), now),
+            )
+        }
     }
 
     @Test

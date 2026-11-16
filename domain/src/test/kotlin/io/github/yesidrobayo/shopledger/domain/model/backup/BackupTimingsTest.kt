@@ -16,7 +16,6 @@ class BackupTimingsTest {
         assertEquals(24.hours, BackupTimings.STALE_NOTICE)
         assertEquals(15.minutes, BackupTimings.SAVING_SOON)
         assertEquals(7.days, BackupTimings.HUMAN_CHECK)
-        assertEquals(60.minutes, BackupTimings.SLOT_MIN_INTERVAL)
         assertEquals(6L, BackupTimings.TRANSPORT_FAILURES_BEFORE_PERSISTENT)
     }
 

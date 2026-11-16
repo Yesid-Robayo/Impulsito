@@ -40,6 +40,7 @@ import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.EventLog
 import io.github.yesidrobayo.shopledger.domain.port.LogField
 import io.github.yesidrobayo.shopledger.domain.port.warn
+import io.github.yesidrobayo.shopledger.domain.rule.backup.UploadCadence
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.CoroutineContext
@@ -430,12 +431,25 @@ internal class BackupRunner(
      * La compuerta de red del paso 0, para una copia automática. `Respaldar ahora` y la copia que
      * ya lleva un día no la miran. Si deja pasar con una red sin datos móviles y con datos móviles
      * habría hecho esperar, la subida se corta si la red pasa a medida.
+     *
+     * Con la nube del teléfono no hay copias automáticas: solo escribe la que pidió la persona con
+     * `Guardar en {provider}`, y solo con la app a la vista. Cualquier otra sale sin escribir.
      */
     private suspend fun gate(
         kind: BackupDestinationKind,
         current: BackupStateEntity,
         control: RunControl,
     ): BackupRun? {
+        if (!UploadCadence.automatic(kind)) {
+            return when (uploadGate.manual(requested = control.isBackupNow())) {
+                UploadGateVerdict.PROCEED -> null
+
+                UploadGateVerdict.WAIT_FOR_INTERVAL,
+                UploadGateVerdict.WAIT_FOR_UNMETERED,
+                UploadGateVerdict.WAIT_FOR_PERSON,
+                -> BackupRun.Skipped(SkipReason.WAITING_FOR_PERSON)
+            }
+        }
         if (control.isBackupNow() || control.isPastInterval()) return null
         val metered = control.isMetered()
         return when (uploadGate.check(kind, current.lastUploadFinishedAt, metered)) {
@@ -453,6 +467,8 @@ internal class BackupRunner(
 
             UploadGateVerdict.WAIT_FOR_UNMETERED ->
                 BackupRun.Skipped(SkipReason.WAITING_FOR_UNMETERED)
+
+            UploadGateVerdict.WAIT_FOR_PERSON -> BackupRun.Skipped(SkipReason.WAITING_FOR_PERSON)
         }
     }
 

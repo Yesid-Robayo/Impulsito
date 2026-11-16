@@ -28,6 +28,7 @@ import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.backup.backupChipLook
+import io.github.yesidrobayo.shopledger.ui.backup.backupNowLabel
 import io.github.yesidrobayo.shopledger.ui.backup.restartForRestore
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.BackupStatusChip
@@ -134,6 +135,7 @@ fun StorageRoute(key: AppNavKey.StorageAndDeletion, navigator: AppNavigator) {
                 uiState = uiState,
                 backupStatus = backupStatus,
                 topBarActions = { ScreenHelpLink(HelpTopic.STORAGE) },
+                backupNowLabel = backup?.let { backupNowLabel(it) },
             ) { action ->
                 when (action) {
                     StorageAction.Back -> navigator.back()

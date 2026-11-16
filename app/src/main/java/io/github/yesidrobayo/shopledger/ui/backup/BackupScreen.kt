@@ -191,6 +191,7 @@ private fun LazyListScope.overview(uiState: BackupUiState, onAction: (BackupActi
                 StatusBlock(wording)
                 Notices(wording)
                 MainAction(wording, uiState.requesting, onAction)
+                if (wording.slots) SlotsManualNote()
                 uiState.handoff?.takeIf { wording.slots }?.let { CloudCheck(it, wording, onAction) }
             }
         }
@@ -496,7 +497,10 @@ private fun Notices(wording: BackupWording) {
     }
 }
 
-/** La acción del estado: elegir dónde guardar, reconectar o `Respaldar ahora`. */
+/**
+ * La acción del estado: elegir dónde guardar, reconectar, o `Respaldar ahora`, que con la nube del
+ * teléfono es `Guardar en {provider}`.
+ */
 @Composable
 private fun MainAction(
     wording: BackupWording,
@@ -548,7 +552,7 @@ private fun MainAction(
 
         BackupStatus.UPLOADING, BackupStatus.RESTORING ->
             PrimaryActionButton(
-                text = stringResource(R.string.backup_action_now),
+                text = backupNowLabel(wording),
                 onClick = {},
                 variant = ActionVariant.TONAL,
                 enabled = false,
@@ -566,12 +570,31 @@ private fun MainAction(
         BackupStatus.FAILED,
         ->
             PrimaryActionButton(
-                text = stringResource(R.string.backup_action_now),
+                text = backupNowLabel(wording),
                 onClick = { onAction(BackupAction.BackUpNow) },
-                variant = ActionVariant.TONAL,
+                // Con la nube del teléfono y cambios sin copia, guardarlos es la acción principal.
+                variant =
+                    if (wording.offersSaveToProvider()) {
+                        ActionVariant.PRIMARY
+                    } else {
+                        ActionVariant.TONAL
+                    },
                 enabled = !requesting,
             )
     }
+}
+
+/**
+ * Con la nube del teléfono, bajo el botón: nada sale solo, y cada copia se entrega a mano, con la
+ * app abierta.
+ */
+@Composable
+private fun SlotsManualNote() {
+    Text(
+        stringResource(R.string.backup_slots_manual_note, stringResource(R.string.app_name)),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /**

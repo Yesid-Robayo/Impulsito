@@ -11,7 +11,7 @@
 **Drive do telefone**, **Mais fácil**:
 
 - Funciona com a nuvem que já está no telefone, com três arquivos criados uma vez.
-- {app} entrega cada cópia, e essa nuvem a envia quando pode: {app} não consegue saber se chegou. Exige [revisar a nuvem toda semana](help_cloud_check).
+- Nada sai sozinho: cada cópia é entregue ao tocar em **Salvar em Drive**, com o app aberto, e essa nuvem a envia quando pode: {app} não consegue saber se chegou. Exige [revisar a nuvem toda semana](help_cloud_check).
 - São guardadas três cópias, sem fotos. As fotos são guardadas à parte com **Exportar fotos**.
 
 ## Com outra nuvem

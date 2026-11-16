@@ -22,7 +22,7 @@
     <string name="slots_other_file_action">Create another file</string>
     <string name="slots_error_cancelled">The file was not created. The earlier ones are still ready.</string>
     <string name="slots_ready_title">Files ready</string>
-    <string name="slots_ready_body">From now on, %1$s hands backups to %2$s. Every week, the file\'s time must be checked in that cloud.</string>
+    <string name="slots_ready_body">From now on, %1$s hands each backup to %2$s when Save to %2$s is tapped, with the app open. Every week, the file\'s time must be checked in that cloud.</string>
     <string name="backup_action_other_service">Choose another service</string>
     <string name="offsite_export_photos_action">Export photos</string>
     <string name="a11y_help_link">Help: %1$s</string>

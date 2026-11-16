@@ -76,6 +76,12 @@ sealed interface HomeAction {
     /** Copias en pausa por la política: la muestra para aceptarla. */
     data object ReviewPolicy : HomeAction
 
+    /**
+     * `Guardar en {provider}`: con la nube del teléfono y cambios sin copia, pide la copia,
+     * igual que en la pantalla del respaldo. Allí nada sale solo.
+     */
+    data object SaveToProvider : HomeAction
+
     /** `Entendido` en el aviso sin destino: se reduce a una línea hasta que toque volver. */
     data object AcknowledgeNoDestination : HomeAction
 

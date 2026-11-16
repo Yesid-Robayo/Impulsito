@@ -251,6 +251,8 @@ import kotlinx.coroutines.withContext
  *   pide al lanzar una, no al crear esta clase.
  * @param demoFiles los archivos del modo demostración, siempre aparte de los de la base. Se
  *   piden en [ioContext], como [files].
+ * @param appVisible si la app está a la vista ahora, con alguna pantalla en primer plano. Con la
+ *   nube del teléfono, el motor solo escribe así. Sin ella, nunca escribe allí.
  */
 class DataGraph internal constructor(
     private val context: Context,
@@ -267,6 +269,7 @@ class DataGraph internal constructor(
     private val currentPolicy: PolicyVersions = PolicyVersions.CURRENT,
     private val notifier: () -> BackupNotifier = { BackupNotifier.None },
     private val demoFiles: () -> DemoFiles = { DemoFiles(context.noBackupFilesDir) },
+    private val appVisible: () -> Boolean = { false },
 ) {
     private val mutex = Mutex()
 
@@ -1321,6 +1324,7 @@ class DataGraph internal constructor(
             localEncryption = ::localEncryption,
             offHeadKeyId = ::noteOffHeadKeyId,
             currentKeyId = ::currentKeyId,
+            appVisible = appVisible,
         )
     }
 
@@ -1446,12 +1450,16 @@ class DataGraph internal constructor(
     /**
      * La capa de datos de la app, con su base en la carpeta de bases, el registro de Android y los
      * trabajos del respaldo en la biblioteca de trabajos del sistema.
+     *
+     * @param appVisible si la app está a la vista ahora. La app lo lee de su ciclo de vida: sin
+     *   él, el motor nunca escribe en la nube del teléfono.
      */
     constructor(
         context: Context,
         ioContext: CoroutineContext,
         clock: Clock,
         notifier: () -> BackupNotifier = { BackupNotifier.None },
+        appVisible: () -> Boolean = { false },
     ) : this(
         context = context.applicationContext,
         ioContext = ioContext,
@@ -1460,6 +1468,7 @@ class DataGraph internal constructor(
         log = AndroidEventLog(),
         workQueue = ::WorkManagerBackupQueue,
         notifier = notifier,
+        appVisible = appVisible,
     )
 
     /** `second-destination.json`, en `noBackupFilesDir`. Crearlo no toca el disco. */

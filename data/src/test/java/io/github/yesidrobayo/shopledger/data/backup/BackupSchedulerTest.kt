@@ -114,12 +114,98 @@ class BackupSchedulerTest {
     }
 
     @Test
-    fun withThePhoneCloudOnlyOneUploadWithoutNetworkAndItsOwnInterval() = runBlocking {
+    fun withThePhoneCloudNoEventSchedulesACopyOrTheWait() = runBlocking {
+        // Una racha larga, un día sin copia y la última entrega lejos: nada de eso la saca sola.
+        facts =
+            facts?.copy(
+                connectedKind = BackupDestinationKind.DOCUMENT_SLOTS,
+                firstUnsyncedAt = now - (24 * 60 + 30).minutes,
+                lastUploadFinishedAt = now - (3 * 60).minutes,
+            )
+
+        scheduler.onDataChanged()
+        assertTrue(scheduler.onDebounceElapsed())
+        scheduler.onAppOpened(AppOpenUpload.RESPECTING_INTERVAL)
+        scheduler.onAppOpened(AppOpenUpload.PAST_INTERVAL)
+        scheduler.onMeteredPolicyChanged()
+        scheduler.onPolicyAccepted()
+        scheduler.onLinkRestored()
+        scheduler.onDestinationChanged()
+        scheduler.reconcile()
+        scheduler.resumeAfterRestore()
+        scheduler.onRunFinished(BackupRun.Verified(4), BackupWorkNames.UPLOAD)
+        scheduler.onRunFinished(BackupRun.Skipped(SkipReason.WAITING_FOR_PERSON), null)
+        scheduler.onAppBackgrounded()
+
+        val copies = listOf("debounce", "keep unmetered", "keep upload", "replace upload")
+        assertTrue(
+            "${queue.calls}",
+            queue.calls.none { call -> copies.any { call.startsWith(it) } },
+        )
+        assertTrue("${queue.queued}", queue.queued.isEmpty())
+    }
+
+    @Test
+    fun withThePhoneCloudGoingToTheBackgroundDropsTheCopyThatHasNotStarted() = runBlocking {
         facts = facts?.copy(connectedKind = BackupDestinationKind.DOCUMENT_SLOTS)
+        assertEquals(BackupNowRequest.QUEUED, scheduler.backupNow())
+        queue.calls.clear()
 
-        scheduler.onDebounceElapsed()
+        scheduler.onAppBackgrounded()
 
-        assertEquals(listOf("keep upload 40m sin red"), queue.calls)
+        assertEquals(listOf("cancel backup-debounce", "cancel backup-upload"), queue.calls)
+        assertFalse(BackupWorkNames.UPLOAD in queue.queued)
+    }
+
+    @Test
+    fun withThePhoneCloudGoingToTheBackgroundLetsTheCopyThatWritesFinish() = runBlocking {
+        facts = facts?.copy(connectedKind = BackupDestinationKind.DOCUMENT_SLOTS)
+        queue.running += BackupWorkNames.UPLOAD
+
+        scheduler.onAppBackgrounded()
+
+        assertEquals(listOf("cancel backup-debounce"), queue.calls)
+    }
+
+    @Test
+    fun withThePhoneCloudTheFolderThatFollowsTheCopyStillDoesNotWait() = runBlocking {
+        facts = facts?.copy(connectedKind = BackupDestinationKind.DOCUMENT_SLOTS)
+        var follow = true
+        val folder =
+            BackupScheduler(
+                facts = { facts },
+                restorePending = { restore },
+                policyAccepted = { accepted },
+                queue = queue,
+                clock = Clock { now },
+                secondDestination = {
+                    SecondDestinationFacts(
+                        followMainBackup = follow,
+                        lastCopyAt = now - 5.minutes,
+                        lastCopySeq = 3,
+                        changeSeq = 4,
+                    )
+                },
+            )
+
+        // La espera queda solo para la carpeta, y al vencer la escribe sin esperar a nadie.
+        folder.onDataChanged()
+        assertTrue(folder.onDebounceElapsed())
+        assertEquals(listOf("debounce 1m 30s", "keep second destination"), queue.calls)
+
+        // Al pasar a segundo plano, la carpeta tampoco espera.
+        queue.calls.clear()
+        folder.onAppBackgrounded()
+        assertEquals(
+            listOf("cancel backup-debounce", "cancel backup-upload", "keep second destination"),
+            queue.calls,
+        )
+
+        // Sin seguir a la copia principal, un cambio no programa nada.
+        queue.calls.clear()
+        follow = false
+        folder.onDataChanged()
+        assertEquals(emptyList<String>(), queue.calls)
     }
 
     @Test
@@ -247,6 +333,7 @@ class BackupSchedulerTest {
         val runs =
             listOf(
                 BackupRun.Skipped(SkipReason.WAITING_FOR_UNMETERED),
+                BackupRun.Skipped(SkipReason.WAITING_FOR_PERSON),
                 BackupRun.Skipped(SkipReason.NOTHING_PENDING),
                 BackupRun.Skipped(SkipReason.NOT_CONNECTED),
                 BackupRun.Skipped(SkipReason.POLICY_PENDING),
@@ -591,16 +678,26 @@ class BackupSchedulerTest {
     }
 
     @Test
-    fun aChangedDestinationProbesWithItsNetworkAndQueuesTheForcedUpload() = runBlocking {
-        facts = facts?.copy(connectedKind = BackupDestinationKind.DOCUMENT_SLOTS)
+    fun aChangedDestinationProbesWithItsNetworkAndQueuesTheForcedUploadOnlyWithWebDav() =
+        runBlocking {
+            scheduler.onDestinationChanged()
+            assertEquals(
+                listOf(
+                    "keep head checks con red",
+                    "probe once con red",
+                    "keep unmetered",
+                    "keep upload 40m con red",
+                ),
+                queue.calls,
+            )
 
-        scheduler.onDestinationChanged()
-
-        assertEquals(
-            listOf("keep head checks sin red", "probe once sin red", "keep upload 40m sin red"),
-            queue.calls,
-        )
-    }
+            // Con la nube del teléfono la primera copia la guarda la persona.
+            queue.calls.clear()
+            queue.queued.clear()
+            facts = facts?.copy(connectedKind = BackupDestinationKind.DOCUMENT_SLOTS)
+            scheduler.onDestinationChanged()
+            assertEquals(listOf("keep head checks sin red", "probe once sin red"), queue.calls)
+        }
 
     @Test
     fun aChangedDestinationQueuesNothingWhilePausedOrWithoutDestination() = runBlocking {

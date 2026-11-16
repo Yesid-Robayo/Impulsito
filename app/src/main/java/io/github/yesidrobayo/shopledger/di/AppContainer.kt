@@ -2,6 +2,8 @@ package io.github.yesidrobayo.shopledger.di
 
 import android.app.Application
 import android.content.Context
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import io.github.yesidrobayo.shopledger.data.DataAccess
 import io.github.yesidrobayo.shopledger.data.DataGraph
@@ -74,9 +76,22 @@ class AppContainer(application: Application) {
     /**
      * La capa de datos. Su base todavía no está abierta. Las notificaciones del respaldo, que se
      * declaran más abajo, se piden al lanzar una, cuando ya existen.
+     *
+     * Con la nube del teléfono, el motor solo escribe con la app a la vista: lo dice el ciclo de
+     * vida del proceso, que pasa a detenido poco después de que se va la última pantalla.
      */
     val data: DataGraph =
-        DataGraph(application, dispatchers.io, clock, notifier = { backupNotifier })
+        DataGraph(
+            application,
+            dispatchers.io,
+            clock,
+            notifier = { backupNotifier },
+            appVisible = {
+                ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(
+                    Lifecycle.State.STARTED,
+                )
+            },
+        )
 
     /** El único punto de registro de la app. */
     val log: EventLog = data.log

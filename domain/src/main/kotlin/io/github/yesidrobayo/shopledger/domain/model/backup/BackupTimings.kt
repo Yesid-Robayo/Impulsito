@@ -41,12 +41,6 @@ object BackupTimings {
     val HEAD_DEEP_CHECK: Duration = 30.days
 
     /**
-     * Lo menos que pasa entre dos escrituras automáticas en la nube del teléfono, con cualquier red:
-     * cada escritura es una subida completa de la otra app.
-     */
-    val SLOT_MIN_INTERVAL: Duration = 60.minutes
-
-    /**
      * Cuánto espera la copia después del último cambio, para juntar en una sola los cambios
      * seguidos. Cada cambio nuevo vuelve a empezar la espera.
      */

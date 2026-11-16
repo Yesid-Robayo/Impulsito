@@ -39,6 +39,8 @@ import kotlinx.coroutines.sync.Mutex
  * @param localEncryption el cifrado de las copias como lo mira la guarda.
  * @param currentKeyId la clave vigente para la poda, o nula sin cifrado.
  * @param offHeadKeyId anota la clave de la cabeza cifrada cuando se apagó el cifrado sin código.
+ * @param appVisible si la app está a la vista ahora. Con la nube del teléfono solo se escribe así,
+ *   y por defecto nunca: ningún trabajo escribe allí con la app cerrada.
  */
 internal fun productionBackupEngine(
     context: Context,
@@ -57,6 +59,7 @@ internal fun productionBackupEngine(
     localEncryption: suspend () -> LocalEncryption = { LocalEncryption.NONE },
     offHeadKeyId: suspend (String) -> Unit = {},
     currentKeyId: suspend () -> String? = { null },
+    appVisible: () -> Boolean = { false },
 ): BackupEngine = DatabaseBackupEngine(
     restoreMarkers = { RestoreMarkers(noBackupDirectory()) },
     openForWork = openForWork,
@@ -106,6 +109,7 @@ internal fun productionBackupEngine(
                 PolicyUploadGate(
                     policy = { ports.settings.get().preferences.meteredBackupPolicy },
                     clock = clock,
+                    appVisible = appVisible,
                 ),
             pruner =
                 RetentionPruner(

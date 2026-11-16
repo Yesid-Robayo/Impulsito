@@ -10,7 +10,7 @@ import kotlin.time.Duration
  *
  * @property unmetered encola la subida que solo corre con una red sin datos móviles, sin retraso.
  * @property anyNetworkDelay el retraso de la subida con cualquier red, o nulo si esa subida no se
- *   encola, como con `Solo con Wi-Fi`.
+ *   encola, como con `Solo con Wi-Fi` o con la nube del teléfono, que no tiene copias automáticas.
  * @property anyNetworkNeedsNetwork si esa subida espera a tener red. Con la nube del teléfono no: la
  *   red la decide la app de esa nube.
  */
@@ -33,4 +33,10 @@ enum class UploadGateVerdict {
 
     /** Con `Solo con Wi-Fi` y datos móviles: sale sin hacer nada y espera a una red sin cobro. */
     WAIT_FOR_UNMETERED,
+
+    /**
+     * Con la nube del teléfono, nada sale solo: sale sin escribir, y espera a que la persona toque
+     * `Guardar en {provider}` con la app a la vista.
+     */
+    WAIT_FOR_PERSON,
 }

@@ -8,7 +8,7 @@
     <string name="confirm_destination_disconnected">Cloud disconnected</string>
     <string name="error_disconnect">Could not disconnect. Everything is as it was.</string>
     <string name="backup_session_lost_title">Sign in to %1$s</string>
-    <string name="backup_session_lost_detail">The %1$s session ended, and backups are stopped. Once signed in they continue on their own, with no new files. Until then, anything new is only on this phone.</string>
+    <string name="backup_session_lost_detail">The %1$s session ended, and backups are stopped. Once signed in, Save to %1$s works again, with no new files. Until then, anything new is only on this phone.</string>
     <string name="backup_session_open_failed">%1$s could not be opened from here. Open that app by hand and sign in.</string>
     <string name="backup_pinned_max">There are already %1$d pinned backups. Release one to continue.</string>
     <string name="conflict_body_other_device">The backup from %1$s comes from another phone. Backups were stopped so nothing is lost.</string>

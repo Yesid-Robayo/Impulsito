@@ -1,6 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.expense
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -116,10 +117,20 @@ class RecurringExpensesScreenTest {
         show(listed().copy(form = form))
 
         val help = resources.getString(R.string.recurring_help, text(R.string.app_name))
-        compose.onNodeWithText(help).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.recurring_month_end_help))
-            .performScrollTo()
-            .assertIsDisplayed()
+        scrollUntilDisplayed(help)
+        scrollUntilDisplayed(text(R.string.recurring_month_end_help))
+    }
+
+    /**
+     * Lleva [value] a la vista dentro de la hoja y espera a que se vea. La hoja entra con una
+     * animación: con el equipo cargado, un desplazamiento hecho a mitad de camino deja el texto
+     * todavía fuera de la pantalla.
+     */
+    private fun scrollUntilDisplayed(value: String) {
+        compose.waitUntil(SHEET_TIMEOUT_MS) {
+            compose.onNodeWithText(value).performScrollTo().isDisplayed()
+        }
+        compose.onNodeWithText(value).assertIsDisplayed()
     }
 
     @Test
@@ -136,5 +147,9 @@ class RecurringExpensesScreenTest {
         compose.onNodeWithText(text(R.string.action_view)).performClick()
 
         assertEquals(listOf<ExpensesAction>(ExpensesAction.OpenRecurring), expenseActions)
+    }
+
+    private companion object {
+        const val SHEET_TIMEOUT_MS = 5_000L
     }
 }

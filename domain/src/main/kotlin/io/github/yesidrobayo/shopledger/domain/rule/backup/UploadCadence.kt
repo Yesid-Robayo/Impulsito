@@ -16,8 +16,10 @@ import kotlin.time.Instant
  * - **Con datos móviles**, a lo sumo una cada intervalo de la política, contado desde que terminó
  *   de enviarse la subida anterior, para no gastar el plan de la persona. Con `Solo con Wi-Fi`,
  *   ninguna.
- * - **Con la nube del teléfono**, a lo sumo una cada [BackupTimings.SLOT_MIN_INTERVAL], con
- *   cualquier red o sin ella: cada escritura es una subida completa de la otra app.
+ * - **Con la nube del teléfono, ninguna.** La prueba con Drive y la app cerrada no dio escrituras
+ *   válidas: nada garantiza que esa nube reciba un archivo escrito en segundo plano. Cada copia la
+ *   pide la persona con `Guardar en {provider}`, y solo se escribe con la app a la vista
+ *   ([manualGate]). Con la app cerrada no se programa ni se escribe nada en esa nube.
  *
  * **Un reloj raro nunca detiene una copia.** Una hora anterior a la que se guardó cuenta como plazo
  * vencido, igual que si no hubiera hora guardada.
@@ -26,12 +28,20 @@ import kotlin.time.Instant
  */
 object UploadCadence {
     /**
+     * Si el destino [kind] tiene copias automáticas, que salen sin que la persona las pida. Solo
+     * WebDAV: con la nube del teléfono, cada copia es a mano.
+     */
+    fun automatic(kind: BackupDestinationKind): Boolean = kind == BackupDestinationKind.WEBDAV
+
+    /**
      * Los trabajos que se encolan con el destino [kind], la política [policy] y la última subida
      * terminada en [lastUploadFinishedAt].
      *
      * Con [pastInterval] el cambio más viejo sin copia ya lleva un día, o el reloj retrocedió: la
      * subida con cualquier red sale sin retraso. Con `Solo con Wi-Fi` igual no hay subida con datos
      * móviles, porque la política de la persona no la permite.
+     *
+     * Con la nube del teléfono no se encola ninguna: ni con un día sin copia.
      */
     fun schedule(
         kind: BackupDestinationKind,
@@ -63,19 +73,15 @@ object UploadCadence {
         BackupDestinationKind.DOCUMENT_SLOTS ->
             UploadSchedule(
                 unmetered = false,
-                anyNetworkDelay =
-                    if (pastInterval) {
-                        Duration.ZERO
-                    } else {
-                        remaining(BackupTimings.SLOT_MIN_INTERVAL, lastUploadFinishedAt, now)
-                    },
+                anyNetworkDelay = null,
                 anyNetworkNeedsNetwork = false,
             )
     }
 
     /**
      * Lo que decide la compuerta al empezar una subida automática que no espera un día: [metered] es
-     * la red activa al empezar, medida o ninguna. Con la nube del teléfono la red no importa.
+     * la red activa al empezar, medida o ninguna. Con la nube del teléfono nunca deja pasar una
+     * automática: espera a la persona.
      */
     fun gate(
         kind: BackupDestinationKind,
@@ -92,7 +98,7 @@ object UploadCadence {
                         ?: return UploadGateVerdict.WAIT_FOR_UNMETERED
                 }
 
-                BackupDestinationKind.DOCUMENT_SLOTS -> BackupTimings.SLOT_MIN_INTERVAL
+                BackupDestinationKind.DOCUMENT_SLOTS -> return UploadGateVerdict.WAIT_FOR_PERSON
             }
         return if (remaining(interval, lastUploadFinishedAt, now) == Duration.ZERO) {
             UploadGateVerdict.PROCEED
@@ -100,6 +106,19 @@ object UploadCadence {
             UploadGateVerdict.WAIT_FOR_INTERVAL
         }
     }
+
+    /**
+     * La compuerta de una escritura en la nube del teléfono: solo sale la que pidió la persona
+     * ([requested]), y solo con la app a la vista ([appVisible]). Así ningún trabajo escribe
+     * con la app cerrada, tampoco el reintento de una copia pedida que el sistema corre más
+     * tarde, ni uno que quedó encolado de una versión anterior.
+     */
+    fun manualGate(requested: Boolean, appVisible: Boolean): UploadGateVerdict =
+        if (requested && appVisible) {
+            UploadGateVerdict.PROCEED
+        } else {
+            UploadGateVerdict.WAIT_FOR_PERSON
+        }
 
     /**
      * Si la racha de cambios ya esperó demasiado: el cambio más viejo sin copia, en

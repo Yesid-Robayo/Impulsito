@@ -63,6 +63,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  * @param backupStatus el estado de las copias, con el mismo chip de Ajustes. `null` mientras se
  *   lee.
  * @param topBarActions lo que va a la derecha de la barra, como la ayuda.
+ * @param backupNowLabel el nombre del botón que pide una copia: con la nube del teléfono,
+ *   `Guardar en {provider}`. `null` mientras se lee, con `Respaldar ahora`.
  */
 @Composable
 fun StorageScreen(
@@ -70,6 +72,7 @@ fun StorageScreen(
     modifier: Modifier = Modifier,
     backupStatus: (@Composable () -> Unit)? = null,
     topBarActions: @Composable () -> Unit = {},
+    backupNowLabel: String? = null,
     onAction: (StorageAction) -> Unit,
 ) {
     val app = stringResource(R.string.app_name)
@@ -109,9 +112,10 @@ fun StorageScreen(
                     verticalArrangement = Arrangement.spacedBy(spacing.s8),
                 ) {
                     backupStatus?.invoke()
-                    // Con cambios sin respaldar, `Respaldar ahora` es la acción principal.
+                    // Con cambios sin respaldar, `Respaldar ahora` es la acción principal. Con la
+                    // nube del teléfono se llama `Guardar en {provider}`.
                     PrimaryActionButton(
-                        text = stringResource(R.string.backup_action_now),
+                        text = backupNowLabel ?: stringResource(R.string.backup_action_now),
                         onClick = { onAction(StorageAction.BackupNow) },
                         variant =
                             if (uiState.unsyncedChanges > 0) {
