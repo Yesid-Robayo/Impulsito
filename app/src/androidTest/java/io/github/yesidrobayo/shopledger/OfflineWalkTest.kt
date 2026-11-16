@@ -115,12 +115,13 @@ class OfflineWalkTest {
                 problems += "$hub > $name: no se pudo buscar en el centro"
                 continue
             }
-            visit("$hub > $name") {
-                compose
-                    .onAllNodes(hasText(name) and hasClickAction() and !hasSetTextAction())
-                    .onFirst()
-                    .performClick()
+            // El centro carga primero qué herramientas están en uso: hasta entonces no hay filas.
+            val row = hasText(name) and hasClickAction() and !hasSetTextAction()
+            if (!poll(OPEN_MILLIS) { exists(row) }) {
+                problems += "$hub > $name: la fila no apareció en el centro"
+                continue
             }
+            visit("$hub > $name") { compose.onAllNodes(row).onFirst().performClick() }
             backUntil(name) { atHub(hub) }
         }
         backUntil(hub, ::atHome)
@@ -201,14 +202,12 @@ class OfflineWalkTest {
     }
 
     /** Inicio, con `Vender` en la barra y sin un botón para volver o cerrar. */
-    private fun atHome(): Boolean =
-        exists(hasText(text(R.string.nav_sell)) and hasClickAction()) &&
-            !exists(hasContentDescription(text(R.string.a11y_back))) &&
-            !exists(hasContentDescription(text(R.string.a11y_close)))
+    private fun atHome(): Boolean = exists(hasText(text(R.string.nav_sell)) and hasClickAction()) &&
+        !exists(hasContentDescription(text(R.string.a11y_back))) &&
+        !exists(hasContentDescription(text(R.string.a11y_close)))
 
     /** El centro `Negocio`, con su título y su buscador. */
-    private fun atHub(title: String): Boolean =
-        exists(hasText(title)) && exists(hasSetTextAction())
+    private fun atHub(title: String): Boolean = exists(hasText(title)) && exists(hasSetTextAction())
 
     private fun exists(matcher: SemanticsMatcher): Boolean = runCatching {
         compose

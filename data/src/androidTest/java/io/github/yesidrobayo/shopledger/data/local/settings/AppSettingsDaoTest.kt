@@ -187,6 +187,7 @@ internal class AppSettingsDaoTest : CatalogDatabaseTest() {
                 "updateReceiptTemplate",
                 "updateDailySummaryTime",
                 "updateRevenueLimit",
+                "updateUpdateCheckEnabled",
                 "markOnboardingCompleted",
             ),
             functionsOf(AppSettingsDao::class.java),
