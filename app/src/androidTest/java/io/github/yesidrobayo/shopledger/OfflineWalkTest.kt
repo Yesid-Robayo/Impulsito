@@ -116,7 +116,10 @@ class OfflineWalkTest {
                 continue
             }
             // El centro carga primero qué herramientas están en uso: hasta entonces no hay filas.
-            val row = hasText(name) and hasClickAction() and !hasSetTextAction()
+            // Cada fila es un solo botón: TalkBack lee su nombre en la descripción del nodo que se
+            // toca, y el texto suelto ya no lleva la acción.
+            val named = hasText(name) or hasContentDescription(name, substring = true)
+            val row = named and hasClickAction() and !hasSetTextAction()
             if (!poll(OPEN_MILLIS) { exists(row) }) {
                 problems += "$hub > $name: la fila no apareció en el centro; a la vista: " +
                     texts().take(SHOWN_TEXTS).joinToString(" | ")
