@@ -38,7 +38,7 @@
     <string name="report_doc_section_expenses">Despesas</string>
     <string name="report_doc_section_profit">Lucros</string>
     <string name="report_doc_section_methods">Formas de pagamento</string>
-    <string name="report_doc_tax_note">Valor estimado a partir das taxas escritas pela pessoa. Não é uma declaração.</string>
+    <string name="report_doc_tax_note">Valor estimado a partir das alíquotas informadas pela pessoa. Não é uma declaração.</string>
     <string name="report_doc_legend">%1$s não substitui a contabilidade oficial. Este resumo não é uma nota fiscal, um livro contábil nem uma declaração.</string>
     <string name="csv_file_closing_inventory">estoque-no-fechamento.csv</string>
 </resources>
