@@ -14,5 +14,5 @@
     <string name="backup_check_missing_step_1">Abrir %1$s com internet e ver se a sessão está aberta e se há espaço livre.</string>
     <string name="backup_check_missing_step_2">Tocar em Fazer cópia agora, aguardar um pouco e olhar o horário de novo.</string>
     <string name="backup_check_missing_step_3">Se o horário continuar sem mudar, convém exportar uma cópia hoje e escolher um serviço com WebDAV. Até lá, o que é novo está apenas neste telefone.</string>
-    <string name="backup_handed_off_detail">Arquivo %1$s, %2$s, gravado às %3$s.</string>
+    <string name="backup_handed_off_detail">Arquivo %1$s, %2$s. Última gravação: %3$s</string>
 </resources>
