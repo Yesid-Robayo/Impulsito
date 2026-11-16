@@ -1,72 +1,74 @@
-# Changelog
+# Historial de cambios
 
-**English** · [Español](CHANGELOG.es.md)
+**Español** · [English](CHANGELOG.en.md)
 
-What each version of Impulsito brought and fixed, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and versions follow [Semantic Versioning](https://semver.org/). Published versions have their APK, their notes and their SHA-256 in
-[Releases](https://github.com/Yesid-Robayo/Impulsito/releases).
+Lo que trajo y arregló cada versión de Impulsito, de la más nueva a la más antigua. El formato sigue
+[Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/), y las versiones siguen [Versionado Semántico](https://semver.org/lang/es/).
+Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](https://github.com/Yesid-Robayo/Impulsito/releases).
 
-When a new version is published, it's added at the top with the same content as its release notes.
+Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
 ## [1.0.0] - 2026-11-16
 
-First public version. It's free and offered as is, **with no warranty**. It isn't accounting software and doesn't issue invoices:
-its receipts are for internal use.
+Primera versión pública. Es gratis y se ofrece tal cual, **sin garantía**. No es un programa de contabilidad ni emite facturas: sus
+comprobantes son de uso interno.
 
-### Sales and customers
+### Ventas y clientes
 
-- **Sales in a few taps,** with several payment methods per sale, fees and net received, change, tips, discounts and held sales.
-- **Voids and returns** with compensating records: nothing is deleted, and a return keeps the original cost.
-- **Customers and credit:** sales on credit, payments on account, statements, credit balance and loyalty points. Only the name is
-  required.
-- **Cash register sessions** with expected against counted, and a count by denomination.
+- **Ventas en pocos toques,** con varios métodos de pago por venta, comisiones y neto recibido, cambio, propinas, descuentos y ventas
+  en espera.
+- **Anulaciones y devoluciones** con registros compensatorios: nada se borra, y una devolución conserva el costo original.
+- **Clientes y crédito:** ventas a crédito, abonos, extractos, saldo a favor y puntos. Solo se pide el nombre.
+- **Sesiones de caja** con lo esperado frente a lo contado, y conteo por denominación.
 
-### Inventory and purchases
+### Stock y compras
 
-- **Products** with units and conversions, services, variants, combos and recipes, photos and your own fields.
-- **Barcode scanner** with the camera or an external reader, and your own codes and labels.
-- **Stock as a ledger of movements,** with batches and expiry dates, serial numbers, locations and transfers, production, suggested
-  reorders and blind counts.
-- **Purchases and suppliers** with average and replacement cost, purchases on credit, partial payments, due dates and returns to the
-  supplier.
-- **Prices:** price lists, bulk updates, margin alerts and a reference currency with a rate you type in.
+- **Productos** con unidades y conversiones, servicios, variantes, combos y recetas, fotos y campos propios.
+- **Escáner de códigos** con la cámara o con un lector externo, y códigos y etiquetas propios.
+- **El stock como libro de movimientos,** con lotes y vencimientos, números de serie, ubicaciones y transferencias, producción,
+  reposición sugerida y conteo a ciegas.
+- **Compras y proveedores** con costo promedio y de reposición, compras a plazo, pagos parciales, vencimientos y devoluciones al
+  proveedor.
+- **Precios:** listas de precios, actualización masiva, alertas de margen y una moneda de referencia con la cotización que tú
+  escribes.
 
-### Expenses and reports
+### Gastos y reportes
 
-- **Expenses and recurring expenses,** and money accounts with withdrawals, contributions and transfers.
-- **Profit and margin:** sales profit and final profit for the month, and taxes with the rates you type in.
-- **Reports:** management summary, projected cash flow, break-even, goals, product and customer analysis, daily summary and
-  comparison in real terms.
-- **Import** products from CSV or a spreadsheet, and **export** everything to CSV or `.xlsx`.
+- **Gastos y gastos recurrentes,** y cuentas de dinero con retiros, aportes y transferencias.
+- **Ganancia y margen:** ganancia en ventas y ganancia final del mes, e impuestos con las tasas que tú escribes.
+- **Reportes:** resumen de gestión, flujo de caja proyectado, punto de equilibrio, metas, análisis de productos y clientes, resumen
+  diario y comparación en términos reales.
+- **Importar** productos desde CSV o una hoja de cálculo, y **exportar** todo a CSV o `.xlsx`.
 
-### Documents
+### Documentos
 
-- **Sales receipts** as PDF or image, **quotes**, **orders and deliveries** and a **shareable catalog**, all internal documents.
-- **Printing** on paired Bluetooth thermal printers or through the system print service.
+- **Comprobantes de venta** en PDF o imagen, **cotizaciones**, **pedidos y entregas** y un **catálogo para compartir**, todos
+  documentos internos.
+- **Impresión** en impresoras térmicas Bluetooth emparejadas o con el servicio de impresión del sistema.
 
-### Backups
+### Copias de seguridad
 
-- **Automatic and verified backups** to a WebDAV service you choose, such as Koofr: **All saved** only appears after the backup was
-  read back.
-- **Backups to the phone's cloud,** today Google Drive, saved by hand with **Save to Drive** while the app is open.
-- **The last good backup is never overwritten,** with a second copy on the phone and **Export a full backup** to a file.
-- **Careful restore** that checks every backup before replacing anything, can go back to how things were before, and a
-  **Test restore** that doesn't touch your data.
-- **Optional encryption,** off by default, with a recovery code and an open format with a rescue tool in
+- **Copias automáticas y comprobadas** en un servicio WebDAV que elijas, como Koofr: **Todo guardado** solo aparece después de volver
+  a leer la copia.
+- **Copias en la nube del teléfono,** hoy Google Drive, guardadas a mano con **Guardar en Drive** mientras la app está abierta.
+- **Nunca se sobrescribe la última copia buena,** con una segunda copia en el celular y **Exportar una copia completa** a un archivo.
+- **Restauración cuidadosa** que comprueba cada copia antes de reemplazar nada y puede volver a como estaba antes, y **Probar
+  restauración**, que no toca tus datos.
+- **Cifrado opcional,** apagado por defecto, con código de recuperación y un formato abierto con herramienta de rescate en
   [`tools/backup-format`](tools/backup-format).
 
-### Privacy and security
+### Privacidad y seguridad
 
-- **No account, no servers, no ads, no analytics and no tracking.** It works fully offline.
-- **App lock** with the phone's fingerprint, face or PIN, **discreet mode** to hide amounts, an **audit log**, a screen with what data
-  exists and where it goes, and **Delete my data**.
-- **Check an APK** compares a file's certificate before installing it, and **Check for update** reads a signed version notice
-  without sending any data. The app never installs anything by itself.
+- **Sin cuenta, sin servidores, sin anuncios, sin analítica y sin rastreo.** Funciona completa sin internet.
+- **Bloqueo** con la huella, el rostro o el PIN del teléfono, **modo discreto** para ocultar los montos, un **registro de auditoría**,
+  una pantalla con qué datos hay y adónde van, y **Borrar mis datos**.
+- **Verificar un APK** compara el certificado de un archivo antes de instalarlo, y **Buscar actualización** lee un aviso de versión
+  firmado sin enviar ningún dato. La app nunca instala nada por su cuenta.
 
-### Languages
+### Idiomas
 
-- **Spanish, English and Portuguese,** with any currency, decimals, date and number format: nothing about your country is assumed.
-- **Home screen widget, quick settings tile, shortcuts, tablet layout,** a demo with sample data, help inside the app, light and
-  dark themes and nine color palettes.
+- **Español, inglés y portugués,** con cualquier moneda, decimales y formato de fechas y números: no se asume nada de tu país.
+- **Widget en la pantalla de inicio, mosaico de ajustes rápidos, atajos, diseño para tableta,** una demostración con datos de
+  ejemplo, ayuda dentro de la app, tema claro y oscuro y nueve paletas de colores.
 
 [1.0.0]: https://github.com/Yesid-Robayo/Impulsito/releases/tag/v1.0.0
