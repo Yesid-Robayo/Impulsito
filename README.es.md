@@ -13,10 +13,8 @@ respaldo en la nube que tú elijas.**
 
 [English](README.md) · **Español** · [Cambios por versión](CHANGELOG.es.md)
 
-<img src="docs/images/home.png" alt="Inicio con las ventas de hoy y la ganancia del mes" width="220">
-<img src="docs/images/sale.png" alt="Una venta registrándose con su pago" width="220">
-<img src="docs/images/products.png" alt="Lista de productos con su stock y su precio" width="220">
-<img src="docs/images/backup.png" alt="Elegir dónde guardar las copias: Drive del teléfono o un servicio con WebDAV" width="220">
+<img src="docs/images/home.png" alt="Inicio con las ventas de hoy y la ganancia del mes" width="280">
+<img src="docs/images/sale.png" alt="Una venta registrándose con su pago" width="280">
 
 </div>
 

@@ -13,10 +13,8 @@ backed up to the cloud you choose.**
 
 **English** · [Español](README.es.md) · [Changelog](CHANGELOG.md)
 
-<img src="docs/images/home.png" alt="Home screen with today's sales and the month's profit" width="220">
-<img src="docs/images/sale.png" alt="A sale being recorded with its payment" width="220">
-<img src="docs/images/products.png" alt="Product list with stock and price" width="220">
-<img src="docs/images/backup.png" alt="Choosing where to keep backups: the phone's Drive or a WebDAV service" width="220">
+<img src="docs/images/home.png" alt="Home screen with today's sales and the month's profit" width="280">
+<img src="docs/images/sale.png" alt="A sale being recorded with its payment" width="280">
 
 </div>
 
