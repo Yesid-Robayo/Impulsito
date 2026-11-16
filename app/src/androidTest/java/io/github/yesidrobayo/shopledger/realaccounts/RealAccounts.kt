@@ -187,8 +187,12 @@ internal object RealAccounts {
         val digest = MessageDigest.getInstance("SHA-256")
         for (product in products) {
             val line = listOf(
-                product.id, product.salePrice.minor, product.averageCost.minor,
-                product.stockValue.minor, product.onHand.milli, product.archivedAt,
+                product.id,
+                product.salePrice.minor,
+                product.averageCost.minor,
+                product.stockValue.minor,
+                product.onHand.milli,
+                product.archivedAt,
             ).joinToString("|")
             digest.update(line.toByteArray(Charsets.UTF_8))
         }

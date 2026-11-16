@@ -109,7 +109,11 @@ class RealSlotsTest {
         }
         // Datos inventados: el integrador los compara con lo que baje la persona desde la web.
         File(RealAccounts.privateDir(), SHA_FILE).writeText(lines.joinToString("\n") + "\n")
-        assertTrue(state.slots.all { it.expectedSha == null || it.expectedSha == shaOrNull(it.uri) })
+        assertTrue(
+            state.slots.all {
+                it.expectedSha == null || it.expectedSha == shaOrNull(it.uri)
+            },
+        )
     }
 
     /** Una app normal no puede leer las raíces del proveedor: por eso la lista es fija. */
@@ -196,7 +200,9 @@ class RealSlotsTest {
         }
     }.getOrNull()
 
-    private fun shaOrNull(uri: String): String? = runCatching { shaAndSizeOf(uri).first }.getOrNull()
+    private fun shaOrNull(uri: String): String? = runCatching {
+        shaAndSizeOf(uri).first
+    }.getOrNull()
 
     private fun shaAndSizeOf(uri: String): Pair<String, Long> {
         val digest = MessageDigest.getInstance("SHA-256")

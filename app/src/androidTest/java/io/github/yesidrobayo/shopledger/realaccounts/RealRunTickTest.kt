@@ -52,8 +52,10 @@ class RealRunTickTest {
         val scheduler = RealAccounts.app.container.data.backupScheduler
         when (kind) {
             BackupDestinationKind.WEBDAV -> scheduler.onAppBackgrounded()
+
             BackupDestinationKind.DOCUMENT_SLOTS ->
                 scheduler.onAppOpened(AppOpenUpload.PAST_INTERVAL)
+
             null -> Unit
         }
         val queued = RealAccounts.awaitCondition(SHORT_WAIT_MS) {
