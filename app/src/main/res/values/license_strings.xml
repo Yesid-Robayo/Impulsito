@@ -11,8 +11,8 @@
     <string name="license_component_noto" translatable="false">Noto Sans</string>
     <string name="license_apache" translatable="false">Apache 2.0</string>
     <string name="license_ofl" translatable="false">SIL Open Font License 1.1</string>
-    <!-- La página publicada de la política de privacidad. Vacía hasta publicarla: mientras tanto, la fila abre los términos dentro de la app. -->
-    <string name="legal_privacy_url" translatable="false"></string>
+    <!-- La página publicada de la política de privacidad, en las páginas públicas. -->
+    <string name="legal_privacy_url" translatable="false">https://yesid-robayo.github.io/privacy/</string>
     <!-- La herramienta de rescate y el formato público de las copias cifradas. Vacía hasta publicarlos: mientras tanto, el kit de recuperación no lleva esa línea. -->
     <string name="rescue_tool_url" translatable="false"></string>
 </resources>
