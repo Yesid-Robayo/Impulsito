@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.usecase.backup
 import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 
 /**
@@ -23,6 +24,12 @@ class RestoreBackupUseCase(private val port: BackupRestorePort) {
 
     /** Empieza a volver a antes de la última actualización. */
     suspend fun beforeUpdate(): RestoreProgress = port.restoreBeforeUpdate()
+
+    /** La copia local para volver a como estaba antes de restaurar, o nula si no hay vigente. */
+    suspend fun undoRestoreCopy(): UndoRestoreCopy? = port.undoRestoreCopy()
+
+    /** Empieza a volver a [copy], la copia local de antes de restaurar. */
+    suspend fun undoRestore(copy: UndoRestoreCopy): RestoreProgress = port.restoreUndo(copy)
 
     /** Contesta una pregunta. */
     suspend fun answer(answer: RestoreAnswer): RestoreProgress = port.answer(answer)

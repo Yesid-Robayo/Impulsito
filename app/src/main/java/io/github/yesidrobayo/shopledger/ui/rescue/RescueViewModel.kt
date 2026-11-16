@@ -178,6 +178,7 @@ class RescueViewModel(
             BackupAction.RunDrill,
             BackupAction.ToggleHealth,
             BackupAction.CheckFullCopy,
+            BackupAction.UndoRestore,
             -> Unit
         }
     }

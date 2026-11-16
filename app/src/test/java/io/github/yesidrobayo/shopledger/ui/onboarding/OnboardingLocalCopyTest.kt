@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
 import io.github.yesidrobayo.shopledger.domain.model.backup.SecondDestinationView
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import io.github.yesidrobayo.shopledger.domain.port.SecondDestinationPort
@@ -98,6 +99,10 @@ class OnboardingLocalCopyTest {
             override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = null
 
             override suspend fun restoreBeforeUpdate() = RestoreProgress.Failed
+
+            override suspend fun undoRestoreCopy(): UndoRestoreCopy? = null
+
+            override suspend fun restoreUndo(copy: UndoRestoreCopy) = RestoreProgress.Failed
 
             override suspend fun answer(answer: RestoreAnswer) = RestoreProgress.ReadyToRestart(0)
 

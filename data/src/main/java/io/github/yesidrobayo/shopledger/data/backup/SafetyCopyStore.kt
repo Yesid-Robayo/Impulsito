@@ -25,7 +25,14 @@ internal data class SafetyCopyFacts(
 }
 
 /** Una copia de seguridad que se puede ofrecer para deshacer una restauración. */
-internal data class SafetyCopy(val files: SafetyCopyFiles, val facts: SafetyCopyFacts?)
+internal data class SafetyCopy(val files: SafetyCopyFiles, val facts: SafetyCopyFacts?) {
+    /**
+     * Cuándo se hizo: lo que dicen sus datos o, si no se leen, la fecha de su archivo. Sin sus
+     * datos, lee el disco.
+     */
+    fun createdAt(): Instant =
+        facts?.createdAt ?: Instant.fromEpochMilliseconds(files.database.lastModified())
+}
 
 /** Lo que dio guardar la copia de seguridad del paso previo al reemplazo. */
 internal sealed interface SafetyCopyResult {
@@ -168,9 +175,7 @@ internal class SafetyCopyStore(
     private fun SafetyCopy.keepsUnsyncedChanges(): Boolean = facts?.hasUnsyncedChanges ?: true
 
     private fun SafetyCopy.isExpired(now: Instant): Boolean {
-        val createdAt =
-            facts?.createdAt ?: Instant.fromEpochMilliseconds(files.database.lastModified())
-        val age = now - createdAt
+        val age = now - createdAt()
         return !age.isNegative() && age >= RETENTION
     }
 

@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
 import io.github.yesidrobayo.shopledger.domain.model.backup.SafetyCopyInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import java.io.File
 import java.io.InputStream
@@ -112,6 +113,26 @@ internal class BackupRestoreService(
     override suspend fun restoreBeforeUpdate(): RestoreProgress {
         undoingUpdate = true
         return progressOf(coordinator().start(RestoreSource.BeforeUpdate))
+    }
+
+    /** Con dos copias vigentes, la más reciente: es la de antes de la última restauración. */
+    override suspend fun undoRestoreCopy(): UndoRestoreCopy? {
+        val newest = coordinator().undoCopies().firstOrNull() ?: return null
+        return UndoRestoreCopy(withContext(ioContext) { newest.createdAt() })
+    }
+
+    /**
+     * Vuelve a la copia que se mostró, buscada otra vez por su instante: si entretanto venció o
+     * la reemplazó otra restauración, no empieza, y la pantalla lo dice sin tocar nada.
+     */
+    override suspend fun restoreUndo(copy: UndoRestoreCopy): RestoreProgress {
+        val coordinator = coordinator()
+        val chosen =
+            withContext(ioContext) {
+                coordinator.undoCopies().firstOrNull { it.createdAt() == copy.createdAt }
+            } ?: return RestoreProgress.Refused(RestoreProblem.NOT_AVAILABLE)
+        undoingUpdate = false
+        return progressOf(coordinator.start(RestoreSource.Undo(chosen)))
     }
 
     override suspend fun answer(answer: RestoreAnswer): RestoreProgress {

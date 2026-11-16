@@ -105,6 +105,16 @@ enum class RestoreProblem {
  */
 data class BeforeUpdateCopy(val createdAt: Instant)
 
+/**
+ * La copia local de seguridad que se ofrece para volver a como estaba antes de restaurar: la
+ * que la app guardó justo antes de reemplazar los datos, mientras tenga menos de 30 días. Nunca
+ * subió.
+ *
+ * @property createdAt cuándo se guardó, según el reloj del teléfono. También la identifica:
+ *   al confirmar se vuelve a esa misma copia, nunca a otra que la haya reemplazado entretanto.
+ */
+data class UndoRestoreCopy(val createdAt: Instant)
+
 /** Lo que la persona contesta cuando la restauración pregunta. */
 sealed interface RestoreAnswer {
     /** Recalcular los saldos desde el historial. */

@@ -20,6 +20,9 @@ import io.github.yesidrobayo.shopledger.data.local.texts
 import io.github.yesidrobayo.shopledger.data.repository.newProduct
 import io.github.yesidrobayo.shopledger.data.repository.storageFailureOf
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupLinkState
+import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
+import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationStatus
@@ -27,8 +30,10 @@ import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -205,6 +210,44 @@ class RestoreCoordinatorTest {
         val kept = SafetyCopyStore(files, ops, Dispatchers.IO).copies().single()
         assertFalse(checkNotNull(kept.facts).hasUnsyncedChanges)
         assertEquals(BackupRun.Verified(2), fixture.runner(destination).run(control))
+    }
+
+    @Test
+    fun theScreenOffersTheCopyBeforeRestoringAndGoesBackToThatSameCopy() = runBlocking<Unit> {
+        fixture.addProduct("Pan de prueba")
+        assertEquals(BackupRun.Verified(1), fixture.runner(destination).run(control))
+        fixture.addProduct("Leche de prueba")
+        assertNull("Sin restaurar no hay nada que deshacer", service().undoRestoreCopy())
+        assertEquals(
+            RestoreStage.ReadyToRestart(0),
+            coordinator().start(RestoreSource.Listed(listed(1))),
+        )
+        reopen()
+        assertEquals(1L, count("products"))
+        val saved = SafetyCopyStore(files, ops, Dispatchers.IO).available(fixture.now).single()
+        val offered = checkNotNull(service().undoRestoreCopy())
+        assertEquals(checkNotNull(saved.facts).createdAt, offered.createdAt)
+
+        // Una copia que ya no es la que se mostró no empieza, y nada se aparta.
+        assertEquals(
+            RestoreProgress.Refused(RestoreProblem.NOT_AVAILABLE),
+            service().restoreUndo(UndoRestoreCopy(offered.createdAt - 1.minutes)),
+        )
+        assertFalse(files.undoSource.database.exists())
+        assertEquals(1, SafetyCopyStore(files, ops, Dispatchers.IO).copies().size)
+
+        fixture.advance(5.minutes)
+        assertEquals(RestoreProgress.ReadyToRestart(0), service().restoreUndo(offered))
+        reopen()
+
+        assertEquals(2L, count("products"))
+        val state = fixture.state()
+        assertTrue("Nunca cuenta como guardado por deshacer", state.changeSeq > state.verifiedSeq)
+        // La copia de ahora se ofrece hasta cumplir 30 días, y después ya no.
+        fixture.advance(30.days - 1.minutes)
+        assertTrue(service().undoRestoreCopy() != null)
+        fixture.advance(1.minutes)
+        assertNull(service().undoRestoreCopy())
     }
 
     @Test
@@ -801,6 +844,23 @@ class RestoreCoordinatorTest {
 
     /** Cuántas veces la preparación anotó un rechazo de la copia. */
     private var rejections = 0
+
+    /** El restaurar de la pantalla, sobre una preparación nueva, como tras cada reinicio. */
+    private fun service() = BackupRestoreService(
+        saved = { null },
+        destinations = { DestinationOpen.Opened(destination) },
+        coordinator = { coordinator() },
+        files = NoPickedFiles,
+        beforeUpdate = { File(fixture.noBackup, "sin-copia-previa.db") },
+        ioContext = Dispatchers.IO,
+    )
+
+    /** Esta prueba no elige archivos con el selector. */
+    private object NoPickedFiles : PickedFiles {
+        override fun declaredSize(uri: String): Long? = null
+
+        override fun open(uri: String): InputStream = error("Esta prueba no elige archivos")
+    }
 
     /** La copia [generation] de este teléfono, tal como la lista el destino. */
     private suspend fun listed(generation: Long): ListedCopy {

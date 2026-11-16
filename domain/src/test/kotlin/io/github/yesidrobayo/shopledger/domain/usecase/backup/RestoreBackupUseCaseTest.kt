@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
 import io.github.yesidrobayo.shopledger.domain.model.backup.SafetyCopyInfo
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
@@ -39,6 +40,16 @@ class RestoreBackupUseCaseTest {
                 return RestoreProgress.Refused(RestoreProblem.NEEDS_UPDATE)
             }
 
+            override suspend fun undoRestoreCopy(): UndoRestoreCopy? {
+                calls += "undo-copy"
+                return UndoRestoreCopy(Instant.parse("2026-11-20T15:00:00Z"))
+            }
+
+            override suspend fun restoreUndo(copy: UndoRestoreCopy): RestoreProgress {
+                calls += "undo:${copy.createdAt}"
+                return RestoreProgress.ReadyToRestart(0)
+            }
+
             override suspend fun answer(answer: RestoreAnswer): RestoreProgress {
                 calls += "answer:$answer"
                 return RestoreProgress.ReadyToRestart(1)
@@ -63,6 +74,9 @@ class RestoreBackupUseCaseTest {
             use.beforeUpdateCopy(),
         )
         assertEquals(RestoreProgress.Refused(RestoreProblem.NEEDS_UPDATE), use.beforeUpdate())
+        val undo = UndoRestoreCopy(Instant.parse("2026-11-20T15:00:00Z"))
+        assertEquals(undo, use.undoRestoreCopy())
+        assertEquals(RestoreProgress.ReadyToRestart(0), use.undoRestore(undo))
         use.copy("a", "CODIGO-INVENTADO")
         use.file("content://b", "CODIGO-INVENTADO")
         assertEquals(
@@ -73,6 +87,8 @@ class RestoreBackupUseCaseTest {
                 "cancel",
                 "before-update-copy",
                 "before-update",
+                "undo-copy",
+                "undo:2026-11-20T15:00:00Z",
                 "copy:a:con código",
                 "file:content://b:con código",
             ),

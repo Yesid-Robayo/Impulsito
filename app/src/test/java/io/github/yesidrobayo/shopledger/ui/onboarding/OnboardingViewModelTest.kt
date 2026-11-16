@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.port.BackupRestorePort
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
@@ -98,6 +99,11 @@ class OnboardingViewModelTest {
         override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = null
 
         override suspend fun restoreBeforeUpdate(): RestoreProgress = RestoreProgress.Failed
+
+        override suspend fun undoRestoreCopy(): UndoRestoreCopy? = null
+
+        override suspend fun restoreUndo(copy: UndoRestoreCopy): RestoreProgress =
+            RestoreProgress.Failed
 
         override suspend fun answer(answer: RestoreAnswer) = RestoreProgress.ReadyToRestart(0)
 

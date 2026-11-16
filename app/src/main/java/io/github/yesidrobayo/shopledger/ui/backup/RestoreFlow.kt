@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BeforeUpdateCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeRequest
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.RestoreBackupUseCase
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -53,6 +54,9 @@ internal class RestoreFlow(
     fun confirmBeforeUpdate(copy: BeforeUpdateCopy) =
         set(RestoreUi.ConfirmBeforeUpdate(copy.createdAt))
 
+    /** `Volver a como estaba antes de restaurar`: pide confirmar, con el día de [copy]. */
+    fun confirmUndoRestore(copy: UndoRestoreCopy) = set(RestoreUi.ConfirmUndoRestore(copy))
+
     /** El selector devolvió [uri]: pide confirmar, porque no viene de la lista. */
     fun picked(uri: String) = set(RestoreUi.ConfirmFile(uri))
 
@@ -65,6 +69,10 @@ internal class RestoreFlow(
 
             is RestoreUi.ConfirmBeforeUpdate ->
                 follow(RestoreOrigin.BEFORE_UPDATE) { use.beforeUpdate() }
+
+            // Vuelve a la copia que se mostró: si ya no está, se detiene sin tocar nada.
+            is RestoreUi.ConfirmUndoRestore ->
+                follow(RestoreOrigin.UNDO_RESTORE) { use.undoRestore(current.copy) }
 
             RestoreUi.Idle,
             is RestoreUi.CopySheet,
@@ -137,6 +145,7 @@ internal class RestoreFlow(
                 is RestoreUi.ConfirmCopy,
                 is RestoreUi.ConfirmFile,
                 is RestoreUi.ConfirmBeforeUpdate,
+                is RestoreUi.ConfirmUndoRestore,
                 is RestoreUi.Stopped,
                 RestoreUi.Ready,
                 -> return

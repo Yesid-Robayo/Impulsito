@@ -172,6 +172,14 @@ internal class RestoreCoordinator(
     }
 
     /**
+     * Las copias locales de seguridad que se pueden ofrecer para deshacer una restauración: las
+     * de menos de 30 días, de la más reciente a la anterior. Solo lee el disco, sin el cerrojo:
+     * una copia apartada como origen de un deshacer en curso ya no tiene su nombre y no aparece.
+     */
+    suspend fun undoCopies(): List<SafetyCopy> =
+        withContext(ioContext) { safetyCopies.available(clock.now()) }
+
+    /**
      * Guarda una copia local de seguridad de la base activa antes de un cambio delicado que no es
      * una restauración, como corregir la moneda del negocio. Es la misma copia del paso 14, con la
      * misma rotación y los mismos 30 días: nunca destruye el único respaldo de algo.

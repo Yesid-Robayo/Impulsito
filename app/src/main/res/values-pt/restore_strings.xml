@@ -47,4 +47,8 @@
     <string name="dialog_discard_safety_body">As duas cópias de proteção deste telefone têm alterações que não chegaram à nuvem. Para continuar, é preciso descartar uma delas.</string>
     <string name="dialog_discard_safety_option">Descartar a de %1$s</string>
     <string name="dialog_restore_other_code_notice">Esta cópia usa outro código. Ao terminar, esse código substitui o atual neste telefone. As cópias com o código atual continuam precisando dele.</string>
+    <!-- Volver a como estaba antes de restaurar, con la copia local de seguridad. -->
+    <string name="backup_undo_restore_label">Voltar a como estava antes de restaurar</string>
+    <string name="dialog_undo_restore_title">Voltar a como estava antes de restaurar?</string>
+    <string name="dialog_undo_restore_body">Os dados voltam a como estavam na cópia de proteção local (%1$s). O que foi registrado depois não estará lá.</string>
 </resources>

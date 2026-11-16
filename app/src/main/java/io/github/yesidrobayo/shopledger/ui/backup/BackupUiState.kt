@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
 import io.github.yesidrobayo.shopledger.domain.model.backup.HealthRow
 import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoBackupFacts
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 
 /**
@@ -36,6 +37,8 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolic
  *   plegado solo si todo está bien.
  * @param verifying si `Comprobar ahora` está corriendo.
  * @param beforeUpdate la copia previa a la última actualización, o nula si no hay.
+ * @param undoRestore la copia local de seguridad de antes de restaurar, de menos de 30 días, o
+ *   nula si no hay.
  */
 data class BackupUiState(
     val wording: BackupWording? = null,
@@ -58,6 +61,7 @@ data class BackupUiState(
     val healthOpen: Boolean? = null,
     val verifying: Boolean = false,
     val beforeUpdate: BeforeUpdateCopy? = null,
+    val undoRestore: UndoRestoreCopy? = null,
     val photos: PhotoBackupFacts? = null,
 )
 
@@ -326,4 +330,7 @@ sealed interface BackupAction {
 
     /** `Volver a antes de la actualización`: pide confirmar, con el día de la copia previa. */
     data object UndoUpdate : BackupAction
+
+    /** `Volver a como estaba antes de restaurar`: pide confirmar, con el día de la copia. */
+    data object UndoRestore : BackupAction
 }

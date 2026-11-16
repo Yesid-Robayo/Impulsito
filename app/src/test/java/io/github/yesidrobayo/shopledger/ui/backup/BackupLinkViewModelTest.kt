@@ -25,6 +25,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.HealthState
 import io.github.yesidrobayo.shopledger.domain.model.backup.KeepPhoneResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.port.BackupLinkPort
@@ -167,6 +168,10 @@ class BackupLinkViewModelTest {
         override suspend fun beforeUpdateCopy(): BeforeUpdateCopy? = null
 
         override suspend fun restoreBeforeUpdate(): RestoreProgress = error(NOT_HERE)
+
+        override suspend fun undoRestoreCopy(): UndoRestoreCopy? = null
+
+        override suspend fun restoreUndo(copy: UndoRestoreCopy): RestoreProgress = error(NOT_HERE)
 
         override suspend fun answer(answer: RestoreAnswer): RestoreProgress = error(NOT_HERE)
 

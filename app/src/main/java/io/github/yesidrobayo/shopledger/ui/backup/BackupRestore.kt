@@ -36,6 +36,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.RecoveryCodeRequest
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreAnswer
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProblem
 import io.github.yesidrobayo.shopledger.domain.model.backup.RestoreProgress
+import io.github.yesidrobayo.shopledger.domain.model.backup.UndoRestoreCopy
 import io.github.yesidrobayo.shopledger.format.DataSizeFormatter
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.lock.SensitiveScreen
@@ -65,6 +66,9 @@ enum class RestoreOrigin {
 
     /** La copia previa a la última actualización, en este teléfono. */
     BEFORE_UPDATE,
+
+    /** La copia local de seguridad de antes de restaurar, en este teléfono. */
+    UNDO_RESTORE,
 }
 
 /** Por qué se detuvo una restauración, ya en lo que dice la pantalla. */
@@ -100,6 +104,9 @@ sealed interface RestoreUi {
 
     /** `¿Volver a antes de la actualización?`, con el día de la copia previa. */
     data class ConfirmBeforeUpdate(val createdAt: Instant) : RestoreUi
+
+    /** `¿Volver a como estaba antes de restaurar?`, con el día de la copia local. */
+    data class ConfirmUndoRestore(val copy: UndoRestoreCopy) : RestoreUi
 
     /** Revisando y preparando: se puede cancelar, no navegar. */
     data class Working(val origin: RestoreOrigin) : RestoreUi
@@ -197,7 +204,11 @@ private fun noticeOf(problem: RestoreProblem, origin: RestoreOrigin): RestoreNot
         RestoreProblem.DAMAGED, RestoreProblem.MARKED_FATAL ->
             when (origin) {
                 RestoreOrigin.FILE -> RestoreNotice.TRY_ANOTHER_FILE
-                RestoreOrigin.LIST, RestoreOrigin.BEFORE_UPDATE -> RestoreNotice.DAMAGED
+
+                RestoreOrigin.LIST,
+                RestoreOrigin.BEFORE_UPDATE,
+                RestoreOrigin.UNDO_RESTORE,
+                -> RestoreNotice.DAMAGED
             }
 
         RestoreProblem.NEWER_VERSION -> RestoreNotice.NEWER_VERSION
@@ -271,6 +282,24 @@ internal fun RestoreLayer(
                         R.string.dialog_undo_migration_body,
                         dateOf(restore.createdAt),
                         stringResource(R.string.app_name),
+                    ),
+                confirmLabel = stringResource(R.string.dialog_go_back_action),
+                onConfirm = { onAction(BackupAction.StartRestore) },
+                onDismiss = { onAction(BackupAction.CloseRestore) },
+                variant = ConfirmVariant.DESTRUCTIVE,
+                dismissLabel = stringResource(R.string.dialog_go_back_exit),
+                sensitive = true,
+            )
+
+        // Como volver a antes de la actualización: dice a qué día vuelven los datos y que lo
+        // registrado después no estará.
+        is RestoreUi.ConfirmUndoRestore ->
+            ConfirmDialog(
+                title = stringResource(R.string.dialog_undo_restore_title),
+                body =
+                    stringResource(
+                        R.string.dialog_undo_restore_body,
+                        dateOf(restore.copy.createdAt),
                     ),
                 confirmLabel = stringResource(R.string.dialog_go_back_action),
                 onConfirm = { onAction(BackupAction.StartRestore) },

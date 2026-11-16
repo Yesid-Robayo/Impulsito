@@ -200,6 +200,9 @@ class BackupViewModel(
             BackupAction.UndoUpdate ->
                 state.value.beforeUpdate?.let { restoring?.confirmBeforeUpdate(it) }
 
+            BackupAction.UndoRestore ->
+                state.value.undoRestore?.let { restoring?.confirmUndoRestore(it) }
+
             BackupAction.Disconnect ->
                 if (link != null) state.update { it.copy(disconnect = DisconnectUi.ASKING) }
 
@@ -573,6 +576,9 @@ class BackupViewModel(
             val encrypted = if (info != null) read { copiesEncrypted() } else null
             // La copia previa a migrar es local: se ofrece con o sin destino.
             val beforeUpdate = restore?.let { use -> read { use.beforeUpdateCopy() } }
+            // La copia de antes de restaurar también es local, y solo se ofrece mientras está
+            // vigente. Si falla al leerse, no se ofrece.
+            val undoRestore = restore?.let { use -> read { use.undoRestoreCopy() } }
             val photoFacts = read { photos() }
             state.update { current ->
                 val slots = info as? BackupDestinationInfo.Slots
@@ -583,6 +589,7 @@ class BackupViewModel(
                     uploadedThisMonth = usage,
                     copiesEncrypted = encrypted,
                     beforeUpdate = beforeUpdate,
+                    undoRestore = undoRestore,
                     photos = photoFacts,
                     wording =
                         current.wording?.copy(

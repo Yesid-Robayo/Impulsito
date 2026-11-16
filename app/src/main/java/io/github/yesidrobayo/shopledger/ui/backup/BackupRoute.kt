@@ -307,6 +307,7 @@ fun BackupRoute(navigator: AppNavigator) {
                         BackupAction.ToggleHealth,
                         BackupAction.CheckFullCopy,
                         BackupAction.UndoUpdate,
+                        BackupAction.UndoRestore,
                         -> viewModel.onAction(action)
                     }
                 },

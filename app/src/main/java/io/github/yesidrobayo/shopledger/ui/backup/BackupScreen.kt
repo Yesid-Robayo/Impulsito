@@ -819,6 +819,18 @@ private fun LazyListScope.copies(uiState: BackupUiState, onAction: (BackupAction
         }
     }
     if (connected) item(key = DRILL) { Drill(uiState.drilling, onAction) }
+    // Solo con la copia local de antes de restaurar, mientras está vigente: tampoco depende del
+    // destino, porque esa copia nunca subió.
+    if (uiState.undoRestore != null) {
+        item(key = UNDO_RESTORE) {
+            Column(Modifier.padding(horizontal = AppTheme.spacing.s8)) {
+                InlineTextButton(
+                    stringResource(R.string.backup_undo_restore_label),
+                    { onAction(BackupAction.UndoRestore) },
+                )
+            }
+        }
+    }
     // Solo si existe la copia previa a migrar: es local, así que no depende del destino.
     if (uiState.beforeUpdate != null) {
         item(key = UNDO_UPDATE) {
@@ -1066,3 +1078,4 @@ private fun Drill(drilling: Boolean, onAction: (BackupAction) -> Unit) {
     }
 }
 private const val UNDO_UPDATE = "undoUpdate"
+private const val UNDO_RESTORE = "undoRestore"
