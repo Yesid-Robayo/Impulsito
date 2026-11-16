@@ -48,6 +48,21 @@ internal object SlotSetupSamples {
             ready = true,
         )
 
+    /** `Conservar este teléfono`: solo falta el archivo nuevo de la ranura en conflicto. */
+    val keepPhone =
+        SlotSetupUiState(
+            look(SlotFileStatus.READY, SlotFileStatus.MISSING, SlotFileStatus.READY)
+                .copy(conflictSlot = BackupSlot.B, conflictFileName = "shopledger-backup-b.slcopy"),
+        )
+
+    /** El mismo caso con el archivo nuevo ya creado. */
+    val keptPhone =
+        SlotSetupUiState(
+            look(SlotFileStatus.READY, SlotFileStatus.CREATED, SlotFileStatus.READY)
+                .copy(conflictSlot = BackupSlot.B, conflictFileName = "shopledger-backup-b.slcopy"),
+            ready = true,
+        )
+
     val otherDestination =
         SlotSetupUiState(
             look(

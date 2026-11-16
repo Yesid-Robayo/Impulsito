@@ -123,7 +123,8 @@ fun SlotSetupScreen(
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     }
-                    uiState.look?.conflictSlot?.let { slot ->
+                    // Con el archivo nuevo creado, el aviso de que falta ya no es cierto.
+                    uiState.look?.conflictSlot?.takeUnless { uiState.ready }?.let { slot ->
                         // Conservar este teléfono: el archivo anterior de esa ranura queda allí.
                         item(key = CONFLICT) {
                             val file =

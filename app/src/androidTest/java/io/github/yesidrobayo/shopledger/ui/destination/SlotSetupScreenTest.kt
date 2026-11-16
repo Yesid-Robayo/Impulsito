@@ -1,5 +1,8 @@
 package io.github.yesidrobayo.shopledger.ui.destination
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -76,6 +79,24 @@ class SlotSetupScreenTest {
 
         assertEquals(listOf<SlotSetupAction>(SlotSetupAction.Continue), actions)
         assertTrue(compose.onAllNodesWithText(create).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun theMissingFileNoticeLeavesOnceTheNewFileExists() {
+        val intro = resources.getString(R.string.slots_conflict_intro, PENDING_NAME_B, "Drive")
+        var state by mutableStateOf(SlotSetupSamples.keepPhone)
+        compose.setContent {
+            PreviewTheme { SlotSetupScreen(state, appName, onAction = {}) }
+        }
+
+        compose.onNodeWithText(intro).assertIsDisplayed()
+
+        state = SlotSetupSamples.keptPhone
+        compose.waitForIdle()
+
+        // Con los tres archivos, decir que falta uno contradice a `Archivos listos`.
+        compose.onNodeWithText(resources.getString(R.string.slots_ready_title)).assertIsDisplayed()
+        assertTrue(compose.onAllNodesWithText(intro).fetchSemanticsNodes().isEmpty())
     }
 
     @Test
