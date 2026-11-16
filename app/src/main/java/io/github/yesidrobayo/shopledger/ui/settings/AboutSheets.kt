@@ -40,6 +40,19 @@ enum class LicensedComponent(
     MATERIAL_SYMBOLS(R.string.license_component_material_symbols, R.string.license_apache, APACHE),
     FIGTREE(R.string.license_component_figtree, R.string.license_ofl, "licenses/figtree-ofl.txt"),
     NOTO(R.string.license_component_noto, R.string.license_ofl, "licenses/noto-ofl.txt"),
+    TINK(R.string.license_component_tink, R.string.license_apache, APACHE),
+
+    // Tink lleva Protocol Buffers dentro de su propio paquete: su licencia pide reproducir el aviso.
+    PROTOBUF(
+        R.string.license_component_protobuf,
+        R.string.license_bsd_3,
+        "licenses/protobuf-bsd-3-clause.txt",
+    ),
+    ZXING_CPP(R.string.license_component_zxing_cpp, R.string.license_apache, APACHE),
+    OKIO(R.string.license_component_okio, R.string.license_apache, APACHE),
+    GSON(R.string.license_component_gson, R.string.license_apache, APACHE),
+    GOOGLE_JAVA(R.string.license_component_google_java, R.string.license_apache, APACHE),
+    JETBRAINS(R.string.license_component_jetbrains, R.string.license_apache, APACHE),
 }
 
 // El texto de Apache 2.0 es el mismo para todos los componentes con esa licencia.

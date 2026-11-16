@@ -526,6 +526,21 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun theBundledProtocolBuffersNoticeIsListed() {
+        show(overview = connected())
+
+        compose.onNodeWithText(text(R.string.settings_licenses)).performScrollTo().performClick()
+        // Tink lleva Protocol Buffers dentro, y su licencia pide reproducir el aviso con el binario.
+        val protobuf =
+            text(
+                R.string.licenses_row,
+                text(R.string.license_component_protobuf),
+                text(R.string.license_bsd_3),
+            )
+        compose.onNodeWithText(protobuf).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun everyBundledLicenseTextIsInTheApk() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         for (entry in LicensedComponent.entries) {

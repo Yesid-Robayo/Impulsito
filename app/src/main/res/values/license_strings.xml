@@ -9,7 +9,15 @@
     <string name="license_component_material_symbols" translatable="false">Material Symbols</string>
     <string name="license_component_figtree" translatable="false">Figtree</string>
     <string name="license_component_noto" translatable="false">Noto Sans</string>
+    <string name="license_component_tink" translatable="false">Tink</string>
+    <string name="license_component_protobuf" translatable="false">Protocol Buffers</string>
+    <string name="license_component_zxing_cpp" translatable="false">zxing-cpp</string>
+    <string name="license_component_okio" translatable="false">Okio</string>
+    <string name="license_component_gson" translatable="false">Gson</string>
+    <string name="license_component_google_java" translatable="false">Guava, Dagger, AutoValue, JSR 305, Jakarta Inject</string>
+    <string name="license_component_jetbrains" translatable="false">Compose Multiplatform, JetBrains Annotations, JSpecify</string>
     <string name="license_apache" translatable="false">Apache 2.0</string>
+    <string name="license_bsd_3" translatable="false">BSD 3-Clause</string>
     <string name="license_ofl" translatable="false">SIL Open Font License 1.1</string>
     <!-- La página publicada de la política de privacidad, en las páginas públicas. -->
     <string name="legal_privacy_url" translatable="false">https://yesid-robayo.github.io/Impulsito/#privacy</string>
