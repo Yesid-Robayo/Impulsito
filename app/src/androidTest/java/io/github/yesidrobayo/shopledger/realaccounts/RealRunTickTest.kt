@@ -77,6 +77,12 @@ class RealRunTickTest {
             "atMs" to System.currentTimeMillis(),
         )
         assertTrue("La subida no quedó encolada", queued)
+        // Si el sistema ya arrancó la subida en este proceso, se espera a que termine: al acabar la
+        // prueba, el sistema mata el proceso y la cortaría a medias. Con Doze forzado no arranca
+        // aquí, y la corre el sistema después, con la app cerrada.
+        RealAccounts.awaitCondition(RUNNING_WAIT_MS) {
+            RealAccounts.uploadWork().none { (_, info) -> info.state == WorkInfo.State.RUNNING }
+        }
     }
 
     @Test
@@ -122,5 +128,8 @@ class RealRunTickTest {
 
     private companion object {
         const val SHORT_WAIT_MS = 15_000L
+
+        /** Lo que puede tardar una subida que ya arrancó en este proceso. */
+        const val RUNNING_WAIT_MS = 180_000L
     }
 }
