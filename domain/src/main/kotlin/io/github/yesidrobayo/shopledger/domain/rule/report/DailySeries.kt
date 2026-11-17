@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.report.DayExtremes
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.DayTotals
 
@@ -36,6 +37,22 @@ object DailySeries {
         )
     } catch (overflow: ArithmeticException) {
         Checked.Overflow
+    }
+
+    /**
+     * El día mayor y el menor de [points] según [value], solo entre los días hasta [today]
+     * incluido, en la zona del negocio. Un día que todavía no llega vale cero porque no pasó, no
+     * porque fuera flojo; y con la hora del teléfono corrida puede tener registros que no cuentan
+     * como el mejor día. Devuelve `null` si ningún día del período llegó todavía.
+     */
+    fun extremesOf(
+        points: List<DayPoint>,
+        today: BusinessDate,
+        value: (DayPoint) -> Money,
+    ): DayExtremes? {
+        val past = points.filter { it.date <= today }
+        if (past.isEmpty()) return null
+        return DayExtremes(highest = past.maxBy(value), lowest = past.minBy(value))
     }
 
     /** Cada fecha de [period], de la primera a la última. */

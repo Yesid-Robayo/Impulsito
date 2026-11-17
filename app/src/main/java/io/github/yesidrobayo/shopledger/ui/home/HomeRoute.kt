@@ -2,10 +2,13 @@ package io.github.yesidrobayo.shopledger.ui.home
 
 import androidx.activity.compose.ReportDrawnWhen
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationInfo
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationReader
@@ -19,14 +22,18 @@ import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodCompa
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObservePeriodReportUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleHistoryReader
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
+import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
 import io.github.yesidrobayo.shopledger.navigation.AppNavigator
 import io.github.yesidrobayo.shopledger.navigation.InventoryFilter
+import io.github.yesidrobayo.shopledger.navigation.LocalAppMessages
 import io.github.yesidrobayo.shopledger.navigation.PlaceholderRoute
 import io.github.yesidrobayo.shopledger.navigation.ScreenModel
 import io.github.yesidrobayo.shopledger.navigation.TopLevelDestination
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
+import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.PerformanceTags
+import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.performanceTag
 import io.github.yesidrobayo.shopledger.ui.safety.LocalPolicyPrompt
 import kotlinx.coroutines.flow.map
@@ -101,7 +108,24 @@ fun HomeRoute(navigator: AppNavigator) {
             val noDestinationNotice by viewModel.noDestinationNotice.collectAsStateWithLifecycle()
             val photosPending by viewModel.photosPending.collectAsStateWithLifecycle()
             val goal by viewModel.goal.collectAsStateWithLifecycle()
+            val message by viewModel.message.collectAsStateWithLifecycle()
             val policy = LocalPolicyPrompt.current
+            val messages = LocalAppMessages.current
+            val clockBehind =
+                stringResource(
+                    R.string.backup_save_clock_behind,
+                    backup?.providerLabel ?: NO_VALUE_TEXT,
+                )
+            LaunchedEffect(message) {
+                val shown = message ?: return@LaunchedEffect
+                viewModel.onMessageShown()
+                when (shown) {
+                    // Informa, como en la pantalla del respaldo: el aviso de la hora sigue a la
+                    // vista en el chip y el banner.
+                    HomeMessage.CLOCK_BEHIND ->
+                        messages.show(AppSnackbarVisuals(clockBehind, SnackbarVariant.INFO))
+                }
+            }
             LifecycleResumeEffect(viewModel) {
                 viewModel.onReturnToForeground()
                 onPauseOrDispose {}

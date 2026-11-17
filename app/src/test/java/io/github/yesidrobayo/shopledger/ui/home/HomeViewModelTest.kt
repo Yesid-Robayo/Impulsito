@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKin
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupOverview
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
+import io.github.yesidrobayo.shopledger.domain.model.backup.StaleReason
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryCursor
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
@@ -43,6 +44,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.YearMonth
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -382,6 +384,59 @@ class HomeViewModelTest {
             advanceUntilIdle()
             assertEquals(3, backupRequests)
             assertEquals(BackupStatus.PENDING, model.backup.value?.overview?.report?.status)
+        }
+
+    @Test
+    fun `with the phone clock behind, save to the phone cloud says why and still asks`() =
+        runTest(dispatcher) {
+            // La última entrega quedó un día después de la hora de ahora: el reloj va atrás.
+            backupOverviews.value =
+                backupOverview(BackupDestinationKind.DOCUMENT_SLOTS, BackupStatus.STALE).copy(
+                    report =
+                        BackupStatusReport(
+                            BackupStatus.STALE,
+                            pendingChanges = 3,
+                            savingSoon = false,
+                        ),
+                    lastSuccessAt = now + 1.days,
+                    staleReason = StaleReason.CLOCK,
+                )
+            val model = viewModel()
+            backgroundScope.launch { model.message.collect {} }
+            assertNull(model.message.value)
+
+            model.onAction(HomeAction.SaveToProvider)
+            advanceUntilIdle()
+
+            // Un reloj raro nunca detiene una copia: se pide igual, y el toque no queda mudo.
+            assertEquals(1, backupRequests)
+            assertEquals(HomeMessage.CLOCK_BEHIND, model.message.value)
+
+            model.onMessageShown()
+            assertNull(model.message.value)
+        }
+
+    @Test
+    fun `save to the phone cloud with the clock right or a failed request says nothing`() =
+        runTest(dispatcher) {
+            backupOverviews.value =
+                backupOverview(BackupDestinationKind.DOCUMENT_SLOTS, BackupStatus.PENDING)
+            val model = viewModel()
+
+            model.onAction(HomeAction.SaveToProvider)
+            advanceUntilIdle()
+            assertNull(model.message.value)
+
+            // Si la copia no se pudo pedir, el chip sigue diciendo lo pendiente.
+            backupOverviews.value =
+                backupOverview(BackupDestinationKind.DOCUMENT_SLOTS, BackupStatus.STALE)
+                    .copy(staleReason = StaleReason.CLOCK)
+            advanceUntilIdle()
+            requestFailure = IOException("Disco inventado")
+            model.onAction(HomeAction.SaveToProvider)
+            advanceUntilIdle()
+            assertNull(model.message.value)
+            assertEquals(2, backupRequests)
         }
 
     @Test

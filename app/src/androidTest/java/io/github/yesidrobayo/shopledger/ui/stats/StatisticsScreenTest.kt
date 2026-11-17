@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.stats
 
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasStateDescription
@@ -13,13 +14,18 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.DISCREET_TEXT
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
+import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
+import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -89,6 +95,61 @@ class StatisticsScreenTest {
         )
         compose.onNodeWithText(text(R.string.stats_tool_estimated_tax)).assertExists()
         compose.onNodeWithText(text(R.string.tax_estimate_notice)).assertExists()
+    }
+
+    @Test
+    fun theChartSummaryNeverNamesADayAfterToday() {
+        // Hoy es el 14 de noviembre: del 1 al 14 todos vendieron, el 3 menos que ninguno y el 7
+        // más; del 15 al 30 todavía no llegan, y su cero no los hace el día menor.
+        val month = previewStatisticsContent().period
+        val series =
+            (0 until NOVEMBER_DAYS).map { index ->
+                val sales =
+                    when {
+                        index == 2 -> 1_000L
+                        index == 6 -> 9_000L
+                        index < 14 -> 2_000L
+                        else -> 0L
+                    }
+                DayPoint(month.start.plusDays(index), Money(sales), Money(sales / 2))
+            }
+        val content =
+            previewStatisticsContent().copy(
+                today = BusinessDate(LocalDate(2026, 11, 14)),
+                series = series,
+            )
+        var lowest = ""
+        var highest = ""
+        var tomorrow = ""
+        compose.setContent {
+            PreviewTheme {
+                val date = LocalAppFormats.current.date
+                lowest = date.weekdayDayMonth(BusinessDate(LocalDate(2026, 11, 3)))
+                highest = date.weekdayDayMonth(BusinessDate(LocalDate(2026, 11, 7)))
+                tomorrow = date.weekdayDayMonth(BusinessDate(LocalDate(2026, 11, 15)))
+                StatisticsScreen(content, { actions += it })
+            }
+        }
+
+        val summaryStart = text(R.string.stats_chart_summary_sales).substringBefore("%1")
+        val summary =
+            compose.onNodeWithContentDescription(summaryStart, substring = true)
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.ContentDescription]
+                .joinToString()
+        assertTrue(summary, summary.contains(lowest))
+        assertTrue(summary, summary.contains(highest))
+        assertFalse(summary, summary.contains(tomorrow))
+    }
+
+    @Test
+    fun aPeriodThatHasNotStartedHasNoChart() {
+        // Con la hora del teléfono corrida, noviembre puede tener registros visto el 31 de octubre:
+        // ningún día llegó, y no hay día mayor ni menor que nombrar.
+        show(previewStatisticsContent().copy(today = BusinessDate(LocalDate(2026, 10, 31))))
+
+        val summaryStart = text(R.string.stats_chart_summary_sales).substringBefore("%1")
+        compose.onNodeWithContentDescription(summaryStart, substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -248,5 +309,9 @@ class StatisticsScreenTest {
 
     private fun scrollTo(label: String) {
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(label))
+    }
+
+    private companion object {
+        const val NOVEMBER_DAYS = 30
     }
 }

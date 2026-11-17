@@ -76,6 +76,8 @@
     <string name="backup_near_limit">Los datos se acercan al tamaño que %1$s puede restaurar. Todavía se guardan bien. Conviene pedir ayuda antes de que dejen de caber.</string>
     <string name="backup_near_limit_slots">Los datos se acercan al tamaño que %1$s puede restaurar. Todavía se entregan bien. Conviene pedir ayuda antes de que dejen de caber.</string>
     <string name="backup_now_no_internet">Sin internet. La copia sale cuando vuelva la conexión.</string>
+    <!-- backup_save_clock_behind: %1$s = provider -->
+    <string name="backup_save_clock_behind">La hora del teléfono parece atrasada, y así la copia puede no llegar a %1$s. Conviene corregir la fecha y la hora en los ajustes de Android y volver a tocar Guardar en %1$s.</string>
     <string name="backup_full_verify_late_notice">Hace %1$s días que %2$s no comprueba una copia entera. Si el servicio dañó un archivo, todavía no se sabe.</string>
     <string name="backup_copy_not_restorable">No se puede restaurar</string>
     <string name="backup_destination_label">Dónde se guardan</string>

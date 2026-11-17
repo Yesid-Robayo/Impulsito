@@ -46,6 +46,7 @@ import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.Margin
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.report.DayExtremes
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodMetrics
@@ -353,15 +354,24 @@ private fun Overview(
     if (points != null) {
         // Con la lista, las filas de cada día reemplazan la gráfica: el mismo dato, sin dibujo. Un
         // período todo en cero no se dibuja: el texto de arriba ya dice que no hubo movimientos.
+        // Tampoco uno que todavía no empezó: no tiene ningún día que nombrar como mayor o menor.
         val anyValue = points.any { it.valueOf(content.metric) != Money.ZERO }
-        if (!content.showList && anyValue) {
+        val extremes = content.chartExtremes
+        if (!content.showList && anyValue && extremes != null) {
             AppCard(contentPadding = PaddingValues(AppTheme.spacing.s12)) {
                 DailyBarChart(
                     points = points,
                     metric = content.metric,
                     selectedDay = content.selectedDay,
                     onSelectDay = { onAction(StatisticsAction.SelectDay(it)) },
-                    summary = chartSummary(content.period, content.today, points, content.metric),
+                    summary =
+                        chartSummary(
+                            content.period,
+                            content.today,
+                            points,
+                            extremes,
+                            content.metric,
+                        ),
                     height = chartHeight,
                 )
             }
@@ -835,20 +845,21 @@ internal fun moneyInText(amount: Money?): Pair<CharSequence, String> {
 }
 
 /**
- * Lo que TalkBack dice de la gráfica: la serie, el rango, el total y los días mayor y menor. En modo
- * discreto, sin montos.
+ * Lo que TalkBack dice de la gráfica: la serie, el rango, el total y los días mayor y menor, que
+ * llegan de [extremes] y nunca son posteriores a hoy. En modo discreto, sin montos.
  */
 @Composable
 private fun chartSummary(
     period: ReportPeriod,
     today: BusinessDate,
     points: List<DayPoint>,
+    extremes: DayExtremes,
     metric: ChartMetric,
 ): String {
     val date = LocalAppFormats.current.date
     val values = points.map { it.valueOf(metric) }
-    val highest = points.maxByOrNull { it.valueOf(metric) }
-    val lowest = points.minByOrNull { it.valueOf(metric) }
+    val highest = extremes.highest
+    val lowest = extremes.lowest
     val total = values.fold(Money.ZERO) { sum, value -> sum + value }
     return stringResource(
         when (metric) {
@@ -858,10 +869,10 @@ private fun chartSummary(
         },
         periodLabel(period, today),
         moneyInText(total).second,
-        highest?.let { date.weekdayDayMonth(it.date) }.orEmpty(),
-        moneyInText(highest?.valueOf(metric)).second,
-        lowest?.let { date.weekdayDayMonth(it.date) }.orEmpty(),
-        moneyInText(lowest?.valueOf(metric)).second,
+        date.weekdayDayMonth(highest.date),
+        moneyInText(highest.valueOf(metric)).second,
+        date.weekdayDayMonth(lowest.date),
+        moneyInText(lowest.valueOf(metric)).second,
     )
 }
 

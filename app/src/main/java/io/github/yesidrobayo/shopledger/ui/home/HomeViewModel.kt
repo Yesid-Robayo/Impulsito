@@ -21,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.InventoryOverview
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWording
 import io.github.yesidrobayo.shopledger.ui.backup.BackupWordings
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
+import io.github.yesidrobayo.shopledger.ui.backup.warnsClockOnSave
 import io.github.yesidrobayo.shopledger.ui.stock.inventoryItemOf
 import java.io.IOException
 import kotlin.time.Instant
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
@@ -95,6 +97,11 @@ class HomeViewModel(
 
     // La aceptación del aviso sin destino, leída del archivo una vez al abrir.
     private val acknowledgement = MutableStateFlow<Acknowledgement>(Acknowledgement.Unknown)
+
+    private val messages = MutableStateFlow<HomeMessage?>(null)
+
+    /** El mensaje breve que sigue a una acción de Inicio, hasta que la pantalla lo muestra. */
+    val message: StateFlow<HomeMessage?> = messages.asStateFlow()
 
     private val recentSales: Flow<List<SaleHistoryRow>> = history.changes().map {
         withContext(computation) { history.page(SaleHistoryFilter(), after = null, RECENT_SALES) }
@@ -234,7 +241,8 @@ class HomeViewModel(
     /**
      * `Guardar en {provider}`: pide la copia fuera del hilo principal. Si no se pudo pedir, el
      * chip sigue mostrando los cambios sin copia, y el botón sigue ahí para intentarlo de
-     * nuevo.
+     * nuevo. Con la hora del teléfono atrasada se pide igual, y el toque dice que la copia puede
+     * no llegar y qué corregir: nunca queda en silencio.
      */
     private fun saveToProvider() {
         viewModelScope.launch {
@@ -242,10 +250,18 @@ class HomeViewModel(
                 withContext(computation) { requestBackup() }
             } catch (_: IOException) {
                 // Lo pendiente sigue a la vista: nada se da por guardado.
+                return@launch
             } catch (_: IllegalStateException) {
                 // La base todavía no se puede leer: lo mismo.
+                return@launch
             }
+            if (backup.value?.warnsClockOnSave() == true) messages.value = HomeMessage.CLOCK_BEHIND
         }
+    }
+
+    /** La pantalla ya mostró [message]: no se repite al volver. */
+    fun onMessageShown() {
+        messages.value = null
     }
 
     /**

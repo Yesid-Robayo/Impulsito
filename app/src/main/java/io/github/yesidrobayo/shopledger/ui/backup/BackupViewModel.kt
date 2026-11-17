@@ -617,6 +617,11 @@ class BackupViewModel(
                 if (webDav && !destination.hasNetwork()) {
                     state.update { it.copy(message = BackupMessage.NO_INTERNET) }
                 }
+                // Con la nube del teléfono y la hora atrasada, la entrega puede no salir: el toque
+                // lo dice y pide corregir la hora, en lugar de quedar en silencio.
+                if (state.value.wording?.warnsClockOnSave() == true) {
+                    state.update { it.copy(message = BackupMessage.CLOCK_BEHIND) }
+                }
             } finally {
                 state.update { it.copy(requesting = false) }
             }

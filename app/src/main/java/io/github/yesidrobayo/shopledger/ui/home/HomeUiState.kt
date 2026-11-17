@@ -101,6 +101,15 @@ sealed interface HomeAction {
     data object OpenGoals : HomeAction
 }
 
+/** Los mensajes breves de Inicio, que la pantalla muestra una vez. */
+enum class HomeMessage {
+    /**
+     * `Guardar en {provider}` con la hora del teléfono atrasada: la copia se pidió, pero puede no
+     * llegar, y se dice qué corregir. Nunca la da por guardada.
+     */
+    CLOCK_BEHIND,
+}
+
 /**
  * La tarjeta `Por agotarse`: cuántos se están acabando, cuántos en negativo, y los primeros
  * [items], en el mismo orden y con el mismo conteo que el inventario. Inicio no la muestra si no

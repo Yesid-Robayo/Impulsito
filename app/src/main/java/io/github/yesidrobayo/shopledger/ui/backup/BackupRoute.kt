@@ -110,6 +110,7 @@ fun BackupRoute(navigator: AppNavigator) {
                     uiState.handoff?.fileName ?: NO_VALUE_TEXT,
                 )
             val sessionOpenFailed = stringResource(R.string.backup_session_open_failed, provider)
+            val clockBehind = stringResource(R.string.backup_save_clock_behind, provider)
             val disconnected = stringResource(R.string.confirm_destination_disconnected)
             val disconnectFailed = stringResource(R.string.error_disconnect)
             val pinnedMax = stringResource(R.string.backup_pinned_max, MAX_PINNED_COPIES)
@@ -187,6 +188,10 @@ fun BackupRoute(navigator: AppNavigator) {
 
                     BackupMessage.SAVE_FAILED ->
                         messages.show(AppSnackbarVisuals(saveFailed, SnackbarVariant.ERROR))
+
+                    // Informa, como sin internet: el aviso de la hora sigue a la vista.
+                    BackupMessage.CLOCK_BEHIND ->
+                        messages.show(AppSnackbarVisuals(clockBehind, SnackbarVariant.INFO))
                 }
             }
             // El selector del sistema, para `Buscar un archivo`: cualquier tipo, porque una copia

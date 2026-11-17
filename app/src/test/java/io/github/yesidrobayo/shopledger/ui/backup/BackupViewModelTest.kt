@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatus
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupStatusReport
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyOrigin
 import io.github.yesidrobayo.shopledger.domain.model.backup.HandoffCopy
+import io.github.yesidrobayo.shopledger.domain.model.backup.StaleReason
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
 import io.github.yesidrobayo.shopledger.domain.port.BackupDestinationSource
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
@@ -59,6 +60,13 @@ class BackupViewModelTest {
         lastFullReadAt = null,
         computedAt = now,
     )
+
+    /** Un día sin copia porque la última entrega quedó una hora después de la hora de ahora. */
+    private fun clockBehind(kind: BackupDestinationKind) =
+        overview(status = BackupStatus.STALE, kind = kind, lastSuccessAt = now + 1.hours).copy(
+            report = BackupStatusReport(BackupStatus.STALE, pendingChanges = 2, savingSoon = false),
+            staleReason = StaleReason.CLOCK,
+        )
 
     private val overviews = MutableStateFlow(overview())
     private var refreshCount = 0
@@ -214,6 +222,66 @@ class BackupViewModelTest {
 
         assertNull(model.uiState.value.message)
     }
+
+    @Test
+    fun `with the phone clock behind, save to the cloud of the phone says why and still asks`() =
+        runTest(dispatcher) {
+            // La última entrega quedó a las 16:00 y el teléfono dice 15:00: la hora va atrás.
+            overviews.value = clockBehind(BackupDestinationKind.DOCUMENT_SLOTS)
+            destination.info = BackupDestinationInfo.Slots("Nube")
+            val model = viewModel()
+
+            model.onAction(BackupAction.BackUpNow)
+            advanceUntilIdle()
+
+            // Un reloj raro nunca detiene una copia: se pide igual, y el toque no queda mudo.
+            assertEquals(1, requests)
+            assertEquals(BackupMessage.CLOCK_BEHIND, model.uiState.value.message)
+            assertFalse(model.uiState.value.requesting)
+
+            model.onAction(BackupAction.MessageShown)
+            assertNull(model.uiState.value.message)
+        }
+
+    @Test
+    fun `a request that fails says so before the clock`() = runTest(dispatcher) {
+        overviews.value = clockBehind(BackupDestinationKind.DOCUMENT_SLOTS)
+        val model =
+            BackupViewModel(
+                overview = { refreshes -> combine(refreshes, overviews) { _, current -> current } },
+                destination = BackupDestinationReader(destination),
+                calendar = MutableStateFlow(BusinessCalendar.of("Etc/GMT+5", DayOfWeek.MONDAY)),
+                requestBackup = { error("Base inventada sin abrir") },
+                recordCheck = { true },
+                computation = dispatcher,
+            )
+        advanceUntilIdle()
+
+        model.onAction(BackupAction.BackUpNow)
+        advanceUntilIdle()
+
+        assertEquals(BackupMessage.REQUEST_FAILED, model.uiState.value.message)
+    }
+
+    @Test
+    fun `the clock notice is only for the cloud of the phone and only for the clock`() =
+        runTest(dispatcher) {
+            // Con WebDAV la copia sale sola y el estado ya lo dice: el toque no suma nada.
+            overviews.value = clockBehind(BackupDestinationKind.WEBDAV)
+            val model = viewModel()
+            model.onAction(BackupAction.BackUpNow)
+            advanceUntilIdle()
+            assertNull(model.uiState.value.message)
+
+            // Un día sin copia sin motivo conocido tampoco habla de la hora.
+            overviews.value =
+                clockBehind(BackupDestinationKind.DOCUMENT_SLOTS).copy(staleReason = null)
+            advanceUntilIdle()
+            model.onAction(BackupAction.BackUpNow)
+            advanceUntilIdle()
+            assertNull(model.uiState.value.message)
+            assertEquals(2, requests)
+        }
 
     @Test
     fun `returning to the foreground computes the state again`() = runTest(dispatcher) {

@@ -6,11 +6,13 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.report.BreakEven
+import io.github.yesidrobayo.shopledger.domain.model.report.DayExtremes
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodKind
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodMetrics
 import io.github.yesidrobayo.shopledger.domain.model.report.ReplacementProfit
 import io.github.yesidrobayo.shopledger.domain.model.tax.TaxEstimate
+import io.github.yesidrobayo.shopledger.domain.rule.report.DailySeries
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ComparedPeriod
 import io.github.yesidrobayo.shopledger.domain.usecase.report.PeriodBreakdown
 import io.github.yesidrobayo.shopledger.domain.usecase.report.SoldAndCollectedView
@@ -85,6 +87,16 @@ sealed interface StatisticsUiState {
         /** Las métricas que se ofrecen: `Cobrado` solo si el negocio vende a crédito. */
         val offeredMetrics: List<ChartMetric>
             get() = ChartMetric.entries.filter { it != ChartMetric.COLLECTED || collection != null }
+
+        /**
+         * El día mayor y el menor de la serie de [metric], los que nombra el resumen de la
+         * gráfica: solo entre los días hasta [today], porque uno que todavía no llega no es el más
+         * flojo. Es `null` sin serie o si el período todavía no empezó, y entonces no se dibuja.
+         */
+        val chartExtremes: DayExtremes?
+            get() = series?.let { points ->
+                DailySeries.extremesOf(points, today) { it.valueOf(metric) }
+            }
     }
 }
 

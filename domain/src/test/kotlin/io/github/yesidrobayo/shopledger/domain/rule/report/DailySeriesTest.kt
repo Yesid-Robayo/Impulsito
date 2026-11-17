@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.ProfitTotals
 import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
+import io.github.yesidrobayo.shopledger.domain.model.report.DayExtremes
 import io.github.yesidrobayo.shopledger.domain.model.report.DayPoint
 import io.github.yesidrobayo.shopledger.domain.model.report.DayTotals
 import io.github.yesidrobayo.shopledger.domain.model.report.PeriodTotals
@@ -79,6 +80,79 @@ class DailySeriesTest {
 
         assertEquals(Checked.Overflow, DailySeries.of(ReportPeriod.Day(date("2026-11-05")), days))
     }
+
+    @Test
+    fun `a day after today is never the lowest or the highest`() {
+        // Semana del lunes 2026-11-02, vista el jueves 5: del viernes al domingo todavía no pasan.
+        val points = week(10_000, 4_000, 7_000, 6_000, 0, 0, 0)
+
+        assertEquals(
+            DayExtremes(
+                highest = point("2026-11-02", 10_000),
+                lowest = point("2026-11-03", 4_000),
+            ),
+            DailySeries.extremesOf(points, date("2026-11-05"), DayPoint::netSales),
+        )
+    }
+
+    @Test
+    fun `today is a candidate and a later day with records does not win`() {
+        // Con el reloj del teléfono adelantado quedó una venta el sábado 7, después de hoy.
+        val points = week(10_000, 4_000, 7_000, 1_000, 0, 50_000, 0)
+
+        assertEquals(
+            DayExtremes(
+                highest = point("2026-11-02", 10_000),
+                lowest = point("2026-11-05", 1_000),
+            ),
+            DailySeries.extremesOf(points, date("2026-11-05"), DayPoint::netSales),
+        )
+    }
+
+    @Test
+    fun `a past day without sales is still the lowest`() {
+        val points = week(10_000, 0, 7_000, 6_000, 0, 0, 0)
+
+        assertEquals(
+            DayExtremes(
+                highest = point("2026-11-02", 10_000),
+                lowest = point("2026-11-03", 0),
+            ),
+            DailySeries.extremesOf(points, date("2026-11-05"), DayPoint::netSales),
+        )
+    }
+
+    @Test
+    fun `a period that has not started yet has no lowest nor highest day`() {
+        val points = week(0, 0, 3_000, 0, 0, 0, 0)
+
+        assertEquals(null, DailySeries.extremesOf(points, date("2026-11-01"), DayPoint::netSales))
+        assertEquals(
+            null,
+            DailySeries.extremesOf(emptyList(), date("2026-11-05"), DayPoint::netSales),
+        )
+    }
+
+    @Test
+    fun `a period already over uses every day`() {
+        val points = week(10_000, 4_000, 7_000, 6_000, 2_000, 12_000, 3_000)
+
+        assertEquals(
+            DayExtremes(
+                highest = point("2026-11-07", 12_000),
+                lowest = point("2026-11-06", 2_000),
+            ),
+            DailySeries.extremesOf(points, date("2026-11-20"), DayPoint::netSales),
+        )
+    }
+
+    /** La semana del lunes 2026-11-02 con lo vendido de cada día, sin ganancia. */
+    private fun week(vararg sales: Long): List<DayPoint> =
+        sales.mapIndexed { index, net ->
+            DayPoint(date("2026-11-02").plusDays(index), Money(net), Money.ZERO)
+        }
+
+    private fun point(text: String, net: Long) = DayPoint(date(text), Money(net), Money.ZERO)
 
     private fun seriesOf(period: ReportPeriod, days: List<DayTotals>): List<DayPoint> =
         (DailySeries.of(period, days) as Checked.Value).value

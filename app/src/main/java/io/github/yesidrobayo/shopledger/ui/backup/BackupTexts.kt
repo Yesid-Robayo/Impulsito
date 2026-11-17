@@ -71,6 +71,17 @@ fun BackupWording.offersSaveToProvider(): Boolean {
 }
 
 /**
+ * Si tocar `Guardar en {provider}` dice que la hora del teléfono parece atrasada: con la nube del
+ * teléfono y un día sin copia porque la hora de ahora es anterior a la última entrega o a un cambio
+ * sin copia. Con esa hora la entrega puede no salir, y el toque no puede quedar en silencio.
+ *
+ * El botón sigue activo a propósito: un reloj raro nunca detiene una copia, y la misma señal sale
+ * cuando la hora estuvo adelantada y ya se corrigió, con registros que quedaron en el futuro.
+ * Apagarlo dejaría sin forma de guardar hasta que la hora real los alcance.
+ */
+fun BackupWording.warnsClockOnSave(): Boolean = slots && overview.staleReason == StaleReason.CLOCK
+
+/**
  * El nombre del botón que pide una copia: `Respaldar ahora`, o con la nube del teléfono
  * `Guardar en {provider}`, porque allí cada copia es a mano.
  */
