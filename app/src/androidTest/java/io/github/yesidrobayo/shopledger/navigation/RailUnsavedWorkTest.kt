@@ -49,6 +49,8 @@ class RailUnsavedWorkTest {
                         leaveSaleTexts(SaleCartState(itemCount = 3L), exchange = false),
                     )
                     RailHost(
+                        // Decir abre la hoja de una vez: esta prueba no escucha.
+                        say = { open -> open() },
                         visible = true,
                         navigator = navigator,
                         stack = stack,

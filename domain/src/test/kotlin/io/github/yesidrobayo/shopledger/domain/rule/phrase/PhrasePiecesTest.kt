@@ -61,6 +61,8 @@ class PhrasePiecesTest {
         // Con el separador de miles ya escrito, la coma es decimal como siempre.
         assertEquals(1_500_250L, spanishNumber("1.500,250"))
         assertEquals(null, spanishNumber("1234,567,890"))
+        // Agrupado así pero demasiado largo para leerlo: no es un número.
+        assertEquals(null, spanishNumber("123,456,789,012,345"))
     }
 
     @Test

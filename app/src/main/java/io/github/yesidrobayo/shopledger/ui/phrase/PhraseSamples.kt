@@ -25,6 +25,11 @@ internal object PhraseSamples {
             systemKey = "KILOGRAM",
             kind = UnitKind.MASS,
         )
+
+    /** Una frase dictada larga, para ver cómo se acomoda en la pantalla de escuchar. */
+    const val LONG_HEARD =
+        "vendí 3 panes integrales de masa madre y 2 jugos de naranja grandes en efectivo"
+
     private val cash = CardOption(1L, "Efectivo")
     private val transfer = CardOption(2L, "Transferencia")
 
@@ -135,6 +140,17 @@ private fun PhraseNotUnderstoodPreview() {
     PreviewTheme {
         PhraseScreen(
             PhraseUiState(text = "eso de ayer", stage = PhraseStage.NotUnderstood),
+            onAction = {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun PhraseMicBlockedPreview() {
+    PreviewTheme {
+        PhraseScreen(
+            PhraseUiState(voiceReady = true, voiceNotice = VoiceNotice.PERMISSION_BLOCKED),
             onAction = {},
         )
     }

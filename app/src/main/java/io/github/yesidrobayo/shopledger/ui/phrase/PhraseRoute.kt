@@ -1,15 +1,10 @@
 package io.github.yesidrobayo.shopledger.ui.phrase
 
-import android.content.ActivityNotFoundException
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -40,13 +35,15 @@ import kotlinx.coroutines.withContext
 
 /**
  * `Decir o escribir` en la navegación: arma su ViewModel con los casos de uso de la base abierta,
- * abre el servicio de voz cuando se pide y dice cómo terminó registrar.
+ * toma lo que `Decir` escuchó antes de abrirla, escucha otra vez con el micrófono del campo y dice
+ * cómo terminó registrar.
  *
- * - **La voz directa** solo existe si la persona la encendió en Ajustes y el teléfono tiene un
- *   servicio de voz. Entonces `Decir` abre ese servicio de una vez, con el idioma de la app y
- *   pidiendo que prefiera trabajar sin conexión, y el texto que devuelve se lee como si se hubiera
- *   escrito. La app nunca usa el micrófono: lo opera el servicio del teléfono, por el toque de la
- *   persona. Si no abre, queda el teclado.
+ * - **Lo oído por `Decir`** llega por la navegación, en memoria: la frase se lee al abrir, como si
+ *   se hubiera escrito, y la persona ve la tarjeta. Si `Decir` no pudo escuchar, la hoja abre con
+ *   el teclado y el aviso de por qué. Si la hoja ya estaba abierta, lo toma igual.
+ * - **El micrófono del campo** existe si escuchar está encendido en Ajustes y el teléfono tiene un
+ *   servicio de voz. Abre la misma pantalla de escuchar encima de la hoja; cancelarla deja el
+ *   teclado.
  * - **Al registrar,** el mensaje dice qué se registró y, si la pantalla de esa operación lo ofrece,
  *   trae `Deshacer` durante 10 segundos: la venta, la compra y el gasto. La hoja sigue abierta y
  *   lista para otra frase.
@@ -56,7 +53,11 @@ import kotlinx.coroutines.withContext
 fun PhraseRoute(key: AppNavKey.Phrase, navigator: AppNavigator) {
     val formats = LocalAppFormats.current
     val resources = LocalResources.current
-    val appContext = LocalContext.current.applicationContext
+    val context = LocalContext.current
+    val appContext = context.applicationContext
+    // Lo que `Decir` escuchó antes de abrir la hoja: se toma una vez, al aparecer.
+    val said = remember { navigator.said.take() }
+    val heardOnOpen = (said as? VoiceResult.Heard)?.text
     val numbers =
         PhraseInputFormat(
             moneySymbols = formats.money.inputSymbols,
@@ -77,17 +78,23 @@ fun PhraseRoute(key: AppNavKey.Phrase, navigator: AppNavigator) {
                 voiceReady = {
                     val available =
                         withContext(container.dispatchers.io) {
-                            VoiceInput.isAvailable(appContext)
+                            PhoneSpeechEngine.isAvailable(appContext)
                         }
                     available && container.voiceInput.load()
                 },
-                initialText = key.text,
+                initialText = heardOnOpen ?: key.text,
+                initialNotice = (said as? VoiceResult.Keyboard)?.notice,
             )
         }
     when (model) {
+        // Con una frase oída, la hoja ya se ve leyéndola: el teclado no salta antes de la tarjeta.
         ScreenModel.Opening ->
             PhraseScreen(
-                PhraseUiState(),
+                if (heardOnOpen != null) {
+                    PhraseUiState(text = heardOnOpen, stage = PhraseStage.Reading)
+                } else {
+                    PhraseUiState()
+                },
                 onAction = { if (it == PhraseAction.Close) navigator.back() },
             )
 
@@ -98,46 +105,18 @@ fun PhraseRoute(key: AppNavKey.Phrase, navigator: AppNavigator) {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val messages = LocalAppMessages.current
             val haptics = LocalHapticFeedback.current
-            // El servicio de voz del teléfono: devuelve el texto, o nada si la persona cancela.
-            val languageTag = formats.uiLocale.toLanguageTag()
-            // Primero sin conexión; si el servicio falla, una vez más por la red. Si tampoco llega
-            // texto, la pantalla lo dice y ofrece el micrófono del teclado. Cancelar no es un fallo.
-            var onlineTry by remember { mutableStateOf<(() -> Unit)?>(null) }
-            val voice =
-                rememberLauncherForActivityResult(
-                    ActivityResultContracts.StartActivityForResult(),
-                ) { result ->
-                    val heard = VoiceInput.textOf(result.resultCode, result.data)
-                    val retry = onlineTry
-                    onlineTry = null
-                    when {
-                        heard != null -> viewModel.onAction(PhraseAction.Heard(heard))
-
-                        VoiceInput.failed(result.resultCode) && retry != null -> retry()
-
-                        VoiceInput.failed(result.resultCode) ->
-                            viewModel.onAction(PhraseAction.DictateHandled(opened = false))
-                    }
-                }
-            LaunchedEffect(uiState.dictate) {
-                if (!uiState.dictate) return@LaunchedEffect
-                val opened =
-                    try {
-                        onlineTry = {
-                            try {
-                                voice.launch(VoiceInput.intent(languageTag, preferOffline = false))
-                            } catch (_: ActivityNotFoundException) {
-                                viewModel.onAction(PhraseAction.DictateHandled(opened = false))
-                            }
-                        }
-                        voice.launch(VoiceInput.intent(languageTag))
-                        true
-                    } catch (_: ActivityNotFoundException) {
-                        // El servicio se desinstaló o se desactivó: queda el teclado.
-                        onlineTry = null
-                        false
-                    }
-                viewModel.onAction(PhraseAction.DictateHandled(opened))
+            // El micrófono del campo: la misma pantalla de escuchar, encima de la hoja.
+            val capture = remember { VoiceCapture() }
+            VoiceCaptureHost(capture, offerTyping = false)
+            LaunchedEffect(uiState.listening) {
+                if (!uiState.listening) return@LaunchedEffect
+                capture.start { result -> viewModel.onAction(result.toAction()) }
+            }
+            // `Decir` desde el riel con la hoja ya abierta: lo oído llega después de abrirla.
+            val pendingSaid by navigator.said.toTake.collectAsStateWithLifecycle()
+            LaunchedEffect(pendingSaid) {
+                if (pendingSaid == null) return@LaunchedEffect
+                navigator.said.take()?.let { viewModel.onAction(it.toAction()) }
             }
             val registered = uiState.registered
             val doneText = registered?.let { stringResource(doneMessage(it.intent)) }
@@ -205,12 +184,21 @@ fun PhraseRoute(key: AppNavKey.Phrase, navigator: AppNavigator) {
 
                         PhraseAction.MicHelp -> navigator.open(MIC_HELP)
 
+                        PhraseAction.OpenMicSettings -> context.openMicrophoneSettings()
+
                         else -> viewModel.onAction(action)
                     }
                 },
             )
         }
     }
+}
+
+/** Lo que hace la hoja con lo que terminó de escuchar. */
+private fun VoiceResult.toAction(): PhraseAction = when (this) {
+    is VoiceResult.Heard -> PhraseAction.Heard(text)
+    is VoiceResult.Keyboard -> PhraseAction.ListenEnded(notice)
+    VoiceResult.Cancelled -> PhraseAction.ListenEnded(null)
 }
 
 /** Deshace la venta [saleId] y dice cómo terminó. Si falló, `Reintentar` lo intenta otra vez. */

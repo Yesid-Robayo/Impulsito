@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Decir o escribir: registrar una operación con una frase, y la voz directa opcional. -->
+    <!-- Decir o escribir: registrar una operación con una frase, y la pantalla de escuchar. -->
     <!-- Entradas: Inicio, el widget, los atajos y la ayuda. -->
     <string name="phrase_title">Decir o escribir</string>
     <string name="phrase_action_say">Decir</string>
@@ -13,9 +13,8 @@
     <string name="phrase_field_hint">Para dictar, tocar el micrófono del teclado</string>
     <string name="phrase_field_hint_correct">Para corregir, decir solo lo que cambia, como «no, eran 3»</string>
     <string name="phrase_field_empty">Escribir o dictar qué pasó</string>
-    <string name="phrase_voice_failed">No llegó texto de la voz del teléfono. Dictar con el micrófono del teclado</string>
+    <string name="phrase_voice_failed">No se pudo escuchar. Escribir la frase o dictarla con el micrófono del teclado</string>
     <string name="phrase_understand">Entender</string>
-    <string name="phrase_dictate">Dictar con la voz del teléfono</string>
     <string name="phrase_examples_title">Por ejemplo:</string>
     <string name="phrase_example_sale">«vendí 3 panes y 2 jugos en efectivo»</string>
     <string name="phrase_example_purchase">«compré 10 kilos de harina por 50000»</string>
@@ -118,10 +117,21 @@
     <string name="phrase_done_product">Producto creado</string>
     <string name="phrase_done_cost">Costo corregido</string>
     <string name="phrase_done_price">Precio cambiado</string>
-    <!-- La voz directa, en Ajustes. -->
-    <string name="voice_input_setting">Dictar directo con la voz del teléfono</string>
-    <string name="voice_input_summary">Decir abre el servicio de voz del teléfono en lugar del teclado</string>
-    <string name="voice_input_confirm_title">Dictar con la voz del teléfono</string>
-    <string name="voice_input_confirm_body">El teléfono convierte la voz en texto con su propio servicio, que puede usar internet si no tiene el idioma descargado. %1$s solo recibe el texto y nunca usa el micrófono.</string>
-    <string name="voice_input_confirm_action">Activar</string>
+    <!-- Escuchar al tocar Decir, en Ajustes. -->
+    <string name="voice_input_setting">Escuchar al tocar Decir</string>
+    <string name="voice_input_summary">Apagado, Decir abre la hoja para escribir o dictar con el teclado</string>
+    <!-- La pantalla de escuchar propia y el permiso del micrófono. -->
+    <string name="phrase_listen">Escuchar la frase</string>
+    <string name="phrase_mic_denied">Sin permiso del micrófono. Escribir la frase o dictarla con el micrófono del teclado</string>
+    <string name="phrase_mic_blocked">El micrófono está sin permiso. Activarlo en los ajustes del teléfono, o dictar con el micrófono del teclado</string>
+    <string name="phrase_mic_open_settings">Abrir ajustes del teléfono</string>
+    <string name="listening_title">Escuchando</string>
+    <string name="listening_hint">Decir lo que pasó, como %1$s</string>
+    <string name="listening_silent_title">No se oyó ninguna frase</string>
+    <string name="listening_silent_body">Hablar cerca del teléfono, o escribir la frase</string>
+    <string name="listening_again">Escuchar otra vez</string>
+    <string name="listening_type">Escribir</string>
+    <string name="permission_mic_title">Decir con el micrófono</string>
+    <string name="permission_mic_body">%1$s usa el micrófono solo mientras se ve la pantalla de escuchar, y no guarda audio. El servicio de voz del teléfono convierte la voz en texto, y puede usar internet si no tiene el idioma descargado.</string>
+    <string name="permission_mic_allow_action">Permitir micrófono</string>
 </resources>

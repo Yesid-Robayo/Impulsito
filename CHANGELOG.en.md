@@ -12,13 +12,18 @@ When a new version is published, it's added at the top with the same content as 
 
 ### Changed
 
-- **Say, in the center:** the button at the bottom center is now **Say**, to record with a sentence from any tab. Selling by hand
-  stays on **Home**, in **Sell by hand** inside **Say**, on the widget and on the icon shortcut.
+- **Say, in the center:** the button at the bottom center is **Say**. It listens right away with its own screen, which shows the
+  sentence as you say it, and opens the card. It uses the phone's voice service without its window, and the first time it asks for the
+  microphone after explaining why. It can be turned off in **Settings**; off, or without the permission, the keyboard remains.
+- **The bottom bar:** **Home**, **Sell**, **Say**, **Products** and **Numbers**. **Records** opens from **Home**, and selling by hand is
+  also in **Sell by hand** inside **Say**, on the widget and on the icon shortcut.
+- **Quantities:** a whole quantity shows without decimals, **10 kg** and not 10,000 kg; one that is not whole keeps its three
+  decimals.
 
-### Added
+### Fixed
 
-- **Microphone not working?**, in **Say**: the steps to turn on the keyboard's voice typing when it says voice is not available,
-  also in the help.
+- **Dictated amounts:** "50,000" with the dictation's thousands comma is fifty thousand, not fifty.
+- **Microphone not working?**, in **Say**, opens the steps to make it work.
 
 ## [1.0.4] - 2026-11-17
 

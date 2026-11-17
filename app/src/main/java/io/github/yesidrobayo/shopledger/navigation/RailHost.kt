@@ -33,10 +33,13 @@ private data class RailRequest(
  * mismo diálogo y los mismos textos de su atrás: descartar sigue, y seguir no cambia nada. Sin
  * trabajo sin guardar, cambia directo.
  *
+ * @param say `Decir`: escucha encima de lo visible y luego abre la hoja con lo que recibe, que en
+ *   el riel también pregunta antes de quitar trabajo sin guardar.
  * @param stack la pila que dibuja la navegación, la misma de [navigator].
  */
 @Composable
 internal fun RailHost(
+    say: (open: () -> Unit) -> Unit,
     visible: Boolean,
     navigator: AppNavigator,
     stack: List<NavKey>,
@@ -77,7 +80,7 @@ internal fun RailHost(
         onSelect = { go(railKeys[it]) },
         onSettings = { go(AppNavKey.Settings) },
         sellLabel = stringResource(R.string.phrase_action_say),
-        onSell = { go(AppNavKey.Phrase()) },
+        onSell = { say { go(AppNavKey.Phrase()) } },
         sellIcon = R.drawable.ic_mic,
     )
     pending?.let { request ->

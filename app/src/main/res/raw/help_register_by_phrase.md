@@ -2,10 +2,11 @@ Instead of opening each screen, you can type or dictate what happened, such as "
 
 ## How to use it
 
-1. Tap **Say**, the button at the bottom center, or the widget microphone or the shortcut of the {app} icon. To sell without a sentence, **Sell by hand**.
-2. Type in **What happened**, or dictate with the keyboard microphone. The keyboard can dictate offline if it has the language downloaded.
-3. Tap **Understand**. The card shows the operation, each product with its quantity and amount, the payment and the total.
-4. Check it and tap **Register**.
+1. Tap **Say**, the button at the bottom center, the widget microphone or the shortcut of the {app} icon.
+2. Speak: the listening screen shows the sentence as you say it. When you finish, or when you tap **Done**, the card appears with the operation, each product with its quantity and amount, the payment and the total.
+3. Check it and tap **Register**.
+
+The first time, {app} explains what it uses the microphone for and Android asks for the permission. Without the permission, or with **Type**, the sheet opens so you can type in **What happened** or dictate with the keyboard microphone, and then tap **Understand**. To sell without a sentence, **Sell by hand**.
 
 ## What you can say
 
@@ -30,16 +31,14 @@ You can name several products in one sentence, with numbers in digits or in word
 
 Anything missing is marked in place, and **Register** saves nothing until it is complete. What you record is the same as if you had done it on its screen, and you void it as usual.
 
-## If the microphone does not work
+## If it does not listen
 
-If tapping the keyboard microphone says that voice is not available, the problem is on the phone, not in {app}:
-
-1. In the keyboard settings, open voice typing and turn it on.
-2. In the same place, download the language to use it offline.
-3. In the phone settings, under apps, check that the voice service app is installed and turned on.
+- If nothing was heard, **Listen again**, or speak closer to the phone.
+- If the microphone permission was denied, the sheet offers **Open phone settings** to grant it, or you can dictate with the keyboard microphone.
+- {app} listens with the phone's voice service. If the phone does not have it, or does not have the language, the keyboard remains. For the keyboard to dictate: in its settings, turn on voice typing and download the language to use it offline; in the phone settings, under apps, check that the voice service app is installed and turned on.
 
 **Microphone not working?**, on the sheet, opens this help.
 
-## Dictate directly with the phone's voice
+## Listen when tapping Say
 
-In **Settings**, **Sales and payment**, **Dictate directly with the phone's voice** makes **Say** open the phone's voice service instead of the keyboard: tap and speak. It is off at first. That service turns your voice into text on its own and may use the internet if it does not have the language downloaded. {app} only receives the text and never uses the microphone. If the phone does not have that service, the option does not appear.
+It is on at first. In **Settings**, **Sales and payment**, turn off **Listen when tapping Say**: then **Say** opens the sheet to type or dictate with the keyboard. {app} uses the microphone only while the listening screen is showing and does not keep any audio. The phone's voice service turns the voice into text and may use the internet if it does not have the language downloaded.

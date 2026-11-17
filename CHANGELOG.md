@@ -12,13 +12,18 @@ Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus 
 
 ### Cambiado
 
-- **Decir, al centro:** el botón de abajo al centro ahora es **Decir**, para registrar con una frase desde cualquier pestaña. Vender
-  a mano sigue en **Inicio**, en **Vender a mano** dentro de **Decir**, en el widget y en el atajo del ícono.
+- **Decir, al centro:** el botón de abajo al centro es **Decir**. Escucha de una vez con una pantalla propia, que muestra la frase
+  mientras se dice, y abre la tarjeta. Usa el servicio de voz del teléfono sin su ventana, y la primera vez pide el micrófono, después
+  de explicar para qué. Se apaga en **Ajustes**; apagado, o sin permiso, queda el teclado.
+- **La barra de abajo:** **Inicio**, **Vender**, **Decir**, **Productos** y **Números**. **Registros** se abre desde **Inicio**, y vender a
+  mano también está en **Vender a mano** dentro de **Decir**, en el widget y en el atajo del ícono.
+- **Cantidades:** una cantidad entera se muestra sin decimales, **10 kg** y no 10,000 kg; una que no es entera conserva sus tres
+  decimales.
 
-### Agregado
+### Corregido
 
-- **¿No funciona el micrófono?**, en **Decir**: los pasos para activar el dictado del teclado cuando dice que la voz no está
-  disponible, también en la ayuda.
+- **Montos dictados:** «50,000» con la coma de miles del dictado son cincuenta mil, no cincuenta.
+- **¿No funciona el micrófono?**, en **Decir**, abre los pasos para hacerlo funcionar.
 
 ## [1.0.4] - 2026-11-17
 

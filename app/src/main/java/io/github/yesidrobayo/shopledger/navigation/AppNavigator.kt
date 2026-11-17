@@ -136,6 +136,9 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
     /** Lo que pasa entre el escáner y la pantalla que lo abrió. */
     val scans: ScanHandoff = ScanHandoff()
 
+    /** Lo que `Decir` escuchó, para la hoja `Decir o escribir` que abre después. */
+    val said: SaidPhraseHandoff = SaidPhraseHandoff()
+
     /** Lo que pasa entre `Índice de precios` y la comparación real de `Números`. */
     val realComparison: RealComparisonHandoff = RealComparisonHandoff()
 

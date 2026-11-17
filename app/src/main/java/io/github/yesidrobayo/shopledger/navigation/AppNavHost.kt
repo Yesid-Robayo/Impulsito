@@ -103,6 +103,9 @@ import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermissio
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionHost
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
 import io.github.yesidrobayo.shopledger.ui.phrase.PhraseRoute
+import io.github.yesidrobayo.shopledger.ui.phrase.VoiceCapture
+import io.github.yesidrobayo.shopledger.ui.phrase.VoiceCaptureHost
+import io.github.yesidrobayo.shopledger.ui.phrase.VoiceResult
 import io.github.yesidrobayo.shopledger.ui.placeholder.EmptyContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderAction
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
@@ -189,16 +192,23 @@ fun AppNavHost(
             navigator.open(AppNavKey.Onboarding)
         }
     }
+    // Decir, desde la barra, el riel, el micrófono de una pantalla, el widget o el atajo: escucha
+    // encima de lo visible y abre Decir o escribir con la frase oída o, sin ella, con el teclado.
+    val sayCapture = remember { VoiceCapture() }
+    val openSay: () -> Unit =
+        remember(navigator, sayCapture) {
+            { say(sayCapture, navigator) { navigator.open(AppNavKey.Phrase()) } }
+        }
     LaunchedEffect(openRequest, onboardingPending) {
         if (openRequest == null) return@LaunchedEffect
-        if (!onboardingPending) navigator.open(openRequest.key)
+        if (!onboardingPending) {
+            if (openRequest == AppOpenRequest.Phrase) openSay() else navigator.open(openRequest.key)
+        }
         onOpenHandled()
     }
     val density = LocalDensity.current
     // El engranaje de cada pestaña abre los ajustes encima de ella.
     val openSettings = remember(navigator) { { navigator.open(AppNavKey.Settings) } }
-    // El micrófono de las pestañas abre Decir o escribir encima de la pantalla visible.
-    val openSay: () -> Unit = remember(navigator) { { navigator.open(AppNavKey.Phrase()) } }
     // El enlace de ayuda de cada pantalla abre su artículo encima de ella.
     val openHelp = remember(navigator) { { topic: HelpTopic -> navigator.open(topic.navKey()) } }
     val messageScope = rememberCoroutineScope()
@@ -238,6 +248,7 @@ fun AppNavHost(
         // pantalla no cambia de lugar en el árbol al cambiar de clase y conserva su estado.
         Row(Modifier.fillMaxSize()) {
             RailHost(
+                say = { open -> say(sayCapture, navigator, open) },
                 visible = rail,
                 navigator = navigator,
                 stack = backStack,
@@ -280,6 +291,7 @@ fun AppNavHost(
                     )
                     PolicyPromptHost(policy)
                     NotificationPermissionHost(notificationPermission)
+                    VoiceCaptureHost(sayCapture, offerTyping = true)
                 }
             }
         }
@@ -345,6 +357,24 @@ fun AppNavHost(
                     onSell = openSay,
                     sellIcon = R.drawable.ic_mic,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * `Decir`: escucha con [capture] encima de lo visible y, al terminar, deja lo oído para la hoja y la
+ * abre con [open]. Sin frase, la hoja abre con el teclado y el aviso de por qué; cancelar no abre
+ * nada y deja la pantalla como estaba.
+ */
+private fun say(capture: VoiceCapture, navigator: AppNavigator, open: () -> Unit) {
+    capture.start { result ->
+        when (result) {
+            VoiceResult.Cancelled -> Unit
+
+            is VoiceResult.Heard, is VoiceResult.Keyboard -> {
+                navigator.said.deliver(result)
+                open()
             }
         }
     }

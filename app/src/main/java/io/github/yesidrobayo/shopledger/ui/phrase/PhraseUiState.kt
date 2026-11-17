@@ -17,10 +17,11 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
  * @param textMissing se tocó `Entender` con el campo vacío: el campo lo dice.
  * @param stage en qué va la lectura.
  * @param sheet la hoja abierta para corregir un dato de la tarjeta, o `null`.
- * @param voiceReady la voz directa está encendida y el teléfono tiene su servicio: el campo ofrece
- *   dictar con él.
- * @param dictate se pidió abrir el servicio de voz: la ruta lo abre y lo da por atendido.
- * @param voiceFailed el servicio de voz no abrió: el campo lo dice y queda el teclado.
+ * @param voiceReady escuchar está encendido y el teléfono tiene servicio de voz: el campo ofrece un
+ *   micrófono que abre la pantalla de escuchar.
+ * @param listening se pidió escuchar: la ruta muestra la pantalla de escuchar y la da por
+ *   atendida. Mientras tanto, el teclado no se abre.
+ * @param voiceNotice por qué la hoja quedó con el teclado en vez de la frase oída, o `null`.
  * @param cardShown cuántas veces una frase dejó una tarjeta nueva, leída o corregida: con cada una,
  *   la pantalla cierra el teclado y lleva la vista a la tarjeta. Corregirla a mano no cuenta.
  * @param registered lo que se acaba de registrar, para el mensaje: la ruta lo muestra una vez y la
@@ -33,8 +34,8 @@ data class PhraseUiState(
     val stage: PhraseStage = PhraseStage.Empty,
     val sheet: PhraseSheet? = null,
     val voiceReady: Boolean = false,
-    val dictate: Boolean = false,
-    val voiceFailed: Boolean = false,
+    val listening: Boolean = false,
+    val voiceNotice: VoiceNotice? = null,
     val registered: PhraseRegistered? = null,
     val cardShown: Int = 0,
 )

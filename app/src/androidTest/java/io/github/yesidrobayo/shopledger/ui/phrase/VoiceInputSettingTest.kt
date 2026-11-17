@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.phrase
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -15,8 +16,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * La voz directa en Ajustes: apagada de inicio, no aparece sin servicio de voz, y encenderla
- * explica antes que el teléfono procesa la voz con su propio servicio.
+ * `Escuchar al tocar Decir` en Ajustes: no aparece sin servicio de voz, viene encendido, y
+ * cambiarlo es inmediato en los dos sentidos, porque el micrófono se explica al usarlo.
  */
 @RunWith(AndroidJUnit4::class)
 class VoiceInputSettingTest {
@@ -25,70 +26,58 @@ class VoiceInputSettingTest {
 
     private val resources = InstrumentationRegistry.getInstrumentation().targetContext.resources
 
-    private fun text(id: Int, vararg args: Any) = resources.getString(id, *args)
+    private fun text(id: Int) = resources.getString(id)
 
-    @Test
-    fun withoutAVoiceServiceTheSettingIsNotShown() {
+    private fun show(available: Boolean, enabled: Boolean, onToggle: (Boolean) -> Unit = {}) {
         compose.setContent {
             PreviewTheme {
                 VoiceInputRow(
-                    available = false,
-                    enabled = false,
-                    confirming = false,
+                    available = available,
+                    enabled = enabled,
                     saveFailed = false,
-                    onToggle = {},
-                    onConfirm = {},
-                    onDismiss = {},
+                    onToggle = onToggle,
                 )
             }
         }
+    }
+
+    @Test
+    fun withoutAVoiceServiceTheSettingIsNotShown() {
+        show(available = false, enabled = true)
 
         compose.onNodeWithText(text(R.string.voice_input_setting)).assertDoesNotExist()
     }
 
     @Test
-    fun itStartsOffAndTurningItOnAsksFirst() {
+    fun itComesOnAndTurningItOffIsImmediate() {
         val toggles = mutableListOf<Boolean>()
-        compose.setContent {
-            PreviewTheme {
-                VoiceInputRow(
-                    available = true,
-                    enabled = false,
-                    confirming = false,
-                    saveFailed = false,
-                    onToggle = { toggles += it },
-                    onConfirm = {},
-                    onDismiss = {},
-                )
-            }
-        }
+        show(available = true, enabled = true) { toggles += it }
+
+        compose.onNodeWithText(text(R.string.voice_input_setting)).assertIsOn().performClick()
+
+        assertEquals(listOf(false), toggles)
+        compose.onNodeWithText(text(R.string.voice_input_summary)).assertIsDisplayed()
+    }
+
+    @Test
+    fun turningItOnAgainDoesNotAskFirst() {
+        val toggles = mutableListOf<Boolean>()
+        show(available = true, enabled = false) { toggles += it }
 
         compose.onNodeWithText(text(R.string.voice_input_setting)).assertIsOff().performClick()
 
         assertEquals(listOf(true), toggles)
+        compose.onNodeWithText(text(R.string.permission_mic_title)).assertDoesNotExist()
     }
 
     @Test
-    fun theNoticeSaysThePhoneProcessesTheVoice() {
-        val confirmed = mutableListOf<Unit>()
+    fun aFailedSaveIsSaid() {
         compose.setContent {
             PreviewTheme {
-                VoiceInputRow(
-                    available = true,
-                    enabled = false,
-                    confirming = true,
-                    saveFailed = false,
-                    onToggle = {},
-                    onConfirm = { confirmed += Unit },
-                    onDismiss = {},
-                )
+                VoiceInputRow(available = true, enabled = true, saveFailed = true, onToggle = {})
             }
         }
-        val body = text(R.string.voice_input_confirm_body, text(R.string.app_name))
 
-        compose.onNodeWithText(body).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.voice_input_confirm_action)).performClick()
-
-        assertEquals(1, confirmed.size)
+        compose.onNodeWithText(text(R.string.state_error_save)).assertIsDisplayed()
     }
 }

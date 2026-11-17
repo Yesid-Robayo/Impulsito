@@ -11,7 +11,7 @@ sealed interface PhraseAction {
      */
     data object Understand : PhraseAction
 
-    /** El servicio de voz devolvió [text]: se lee igual que al tocar `Entender`. */
+    /** La pantalla de escuchar oyó [text]: se lee igual que al tocar `Entender`. */
     data class Heard(val text: String) : PhraseAction
 
     /** La `X` de la barra: cierra la hoja. Lo que no se registró se descarta. */
@@ -26,11 +26,17 @@ sealed interface PhraseAction {
     /** `¿No funciona el micrófono?`: abre la ayuda con los pasos para activar el dictado. */
     data object MicHelp : PhraseAction
 
-    /** El micrófono del campo: abre el servicio de voz del teléfono. */
-    data object Dictate : PhraseAction
+    /** El micrófono del campo: abre la pantalla de escuchar. */
+    data object Listen : PhraseAction
 
-    /** La ruta ya abrió el servicio de voz; [opened] es falso si no abrió. */
-    data class DictateHandled(val opened: Boolean) : PhraseAction
+    /**
+     * La pantalla de escuchar terminó sin frase: queda el teclado, con [notice] si hay algo que
+     * decir.
+     */
+    data class ListenEnded(val notice: VoiceNotice?) : PhraseAction
+
+    /** `Abrir ajustes del teléfono` en el aviso del micrófono sin permiso. */
+    data object OpenMicSettings : PhraseAction
 
     /** `Reintentar` tras una lectura fallida. */
     data object Retry : PhraseAction

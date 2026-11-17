@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Decir o escribir: registrar una operación con una frase, y la voz directa opcional. -->
+    <!-- Decir o escribir: registrar una operación con una frase, y la pantalla de escuchar. -->
     <!-- Entradas: Inicio, el widget, los atajos y la ayuda. -->
     <string name="phrase_title">Dizer ou escrever</string>
     <string name="phrase_action_say">Dizer</string>
@@ -13,9 +13,8 @@
     <string name="phrase_field_hint">Para ditar, tocar no microfone do teclado</string>
     <string name="phrase_field_hint_correct">Para corrigir, dizer só o que muda, como «não, eram 3»</string>
     <string name="phrase_field_empty">Escrever ou ditar o que aconteceu</string>
-    <string name="phrase_voice_failed">Não chegou texto da voz do telefone. Ditar com o microfone do teclado</string>
+    <string name="phrase_voice_failed">Não foi possível ouvir. Escrever a frase ou ditá-la com o microfone do teclado</string>
     <string name="phrase_understand">Entender</string>
-    <string name="phrase_dictate">Ditar com a voz do telefone</string>
     <string name="phrase_examples_title">Por exemplo:</string>
     <string name="phrase_example_sale">«vendi 3 pães e 2 sucos em dinheiro»</string>
     <string name="phrase_example_purchase">«comprei 10 quilos de farinha por 50000»</string>
@@ -118,10 +117,21 @@
     <string name="phrase_done_product">Produto criado</string>
     <string name="phrase_done_cost">Custo corrigido</string>
     <string name="phrase_done_price">Preço alterado</string>
-    <!-- La voz directa, en Ajustes. -->
-    <string name="voice_input_setting">Ditar direto com a voz do telefone</string>
-    <string name="voice_input_summary">Dizer abre o serviço de voz do telefone em vez do teclado</string>
-    <string name="voice_input_confirm_title">Ditar com a voz do telefone</string>
-    <string name="voice_input_confirm_body">O telefone converte a voz em texto com o próprio serviço, que pode usar a internet se o idioma não estiver baixado. %1$s só recebe o texto e nunca usa o microfone.</string>
-    <string name="voice_input_confirm_action">Ativar</string>
+    <!-- Escuchar al tocar Decir, en Ajustes. -->
+    <string name="voice_input_setting">Ouvir ao tocar em Dizer</string>
+    <string name="voice_input_summary">Desligado, Dizer abre a folha para escrever ou ditar com o teclado</string>
+    <!-- La pantalla de escuchar propia y el permiso del micrófono. -->
+    <string name="phrase_listen">Ouvir a frase</string>
+    <string name="phrase_mic_denied">Sem permissão do microfone. Escrever a frase ou ditá-la com o microfone do teclado</string>
+    <string name="phrase_mic_blocked">O microfone está sem permissão. Ativar nas configurações do telefone, ou ditar com o microfone do teclado</string>
+    <string name="phrase_mic_open_settings">Abrir configurações do telefone</string>
+    <string name="listening_title">Ouvindo</string>
+    <string name="listening_hint">Dizer o que aconteceu, como %1$s</string>
+    <string name="listening_silent_title">Nenhuma frase foi ouvida</string>
+    <string name="listening_silent_body">Falar perto do telefone, ou escrever a frase</string>
+    <string name="listening_again">Ouvir de novo</string>
+    <string name="listening_type">Escrever</string>
+    <string name="permission_mic_title">Dizer com o microfone</string>
+    <string name="permission_mic_body">%1$s usa o microfone só enquanto a tela de ouvir está aberta, e não guarda áudio. O serviço de voz do telefone converte a voz em texto, e pode usar a internet se não tiver o idioma baixado.</string>
+    <string name="permission_mic_allow_action">Permitir microfone</string>
 </resources>

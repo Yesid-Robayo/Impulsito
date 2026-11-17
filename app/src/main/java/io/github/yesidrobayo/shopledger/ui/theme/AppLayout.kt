@@ -226,6 +226,12 @@ class AppSizes internal constructor() {
 
     /** Alto de la barra del punto de equilibrio. */
     val breakEvenBar: Dp = 12.dp
+
+    /** El círculo del micrófono en la pantalla de escuchar: lo más grande de la hoja. */
+    val listeningMic: Dp = 88.dp
+
+    /** El halo que late alrededor del micrófono con la voz; reserva su lugar aunque esté quieto. */
+    val listeningHalo: Dp = 152.dp
 }
 
 /**

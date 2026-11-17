@@ -105,7 +105,7 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE, SUPPORT }
  * @param support las líneas de `Información para soporte`, sin datos del negocio.
  * @param onCopySupport copia esas líneas al portapapeles.
  * @param dailySummary `Resumen diario`, en `Avisos`, con su propio estado.
- * @param voiceInput `Dictar directo con la voz del teléfono`, al final de `Ventas y cobro`, con su
+ * @param voiceInput `Escuchar al tocar Decir`, al final de `Ventas y cobro`, con su
  *   propio estado. No aparece si el teléfono no tiene un servicio de voz.
  */
 @Composable

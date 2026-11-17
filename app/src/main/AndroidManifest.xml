@@ -48,12 +48,22 @@
          para esta app, y en cada actualización muestra su propia confirmación. La app nunca instala en segundo plano. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <!-- La voz directa, opcional y apagada de inicio: solo para saber si el teléfono tiene un servicio de voz que
-         convierta lo dicho en texto. Lo abre la persona con Decir, y la app recibe solo el texto. La app nunca pide el
-         micrófono: lo usa ese servicio, que es otra app. Sin servicio, el ajuste no aparece y queda el teclado. -->
+    <!-- Decir: escuchar una frase con el servicio de voz del teléfono, sin su ventana. Se pide la primera vez que se toca
+         Decir, tras explicar para qué, nunca al abrir la app. El micrófono se usa solo mientras se ve la pantalla de
+         escuchar, y la app no guarda audio: lo recibe ese servicio, que lo convierte en texto y puede usar internet si no
+         tiene el idioma descargado. Sin el permiso, Decir abre la hoja para escribir o dictar con el teclado. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Opcional: sin esto, pedir el micrófono lo volvería un requisito, y la app no se instalaría en un equipo sin él. -->
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
+    <!-- Desde Android 11, la app solo ve el servicio de voz del teléfono si declara su acción: sin esto, SpeechRecognizer
+         diría que no hay servicio y Decir abriría siempre el teclado. No abre ninguna otra app. -->
     <queries>
         <intent>
-            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 

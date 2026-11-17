@@ -2,8 +2,9 @@ What each version of {app} brought, newest first.
 
 ## 1.0.5
 
-- **Say, in the center:** the button at the bottom center is now **Say**, to record by saying or typing a sentence from any tab. To sell by hand, **Sell** on **Home** or **Sell by hand** in **Say**.
-- **Microphone not working?** in **Say** opens the steps to turn on the keyboard's voice typing.
+- **Say, in the center:** the button at the bottom center is **Say**. Tap it and speak: {app} listens with its own screen, shows the sentence as you say it and then the card. The first time it asks for the microphone. The bar shows **Home**, **Sell**, **Say**, **Products** and **Numbers**; **Records** opens from **Home**.
+- **Numbers and quantities:** a dictated amount such as "50,000" is fifty thousand, and a whole quantity shows without decimals: **10 kg**, not 10,000 kg.
+- **Microphone not working?** in **Say** opens the steps to make it work.
 
 ## 1.0.4
 

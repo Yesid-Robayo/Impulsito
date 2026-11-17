@@ -2,8 +2,9 @@ Lo que trajo cada versión de {app}, de la más nueva a la más antigua.
 
 ## 1.0.5
 
-- **Decir, al centro:** el botón de abajo al centro ahora es **Decir**, para registrar diciendo o escribiendo una frase desde cualquier pestaña. Para vender a mano, **Vender** en **Inicio** o **Vender a mano** en **Decir**.
-- **¿No funciona el micrófono?**, en **Decir**, abre los pasos para activar el dictado del teclado.
+- **Decir, al centro:** el botón de abajo al centro es **Decir**. Se toca y se habla: {app} escucha con su propia pantalla, muestra la frase mientras se dice y después la tarjeta. La primera vez pide el micrófono. La barra muestra **Inicio**, **Vender**, **Decir**, **Productos** y **Números**; **Registros** se abre desde **Inicio**.
+- **Números y cantidades:** un monto dictado como «50,000» son cincuenta mil, y una cantidad entera se muestra sin decimales: **10 kg**, no 10,000 kg.
+- **¿No funciona el micrófono?**, en **Decir**, abre los pasos para que funcione.
 
 ## 1.0.4
 

@@ -2,10 +2,11 @@ En vez de abrir cada pantalla, se puede escribir o dictar lo que pasó, como «v
 
 ## Cómo se usa
 
-1. Tocar **Decir**, el botón de abajo al centro, o el micrófono del widget o el atajo del ícono de {app}. Para vender sin frase, **Vender a mano**.
-2. Escribir en **Qué pasó**, o dictar con el micrófono del teclado. El teclado puede dictar sin internet si tiene el idioma descargado.
-3. Tocar **Entender**. La tarjeta muestra la operación, cada producto con su cantidad y su monto, el pago y el total.
-4. Revisar y tocar **Registrar**.
+1. Tocar **Decir**, el botón de abajo al centro, el micrófono del widget o el atajo del ícono de {app}.
+2. Hablar: la pantalla de escuchar muestra la frase mientras se dice. Al terminar, o al tocar **Listo**, aparece la tarjeta con la operación, cada producto con su cantidad y su monto, el pago y el total.
+3. Revisar y tocar **Registrar**.
+
+La primera vez, {app} explica para qué usa el micrófono y Android pide el permiso. Sin permiso, o con **Escribir**, se abre la hoja para escribir en **Qué pasó** o dictar con el micrófono del teclado, y después tocar **Entender**. Para vender sin frase, **Vender a mano**.
 
 ## Qué se puede decir
 
@@ -30,16 +31,14 @@ Se pueden nombrar varios productos en una frase, con números en cifras o en pal
 
 Lo que falta se marca en su lugar, y **Registrar** no guarda hasta completarlo. Lo registrado queda igual que si se hubiera hecho en su pantalla, y se anula como siempre.
 
-## Si el micrófono no funciona
+## Si no escucha
 
-Si al tocar el micrófono del teclado aparece que la voz no está disponible, el problema está en el teléfono, no en {app}:
-
-1. En los ajustes del teclado, entrar a la escritura por voz y activarla.
-2. Ahí mismo, descargar el idioma para usarlo sin conexión.
-3. En los ajustes del teléfono, en las aplicaciones, revisar que la app del servicio de voz esté instalada y activada.
+- Si no se oyó nada, **Escuchar otra vez**, o hablar más cerca del teléfono.
+- Si se negó el permiso del micrófono, la hoja ofrece **Abrir ajustes del teléfono** para darlo, o se puede dictar con el micrófono del teclado.
+- {app} escucha con el servicio de voz del teléfono. Si el teléfono no lo tiene, o no tiene el idioma, queda el teclado. Para que el teclado dicte: en sus ajustes, activar la escritura por voz y descargar el idioma para usarlo sin conexión; en los ajustes del teléfono, en las aplicaciones, revisar que la app del servicio de voz esté instalada y activada.
 
 **¿No funciona el micrófono?**, en la hoja, abre esta ayuda.
 
-## Dictar directo con la voz del teléfono
+## Escuchar al tocar Decir
 
-En **Ajustes**, **Ventas y cobro**, **Dictar directo con la voz del teléfono** hace que **Decir** abra el servicio de voz del teléfono en lugar del teclado: se toca y se habla. Viene apagado. Ese servicio convierte la voz en texto por su cuenta y puede usar internet si no tiene el idioma descargado. {app} solo recibe el texto y nunca usa el micrófono. Si el teléfono no tiene ese servicio, la opción no aparece.
+Viene encendido. En **Ajustes**, **Ventas y cobro**, **Escuchar al tocar Decir** se apaga: así, **Decir** abre la hoja para escribir o dictar con el teclado. {app} usa el micrófono solo mientras se ve la pantalla de escuchar y no guarda audio. El servicio de voz del teléfono convierte la voz en texto y puede usar internet si no tiene el idioma descargado.

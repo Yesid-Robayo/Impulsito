@@ -197,6 +197,10 @@ fun PhraseScreen(
  * El campo de la frase. Sin tarjeta, toma el foco y abre el teclado, para dictar con su micrófono.
  * Con la tarjeta, sirve para corregirla con una frase corta, y `Entender` va debajo, tonal: la
  * acción principal pasa a ser `Registrar`.
+ *
+ * Mientras se escucha o se lee una frase oída, el teclado no se abre: taparía la pantalla de
+ * escuchar o saltaría justo antes de que llegue la tarjeta. Si `Decir` no pudo escuchar, un aviso
+ * corto bajo el campo dice por qué.
  */
 @Composable
 private fun PhraseField(
@@ -206,15 +210,19 @@ private fun PhraseField(
 ) {
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    val waitingVoice = uiState.dictate
-    LaunchedEffect(withCard, waitingVoice) {
-        // Con la voz directa abriéndose, el teclado esperaría detrás del servicio de voz.
-        if (!withCard && !waitingVoice) {
-            focus.requestFocus()
-            keyboard?.show()
+    val holdKeyboard = uiState.listening || uiState.stage == PhraseStage.Reading
+    LaunchedEffect(withCard, holdKeyboard) {
+        when {
+            // Abierto, el teclado empujaría la pantalla de escuchar hacia arriba.
+            uiState.listening -> keyboard?.hide()
+
+            !withCard && !holdKeyboard -> {
+                focus.requestFocus()
+                keyboard?.show()
+            }
         }
     }
-    val dictate = stringResource(R.string.phrase_dictate)
+    val listen = stringResource(R.string.phrase_listen)
     AppTextField(
         value = uiState.text,
         onValueChange = { onAction(PhraseAction.TextChange(it)) },
@@ -223,28 +231,54 @@ private fun PhraseField(
         error = if (uiState.textMissing) stringResource(R.string.phrase_field_empty) else null,
         supportingText =
             stringResource(
-                when {
-                    uiState.voiceFailed -> R.string.phrase_voice_failed
-                    withCard -> R.string.phrase_field_hint_correct
-                    else -> R.string.phrase_field_hint
-                },
+                if (withCard) R.string.phrase_field_hint_correct else R.string.phrase_field_hint,
             ),
         imeAction = ImeAction.Done,
         singleLine = false,
         keyboardActions = KeyboardActions(onDone = { onAction(PhraseAction.Understand) }),
         trailingIcon =
             if (uiState.voiceReady) {
-                { TopBarAction(R.drawable.ic_mic, dictate) { onAction(PhraseAction.Dictate) } }
+                { TopBarAction(R.drawable.ic_mic, listen) { onAction(PhraseAction.Listen) } }
             } else {
                 null
             },
     )
+    uiState.voiceNotice?.let { VoiceNoticeCard(it, onAction) }
     if (withCard) {
         PrimaryActionButton(
             text = stringResource(R.string.phrase_understand),
             onClick = { onAction(PhraseAction.Understand) },
             variant = ActionVariant.TONAL,
         )
+    }
+}
+
+/**
+ * Por qué la hoja quedó con el teclado. Sin permiso que Android deje volver a pedir, ofrece abrir
+ * los ajustes del teléfono: solo ahí se da, y solo si la persona lo toca.
+ */
+@Composable
+private fun VoiceNoticeCard(notice: VoiceNotice, onAction: (PhraseAction) -> Unit) {
+    when (notice) {
+        VoiceNotice.FAILED ->
+            NoticeCard(
+                text = stringResource(R.string.phrase_voice_failed),
+                variant = NoticeVariant.WARNING,
+            )
+
+        VoiceNotice.NO_PERMISSION ->
+            NoticeCard(
+                text = stringResource(R.string.phrase_mic_denied),
+                variant = NoticeVariant.INFO,
+            )
+
+        VoiceNotice.PERMISSION_BLOCKED ->
+            NoticeCard(
+                text = stringResource(R.string.phrase_mic_blocked),
+                variant = NoticeVariant.INFO,
+                actionLabel = stringResource(R.string.phrase_mic_open_settings),
+                onAction = { onAction(PhraseAction.OpenMicSettings) },
+            )
     }
 }
 

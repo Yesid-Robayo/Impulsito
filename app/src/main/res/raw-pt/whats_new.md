@@ -2,8 +2,9 @@ O que cada versão do {app} trouxe, da mais nova para a mais antiga.
 
 ## 1.0.5
 
-- **Dizer, no centro:** o botão embaixo, no centro, agora é **Dizer**, para registrar dizendo ou escrevendo uma frase de qualquer aba. Para vender manualmente, **Vender** no **Início** ou **Vender manualmente** em **Dizer**.
-- **O microfone não funciona?**, em **Dizer**, abre os passos para ativar a digitação por voz do teclado.
+- **Dizer, no centro:** o botão embaixo, no centro, é **Dizer**. Toca-se e fala-se: o {app} escuta com sua própria tela, mostra a frase enquanto é dita e depois o cartão. Na primeira vez pede o microfone. A barra mostra **Início**, **Vender**, **Dizer**, **Produtos** e **Números**; **Registros** abre pelo **Início**.
+- **Números e quantidades:** um valor ditado como «50,000» é cinquenta mil, e uma quantidade inteira aparece sem decimais: **10 kg**, não 10,000 kg.
+- **O microfone não funciona?**, em **Dizer**, abre os passos para fazê-lo funcionar.
 
 ## 1.0.4
 

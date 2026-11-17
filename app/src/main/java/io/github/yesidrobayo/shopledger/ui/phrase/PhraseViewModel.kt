@@ -58,8 +58,9 @@ import kotlinx.coroutines.withContext
  * @param register registra la propuesta con el caso de uso de esa operación, en una transacción.
  * @param numbers los símbolos para leer lo que la persona escribe al corregir un número.
  * @param computation donde se corrige y se arma la tarjeta, fuera del hilo principal.
- * @param voiceReady si la voz directa está encendida y el teléfono tiene el servicio.
- * @param initialText una frase que llega ya escrita: se lee al abrir.
+ * @param voiceReady si escuchar está encendido y el teléfono tiene el servicio de voz.
+ * @param initialText una frase que llega ya escrita u oída: se lee al abrir.
+ * @param initialNotice por qué la hoja abre con el teclado, si `Decir` no pudo escuchar.
  */
 class PhraseViewModel(
     private val read: suspend (String) -> PhraseReadResult,
@@ -70,9 +71,15 @@ class PhraseViewModel(
     private val computation: CoroutineDispatcher,
     voiceReady: suspend () -> Boolean = { false },
     initialText: String? = null,
+    initialNotice: VoiceNotice? = null,
 ) : ViewModel() {
     private val state =
-        MutableStateFlow(PhraseUiState(text = savedState.get<String>(KEY_TEXT).orEmpty()))
+        MutableStateFlow(
+            PhraseUiState(
+                text = savedState.get<String>(KEY_TEXT).orEmpty(),
+                voiceNotice = initialNotice,
+            ),
+        )
     val uiState: StateFlow<PhraseUiState> = state.asStateFlow()
 
     /** La propuesta a la vista, con lo que hace falta para preguntar lo dudoso. */
@@ -80,14 +87,10 @@ class PhraseViewModel(
     private var work: Job? = null
 
     init {
+        // `Decir` escucha antes de abrir la hoja: aquí solo se sabe si el campo ofrece micrófono.
         viewModelScope.launch {
             val ready = voiceReady()
-            // La voz directa se abre sola una vez por entrada, como si se hubiera tocado `Decir`.
-            val first = savedState.get<Boolean>(KEY_DICTATED) != true
-            val dictateNow =
-                ready && first && initialText.isNullOrBlank() && state.value.text.isEmpty()
-            if (dictateNow) savedState[KEY_DICTATED] = true
-            state.update { it.copy(voiceReady = ready, dictate = it.dictate || dictateNow) }
+            state.update { it.copy(voiceReady = ready) }
         }
         if (!initialText.isNullOrBlank()) {
             setText(initialText)
@@ -102,14 +105,15 @@ class PhraseViewModel(
             PhraseAction.Understand -> understand()
 
             is PhraseAction.Heard -> {
+                state.update { it.copy(listening = false) }
                 setText(action.text)
                 understand()
             }
 
-            PhraseAction.Dictate -> state.update { it.copy(dictate = true, voiceFailed = false) }
+            PhraseAction.Listen -> state.update { it.copy(listening = true, voiceNotice = null) }
 
-            is PhraseAction.DictateHandled ->
-                state.update { it.copy(dictate = false, voiceFailed = !action.opened) }
+            is PhraseAction.ListenEnded ->
+                state.update { it.copy(listening = false, voiceNotice = action.notice) }
 
             PhraseAction.Retry -> understand()
 
@@ -201,6 +205,7 @@ class PhraseViewModel(
             // Cerrar lo resuelve la navegación.
             PhraseAction.SellByHand,
             PhraseAction.MicHelp,
+            PhraseAction.OpenMicSettings,
             PhraseAction.Close,
             -> Unit
         }
@@ -208,7 +213,7 @@ class PhraseViewModel(
 
     private fun setText(text: String) {
         savedState[KEY_TEXT] = text
-        state.update { it.copy(text = text, textMissing = false, voiceFailed = false) }
+        state.update { it.copy(text = text, textMissing = false, voiceNotice = null) }
     }
 
     /**
@@ -912,7 +917,6 @@ class PhraseViewModel(
 
     private companion object {
         const val KEY_TEXT = "phrase_text"
-        const val KEY_DICTATED = "phrase_dictated"
 
         /** La clave del método `A crédito` que trae la app, como la lee el intérprete. */
         const val ON_ACCOUNT_KEY = "on_account"

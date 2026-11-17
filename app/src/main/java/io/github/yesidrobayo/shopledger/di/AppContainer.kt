@@ -128,9 +128,9 @@ class AppContainer(application: Application) {
         NoDestinationNoticeFile({ application.noBackupFilesDir })
 
     /**
-     * Si `Decir` abre el servicio de voz del teléfono en vez del teclado, guardado fuera de
-     * la base: es de este teléfono, no viaja en una copia y restaurar no lo cambia. Crearlo no
-     * toca el disco.
+     * Si `Decir` escucha con la pantalla propia en vez de abrir el teclado, y si ya se pidió el
+     * micrófono, guardado fuera de la base: es de este teléfono, no viaja en una copia y
+     * restaurar no lo cambia. Crearlo no toca el disco.
      */
     val voiceInput: VoiceInputPreference =
         VoiceInputPreference({ application.noBackupFilesDir }, dispatchers.io)

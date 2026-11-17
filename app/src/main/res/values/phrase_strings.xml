@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Decir o escribir: registrar una operación con una frase, y la voz directa opcional. -->
+    <!-- Decir o escribir: registrar una operación con una frase, y la pantalla de escuchar. -->
     <!-- Entradas: Inicio, el widget, los atajos y la ayuda. -->
     <string name="phrase_title">Say or type</string>
     <string name="phrase_action_say">Say</string>
@@ -13,9 +13,8 @@
     <string name="phrase_field_hint">To dictate, tap the keyboard microphone</string>
     <string name="phrase_field_hint_correct">To fix it, say only what changes, like \"no, it was 3\"</string>
     <string name="phrase_field_empty">Type or dictate what happened</string>
-    <string name="phrase_voice_failed">No text came from the phone\'s voice. Dictate with the keyboard microphone</string>
+    <string name="phrase_voice_failed">Couldn\'t listen. Type the phrase or dictate it with the keyboard microphone</string>
     <string name="phrase_understand">Understand</string>
-    <string name="phrase_dictate">Dictate with the phone\'s voice</string>
     <string name="phrase_examples_title">For example:</string>
     <string name="phrase_example_sale">\"sold 3 breads and 2 juices in cash\"</string>
     <string name="phrase_example_purchase">\"bought 10 kilos of flour for 50000\"</string>
@@ -118,10 +117,21 @@
     <string name="phrase_done_product">Product created</string>
     <string name="phrase_done_cost">Cost corrected</string>
     <string name="phrase_done_price">Price changed</string>
-    <!-- La voz directa, en Ajustes. -->
-    <string name="voice_input_setting">Dictate directly with the phone\'s voice</string>
-    <string name="voice_input_summary">Say opens the phone\'s voice service instead of the keyboard</string>
-    <string name="voice_input_confirm_title">Dictate with the phone\'s voice</string>
-    <string name="voice_input_confirm_body">The phone turns speech into text with its own service, which may use the internet if the language isn\'t downloaded. %1$s only receives the text and never uses the microphone.</string>
-    <string name="voice_input_confirm_action">Turn on</string>
+    <!-- Escuchar al tocar Decir, en Ajustes. -->
+    <string name="voice_input_setting">Listen when tapping Say</string>
+    <string name="voice_input_summary">When off, Say opens the sheet to type or dictate with the keyboard</string>
+    <!-- La pantalla de escuchar propia y el permiso del micrófono. -->
+    <string name="phrase_listen">Listen to the phrase</string>
+    <string name="phrase_mic_denied">No microphone permission. Type the phrase or dictate it with the keyboard microphone</string>
+    <string name="phrase_mic_blocked">Microphone permission is off. Turn it on in the phone settings, or dictate with the keyboard microphone</string>
+    <string name="phrase_mic_open_settings">Open phone settings</string>
+    <string name="listening_title">Listening</string>
+    <string name="listening_hint">Say what happened, like %1$s</string>
+    <string name="listening_silent_title">No phrase was heard</string>
+    <string name="listening_silent_body">Speak close to the phone, or type the phrase</string>
+    <string name="listening_again">Listen again</string>
+    <string name="listening_type">Type</string>
+    <string name="permission_mic_title">Say it with the microphone</string>
+    <string name="permission_mic_body">%1$s uses the microphone only while the listening screen is showing, and never stores audio. The phone\'s voice service turns speech into text, and may use the internet if the language isn\'t downloaded.</string>
+    <string name="permission_mic_allow_action">Allow microphone</string>
 </resources>

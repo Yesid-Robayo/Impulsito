@@ -186,7 +186,7 @@ private fun groupedByDecimal(text: String, style: NumberStyle): Long? {
     if (style.grouping in text) return null
     val groups = text.split(style.decimal)
     val grouped =
-        groups.size > 1 && groups[0] != "0" && groups[0].length in 1..3 &&
+        groups.size > 1 && groups[0] != "0" && groups[0].length <= 3 &&
             groups.drop(1).all { it.length == 3 }
     return if (grouped) wholeDigits(groups.joinToString(""))?.times(Scale.MILLI) else null
 }

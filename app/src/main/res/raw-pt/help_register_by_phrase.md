@@ -2,10 +2,11 @@ Em vez de abrir cada tela, é possível escrever ou ditar o que aconteceu, como 
 
 ## Como usar
 
-1. Tocar em **Dizer**, o botão embaixo, no centro, ou no microfone do widget ou no atalho do ícone do {app}. Para vender sem frase, **Vender manualmente**.
-2. Escrever em **O que aconteceu**, ou ditar com o microfone do teclado. O teclado pode ditar sem internet se tiver o idioma baixado.
-3. Tocar em **Entender**. O cartão mostra a operação, cada produto com sua quantidade e seu valor, o pagamento e o total.
-4. Conferir e tocar em **Registrar**.
+1. Tocar em **Dizer**, o botão embaixo, no centro, no microfone do widget ou no atalho do ícone do {app}.
+2. Falar: a tela de escuta mostra a frase enquanto ela é dita. Ao terminar, ou ao tocar em **Pronto**, aparece o cartão com a operação, cada produto com sua quantidade e seu valor, o pagamento e o total.
+3. Conferir e tocar em **Registrar**.
+
+Na primeira vez, o {app} explica para que usa o microfone e o Android pede a permissão. Sem permissão, ou com **Escrever**, abre a folha para escrever em **O que aconteceu** ou ditar com o microfone do teclado, e depois tocar em **Entender**. Para vender sem frase, **Vender manualmente**.
 
 ## O que se pode dizer
 
@@ -30,16 +31,14 @@ Em vez de abrir cada tela, é possível escrever ou ditar o que aconteceu, como 
 
 O que falta fica marcado no lugar, e **Registrar** não salva até completar. O que se registra fica igual a se tivesse sido feito na sua tela, e se anula como sempre.
 
-## Se o microfone não funcionar
+## Se não escutar
 
-Se ao tocar no microfone do teclado aparecer que a voz não está disponível, o problema está no telefone, não no {app}:
-
-1. Nas configurações do teclado, entrar na digitação por voz e ativá-la.
-2. No mesmo lugar, baixar o idioma para usar sem conexão.
-3. Nas configurações do telefone, em aplicativos, conferir se o app do serviço de voz está instalado e ativado.
+- Se não se ouviu nada, **Ouvir de novo**, ou falar mais perto do telefone.
+- Se a permissão do microfone foi negada, a folha oferece **Abrir configurações do telefone** para concedê-la, ou é possível ditar com o microfone do teclado.
+- O {app} escuta com o serviço de voz do telefone. Se o telefone não o tiver, ou não tiver o idioma, fica o teclado. Para o teclado ditar: nas configurações dele, ativar a digitação por voz e baixar o idioma para usar sem conexão; nas configurações do telefone, em aplicativos, conferir se o app do serviço de voz está instalado e ativado.
 
 **O microfone não funciona?**, na folha, abre esta ajuda.
 
-## Ditar direto com a voz do telefone
+## Ouvir ao tocar em Dizer
 
-Em **Configurações**, **Vendas e cobrança**, **Ditar direto com a voz do telefone** faz **Dizer** abrir o serviço de voz do telefone em vez do teclado: toca-se e fala-se. Vem desligado. Esse serviço transforma a voz em texto por conta própria e pode usar a internet se não tiver o idioma baixado. O {app} só recebe o texto e nunca usa o microfone. Se o telefone não tiver esse serviço, a opção não aparece.
+Vem ligado. Em **Configurações**, **Vendas e cobrança**, **Ouvir ao tocar em Dizer** se desliga: assim, **Dizer** abre a folha para escrever ou ditar com o teclado. O {app} usa o microfone só enquanto a tela de escuta está aberta e não guarda áudio. O serviço de voz do telefone transforma a voz em texto e pode usar a internet se não tiver o idioma baixado.
