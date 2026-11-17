@@ -179,6 +179,11 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
                         ProductEditAction.OpenExtras ->
                             uiState.product?.let { navigator.open(AppNavKey.Extras(it.id)) }
 
+                        ProductEditAction.FixCost ->
+                            uiState.product?.let {
+                                navigator.open(AppNavKey.ProductDetail(it.id, openCostSheet = true))
+                            }
+
                         else -> viewModel.onAction(action)
                     }
                 },

@@ -45,6 +45,12 @@ sealed interface ProductEditAction {
     /** Quiere elegir los extras que se ofrecen al venderlo: lo resuelve la navegación. */
     data object OpenExtras : ProductEditAction
 
+    /**
+     * Quiere cambiar el costo de un producto con movimientos, que aquí no se edita: lo resuelve la
+     * navegación, con la hoja `Corregir costo` del detalle.
+     */
+    data object FixCost : ProductEditAction
+
     /** Quiere agregar una conversión de compra o venta a este producto. */
     data object NewConversion : ProductEditAction
 

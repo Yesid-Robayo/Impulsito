@@ -11,11 +11,18 @@ Cada producto tiene nombre, precio de venta y, si se conoce, su costo. Con el co
 
 **Sugerir precio** propone un precio a partir del costo y del margen objetivo del perfil del negocio, en **Ajustes**.
 
+## Cambiar el costo
+
+Un producto con movimientos no cambia su costo en **Editar**: allí se ve, pero lo calculan las compras, como un promedio de lo que hay en stock. Para cambiarlo:
+
+- Si subió lo que se paga al comprar, se registra la compra en **Nueva compra** con el costo nuevo, y el promedio se mueve solo.
+- Si el costo está mal o nunca se escribió, **Corregir costo**, debajo del costo en **Editar** o en el menú ⋮ del detalle, fija el costo nuevo desde ahora. Las ventas pasadas conservan su ganancia, y el valor del inventario cambia.
+- Para saber cuánto costaría comprarlo hoy, sin tocar la ganancia ya registrada, está el **Costo de reposición**: ver [costo promedio y costo de reposición](help_replacement_cost).
+
 ## Cambiar precios
 
 - Un cambio de precio solo afecta a las ventas nuevas: las pasadas conservan el precio con que se vendieron.
 - La actualización masiva cambia muchos precios a la vez, por porcentaje y con redondeo, y **Deshacer la última** la revierte.
-- Corregir el costo no cambia las ventas pasadas. El valor del inventario, sí.
 
 ## Archivar
 

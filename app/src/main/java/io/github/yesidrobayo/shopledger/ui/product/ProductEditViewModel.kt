@@ -304,6 +304,8 @@ class ProductEditViewModel(
 
             ProductEditAction.OpenExtras -> Unit
 
+            ProductEditAction.FixCost -> Unit
+
             is ProductEditAction.SalePriceChange ->
                 edit(ProductEditField.SALE_PRICE) { copy(salePrice = action.text) }
 

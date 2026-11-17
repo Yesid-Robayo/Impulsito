@@ -733,7 +733,7 @@ private fun PriceAndCost(uiState: ProductEditUiState, onAction: (ProductEditActi
     }
     val cost: @Composable (Modifier) -> Unit = { modifier ->
         if (uiState.costLocked) {
-            LockedCost(uiState.averageCost, modifier)
+            LockedCost(uiState.averageCost, modifier) { onAction(ProductEditAction.FixCost) }
         } else {
             MoneyField(
                 value = uiState.form.cost,
@@ -798,7 +798,7 @@ private fun InitialCostMode(uiState: ProductEditUiState, onAction: (ProductEditA
  * Es un costo guardado, y en modo discreto se oculta.
  */
 @Composable
-private fun LockedCost(cost: Money, modifier: Modifier) {
+private fun LockedCost(cost: Money, modifier: Modifier, onFix: () -> Unit) {
     Column(modifier.padding(top = AppTheme.spacing.s8)) {
         Text(
             stringResource(R.string.term_cost),
@@ -806,6 +806,14 @@ private fun LockedCost(cost: Money, modifier: Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         MoneyText(cost, MoneySize.ROW, sensitive = true)
+        // Con movimientos el costo sale de las compras: aquí no se escribe, pero se dice dónde se
+        // cambia, para que el campo bloqueado no parezca un callejón.
+        Text(
+            stringResource(R.string.product_cost_locked_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        InlineTextButton(text = stringResource(R.string.product_fix_cost), onClick = onFix)
     }
 }
 

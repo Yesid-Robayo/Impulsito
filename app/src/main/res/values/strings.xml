@@ -163,6 +163,7 @@
     <string name="product_loss_per_sale">Loss on each sale: %1$s</string>
     <string name="product_no_cost_hint">Without a cost, the real profit cannot be calculated</string>
     <string name="product_fix_cost">Correct cost</string>
+    <string name="product_cost_locked_help">It changes with each purchase.</string>
     <string name="product_barcode">Barcode</string>
     <string name="form_category">Category</string>
     <string name="unit_base_locked">It has movements: the base unit does not change</string>

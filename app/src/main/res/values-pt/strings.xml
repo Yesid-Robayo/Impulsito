@@ -159,6 +159,7 @@
     <string name="product_loss_per_sale">Perda em cada venda: %1$s</string>
     <string name="product_no_cost_hint">Sem custo não é possível calcular o lucro real</string>
     <string name="product_fix_cost">Corrigir custo</string>
+    <string name="product_cost_locked_help">Muda a cada compra.</string>
     <string name="product_barcode">Código de barras</string>
     <string name="form_category">Categoria</string>
     <string name="unit_base_locked">Tem movimentos: a unidade base não muda</string>
