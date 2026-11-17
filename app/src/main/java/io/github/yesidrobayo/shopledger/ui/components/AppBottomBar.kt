@@ -90,6 +90,7 @@ fun AppBottomBar(
     sellLabel: String,
     onSell: () -> Unit,
     modifier: Modifier = Modifier,
+    @DrawableRes sellIcon: Int = R.drawable.ic_sell,
 ) {
     require(items.size == 4) { "La barra tiene cuatro pestañas y Vender al centro" }
     val sizes = AppTheme.sizes
@@ -131,6 +132,7 @@ fun AppBottomBar(
                     SellButton(
                         label = sellLabel,
                         onClick = onSell,
+                        icon = sellIcon,
                         modifier = Modifier.offset(
                             y = -(sizes.sellButtonOverhang + sizes.hairline),
                         ),
@@ -246,7 +248,12 @@ private fun BottomBarLabel(label: String, color: Color, selected: Boolean) {
 
 /** El botón Vender: un bloque de la marca, con su palabra siempre visible y la única sombra de la app. */
 @Composable
-fun SellButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun SellButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    @DrawableRes icon: Int = R.drawable.ic_sell,
+) {
     val sizes = AppTheme.sizes
     val colors = AppTheme.colors
     val shape = MaterialTheme.shapes.large
@@ -266,7 +273,7 @@ fun SellButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
         verticalArrangement = Arrangement.Center,
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_sell),
+            painter = painterResource(icon),
             contentDescription = null,
             tint = colors.onBrandFill,
             modifier = Modifier.size(sizes.icon),

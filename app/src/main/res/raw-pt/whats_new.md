@@ -1,5 +1,10 @@
 O que cada versão do {app} trouxe, da mais nova para a mais antiga.
 
+## 1.0.5
+
+- **Dizer, no centro:** o botão embaixo, no centro, agora é **Dizer**, para registrar dizendo ou escrevendo uma frase de qualquer aba. Para vender manualmente, **Vender** no **Início** ou **Vender manualmente** em **Dizer**.
+- **O microfone não funciona?**, em **Dizer**, abre os passos para ativar a digitação por voz do teclado.
+
 ## 1.0.4
 
 - **Dizer ou escrever:** tocar em **Dizer** no **Início**, no widget ou no atalho do ícone, e dizer ou escrever o que aconteceu, como «vendi 3 pães e 2 sucos em dinheiro». O {app} mostra em um cartão cada produto, seu valor e o total, e só registra ao tocar em **Registrar**. Entende vendas, compras, despesas, produção, ajustes de estoque, pagamentos, receitas, produtos novos e mudanças de custo e preço. Corrige-se tocando em uma linha ou com uma frase curta como «não, eram 3».

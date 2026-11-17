@@ -2,7 +2,7 @@ Em vez de abrir cada tela, é possível escrever ou ditar o que aconteceu, como 
 
 ## Como usar
 
-1. Tocar em **Dizer** no **Início**, no widget ou no atalho do ícone do {app}.
+1. Tocar em **Dizer**, o botão embaixo, no centro, ou no microfone do widget ou no atalho do ícone do {app}. Para vender sem frase, **Vender manualmente**.
 2. Escrever em **O que aconteceu**, ou ditar com o microfone do teclado. O teclado pode ditar sem internet se tiver o idioma baixado.
 3. Tocar em **Entender**. O cartão mostra a operação, cada produto com sua quantidade e seu valor, o pagamento e o total.
 4. Conferir e tocar em **Registrar**.
@@ -29,6 +29,16 @@ Em vez de abrir cada tela, é possível escrever ou ditar o que aconteceu, como 
 - **Começar de novo** apaga o cartão.
 
 O que falta fica marcado no lugar, e **Registrar** não salva até completar. O que se registra fica igual a se tivesse sido feito na sua tela, e se anula como sempre.
+
+## Se o microfone não funcionar
+
+Se ao tocar no microfone do teclado aparecer que a voz não está disponível, o problema está no telefone, não no {app}:
+
+1. Nas configurações do teclado, entrar na digitação por voz e ativá-la.
+2. No mesmo lugar, baixar o idioma para usar sem conexão.
+3. Nas configurações do telefone, em aplicativos, conferir se o app do serviço de voz está instalado e ativado.
+
+**O microfone não funciona?**, na folha, abre esta ajuda.
 
 ## Ditar direto com a voz do telefone
 

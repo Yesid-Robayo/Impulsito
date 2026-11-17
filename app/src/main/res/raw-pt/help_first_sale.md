@@ -2,7 +2,7 @@ Uma venda fica salva no telefone ao tocar em **Registrar venda**, com ou sem int
 
 ## Passo a passo
 
-1. Tocar em **Vender**, embaixo, no centro.
+1. Tocar em **Vender** no **Início**. Também há **Vender manualmente** em **Dizer**, o botão embaixo, no centro.
 2. Escolher os produtos em **Mais vendidos**, ou buscá-los pelo nome ou pelo código. Cada toque soma um.
 3. Para mudar a quantidade ou o preço dessa linha, ou para dar um desconto, tocar na linha.
 4. Escolher a forma de pagamento, se não for a de sempre.

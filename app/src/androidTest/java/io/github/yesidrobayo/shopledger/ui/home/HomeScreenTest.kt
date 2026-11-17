@@ -171,14 +171,15 @@ class HomeScreenTest {
     }
 
     @Test
-    fun theSayShortcutOpensThePhraseSheet() {
+    fun theSellShortcutOpensANewSaleByHand() {
+        // El botón central es Decir: vender a mano queda en este atajo de Inicio.
         compose.setContent {
             PreviewTheme { HomeScreen(previewHomeContent(), { actions += it }) }
         }
 
-        compose.onNodeWithText(text(R.string.phrase_action_say)).performClick()
+        compose.onNodeWithText(text(R.string.nav_sell)).performClick()
 
-        assertEquals(listOf<HomeAction>(HomeAction.OpenPhrase), actions)
+        assertEquals(listOf<HomeAction>(HomeAction.NewSale), actions)
     }
 
     @Test

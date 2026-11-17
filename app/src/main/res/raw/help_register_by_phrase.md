@@ -2,7 +2,7 @@ Instead of opening each screen, you can type or dictate what happened, such as "
 
 ## How to use it
 
-1. Tap **Say** on **Home**, on the widget or on the shortcut of the {app} icon.
+1. Tap **Say**, the button at the bottom center, or the widget microphone or the shortcut of the {app} icon. To sell without a sentence, **Sell by hand**.
 2. Type in **What happened**, or dictate with the keyboard microphone. The keyboard can dictate offline if it has the language downloaded.
 3. Tap **Understand**. The card shows the operation, each product with its quantity and amount, the payment and the total.
 4. Check it and tap **Register**.
@@ -29,6 +29,16 @@ You can name several products in one sentence, with numbers in digits or in word
 - **Start over** clears the card.
 
 Anything missing is marked in place, and **Register** saves nothing until it is complete. What you record is the same as if you had done it on its screen, and you void it as usual.
+
+## If the microphone does not work
+
+If tapping the keyboard microphone says that voice is not available, the problem is on the phone, not in {app}:
+
+1. In the keyboard settings, open voice typing and turn it on.
+2. In the same place, download the language to use it offline.
+3. In the phone settings, under apps, check that the voice service app is installed and turned on.
+
+**Microphone not working?**, on the sheet, opens this help.
 
 ## Dictate directly with the phone's voice
 

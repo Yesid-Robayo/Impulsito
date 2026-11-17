@@ -15,28 +15,27 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * El micrófono de las pestañas: con la navegación, va junto al engranaje y abre `Decir o
- * escribir`; sin ella, en una pantalla suelta, no aparece, y el engranaje queda solo.
+ * El micrófono de la barra de arriba de la venta: con la navegación abre `Decir o escribir`; sin
+ * ella, en una pantalla suelta, no aparece.
  */
 @RunWith(AndroidJUnit4::class)
 class SayButtonTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val resources = InstrumentationRegistry.getInstrumentation().targetContext.resources
-    private val say = resources.getString(R.string.phrase_title)
-    private val settings = resources.getString(R.string.a11y_settings)
+    private val say =
+        InstrumentationRegistry.getInstrumentation().targetContext.resources
+            .getString(R.string.phrase_title)
 
     @Test
-    fun theTabsShowTheMicrophoneNextToTheGearAndItOpensSayOrType() {
+    fun withNavigationTheMicrophoneOpensSayOrType() {
         var opened = 0
         compose.setContent {
             PreviewTheme {
-                CompositionLocalProvider(LocalSayOpener provides { opened++ }) { SettingsButton() }
+                CompositionLocalProvider(LocalSayOpener provides { opened++ }) { SayButton() }
             }
         }
 
-        compose.onNodeWithContentDescription(settings).assertExists()
         compose.onNodeWithContentDescription(say).performClick()
 
         assertEquals(1, opened)
@@ -44,9 +43,8 @@ class SayButtonTest {
 
     @Test
     fun withoutNavigationThereIsNoMicrophone() {
-        compose.setContent { PreviewTheme { SettingsButton() } }
+        compose.setContent { PreviewTheme { SayButton() } }
 
-        compose.onNodeWithContentDescription(settings).assertExists()
         assertEquals(0, compose.onAllNodesWithContentDescription(say).fetchSemanticsNodes().size)
     }
 }

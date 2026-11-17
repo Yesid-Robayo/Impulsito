@@ -17,6 +17,15 @@ sealed interface PhraseAction {
     /** La `X` de la barra: cierra la hoja. Lo que no se registró se descarta. */
     data object Close : PhraseAction
 
+    /**
+     * `Vender a mano`: cambia la hoja por una venta nueva de siempre. El botón central de la barra
+     * es `Decir`, así que vender a mano también se ofrece aquí.
+     */
+    data object SellByHand : PhraseAction
+
+    /** `¿No funciona el micrófono?`: abre la ayuda con los pasos para activar el dictado. */
+    data object MicHelp : PhraseAction
+
     /** El micrófono del campo: abre el servicio de voz del teléfono. */
     data object Dictate : PhraseAction
 

@@ -51,6 +51,19 @@ class PhrasePiecesTest {
     }
 
     @Test
+    fun `the dictation groups thousands with the decimal comma, and a fraction stays a fraction`() {
+        // El teléfono escribe "50,000" al dictar «cincuenta mil», aunque el teclado use coma decimal.
+        assertEquals(50_000_000L, spanishNumber("50,000"))
+        assertEquals(1_500_000_000L, spanishNumber("1,500,000"))
+        assertEquals(500L, spanishNumber("0,500"))
+        assertEquals(2_250L, spanishNumber("2,25"))
+        assertEquals(1_500L, spanishNumber("1,5"))
+        // Con el separador de miles ya escrito, la coma es decimal como siempre.
+        assertEquals(1_500_250L, spanishNumber("1.500,250"))
+        assertEquals(null, spanishNumber("1234,567,890"))
+    }
+
+    @Test
     fun `figures that cannot be read are not a number`() {
         assertEquals(null, spanishNumber("1.2.3"))
         assertEquals(null, spanishNumber("1234.567"))

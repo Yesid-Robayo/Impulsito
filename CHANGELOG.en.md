@@ -8,6 +8,18 @@ and versions follow [Semantic Versioning](https://semver.org/). Published versio
 
 When a new version is published, it's added at the top with the same content as its release notes.
 
+## [1.0.5] - 2026-11-17
+
+### Changed
+
+- **Say, in the center:** the button at the bottom center is now **Say**, to record with a sentence from any tab. Selling by hand
+  stays on **Home**, in **Sell by hand** inside **Say**, on the widget and on the icon shortcut.
+
+### Added
+
+- **Microphone not working?**, in **Say**: the steps to turn on the keyboard's voice typing when it says voice is not available,
+  also in the help.
+
 ## [1.0.4] - 2026-11-17
 
 ### Added

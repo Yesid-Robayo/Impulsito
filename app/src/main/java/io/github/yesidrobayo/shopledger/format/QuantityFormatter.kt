@@ -30,12 +30,14 @@ class QuantityFormatter(val formatLocale: FormatLocale) {
     /**
      * La cantidad, con el signo menos tipográfico si es negativa: `−2`, `−0,250`.
      *
-     * Con [allowsFraction] en falso y una cantidad que no es entera, muestra igual sus tres
-     * decimales. No debería pasar, porque esas unidades no aceptan fracciones, pero redondear
-     * escondería un dato: 12,5 cajas no son 12 ni 13.
+     * Una cantidad entera va sin decimales en cualquier unidad: `10 kg`, no `10,000 kg`, que se
+     * leía como diez mil. Una que no es entera muestra sus tres decimales, también en una unidad que
+     * no acepta fracciones: no debería pasar, pero redondear escondería un dato, porque 12,5 cajas no
+     * son 12 ni 13. [allowsFraction] queda para quien llama, que ya no cambia el resultado.
      */
+    @Suppress("UNUSED_PARAMETER")
     fun format(quantity: QuantityMilli, allowsFraction: Boolean): String {
-        val whole = !allowsFraction && quantity.isWholeUnits
+        val whole = quantity.isWholeUnits
         val text =
             if (whole) {
                 synchronized(wholeFormat) {

@@ -152,7 +152,6 @@ fun HomeScreen(
                     actions = {
                         ScreenHelpLink(HelpTopic.HOME)
                         DiscreetModeButton()
-                        SayButton()
                         TopBarAction(
                             R.drawable.ic_settings,
                             stringResource(R.string.a11y_settings),
@@ -501,8 +500,8 @@ private fun profitChange(compared: ComparedPeriod?, reference: BusinessDate): St
 }
 
 /**
- * Los atajos tonales, que reparten el ancho y bajan a otra línea si la letra no cabe: `Decir`,
- * `Compra`, `Gasto` y `Negocio`.
+ * Los atajos tonales, que reparten el ancho y bajan a otra línea si la letra no cabe: `Vender`,
+ * `Compra`, `Gasto`, `Registros`, que ya no está en la barra de abajo, y `Negocio`.
  */
 @Composable
 private fun Shortcuts(onAction: (HomeAction) -> Unit) {
@@ -512,8 +511,8 @@ private fun Shortcuts(onAction: (HomeAction) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
     ) {
         PrimaryActionButton(
-            text = stringResource(R.string.phrase_action_say),
-            onClick = { onAction(HomeAction.OpenPhrase) },
+            text = stringResource(R.string.nav_sell),
+            onClick = { onAction(HomeAction.NewSale) },
             variant = ActionVariant.TONAL,
             modifier = Modifier.weight(1f),
         )
@@ -526,6 +525,12 @@ private fun Shortcuts(onAction: (HomeAction) -> Unit) {
         PrimaryActionButton(
             text = stringResource(R.string.home_shortcut_expense),
             onClick = { onAction(HomeAction.OpenExpense) },
+            variant = ActionVariant.TONAL,
+            modifier = Modifier.weight(1f),
+        )
+        PrimaryActionButton(
+            text = stringResource(R.string.nav_records),
+            onClick = { onAction(HomeAction.OpenAllSales) },
             variant = ActionVariant.TONAL,
             modifier = Modifier.weight(1f),
         )

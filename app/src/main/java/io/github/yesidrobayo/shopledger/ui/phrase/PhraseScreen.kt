@@ -252,7 +252,7 @@ private fun PhraseField(
 @Composable
 private fun StageContent(stage: PhraseStage, onAction: (PhraseAction) -> Unit) {
     when (stage) {
-        PhraseStage.Empty -> Examples()
+        PhraseStage.Empty -> Examples(onAction)
 
         // El botón trabaja; lo escrito sigue a la vista. Sin esqueleto: la lectura es local.
         PhraseStage.Reading -> Unit
@@ -262,7 +262,7 @@ private fun StageContent(stage: PhraseStage, onAction: (PhraseAction) -> Unit) {
                 text = stringResource(R.string.phrase_not_understood),
                 variant = NoticeVariant.WARNING,
             )
-            Examples()
+            Examples(onAction)
         }
 
         PhraseStage.Mixed -> {
@@ -270,7 +270,7 @@ private fun StageContent(stage: PhraseStage, onAction: (PhraseAction) -> Unit) {
                 text = stringResource(R.string.phrase_mixed),
                 variant = NoticeVariant.WARNING,
             )
-            Examples()
+            Examples(onAction)
         }
 
         PhraseStage.ReadFailed ->
@@ -317,9 +317,12 @@ private fun StageContent(stage: PhraseStage, onAction: (PhraseAction) -> Unit) {
     }
 }
 
-/** Unos ejemplos de lo que se puede decir, en el idioma de la interfaz. */
+/**
+ * Unos ejemplos de lo que se puede decir, en el idioma de la interfaz, y dos salidas: vender a mano y
+ * los pasos para activar el micrófono si el teclado dice que la voz no está disponible.
+ */
 @Composable
-private fun Examples() {
+private fun Examples(onAction: (PhraseAction) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4)) {
         Text(
             text = stringResource(R.string.phrase_examples_title),
@@ -333,6 +336,14 @@ private fun Examples() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        InlineTextButton(
+            text = stringResource(R.string.phrase_sell_by_hand),
+            onClick = { onAction(PhraseAction.SellByHand) },
+        )
+        InlineTextButton(
+            text = stringResource(R.string.phrase_mic_help),
+            onClick = { onAction(PhraseAction.MicHelp) },
+        )
     }
 }
 

@@ -12,7 +12,7 @@
 - Crear los productos con su precio y, si se conoce, su costo: con el costo se ve la ganancia de cada venta.
 - Registrar cada venta con **Vender**, y cada compra y cada gasto en el momento.
 - Mirar en **Inicio** las ventas de hoy y el estado de la copia.
-- Para registrar sin entrar a cada pantalla, **Decir** en **Inicio** entiende frases como «vendí 3 panes en efectivo»: ver [decir o escribir](help_register_by_phrase).
+- Para registrar sin entrar a cada pantalla, **Decir**, el botón de abajo al centro, entiende frases como «vendí 3 panes en efectivo»: ver [decir o escribir](help_register_by_phrase).
 - Lo que no se usa a diario, como clientes, caja o unidades, está en **Negocio**, en **Inicio**: ver [el centro Negocio](help_business_hub). La configuración está en **Ajustes**.
 
 Lo que no se usa no estorba: una herramienta aparece en **En uso** con su primer registro.

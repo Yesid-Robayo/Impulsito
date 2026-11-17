@@ -76,8 +76,9 @@ internal fun RailHost(
             },
         onSelect = { go(railKeys[it]) },
         onSettings = { go(AppNavKey.Settings) },
-        sellLabel = stringResource(R.string.nav_sell),
-        onSell = { go(AppNavKey.NewSale()) },
+        sellLabel = stringResource(R.string.phrase_action_say),
+        onSell = { go(AppNavKey.Phrase()) },
+        sellIcon = R.drawable.ic_mic,
     )
     pending?.let { request ->
         val texts = request.texts

@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -80,6 +81,7 @@ fun AppNavigationRail(
     sellLabel: String,
     onSell: () -> Unit,
     modifier: Modifier = Modifier,
+    @DrawableRes sellIcon: Int = R.drawable.ic_sell,
 ) {
     val sizes = AppTheme.sizes
     val spacing = AppTheme.spacing
@@ -111,7 +113,7 @@ fun AppNavigationRail(
                     verticalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        SellButton(label = sellLabel, onClick = onSell)
+                        SellButton(label = sellLabel, onClick = onSell, icon = sellIcon)
                         Spacer(Modifier.height(spacing.s16))
                         Column(Modifier.selectableGroup()) {
                             items.forEachIndexed { index, item ->

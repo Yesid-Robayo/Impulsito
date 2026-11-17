@@ -1,5 +1,10 @@
 What each version of {app} brought, newest first.
 
+## 1.0.5
+
+- **Say, in the center:** the button at the bottom center is now **Say**, to record by saying or typing a sentence from any tab. To sell by hand, **Sell** on **Home** or **Sell by hand** in **Say**.
+- **Microphone not working?** in **Say** opens the steps to turn on the keyboard's voice typing.
+
 ## 1.0.4
 
 - **Say or type:** tap **Say** on **Home**, on the widget or on the icon shortcut, and say or type what happened, such as "sold 3 bread rolls and 2 juices for cash". {app} shows it on a card with each product, its amount and the total, and records it only when you tap **Register**. It understands sales, purchases, expenses, production, stock adjustments, payments, recipes, new products, and cost and price changes. Correct it by tapping a line or with a short sentence such as "no, it was 3".

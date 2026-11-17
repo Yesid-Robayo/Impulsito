@@ -2,7 +2,7 @@ En vez de abrir cada pantalla, se puede escribir o dictar lo que pasó, como «v
 
 ## Cómo se usa
 
-1. Tocar **Decir** en **Inicio**, en el widget o en el atajo del ícono de {app}.
+1. Tocar **Decir**, el botón de abajo al centro, o el micrófono del widget o el atajo del ícono de {app}. Para vender sin frase, **Vender a mano**.
 2. Escribir en **Qué pasó**, o dictar con el micrófono del teclado. El teclado puede dictar sin internet si tiene el idioma descargado.
 3. Tocar **Entender**. La tarjeta muestra la operación, cada producto con su cantidad y su monto, el pago y el total.
 4. Revisar y tocar **Registrar**.
@@ -29,6 +29,16 @@ Se pueden nombrar varios productos en una frase, con números en cifras o en pal
 - **Empezar de nuevo** borra la tarjeta.
 
 Lo que falta se marca en su lugar, y **Registrar** no guarda hasta completarlo. Lo registrado queda igual que si se hubiera hecho en su pantalla, y se anula como siempre.
+
+## Si el micrófono no funciona
+
+Si al tocar el micrófono del teclado aparece que la voz no está disponible, el problema está en el teléfono, no en {app}:
+
+1. En los ajustes del teclado, entrar a la escritura por voz y activarla.
+2. Ahí mismo, descargar el idioma para usarlo sin conexión.
+3. En los ajustes del teléfono, en las aplicaciones, revisar que la app del servicio de voz esté instalada y activada.
+
+**¿No funciona el micrófono?**, en la hoja, abre esta ayuda.
 
 ## Dictar directo con la voz del teléfono
 

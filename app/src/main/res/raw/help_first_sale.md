@@ -2,7 +2,7 @@ A sale is saved on the phone when **Record sale** is tapped, with or without int
 
 ## Step by step
 
-1. Tap **Sell**, at the bottom center.
+1. Tap **Sell** on **Home**. **Sell by hand** is also in **Say**, the button at the bottom center.
 2. Choose the products in **Best sellers**, or search for them by name or by code. Each tap adds one.
 3. To change the quantity or the price of that line, or to give a discount, tap the line.
 4. Choose the payment method, if it is not the usual one.

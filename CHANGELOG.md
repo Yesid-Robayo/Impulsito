@@ -8,6 +8,18 @@ Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](htt
 
 Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
+## [1.0.5] - 2026-11-17
+
+### Cambiado
+
+- **Decir, al centro:** el botón de abajo al centro ahora es **Decir**, para registrar con una frase desde cualquier pestaña. Vender
+  a mano sigue en **Inicio**, en **Vender a mano** dentro de **Decir**, en el widget y en el atajo del ícono.
+
+### Agregado
+
+- **¿No funciona el micrófono?**, en **Decir**: los pasos para activar el dictado del teclado cuando dice que la voz no está
+  disponible, también en la ayuda.
+
 ## [1.0.4] - 2026-11-17
 
 ### Agregado

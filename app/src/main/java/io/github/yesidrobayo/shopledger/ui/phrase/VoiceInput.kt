@@ -24,15 +24,18 @@ import kotlinx.coroutines.withContext
 object VoiceInput {
     /**
      * El pedido al servicio de voz del teléfono, en [languageTag], el idioma de la interfaz. Pide
-     * una sola lectura y que prefiera el reconocimiento sin conexión.
+     * una sola lectura y, con [preferOffline], que prefiera el reconocimiento sin conexión. Sin el
+     * idioma descargado, algunos servicios fallan en vez de usar la red: por eso el segundo intento
+     * va sin esa preferencia, como avisa el ajuste al encenderlo.
      */
-    fun intent(languageTag: String): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-        .putExtra(
-            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
-        ).putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-        .putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
-        .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+    fun intent(languageTag: String, preferOffline: Boolean = true): Intent =
+        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            .putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+            ).putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, preferOffline)
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
+            .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
 
     /**
      * Si el teléfono tiene un servicio de voz que atienda el pedido. Sin él, el ajuste no aparece y
@@ -52,6 +55,13 @@ object VoiceInput {
         val heard = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
         return heard?.trim()?.take(MAX_HEARD_LENGTH)?.takeIf { it.isNotEmpty() }
     }
+
+    /**
+     * Si el servicio respondió con un error y no con una cancelación de la persona: sin conexión y
+     * sin el idioma descargado, por ejemplo. Entonces vale intentar otra vez por la red.
+     */
+    fun failed(resultCode: Int): Boolean =
+        resultCode != Activity.RESULT_OK && resultCode != Activity.RESULT_CANCELED
 
     /** Una frase dictada nunca es tan larga: lo que sobra no es una operación. */
     private const val MAX_HEARD_LENGTH = 500

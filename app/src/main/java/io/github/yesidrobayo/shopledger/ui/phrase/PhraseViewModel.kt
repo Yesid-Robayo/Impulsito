@@ -199,7 +199,10 @@ class PhraseViewModel(
             PhraseAction.RegisteredShown -> state.update { it.copy(registered = null) }
 
             // Cerrar lo resuelve la navegación.
-            PhraseAction.Close -> Unit
+            PhraseAction.SellByHand,
+            PhraseAction.MicHelp,
+            PhraseAction.Close,
+            -> Unit
         }
     }
 

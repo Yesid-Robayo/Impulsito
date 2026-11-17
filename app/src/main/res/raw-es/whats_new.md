@@ -1,5 +1,10 @@
 Lo que trajo cada versión de {app}, de la más nueva a la más antigua.
 
+## 1.0.5
+
+- **Decir, al centro:** el botón de abajo al centro ahora es **Decir**, para registrar diciendo o escribiendo una frase desde cualquier pestaña. Para vender a mano, **Vender** en **Inicio** o **Vender a mano** en **Decir**.
+- **¿No funciona el micrófono?**, en **Decir**, abre los pasos para activar el dictado del teclado.
+
 ## 1.0.4
 
 - **Decir o escribir:** tocar **Decir** en **Inicio**, en el widget o en el atajo del ícono, y decir o escribir lo que pasó, como «vendí 3 panes y 2 jugos en efectivo». {app} lo muestra en una tarjeta con cada producto, su monto y el total, y lo registra solo al tocar **Registrar**. Entiende ventas, compras, gastos, producción, ajustes de stock, abonos, recetas, productos nuevos y cambios de costo y precio. Se corrige tocando una línea o con una frase corta como «no, eran 3».

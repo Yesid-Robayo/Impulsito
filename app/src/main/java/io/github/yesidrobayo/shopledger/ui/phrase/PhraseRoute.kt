@@ -7,6 +7,9 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -30,6 +33,7 @@ import io.github.yesidrobayo.shopledger.navigation.showUndoable
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpArticleId
 import io.github.yesidrobayo.shopledger.ui.sale.SaleUndo
 import io.github.yesidrobayo.shopledger.ui.sale.SaleUndoTexts
 import kotlinx.coroutines.withContext
@@ -96,22 +100,41 @@ fun PhraseRoute(key: AppNavKey.Phrase, navigator: AppNavigator) {
             val haptics = LocalHapticFeedback.current
             // El servicio de voz del teléfono: devuelve el texto, o nada si la persona cancela.
             val languageTag = formats.uiLocale.toLanguageTag()
+            // Primero sin conexión; si el servicio falla, una vez más por la red. Si tampoco llega
+            // texto, la pantalla lo dice y ofrece el micrófono del teclado. Cancelar no es un fallo.
+            var onlineTry by remember { mutableStateOf<(() -> Unit)?>(null) }
             val voice =
                 rememberLauncherForActivityResult(
                     ActivityResultContracts.StartActivityForResult(),
                 ) { result ->
-                    VoiceInput.textOf(result.resultCode, result.data)?.let {
-                        viewModel.onAction(PhraseAction.Heard(it))
+                    val heard = VoiceInput.textOf(result.resultCode, result.data)
+                    val retry = onlineTry
+                    onlineTry = null
+                    when {
+                        heard != null -> viewModel.onAction(PhraseAction.Heard(heard))
+
+                        VoiceInput.failed(result.resultCode) && retry != null -> retry()
+
+                        VoiceInput.failed(result.resultCode) ->
+                            viewModel.onAction(PhraseAction.DictateHandled(opened = false))
                     }
                 }
             LaunchedEffect(uiState.dictate) {
                 if (!uiState.dictate) return@LaunchedEffect
                 val opened =
                     try {
+                        onlineTry = {
+                            try {
+                                voice.launch(VoiceInput.intent(languageTag, preferOffline = false))
+                            } catch (_: ActivityNotFoundException) {
+                                viewModel.onAction(PhraseAction.DictateHandled(opened = false))
+                            }
+                        }
                         voice.launch(VoiceInput.intent(languageTag))
                         true
                     } catch (_: ActivityNotFoundException) {
                         // El servicio se desinstaló o se desactivó: queda el teclado.
+                        onlineTry = null
                         false
                     }
                 viewModel.onAction(PhraseAction.DictateHandled(opened))
@@ -171,10 +194,18 @@ fun PhraseRoute(key: AppNavKey.Phrase, navigator: AppNavigator) {
             PhraseScreen(
                 uiState = uiState,
                 onAction = { action ->
-                    if (action == PhraseAction.Close) {
-                        navigator.back()
-                    } else {
-                        viewModel.onAction(action)
+                    when (action) {
+                        PhraseAction.Close -> navigator.back()
+
+                        // La hoja se cierra y queda la venta de siempre en su lugar.
+                        PhraseAction.SellByHand -> {
+                            navigator.back()
+                            navigator.sell()
+                        }
+
+                        PhraseAction.MicHelp -> navigator.open(MIC_HELP)
+
+                        else -> viewModel.onAction(action)
                     }
                 },
             )
@@ -206,3 +237,6 @@ internal fun doneMessage(intent: PhraseIntent): Int = when (intent) {
     PhraseIntent.COST_CORRECTION -> R.string.phrase_done_cost
     PhraseIntent.PRICE_CHANGE -> R.string.phrase_done_price
 }
+
+/** El artículo con los pasos para activar el dictado del teclado o la voz del teléfono. */
+private val MIC_HELP = AppNavKey.Help(articleKey = HelpArticleId.REGISTER_BY_PHRASE.key)

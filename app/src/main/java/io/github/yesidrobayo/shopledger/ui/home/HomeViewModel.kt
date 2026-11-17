@@ -224,7 +224,7 @@ class HomeViewModel(
             HomeAction.OpenBackup,
             HomeAction.ChooseDestination,
             HomeAction.ReviewPolicy,
-            HomeAction.OpenPhrase,
+            HomeAction.NewSale,
             HomeAction.OpenPurchase,
             HomeAction.OpenExpense,
             is HomeAction.OpenLowStock,

@@ -298,30 +298,72 @@ fun AppNavHost(
                 ),
             exit = fadeOut(tween(AppMotion.SCREEN_EXIT, easing = AppMotion.ExitEasing)),
         ) {
-            val tabs = TopLevelDestination.entries
             // Mientras se funde, la barra se dibuja en una capa aparte del tamaño de su caja, y
             // lo que sobresale se recortaría: Vender saldría partido. La caja reserva arriba el
             // alto que sobresale el botón y su sombra; ese margen es transparente y no recibe toques.
             val sizes = AppTheme.sizes
             Box(Modifier.padding(top = sizes.sellButtonOverhang + sizes.sellButtonShadow)) {
+                // La barra muestra Inicio, Vender, Productos y Números, con Decir al centro.
+                // Registros sigue siendo una pestaña por dentro, pero se abre desde Inicio: mientras
+                // se ve, la barra marca Inicio. Vender no es una pestaña: abre una venta a mano.
+                val shown = BAR_SLOTS.map { slot ->
+                    when (slot) {
+                        null ->
+                            BottomBarItem(
+                                stringResource(R.string.nav_sell),
+                                R.drawable.ic_sell,
+                                R.drawable.ic_sell,
+                                tag = PerformanceTags.tab(SELL_SLOT_TAG),
+                            )
+
+                        else ->
+                            BottomBarItem(
+                                stringResource(slot.label),
+                                slot.icon,
+                                slot.selectedIcon,
+                                tag = PerformanceTags.tab(slot.name),
+                            )
+                    }
+                }
+                val current = navigator.currentTab
                 AppBottomBar(
-                    items = tabs.map {
-                        BottomBarItem(
-                            stringResource(it.label),
-                            it.icon,
-                            it.selectedIcon,
-                            tag = PerformanceTags.tab(it.name),
-                        )
+                    items = shown,
+                    selected =
+                        BAR_SLOTS.indexOf(
+                            if (current == TopLevelDestination.RECORDS) {
+                                TopLevelDestination.HOME
+                            } else {
+                                current
+                            },
+                        ),
+                    onSelect = { index ->
+                        BAR_SLOTS[index]?.let(navigator::selectTab) ?: navigator.sell()
                     },
-                    selected = tabs.indexOf(navigator.currentTab),
-                    onSelect = { navigator.selectTab(tabs[it]) },
-                    sellLabel = stringResource(R.string.nav_sell),
-                    onSell = navigator::sell,
+                    // El botón central es Decir: registrar diciendo una frase. Vender a mano sigue en
+                    // Inicio, en la hoja de Decir, en el widget y en el atajo del ícono.
+                    sellLabel = stringResource(R.string.phrase_action_say),
+                    onSell = openSay,
+                    sellIcon = R.drawable.ic_mic,
                 )
             }
         }
     }
 }
+
+/**
+ * Lo que muestra la barra de abajo, en orden; `null` es `Vender`, que abre una venta a mano. El
+ * botón del centro, `Decir`, va aparte.
+ */
+private val BAR_SLOTS: List<TopLevelDestination?> =
+    listOf(
+        TopLevelDestination.HOME,
+        null,
+        TopLevelDestination.PRODUCTS,
+        TopLevelDestination.NUMBERS,
+    )
+
+/** La marca de rendimiento del botón `Vender` de la barra. */
+private const val SELL_SLOT_TAG = "SELL"
 
 // Las raíces llevan esta marca: entre dos raíces, el cambio es de pestaña y no de profundidad.
 private const val TAB_ROOT = "tabRoot"

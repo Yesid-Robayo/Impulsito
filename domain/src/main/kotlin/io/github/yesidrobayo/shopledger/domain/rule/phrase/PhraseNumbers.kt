@@ -160,7 +160,7 @@ internal fun parseDigits(text: String, style: NumberStyle): Long? {
     if (!text[0].isDigit()) return null
     val parts = text.split('/')
     return when (parts.size) {
-        1 -> decimal(text, style)
+        1 -> groupedByDecimal(text, style) ?: decimal(text, style)
         2 -> ratio(parts[0], parts[1])
         else -> null
     }
@@ -175,6 +175,21 @@ private fun ratio(numerator: String, denominator: String): Long? {
 
 private fun wholeDigits(text: String): Long? =
     if (text.length in 1..MAX_DIGITS && text.all(Char::isDigit)) text.toLong() else null
+
+/**
+ * El dictado del teléfono escribe los miles con el separador decimal del teclado: "50,000" o
+ * "1,500,000" con coma decimal son cincuenta mil y un millón y medio. Si el separador decimal parte
+ * las cifras en grupos de tres y lo de adelante no es cero, son miles; "0,500" sigue siendo medio, y
+ * "1,5" o "2,25" siguen siendo decimales.
+ */
+private fun groupedByDecimal(text: String, style: NumberStyle): Long? {
+    if (style.grouping in text) return null
+    val groups = text.split(style.decimal)
+    val grouped =
+        groups.size > 1 && groups[0] != "0" && groups[0].length in 1..3 &&
+            groups.drop(1).all { it.length == 3 }
+    return if (grouped) wholeDigits(groups.joinToString(""))?.times(Scale.MILLI) else null
+}
 
 private fun decimal(text: String, style: NumberStyle): Long? {
     val point = decimalPoint(text, style)

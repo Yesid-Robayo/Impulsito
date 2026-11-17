@@ -13,7 +13,7 @@
     <string name="phrase_field_hint">Para dictar, tocar el micrófono del teclado</string>
     <string name="phrase_field_hint_correct">Para corregir, decir solo lo que cambia, como «no, eran 3»</string>
     <string name="phrase_field_empty">Escribir o dictar qué pasó</string>
-    <string name="phrase_voice_failed">El servicio de voz no abrió. Dictar con el micrófono del teclado</string>
+    <string name="phrase_voice_failed">No llegó texto de la voz del teléfono. Dictar con el micrófono del teclado</string>
     <string name="phrase_understand">Entender</string>
     <string name="phrase_dictate">Dictar con la voz del teléfono</string>
     <string name="phrase_examples_title">Por ejemplo:</string>
@@ -21,6 +21,8 @@
     <string name="phrase_example_purchase">«compré 10 kilos de harina por 50000»</string>
     <string name="phrase_example_expense">«pagué la luz 80000»</string>
     <string name="phrase_example_stock">«se dañaron 2 panes»</string>
+    <string name="phrase_sell_by_hand">Vender a mano</string>
+    <string name="phrase_mic_help">¿No funciona el micrófono?</string>
     <!-- Lo que no llega a tarjeta. -->
     <string name="phrase_not_understood">No se entendió. Probar de otra forma</string>
     <string name="phrase_mixed">La frase tiene más de una operación. Decir una a la vez</string>

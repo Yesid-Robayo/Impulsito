@@ -12,7 +12,7 @@
 - Create the products with their price and, if known, their cost: with the cost, the profit of each sale is shown.
 - Record each sale with **Sell**, and each purchase and each expense as it happens.
 - Check **Home** for today's sales and the backup status.
-- To record without opening each screen, **Say** on **Home** understands sentences such as "sold 3 bread rolls for cash": see [say or type](help_register_by_phrase).
+- To record without opening each screen, **Say**, the button at the bottom center, understands sentences such as "sold 3 bread rolls for cash": see [say or type](help_register_by_phrase).
 - What is not used every day, such as customers, the cash register or units, is in **Business**, on **Home**: see [the Business hub](help_business_hub). Configuration is in **Settings**.
 
 What is not used stays out of the way: a tool appears in **In use** with its first record.

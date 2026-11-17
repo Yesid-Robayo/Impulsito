@@ -307,7 +307,7 @@ class HomeViewModelTest {
             HomeAction.CreateFirstProduct,
             HomeAction.OpenAllSales,
             HomeAction.OpenSale(1L),
-            HomeAction.OpenPhrase,
+            HomeAction.NewSale,
             HomeAction.OpenPurchase,
             HomeAction.OpenExpense,
         ).forEach(model::onAction)

@@ -13,7 +13,7 @@
     <string name="phrase_field_hint">To dictate, tap the keyboard microphone</string>
     <string name="phrase_field_hint_correct">To fix it, say only what changes, like \"no, it was 3\"</string>
     <string name="phrase_field_empty">Type or dictate what happened</string>
-    <string name="phrase_voice_failed">The voice service didn\'t open. Dictate with the keyboard microphone</string>
+    <string name="phrase_voice_failed">No text came from the phone\'s voice. Dictate with the keyboard microphone</string>
     <string name="phrase_understand">Understand</string>
     <string name="phrase_dictate">Dictate with the phone\'s voice</string>
     <string name="phrase_examples_title">For example:</string>
@@ -21,6 +21,8 @@
     <string name="phrase_example_purchase">\"bought 10 kilos of flour for 50000\"</string>
     <string name="phrase_example_expense">\"paid the electricity 80000\"</string>
     <string name="phrase_example_stock">\"2 breads got damaged\"</string>
+    <string name="phrase_sell_by_hand">Sell by hand</string>
+    <string name="phrase_mic_help">Microphone not working?</string>
     <!-- Lo que no llega a tarjeta. -->
     <string name="phrase_not_understood">Not understood. Try another way</string>
     <string name="phrase_mixed">The sentence has more than one transaction. Say one at a time</string>
