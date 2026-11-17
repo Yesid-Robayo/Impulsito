@@ -8,6 +8,23 @@ and versions follow [Semantic Versioning](https://semver.org/). Published versio
 
 When a new version is published, it's added at the top with the same content as its release notes.
 
+## [1.0.4] - 2026-11-17
+
+### Added
+
+- **Say or type:** a spoken or typed sentence, such as "sold 3 bread rolls and 2 juices for cash", shows on a card with each product,
+  its amount and the total, and is recorded only when you tap **Register**. It understands sales, purchases, expenses, production,
+  stock adjustments, customer and supplier payments, recipes, new products, and cost and price changes, in Spanish, English and
+  Portuguese. Anything doubtful is asked, and you correct the card by tapping a line or with a short sentence such as "no, it was 3".
+  It opens from **Home**, the widget and the icon shortcut. It works offline: dictate with the keyboard microphone.
+- **Direct voice, optional:** in **Settings**, off at first, **Say** can open the phone's voice service. The app never asks for the
+  microphone.
+
+### Fixed
+
+- **Edit product:** with movements, the cost says it updates with each purchase and offers **Correct cost**. Before, the field was
+  locked without saying where to change it.
+
 ## [1.0.3] - 2026-11-17
 
 ### Added

@@ -21,6 +21,8 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
  *   dictar con él.
  * @param dictate se pidió abrir el servicio de voz: la ruta lo abre y lo da por atendido.
  * @param voiceFailed el servicio de voz no abrió: el campo lo dice y queda el teclado.
+ * @param cardShown cuántas veces una frase dejó una tarjeta nueva, leída o corregida: con cada una,
+ *   la pantalla cierra el teclado y lleva la vista a la tarjeta. Corregirla a mano no cuenta.
  * @param registered lo que se acaba de registrar, para el mensaje: la ruta lo muestra una vez y la
  *   hoja queda lista para otra frase.
  */
@@ -34,6 +36,7 @@ data class PhraseUiState(
     val dictate: Boolean = false,
     val voiceFailed: Boolean = false,
     val registered: PhraseRegistered? = null,
+    val cardShown: Int = 0,
 )
 
 /** En qué va la lectura de la frase. */
@@ -132,6 +135,8 @@ data class PhraseCard(
  * @param amount lo que suma la línea: el total dicho, o el precio dicho por la cantidad. `null` si
  *   no se dijo: sale del precio o del costo del producto al registrar.
  * @param otherOperation el producto existe pero no es de esta operación, como vender un insumo.
+ * @param lastCost en una compra sin costo dicho, el último costo del producto en la unidad de la
+ *   línea, para ofrecerlo con un toque. Nunca se pone solo: un costo errado daña el promedio.
  */
 @Immutable
 data class CardLine(
@@ -142,6 +147,7 @@ data class CardLine(
     val unitPrice: Money?,
     val amount: Money?,
     val otherOperation: Boolean = false,
+    val lastCost: Money? = null,
 )
 
 /** El producto de una línea o de una receta. */

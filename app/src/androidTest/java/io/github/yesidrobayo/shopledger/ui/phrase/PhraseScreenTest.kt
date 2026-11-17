@@ -3,6 +3,8 @@ package io.github.yesidrobayo.shopledger.ui.phrase
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -13,6 +15,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
@@ -25,6 +28,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIssue
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseName
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhrasePrices
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseProduct
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseUnit
@@ -34,6 +38,9 @@ import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.usecase.phrase.PhraseReadResult
 import io.github.yesidrobayo.shopledger.format.IcuTextNormalizer
 import io.github.yesidrobayo.shopledger.ui.clickWhenStill
+import io.github.yesidrobayo.shopledger.ui.currency.MoneyDisplay
+import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
+import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -60,13 +67,127 @@ class PhraseScreenTest {
         compose.setContent { PreviewTheme { PhraseScreen(state, onAction = {}) } }
     }
 
-    private fun show(model: PhraseViewModel) {
+    /** Cómo se escribe cada monto con los formatos de la prueba, y cómo lo lee TalkBack. */
+    private val money = mutableMapOf<Long, MoneyDisplay>()
+
+    /** Muestra la hoja de [model], y anota cómo se ven los montos de [amounts]. */
+    private fun show(model: PhraseViewModel, amounts: List<Long> = emptyList()) {
         compose.setContent {
             PreviewTheme {
+                val formatter = LocalAppFormats.current.money
+                for (amount in amounts) {
+                    money[amount] = rememberMoneyDisplay(Money(amount), formatter)
+                }
                 val state by model.uiState.collectAsState()
                 PhraseScreen(state, model::onAction)
             }
         }
+    }
+
+    /** Si hay un monto en pantalla que TalkBack lee como [amount]. */
+    private fun showsAmount(amount: Long): Boolean {
+        val display = requireNotNull(money[amount]) { "Falta anotar el monto $amount" }
+        return compose
+            .onAllNodes(hasContentDescription(display.description), useUnmergedTree = true)
+            .fetchSemanticsNodes()
+            .isNotEmpty()
+    }
+
+    private fun card(model: PhraseViewModel): PhraseCard =
+        requireNotNull((model.uiState.value.stage as? PhraseStage.Card)?.card) { "Sin tarjeta" }
+
+    @Test
+    fun eachLineShowsItsAmountAndTheTotalIsTheirSum() {
+        show(viewModel(read = { pricedResult() }), amounts = listOf(5_000L, 1_200L, 6_200L))
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa pequeña") }
+
+        // 2 × 2.500 y 1 × 1.200, con el precio de cada producto, y el total de las dos.
+        compose.waitUntil(TIMEOUT_MS) { showsAmount(5_000L) }
+        assertEquals(true, showsAmount(1_200L))
+        assertEquals(true, showsAmount(6_200L))
+        assertEquals(false, has(text(R.string.phrase_line_price_from_product)))
+        assertEquals(false, has(text(R.string.phrase_total_at_register)))
+    }
+
+    @Test
+    fun theReadPricesStayAfterACorrection() {
+        val model =
+            viewModel(
+                read = { pricedResult() },
+                correct = { draft, _, _ ->
+                    val first = draft.lines.first().copy(quantity = QuantityMilli.ofUnits(3))
+                    draft.copy(lines = listOf(first) + draft.lines.drop(1))
+                },
+            )
+        show(model, amounts = listOf(7_500L, 8_700L))
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa pequeña") }
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput("no, eran 3")
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) { showsAmount(7_500L) }
+        assertEquals(true, showsAmount(8_700L))
+        assertEquals(Money(8_700L), card(model).total)
+    }
+
+    @Test
+    fun aCardClosesTheKeyboard() {
+        show(viewModel(read = { pricedResult() }))
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa pequeña") }
+
+        compose.waitForIdle()
+        compose.onNodeWithText(text(R.string.phrase_field_label)).assertIsNotFocused()
+    }
+
+    @Test
+    fun onCreditIsOnePaymentMethodThatMakesTheSaleOnCredit() {
+        val model = viewModel(read = { pricedResult() })
+        show(model)
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has(ON_CREDIT_NAME) }
+
+        // Un solo chip: el método que trae la app, que es lo que se registra.
+        val chips = compose.onAllNodes(hasText(ON_CREDIT_NAME), useUnmergedTree = true)
+        assertEquals(1, chips.fetchSemanticsNodes().size)
+        compose.onNodeWithText(ON_CREDIT_NAME).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) { card(model).credit }
+        assertEquals(ON_CREDIT, card(model).payment?.selectedId)
+
+        // Otro método la vuelve de contado.
+        compose.onNodeWithText("Efectivo").performClick()
+        compose.waitUntil(TIMEOUT_MS) { !card(model).credit }
+        assertEquals(CASH, card(model).payment?.selectedId)
+    }
+
+    @Test
+    fun aPurchaseWithoutCostOffersTheLastOneWithoutUsingIt() {
+        val model = viewModel(read = { purchaseResult() })
+        show(model, amounts = listOf(1_800L, 3_600L))
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(PURCHASE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has(text(R.string.phrase_cost_missing)) }
+
+        // La sugerencia no se pone sola: la línea sigue sin costo hasta tocarla.
+        assertEquals(null, card(model).lines.single().unitPrice)
+        val shown = requireNotNull(money[1_800L]).text.text
+        val suggestion = text(R.string.phrase_use_last_cost, shown)
+        compose.onNodeWithText(suggestion).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) { showsAmount(3_600L) }
+        assertEquals(Money(1_800L), card(model).lines.single().unitPrice)
+        assertEquals(false, has(text(R.string.phrase_cost_missing)))
     }
 
     @Test
@@ -146,7 +267,7 @@ class PhraseScreenTest {
         compose.onNodeWithText("Pan").assertIsDisplayed()
         compose.onNodeWithText("Gaseosa").assertIsDisplayed()
         compose.onNodeWithText("Efectivo").assertIsDisplayed()
-        // Sin precio dicho, la línea dice de dónde saldrá, sin inventar un monto.
+        // Una línea cuyo monto no se puede saber dice de dónde saldrá, sin inventarlo.
         compose.onNodeWithText(text(R.string.phrase_line_price_from_product)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.phrase_register)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.phrase_field_hint_correct)).assertIsDisplayed()
@@ -349,6 +470,9 @@ class PhraseScreenTest {
         const val BIG_SODA = 20L
         const val SMALL_SODA = 21L
         const val CASH = 1L
+        const val ON_CREDIT = 2L
+        const val ON_CREDIT_NAME = "A crédito"
+        const val PURCHASE_PHRASE = "compré 2 gaseosas grandes"
         const val UNIT = 1L
 
         /** Los números de las pruebas: punto decimal, coma de miles y moneda sin decimales. */
@@ -393,7 +517,12 @@ class PhraseScreenTest {
                         baseAmountMilli = null,
                     ),
                 ),
-            paymentMethods = listOf(PhraseName(CASH, null, "Efectivo")),
+            paymentMethods =
+                listOf(
+                    PhraseName(CASH, null, "Efectivo"),
+                    // El método inicial `A crédito`, con su clave como la lee el intérprete.
+                    PhraseName(ON_CREDIT, "on_account", ON_CREDIT_NAME),
+                ),
             suppliers = emptyList(),
             customers = emptyList(),
             expenseCategories = emptyList(),
@@ -463,6 +592,78 @@ class PhraseScreenTest {
                     paymentMethodId = CASH,
                 )
             return PhraseReadResult(reading, catalog(), draft)
+        }
+
+        /** Precios de la lista inicial y el último costo de la gaseosa grande. */
+        val PRICES =
+            PhrasePrices(
+                sale = mapOf(BIG_SODA to Money(2_500L), SMALL_SODA to Money(1_200L)),
+                lastCost = mapOf(BIG_SODA to Money(1_800L)),
+            )
+
+        /** Dos gaseosas grandes y una pequeña en efectivo, sin precios dichos. */
+        fun pricedResult(): PhraseReadResult {
+            val lines =
+                listOf(BIG_SODA to 2L, SMALL_SODA to 1L).map { (id, units) ->
+                    PhraseLine(
+                        product = ProductMatch.Found(id),
+                        quantity = QuantityMilli.ofUnits(units),
+                        unitId = null,
+                        unitPrice = null,
+                        lineTotal = null,
+                    )
+                }
+            val reading =
+                PhraseReading(
+                    intent = PhraseIntent.SALE,
+                    lines = lines,
+                    payment = NameMatch.Found(CASH),
+                )
+            val draft =
+                PhraseDraft(
+                    intent = PhraseIntent.SALE,
+                    lines =
+                        listOf(BIG_SODA to 2L, SMALL_SODA to 1L).map { (id, units) ->
+                            DraftLine(
+                                product = DraftTarget.Existing(id),
+                                quantity = QuantityMilli.ofUnits(units),
+                                unitId = null,
+                            )
+                        },
+                    paymentMethodId = CASH,
+                )
+            return PhraseReadResult(reading, catalog(), draft, PRICES)
+        }
+
+        /** Dos gaseosas grandes compradas, sin decir el costo. */
+        fun purchaseResult(): PhraseReadResult {
+            val reading =
+                PhraseReading(
+                    intent = PhraseIntent.PURCHASE,
+                    lines =
+                        listOf(
+                            PhraseLine(
+                                product = ProductMatch.Found(BIG_SODA),
+                                quantity = QuantityMilli.ofUnits(2),
+                                unitId = null,
+                                unitPrice = null,
+                                lineTotal = null,
+                            ),
+                        ),
+                )
+            val draft =
+                PhraseDraft(
+                    intent = PhraseIntent.PURCHASE,
+                    lines =
+                        listOf(
+                            DraftLine(
+                                product = DraftTarget.Existing(BIG_SODA),
+                                quantity = QuantityMilli.ofUnits(2),
+                                unitId = null,
+                            ),
+                        ),
+                )
+            return PhraseReadResult(reading, catalog(), draft, PRICES)
         }
 
         fun mixedReading() =

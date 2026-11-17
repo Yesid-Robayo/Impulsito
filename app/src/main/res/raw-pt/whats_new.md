@@ -1,5 +1,11 @@
 O que cada versão do {app} trouxe, da mais nova para a mais antiga.
 
+## 1.0.4
+
+- **Dizer ou escrever:** tocar em **Dizer** no **Início**, no widget ou no atalho do ícone, e dizer ou escrever o que aconteceu, como «vendi 3 pães e 2 sucos em dinheiro». O {app} mostra em um cartão cada produto, seu valor e o total, e só registra ao tocar em **Registrar**. Entende vendas, compras, despesas, produção, ajustes de estoque, pagamentos, receitas, produtos novos e mudanças de custo e preço. Corrige-se tocando em uma linha ou com uma frase curta como «não, eram 3».
+- **Voz direta, opcional:** em **Configurações**, o serviço de voz do telefone pode abrir com um só toque. O {app} nunca usa o microfone.
+- **Custo:** ao editar um produto com movimentos, o custo diz que se atualiza a cada compra e oferece **Corrigir custo**.
+
 ## 1.0.3
 
 - **Ajuda:** 25 artigos novos, entre eles receitas e produção, compras e fornecedores, despesas, categorias, tabelas de preços, registros e o centro Negócio. A ajuda é agrupada pelo que se quer fazer, e o botão de ajuda de cada tela abre o seu artigo.

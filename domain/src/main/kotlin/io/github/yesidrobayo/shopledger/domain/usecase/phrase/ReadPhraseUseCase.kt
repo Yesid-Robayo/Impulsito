@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.domain.usecase.phrase
 
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
+import io.github.yesidrobayo.shopledger.domain.model.Money
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
@@ -10,9 +12,11 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseConversion
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIssue
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseName
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhrasePrices
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseProduct
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseUnit
+import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
@@ -26,17 +30,21 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.StockModeRules
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseInterpreter
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseMeasures
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.toDraft
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
+import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 import kotlinx.coroutines.flow.first
 
 /**
  * Lo que dejó leer una frase: [reading], lo que entendió el intérprete; [catalog], el catálogo con
  * que se leyó, que la tarjeta usa para nombrar lo leído y para que una corrección busque en el
- * mismo; y [draft], la tarjeta que propone, o `null` si no se entendió ninguna operación.
+ * mismo; [draft], la tarjeta que propone, o `null` si no se entendió ninguna operación; y
+ * [prices], los precios con que la tarjeta muestra sus cifras.
  */
 data class PhraseReadResult(
     val reading: PhraseReading,
     val catalog: PhraseCatalog,
     val draft: PhraseDraft?,
+    val prices: PhrasePrices = PhrasePrices(),
 )
 
 /**
@@ -54,6 +62,9 @@ data class PhraseReadResult(
  *   stock propio, como en la compra de siempre.
  * - Las unidades iniciales métricas llevan su medida, para aceptar 500 gramos de algo que se lleva
  *   por kilo. Las demás solo valen con su conversión.
+ * - Los precios son los de la venta de siempre en la lista inicial: el del producto en su unidad
+ *   base y el de cada presentación de venta, con su precio propio o el del producto por su factor.
+ *   El último costo es la reposición, o el promedio si no la hay, y solo se ofrece en una compra.
  * - El idioma y la forma de los números salen de [texts], y los decimales, de la moneda del
  *   negocio: nunca del teléfono. Una moneda con más decimales de los que lee el intérprete no se
  *   lee, y la frase queda sin entender.
@@ -71,19 +82,49 @@ class ReadPhraseUseCase(
     private val expenseCategories: ExpenseCategoryRepository,
 ) {
     suspend operator fun invoke(text: String): PhraseReadResult {
-        val catalog = catalog()
+        val active = products.observe(ArchiveFilter.ACTIVE).first()
+        val conversions = productUnits.observeAll().first().groupBy { it.productId }
+        val catalog = catalog(active, conversions)
         val decimals = settings.get().regional.currency.decimals
         val reading = if (decimals in 0..PhraseInterpreter.MAX_MONEY_DECIMALS) {
             PhraseInterpreter.read(text, texts.language(), texts.numberStyle(), decimals, catalog)
         } else {
             NOT_UNDERSTOOD
         }
-        return PhraseReadResult(reading, catalog, reading.toDraft())
+        return PhraseReadResult(reading, catalog, reading.toDraft(), prices(active, conversions))
     }
 
-    private suspend fun catalog(): PhraseCatalog {
-        val active = products.observe(ArchiveFilter.ACTIVE).first()
-        val conversions = productUnits.observeAll().first().groupBy { it.productId }
+    private fun prices(
+        active: List<Product>,
+        conversions: Map<Long, List<ProductConversion>>,
+    ): PhrasePrices {
+        val byUnit = HashMap<Pair<Long, Long>, Money>()
+        for (product in active) {
+            for (conversion in conversions[product.id].orEmpty()) {
+                val details = conversion.details
+                if (!details.forSale) continue
+                // La misma cuenta de la venta, con la lista inicial.
+                val line = SaleLineRequest(product.id, ONE, unitId = details.unitId)
+                val unit = SaleUnits.of(line, product, mapOf(details.unitId to details))
+                val price = (unit as? SaleUnitResult.Resolved)?.unit?.listPrice ?: continue
+                byUnit[product.id to details.unitId] = price
+            }
+        }
+        return PhrasePrices(
+            sale = active.associate { it.id to it.salePrice },
+            saleByUnit = byUnit,
+            lastCost = active.mapNotNull { product ->
+                val cost = product.replacementCost.takeIf { it > Money.ZERO }
+                    ?: product.averageCost.takeIf { it > Money.ZERO }
+                cost?.let { product.id to it }
+            }.toMap(),
+        )
+    }
+
+    private suspend fun catalog(
+        active: List<Product>,
+        conversions: Map<Long, List<ProductConversion>>,
+    ): PhraseCatalog {
         val withRecipe = components.findAll().mapTo(HashSet()) { it.parentProductId }
         // El principal de unas variantes es el que nombran sus variantes.
         val parents = active.mapNotNullTo(HashSet()) { it.details.parentProductId }
@@ -153,6 +194,8 @@ class ReadPhraseUseCase(
         systemKey?.let { texts.seedName(table, it) }.orEmpty()
 
     private companion object {
+        val ONE = QuantityMilli(1_000L)
+
         val NOT_UNDERSTOOD = PhraseReading(
             intent = null,
             issues = setOf(PhraseIssue.NOTHING_UNDERSTOOD),

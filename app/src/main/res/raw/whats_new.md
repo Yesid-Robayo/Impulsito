@@ -1,5 +1,11 @@
 What each version of {app} brought, newest first.
 
+## 1.0.4
+
+- **Say or type:** tap **Say** on **Home**, on the widget or on the icon shortcut, and say or type what happened, such as "sold 3 bread rolls and 2 juices for cash". {app} shows it on a card with each product, its amount and the total, and records it only when you tap **Register**. It understands sales, purchases, expenses, production, stock adjustments, payments, recipes, new products, and cost and price changes. Correct it by tapping a line or with a short sentence such as "no, it was 3".
+- **Direct voice, optional:** in **Settings**, the phone's voice service can open with a single tap. {app} never uses the microphone.
+- **Cost:** when editing a product with movements, the cost says it updates with each purchase and offers **Correct cost**.
+
 ## 1.0.3
 
 - **Help:** 25 new articles, among them recipes and production, purchases and suppliers, expenses, categories, price lists, records and the Business hub. Help is grouped by what you want to do, and the help button of each screen opens its article.

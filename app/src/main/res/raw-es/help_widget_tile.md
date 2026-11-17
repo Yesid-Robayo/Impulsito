@@ -9,6 +9,7 @@ Para vender sin buscar la app, {app} ofrece un widget para la pantalla de inicio
 ## Qué muestra
 
 - **Vender**, **Gasto** y **Compra**, que abren la app en esa tarea.
+- Un micrófono, **Decir o escribir**, que abre la hoja para [decir o escribir](help_register_by_phrase) lo que pasó.
 - **Hoy**, con cuántas ventas hubo y cuántos productos se están acabando. Son conteos, no montos.
 - **No se pudo respaldar**, si la copia falló. Tocarlo abre el respaldo.
 - Sin productos, **Crear el primer producto**.
@@ -28,7 +29,7 @@ Tocarlo abre una venta nueva. Nunca muestra datos del negocio: ni montos, ni con
 
 ## Atajos del ícono
 
-Al mantener presionado el ícono de {app} aparecen **Nueva venta**, **Nuevo gasto** y **Nueva compra**.
+Al mantener presionado el ícono de {app} aparecen **Nueva venta**, **Nuevo gasto**, **Nueva compra** y **Decir o escribir**.
 
 ## Con el bloqueo de la app
 

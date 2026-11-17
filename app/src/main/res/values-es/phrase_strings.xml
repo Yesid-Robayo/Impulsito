@@ -50,7 +50,9 @@
     <string name="phrase_line_create_first">No existe: crearlo o elegir otro</string>
     <string name="phrase_line_not_for_sale">No se vende</string>
     <string name="phrase_line_not_for_purchase">No se compra</string>
-    <string name="phrase_line_price_from_product">Con el precio de venta del producto</string>
+    <string name="phrase_line_price_from_product">El precio sale del producto al registrar</string>
+    <string name="phrase_use_last_cost">Último costo: %1$s</string>
+    <string name="phrase_use_last_cost_hidden">Usar el último costo</string>
     <string name="phrase_new_tag">Nuevo</string>
     <string name="phrase_heard">Se entendió «%1$s»</string>
     <string name="phrase_choose_other">Elegir otro</string>
@@ -73,7 +75,6 @@
     <string name="phrase_category_missing">Falta la categoría</string>
     <string name="phrase_payment">Pago</string>
     <string name="phrase_payment_missing">Falta el método de pago</string>
-    <string name="phrase_on_credit">A crédito</string>
     <string name="phrase_customer">Cliente</string>
     <string name="phrase_supplier">Proveedor</string>
     <string name="phrase_customer_missing">Falta el cliente</string>
@@ -87,7 +88,7 @@
     <string name="phrase_total">Total</string>
     <string name="phrase_amount">Monto</string>
     <string name="phrase_amount_missing">Falta el monto</string>
-    <string name="phrase_total_at_register">El total sale de los precios al registrar</string>
+    <string name="phrase_total_at_register">Completar las líneas para ver el total</string>
     <string name="phrase_start_over">Empezar de nuevo</string>
     <string name="phrase_register">Registrar</string>
     <string name="phrase_incomplete">Faltan datos. Completar lo marcado para registrar</string>

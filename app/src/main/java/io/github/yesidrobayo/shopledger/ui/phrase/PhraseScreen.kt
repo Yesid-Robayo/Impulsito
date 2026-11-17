@@ -23,11 +23,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -36,6 +43,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftGap
@@ -67,7 +75,9 @@ import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
+import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
 import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stock.reasonLabel
@@ -92,6 +102,18 @@ fun PhraseScreen(
     val spacing = AppTheme.spacing
     val stage = uiState.stage
     val card = stage as? PhraseStage.Card
+    val scroll = rememberScrollState()
+    var stageTop by remember { mutableIntStateOf(0) }
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(uiState.cardShown) {
+        if (uiState.cardShown == 0) return@LaunchedEffect
+        // Con la tarjeta a la vista, el teclado la taparía: se cierra y la vista baja hasta ella.
+        focusManager.clearFocus()
+        keyboard?.hide()
+        withFrameNanos {}
+        scroll.animateScrollTo(stageTop)
+    }
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
@@ -117,12 +139,19 @@ fun PhraseScreen(
                         Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(scroll)
                             .padding(spacing.s16),
                         verticalArrangement = Arrangement.spacedBy(spacing.s16),
                     ) {
                         PhraseField(uiState, onAction, withCard = card != null)
-                        StageContent(stage, onAction)
+                        Column(
+                            Modifier.onGloballyPositioned {
+                                stageTop = it.positionInParent().y.toInt()
+                            },
+                            verticalArrangement = Arrangement.spacedBy(spacing.s16),
+                        ) {
+                            StageContent(stage, onAction)
+                        }
                     }
                     Column(Modifier.keepsMessagesAbove().imePadding().navigationBarsPadding()) {
                         HorizontalDivider(
@@ -389,9 +418,11 @@ private fun GapTag(@StringRes text: Int) {
 }
 
 /**
- * Una línea: la cantidad grande a la izquierda, el producto en el centro y lo que suma a la
- * derecha. Toda la línea se toca para corregirla o quitarla. Un producto por elegir muestra sus
- * parecidos en chips, `Elegir otro` y, si se puede, `Crear «…»`.
+ * Una línea: la cantidad grande a la izquierda, el nombre con el ancho que sobra y el monto a la
+ * derecha. Debajo, a todo el ancho, lo que conviene saber de la línea: lo que falta, un producto
+ * que no es de esta operación o el último costo para elegirlo. Toda la línea se toca para
+ * corregirla o quitarla. Un producto por elegir muestra sus parecidos en chips, `Elegir otro` y, si
+ * se puede, `Crear «…»`.
  */
 @Composable
 private fun LineRow(card: PhraseCard, line: CardLine, onAction: (PhraseAction) -> Unit) {
@@ -409,39 +440,18 @@ private fun LineRow(card: PhraseCard, line: CardLine, onAction: (PhraseAction) -
         verticalArrangement = Arrangement.spacedBy(spacing.s8),
     ) {
         Row(
+            Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(spacing.s12),
-            verticalAlignment = Alignment.Top,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (!pricedOnly) {
-                val quantity = line.quantity
-                if (quantity != null) {
-                    Text(
-                        text = lineQuantity(quantity, line.unit),
-                        style = AppTheme.amounts.tile,
-                    )
-                }
+            val quantity = line.quantity
+            if (!pricedOnly && quantity != null) {
+                Text(text = lineQuantity(quantity, line.unit), style = AppTheme.amounts.tile)
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s4)) {
-                ProductName(line.product)
-                if (line.quantity == null && !pricedOnly) GapTag(R.string.phrase_line_no_quantity)
-                if (line.otherOperation) {
-                    StatusTag(
-                        text = stringResource(otherOperationText(card.intent)),
-                        tone = StatusTone.WARNING,
-                    )
-                }
-                if (pricedOnly) {
-                    line.unit?.let { unit ->
-                        Text(
-                            text = stringResource(R.string.phrase_per_unit, unitText(unit)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
+            LineTitle(line.product, Modifier.weight(1f))
             LineAmount(card, line, pricedOnly)
         }
+        LineNotes(card, line, pricedOnly, onAction)
         when (val product = line.product) {
             is CardProduct.Missing ->
                 MissingProduct(
@@ -465,6 +475,114 @@ private fun LineRow(card: PhraseCard, line: CardLine, onAction: (PhraseAction) -
     }
 }
 
+/** El nombre de la línea, o lo que se dijo si todavía falta elegir el producto. */
+@Composable
+private fun LineTitle(product: CardProduct, modifier: Modifier) {
+    when (product) {
+        is CardProduct.Chosen ->
+            Text(
+                text = product.name,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = modifier,
+            )
+
+        is CardProduct.New ->
+            Text(
+                text = product.name,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = modifier,
+            )
+
+        is CardProduct.Missing ->
+            Text(
+                text = product.spoken?.let { stringResource(R.string.phrase_heard, it) }.orEmpty(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = modifier,
+            )
+    }
+}
+
+/**
+ * Lo que conviene saber de la línea, a todo el ancho, bajo su fila: lo que falta, si el producto es
+ * nuevo o de otra operación, la unidad de un precio y, en una compra sin costo, el último costo
+ * para elegirlo con un toque.
+ */
+@Composable
+private fun LineNotes(
+    card: PhraseCard,
+    line: CardLine,
+    pricedOnly: Boolean,
+    onAction: (PhraseAction) -> Unit,
+) {
+    when (val product = line.product) {
+        is CardProduct.Missing -> GapTag(R.string.phrase_line_no_product)
+
+        is CardProduct.New ->
+            if (product.needsCreating) {
+                GapTag(R.string.phrase_line_create_first)
+            } else {
+                StatusTag(text = stringResource(R.string.phrase_new_tag), tone = StatusTone.INFO)
+            }
+
+        is CardProduct.Chosen -> Unit
+    }
+    if (line.quantity == null && !pricedOnly) GapTag(R.string.phrase_line_no_quantity)
+    if (line.otherOperation) {
+        StatusTag(
+            text = stringResource(otherOperationText(card.intent)),
+            tone = StatusTone.WARNING,
+        )
+    }
+    if (pricedOnly) {
+        line.unit?.let { unit ->
+            Text(
+                text = stringResource(R.string.phrase_per_unit, unitText(unit)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+    val unpriced = line.amount == null && line.unitPrice == null
+    when {
+        // Una compra nunca supone un costo no dicho: lo pide, y ofrece el último para elegirlo.
+        card.intent == PhraseIntent.PURCHASE && unpriced -> {
+            GapTag(R.string.phrase_cost_missing)
+            line.lastCost?.let { cost ->
+                LastCostButton(cost) { onAction(PhraseAction.UseLastCost(line.index)) }
+            }
+        }
+
+        // Una venta sin precio que mostrar, con la cantidad: sin ella, ya lo dice su etiqueta.
+        card.intent == PhraseIntent.SALE && line.amount == null && line.quantity != null &&
+            line.product is CardProduct.Chosen ->
+            Text(
+                text = stringResource(R.string.phrase_line_price_from_product),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+        else -> Unit
+    }
+}
+
+/**
+ * `Último costo: …`, que lo toma como costo por unidad de la línea. Con el modo discreto el monto
+ * no se ve: el botón solo dice que usa el último costo.
+ */
+@Composable
+private fun LastCostButton(cost: Money, onClick: () -> Unit) {
+    val text =
+        if (LocalDiscreetMode.current) {
+            stringResource(R.string.phrase_use_last_cost_hidden)
+        } else {
+            val shown = rememberMoneyDisplay(cost, LocalAppFormats.current.money).text.text
+            stringResource(R.string.phrase_use_last_cost, shown)
+        }
+    InlineTextButton(text = text, onClick = onClick)
+}
+
 /** `Crear «…»` para un producto que se nombró y no existe, o `Elegir otro` del catálogo. */
 @Composable
 private fun CreateOrPick(name: String, onCreate: (String) -> Unit, onPick: () -> Unit) {
@@ -477,7 +595,11 @@ private fun CreateOrPick(name: String, onCreate: (String) -> Unit, onPick: () ->
     }
 }
 
-/** Lo que suma la línea, o de dónde saldrá si no se dijo. */
+/**
+ * Lo que suma la línea, a la derecha: en una venta o una compra, el monto que pondrá la operación;
+ * en un cambio de precio o de costo, el valor nuevo. Si no hay monto, nada: lo que falta lo dicen
+ * las notas de la línea.
+ */
 @Composable
 private fun LineAmount(card: PhraseCard, line: CardLine, pricedOnly: Boolean) {
     when {
@@ -496,25 +618,8 @@ private fun LineAmount(card: PhraseCard, line: CardLine, pricedOnly: Boolean) {
             }
         }
 
-        card.intent == PhraseIntent.SALE || card.intent == PhraseIntent.PURCHASE -> {
-            val amount = line.amount
-            when {
-                amount != null -> MoneyText(amount, MoneySize.ROW, sensitive = card.sensitive)
-
-                // Una compra nunca supone un costo no dicho: un costo errado daña el promedio.
-                card.intent == PhraseIntent.PURCHASE -> GapTag(R.string.phrase_cost_missing)
-
-                // La venta toma el precio del producto, como la venta de siempre.
-                line.product is CardProduct.Chosen ->
-                    Text(
-                        text = stringResource(R.string.phrase_line_price_from_product),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                else -> Unit
-            }
-        }
+        card.intent == PhraseIntent.SALE || card.intent == PhraseIntent.PURCHASE ->
+            line.amount?.let { MoneyText(it, MoneySize.ROW, sensitive = card.sensitive) }
 
         // Producir, ajustar y una receta mueven cantidades, no dinero.
         else -> Unit
@@ -729,52 +834,24 @@ private fun CategorySection(
     }
 }
 
-/** Una opción de pago: un método o, en una venta o una compra, `A crédito`. */
-private sealed interface PayOption {
-    data class Method(val option: CardOption) : PayOption
-
-    data object Credit : PayOption
-}
-
+/**
+ * El método de pago en chips, uno elegido. `A crédito` es uno de ellos, el que trae la app:
+ * elegirlo deja la venta o la compra a crédito.
+ */
 @Composable
 private fun PaymentSection(
     card: PhraseCard,
     payment: CardChoice,
     onAction: (PhraseAction) -> Unit,
 ) {
-    val credit = stringResource(R.string.phrase_on_credit)
-    val options =
-        payment.options.map<CardOption, PayOption> { PayOption.Method(it) } +
-            if (card.intent == PhraseIntent.SALE || card.intent == PhraseIntent.PURCHASE) {
-                listOf(PayOption.Credit)
-            } else {
-                emptyList()
-            }
-    val selected =
-        options.filter { option ->
-            when (option) {
-                is PayOption.Method -> !card.credit && option.option.id == payment.selectedId
-                PayOption.Credit -> card.credit
-            }
-        }.toSet()
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
         SectionLabel(stringResource(R.string.phrase_payment))
         if (DraftGap.PAYMENT in card.gaps) GapTag(R.string.phrase_payment_missing)
         CompactChipRow(
-            options = options,
-            label = { option ->
-                when (option) {
-                    is PayOption.Method -> option.option.name
-                    PayOption.Credit -> credit
-                }
-            },
-            selected = selected,
-            onToggle = { option ->
-                when (option) {
-                    is PayOption.Method -> onAction(PhraseAction.ChoosePayment(option.option.id))
-                    PayOption.Credit -> onAction(PhraseAction.ToggleCredit)
-                }
-            },
+            options = payment.options,
+            label = { it.name },
+            selected = payment.options.filter { it.id == payment.selectedId }.toSet(),
+            onToggle = { onAction(PhraseAction.ChoosePayment(it.id)) },
             multiple = false,
         )
     }
@@ -856,9 +933,9 @@ private fun PartySection(card: PhraseCard, party: CardParty, onAction: (PhraseAc
 private val OPTIONAL_PARTY = setOf(PhraseIntent.SALE, PhraseIntent.PURCHASE)
 
 /**
- * El total, grande: en una venta o una compra, el dicho o la suma de las líneas; en un gasto o un
- * pago, el monto. Se toca para escribirlo. Si sale de los precios del catálogo, se dice que se
- * calcula al registrar.
+ * El total, grande y a la derecha, al pie de la tarjeta: en una venta o una compra, el dicho o la
+ * suma de las líneas con lo que pondrá la operación; en un gasto o un pago, el monto. Se toca para
+ * escribirlo. Solo si alguna línea no deja saberlo, se dice qué falta.
  */
 @Composable
 private fun TotalSection(card: PhraseCard, onAction: (PhraseAction) -> Unit) {
@@ -882,21 +959,30 @@ private fun TotalSection(card: PhraseCard, onAction: (PhraseAction) -> Unit) {
             },
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
     ) {
-        Text(
-            text = stringResource(if (summed) R.string.phrase_total else R.string.phrase_amount),
-            style = MaterialTheme.typography.titleMedium,
-        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val label = if (summed) R.string.phrase_total else R.string.phrase_amount
+            Text(
+                text = stringResource(label),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            total?.let { MoneyText(it, MoneySize.LARGE, sensitive = card.sensitive) }
+        }
         when {
-            total != null -> MoneyText(total, MoneySize.LARGE, sensitive = card.sensitive)
-
             DraftGap.AMOUNT in card.gaps -> GapTag(R.string.phrase_amount_missing)
 
-            else ->
+            total == null ->
                 Text(
                     text = stringResource(R.string.phrase_total_at_register),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+
+            else -> Unit
         }
     }
 }

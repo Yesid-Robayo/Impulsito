@@ -8,6 +8,23 @@ Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](htt
 
 Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
+## [1.0.4] - 2026-11-17
+
+### Agregado
+
+- **Decir o escribir:** una frase dicha o escrita, como «vendí 3 panes y 2 jugos en efectivo», se muestra en una tarjeta con cada
+  producto, su monto y el total, y se registra solo al tocar **Registrar**. Entiende ventas, compras, gastos, producción, ajustes de
+  stock, abonos, pagos a proveedores, recetas, productos nuevos y cambios de costo y precio, en español, inglés y portugués. Lo dudoso
+  se pregunta, y la tarjeta se corrige tocando una línea o con una frase corta como «no, eran 3». Se abre desde **Inicio**, el widget y
+  el atajo del ícono. Funciona sin internet: se dicta con el micrófono del teclado.
+- **Voz directa, opcional:** en **Ajustes**, apagada de inicio, **Decir** puede abrir el servicio de voz del teléfono. La app nunca
+  pide el micrófono.
+
+### Corregido
+
+- **Editar producto:** con movimientos, el costo dice que se actualiza con cada compra y ofrece **Corregir costo**. Antes el campo
+  quedaba bloqueado sin decir dónde se cambia.
+
 ## [1.0.3] - 2026-11-17
 
 ### Agregado

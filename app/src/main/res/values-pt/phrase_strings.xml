@@ -33,7 +33,7 @@
     <string name="phrase_intent_stock_count">Contagem real</string>
     <string name="phrase_intent_customer_payment">Pagamento de cliente</string>
     <string name="phrase_intent_supplier_payment">Pagamento a fornecedor</string>
-    <string name="phrase_intent_recipe">Receita</string>
+    <string name="phrase_intent_recipe">Definir a receita</string>
     <string name="phrase_intent_new_product">Produto novo</string>
     <string name="phrase_intent_cost_correction">Corrigir custo</string>
     <string name="phrase_intent_price_change">Alterar preço</string>
@@ -50,7 +50,9 @@
     <string name="phrase_line_create_first">Não existe: criá-lo ou escolher outro</string>
     <string name="phrase_line_not_for_sale">Não é vendido</string>
     <string name="phrase_line_not_for_purchase">Não é comprado</string>
-    <string name="phrase_line_price_from_product">Com o preço de venda do produto</string>
+    <string name="phrase_line_price_from_product">O preço sai do produto ao registrar</string>
+    <string name="phrase_use_last_cost">Último custo: %1$s</string>
+    <string name="phrase_use_last_cost_hidden">Usar o último custo</string>
     <string name="phrase_new_tag">Novo</string>
     <string name="phrase_heard">Entendido: «%1$s»</string>
     <string name="phrase_choose_other">Escolher outro</string>
@@ -73,7 +75,6 @@
     <string name="phrase_category_missing">Falta a categoria</string>
     <string name="phrase_payment">Pagamento</string>
     <string name="phrase_payment_missing">Falta o método de pagamento</string>
-    <string name="phrase_on_credit">A prazo</string>
     <string name="phrase_customer">Cliente</string>
     <string name="phrase_supplier">Fornecedor</string>
     <string name="phrase_customer_missing">Falta o cliente</string>
@@ -87,7 +88,7 @@
     <string name="phrase_total">Total</string>
     <string name="phrase_amount">Valor</string>
     <string name="phrase_amount_missing">Falta o valor</string>
-    <string name="phrase_total_at_register">O total sai dos preços ao registrar</string>
+    <string name="phrase_total_at_register">Completar as linhas para ver o total</string>
     <string name="phrase_start_over">Começar de novo</string>
     <string name="phrase_register">Registrar</string>
     <string name="phrase_incomplete">Faltam dados. Completar o que está marcado para registrar</string>
@@ -111,7 +112,7 @@
     <string name="phrase_done_stock">Estoque ajustado</string>
     <string name="phrase_done_customer_payment">Pagamento registrado</string>
     <string name="phrase_done_supplier_payment">Pagamento registrado</string>
-    <string name="phrase_done_recipe">Receita salva</string>
+    <string name="phrase_done_recipe">A receita foi salva</string>
     <string name="phrase_done_product">Produto criado</string>
     <string name="phrase_done_cost">Custo corrigido</string>
     <string name="phrase_done_price">Preço alterado</string>

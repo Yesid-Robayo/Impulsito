@@ -54,8 +54,8 @@ sealed interface PhraseAction {
     /** Elige el método de pago. */
     data class ChoosePayment(val methodId: Long) : PhraseAction
 
-    /** `A crédito`: lo enciende o lo apaga. */
-    data object ToggleCredit : PhraseAction
+    /** `Último costo: …` en una línea de compra sin costo: lo toma como costo por unidad. */
+    data class UseLastCost(val index: Int) : PhraseAction
 
     /** Elige el cliente o el proveedor; `null` lo quita. */
     data class ChooseParty(val id: Long?) : PhraseAction

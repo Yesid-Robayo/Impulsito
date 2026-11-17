@@ -1,5 +1,11 @@
 Lo que trajo cada versión de {app}, de la más nueva a la más antigua.
 
+## 1.0.4
+
+- **Decir o escribir:** tocar **Decir** en **Inicio**, en el widget o en el atajo del ícono, y decir o escribir lo que pasó, como «vendí 3 panes y 2 jugos en efectivo». {app} lo muestra en una tarjeta con cada producto, su monto y el total, y lo registra solo al tocar **Registrar**. Entiende ventas, compras, gastos, producción, ajustes de stock, abonos, recetas, productos nuevos y cambios de costo y precio. Se corrige tocando una línea o con una frase corta como «no, eran 3».
+- **Voz directa, opcional:** en **Ajustes**, el servicio de voz del teléfono puede abrirse con un solo toque. {app} nunca usa el micrófono.
+- **Costo:** al editar un producto con movimientos, el costo dice que se actualiza con cada compra y ofrece **Corregir costo**.
+
 ## 1.0.3
 
 - **Ayuda:** 25 artículos nuevos, entre ellos recetas y producción, compras y proveedores, gastos, categorías, listas de precios, registros y el centro Negocio. La ayuda se agrupa según lo que se quiere hacer, y el botón de ayuda de cada pantalla abre su artículo.

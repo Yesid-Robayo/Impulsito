@@ -9,6 +9,7 @@ Para vender sem procurar o app, {app} oferece um widget para a tela inicial do t
 ## O que mostra
 
 - **Vender**, **Despesa** e **Compra**, que abrem o app nessa tarefa.
+- Um microfone, **Dizer ou escrever**, que abre a folha para [dizer ou escrever](help_register_by_phrase) o que aconteceu.
 - **Hoje**, com quantas vendas houve e quantos produtos estão acabando. São contagens, não valores.
 - **Falha na cópia de segurança**, se a cópia falhou. Tocar abre a cópia de segurança.
 - Sem produtos, **Criar o primeiro produto**.
@@ -28,7 +29,7 @@ Tocar nele abre uma venda nova. Nunca mostra dados do negócio: nem valores, nem
 
 ## Atalhos do ícone
 
-Ao manter pressionado o ícone de {app}, aparecem **Nova venda**, **Nova despesa** e **Nova compra**.
+Ao manter pressionado o ícone de {app}, aparecem **Nova venda**, **Nova despesa**, **Nova compra** e **Dizer ou escrever**.
 
 ## Com o bloqueio do app
 

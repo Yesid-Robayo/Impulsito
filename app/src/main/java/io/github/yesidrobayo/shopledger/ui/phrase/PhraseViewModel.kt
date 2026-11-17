@@ -14,14 +14,16 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIssue
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseName
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhrasePrices
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseProduct
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseUnit
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
-import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.estimatedLineAmounts
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.estimatedTotal
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.gaps
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.timesQuantity
@@ -135,10 +137,21 @@ class PhraseViewModel(
 
             PhraseAction.RemoveLine -> removeLine()
 
-            is PhraseAction.ChoosePayment ->
-                editDraft { it.copy(paymentMethodId = action.methodId, credit = false) }
+            // El método `A crédito` que trae la app es lo que deja la venta o la compra fiada.
+            is PhraseAction.ChoosePayment -> {
+                val onAccount = session?.isOnAccount(action.methodId) == true
+                editDraft { it.copy(paymentMethodId = action.methodId, credit = onAccount) }
+            }
 
-            PhraseAction.ToggleCredit -> editDraft { it.copy(credit = !it.credit) }
+            is PhraseAction.UseLastCost -> {
+                val cost =
+                    (uiState.value.stage as? PhraseStage.Card)
+                        ?.card
+                        ?.lines
+                        ?.getOrNull(action.index)
+                        ?.lastCost
+                if (cost != null) editLine(action.index) { it.copy(unitPrice = cost) }
+            }
 
             is PhraseAction.ChooseParty -> {
                 editDraft { it.copy(partyId = action.id) }
@@ -217,7 +230,13 @@ class PhraseViewModel(
                     session = next
                     val card = withContext(computation) { cardOf(next) }
                     setText("")
-                    state.update { it.copy(stage = PhraseStage.Card(card), sheet = null) }
+                    state.update {
+                        it.copy(
+                            stage = PhraseStage.Card(card),
+                            sheet = null,
+                            cardShown = it.cardShown + 1,
+                        )
+                    }
                     return@launch
                 }
             }
@@ -251,11 +270,11 @@ class PhraseViewModel(
             state.update { it.copy(stage = stage) }
             return
         }
-        val next = Session.of(result.reading, result.catalog, draft)
+        val next = Session.of(result.reading, result.catalog, draft, result.prices)
         session = next
         val card = withContext(computation) { cardOf(next) }
         setText("")
-        state.update { it.copy(stage = PhraseStage.Card(card)) }
+        state.update { it.copy(stage = PhraseStage.Card(card), cardShown = it.cardShown + 1) }
     }
 
     private fun startOver() {
@@ -628,7 +647,8 @@ class PhraseViewModel(
     /**
      * La propuesta y lo que la frase dejó dudoso: los candidatos de cada línea y lo que se dijo,
      * para preguntar en su lugar. [edited] dice si la persona ya la cambió: entonces los avisos de
-     * la lectura dejan de valer.
+     * la lectura dejan de valer. [prices] son los de la última lectura: siguen valiendo tras una
+     * corrección, que no vuelve a leer la base.
      */
     private class Session(
         val reading: PhraseReading,
@@ -638,6 +658,7 @@ class PhraseViewModel(
         val lineSpoken: List<String?>,
         val edited: Boolean,
         val created: Map<Long, String> = emptyMap(),
+        val prices: PhrasePrices = PhrasePrices(),
     ) {
         private val products: Map<Long, PhraseProduct> = catalog.products.associateBy { it.id }
         private val units: Map<Long, PhraseUnit> = catalog.units.associateBy { it.id }
@@ -656,7 +677,23 @@ class PhraseViewModel(
             lineSpoken,
             edited,
             created + (id to name),
+            prices,
         )
+
+        /** Si [id] es el método `A crédito` que trae la app. */
+        fun isOnAccount(id: Long): Boolean =
+            catalog.paymentMethods.any { it.id == id && it.systemKey == ON_ACCOUNT_KEY }
+
+        /**
+         * El último costo de [product] en [unitId], la unidad de la línea: el de la unidad base, o
+         * llevado con la conversión guardada. `null` si no hay o la unidad no tiene conversión.
+         */
+        fun lastCostIn(product: PhraseProduct, unitId: Long?): Money? {
+            val base = prices.lastCost[product.id] ?: return null
+            if (unitId == null || unitId == product.baseUnitId) return base
+            val factor = product.conversions.firstOrNull { it.unitId == unitId } ?: return null
+            return base.timesQuantity(QuantityMilli(factor.factorMilli)).valueOrNull()
+        }
 
         fun unit(id: Long): PhraseUnit? = units[id]
 
@@ -684,11 +721,16 @@ class PhraseViewModel(
                 val from = if (sameCount) i else old.indexOf(line)
                 lineSpoken.getOrNull(from)
             }
-            return Session(reading, catalog, next, candidates, spoken, edited, created)
+            return Session(reading, catalog, next, candidates, spoken, edited, created, prices)
         }
 
         companion object {
-            fun of(reading: PhraseReading, catalog: PhraseCatalog, draft: PhraseDraft): Session {
+            fun of(
+                reading: PhraseReading,
+                catalog: PhraseCatalog,
+                draft: PhraseDraft,
+                prices: PhrasePrices,
+            ): Session {
                 // La propuesta sale de la lectura línea por línea, en el mismo orden.
                 val candidates = draft.lines.indices.map { i ->
                     when (val match = reading.lines.getOrNull(i)?.product) {
@@ -699,7 +741,15 @@ class PhraseViewModel(
                 val spoken = draft.lines.indices.map { i ->
                     (reading.lines.getOrNull(i)?.product as? ProductMatch.Unknown)?.spokenName
                 }
-                return Session(reading, catalog, draft, candidates, spoken, edited = false)
+                return Session(
+                    reading,
+                    catalog,
+                    draft,
+                    candidates,
+                    spoken,
+                    edited = false,
+                    prices = prices,
+                )
             }
         }
     }
@@ -710,6 +760,8 @@ class PhraseViewModel(
         val intent = draft.intent
         val reading = session.reading
         val catalog = session.catalog
+        // Lo que pondrá la operación de siempre: lo dicho, o en una venta el precio del producto.
+        val estimated = draft.estimatedLineAmounts(session.prices, catalog)
         val lines =
             draft.lines.mapIndexed { index, line ->
                 val existing =
@@ -734,10 +786,16 @@ class PhraseViewModel(
                             )
                     }
                 val unit = (line.unitId ?: existing?.baseUnitId)?.let(session::unit)?.toCardUnit()
-                val amount =
-                    line.lineTotal ?: line.unitPrice?.let { price ->
-                        line.quantity?.let { price.timesQuantity(it).valueOrNull() }
-                    }
+                val amount = estimated.getOrNull(index)
+                // Una compra sin costo dicho lo pide; el último se ofrece, nunca se pone solo.
+                val unpricedPurchase =
+                    intent == PhraseIntent.PURCHASE &&
+                        line.unitPrice == null &&
+                        line.lineTotal == null
+                val lastCost =
+                    existing
+                        ?.takeIf { unpricedPurchase }
+                        ?.let { session.lastCostIn(it, line.unitId) }
                 CardLine(
                     index = index,
                     product = product,
@@ -746,6 +804,7 @@ class PhraseViewModel(
                     unitPrice = line.unitPrice,
                     amount = amount,
                     otherOperation = existing != null && !existing.fits(intent),
+                    lastCost = lastCost,
                 )
             }
         val payment =
@@ -809,10 +868,7 @@ class PhraseViewModel(
                 null
             }
         val gaps = draft.gaps()
-        val summable =
-            intent in SUMMED && lines.isNotEmpty() && lines.all { it.amount != null }
-        val total =
-            draft.total ?: lines.takeIf { summable }?.mapNotNull { it.amount }?.sumOrNull()
+        val total = draft.estimatedTotal(session.prices, catalog)
         val notices =
             reading.issues.filter { issue ->
                 when (issue) {
@@ -854,6 +910,9 @@ class PhraseViewModel(
     private companion object {
         const val KEY_TEXT = "phrase_text"
         const val KEY_DICTATED = "phrase_dictated"
+
+        /** La clave del método `A crédito` que trae la app, como la lee el intérprete. */
+        const val ON_ACCOUNT_KEY = "on_account"
         const val QUANTITY_DECIMALS = 3
         val LINE_LIMIT = Limit.LINE_QUANTITY_MILLI
 

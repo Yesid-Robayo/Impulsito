@@ -20,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIssue
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseName
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhrasePrices
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseProduct
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseUnit
@@ -79,15 +80,31 @@ class ReadPhraseUseCaseTest {
     init {
         world.addProducts(
             product(BREAD, "Pan", salePrice = 50_000),
-            product(FLOUR, "Harina", unitId = KILOGRAM, usage = ProductUsage.INPUT),
+            product(
+                FLOUR,
+                "Harina",
+                unitId = KILOGRAM,
+                usage = ProductUsage.INPUT,
+                replacementCost = 4_000,
+                averageCost = 3_500,
+            ),
             product(SHIRT, "Camiseta"),
-            product(RED_SHIRT, "Camiseta roja").let {
+            product(RED_SHIRT, "Camiseta roja", averageCost = 3_000).let {
                 it.copy(details = it.details.copy(parentProductId = SHIRT))
             },
-            product(HAIRCUT, "Corte", stockMode = ProductStockMode.UNTRACKED),
+            product(
+                HAIRCUT,
+                "Corte",
+                salePrice = 1_000_000_000_000,
+                stockMode = ProductStockMode.UNTRACKED,
+            ),
             product(OLD, "Antiguo", archived = true),
         )
         world.addConversion(1L, FLOUR, SACK, 50_000, forSale = false)
+        world.addConversion(2L, BREAD, BOX, 12_000)
+        world.addConversion(3L, RED_SHIRT, DOZEN, 12_000, salePrice = 9_000)
+        // Una caja de dos cortes pasaría del tope de un precio: solo se vende con precio escrito.
+        world.addConversion(4L, HAIRCUT, BOX, 2_000)
         world.addRecipe(RecipeComponent(1L, BREAD, FLOUR, QuantityMilli(100)))
         world.paymentMethods.seedInitialMethods(PhraseWorld.EPOCH)
         world.addMethods(
@@ -127,10 +144,15 @@ class ReadPhraseUseCaseTest {
             assertEquals(
                 listOf(
                     phraseProduct(SHIRT, "Camiseta", forSale = false),
-                    phraseProduct(RED_SHIRT, "Camiseta roja"),
+                    phraseProduct(
+                        RED_SHIRT,
+                        "Camiseta roja",
+                        conversions = listOf(PhraseConversion(DOZEN, 12_000)),
+                    ),
                     phraseProduct(
                         HAIRCUT,
                         "Corte",
+                        conversions = listOf(PhraseConversion(BOX, 2_000)),
                         forPurchase = false,
                         mode = ProductStockMode.UNTRACKED,
                     ),
@@ -141,7 +163,12 @@ class ReadPhraseUseCaseTest {
                         conversions = listOf(PhraseConversion(SACK, 50_000)),
                         forSale = false,
                     ),
-                    phraseProduct(BREAD, "Pan", recipe = true),
+                    phraseProduct(
+                        BREAD,
+                        "Pan",
+                        conversions = listOf(PhraseConversion(BOX, 12_000)),
+                        recipe = true,
+                    ),
                 ),
                 read("hola").catalog.products,
             )
@@ -219,6 +246,29 @@ class ReadPhraseUseCaseTest {
                 paymentMethodId = 1L,
             ),
             result.draft,
+        )
+    }
+
+    @Test
+    fun `prices are the ones the sale uses, and the last cost only a suggestion`() = runTest {
+        assertEquals(
+            PhrasePrices(
+                sale = mapOf(
+                    SHIRT to Money.ZERO,
+                    RED_SHIRT to Money.ZERO,
+                    HAIRCUT to Money(1_000_000_000_000),
+                    FLOUR to Money.ZERO,
+                    BREAD to Money(50_000),
+                ),
+                // La caja de 12 panes al precio del pan, y la docena con su precio propio.
+                saleByUnit = mapOf(
+                    (BREAD to BOX) to Money(600_000),
+                    (RED_SHIRT to DOZEN) to Money(9_000),
+                ),
+                // La reposición manda sobre el promedio.
+                lastCost = mapOf(FLOUR to Money(4_000), RED_SHIRT to Money(3_000)),
+            ),
+            read("hola").prices,
         )
     }
 

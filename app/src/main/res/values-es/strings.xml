@@ -159,7 +159,7 @@
     <string name="product_loss_per_sale">Pérdida en cada venta: %1$s</string>
     <string name="product_no_cost_hint">Sin costo no se puede calcular la ganancia real</string>
     <string name="product_fix_cost">Corregir costo</string>
-    <string name="product_cost_locked_help">Cambia con cada compra.</string>
+    <string name="product_cost_locked_help">Se actualiza con cada compra.</string>
     <string name="product_barcode">Código de barras</string>
     <string name="form_category">Categoría</string>
     <string name="unit_base_locked">Tiene movimientos: la unidad base no cambia</string>

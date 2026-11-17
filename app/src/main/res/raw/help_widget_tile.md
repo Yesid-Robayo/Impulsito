@@ -9,6 +9,7 @@ To sell without looking for the app, {app} offers a widget for the phone's home 
 ## What it shows
 
 - **Sell**, **Expense** and **Purchase**, which open the app on that task.
+- A microphone, **Say or type**, which opens the sheet to [say or type](help_register_by_phrase) what happened.
 - **Today**, with how many sales there were and how many products are running low. These are counts, not amounts.
 - **Backup failed**, if the backup failed. Tap it to open the backup.
 - With no products, **Create the first product**.
@@ -28,7 +29,7 @@ Tap it to open a new sale. It never shows business data: no amounts, no counts, 
 
 ## Icon shortcuts
 
-Touch and hold the {app} icon to see **New sale**, **New expense** and **New purchase**.
+Touch and hold the {app} icon to see **New sale**, **New expense**, **New purchase** and **Say or type**.
 
 ## With the app lock
 
