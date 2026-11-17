@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.ui.update
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -51,6 +53,16 @@ class UpdatesScreenTest {
 
     private fun shown(value: String) {
         compose.onNodeWithText(value, substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    /** El avance de la descarga: lo lee la barra, y el texto a la vista no repite el foco. */
+    private fun progressSays(value: String) {
+        compose.onNode(
+            SemanticsMatcher("dice $value") {
+                it.config.getOrElseNullable(SemanticsProperties.StateDescription) { null }
+                    ?.startsWith(value) == true
+            },
+        ).assertExists()
     }
 
     private fun absent(value: String) = assertTrue(
@@ -251,7 +263,10 @@ class UpdatesScreenTest {
     fun whileSearchingItSaysSo() {
         show(ready(searchEnabled = true, search = SearchUi.Searching))
 
-        shown(text(R.string.update_searching))
+        // Exacto: otros textos de la pantalla también contienen la palabra.
+        compose.onNodeWithText(
+            text(R.string.update_searching),
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -336,7 +351,7 @@ class UpdatesScreenTest {
     fun whileDownloadingItShowsTheProgressAndCanBeCancelled() {
         show(updating(InstallUi.Downloading(512, 1024)))
 
-        shown(text(R.string.update_downloading, "").trimEnd())
+        progressSays(text(R.string.update_downloading, "").trimEnd())
         noButton(text(R.string.update_install_action))
         tap(text(R.string.action_cancel))
 
@@ -347,7 +362,7 @@ class UpdatesScreenTest {
     fun withoutTheSizeItStillSaysItIsDownloading() {
         show(updating(InstallUi.Downloading(512, null)))
 
-        shown(text(R.string.update_downloading_unknown))
+        progressSays(text(R.string.update_downloading_unknown))
     }
 
     @Test
