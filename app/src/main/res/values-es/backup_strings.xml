@@ -48,8 +48,8 @@
     <string name="backup_state_restoring">Restaurando…</string>
     <string name="backup_restoring_detail">Los datos se están reemplazando por la copia elegida.</string>
     <string name="backup_state_stale">Más de un día sin copia</string>
-    <string name="backup_stale_detail">Última copia: %1$s. %2$s Si se pierde este teléfono, se pierde lo registrado desde entonces.</string>
-    <string name="backup_stale_slots_detail">Última entrega: %1$s. %2$s Si se pierde este teléfono, se pierde lo registrado desde entonces, y %3$s no sabe si esa entrega subió.</string>
+    <string name="backup_stale_detail">%2$s Si se pierde este teléfono, se pierde lo registrado desde la última copia (%1$s).</string>
+    <string name="backup_stale_slots_detail">%2$s Si se pierde este teléfono, se pierde lo registrado desde la última entrega (%1$s), y %3$s no sabe si esa entrega subió.</string>
     <string name="backup_state_failed">No se pudo respaldar</string>
     <string name="backup_state_differences">Copia con diferencias</string>
     <string name="backup_state_permission_lost">Reconectar la nube</string>

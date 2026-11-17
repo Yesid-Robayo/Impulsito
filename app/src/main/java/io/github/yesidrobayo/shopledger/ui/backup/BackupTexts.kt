@@ -431,8 +431,10 @@ private fun staleDetail(wording: BackupWording, app: String): String {
         } else {
             stringResource(R.string.backup_stale_detail, date, reason)
         }
-    // Sin motivo conocido, el hueco del motivo no deja un espacio doble.
-    return text.replace("  ", " ")
+    // Sin motivo conocido, el hueco del motivo no deja un espacio doble ni uno al principio. La
+    // hora va entre paréntesis: en algunos idiomas termina en punto, como "p.m.", y antes de un
+    // punto final quedaba doble.
+    return text.replace("  ", " ").trim()
 }
 
 @Composable

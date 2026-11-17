@@ -147,10 +147,9 @@ class DailySeriesTest {
     }
 
     /** La semana del lunes 2026-11-02 con lo vendido de cada día, sin ganancia. */
-    private fun week(vararg sales: Long): List<DayPoint> =
-        sales.mapIndexed { index, net ->
-            DayPoint(date("2026-11-02").plusDays(index), Money(net), Money.ZERO)
-        }
+    private fun week(vararg sales: Long): List<DayPoint> = sales.mapIndexed { index, net ->
+        DayPoint(date("2026-11-02").plusDays(index), Money(net), Money.ZERO)
+    }
 
     private fun point(text: String, net: Long) = DayPoint(date(text), Money(net), Money.ZERO)
 

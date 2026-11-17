@@ -231,10 +231,8 @@ internal class WebDavConnectionCheck(
      * Un tope de [limitMillis] desde ahora, en el reloj [elapsedMillis]. No se detiene por otra
      * cosa: la persona cancela la prueba cancelando la corrutina.
      */
-    private class Deadline(
-        private val elapsedMillis: () -> Long,
-        limitMillis: Long,
-    ) : TransferControl {
+    private class Deadline(private val elapsedMillis: () -> Long, limitMillis: Long) :
+        TransferControl {
         private val endsAt = elapsedMillis() + limitMillis
 
         override fun isStopped(): Boolean = false

@@ -7,7 +7,7 @@
     <!-- %1$s es el nombre de la app. -->
     <string name="update_fingerprint_help">It can be compared with the fingerprint published on the %1$s page.</string>
     <string name="update_how_title">How to update</string>
-    <string name="update_how_step_backup">Make a backup with Back up now. With the phone's cloud, the button is Save to that cloud.</string>
+    <string name="update_how_step_backup">Make a backup with Back up now. With the phone\'s cloud, the button is Save to that cloud.</string>
     <string name="update_how_step_download">Download the APK from the %1$s page.</string>
     <string name="update_how_step_verify">Check it here with Check an APK.</string>
     <string name="update_how_step_install">Install it over the current app, without uninstalling %1$s: uninstalling deletes anything without a backup.</string>
