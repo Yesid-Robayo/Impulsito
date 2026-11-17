@@ -62,4 +62,12 @@ class ProductEditMessagesTest {
             fieldMessageOf(FieldProblem.FractionNotAllowed, ProductEditField.MIN_STOCK),
         )
     }
+
+    @Test
+    fun `a total without opening stock asks for a quantity as a purchase line does`() {
+        assertEquals(
+            FieldMessage.Text(R.string.error_quantity_zero),
+            fieldMessageOf(FieldProblem.ZeroQuantity, ProductEditField.INITIAL_STOCK),
+        )
+    }
 }

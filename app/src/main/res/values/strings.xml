@@ -154,6 +154,7 @@
     <string name="product_save">Save product</string>
     <string name="product_sale_price">Sale price</string>
     <string name="product_initial_stock">Opening stock</string>
+    <string name="product_initial_stock_total">Opening stock total</string>
     <string name="product_min_stock">Minimum stock</string>
     <string name="product_min_stock_help">An alert appears at this number</string>
     <string name="product_replacement_cost">Replacement cost</string>

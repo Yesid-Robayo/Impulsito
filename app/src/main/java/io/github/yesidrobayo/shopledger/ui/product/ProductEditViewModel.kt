@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.product
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.yesidrobayo.shopledger.domain.model.Checked
 import io.github.yesidrobayo.shopledger.domain.model.ExactUnitCost
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Margin
@@ -10,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomValueIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
+import io.github.yesidrobayo.shopledger.domain.model.catalog.InitialCost
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductExtras
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
@@ -28,6 +30,8 @@ import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductPricing
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceOrigin
 import io.github.yesidrobayo.shopledger.domain.rule.pricing.ListPriceResult
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
+import io.github.yesidrobayo.shopledger.domain.rule.stock.OpeningBalanceRule
+import io.github.yesidrobayo.shopledger.domain.rule.timesQuantity
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.GenerateOwnBarcodesResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveCategoryResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductExtrasResult
@@ -307,6 +311,8 @@ class ProductEditViewModel(
                 copy(cost = action.text)
             }
 
+            is ProductEditAction.CostModeChange -> changeCostMode(action.byTotal)
+
             is ProductEditAction.InitialStockChange ->
                 edit(ProductEditField.INITIAL_STOCK) { copy(initialStock = action.text) }
 
@@ -504,17 +510,24 @@ class ProductEditViewModel(
     /**
      * Cómo se mide el margen y se sugiere el precio de lo que se escribe, o `null` mientras no se
      * leen los ajustes del negocio. Un producto por componentes no tiene costo propio aquí. Con el
-     * costo en manos del libro, el costo es el del producto guardado, sin redondear; si no, el que
-     * se escribe.
+     * costo en manos del libro, el costo es el del producto guardado, sin redondear; con el total
+     * del stock inicial, ese total sobre su cantidad, también sin redondear; si no, el que se
+     * escribe.
      */
     private fun ProductEditUiState.draftPricing(): ProductPricing? {
         val context = pricing ?: return null
         if (form.stockMode == ProductStockMode.COMPONENTS) return null
         val saved = product
-        val cost = if (costLocked && saved != null) {
-            ProductPricing.of(saved, context).cost
-        } else {
-            money(form.cost) {}.takeIf { it > Money.ZERO }?.let(ExactUnitCost::perUnit)
+        val cost = when {
+            costLocked && saved != null -> ProductPricing.of(saved, context).cost
+
+            costIsTotal -> {
+                val stock = typedInitialStock()
+                val total = typedCost()?.takeIf { it > Money.ZERO }
+                if (stock != null && total != null) ExactUnitCost(total, stock) else null
+            }
+
+            else -> money(form.cost) {}.takeIf { it > Money.ZERO }?.let(ExactUnitCost::perUnit)
         }
         return ProductPricing.draft(
             context = context,
@@ -638,6 +651,30 @@ class ProductEditViewModel(
         }
     }
 
+    /**
+     * Cambia entre costo por unidad y total del stock inicial, solo en un producto nuevo. La cifra
+     * escrita se conserva y se lee de la otra forma: la que sale de ella se ve debajo, con su
+     * nombre, así que la persona ve en el acto qué significa. Los errores del costo y de un stock
+     * inicial en cero dependen de la forma, y se borran.
+     */
+    private fun changeCostMode(byTotal: Boolean) {
+        state.update { current ->
+            if (!current.isNew || current.form.costByTotal == byTotal) return@update current
+            val stockError = current.errors[ProductEditField.INITIAL_STOCK]
+            val errors = current.errors - ProductEditField.COST
+            current.copy(
+                form = current.form.copy(costByTotal = byTotal),
+                errors = if (stockError == FieldProblem.ZeroQuantity) {
+                    errors - ProductEditField.INITIAL_STOCK
+                } else {
+                    errors
+                },
+                dirty = true,
+                notice = null,
+            ).withProfit()
+        }
+    }
+
     private fun checkName() {
         val name = state.value.form.name
         viewModelScope.launch {
@@ -707,7 +744,8 @@ class ProductEditViewModel(
 
                     pending != null -> useCases.edit(pending, form)
 
-                    productId == null -> useCases.create(form, read.initialStock)
+                    productId == null ->
+                        useCases.create(form, read.initialStock, read.initialCost)
 
                     else -> useCases.edit(productId, form)
                 }
@@ -791,11 +829,15 @@ class ProductEditViewModel(
             -> copy(notice = ProductEditNotice.SaveFailed(outOfSpace = false))
         }
 
-    /** Lo escrito, leído como un producto, o los errores de los campos que no se pueden leer. */
+    /**
+     * Lo escrito, leído como un producto con su stock inicial y la forma de su costo, o los
+     * errores de los campos que no se pueden leer.
+     */
     private class ReadForm(
         val form: ProductForm?,
         val initialStock: QuantityMilli,
         val errors: Map<ProductEditField, FieldProblem>,
+        val initialCost: InitialCost = InitialCost.PerUnit,
     )
 
     private fun readForm(current: ProductEditUiState): ReadForm {
@@ -803,7 +845,10 @@ class ProductEditViewModel(
         val errors = mutableMapOf<ProductEditField, FieldProblem>()
         nameProblem(text.name)?.let { errors[ProductEditField.NAME] = it }
         val price = money(text.salePrice) { errors[ProductEditField.SALE_PRICE] = it }
-        val cost = money(text.cost) { errors[ProductEditField.COST] = it }
+        val byTotal = current.costIsTotal
+        val cost = money(text.cost, costLimitOf(current)) { errors[ProductEditField.COST] = it }
+        // Un total de stock inicial no es negativo, como el total de una línea de compra.
+        if (byTotal && cost < Money.ZERO) errors[ProductEditField.COST] = FieldProblem.NotANumber
         // Sin stock propio no hay stock que contar ni que vigilar: esos campos ni se muestran.
         val tracks = current.tracksStock
         val initial =
@@ -833,6 +878,10 @@ class ProductEditViewModel(
                     FieldProblem.FractionNotAllowed
             }
         }
+        // Un total se reparte entre las unidades del stock inicial: sin ellas no hay qué dividir.
+        if (byTotal && initial <= QuantityMilli.ZERO) {
+            errors.putIfAbsent(ProductEditField.INITIAL_STOCK, FieldProblem.ZeroQuantity)
+        }
         // Sin stock propio el producto no se compra: no lleva reposición, y el campo no se muestra.
         // Sin tocar el campo se manda `null`, para no pisar lo que una compra haya puesto mientras
         // el formulario estaba abierto.
@@ -859,6 +908,22 @@ class ProductEditViewModel(
             if (it is FieldProblem.Duplicate) errors.putIfAbsent(ProductEditField.NAME, it)
         }
         if (errors.isNotEmpty()) return ReadForm(null, QuantityMilli.ZERO, errors)
+        // Con el total, el formulario lleva el costo por unidad que saldrá de él, el mismo que
+        // calcula el caso de uso: así, si lo propio falla y se reintenta, la edición no lo ve
+        // como un cambio del costo de un producto que ya tiene movimientos.
+        val unitCost = if (byTotal) {
+            when (val derived = OpeningBalanceRule.unitCostOf(initial, cost)) {
+                is Checked.Value -> derived.value
+
+                Checked.Overflow, is Checked.AboveLimit -> return ReadForm(
+                    null,
+                    QuantityMilli.ZERO,
+                    mapOf(ProductEditField.COST to FieldProblem.TooHigh),
+                )
+            }
+        } else {
+            cost
+        }
         val form = ProductForm(
             name = text.name,
             categoryId = text.categoryId,
@@ -871,7 +936,7 @@ class ProductEditViewModel(
                 when {
                     text.stockMode == ProductStockMode.COMPONENTS -> Money.ZERO
                     current.costLocked -> initialCostOf(current)
-                    else -> cost
+                    else -> unitCost
                 },
             minStock = minimum,
             barcode = barcode,
@@ -882,7 +947,12 @@ class ProductEditViewModel(
             tracksLots = text.tracksLots && text.stockMode == ProductStockMode.TRACKED,
             usage = text.usage,
         )
-        return ReadForm(form, if (current.isNew) initial else QuantityMilli.ZERO, emptyMap())
+        return ReadForm(
+            form = form,
+            initialStock = if (current.isNew) initial else QuantityMilli.ZERO,
+            errors = emptyMap(),
+            initialCost = if (byTotal) InitialCost.Total(cost) else InitialCost.PerUnit,
+        )
     }
 
     private fun initialCostOf(current: ProductEditUiState): Money = money(current.form.cost) {}
@@ -958,7 +1028,12 @@ class ProductEditViewModel(
      */
     private fun ProductEditUiState.withProfit(): ProductEditUiState {
         val price = money(form.salePrice) {}
-        val cost = if (costLocked) averageCost else money(form.cost) {}
+        val derived = derivedOpeningCost()
+        val cost = when {
+            costLocked -> averageCost
+            costIsTotal -> derived ?: Money.ZERO
+            else -> money(form.cost) {}
+        }
         val pricing = draftPricing()
         val net = pricing?.netOf(price) ?: price
         val profit = when {
@@ -974,11 +1049,60 @@ class ProductEditViewModel(
                     pricing?.marginOf(price) ?: MarginCalculator.margin(net, cost),
                 )
         }
+        // Sin stock inicial no hay total que escribir; mientras siga elegido, se puede volver.
+        val modeShown = isNew && tracksStock && (typedInitialStock() != null || form.costByTotal)
         return copy(
             profit = profit,
             suggestTarget = pricing?.takeIf { it.canSuggest }?.targetMargin,
+            costModeShown = modeShown,
+            derivedCost = derived.takeIf { modeShown },
         )
     }
+
+    /** El stock inicial escrito, si se puede leer y es mayor que cero; si no, `null`. */
+    private fun ProductEditUiState.typedInitialStock(): QuantityMilli? = when (
+        val read = NumberInputParser.quantity(
+            form.initialStock,
+            numbers.quantitySymbols,
+            Limit.LINE_QUANTITY_MILLI,
+        )
+    ) {
+        is NumberInput.Value -> read.value.takeIf { it > QuantityMilli.ZERO }
+        else -> null
+    }
+
+    /** El costo escrito, en la forma elegida, si se puede leer y no es negativo; si no, `null`. */
+    private fun ProductEditUiState.typedCost(): Money? = when (
+        val read = NumberInputParser.money(
+            form.cost,
+            numbers.moneySymbols,
+            numbers.currencyDecimals,
+            costLimitOf(this),
+        )
+    ) {
+        is NumberInput.Value -> read.value.takeIf { it >= Money.ZERO }
+        else -> null
+    }
+
+    /**
+     * Lo que sale del costo y del stock inicial escritos, con las mismas cuentas del caso de uso:
+     * por unidad, el total `mulDivRound(cantidad, costo, 1000)`; con el total, el costo por unidad
+     * `roundDiv(total × 1000, cantidad)`. `null` si falta alguno o pasa de su tope.
+     */
+    private fun ProductEditUiState.derivedOpeningCost(): Money? {
+        if (!isNew || !tracksStock) return null
+        val stock = typedInitialStock() ?: return null
+        val amount = typedCost() ?: return null
+        return if (costIsTotal) {
+            OpeningBalanceRule.unitCostOf(stock, amount).valueOrNull()
+        } else {
+            amount.timesQuantity(stock, Limit.DOCUMENT_TOTAL).valueOrNull()
+        }
+    }
+
+    /** El tope del costo escrito: el de un documento si es un total, el de una unidad si no. */
+    private fun costLimitOf(current: ProductEditUiState): Limit =
+        if (current.costIsTotal) Limit.DOCUMENT_TOTAL else Limit.UNIT_MONEY
 
     private fun nameProblem(name: String): FieldProblem? = when {
         CatalogText.name(
@@ -992,13 +1116,20 @@ class ProductEditViewModel(
         else -> null
     }
 
-    /** Un monto por unidad entera; en blanco es cero. Un problema se informa por [problem]. */
-    private fun money(text: String, problem: (FieldProblem) -> Unit): Money = when (
+    /**
+     * Un monto hasta [limit], por omisión el de una unidad entera; en blanco es cero. Un problema
+     * se informa por [problem].
+     */
+    private fun money(
+        text: String,
+        limit: Limit = Limit.UNIT_MONEY,
+        problem: (FieldProblem) -> Unit,
+    ): Money = when (
         val read = NumberInputParser.money(
             text,
             numbers.moneySymbols,
             numbers.currencyDecimals,
-            Limit.UNIT_MONEY,
+            limit,
         )
     ) {
         is NumberInput.Value -> read.value

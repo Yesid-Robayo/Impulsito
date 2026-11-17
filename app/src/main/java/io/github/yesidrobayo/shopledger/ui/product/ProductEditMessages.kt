@@ -49,6 +49,8 @@ fun fieldMessageOf(problem: FieldProblem, field: ProductEditField): FieldMessage
     FieldProblem.TooHigh -> FieldMessage.Text(R.string.error_value_high)
 
     FieldProblem.FractionNotAllowed -> FieldMessage.Text(R.string.error_unit_decimals)
+
+    FieldProblem.ZeroQuantity -> FieldMessage.Text(R.string.error_quantity_zero)
 }
 
 /** El texto de [problem] en [field], en el idioma de la interfaz. */

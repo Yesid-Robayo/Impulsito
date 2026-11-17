@@ -150,6 +150,7 @@
     <string name="product_save">Salvar produto</string>
     <string name="product_sale_price">Preço de venda</string>
     <string name="product_initial_stock">Estoque inicial</string>
+    <string name="product_initial_stock_total">Total do estoque inicial</string>
     <string name="product_min_stock">Estoque mínimo</string>
     <string name="product_min_stock_help">Haverá um aviso ao chegar a este número</string>
     <string name="product_replacement_cost">Custo de reposição</string>

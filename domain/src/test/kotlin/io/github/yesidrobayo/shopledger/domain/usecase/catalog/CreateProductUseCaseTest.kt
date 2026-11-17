@@ -5,16 +5,21 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogReference
+import io.github.yesidrobayo.shopledger.domain.model.catalog.InitialCost
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.stock.CostMovement
+import io.github.yesidrobayo.shopledger.domain.model.stock.CostState
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationStatus
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockKey
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementSource
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockMovementType
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
+import io.github.yesidrobayo.shopledger.domain.rule.CostReplayResult
+import io.github.yesidrobayo.shopledger.domain.rule.WeightedAverageCost
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture.Companion.ACTIVE_SUPPLIER_ID
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture.Companion.ARCHIVED_SUPPLIER_ID
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture.Companion.ARCHIVED_UNIT_ID
@@ -284,4 +289,149 @@ class CreateProductUseCaseTest {
             create(soap.copy(minStock = QuantityMilli(5_000L)), QuantityMilli(3_000L))
         }
     }
+
+    @Test
+    fun `a thousand units written as 1000 in total are worth 1000 at 1 each`() = runTest {
+        // Mil unidades enteras de la unidad base, como mil gramos que costaron 1000 en total.
+        val flour = ProductForm(name = "Harina", salePrice = Money(3L))
+
+        val result = fixture.create(
+            flour,
+            QuantityMilli(1_000_000L),
+            InitialCost.Total(Money(1_000L)),
+        )
+
+        assertEquals(SaveProductResult.Saved(1L), result)
+        val product = fixture.product(1L)
+        assertEquals(QuantityMilli(1_000_000L), product.onHand)
+        assertEquals(Money(1L), product.averageCost)
+        assertEquals(Money(1_000L), product.stockValue)
+        assertEquals(Money(1L), product.initialCost)
+        val opening = fixture.movementsOf(1L).single()
+        assertEquals(StockMovementType.OPENING_BALANCE, opening.movement.type)
+        assertEquals(Money(1L), opening.unitCost)
+        assertEquals(Money(1_000L), opening.totalCost)
+        assertEquals(Money(1L), opening.averageCostAfter)
+        assertEquals(Money(1_000L), opening.stockValueAfter)
+        assertEquals(1, fixture.transactions.commits)
+    }
+
+    @Test
+    fun `three kilograms for 1000 in total keep 1000 and the replay agrees`() = runTest {
+        val cheese = ProductForm(name = "Queso", baseUnitId = KILOGRAM_ID, cost = Money(1_200L))
+
+        // El costo escrito en el formulario no cuenta: lo reemplaza el que sale del total.
+        fixture.create(cheese, QuantityMilli(3_000L), InitialCost.Total(Money(1_000L)))
+
+        val product = fixture.product(1L)
+        assertEquals(Money(333L), product.averageCost)
+        assertEquals(Money(1_000L), product.stockValue)
+        assertEquals(Money(333L), product.initialCost)
+        val opening = fixture.movementsOf(1L).single()
+        assertEquals(Money(333L), opening.unitCost)
+        assertEquals(Money(1_000L), opening.totalCost)
+        // Reproducir el libro desde el costo inicial deja lo mismo que quedó guardado.
+        val replayed = WeightedAverageCost.replayCostState(
+            product.initialCost,
+            listOf(
+                CostMovement(
+                    id = opening.movement.id,
+                    type = opening.movement.type,
+                    quantity = opening.movement.quantity,
+                    unitCost = opening.unitCost,
+                    totalCost = opening.totalCost,
+                ),
+            ),
+        )
+        assertEquals(
+            CostReplayResult.Replayed(CostState(QuantityMilli(3_000L), Money(333L), Money(1_000L))),
+            replayed,
+        )
+    }
+
+    @Test
+    fun `per unit the same three kilograms at 333 are worth 999 as before`() = runTest {
+        val cheese = ProductForm(name = "Queso", baseUnitId = KILOGRAM_ID, cost = Money(333L))
+
+        fixture.create(cheese, QuantityMilli(3_000L), InitialCost.PerUnit)
+
+        val product = fixture.product(1L)
+        assertEquals(Money(333L), product.averageCost)
+        assertEquals(Money(999L), product.stockValue)
+        assertEquals(Money(999L), fixture.movementsOf(1L).single().totalCost)
+    }
+
+    @Test
+    fun `a cheap total whose unit cost rounds to zero keeps its value and locks the currency`() =
+        runTest {
+            val clips = ProductForm(name = "Clips")
+            val total = InitialCost.Total(Money(400L))
+
+            fixture.create(clips, QuantityMilli(1_000_000L), total)
+
+            val product = fixture.product(1L)
+            assertEquals(Money.ZERO, product.averageCost)
+            assertEquals(Money(400L), product.stockValue)
+            assertEquals(Money.ZERO, product.initialCost)
+            assertEquals(Money(400L), fixture.movementsOf(1L).single().totalCost)
+            // El total es dinero aunque el costo por unidad redondee a cero.
+            assertEquals(NOW, fixture.settings.settings.value.regional.currency.lockedAt)
+
+            val unconfirmed = CatalogFixture(currencyConfirmed = false)
+            assertEquals(
+                SaveProductResult.CurrencyUnconfirmed,
+                unconfirmed.create(clips, QuantityMilli(1_000_000L), total),
+            )
+            assertTrue(unconfirmed.tables.products.isEmpty())
+        }
+
+    @Test
+    fun `a total without initial stock is rejected with the rest of the form`() = runTest {
+        assertEquals(
+            SaveProductResult.Invalid(setOf(ProductFormIssue.INITIAL_STOCK_OUT_OF_RANGE)),
+            fixture.create(soap, QuantityMilli.ZERO, InitialCost.Total(Money(1_000L))),
+        )
+        assertEquals(
+            SaveProductResult.Invalid(
+                setOf(ProductFormIssue.NAME_EMPTY, ProductFormIssue.INITIAL_STOCK_OUT_OF_RANGE),
+            ),
+            fixture.create(
+                ProductForm(name = " "),
+                QuantityMilli.ZERO,
+                InitialCost.Total(Money(1L)),
+            ),
+        )
+        assertTrue(fixture.tables.products.isEmpty())
+        assertEquals(0L, fixture.tables.changeSeq)
+    }
+
+    @Test
+    fun `a negative total, one above its limit or one whose unit cost is too high is rejected`() =
+        runTest {
+            val cheese = ProductForm(name = "Queso", baseUnitId = KILOGRAM_ID)
+            val rejected = SaveProductResult.Invalid(setOf(ProductFormIssue.COST_OUT_OF_RANGE))
+
+            assertEquals(
+                rejected,
+                fixture.create(cheese, QuantityMilli(1_000L), InitialCost.Total(Money(-1L))),
+            )
+            assertEquals(
+                rejected,
+                fixture.create(
+                    cheese,
+                    QuantityMilli(1_000L),
+                    InitialCost.Total(Money(1_000_000_000_000_001L)),
+                ),
+            )
+            // Una milésima de kilogramo por 10^12 sería 10^15 por kilogramo.
+            assertEquals(
+                rejected,
+                fixture.create(
+                    cheese,
+                    QuantityMilli(1L),
+                    InitialCost.Total(Money(1_000_000_000_000L)),
+                ),
+            )
+            assertTrue(fixture.tables.products.isEmpty())
+        }
 }

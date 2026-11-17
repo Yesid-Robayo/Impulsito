@@ -58,6 +58,12 @@ sealed interface ProductEditAction {
 
     data class CostChange(val text: String) : ProductEditAction
 
+    /**
+     * Eligió escribir el costo por unidad o, con [byTotal], lo que costó todo el stock inicial.
+     * Lo escrito se conserva: la cifra que sale de él se muestra debajo con su nombre.
+     */
+    data class CostModeChange(val byTotal: Boolean) : ProductEditAction
+
     data class InitialStockChange(val text: String) : ProductEditAction
 
     data class MinStockChange(val text: String) : ProductEditAction

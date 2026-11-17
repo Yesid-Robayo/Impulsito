@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.data.DataPorts
 import io.github.yesidrobayo.shopledger.data.local.catalog.CREATED_AT
 import io.github.yesidrobayo.shopledger.data.local.catalog.CatalogDatabaseTest
 import io.github.yesidrobayo.shopledger.data.local.catalog.FIXED_CLOCK
+import io.github.yesidrobayo.shopledger.data.local.catalog.GRAM_ID
 import io.github.yesidrobayo.shopledger.data.local.catalog.KILOGRAM_ID
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductComponentEntity
 import io.github.yesidrobayo.shopledger.data.local.catalog.ProductModifierEntity
@@ -16,6 +17,7 @@ import io.github.yesidrobayo.shopledger.data.transaction.RestoreLock
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogLink
+import io.github.yesidrobayo.shopledger.domain.model.catalog.InitialCost
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
@@ -156,6 +158,47 @@ internal class CatalogUseCasesRoomTest : CatalogDatabaseTest() {
             ),
         )
         assertEquals(before + 1L, changeSeq())
+    }
+
+    @Test
+    fun anOpeningStockWrittenByItsTotalKeepsThatTotalAsItsValue() = runBlocking {
+        // Mil gramos que costaron 400 en total: el gramo redondea a 0, pero el stock vale 400.
+        val flour = ProductForm(name = "Harina", baseUnitId = GRAM_ID, salePrice = Money(2L))
+
+        val result = create(flour, QuantityMilli(1_000_000L), InitialCost.Total(Money(400L)))
+
+        val productId = (result as SaveProductResult.Saved).productId
+        val row = requireNotNull(database.productDao().findById(productId))
+        assertEquals(1_000_000L, row.onHandMilli)
+        assertEquals(0L, row.averageCost)
+        assertEquals(400L, row.stockValue)
+        assertEquals(0L, row.initialCost)
+        assertEquals(
+            listOf("OPENING_BALANCE|1000000|0|400|0|400"),
+            rows(
+                "SELECT type || '|' || quantity_milli || '|' || unit_cost || '|' || total_cost " +
+                    "|| '|' || average_cost_after || '|' || stock_value_after " +
+                    "FROM stock_movements WHERE product_id = $productId",
+            ),
+        )
+
+        // Tres kilogramos por 1000: 333 por kilogramo, y el valor sigue en 1000.
+        val cheese = ProductForm(name = "Queso", baseUnitId = KILOGRAM_ID)
+        val cheeseId = savedId(
+            create(cheese, QuantityMilli(3_000L), InitialCost.Total(Money(1_000L))),
+        )
+        assertEquals(
+            listOf("333|1000|333|1000"),
+            rows(
+                "SELECT unit_cost || '|' || total_cost || '|' || average_cost_after || '|' || " +
+                    "stock_value_after FROM stock_movements WHERE product_id = $cheeseId",
+            ),
+        )
+        val cheeseRow = requireNotNull(database.productDao().findById(cheeseId))
+        assertEquals(333L, cheeseRow.averageCost)
+        assertEquals(1_000L, cheeseRow.stockValue)
+        assertEquals(333L, cheeseRow.initialCost)
+        assertEquals(listOf("ok"), rows("PRAGMA integrity_check"))
     }
 
     @Test

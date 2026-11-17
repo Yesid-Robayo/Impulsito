@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogChoices
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
+import io.github.yesidrobayo.shopledger.domain.model.catalog.InitialCost
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductExtras
@@ -48,7 +49,12 @@ interface ProductEditOperations {
 
     suspend fun nameClash(name: String, editingId: Long?): String?
 
-    suspend fun create(form: ProductForm, initialStock: QuantityMilli): SaveProductResult
+    /** Crea el producto con su stock inicial, cuyo costo va por unidad o por total. */
+    suspend fun create(
+        form: ProductForm,
+        initialStock: QuantityMilli,
+        initialCost: InitialCost,
+    ): SaveProductResult
 
     suspend fun edit(productId: Long, form: ProductForm): SaveProductResult
 
@@ -116,8 +122,11 @@ class ProductEditUseCases(
     override suspend fun nameClash(name: String, editingId: Long?): String? =
         nameClashUseCase(name, editingId)
 
-    override suspend fun create(form: ProductForm, initialStock: QuantityMilli): SaveProductResult =
-        createUseCase(form, initialStock)
+    override suspend fun create(
+        form: ProductForm,
+        initialStock: QuantityMilli,
+        initialCost: InitialCost,
+    ): SaveProductResult = createUseCase(form, initialStock, initialCost)
 
     override suspend fun edit(productId: Long, form: ProductForm): SaveProductResult =
         editUseCase(productId, form)

@@ -270,6 +270,7 @@ private fun ProductFormFields(uiState: ProductEditUiState, onAction: (ProductEdi
             unit = unit,
             error = fieldError(uiState, ProductEditField.INITIAL_STOCK),
         )
+        if (uiState.costModeShown) InitialCostMode(uiState, onAction)
     }
     if (uiState.tracksStock) MinStockField(uiState, onAction, unit)
     InlineTextButton(
@@ -737,7 +738,12 @@ private fun PriceAndCost(uiState: ProductEditUiState, onAction: (ProductEditActi
             MoneyField(
                 value = uiState.form.cost,
                 onValueChange = { onAction(ProductEditAction.CostChange(it)) },
-                label = stringResource(R.string.term_cost),
+                // Con el total elegido, el campo dice que lo escrito es lo que costó todo.
+                label = if (uiState.costIsTotal) {
+                    stringResource(R.string.product_initial_stock_total)
+                } else {
+                    stringResource(R.string.term_cost)
+                },
                 modifier = modifier,
                 error = fieldError(uiState, ProductEditField.COST),
             )
@@ -752,6 +758,37 @@ private fun PriceAndCost(uiState: ProductEditUiState, onAction: (ProductEditActi
         Row(horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
             price(Modifier.weight(1f))
             cost(Modifier.weight(1f))
+        }
+    }
+}
+
+/**
+ * Cómo se escribe el costo del stock inicial, como en una línea de compra: por unidad o por lo
+ * que costó todo. Debajo va la cifra que sale de lo escrito, con su nombre: el total del stock
+ * inicial si se escribe por unidad, y el costo de cada unidad si se escribe el total. Así se ve en
+ * el acto si el costo de una unidad se escribió como si fuera el de todo. Es un costo calculado, y
+ * en modo discreto se oculta.
+ */
+@Composable
+private fun InitialCostMode(uiState: ProductEditUiState, onAction: (ProductEditAction) -> Unit) {
+    val unitCostLabel = stringResource(R.string.form_unit_cost)
+    val totalLabel = stringResource(R.string.product_initial_stock_total)
+    CompactChipRow(
+        options = listOf(false, true),
+        label = { if (it) totalLabel else unitCostLabel },
+        selected = setOf(uiState.form.costByTotal),
+        onToggle = { onAction(ProductEditAction.CostModeChange(it)) },
+        multiple = false,
+    )
+    uiState.derivedCost?.let { derived ->
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = if (uiState.form.costByTotal) unitCostLabel else totalLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            MoneyText(derived, MoneySize.ROW, sensitive = true)
         }
     }
 }
@@ -1045,6 +1082,29 @@ private fun ProductEditLockedPreview() {
                 averageCost = Money(3_800L),
                 notice = ProductEditNotice.CurrencyUnconfirmed,
             ),
+            {},
+        )
+    }
+}
+
+/** El costo escrito como lo que costó todo el stock inicial, con el costo por unidad debajo. */
+@ThemePreviews
+@Composable
+private fun ProductEditInitialTotalPreview() {
+    PreviewTheme {
+        ProductEditScreen(
+            previewState(
+                // 3 kg por 1000 en total: 333 por kilogramo, y a 500 quedan 167, el 33,4 %.
+                ProfitPreview.Profit(Money(167L), Margin.Defined(BasisPoints(3_340L))),
+                ProductEditForm(
+                    name = PreviewSamples.LONG_NAME,
+                    unitId = 2L,
+                    salePrice = "500",
+                    cost = "1000",
+                    initialStock = "3",
+                    costByTotal = true,
+                ),
+            ).copy(costModeShown = true, derivedCost = Money(333L)),
             {},
         )
     }

@@ -5,11 +5,13 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogReference
+import io.github.yesidrobayo.shopledger.domain.model.catalog.InitialCost
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewPriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewProduct
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PriceChangeSource
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.SystemRow
@@ -48,6 +50,11 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
  * comparado sin mayúsculas ni tildes. Con precio o costo, la moneda del negocio debe estar
  * confirmada, y si es el primer monto que se guarda, queda bloqueada en la misma transacción. Con
  * foto, anota su imagen en la misma transacción; si ya estaba anotada, la reusa.
+ *
+ * El costo del stock inicial puede venir por unidad o por el total de lo que costó todo
+ * ([InitialCost]). Con el total, ese total entra entero al valor del stock y el costo por unidad
+ * sale de dividirlo, como en una línea de compra: así el redondeo del costo unitario no le quita
+ * valor al stock.
  */
 class CreateProductUseCase(
     private val transactions: TransactionRunner,
@@ -66,18 +73,25 @@ class CreateProductUseCase(
 ) {
     private val references = ProductReferences(categories, suppliers, units, systemRows)
 
-    /** Crea el producto de [form] con [initialStock] milésimas de stock inicial, cero sin él. */
+    /**
+     * Crea el producto de [form] con [initialStock] milésimas de stock inicial, cero sin él, a
+     * [initialCost]: por omisión, el costo por unidad del formulario.
+     */
     suspend operator fun invoke(
         form: ProductForm,
         initialStock: QuantityMilli = QuantityMilli.ZERO,
+        initialCost: InitialCost = InitialCost.PerUnit,
     ): SaveProductResult = storageSafe(SaveProductResult::StorageFailed) {
-        transactions.write { create(form, initialStock) }
+        transactions.write { create(form, initialStock, initialCost) }
     }
 
     private suspend fun create(
-        form: ProductForm,
+        typed: ProductForm,
         initialStock: QuantityMilli,
+        initialCost: InitialCost,
     ): TxResult<SaveProductResult> {
+        // Desde aquí, el formulario lleva el costo por unidad que sale del total, si lo hay.
+        val (form, costIssues) = costed(typed, initialStock, initialCost)
         val unit = references.unitOf(form, current = null)
             ?: return reject(SaveProductResult.MissingReference(CatalogReference.UNIT))
         val valid = when (
@@ -87,8 +101,15 @@ class CreateProductUseCase(
                 unit.allowsFraction,
             )
         ) {
-            is ProductFormCheck.Invalid -> return reject(SaveProductResult.Invalid(check.issues))
-            is ProductFormCheck.Valid -> check
+            is ProductFormCheck.Invalid ->
+                return reject(SaveProductResult.Invalid(check.issues + costIssues))
+
+            is ProductFormCheck.Valid ->
+                if (costIssues.isEmpty()) {
+                    check
+                } else {
+                    return reject(SaveProductResult.Invalid(costIssues))
+                }
         }
         references.missingIn(form, current = null)?.let {
             return reject(SaveProductResult.MissingReference(it))
@@ -101,24 +122,25 @@ class CreateProductUseCase(
         }
         val time = calendar.stamp(clock.now()) ?: return reject(SaveProductResult.UnknownTimeZone)
         val tracked = form.stockMode == ProductStockMode.TRACKED
-        val initialCost = if (tracked) form.cost else Money.ZERO
-        // Un producto con precio y costo en cero no lleva dinero: no fija ninguna moneda.
+        val openingCost = if (tracked) form.cost else Money.ZERO
+        val total = (initialCost as? InitialCost.Total)?.total ?: Money.ZERO
+        // Un producto con precio y costo en cero no lleva dinero: no fija ninguna moneda. Un total
+        // cuyo costo por unidad redondea a cero sí lleva dinero: es el valor de su stock.
         val replacement = form.replacementCost ?: Money.ZERO
-        val hasMoney =
-            form.salePrice != Money.ZERO || form.cost != Money.ZERO || replacement != Money.ZERO
+        val hasMoney = form.salePrice != Money.ZERO || form.cost != Money.ZERO ||
+            replacement != Money.ZERO || total != Money.ZERO
         if (hasMoney && !currencyLock.lock(time.occurredAt)) {
             return reject(SaveProductResult.CurrencyUnconfirmed)
         }
         val opening = if (initialStock == QuantityMilli.ZERO) {
             null
         } else {
-            when (
-                val entry = OpeningBalanceRule.entry(
-                    CostState.initial(initialCost),
-                    initialStock,
-                    initialCost,
-                )
-            ) {
+            val start = CostState.initial(openingCost)
+            val checked = when (initialCost) {
+                InitialCost.PerUnit -> OpeningBalanceRule.entry(start, initialStock, openingCost)
+                is InitialCost.Total -> OpeningBalanceRule.entryOfTotal(start, initialStock, total)
+            }
+            when (val entry = checked) {
                 is Checked.Value -> entry.value
 
                 // Con los topes del formulario no se desborda; si pasara, es por encima de todo tope.
@@ -163,7 +185,7 @@ class CreateProductUseCase(
             NewProduct(
                 details = details,
                 salePrice = form.salePrice,
-                initialCost = initialCost,
+                initialCost = openingCost,
                 replacementCost = replacement,
                 replacementCostAt = ReplacementCostRules.manualStamp(replacement, time.occurredAt),
                 createdAt = time.occurredAt,
@@ -183,7 +205,7 @@ class CreateProductUseCase(
             ),
         )
         val onHand = opening?.let {
-            appendOpening(productId, details.tracksLots, initialStock, initialCost, it, time)
+            appendOpening(productId, details.tracksLots, initialStock, openingCost, it, time)
         } ?: QuantityMilli.ZERO
         val transition = LowStockEvaluator.evaluateWithoutMovement(
             stockMode = form.stockMode,
@@ -209,6 +231,40 @@ class CreateProductUseCase(
         val lot = ledger.defaultLot(productId, tracksLots, time.occurredAt)
         ledger.append(openingMovement(productId, location, lot, quantity, unitCost, entry, time))
         return entry.after.onHand
+    }
+
+    /**
+     * [form] con el costo por unidad que sale de [initialCost], y lo que impide aceptar el total.
+     *
+     * Por unidad, el formulario queda igual. Con el total, el costo por unidad es
+     * `roundDiv(total × 1000, cantidad)`: un total necesita stock inicial que dividir, no es
+     * negativo, y ni él ni su costo por unidad pasan de sus topes. Los motivos se suman a los del
+     * resto del formulario, para marcar todos los campos de una vez.
+     */
+    private fun costed(
+        form: ProductForm,
+        initialStock: QuantityMilli,
+        initialCost: InitialCost,
+    ): Pair<ProductForm, Set<ProductFormIssue>> = when (initialCost) {
+        InitialCost.PerUnit -> form to emptySet()
+
+        is InitialCost.Total -> {
+            val total = initialCost.total
+            val unknown = form.copy(cost = Money.ZERO)
+            when {
+                initialStock.milli <= 0L ->
+                    unknown to setOf(ProductFormIssue.INITIAL_STOCK_OUT_OF_RANGE)
+
+                total < Money.ZERO -> unknown to setOf(ProductFormIssue.COST_OUT_OF_RANGE)
+
+                else -> when (val cost = OpeningBalanceRule.unitCostOf(initialStock, total)) {
+                    is Checked.Value -> form.copy(cost = cost.value) to emptySet()
+
+                    Checked.Overflow, is Checked.AboveLimit ->
+                        unknown to setOf(ProductFormIssue.COST_OUT_OF_RANGE)
+                }
+            }
+        }
     }
 
     private fun reject(result: SaveProductResult): TxResult<SaveProductResult> =

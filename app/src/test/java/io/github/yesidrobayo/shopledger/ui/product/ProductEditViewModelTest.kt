@@ -14,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomFieldType
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CustomValueIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.HistoryLockedField
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ImageImport
+import io.github.yesidrobayo.shopledger.domain.model.catalog.InitialCost
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.PricingContext
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
@@ -203,6 +204,182 @@ class ProductEditViewModelTest {
         )
         model.onAction(ProductEditAction.OpenSuggestion)
         assertEquals(Money(1_730L), model.uiState.value.suggestion?.price)
+    }
+
+    @Test
+    fun `the cost mode shows only on a new tracked product with opening stock`() =
+        runTest(dispatcher) {
+            val model = newProduct()
+            advanceUntilIdle()
+            assertFalse(model.uiState.value.costModeShown)
+
+            model.onAction(ProductEditAction.InitialStockChange("24"))
+            assertTrue(model.uiState.value.costModeShown)
+            model.onAction(ProductEditAction.InitialStockChange("0"))
+            assertFalse(model.uiState.value.costModeShown)
+
+            // Con el total elegido sigue a la vista sin stock, para poder volver.
+            model.onAction(ProductEditAction.InitialStockChange("24"))
+            model.onAction(ProductEditAction.CostModeChange(byTotal = true))
+            model.onAction(ProductEditAction.InitialStockChange(""))
+            assertTrue(model.uiState.value.costModeShown)
+
+            // Un servicio no tiene stock: ni el total ni la opción.
+            model.onAction(ProductEditAction.StockModeChange(ProductStockMode.UNTRACKED))
+            assertFalse(model.uiState.value.costModeShown)
+            assertFalse(model.uiState.value.costIsTotal)
+        }
+
+    @Test
+    fun `per unit the form shows the opening stock total it adds up to`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+
+        // Mil unidades a 1000 cada una: 100000 en unidad menor por 1000 son 100000000.
+        model.onAction(ProductEditAction.CostChange("1000"))
+        model.onAction(ProductEditAction.InitialStockChange("1000"))
+
+        val state = model.uiState.value
+        assertFalse(state.form.costByTotal)
+        assertEquals(Money(100_000_000L), state.derivedCost)
+    }
+
+    @Test
+    fun `by total the form shows the unit cost and sends the total exactly`() =
+        runTest(dispatcher) {
+            val model = newProduct()
+            advanceUntilIdle()
+            model.onAction(ProductEditAction.NameChange("Queso"))
+            model.onAction(ProductEditAction.UnitChange(KILO.id))
+            model.onAction(ProductEditAction.SalePriceChange("5"))
+            model.onAction(ProductEditAction.CostChange("10"))
+            model.onAction(ProductEditAction.InitialStockChange("3"))
+
+            model.onAction(ProductEditAction.CostModeChange(byTotal = true))
+            // Lo escrito se conserva: 1000 en unidad menor por 3 kg son 333,33, que redondea a 333.
+            val state = model.uiState.value
+            assertEquals("10", state.form.cost)
+            assertTrue(state.costIsTotal)
+            assertEquals(Money(333L), state.derivedCost)
+            // 500 menos 333 por kilogramo.
+            assertEquals(Money(167L), (state.profit as ProfitPreview.Profit).profit)
+
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            val (form, stock) = operations.created.single()
+            assertEquals(QuantityMilli(3_000L), stock)
+            assertEquals(Money(333L), form.cost)
+            assertEquals(InitialCost.Total(Money(1_000L)), operations.initialCosts.single())
+        }
+
+    @Test
+    fun `per unit the save sends the cost per unit as before`() = runTest(dispatcher) {
+        val model = newProduct()
+        advanceUntilIdle()
+        model.onAction(ProductEditAction.NameChange("Queso"))
+        model.onAction(ProductEditAction.CostChange("10"))
+        model.onAction(ProductEditAction.InitialStockChange("3"))
+        model.onAction(ProductEditAction.CostModeChange(byTotal = true))
+        model.onAction(ProductEditAction.CostModeChange(byTotal = false))
+
+        model.onAction(ProductEditAction.Save)
+        advanceUntilIdle()
+
+        assertEquals(Money(1_000L), operations.created.single().first.cost)
+        assertEquals(InitialCost.PerUnit, operations.initialCosts.single())
+    }
+
+    @Test
+    fun `a total accepts amounts above the unit limit while the unit cost fits`() =
+        runTest(dispatcher) {
+            val model = newProduct()
+            advanceUntilIdle()
+            model.onAction(ProductEditAction.NameChange("Tornillos"))
+            model.onAction(ProductEditAction.InitialStockChange("1000"))
+            model.onAction(ProductEditAction.CostModeChange(byTotal = true))
+            // 2 × 10^12 en unidad menor: más que el tope de un costo por unidad, no de un total.
+            model.onAction(ProductEditAction.CostChange("20000000000"))
+
+            assertEquals(Money(2_000_000_000L), model.uiState.value.derivedCost)
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            assertEquals(
+                InitialCost.Total(Money(2_000_000_000_000L)),
+                operations.initialCosts.single(),
+            )
+            assertEquals(Money(2_000_000_000L), operations.created.single().first.cost)
+        }
+
+    @Test
+    fun `a total whose unit cost passes the unit limit is marked on the cost`() =
+        runTest(dispatcher) {
+            val model = newProduct()
+            advanceUntilIdle()
+            model.onAction(ProductEditAction.NameChange("Tornillos"))
+            model.onAction(ProductEditAction.InitialStockChange("1"))
+            model.onAction(ProductEditAction.CostModeChange(byTotal = true))
+            model.onAction(ProductEditAction.CostChange("20000000000"))
+            assertNull(model.uiState.value.derivedCost)
+
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            assertEquals(
+                mapOf(ProductEditField.COST to FieldProblem.TooHigh),
+                model.uiState.value.errors,
+            )
+            assertTrue(operations.created.isEmpty())
+        }
+
+    @Test
+    fun `a total without opening stock asks for a quantity and switching back clears it`() =
+        runTest(dispatcher) {
+            val model = newProduct()
+            advanceUntilIdle()
+            model.onAction(ProductEditAction.NameChange("Harina"))
+            model.onAction(ProductEditAction.InitialStockChange("5"))
+            model.onAction(ProductEditAction.CostModeChange(byTotal = true))
+            model.onAction(ProductEditAction.CostChange("1000"))
+            model.onAction(ProductEditAction.InitialStockChange(""))
+
+            model.onAction(ProductEditAction.Save)
+            advanceUntilIdle()
+
+            assertEquals(
+                mapOf(ProductEditField.INITIAL_STOCK to FieldProblem.ZeroQuantity),
+                model.uiState.value.errors,
+            )
+            assertTrue(operations.created.isEmpty())
+            assertEquals("1000", model.uiState.value.form.cost)
+
+            model.onAction(ProductEditAction.CostModeChange(byTotal = false))
+            assertTrue(model.uiState.value.errors.isEmpty())
+        }
+
+    @Test
+    fun `editing a product never offers the total`() = runTest(dispatcher) {
+        operations.editing = ProductForEdit(
+            product = product(5L, "Azúcar", salePrice = 2_000L),
+            lockedFields = emptySet(),
+            costLocked = false,
+        )
+        val model = ProductEditViewModel(
+            operations,
+            numbers,
+            productId = 5L,
+            prefillName = null,
+            unitNames = NAMES,
+        )
+        advanceUntilIdle()
+
+        model.onAction(ProductEditAction.CostModeChange(byTotal = true))
+
+        val state = model.uiState.value
+        assertFalse(state.form.costByTotal)
+        assertFalse(state.costModeShown)
+        assertNull(state.derivedCost)
     }
 
     @Test
@@ -1009,6 +1186,7 @@ class ProductEditViewModelTest {
         var clash: String? = null
         var result: SaveProductResult? = null
         val created = mutableListOf<Pair<ProductForm, QuantityMilli>>()
+        val initialCosts = mutableListOf<InitialCost>()
         val edited = mutableListOf<Pair<Long, ProductForm>>()
         val categoriesCreated = mutableListOf<String>()
 
@@ -1024,8 +1202,10 @@ class ProductEditViewModelTest {
         override suspend fun create(
             form: ProductForm,
             initialStock: QuantityMilli,
+            initialCost: InitialCost,
         ): SaveProductResult {
             created += form to initialStock
+            initialCosts += initialCost
             return result ?: SaveProductResult.Saved(7L)
         }
 

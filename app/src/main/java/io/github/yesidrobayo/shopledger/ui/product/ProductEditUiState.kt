@@ -50,6 +50,9 @@ sealed interface FieldProblem {
 
     /** La unidad no admite decimales. */
     data object FractionNotAllowed : FieldProblem
+
+    /** Debe ser mayor que cero: un total de stock inicial necesita una cantidad que dividir. */
+    data object ZeroQuantity : FieldProblem
 }
 
 /**
@@ -99,6 +102,9 @@ sealed interface ProductEditNotice {
  * [photo] es la foto, elegida o guardada. [tracksLots] controla el producto por lotes, y solo
  * cuenta con stock propio. [usage] dice si se vende, si es un insumo o las dos cosas: un producto
  * nuevo se vende.
+ *
+ * Con [costByTotal], en un producto nuevo con stock propio, [cost] es lo que costó todo el stock
+ * inicial y no el costo de una unidad. Fuera de ese caso no cuenta, y [cost] es por unidad.
  */
 @Immutable
 data class ProductEditForm(
@@ -116,6 +122,7 @@ data class ProductEditForm(
     val photo: EditPhoto = EditPhoto.None,
     val tracksLots: Boolean = false,
     val usage: ProductUsage = ProductUsage.SALE,
+    val costByTotal: Boolean = false,
 )
 
 /**
@@ -137,6 +144,11 @@ data class ProductEditForm(
  * referencia. [importingPhoto] mientras se recodifica la foto elegida, y [photoProblem] si no se
  * pudo traer: la que había sigue igual. [extras] son los campos propios y las etiquetas del
  * producto, que se guardan después del producto, en su propia transacción.
+ *
+ * [costModeShown] cuando se ofrece escribir el costo por unidad o por el total del stock inicial:
+ * en un producto nuevo con stock propio y stock inicial, o mientras siga elegido el total, para
+ * poder volver. [derivedCost] es lo que sale de lo escrito, como en una línea de compra: el total
+ * del stock inicial si se escribe por unidad, y el costo por unidad si se escribe el total.
  */
 @Immutable
 data class ProductEditUiState(
@@ -172,6 +184,8 @@ data class ProductEditUiState(
     val importingPhoto: Boolean = false,
     val photoProblem: ImageProblem? = null,
     val extras: ProductExtrasForm = ProductExtrasForm(),
+    val costModeShown: Boolean = false,
+    val derivedCost: Money? = null,
 ) {
     /** La categoría elegida, o `null` si es sin categoría. */
     val category: Category? get() = categories.firstOrNull { it.id == form.categoryId }
@@ -181,6 +195,12 @@ data class ProductEditUiState(
 
     /** Si el producto lleva stock propio: solo entonces se cuentan y se vigilan sus existencias. */
     val tracksStock: Boolean get() = form.stockMode == ProductStockMode.TRACKED
+
+    /**
+     * Si el costo escrito es el total del stock inicial: solo al crear un producto con stock
+     * propio. Al editar, el costo siempre es por unidad.
+     */
+    val costIsTotal: Boolean get() = isNew && tracksStock && form.costByTotal
 
     /**
      * Si se avisa que pasar a insumo deja por fuera sus líneas de cotizaciones y pedidos abiertos:
