@@ -8,6 +8,18 @@ Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](htt
 
 Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
+## [1.0.1] - 2026-11-17
+
+### Corregido
+
+- **Copias:** si el sistema detenía una copia a mitad o la red la hacía esperar, la copia podía quedar en la nube sin sus
+  metadatos. Ahora se conservan hasta que la copia termine.
+- **Copias con WebDAV:** la prueba de conexión avisa cuando un paso tarda, se detiene tras 5 minutos sin guardar nada y ofrece
+  reintentar.
+- **Números:** la gráfica ya no elige un día que todavía no llega como el menor del período.
+- **Textos:** con la nube del teléfono, la ayuda y los pasos nombran el botón **Guardar en Drive**. La hora de la última copia ya no
+  queda con doble punto.
+
 ## [1.0.0] - 2026-11-16
 
 Primera versión pública. Es gratis y se ofrece tal cual, **sin garantía**. No es un programa de contabilidad ni emite facturas: sus

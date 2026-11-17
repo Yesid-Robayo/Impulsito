@@ -8,6 +8,18 @@ and versions follow [Semantic Versioning](https://semver.org/). Published versio
 
 When a new version is published, it's added at the top with the same content as its release notes.
 
+## [1.0.1] - 2026-11-17
+
+### Fixed
+
+- **Backups:** if the system stopped a backup halfway or the network made it wait, the backup could stay in the cloud without its
+  metadata. Now it is kept until the backup finishes.
+- **WebDAV backups:** the connection test says when a step is slow, stops after 5 minutes without saving anything and offers to
+  retry.
+- **Numbers:** the chart no longer picks a day that hasn't come yet as the lowest of the period.
+- **Texts:** with the phone's cloud, help and steps name the **Save to Drive** button. The time of the last backup no longer ends
+  with a double period.
+
 ## [1.0.0] - 2026-11-16
 
 First public version. It's free and offered as is, **with no warranty**. It isn't accounting software and doesn't issue invoices:
