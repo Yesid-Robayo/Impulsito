@@ -7,11 +7,12 @@ import okhttp3.OkHttpClient
 import okhttp3.Protocol
 
 /**
- * Crea el único cliente HTTP de la app. Lo usan el destino WebDAV y, más adelante, la lectura del
- * manifiesto de versión: un solo camino de red, con una sola configuración.
+ * Crea el único cliente HTTP de la app. Lo usan el destino WebDAV, la lectura del manifiesto de
+ * versión y la descarga del APK de `Actualizar`: un solo camino de red, con una sola configuración.
  *
  * - **Sin redirecciones automáticas.** Un `3xx` se compara con la dirección pedida y casi nunca se
- *   sigue: así la contraseña no viaja a otro host.
+ *   sigue: así la contraseña no viaja a otro host. La descarga del APK sigue las suyas a mano, solo
+ *   a los hosts de las versiones publicadas.
  * - **Sin reintentos automáticos.** OkHttp repite solo una petición tras un corte, y repetir un
  *   `MOVE` o un `PUT` no es inocuo. Los únicos reintentos los decide quien sabe qué método repite.
  * - **Tiempos de espera fijados.** Los de OkHttp son de 10 s y sin tope por llamada: un servidor

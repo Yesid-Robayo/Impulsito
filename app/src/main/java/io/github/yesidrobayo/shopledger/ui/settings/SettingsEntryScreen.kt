@@ -517,7 +517,8 @@ private fun AboutGroup(
         summary = version,
         action = SettingsRowAction.Value {},
     )
-    // Buscar una versión nueva y verificar un APK antes de instalarlo: nunca instala nada.
+    // Buscar una versión nueva, actualizar en un toque y verificar un APK: nada se instala sin la
+    // confirmación de Android.
     SettingsRow(
         title = stringResource(R.string.update_title),
         action = SettingsRowAction.Navigation { links.onOpen(AppNavKey.UpdatesAndApkCheck) },

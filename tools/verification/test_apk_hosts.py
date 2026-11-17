@@ -159,6 +159,53 @@ class ApkHostsTest(unittest.TestCase):
         apk = self.build(arsc_strings=["https://usuario.github.io/app/version.json"])
         self.assertEqual(0, self.run_tool(apk)[0])
 
+    def test_theApkHostsPassOnlyWithTheReleaseTemplate(self):
+        apk = self.build(
+            dex_strings=[
+                "github.com",
+                "release-assets.githubusercontent.com",
+                "objects.githubusercontent.com",
+            ],
+            arsc_strings=["https://github.com/usuario/app/releases/download/v%1$s/app-%1$s.apk"],
+        )
+        # Sin plantilla, ninguno de los tres pasa: no hay descarga que los use.
+        code, rows, _ = self.run_tool(apk)
+        self.assertEqual(1, code)
+        self.assertEqual(
+            ["github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"],
+            self.outside(rows),
+        )
+        template = "https://github.com/usuario/app/releases/download/v%1$s/app-%1$s.apk"
+        code, rows, _ = self.run_tool(apk, "--apk-url-template", template)
+        self.assertEqual(0, code)
+        classes = {row["host"]: row["class"] for row in rows}
+        self.assertEqual("DESTINO", classes["github.com"])
+        self.assertEqual("DESTINO", classes["release-assets.githubusercontent.com"])
+        self.assertEqual("DESTINO", classes["objects.githubusercontent.com"])
+
+    def test_theApkTemplateComesFromTheRepositoryStrings(self):
+        values = os.path.join(self.dir.name, "app", "src", "main", "res", "values")
+        os.makedirs(values)
+        with open(os.path.join(values, "update_strings.xml"), "w", encoding="utf-8") as handle:
+            handle.write(
+                '<resources><string name="update_apk_url_template" translatable="false">'
+                "https://github.com/usuario/app/releases/download/v%1$s/app-%1$s.apk</string></resources>"
+            )
+        apk = self.build(dex_strings=["release-assets.githubusercontent.com"])
+        self.assertEqual(0, self.run_tool(apk)[0])
+
+    def test_anotherFileServerIsNotAllowedByTheTemplate(self):
+        apk = self.build(dex_strings=["https://files.unlisted-service.net/apk"])
+        template = "https://github.com/usuario/app/releases/download/v%1$s/app-%1$s.apk"
+        code, rows, _ = self.run_tool(apk, "--apk-url-template", template)
+        self.assertEqual(1, code)
+        self.assertEqual(["files.unlisted-service.net"], self.outside(rows))
+
+    def test_aPlainHttpApkTemplateIsRejected(self):
+        apk = self.build()
+        template = "http://github.com/usuario/app/releases/download/v%1$s/app-%1$s.apk"
+        self.assertEqual(2, self.run_tool(apk, "--apk-url-template", template)[0])
+
     def test_aPlainHttpUpdateAddressIsRejected(self):
         apk = self.build()
         self.assertEqual(2, self.run_tool(apk, "--manifest-url", "http://usuario.github.io/version.json")[0])

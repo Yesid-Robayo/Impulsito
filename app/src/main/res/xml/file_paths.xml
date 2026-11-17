@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Lo único que el proveedor de archivos comparte: cache/exports/, que se vacía antes de cada exportación y al volver del
-     selector. Sin root-path, files-path ni external: nada de la base ni de noBackupFilesDir sale por aquí. -->
+     selector, y cache/apk-update/, con el APK que bajó Actualizar, ya comparado con el aviso firmado y con la firma, solo para
+     el instalador de Android. Sin root-path, files-path ni external: nada de la base ni de noBackupFilesDir sale por aquí. -->
 <paths>
     <cache-path name="exports" path="exports/" />
+    <cache-path name="apk-update" path="apk-update/" />
 </paths>

@@ -44,6 +44,10 @@
     <string name="transparency_dest_manifest_sends">O que envia: nenhum dado</string>
     <string name="transparency_dest_manifest_ip">%1$s vê o endereço IP ao consultar esse arquivo.</string>
     <string name="transparency_dest_manifest_off">Como desligar: em Atualizações</string>
+    <string name="transparency_dest_apk_title">APK da versão anunciada em %1$s</string>
+    <string name="transparency_dest_apk_purpose">Para quê: instalar a nova versão, só ao tocar em Atualizar</string>
+    <string name="transparency_dest_apk_ip">%1$s vê o endereço IP ao baixar o arquivo, primeiro de github.com e depois do seu servidor de arquivos.</string>
+    <string name="transparency_dest_apk_check">Antes de o Android pedir para instalá-lo, o %1$s o compara com o aviso de versão assinado e com sua assinatura.</string>
     <string name="transparency_no_other">O %1$s não se conecta a nenhum outro destino.</string>
     <string name="transparency_none_title">O que não existe</string>
     <string name="transparency_none_body">Sem contas próprias, sem anúncios, sem análise de uso e sem servidores do %1$s.</string>

@@ -3,12 +3,15 @@
 
     python -I tools/verification/apk_hosts.py app/build/outputs/apk/release/app-release.apk
     python -I tools/verification/apk_hosts.py app-release.apk --manifest-url https://usuario.github.io/app/version.json
+    python -I tools/verification/apk_hosts.py app-release.apk --apk-url-template "https://github.com/usuario/app/releases/download/v%1$s/app-%1$s.apk"
 
-La app solo se conecta a dos destinos: el servicio WebDAV que escribe o elige la persona, y el aviso de
-versión firmado, al tocar `Buscar actualización`. El host de WebDAV lo escribe la persona y no está en el
-APK; lo que sí está son las sugerencias de la pantalla de conectar un servicio, que solo se abren si la
-persona elige una. Cualquier otro host que aparezca detiene la publicación hasta que alguien lo revise y
-lo agregue aquí con su razón.
+La app solo se conecta a estos destinos: el servicio WebDAV que escribe o elige la persona, el aviso de
+versión firmado, al tocar `Buscar actualización`, y el APK de la versión que anunció ese aviso, al tocar
+`Actualizar`. El host de WebDAV lo escribe la persona y no está en el APK; lo que sí está son las
+sugerencias de la pantalla de conectar un servicio, que solo se abren si la persona elige una. El APK baja
+del host de `update_apk_url_template`, que redirige a su servidor de archivos: esos dos nombres entran
+solo con la plantilla configurada. Cualquier otro host que aparezca detiene la publicación hasta que
+alguien lo revise y lo agregue aquí con su razón.
 
 Qué lee, dentro del APK (que es un ZIP):
 
@@ -66,6 +69,14 @@ WEBDAV_SUGGESTION_HOSTS = ("app.koofr.net",)
 # pase `--manifest-url`. Vacío mientras no se publiquen las páginas: entonces ningún host del aviso pasa.
 UPDATE_STRINGS = os.path.join("app", "src", "main", "res", "values", "update_strings.xml")
 MANIFEST_URL_KEY = "update_manifest_url"
+
+# El APK de cada versión publicada sale de `update_apk_url_template`, en el mismo archivo, salvo que se pase
+# `--apk-url-template`. Su host es la página de descargas de las versiones, que redirige a un servidor de
+# archivos con una dirección firmada que vence: estos son los nombres de ese servidor, los mismos que
+# `ApkDownloadPolicy.RELEASES` en `data/.../update/ApkDownloadSource.kt`. Entran solo con la plantilla
+# configurada, y solo como destino de esa descarga.
+APK_URL_TEMPLATE_KEY = "update_apk_url_template"
+APK_FILE_HOSTS = ("release-assets.githubusercontent.com", "objects.githubusercontent.com")
 
 # Lo que abre otra app solo al tocarlo, según la tabla de destinos de la guía de pruebas: la guía de la
 # cuenta de la nube y la de borrado, en la ayuda y en Ajustes, y la guía de ayuda. Las páginas públicas de
@@ -347,37 +358,62 @@ def host_matches(pattern, host):
     return host == pattern.lower()
 
 
-def manifest_host(repo_root, override):
-    """El host del aviso de versión: el de `--manifest-url`, o el de `update_manifest_url` del repositorio."""
-    url = override
-    if url is None:
-        path = os.path.join(repo_root, UPDATE_STRINGS)
-        if not os.path.exists(path):
-            return None
-        for element in ElementTree.parse(path).getroot().iter("string"):
-            if element.get("name") == MANIFEST_URL_KEY:
-                url = (element.text or "").strip()
-    if not url:
+def repository_string(repo_root, key):
+    """El texto de [key] en las cadenas de actualización del repositorio, o None si no está."""
+    path = os.path.join(repo_root, UPDATE_STRINGS)
+    if not os.path.exists(path):
         return None
+    for element in ElementTree.parse(path).getroot().iter("string"):
+        if element.get("name") == key:
+            return (element.text or "").strip()
+    return None
+
+
+def https_host(url, what):
+    """El host de una dirección `https://`, o un error que nombra [what]."""
     match = URL_RE.match(url)
     if not match or match.group(1).lower() != "https":
-        raise ApkError("la dirección del aviso de versión no es https://")
+        raise ApkError("la dirección %s no es https://" % what)
     host = normalize_host(AUTHORITY_RE.match(match.group(2)).group())
     if not host:
-        raise ApkError("la dirección del aviso de versión no tiene un host válido")
+        raise ApkError("la dirección %s no tiene un host válido" % what)
     return host
+
+
+def manifest_host(repo_root, override):
+    """El host del aviso de versión: el de `--manifest-url`, o el de `update_manifest_url` del repositorio."""
+    url = override if override is not None else repository_string(repo_root, MANIFEST_URL_KEY)
+    if not url:
+        return None
+    return https_host(url, "del aviso de versión")
+
+
+def apk_host(repo_root, override):
+    """El host del APK de cada versión: el de `--apk-url-template`, o el de `update_apk_url_template`."""
+    url = override if override is not None else repository_string(repo_root, APK_URL_TEMPLATE_KEY)
+    if not url:
+        return None
+    return https_host(url, "del APK de cada versión")
 
 
 class Policy:
     """La lista cerrada, con el host del aviso de versión ya resuelto."""
 
-    def __init__(self, update_host):
+    def __init__(self, update_host, release_host=None):
         suggestion = "Sugerencia de servicio WebDAV, solo si la persona la elige"
         self.destinations = {host: suggestion for host in WEBDAV_SUGGESTION_HOSTS}
         self.links = dict(LINK_HOSTS)
         if update_host:
             self.destinations[update_host] = "Aviso de versión firmado, solo al tocar Buscar actualización"
             self.links.setdefault(update_host, "Páginas públicas de la app")
+        if release_host:
+            self.destinations.setdefault(
+                release_host, "APK de la versión anunciada, solo al tocar Actualizar",
+            )
+            for host in APK_FILE_HOSTS:
+                self.destinations.setdefault(
+                    host, "Servidor de archivos al que redirige la descarga del APK, solo al tocar Actualizar",
+                )
 
     def classify(self, host, origin, member):
         """La clase y la razón de [host], encontrado en [member]."""
@@ -477,12 +513,18 @@ def main(argv=None):
     )
     parser.add_argument("apk", help="El APK, por ejemplo app/build/outputs/apk/release/app-release.apk")
     parser.add_argument("--manifest-url", help="La dirección https del aviso de versión, si no es la del repositorio")
+    parser.add_argument(
+        "--apk-url-template", help="La plantilla https del APK de cada versión, si no es la del repositorio",
+    )
     repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     parser.add_argument("--repo", default=repo, help="La raíz del repositorio de código")
     parser.add_argument("--json", action="store_true", help="Escribe el resultado en JSON")
     args = parser.parse_args(argv)
     try:
-        policy = Policy(manifest_host(args.repo, args.manifest_url))
+        policy = Policy(
+            manifest_host(args.repo, args.manifest_url),
+            apk_host(args.repo, args.apk_url_template),
+        )
         results = scan(args.apk, policy)
     except (ApkError, ElementTree.ParseError) as error:
         print("apk_hosts: %s" % error, file=sys.stderr)

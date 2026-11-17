@@ -13,7 +13,7 @@
     <string name="update_how_step_install">Install it over the current app, without uninstalling %1$s: uninstalling deletes anything without a backup.</string>
     <string name="update_how_backup_note">Have a recent backup before installing.</string>
     <string name="verify_title">Check an APK</string>
-    <string name="verify_body">This checks that a file has the %1$s signature. %1$s installs nothing.</string>
+    <string name="verify_body">This checks that a file has the %1$s signature before installing it. Checking installs nothing.</string>
     <string name="verify_choose_action">Choose file</string>
     <string name="verify_checking">Checking the file</string>
     <string name="verify_ok">Signature is correct</string>
@@ -56,4 +56,24 @@
     <string name="update_manifest_url" translatable="false">https://yesid-robayo.github.io/Impulsito/version.json</string>
     <!-- La clave pública del aviso de versión, en Base64, con la forma X.509 de una clave de curva P-256. Es pública: la privada vive fuera del repositorio, sin conexión. -->
     <string name="update_manifest_public_key" translatable="false">MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpXUuN9pd+UKVdyLxIai2KQtT/I74uxRYsjgvJlkCIHFp+PtXcjbQYYUSJ9dWj/32FMq/J7IjRT2p6zilH810PA==</string>
+    <!-- Actualizar: bajar el APK de la versión anunciada, compararlo y pasarlo al instalador de Android, solo al tocar el botón. -->
+    <string name="update_install_action">Update</string>
+    <!-- %1$s es el porcentaje ya bajado, con su signo. -->
+    <string name="update_downloading">Downloading the update: %1$s</string>
+    <string name="update_downloading_unknown">Downloading the update</string>
+    <string name="update_verifying">Checking the file before installing</string>
+    <!-- %1$s es el nombre de la app. -->
+    <string name="update_permission_body">Android asks once to allow %1$s to install its updates. Then it shows its own confirmation.</string>
+    <string name="update_permission_action">Allow</string>
+    <string name="update_handed">Android asks to confirm the update. The data stays on this phone.</string>
+    <string name="update_install_again_action">Open the installer again</string>
+    <string name="update_error_download">The download did not finish. Nothing was installed.</string>
+    <string name="update_error_too_big">The file is larger than allowed and was not downloaded.</string>
+    <string name="update_error_hash">The downloaded file does not match the signed version notice. It was deleted and not installed.</string>
+    <string name="update_error_not_newer">The downloaded file is not newer than the installed version. It was deleted.</string>
+    <string name="update_error_installer">The Android installer could not be opened. The file was deleted.</string>
+    <string name="update_whats_new_title">What\'s new</string>
+    <string name="update_whats_new_error">What\'s new could not be read.</string>
+    <!-- La dirección https del APK de cada versión publicada. %1$s es el nombre de la versión del aviso firmado, como 1.0.2, y va en los dos lugares. Va dentro de la app: nunca sale de la red. -->
+    <string name="update_apk_url_template" translatable="false">https://github.com/Yesid-Robayo/Impulsito/releases/download/v%1$s/impulsito-%1$s.apk</string>
 </resources>

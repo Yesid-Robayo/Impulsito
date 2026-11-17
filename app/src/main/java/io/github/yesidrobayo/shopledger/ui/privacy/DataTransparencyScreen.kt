@@ -50,8 +50,8 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
  *    después`. No aceptar nunca bloquea los datos, las ventas ni exportar.
  * 2. `Ahora mismo`: copias, cifrado, segundo destino, bloqueo y búsqueda de versión, leídos del
  *    teléfono. Un dato que no se pudo leer lo dice, y nunca muestra uno anterior.
- * 3. `Qué datos hay`, `Adónde van`, con exactamente los dos destinos de red de la app, y `Lo
- *    que no hay`.
+ * 3. `Qué datos hay`, `Adónde van`, con exactamente los destinos de red de la app, y `Lo que
+ *    no hay`.
  * 4. `Política y términos`: la política la abre el navegador, y los términos se leen desde los
  *    recursos, sin internet.
  *
@@ -324,9 +324,10 @@ private fun TitledText(title: String, body: String) {
 }
 
 /**
- * `Adónde van`: exactamente los dos destinos de red de la app. El servicio elegido, si lo hay, o
- * la nube del teléfono, que la app no usa como red; y el archivo público de versión, que se ve
- * siempre, también con la búsqueda apagada.
+ * `Adónde van`: exactamente los destinos de red de la app. El servicio elegido, si lo hay, o la
+ * nube del teléfono, que la app no usa como red; el archivo público de versión, y el APK de la
+ * versión anunciada, que baja `Actualizar`. Los dos últimos se ven siempre, también con la
+ * búsqueda apagada.
  */
 @Composable
 private fun DestinationsSection(uiState: DataTransparencyUiState) {
@@ -375,6 +376,24 @@ private fun DestinationsSection(uiState: DataTransparencyUiState) {
             DestinationLine(R.string.transparency_dest_manifest_sends)
             Text(
                 stringResource(R.string.transparency_dest_manifest_ip, host),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            DestinationLine(R.string.transparency_dest_manifest_off)
+        }
+        // El APK de la versión anunciada, solo al tocar `Actualizar`. Se apaga con la búsqueda:
+        // sin ella no hay versión anunciada ni botón.
+        val releases = stringResource(R.string.transparency_apk_host)
+        DestinationCard(stringResource(R.string.transparency_dest_apk_title, releases)) {
+            DestinationLine(R.string.transparency_dest_apk_purpose)
+            DestinationLine(R.string.transparency_dest_manifest_sends)
+            Text(
+                stringResource(R.string.transparency_dest_apk_ip, releases),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(R.string.transparency_dest_apk_check, app),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

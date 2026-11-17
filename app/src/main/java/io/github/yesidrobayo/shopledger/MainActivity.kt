@@ -61,6 +61,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.LocalPaletteChooser
 import io.github.yesidrobayo.shopledger.ui.theme.PaletteChooser
 import io.github.yesidrobayo.shopledger.ui.theme.SplashThemes
 import io.github.yesidrobayo.shopledger.ui.theme.isDark
+import io.github.yesidrobayo.shopledger.update.ApkUpdateFiles
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -128,6 +129,14 @@ class MainActivity : AppCompatActivity() {
         // Un aviso de stock abre su producto. Al recrearse la actividad, el pedido ya se cumplió.
         if (savedInstanceState == null) openRequest.value = AppOpenRequest.readFrom(intent)
         val container = app.container
+        // Un APK que quedó de una actualización anterior se borra al abrir la app de cero. No al
+        // recrearla: el instalador de Android puede seguir abierto con él. Abrir el archivo desde
+        // el instalador no crea esta pantalla, así que nunca se borra mientras lo lee.
+        if (savedInstanceState == null) {
+            lifecycleScope.launch(container.dispatchers.io) {
+                ApkUpdateFiles.clear(applicationContext)
+            }
+        }
         followStability(app)
         val appLock = container.appLock
         val protection = WindowProtection.of(window).also { this.protection = it }

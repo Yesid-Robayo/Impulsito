@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.update
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -12,6 +13,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.update.UpdateCheckOutcome
+import io.github.yesidrobayo.shopledger.ui.help.HelpBlock
+import io.github.yesidrobayo.shopledger.ui.help.HelpMarkdown
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.update.ApkCheckResult
 import io.github.yesidrobayo.shopledger.update.InstalledApp
@@ -25,7 +28,10 @@ import org.junit.runner.RunWith
 /**
  * `Actualizaciones y verificar APK` en el teléfono: la versión y la huella, `Buscar actualización`
  * solo con la búsqueda permitida y cada resultado sin bloquear nada, `Cómo actualizar` con sus
- * pasos, y cada resultado de `Verificar un APK` con su texto. Datos inventados.
+ * pasos, y cada resultado de `Verificar un APK` con su texto. Con una versión nueva, `Actualizar`
+ * es la acción principal, con su progreso, `Cancelar`, el permiso de Android y cada falla con
+ * `Reintentar`. `Novedades` abre lo que trajo cada versión, con la más nueva primero. Datos
+ * inventados.
  */
 @RunWith(AndroidJUnit4::class)
 class UpdatesScreenTest {
@@ -73,6 +79,26 @@ class UpdatesScreenTest {
 
     private fun searched(outcome: UpdateCheckOutcome) =
         ready(searchEnabled = true, search = SearchUi.Done(outcome))
+
+    private val newVersion =
+        UpdateCheckOutcome.NewVersion(
+            "1.0.2",
+            Instant.parse("2026-11-10T12:00:00Z"),
+            "ab",
+            important = false,
+        )
+
+    private fun updating(install: InstallUi) = searched(newVersion).copy(install = install)
+
+    /** Sin un nodo con exactamente [value]: `Actualizar` es parte de otros textos. */
+    private fun noButton(value: String) = assertTrue(
+        compose.onAllNodesWithText(value).fetchSemanticsNodes().isEmpty(),
+    )
+
+    private fun tap(label: String) {
+        compose.onNodeWithText(label).performScrollTo()
+        compose.onNodeWithText(label).performClick()
+    }
 
     @Test
     fun itShowsTheVersionAndTheSignatureFingerprint() {
@@ -286,6 +312,131 @@ class UpdatesScreenTest {
         compose.onNodeWithText(text(R.string.action_retry)).performScrollTo().performClick()
 
         assertEquals(listOf<UpdatesAction>(UpdatesAction.Search), actions)
+    }
+
+    @Test
+    fun aNewVersionOffersUpdateAsTheMainAction() {
+        show(searched(newVersion))
+
+        shown(text(R.string.update_new, "1.0.2"))
+        shown(text(R.string.update_view_how_action))
+        tap(text(R.string.update_install_action))
+
+        assertEquals(listOf<UpdatesAction>(UpdatesAction.StartUpdate), actions)
+    }
+
+    @Test
+    fun theLatestVersionOffersNoUpdate() {
+        show(searched(UpdateCheckOutcome.Latest(null)))
+
+        noButton(text(R.string.update_install_action))
+    }
+
+    @Test
+    fun whileDownloadingItShowsTheProgressAndCanBeCancelled() {
+        show(updating(InstallUi.Downloading(512, 1024)))
+
+        shown(text(R.string.update_downloading, "").trimEnd())
+        noButton(text(R.string.update_install_action))
+        tap(text(R.string.action_cancel))
+
+        assertEquals(listOf<UpdatesAction>(UpdatesAction.CancelUpdate), actions)
+    }
+
+    @Test
+    fun withoutTheSizeItStillSaysItIsDownloading() {
+        show(updating(InstallUi.Downloading(512, null)))
+
+        shown(text(R.string.update_downloading_unknown))
+    }
+
+    @Test
+    fun whileCheckingTheFileUpdateDoesNotAskAgain() {
+        show(updating(InstallUi.Verifying))
+
+        shown(text(R.string.update_verifying))
+        tap(text(R.string.update_install_action))
+
+        assertTrue(actions.isEmpty())
+    }
+
+    @Test
+    fun withoutPermissionItExplainsAndOpensTheSetting() {
+        show(updating(InstallUi.NeedsPermission))
+
+        shown(text(R.string.update_permission_body, app))
+        tap(text(R.string.update_permission_action))
+
+        assertEquals(listOf<UpdatesAction>(UpdatesAction.AllowInstalls), actions)
+    }
+
+    @Test
+    fun handedToTheInstallerItSaysAndroidAsksAndTheDataStays() {
+        show(updating(InstallUi.HandedToInstaller))
+
+        shown(text(R.string.update_handed))
+        tap(text(R.string.update_install_again_action))
+
+        assertEquals(listOf<UpdatesAction>(UpdatesAction.OpenInstallerAgain), actions)
+    }
+
+    @Test
+    fun eachFailureSaysWhatHappenedAndCanBeRetried() {
+        val expected =
+            listOf(
+                InstallFailure.NO_CONNECTION to text(R.string.state_no_connection),
+                InstallFailure.DOWNLOAD_FAILED to text(R.string.update_error_download),
+                InstallFailure.TOO_LARGE to text(R.string.update_error_too_big),
+                InstallFailure.HASH_MISMATCH to text(R.string.update_error_hash),
+                InstallFailure.WRONG_SIGNATURE to text(R.string.verify_mismatch_title),
+                InstallFailure.NOT_NEWER to text(R.string.update_error_not_newer),
+                InstallFailure.NO_INSTALLER to text(R.string.update_error_installer),
+            )
+        val state = mutableStateOf(updating(InstallUi.Failed(InstallFailure.NO_CONNECTION)))
+        compose.setContent { PreviewTheme { UpdatesScreen(state.value, { actions += it }) } }
+
+        for ((failure, message) in expected) {
+            state.value = updating(InstallUi.Failed(failure))
+            compose.waitForIdle()
+            shown(message)
+            tap(text(R.string.action_retry))
+        }
+
+        assertEquals(List(expected.size) { UpdatesAction.StartUpdate }, actions)
+    }
+
+    @Test
+    fun aWrongSignatureSaysNotToInstallNorUninstall() {
+        show(updating(InstallUi.Failed(InstallFailure.WRONG_SIGNATURE)))
+
+        shown(text(R.string.verify_mismatch_title))
+        shown(text(R.string.verify_mismatch_body, app))
+    }
+
+    @Test
+    fun whatsNewOpensFromItsRowAndShowsTheNewestVersionFirst() {
+        val news =
+            resources.openRawResource(R.raw.whats_new).bufferedReader(Charsets.UTF_8).use {
+                HelpMarkdown.parse(it.readText(), app)
+            }
+        val firstHeading = news.filterIsInstance<HelpBlock.Heading>().first()
+        assertEquals("1.0.2", firstHeading.spans.joinToString("") { it.text })
+        val state = mutableStateOf(ready())
+        compose.setContent { PreviewTheme { UpdatesScreen(state.value, { actions += it }) } }
+
+        tap(text(R.string.update_whats_new_title))
+        assertEquals(listOf<UpdatesAction>(UpdatesAction.OpenWhatsNew), actions)
+        state.value = ready().copy(whatsNew = WhatsNewUi.Ready(news))
+        compose.waitForIdle()
+
+        compose.onNodeWithText("1.0.2").assertIsDisplayed()
+    }
+
+    @Test
+    fun whatsNewThatCannotBeReadSaysSo() {
+        show(ready().copy(whatsNew = WhatsNewUi.Failed))
+
+        compose.onNodeWithText(text(R.string.update_whats_new_error)).assertIsDisplayed()
     }
 
     @Test

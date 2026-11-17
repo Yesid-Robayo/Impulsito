@@ -11,7 +11,7 @@
     <string name="update_how_step_install">Instalarlo encima, sin desinstalar %1$s: desinstalar borra lo que no tenga copia.</string>
     <string name="update_how_backup_note">Conviene tener una copia reciente antes de instalar.</string>
     <string name="verify_title">Verificar un APK</string>
-    <string name="verify_body">Sirve para comprobar que un archivo tenga la firma de %1$s. %1$s no instala nada.</string>
+    <string name="verify_body">Sirve para comprobar que un archivo tenga la firma de %1$s antes de instalarlo. Comprobarlo no instala nada.</string>
     <string name="verify_choose_action">Elegir archivo</string>
     <string name="verify_checking">Comprobando el archivo</string>
     <string name="verify_ok">Firma correcta</string>
@@ -42,4 +42,22 @@
     <string name="state_no_connection">Sin conexión. Se puede reintentar</string>
     <string name="notif_update_reminder_title">Revisar si hay versión nueva</string>
     <string name="notif_update_reminder_body">Abrir Actualizaciones en %1$s para buscarla.</string>
+    <!-- Actualizar: bajar el APK de la versión anunciada, compararlo y pasarlo al instalador de Android, solo al tocar el botón. -->
+    <string name="update_install_action">Actualizar</string>
+    <!-- %1$s es el porcentaje ya bajado, con su signo. -->
+    <string name="update_downloading">Descargando la actualización: %1$s</string>
+    <string name="update_downloading_unknown">Descargando la actualización</string>
+    <string name="update_verifying">Comprobando el archivo antes de instalar</string>
+    <!-- %1$s es el nombre de la app. -->
+    <string name="update_permission_body">Android pide una sola vez permitir que %1$s instale sus actualizaciones. Después muestra su propia confirmación.</string>
+    <string name="update_permission_action">Permitir</string>
+    <string name="update_handed">Android pide confirmar la actualización. Los datos se quedan en este teléfono.</string>
+    <string name="update_install_again_action">Abrir el instalador otra vez</string>
+    <string name="update_error_download">La descarga no terminó. No se instaló nada.</string>
+    <string name="update_error_too_big">El archivo pasa el tamaño permitido y no se descargó.</string>
+    <string name="update_error_hash">El archivo descargado no coincide con el aviso de versión firmado. Se borró y no se instaló.</string>
+    <string name="update_error_not_newer">El archivo descargado no es más nuevo que la versión instalada. Se borró.</string>
+    <string name="update_error_installer">No se pudo abrir el instalador de Android. El archivo se borró.</string>
+    <string name="update_whats_new_title">Novedades</string>
+    <string name="update_whats_new_error">No se pudieron leer las novedades.</string>
 </resources>

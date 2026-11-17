@@ -1,18 +1,24 @@
 package io.github.yesidrobayo.shopledger.ui.update
 
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
+import io.github.yesidrobayo.shopledger.domain.model.update.ApkDownloadResult
 import io.github.yesidrobayo.shopledger.domain.model.update.UpdateCheckOutcome
+import io.github.yesidrobayo.shopledger.ui.help.HelpBlock
+import io.github.yesidrobayo.shopledger.ui.help.HelpSpan
 import io.github.yesidrobayo.shopledger.update.ApkCheckResult
 import io.github.yesidrobayo.shopledger.update.InstalledApp
 import java.io.IOException
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -28,7 +34,10 @@ import org.junit.Test
 /**
  * `Actualizaciones y verificar APK`: lee la app instalada, busca una versión nueva solo con la
  * búsqueda permitida y una vez a la vez, compara un archivo a la vez con el aviso leído, y nunca
- * cierra la pantalla por una falla. Versiones, huellas y fechas inventadas.
+ * cierra la pantalla por una falla. `Actualizar` solo se ofrece con una versión nueva, baja con su
+ * progreso, se cancela, y entrega al instalador solo un archivo con la huella del aviso, la firma
+ * de la app y una versión más nueva; lo demás se borra. `Novedades` se lee sin red. Versiones,
+ * huellas y fechas inventadas.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdatesViewModelTest {
@@ -43,6 +52,17 @@ class UpdatesViewModelTest {
     private var outcome: UpdateCheckOutcome = UpdateCheckOutcome.Latest(HASH)
     private var lastSearch: Instant? = null
     private val zone = MutableStateFlow<BusinessTimeZone?>(BusinessTimeZone.of("America/Bogota"))
+    private val downloadedNames = mutableListOf<String>()
+    private var download: suspend ((Long, Long?) -> Unit) -> ApkDownloadResult = { progress ->
+        progress(512, 1024)
+        progress(1024, 1024)
+        ApkDownloadResult.Downloaded(HASH, 1024)
+    }
+    private var checks = 0
+    private var check: ApkCheckResult = ApkCheckResult.Match("1.0.1", 4, HASH, older = false)
+    private var canInstall = true
+    private var discards = 0
+    private var whatsNew: List<HelpBlock>? = listOf(NEWS_HEADING)
 
     @Before
     fun useTestMain() = Dispatchers.setMain(dispatcher)
@@ -75,7 +95,30 @@ class UpdatesViewModelTest {
         lastSearchAt = { lastSearch },
         zone = zone,
         now = { now },
+        downloadApk = { name, progress ->
+            downloadedNames += name
+            download(progress)
+        },
+        checkDownloadedApk = { sha256 ->
+            checks++
+            assertEquals(HASH, sha256)
+            check
+        },
+        canInstallPackages = { canInstall },
+        discardDownload = { discards++ },
+        leaveScope = CoroutineScope(dispatcher),
+        whatsNew = { whatsNew },
     )
+
+    /** Un modelo que ya buscó y encontró la versión `1.0.1`, con la huella [HASH]. */
+    private fun TestScope.withNewVersion(): UpdatesViewModel {
+        outcome = UpdateCheckOutcome.NewVersion("1.0.1", now, HASH, important = false)
+        val model = model()
+        advanceUntilIdle()
+        model.onAction(UpdatesAction.Search)
+        advanceUntilIdle()
+        return model
+    }
 
     @Test
     fun `it reads the installed version and fingerprint`() = runTest(dispatcher) {
@@ -389,7 +432,300 @@ class UpdatesViewModelTest {
         assertEquals(before, model.uiState.value)
     }
 
+    @Test
+    fun `the update is offered only after a search that found a new version`() =
+        runTest(dispatcher) {
+            val model = model()
+            advanceUntilIdle()
+            model.onAction(UpdatesAction.StartUpdate)
+            advanceUntilIdle()
+            assertEquals(InstallUi.Idle, model.uiState.value.install)
+
+            model.onAction(UpdatesAction.Search)
+            advanceUntilIdle()
+            model.onAction(UpdatesAction.StartUpdate)
+            advanceUntilIdle()
+
+            assertEquals(InstallUi.Idle, model.uiState.value.install)
+            assertTrue(downloadedNames.isEmpty())
+        }
+
+    @Test
+    fun `a download shows its progress, checks the file and hands it to the installer`() =
+        runTest(dispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            download = { progress ->
+                progress(512, 1024)
+                gate.await()
+                ApkDownloadResult.Downloaded(HASH, 1024)
+            }
+            val model = withNewVersion()
+
+            model.onAction(UpdatesAction.StartUpdate)
+            advanceUntilIdle()
+            assertEquals(InstallUi.Downloading(512, 1024), model.uiState.value.install)
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(listOf("1.0.1"), downloadedNames)
+            assertEquals(1, checks)
+            assertEquals(InstallUi.Opening, model.uiState.value.install)
+            model.onAction(UpdatesAction.InstallerOpened(true))
+            assertEquals(InstallUi.HandedToInstaller, model.uiState.value.install)
+            assertEquals(0, discards)
+        }
+
+    @Test
+    fun `while downloading another tap does not download or search again`() =
+        runTest(dispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            download = {
+                gate.await()
+                ApkDownloadResult.Downloaded(HASH, 1024)
+            }
+            val model = withNewVersion()
+
+            model.onAction(UpdatesAction.StartUpdate)
+            advanceUntilIdle()
+            model.onAction(UpdatesAction.StartUpdate)
+            model.onAction(UpdatesAction.Search)
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(listOf("1.0.1"), downloadedNames)
+            assertEquals(1, searches)
+            assertEquals(InstallUi.Opening, model.uiState.value.install)
+        }
+
+    @Test
+    fun `cancelling the download stops it and deletes the file`() = runTest(dispatcher) {
+        var stopped = false
+        download = { progress ->
+            progress(100, 1024)
+            try {
+                awaitCancellation()
+            } finally {
+                stopped = true
+            }
+        }
+        val model = withNewVersion()
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+
+        model.onAction(UpdatesAction.CancelUpdate)
+        assertEquals(InstallUi.Idle, model.uiState.value.install)
+        advanceUntilIdle()
+
+        assertTrue(stopped)
+        assertEquals(1, discards)
+        assertEquals(0, checks)
+        assertEquals(InstallUi.Idle, model.uiState.value.install)
+    }
+
+    @Test
+    fun `a file that does not match the signed notice is deleted and never checked`() =
+        runTest(dispatcher) {
+            download = { ApkDownloadResult.Downloaded("cd".repeat(32), 1024) }
+            val model = withNewVersion()
+
+            model.onAction(UpdatesAction.StartUpdate)
+            advanceUntilIdle()
+
+            assertEquals(
+                InstallUi.Failed(InstallFailure.HASH_MISMATCH),
+                model.uiState.value.install,
+            )
+            assertEquals(0, checks)
+            assertEquals(1, discards)
+        }
+
+    @Test
+    fun `the hash must be the signed one exactly, in lowercase`() = runTest(dispatcher) {
+        download = { ApkDownloadResult.Downloaded(HASH.uppercase(), 1024) }
+        val model = withNewVersion()
+
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+
+        assertEquals(InstallUi.Failed(InstallFailure.HASH_MISMATCH), model.uiState.value.install)
+    }
+
+    @Test
+    fun `a file with another signature is deleted and never installed`() = runTest(dispatcher) {
+        check = ApkCheckResult.Mismatch(HASH)
+        val model = withNewVersion()
+
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+
+        assertEquals(
+            InstallUi.Failed(InstallFailure.WRONG_SIGNATURE),
+            model.uiState.value.install,
+        )
+        assertEquals(1, discards)
+    }
+
+    @Test
+    fun `a file that is not newer than the installed app is deleted`() = runTest(dispatcher) {
+        // La instalada es la compilación 3.
+        check = ApkCheckResult.Match("1.0.0", 3, HASH, older = false)
+        val model = withNewVersion()
+
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+
+        assertEquals(InstallUi.Failed(InstallFailure.NOT_NEWER), model.uiState.value.install)
+        assertEquals(1, discards)
+    }
+
+    @Test
+    fun `a file that is not an APK is deleted as a failed download`() = runTest(dispatcher) {
+        check = ApkCheckResult.NotApk
+        val model = withNewVersion()
+
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+
+        assertEquals(
+            InstallUi.Failed(InstallFailure.DOWNLOAD_FAILED),
+            model.uiState.value.install,
+        )
+        assertEquals(1, discards)
+    }
+
+    @Test
+    fun `without permission it explains and continues once it is allowed`() =
+        runTest(dispatcher) {
+            canInstall = false
+            val model = withNewVersion()
+
+            model.onAction(UpdatesAction.StartUpdate)
+            advanceUntilIdle()
+            assertEquals(InstallUi.NeedsPermission, model.uiState.value.install)
+
+            // Volver sin permitirlo no cambia nada.
+            model.onAction(UpdatesAction.Resumed)
+            assertEquals(InstallUi.NeedsPermission, model.uiState.value.install)
+
+            canInstall = true
+            model.onAction(UpdatesAction.Resumed)
+            assertEquals(InstallUi.Opening, model.uiState.value.install)
+            assertEquals(0, discards)
+        }
+
+    @Test
+    fun `without internet it says so and can be retried`() = runTest(dispatcher) {
+        download = { ApkDownloadResult.Offline }
+        val model = withNewVersion()
+
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+        assertEquals(InstallUi.Failed(InstallFailure.NO_CONNECTION), model.uiState.value.install)
+
+        download = { ApkDownloadResult.Downloaded(HASH, 1024) }
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+
+        assertEquals(listOf("1.0.1", "1.0.1"), downloadedNames)
+        assertEquals(InstallUi.Opening, model.uiState.value.install)
+    }
+
+    @Test
+    fun `each download failure has its own message`() = runTest(dispatcher) {
+        val model = withNewVersion()
+        val expected =
+            listOf(
+                ApkDownloadResult.TooLarge to InstallFailure.TOO_LARGE,
+                ApkDownloadResult.Failed to InstallFailure.DOWNLOAD_FAILED,
+                ApkDownloadResult.Refused to InstallFailure.DOWNLOAD_FAILED,
+            )
+
+        for ((result, failure) in expected) {
+            download = { result }
+            model.onAction(UpdatesAction.StartUpdate)
+            advanceUntilIdle()
+            assertEquals(InstallUi.Failed(failure), model.uiState.value.install)
+        }
+
+        download = { throw IOException("cortado") }
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+        assertEquals(
+            InstallUi.Failed(InstallFailure.DOWNLOAD_FAILED),
+            model.uiState.value.install,
+        )
+        assertEquals(0, checks)
+        assertEquals(4, discards)
+    }
+
+    @Test
+    fun `an installer that does not open says so and deletes the file`() = runTest(dispatcher) {
+        val model = withNewVersion()
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+
+        model.onAction(UpdatesAction.InstallerOpened(false))
+        advanceUntilIdle()
+
+        assertEquals(InstallUi.Failed(InstallFailure.NO_INSTALLER), model.uiState.value.install)
+        assertEquals(1, discards)
+    }
+
+    @Test
+    fun `the installer opens again with the same file`() = runTest(dispatcher) {
+        val model = withNewVersion()
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+        model.onAction(UpdatesAction.InstallerOpened(true))
+
+        model.onAction(UpdatesAction.OpenInstallerAgain)
+
+        assertEquals(InstallUi.Opening, model.uiState.value.install)
+        assertEquals(1, downloadedNames.size)
+        assertEquals(0, discards)
+    }
+
+    @Test
+    fun `turning the search off stops the update and deletes the file`() = runTest(dispatcher) {
+        val model = withNewVersion()
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+
+        model.onAction(UpdatesAction.SetSearchEnabled(false))
+        advanceUntilIdle()
+
+        assertEquals(InstallUi.Idle, model.uiState.value.install)
+        assertEquals(1, discards)
+    }
+
+    @Test
+    fun `what is new opens with its text and closes`() = runTest(dispatcher) {
+        val model = model()
+        advanceUntilIdle()
+
+        model.onAction(UpdatesAction.OpenWhatsNew)
+        assertEquals(WhatsNewUi.Loading, model.uiState.value.whatsNew)
+        advanceUntilIdle()
+        assertEquals(WhatsNewUi.Ready(listOf(NEWS_HEADING)), model.uiState.value.whatsNew)
+
+        model.onAction(UpdatesAction.CloseWhatsNew)
+        assertEquals(WhatsNewUi.Closed, model.uiState.value.whatsNew)
+    }
+
+    @Test
+    fun `what is new that cannot be read says so`() = runTest(dispatcher) {
+        whatsNew = null
+        val model = model()
+        advanceUntilIdle()
+
+        model.onAction(UpdatesAction.OpenWhatsNew)
+        advanceUntilIdle()
+
+        assertEquals(WhatsNewUi.Failed, model.uiState.value.whatsNew)
+    }
+
     private companion object {
         val HASH = "ab".repeat(32)
+        val NEWS_HEADING = HelpBlock.Heading(2, listOf(HelpSpan.Plain("1.0.2")))
     }
 }

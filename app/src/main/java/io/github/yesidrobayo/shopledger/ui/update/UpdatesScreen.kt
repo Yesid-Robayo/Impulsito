@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,11 +23,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.update.UpdateCheckOutcome
 import io.github.yesidrobayo.shopledger.format.NO_VALUE_TEXT
@@ -35,8 +39,10 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.DelayedSkeleton
+import io.github.yesidrobayo.shopledger.ui.components.InlineTextButton
 import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
+import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
@@ -44,6 +50,9 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpArticle
+import io.github.yesidrobayo.shopledger.ui.help.HelpBlock
+import io.github.yesidrobayo.shopledger.ui.help.HelpSpan
 import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
 import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -61,12 +70,16 @@ import kotlin.time.Instant
  * 2. `Buscar actualización`, solo con la búsqueda permitida, con la fecha de la última búsqueda.
  *    Apagada, dice que la app no se conecta para esto.
  * 3. `Permitir buscar actualizaciones` y, debajo, el resultado de la búsqueda de esta visita.
- * 4. `Cómo actualizar`, con sus cuatro pasos en una hoja.
+ *    Con una versión nueva, `Actualizar` es la acción principal: baja el APK con su progreso y
+ *    `Cancelar`, lo compara, pide una vez el permiso de Android si falta y lo pasa al instalador.
+ *    Cada falla dice cuál fue, con `Reintentar`.
+ * 4. `Cómo actualizar`, con sus cuatro pasos en una hoja, y `Novedades`, con lo que trajo cada
+ *    versión, en otra.
  * 5. `Verificar un APK`: `Elegir archivo` abre el selector del sistema, y debajo va el resultado.
  *    Con otra firma dice `No instalar este archivo` y que no se desinstale la app.
  *
- * Nada bloquea la app ni los datos, y la app nunca instala nada. Columna centrada de 600 dp en una
- * ventana ancha.
+ * Nada bloquea la app ni los datos, y nada se instala sin la confirmación de Android. Columna
+ * centrada de 600 dp en una ventana ancha.
  */
 @Composable
 fun UpdatesScreen(
@@ -113,12 +126,20 @@ fun UpdatesScreen(
                         title = stringResource(R.string.update_how_title),
                         action = SettingsRowAction.Navigation { howOpen = true },
                     )
+                    SettingsRow(
+                        title = stringResource(R.string.update_whats_new_title),
+                        action =
+                            SettingsRowAction.Navigation { onAction(UpdatesAction.OpenWhatsNew) },
+                    )
                     VerifySection(uiState.verify, onAction)
                 }
             }
         }
     }
     if (howOpen) HowToUpdateSheet(onDismiss = { howOpen = false })
+    if (uiState.whatsNew != WhatsNewUi.Closed) {
+        WhatsNewSheet(uiState.whatsNew, onDismiss = { onAction(UpdatesAction.CloseWhatsNew) })
+    }
 }
 
 /** Mientras se lee la app instalada: unas líneas grises tras 200 ms. */
@@ -244,6 +265,15 @@ private fun SearchSection(
         ) {
             SearchResult(uiState, onAction, onOpenHow)
         }
+        // Fuera de la región que TalkBack anuncia: el avance de la descarga no interrumpe.
+        if ((uiState.search as? SearchUi.Done)?.outcome is UpdateCheckOutcome.NewVersion) {
+            Column(
+                Modifier.padding(horizontal = spacing.s16, vertical = spacing.s8),
+                verticalArrangement = Arrangement.spacedBy(spacing.s8),
+            ) {
+                InstallSection(uiState.install, onAction)
+            }
+        }
     }
 }
 
@@ -329,6 +359,128 @@ private fun SearchResult(
                 )
         }
     }
+}
+
+/**
+ * `Actualizar` y lo que pasa después. Es la única acción principal de la pantalla, y solo aparece
+ * con una versión nueva. Mientras trabaja no atiende otro toque.
+ */
+@Composable
+private fun InstallSection(install: InstallUi, onAction: (UpdatesAction) -> Unit) {
+    val app = stringResource(R.string.app_name)
+    val retry = stringResource(R.string.action_retry)
+    when (install) {
+        InstallUi.Idle -> UpdateButton(working = false, onAction)
+
+        is InstallUi.Downloading -> DownloadProgress(install, onAction)
+
+        InstallUi.Verifying,
+        InstallUi.Opening,
+        -> {
+            UpdateButton(working = true, onAction)
+            Text(
+                stringResource(R.string.update_verifying),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+
+        InstallUi.NeedsPermission ->
+            NoticeCard(
+                text = stringResource(R.string.update_permission_body, app),
+                variant = NoticeVariant.INFO,
+                actionLabel = stringResource(R.string.update_permission_action),
+                onAction = { onAction(UpdatesAction.AllowInstalls) },
+            )
+
+        InstallUi.HandedToInstaller ->
+            NoticeCard(
+                text = stringResource(R.string.update_handed),
+                variant = NoticeVariant.INFO,
+                icon = R.drawable.ic_check_circle,
+                actionLabel = stringResource(R.string.update_install_again_action),
+                onAction = { onAction(UpdatesAction.OpenInstallerAgain) },
+            )
+
+        is InstallUi.Failed ->
+            NoticeCard(
+                text = failureText(install.reason),
+                variant = NoticeVariant.ERROR,
+                actionLabel = retry,
+                onAction = { onAction(UpdatesAction.StartUpdate) },
+            )
+    }
+}
+
+@Composable
+private fun UpdateButton(working: Boolean, onAction: (UpdatesAction) -> Unit) {
+    PrimaryActionButton(
+        text = stringResource(R.string.update_install_action),
+        onClick = { if (!working) onAction(UpdatesAction.StartUpdate) },
+        variant = ActionVariant.PRIMARY,
+        state = if (working) ActionState.WORKING else ActionState.IDLE,
+    )
+}
+
+/**
+ * La barra con lo bajado y `Cancelar`. Sin el tamaño declarado, la barra no promete un avance: solo
+ * dice que se está bajando.
+ */
+@Composable
+private fun DownloadProgress(
+    downloading: InstallUi.Downloading,
+    onAction: (UpdatesAction) -> Unit,
+) {
+    val total = downloading.totalBytes?.takeIf { it > 0 }
+    val text =
+        if (total == null) {
+            stringResource(R.string.update_downloading_unknown)
+        } else {
+            val done = downloading.downloadedBytes.coerceIn(0, total)
+            val share = BasisPoints(done * FULL_BASIS_POINTS / total)
+            val percent = LocalAppFormats.current.percent.format(share)
+            stringResource(R.string.update_downloading, percent)
+        }
+    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+        // La barra lee el avance a TalkBack: el texto no se repite como otro foco.
+        val barModifier = Modifier.fillMaxWidth().semantics { stateDescription = text }
+        if (total == null) {
+            LinearProgressIndicator(barModifier)
+        } else {
+            LinearProgressIndicator(
+                progress = { downloading.downloadedBytes.coerceIn(0, total).toFloat() / total },
+                modifier = barModifier,
+            )
+        }
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.clearAndSetSemantics {},
+        )
+        InlineTextButton(
+            stringResource(R.string.action_cancel),
+            { onAction(UpdatesAction.CancelUpdate) },
+        )
+    }
+}
+
+/** Qué falló, en palabras. Con otra firma, lo mismo que dice `Verificar un APK`. */
+@Composable
+private fun failureText(reason: InstallFailure): String = when (reason) {
+    InstallFailure.NO_CONNECTION -> stringResource(R.string.state_no_connection)
+
+    InstallFailure.DOWNLOAD_FAILED -> stringResource(R.string.update_error_download)
+
+    InstallFailure.TOO_LARGE -> stringResource(R.string.update_error_too_big)
+
+    InstallFailure.HASH_MISMATCH -> stringResource(R.string.update_error_hash)
+
+    InstallFailure.WRONG_SIGNATURE ->
+        stringResource(R.string.verify_mismatch_title) + "\n" +
+            stringResource(R.string.verify_mismatch_body, stringResource(R.string.app_name))
+
+    InstallFailure.NOT_NEWER -> stringResource(R.string.update_error_not_newer)
+
+    InstallFailure.NO_INSTALLER -> stringResource(R.string.update_error_installer)
 }
 
 /** `Verificar un APK`: la explicación, `Elegir archivo` y el resultado del último archivo. */
@@ -452,7 +604,37 @@ private fun HowToUpdateSheet(onDismiss: () -> Unit) {
     }
 }
 
+/**
+ * `Novedades`: lo que trajo cada versión, de la más nueva a la más antigua, con el mismo dibujo
+ * que la ayuda. Se lee de los recursos, sin red.
+ */
+@Composable
+private fun WhatsNewSheet(whatsNew: WhatsNewUi, onDismiss: () -> Unit) {
+    AppBottomSheet(onDismissRequest = onDismiss, title = null) {
+        when (whatsNew) {
+            // No llega aquí: cerrada, la hoja no existe.
+            WhatsNewUi.Closed -> Unit
+
+            WhatsNewUi.Loading -> InstalledSkeleton()
+
+            is WhatsNewUi.Ready ->
+                HelpArticle(
+                    title = stringResource(R.string.update_whats_new_title),
+                    blocks = whatsNew.blocks,
+                    // Las novedades no enlazan artículos de la ayuda.
+                    onOpenArticle = {},
+                )
+
+            WhatsNewUi.Failed ->
+                NoticeCard(stringResource(R.string.update_whats_new_error), NoticeVariant.ERROR)
+        }
+    }
+}
+
 private const val SKELETON_ROWS = 3
+
+/** Un porcentaje entero en puntos básicos. */
+private const val FULL_BASIS_POINTS = 10_000L
 
 /** Un espacio de ancho cero: deja cortar la línea ahí, sin verse. */
 private const val BREAK_OPPORTUNITY = "\u200B"
@@ -486,6 +668,79 @@ private fun UpdatesScreenPreview() {
                     verify = VerifyUi.Done(ApkCheckResult.Mismatch("0123456789abcdef")),
                 ),
             onAction = {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun UpdatesScreenDownloadingPreview() {
+    PreviewTheme {
+        UpdatesScreen(
+            uiState =
+                UpdatesUiState(
+                    installedLoading = false,
+                    installed = InstalledApp("1.0.1", 4, "3F:9A:21:7C:44:D0:8E:1B"),
+                    searchEnabled = true,
+                    search =
+                        SearchUi.Done(
+                            UpdateCheckOutcome.NewVersion(
+                                versionName = "1.0.2",
+                                publishedAt = Instant.parse("2026-11-16T12:00:00Z"),
+                                apkSha256 = "0123456789abcdef",
+                                important = false,
+                            ),
+                        ),
+                    now = Instant.parse("2026-11-16T12:00:00Z"),
+                    install = InstallUi.Downloading(6_400_000, 16_000_000),
+                ),
+            onAction = {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun UpdatesScreenFailedPreview() {
+    PreviewTheme {
+        UpdatesScreen(
+            uiState =
+                UpdatesUiState(
+                    installedLoading = false,
+                    installed = InstalledApp("1.0.1", 4, "3F:9A:21:7C:44:D0:8E:1B"),
+                    searchEnabled = true,
+                    search =
+                        SearchUi.Done(
+                            UpdateCheckOutcome.NewVersion(
+                                versionName = "1.0.2",
+                                publishedAt = Instant.parse("2026-11-16T12:00:00Z"),
+                                apkSha256 = "0123456789abcdef",
+                                important = false,
+                            ),
+                        ),
+                    now = Instant.parse("2026-11-16T12:00:00Z"),
+                    install = InstallUi.Failed(InstallFailure.HASH_MISMATCH),
+                ),
+            onAction = {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun WhatsNewSheetPreview() {
+    PreviewTheme {
+        HelpArticle(
+            title = stringResource(R.string.update_whats_new_title),
+            blocks =
+                listOf(
+                    HelpBlock.Heading(2, listOf(HelpSpan.Plain("1.0.2"))),
+                    HelpBlock.ListBlock(
+                        numbered = false,
+                        items = listOf(listOf(HelpSpan.Plain(PreviewSamples.LONG_NAME))),
+                    ),
+                ),
+            onOpenArticle = {},
         )
     }
 }

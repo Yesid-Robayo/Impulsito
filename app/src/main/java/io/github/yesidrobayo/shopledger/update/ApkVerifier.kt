@@ -19,8 +19,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * `Verificar un APK`: compara un archivo que eligió la persona con la app instalada, antes de que
- * lo abra el instalador del sistema. **Nunca instala nada**, y la app no tiene el permiso para
- * hacerlo.
+ * lo abra el instalador del sistema. **Nunca instala nada.** También compara el APK que bajó
+ * `Actualizar`, con [checkDownloaded], antes de entregárselo al instalador.
  *
  * El archivo es entrada no confiable, aunque diga ser de la app:
  *
@@ -65,6 +65,16 @@ class ApkVerifier(
             candidate.delete()
         }
     }
+
+    /**
+     * Compara con la app instalada el APK que bajó `Actualizar`, que ya está en [file], una
+     * carpeta privada de la app, con su huella [sha256] calculada al bajarlo. No lo copia ni lo
+     * borra: eso lo decide quien lo bajó.
+     */
+    suspend fun checkDownloaded(file: File, sha256: String): ApkCheckResult =
+        withContext(ioContext) {
+            if (file.isFile) compare(file, sha256) else ApkCheckResult.ReadFailed
+        }
 
     /** La versión y la huella de la app instalada, o nulo si el sistema no las da. */
     suspend fun installed(): InstalledApp? = withContext(ioContext) {

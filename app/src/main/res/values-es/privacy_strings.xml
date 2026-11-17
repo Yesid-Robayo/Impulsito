@@ -44,6 +44,10 @@
     <string name="transparency_dest_manifest_sends">Qué envía: ningún dato</string>
     <string name="transparency_dest_manifest_ip">%1$s ve la dirección IP al consultar ese archivo.</string>
     <string name="transparency_dest_manifest_off">Cómo se apaga: en Actualizaciones</string>
+    <string name="transparency_dest_apk_title">APK de la versión anunciada en %1$s</string>
+    <string name="transparency_dest_apk_purpose">Para qué: instalar la versión nueva, solo al tocar Actualizar</string>
+    <string name="transparency_dest_apk_ip">%1$s ve la dirección IP al descargar el archivo, primero desde github.com y después desde su servidor de archivos.</string>
+    <string name="transparency_dest_apk_check">Antes de que Android pida instalarlo, %1$s lo compara con el aviso de versión firmado y con su firma.</string>
     <string name="transparency_no_other">%1$s no se conecta a ningún otro destino.</string>
     <string name="transparency_none_title">Lo que no hay</string>
     <string name="transparency_none_body">Sin cuentas propias, sin anuncios, sin analítica y sin servidores de %1$s.</string>

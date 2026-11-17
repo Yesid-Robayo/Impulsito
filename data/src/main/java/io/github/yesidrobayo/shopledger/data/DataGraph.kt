@@ -140,6 +140,8 @@ import io.github.yesidrobayo.shopledger.data.safety.CloudAccountChecklistFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentFile
 import io.github.yesidrobayo.shopledger.data.safety.PolicyConsentGate
 import io.github.yesidrobayo.shopledger.data.transaction.CommitListener
+import io.github.yesidrobayo.shopledger.data.update.ApkDownloadClient
+import io.github.yesidrobayo.shopledger.data.update.ApkDownloadSource
 import io.github.yesidrobayo.shopledger.data.update.InstalledPackage
 import io.github.yesidrobayo.shopledger.data.update.UpdateCheckMarks
 import io.github.yesidrobayo.shopledger.data.update.VersionManifestClient
@@ -161,6 +163,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.PhotoExport
 import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.erase.ErasePhase
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
+import io.github.yesidrobayo.shopledger.domain.model.update.ApkDownloadResult
 import io.github.yesidrobayo.shopledger.domain.model.update.UpdateCheckOutcome
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.AuditRecorder
@@ -489,6 +492,28 @@ class DataGraph internal constructor(
 
     /** Cuándo se buscó una versión nueva por última vez, o nulo si nunca. Sin red. */
     suspend fun lastUpdateCheckAt(): Instant? = updateCheckMarks.read().lastCheckAt
+
+    /**
+     * `Actualizar`: baja a [target] el APK de [versionName], la versión que anunció el aviso
+     * firmado, con la dirección que arma [urlTemplate], una plantilla de la app. Solo corre cuando
+     * la persona toca el botón, sigue solo redirecciones `https` a los hosts de las versiones
+     * publicadas y corta en [maxBytes]. No instala nada: el archivo todavía se compara con el
+     * aviso y con la firma. Un nombre de versión que no es una versión limpia no se pide.
+     *
+     * @param onProgress lo bajado y el total declarado, o nulo sin él, desde el hilo que lee.
+     */
+    suspend fun downloadUpdateApk(
+        urlTemplate: String,
+        versionName: String,
+        target: File,
+        maxBytes: Long,
+        onProgress: (downloaded: Long, total: Long?) -> Unit,
+    ): ApkDownloadResult {
+        val url =
+            ApkDownloadSource.urlOf(urlTemplate, versionName) ?: return ApkDownloadResult.Refused
+        return ApkDownloadClient(http, ioContext = ioContext)
+            .download(url, target, maxBytes, onProgress)
+    }
 
     /**
      * Si en [now] toca recordar la búsqueda de versión: con la búsqueda encendida en los ajustes,

@@ -43,6 +43,11 @@
         android:name="android.hardware.bluetooth"
         android:required="false" />
 
+    <!-- Actualizar: pasar al instalador de Android el APK de la versión anunciada, solo después de que la persona tocó el
+         botón y de que el archivo coincidió con el aviso firmado y con la firma de la app. Android pide una vez permitirlo
+         para esta app, y en cada actualización muestra su propia confirmación. La app nunca instala en segundo plano. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS.
          Datos frágiles: desde Android 10, al desinstalar el sistema ofrece conservar los datos del negocio. Es una oferta del
          sistema, que no todos los fabricantes muestran: ningún texto de la app la promete. -->
@@ -88,7 +93,8 @@
             android:exported="false"
             android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay" />
-        <!-- Comparte lo que la persona decide sacar por el selector del sistema, solo desde cache/exports/ y solo para leer.
+        <!-- Comparte lo que la persona decide sacar por el selector del sistema, solo desde cache/exports/ y solo para leer, y
+             el APK comprobado de cache/apk-update/, solo con el instalador de Android.
              Sin exportar y sin intent-filter: cada dirección lleva su permiso, que la app concede al compartir. -->
         <provider
             android:name="androidx.core.content.FileProvider"

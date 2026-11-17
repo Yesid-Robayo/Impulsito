@@ -44,6 +44,13 @@
     <string name="transparency_dest_manifest_sends">What it sends: no data</string>
     <string name="transparency_dest_manifest_ip">%1$s sees the IP address when that file is read.</string>
     <string name="transparency_dest_manifest_off">How to turn it off: in Updates</string>
+    <!-- La descarga del APK al tocar Actualizar. Los dos hosts se nombran tal cual: son los que ve quien revisa la red. -->
+    <string name="transparency_dest_apk_title">APK of the announced version on %1$s</string>
+    <string name="transparency_dest_apk_purpose">What for: install the new version, only when Update is tapped</string>
+    <string name="transparency_dest_apk_ip">%1$s sees the IP address when the file is downloaded, first from github.com and then from its file server.</string>
+    <string name="transparency_dest_apk_check">Before Android asks to install it, %1$s checks it against the signed version notice and its signature.</string>
+    <!-- Quien aloja el APK de cada versión publicada. -->
+    <string name="transparency_apk_host" translatable="false">GitHub Releases</string>
     <string name="transparency_no_other">%1$s does not connect to any other destination.</string>
     <string name="transparency_none_title">What is not here</string>
     <string name="transparency_none_body">No %1$s accounts, no ads, no analytics and no %1$s servers.</string>

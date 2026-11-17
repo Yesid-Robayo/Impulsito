@@ -19,9 +19,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * `Qué datos hay y adónde van` en el teléfono: el estado real en `Ahora mismo`, exactamente los
- * dos destinos de red, lo que no se pudo leer dicho como tal, y el aviso de una política nueva con
- * sus dos salidas. Datos inventados.
+ * `Qué datos hay y adónde van` en el teléfono: el estado real en `Ahora mismo`, exactamente sus
+ * destinos de red (el servicio elegido, el aviso de versión y el APK que baja `Actualizar`), lo que
+ * no se pudo leer dicho como tal, y el aviso de una política nueva con sus dos salidas. Datos
+ * inventados.
  */
 @RunWith(AndroidJUnit4::class)
 class DataTransparencyScreenTest {
@@ -61,7 +62,7 @@ class DataTransparencyScreenTest {
     )
 
     @Test
-    fun withWebDavItShowsTheRealStateAndOnlyTheTwoDestinations() {
+    fun withWebDavItShowsTheRealStateAndOnlyItsDestinations() {
         show(ready())
 
         shown(text(R.string.transparency_now_backups_webdav, "example.com"))
@@ -75,6 +76,11 @@ class DataTransparencyScreenTest {
         val host = text(R.string.transparency_manifest_host)
         shown(text(R.string.transparency_dest_manifest_title, host))
         shown(text(R.string.transparency_dest_manifest_ip, host))
+        val releases = text(R.string.transparency_apk_host)
+        shown(text(R.string.transparency_dest_apk_title, releases))
+        shown(text(R.string.transparency_dest_apk_purpose))
+        shown(text(R.string.transparency_dest_apk_ip, releases))
+        shown(text(R.string.transparency_dest_apk_check, app))
         shown(text(R.string.transparency_no_other, app))
         absent(text(R.string.transparency_accept_action))
         absent(text(R.string.transparency_now_backups_paused))
@@ -91,13 +97,14 @@ class DataTransparencyScreenTest {
     }
 
     @Test
-    fun withoutADestinationOnlyTheVersionFileIsADestination() {
+    fun withoutADestinationOnlyTheVersionFileAndItsApkAreDestinations() {
         show(ready(destination = null))
 
         shown(text(R.string.transparency_now_backups_off))
         absent(text(R.string.transparency_dest_webdav_purpose))
         absent(text(R.string.transparency_dest_slots_purpose))
         shown(text(R.string.transparency_dest_manifest_purpose))
+        shown(text(R.string.transparency_dest_apk_purpose))
     }
 
     @Test

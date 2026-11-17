@@ -48,6 +48,13 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                 """name="(update_manifest_url|legal_privacy_url|rescue_tool_url)" translatable="false">""" +
                     """https://[a-z0-9-]+\.github\.io/[I]mpulsito/""",
             )
+        // El APK de cada versión vive en las descargas del mismo repositorio, con el nombre del archivo que publica la
+        // versión. Lo baja Actualizar, solo al tocarlo.
+        val releaseApkLine =
+            Regex(
+                """name="update_apk_url_template" translatable="false">""" +
+                    """https://github\.com/[A-Za-z0-9-]+/[I]mpulsito/releases/download/v%1\${'$'}s/[i]mpulsito-%1\${'$'}s\.apk<""",
+            )
         // Una migración destructiva borraría el negocio de la persona al actualizar.
         val destructiveMigration = Regex("fallbackTo[D]estructiveMigration")
         // El cierre automático de Room reabre la conexión de escritura con synchronous = NORMAL, sin el FULL que fija la app
@@ -184,7 +191,8 @@ val verifyCodeRules = tasks.register("verifyCodeRules") {
                     val allowed =
                         (stringsFile.matches(path) && appNameLine.containsMatchIn(line)) ||
                             (path == "settings.gradle.kts" && rootProjectNameLine.matches(line)) ||
-                            (pagesFile.matches(path) && pagesUrlLine.containsMatchIn(line))
+                            (pagesFile.matches(path) && pagesUrlLine.containsMatchIn(line)) ||
+                            (path == "app/src/main/res/values/update_strings.xml" && releaseApkLine.containsMatchIn(line))
                     if (!allowed) problems += "$where: el nombre comercial solo puede estar en app_name y en rootProject.name"
                 }
                 if (destructiveMigration.containsMatchIn(line)) {
