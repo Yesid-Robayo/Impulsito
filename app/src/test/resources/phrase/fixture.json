@@ -1,0 +1,1105 @@
+{
+ "money_decimals": 2,
+ "number_format": {
+  "es": {
+   "decimal": ",",
+   "grouping": "."
+  },
+  "en": {
+   "decimal": ".",
+   "grouping": ","
+  },
+  "pt": {
+   "decimal": ",",
+   "grouping": "."
+  }
+ },
+ "units": [
+  {
+   "key": "unit",
+   "kind": "COUNT",
+   "fraction": false,
+   "custom": false,
+   "name": {
+    "es": "Unidad",
+    "en": "Unit",
+    "pt": "Unidade"
+   },
+   "symbol": {
+    "es": "und",
+    "en": "unit",
+    "pt": "un"
+   }
+  },
+  {
+   "key": "kilogram",
+   "kind": "MASS",
+   "fraction": true,
+   "custom": false,
+   "name": {
+    "es": "Kilogramo",
+    "en": "Kilogram",
+    "pt": "Quilograma"
+   },
+   "symbol": {
+    "es": "kg",
+    "en": "kg",
+    "pt": "kg"
+   },
+   "base_amount": "1000"
+  },
+  {
+   "key": "gram",
+   "kind": "MASS",
+   "fraction": true,
+   "custom": false,
+   "name": {
+    "es": "Gramo",
+    "en": "Gram",
+    "pt": "Grama"
+   },
+   "symbol": {
+    "es": "g",
+    "en": "g",
+    "pt": "g"
+   },
+   "base_amount": "1"
+  },
+  {
+   "key": "pound",
+   "kind": "MASS",
+   "fraction": true,
+   "custom": false,
+   "name": {
+    "es": "Libra",
+    "en": "Pound",
+    "pt": "Libra"
+   },
+   "symbol": {
+    "es": "lb",
+    "en": "lb",
+    "pt": "lb"
+   },
+   "base_amount": "454"
+  },
+  {
+   "key": "ounce",
+   "kind": "MASS",
+   "fraction": true,
+   "custom": false,
+   "name": {
+    "es": "Onza",
+    "en": "Ounce",
+    "pt": "Onça"
+   },
+   "symbol": {
+    "es": "oz",
+    "en": "oz",
+    "pt": "oz"
+   },
+   "base_amount": "28.35"
+  },
+  {
+   "key": "liter",
+   "kind": "VOLUME",
+   "fraction": true,
+   "custom": false,
+   "name": {
+    "es": "Litro",
+    "en": "Liter",
+    "pt": "Litro"
+   },
+   "symbol": {
+    "es": "L",
+    "en": "L",
+    "pt": "L"
+   },
+   "base_amount": "1000"
+  },
+  {
+   "key": "milliliter",
+   "kind": "VOLUME",
+   "fraction": true,
+   "custom": false,
+   "name": {
+    "es": "Mililitro",
+    "en": "Milliliter",
+    "pt": "Mililitro"
+   },
+   "symbol": {
+    "es": "ml",
+    "en": "ml",
+    "pt": "ml"
+   },
+   "base_amount": "1"
+  },
+  {
+   "key": "gallon",
+   "kind": "VOLUME",
+   "fraction": true,
+   "custom": false,
+   "name": {
+    "es": "Galón",
+    "en": "Gallon",
+    "pt": "Galão"
+   },
+   "symbol": {
+    "es": "gal",
+    "en": "gal",
+    "pt": "gal"
+   },
+   "base_amount": "3785"
+  },
+  {
+   "key": "meter",
+   "kind": "LENGTH",
+   "fraction": true,
+   "custom": false,
+   "name": {
+    "es": "Metro",
+    "en": "Meter",
+    "pt": "Metro"
+   },
+   "symbol": {
+    "es": "m",
+    "en": "m",
+    "pt": "m"
+   },
+   "base_amount": "1"
+  },
+  {
+   "key": "box",
+   "kind": "COUNT",
+   "fraction": false,
+   "custom": false,
+   "name": {
+    "es": "Caja",
+    "en": "Box",
+    "pt": "Caixa"
+   },
+   "symbol": null
+  },
+  {
+   "key": "pack",
+   "kind": "COUNT",
+   "fraction": false,
+   "custom": false,
+   "name": {
+    "es": "Paquete",
+    "en": "Pack",
+    "pt": "Pacote"
+   },
+   "symbol": null
+  },
+  {
+   "key": "dozen",
+   "kind": "COUNT",
+   "fraction": false,
+   "custom": false,
+   "name": {
+    "es": "Docena",
+    "en": "Dozen",
+    "pt": "Dúzia"
+   },
+   "symbol": null
+  },
+  {
+   "key": "sack",
+   "kind": "COUNT",
+   "fraction": false,
+   "custom": true,
+   "name": {
+    "es": "Bulto",
+    "en": "Sack",
+    "pt": "Saco"
+   },
+   "symbol": null
+  },
+  {
+   "key": "tray",
+   "kind": "COUNT",
+   "fraction": false,
+   "custom": true,
+   "name": {
+    "es": "Cubeta",
+    "en": "Tray",
+    "pt": "Bandeja"
+   },
+   "symbol": null
+  }
+ ],
+ "products": [
+  {
+   "key": "bread",
+   "name": {
+    "es": "Pan",
+    "en": "Bread roll",
+    "pt": "Pão"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "whole_bread",
+   "name": {
+    "es": "Pan integral",
+    "en": "Whole wheat bread",
+    "pt": "Pão integral"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "wheat_flour",
+   "name": {
+    "es": "Harina de trigo",
+    "en": "Wheat flour",
+    "pt": "Farinha de trigo"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    },
+    {
+     "unit": "sack",
+     "factor": "50"
+    }
+   ],
+   "for_sale": false,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "corn_flour",
+   "name": {
+    "es": "Harina de maíz",
+    "en": "Corn flour",
+    "pt": "Farinha de milho"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "sugar",
+   "name": {
+    "es": "Azúcar",
+    "en": "Sugar",
+    "pt": "Açúcar"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    },
+    {
+     "unit": "sack",
+     "factor": "50"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "egg",
+   "name": {
+    "es": "Huevo",
+    "en": "Egg",
+    "pt": "Ovo"
+   },
+   "base_unit": "unit",
+   "conversions": [
+    {
+     "unit": "dozen",
+     "factor": "12"
+    },
+    {
+     "unit": "tray",
+     "factor": "30"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "soda_small",
+   "name": {
+    "es": "Gaseosa 400 ml",
+    "en": "Soda 400 ml",
+    "pt": "Refrigerante 400 ml"
+   },
+   "base_unit": "unit",
+   "conversions": [
+    {
+     "unit": "box",
+     "factor": "12"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "soda_big",
+   "name": {
+    "es": "Gaseosa 1,5 L",
+    "en": "Soda 1.5 L",
+    "pt": "Refrigerante 1,5 L"
+   },
+   "base_unit": "unit",
+   "conversions": [
+    {
+     "unit": "box",
+     "factor": "6"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "water",
+   "name": {
+    "es": "Agua en botella",
+    "en": "Bottled water",
+    "pt": "Água mineral"
+   },
+   "base_unit": "unit",
+   "conversions": [
+    {
+     "unit": "pack",
+     "factor": "6"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "milk",
+   "name": {
+    "es": "Leche entera",
+    "en": "Whole milk",
+    "pt": "Leite integral"
+   },
+   "base_unit": "liter",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "farmer_cheese",
+   "name": {
+    "es": "Queso campesino",
+    "en": "Farmer cheese",
+    "pt": "Queijo fresco"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "mozzarella",
+   "name": {
+    "es": "Queso mozarela",
+    "en": "Mozzarella cheese",
+    "pt": "Queijo muçarela"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "ground_coffee",
+   "name": {
+    "es": "Café molido",
+    "en": "Ground coffee",
+    "pt": "Café moído"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "coffee_cup",
+   "name": {
+    "es": "Café en taza",
+    "en": "Cup of coffee",
+    "pt": "Café na xícara"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "empanada",
+   "name": {
+    "es": "Empanada",
+    "en": "Empanada",
+    "pt": "Pastel frito"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "rice",
+   "name": {
+    "es": "Arroz",
+    "en": "Rice",
+    "pt": "Arroz"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    },
+    {
+     "unit": "sack",
+     "factor": "25"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "oil",
+   "name": {
+    "es": "Aceite",
+    "en": "Cooking oil",
+    "pt": "Óleo de cozinha"
+   },
+   "base_unit": "liter",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "soap",
+   "name": {
+    "es": "Jabón de baño",
+    "en": "Bath soap",
+    "pt": "Sabonete"
+   },
+   "base_unit": "unit",
+   "conversions": [
+    {
+     "unit": "pack",
+     "factor": "3"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "detergent",
+   "name": {
+    "es": "Detergente en polvo",
+    "en": "Laundry detergent",
+    "pt": "Sabão em pó"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "screw",
+   "name": {
+    "es": "Tornillo 1/4",
+    "en": "Screw 1/4",
+    "pt": "Parafuso 1/4"
+   },
+   "base_unit": "unit",
+   "conversions": [
+    {
+     "unit": "box",
+     "factor": "100"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "cable",
+   "name": {
+    "es": "Cable eléctrico",
+    "en": "Electric cable",
+    "pt": "Fio elétrico"
+   },
+   "base_unit": "meter",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "paint",
+   "name": {
+    "es": "Pintura blanca",
+    "en": "White paint",
+    "pt": "Tinta branca"
+   },
+   "base_unit": "gallon",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "choco_cake",
+   "name": {
+    "es": "Torta de chocolate",
+    "en": "Chocolate cake",
+    "pt": "Bolo de chocolate"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "vanilla_cake",
+   "name": {
+    "es": "Torta de vainilla",
+    "en": "Vanilla cake",
+    "pt": "Bolo de baunilha"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "cookies",
+   "name": {
+    "es": "Galletas",
+    "en": "Cookies",
+    "pt": "Biscoitos"
+   },
+   "base_unit": "pack",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "potato",
+   "name": {
+    "es": "Papa",
+    "en": "Potato",
+    "pt": "Batata"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "tomato",
+   "name": {
+    "es": "Tomate",
+    "en": "Tomato",
+    "pt": "Tomate"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "onion",
+   "name": {
+    "es": "Cebolla",
+    "en": "Onion",
+    "pt": "Cebola"
+   },
+   "base_unit": "kilogram",
+   "conversions": [
+    {
+     "unit": "pound",
+     "factor": "0.454"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "haircut",
+   "name": {
+    "es": "Corte de cabello",
+    "en": "Haircut",
+    "pt": "Corte de cabelo"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": false,
+   "stock_mode": "UNTRACKED"
+  },
+  {
+   "key": "manicure",
+   "name": {
+    "es": "Manicure",
+    "en": "Manicure",
+    "pt": "Manicure"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": false,
+   "stock_mode": "UNTRACKED"
+  },
+  {
+   "key": "candle",
+   "name": {
+    "es": "Vela aromática",
+    "en": "Scented candle",
+    "pt": "Vela aromática"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "soy_wax",
+   "name": {
+    "es": "Cera de soya",
+    "en": "Soy wax",
+    "pt": "Cera de soja"
+   },
+   "base_unit": "kilogram",
+   "conversions": [],
+   "for_sale": false,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "lavender",
+   "name": {
+    "es": "Esencia de lavanda",
+    "en": "Lavender essence",
+    "pt": "Essência de lavanda"
+   },
+   "base_unit": "milliliter",
+   "conversions": [],
+   "for_sale": false,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "jar",
+   "name": {
+    "es": "Frasco de vidrio",
+    "en": "Glass jar",
+    "pt": "Pote de vidro"
+   },
+   "base_unit": "unit",
+   "conversions": [
+    {
+     "unit": "box",
+     "factor": "24"
+    }
+   ],
+   "for_sale": false,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "jam",
+   "name": {
+    "es": "Mermelada de fresa",
+    "en": "Strawberry jam",
+    "pt": "Geleia de morango"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "breakfast",
+   "name": {
+    "es": "Combo desayuno",
+    "en": "Breakfast combo",
+    "pt": "Combo café da manhã"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": false,
+   "stock_mode": "COMPONENTS"
+  },
+  {
+   "key": "orange_juice",
+   "name": {
+    "es": "Jugo de naranja",
+    "en": "Orange juice",
+    "pt": "Suco de laranja"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "blackberry_juice",
+   "name": {
+    "es": "Jugo de mora",
+    "en": "Blackberry juice",
+    "pt": "Suco de amora"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": false,
+   "recipe": true,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "tshirt_m",
+   "name": {
+    "es": "Camiseta blanca M",
+    "en": "White T-shirt M",
+    "pt": "Camiseta branca M"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "tshirt_l",
+   "name": {
+    "es": "Camiseta blanca L",
+    "en": "White T-shirt L",
+    "pt": "Camiseta branca L"
+   },
+   "base_unit": "unit",
+   "conversions": [],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  },
+  {
+   "key": "paper_bag",
+   "name": {
+    "es": "Bolsa de papel",
+    "en": "Paper bag",
+    "pt": "Sacola de papel"
+   },
+   "base_unit": "unit",
+   "conversions": [
+    {
+     "unit": "pack",
+     "factor": "50"
+    }
+   ],
+   "for_sale": true,
+   "for_purchase": true,
+   "recipe": false,
+   "stock_mode": "TRACKED"
+  }
+ ],
+ "payment_methods": [
+  {
+   "key": "cash",
+   "name": {
+    "es": "Efectivo",
+    "en": "Cash",
+    "pt": "Dinheiro"
+   }
+  },
+  {
+   "key": "card",
+   "name": {
+    "es": "Tarjeta",
+    "en": "Card",
+    "pt": "Cartão"
+   }
+  },
+  {
+   "key": "transfer",
+   "name": {
+    "es": "Transferencia",
+    "en": "Transfer",
+    "pt": "Transferência"
+   }
+  },
+  {
+   "key": "wallet",
+   "name": {
+    "es": "Billetera digital",
+    "en": "Digital wallet",
+    "pt": "Carteira digital"
+   }
+  },
+  {
+   "key": "on_account",
+   "name": {
+    "es": "A crédito",
+    "en": "On credit",
+    "pt": "A prazo"
+   }
+  },
+  {
+   "key": "other",
+   "name": {
+    "es": "Otro",
+    "en": "Other",
+    "pt": "Outro"
+   }
+  }
+ ],
+ "suppliers": [
+  {
+   "key": "central",
+   "name": {
+    "es": "Distribuidora Central",
+    "en": "Central Distributors",
+    "pt": "Distribuidora Central"
+   }
+  },
+  {
+   "key": "ramiro",
+   "name": {
+    "es": "Don Ramiro",
+    "en": "Mr. Ramiro",
+    "pt": "Seu Ramiro"
+   }
+  },
+  {
+   "key": "hardware",
+   "name": {
+    "es": "Ferretería Moderna",
+    "en": "Modern Hardware",
+    "pt": "Ferragens Moderna"
+   }
+  },
+  {
+   "key": "farm",
+   "name": {
+    "es": "Granja San José",
+    "en": "Saint Joseph Farm",
+    "pt": "Granja São José"
+   }
+  }
+ ],
+ "customers": [
+  {
+   "key": "maria",
+   "name": {
+    "es": "María Gómez",
+    "en": "Mary Smith",
+    "pt": "Maria Souza"
+   }
+  },
+  {
+   "key": "carlos",
+   "name": {
+    "es": "Carlos Ruiz",
+    "en": "Charles Brown",
+    "pt": "Carlos Lima"
+   }
+  },
+  {
+   "key": "rosa",
+   "name": {
+    "es": "Doña Rosa",
+    "en": "Miss Rose",
+    "pt": "Dona Rosa"
+   }
+  },
+  {
+   "key": "maria_t",
+   "name": {
+    "es": "María Torres",
+    "en": "Mary Taylor",
+    "pt": "Maria Teixeira"
+   }
+  }
+ ],
+ "expense_categories": [
+  {
+   "key": "rent",
+   "name": {
+    "es": "Alquiler",
+    "en": "Rent",
+    "pt": "Aluguel"
+   }
+  },
+  {
+   "key": "utilities",
+   "name": {
+    "es": "Servicios básicos",
+    "en": "Utilities",
+    "pt": "Contas de consumo"
+   }
+  },
+  {
+   "key": "internet_phone",
+   "name": {
+    "es": "Internet y teléfono",
+    "en": "Internet and phone",
+    "pt": "Internet e telefone"
+   }
+  },
+  {
+   "key": "transport",
+   "name": {
+    "es": "Transporte",
+    "en": "Transport",
+    "pt": "Transporte"
+   }
+  },
+  {
+   "key": "packaging_supplies",
+   "name": {
+    "es": "Empaques e insumos",
+    "en": "Packaging and supplies",
+    "pt": "Embalagens e insumos"
+   }
+  },
+  {
+   "key": "advertising",
+   "name": {
+    "es": "Publicidad",
+    "en": "Advertising",
+    "pt": "Publicidade"
+   }
+  },
+  {
+   "key": "taxes_fees",
+   "name": {
+    "es": "Impuestos y tasas",
+    "en": "Taxes and fees",
+    "pt": "Impostos e taxas"
+   }
+  },
+  {
+   "key": "wages",
+   "name": {
+    "es": "Sueldos",
+    "en": "Wages",
+    "pt": "Salários"
+   }
+  },
+  {
+   "key": "other",
+   "name": {
+    "es": "Otros",
+    "en": "Other",
+    "pt": "Outros"
+   }
+  }
+ ]
+}
