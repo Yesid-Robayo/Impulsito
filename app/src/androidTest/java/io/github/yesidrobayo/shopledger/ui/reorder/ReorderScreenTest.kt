@@ -35,8 +35,9 @@ import org.junit.runner.RunWith
 
 /**
  * La reposición sugerida en el dispositivo: los grupos por proveedor, las filas con su estado, el
- * selector que cambia la cantidad, `Compartir lista` y `Crear compra`, y los dos vacíos. Con
- * `captureDir`, las capturas de la puerta de calidad en claro y en oscuro. Datos inventados.
+ * selector que cambia la cantidad, `Producir` en lo que se hace con receta, `Compartir lista` y
+ * `Crear compra`, y los dos vacíos. Con `captureDir`, las capturas de la puerta de calidad en claro
+ * y en oscuro. Datos inventados.
  */
 @RunWith(AndroidJUnit4::class)
 class ReorderScreenTest {
@@ -73,6 +74,27 @@ class ReorderScreenTest {
         scrollTo(text(R.string.reorder_no_recent_sales))
         compose.onAllNodesWithText(text(R.string.reorder_create_purchase_action))
             .assertCountEquals(1)
+    }
+
+    @Test
+    fun aProductWithARecipeOffersToProduceInsteadOfTheStepper() {
+        val preview = previewReorder()
+        val first = preview.groups.first()
+        val made = first.lines[1]
+        val groups = listOf(
+            first.copy(
+                lines = first.lines.map { it.copy(producible = it.productId == made.productId) },
+            ),
+        )
+        show { ReorderScreen(preview.copy(groups = groups), { actions += it }) }
+
+        compose.onNodeWithText(text(R.string.combo_produce_action)).performClick()
+        assertTrue(ReorderAction.Produce(made.productId) in actions)
+        // Lo que se produce no lleva selector de cantidad: no se le compra al proveedor.
+        val moreMade = resources.getString(R.string.a11y_stepper_add_one, made.name)
+        compose.onAllNodesWithContentDescription(moreMade).assertCountEquals(0)
+        val moreBought = resources.getString(R.string.a11y_stepper_add_one, first.lines[0].name)
+        compose.onAllNodesWithContentDescription(moreBought).onFirst().assertIsDisplayed()
     }
 
     @Test

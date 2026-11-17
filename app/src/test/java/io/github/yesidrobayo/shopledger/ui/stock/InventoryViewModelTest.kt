@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReview
 import io.github.yesidrobayo.shopledger.domain.model.pricing.PriceReviewReason
 import io.github.yesidrobayo.shopledger.domain.model.stock.DatedLotStock
@@ -123,6 +124,71 @@ class InventoryViewModelTest {
                 assertEquals(listOf(1L), shown.items.map { it.id })
             }
         }
+
+    @Test
+    fun `a product with a recipe is marked to produce, in every chip, and the rest to buy`() =
+        runTest(dispatcher) {
+            products.value = listOf(product(1L, "Arroz", 2_000L), product(2L, "Pan", 0L))
+            val made = MutableStateFlow(setOf(2L))
+            val model = InventoryViewModel(
+                observe = { products.toOverview() },
+                computation = dispatcher,
+                producible = { made },
+            )
+            model.uiState.test {
+                skipItems(1)
+                val low = awaitItem().content as InventoryContent.Ready
+                assertEquals(
+                    mapOf(2L to true, 1L to false),
+                    low.items.associate { it.id to it.producible },
+                )
+
+                model.onAction(InventoryAction.ChipChanged(InventoryChip.ALL))
+                val all = awaitItem().content as InventoryContent.Ready
+                assertEquals(
+                    mapOf(2L to true, 1L to false),
+                    all.items.associate { it.id to it.producible },
+                )
+
+                // Al borrar la receta, la fila vuelve a ofrecer la compra sin reabrir la pantalla.
+                made.value = emptySet()
+                val bought = awaitItem().content as InventoryContent.Ready
+                assertEquals(listOf(false, false), bought.items.map { it.producible })
+            }
+        }
+
+    @Test
+    fun `the row action produces a product with a recipe and buys the rest`() {
+        val bread = InventoryItem(
+            id = 2L,
+            name = "Pan",
+            status = InventoryStatus.OUT,
+            onHand = QuantityMilli.ZERO,
+            minStock = QuantityMilli(5_000L),
+            unit = null,
+        )
+
+        assertEquals(InventoryAction.Restock(2L), restockActionOf(bread))
+        assertEquals(InventoryAction.Produce(2L), restockActionOf(bread.copy(producible = true)))
+        // Un insumo con receta también se produce: la etiqueta no cambia cómo se repone.
+        val dough = bread.copy(usage = ProductUsage.INPUT, producible = true)
+        assertEquals(InventoryAction.Produce(2L), restockActionOf(dough))
+    }
+
+    @Test
+    fun `without knowing what is produced every row offers to buy`() = runTest(dispatcher) {
+        products.value = listOf(product(2L, "Pan", 0L))
+        val model = InventoryViewModel(
+            observe = { products.toOverview() },
+            computation = dispatcher,
+            producible = { flow { error("Falla inventada") } },
+        )
+        model.uiState.test {
+            skipItems(1)
+            val ready = awaitItem().content as InventoryContent.Ready
+            assertEquals(listOf(false), ready.items.map { it.producible })
+        }
+    }
 
     @Test
     fun `a read failure shows the error and retry reads again`() = runTest(dispatcher) {

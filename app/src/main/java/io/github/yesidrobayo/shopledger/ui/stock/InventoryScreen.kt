@@ -80,8 +80,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * El inventario y lo que se está acabando. Es puro: todo llega en [uiState] y sale por [onAction].
  *
  * Arriba, las dos cifras: cuántos se están acabando y cuánto vale lo que hay, este en modo
- * discreto. Debajo, los chips y la lista. Cada fila abre el producto, ofrece `Reponer` a la derecha
- * y `Ajustar stock` en su menú. No lee las alertas, así que funciona sin notificaciones.
+ * discreto. Debajo, los chips y la lista. Cada fila abre el producto, ofrece `Reponer` a la
+ * derecha, o `Producir` si tiene receta, y `Ajustar stock` en su menú. No lee las alertas, así que
+ * funciona sin notificaciones.
  *
  * @param notificationsBlocked si los avisos de stock no pueden salir: sin permiso, con los avisos de
  *   la app apagados o con su canal silenciado. Un aviso discreto lo dice y lleva a los ajustes.
@@ -427,10 +428,14 @@ private fun ArchivedNote(amount: Money) {
 /**
  * Una fila: el producto con su stock y su mínimo, que abre el detalle; `Reponer`, la acción de la
  * lista, a la derecha; y el menú con `Ajustar stock`, que es raro y no merece un botón propio.
+ *
+ * Un producto con receta dice `Producir` y no `Reponer`: abre la producción y no una compra, y el
+ * botón lo dice antes de tocarlo, con la misma palabra que su detalle y su receta.
  */
 @Composable
 private fun InventoryRow(item: InventoryItem, onAction: (InventoryAction) -> Unit) {
     val adjust = stringResource(R.string.stock_adjust_title)
+    val restock = if (item.producible) R.string.combo_produce_action else R.string.stock_restock
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ProductRow(
@@ -439,10 +444,7 @@ private fun InventoryRow(item: InventoryItem, onAction: (InventoryAction) -> Uni
                 onClick = { onAction(InventoryAction.OpenProduct(item.id)) },
                 divider = false,
             )
-            InlineTextButton(
-                stringResource(R.string.stock_restock),
-                { onAction(InventoryAction.Restock(item.id)) },
-            )
+            InlineTextButton(stringResource(restock), { onAction(restockActionOf(item)) })
             OverflowMenu(
                 listOf(OverflowAction(adjust, { onAction(InventoryAction.Adjust(item.id)) })),
             )

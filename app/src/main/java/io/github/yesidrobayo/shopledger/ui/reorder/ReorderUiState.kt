@@ -49,8 +49,12 @@ data class ReorderGroupUi(
     /** La llave estable del grupo en la lista. */
     val key: String get() = supplierId?.let { "supplier-$it" } ?: "no-supplier"
 
-    /** Lo que entra a la compra y a la lista compartida: lo que no va en cero. */
-    val toBuy: List<ReorderLineUi> get() = lines.filter { it.quantity.milli > 0L }
+    /**
+     * Lo que entra a la compra y a la lista compartida: lo que no va en cero y no se produce. Lo
+     * que el negocio hace con una receta se repone con `Producir`, en su fila.
+     */
+    val toBuy: List<ReorderLineUi>
+        get() = lines.filter { it.quantity.milli > 0L && !it.producible }
 }
 
 /**
@@ -58,7 +62,8 @@ data class ReorderGroupUi(
  *
  * [unit] es la unidad base. Con [purchaseUnit], la cantidad se muestra en esa unidad y en la base,
  * y cada paso suma o resta una de ellas, de [purchaseFactor] milésimas; sin ella, cada paso es una
- * unidad base. [daysLeft] es `null` sin velocidad que medir.
+ * unidad base. [daysLeft] es `null` sin velocidad que medir. Con [producible], el negocio lo hace
+ * con una receta: la fila ofrece `Producir`, y no entra a la compra ni a la lista compartida.
  */
 data class ReorderLineUi(
     val productId: Long,
@@ -71,6 +76,7 @@ data class ReorderLineUi(
     val quantity: QuantityMilli,
     val purchaseUnit: MeasureUnit? = null,
     val purchaseFactor: Long? = null,
+    val producible: Boolean = false,
 )
 
 sealed interface ReorderAction {
@@ -97,4 +103,7 @@ sealed interface ReorderAction {
 
     /** Abre la compra del grupo de [supplierId], o una sin proveedor si es nulo. */
     data class CreatePurchase(val supplierId: Long?) : ReorderAction
+
+    /** Abre la producción con [productId] elegido: un producto con receta se produce. */
+    data class Produce(val productId: Long) : ReorderAction
 }

@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -52,13 +53,17 @@ class HomeLowStockTest {
     @After
     fun resetTestMain() = Dispatchers.resetMain()
 
-    private fun TestScope.viewModel(inventory: Flow<InventoryOverview>): HomeViewModel {
+    private fun TestScope.viewModel(
+        inventory: Flow<InventoryOverview>,
+        producible: Flow<Set<Long>> = flowOf(emptySet()),
+    ): HomeViewModel {
         val model = HomeViewModel(
             todaySales = { emptyFlow<TodaySales>() },
             hasProducts = MutableStateFlow(true),
             history = SaleHistoryReader(NoHistory, Clock { AT }),
             computation = dispatcher,
             inventory = inventory,
+            producible = producible,
         )
         backgroundScope.launch { model.lowStock.collect {} }
         advanceUntilIdle()
@@ -94,6 +99,29 @@ class HomeLowStockTest {
             products.value = listOf(product(1L, "Arroz", 9_000L))
             advanceUntilIdle()
             assertNull(model.lowStock.value)
+        }
+
+    @Test
+    fun `a row of a product with a recipe is marked as produced, like in the inventory`() =
+        runTest(dispatcher) {
+            products.value = listOf(product(1L, "Arroz", 2_000L), product(2L, "Pan", 0L))
+            val model = viewModel(products.map(::overviewOf), flowOf(setOf(2L)))
+
+            val card = requireNotNull(model.lowStock.value)
+            assertEquals(
+                mapOf(2L to true, 1L to false),
+                card.items.associate { it.id to it.producible },
+            )
+        }
+
+    @Test
+    fun `without knowing what is produced the card still shows, with every row to buy`() =
+        runTest(dispatcher) {
+            products.value = listOf(product(1L, "Pan", 0L))
+            val model = viewModel(products.map(::overviewOf), flow { error("Falla inventada") })
+
+            val card = requireNotNull(model.lowStock.value)
+            assertEquals(listOf(false), card.items.map { it.producible })
         }
 
     @Test

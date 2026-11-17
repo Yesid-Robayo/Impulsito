@@ -70,7 +70,8 @@ data class PriceReviewItem(
 
 /**
  * Una fila del inventario, ya leída. La unidad va como la guardó la base, sin texto. [usage] marca
- * los insumos con su etiqueta, para distinguirlos sin abrir el producto.
+ * los insumos con su etiqueta, para distinguirlos sin abrir el producto. [producible] dice si el
+ * negocio lo hace con una receta: entonces se repone produciéndolo, no comprándolo.
  */
 @Immutable
 data class InventoryItem(
@@ -81,13 +82,18 @@ data class InventoryItem(
     val minStock: QuantityMilli,
     val unit: MeasureUnit?,
     val usage: ProductUsage = ProductUsage.SALE,
+    val producible: Boolean = false,
 )
 
 /**
  * La fila de [product], con su unidad de [units]. La usan el inventario y la tarjeta de Inicio,
- * para que las dos digan lo mismo.
+ * para que las dos digan lo mismo. [producibleIds] son los productos que se pueden producir hoy.
  */
-internal fun inventoryItemOf(product: Product, units: Map<Long, MeasureUnit>) = InventoryItem(
+internal fun inventoryItemOf(
+    product: Product,
+    units: Map<Long, MeasureUnit>,
+    producibleIds: Set<Long> = emptySet(),
+) = InventoryItem(
     id = product.id,
     name = product.details.name,
     // Solo llegan productos con libro, que siempre tienen estado.
@@ -96,7 +102,18 @@ internal fun inventoryItemOf(product: Product, units: Map<Long, MeasureUnit>) = 
     minStock = product.details.minStock,
     unit = units[product.details.baseUnitId],
     usage = product.details.usage,
+    producible = product.id in producibleIds,
 )
+
+/**
+ * Lo que pide la acción de la fila de [item]: producirlo si el negocio lo hace con una receta, o
+ * comprarlo. Así `Reponer` nunca abre una compra de algo que se produce.
+ */
+internal fun restockActionOf(item: InventoryItem): InventoryAction = if (item.producible) {
+    InventoryAction.Produce(item.id)
+} else {
+    InventoryAction.Restock(item.id)
+}
 
 /** Lo que muestra el inventario debajo de sus pestañas. */
 sealed interface InventoryContent {
@@ -167,6 +184,12 @@ sealed interface InventoryAction {
 
     /** Tocó `Reponer`: se abre una compra con el producto ya agregado. */
     data class Restock(val productId: Long) : InventoryAction
+
+    /**
+     * Tocó `Producir` en un producto con receta: se abre la producción con él elegido, porque lo
+     * que el negocio hace se repone produciéndolo.
+     */
+    data class Produce(val productId: Long) : InventoryAction
 
     /** Eligió `Ajustar stock` en el menú de la fila. */
     data class Adjust(val productId: Long) : InventoryAction

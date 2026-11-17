@@ -12,6 +12,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.BackupDestinationR
 import io.github.yesidrobayo.shopledger.domain.usecase.backup.ObserveBackupOverviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.home.ObserveHomeProfitUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.home.ObserveTodaySalesUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProducibleIdsUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProductionCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveCurrentMonthGoalUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.report.ObserveMonthGoalsUseCase
@@ -63,6 +65,14 @@ fun HomeRoute(navigator: AppNavigator) {
                     (it as? BusinessCalendarResult.Ready)?.calendar?.zone
                 },
                 inventory = ObserveInventoryUseCase(ports.products, ports.units)(),
+                producible =
+                    ObserveProducibleIdsUseCase(
+                        ObserveProductionCatalogUseCase(
+                            ports.products,
+                            ports.productComponents,
+                            ports.units,
+                        ),
+                    )(),
                 homeProfit = { checks ->
                     ObserveHomeProfitUseCase(
                         BusinessCalendarSource(ports.settings),

@@ -21,7 +21,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSo
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.LoadLotChoicesUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.DayOfWeek
 
 /**
@@ -89,6 +91,19 @@ class ObserveProductionCatalogUseCase(
             units = allUnits.associateBy { it.id },
         )
     }
+}
+
+/**
+ * Los id de lo que se puede producir hoy, con la misma regla que el formulario de producción, de
+ * nuevo solo cuando cambian. Con ellos, reponer un producto con receta abre la producción y no una
+ * compra: lo que el negocio hace no se compra. Lo leen el inventario, Inicio, la reposición
+ * sugerida y el detalle del producto, para que todos ofrezcan lo mismo.
+ */
+class ObserveProducibleIdsUseCase(private val catalog: ObserveProductionCatalogUseCase) {
+    operator fun invoke(): Flow<Set<Long>> =
+        catalog()
+            .map { read -> read.producible.mapTo(HashSet()) { it.id } }
+            .distinctUntilChanged()
 }
 
 /**

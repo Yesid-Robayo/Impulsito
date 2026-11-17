@@ -51,6 +51,8 @@ import kotlinx.coroutines.launch
  * @param expiring los lotes por vencer, ya ordenados. No dependen de la ubicación elegida: el aviso
  *   es del lote. Sin ellos, el chip `Por vencer` no aparece.
  * @param hasCodes si algún producto tiene código: sin ninguno, la búsqueda no ofrece el escáner.
+ * @param producible los id de lo que se puede producir hoy: sus filas ofrecen `Producir` en vez de
+ *   `Reponer`, porque lo que el negocio hace no se compra.
  *
  * La búsqueda filtra las filas del chip elegido por nombre, sin mayúsculas ni tildes, o por código
  * completo, como la lista de productos. No cambia las cifras de arriba ni qué chips aparecen: solo
@@ -68,6 +70,7 @@ class InventoryViewModel(
     observeAt: (Long) -> Flow<InventoryOverview> = { observe() },
     expiring: () -> Flow<List<ExpiringLot>> = { flowOf(emptyList()) },
     hasCodes: Flow<Boolean> = flowOf(false),
+    producible: () -> Flow<Set<Long>> = { flowOf(emptySet()) },
 ) : ViewModel() {
     /** Si algún producto tiene código: sin ninguno, la búsqueda no ofrece el escáner. */
     val canScan: StateFlow<Boolean> =
@@ -105,8 +108,15 @@ class InventoryViewModel(
         expiring().flowOn(computation).catch { emit(emptyList()) }
     }
 
-    private val lists: Flow<Pair<List<PriceReview>, List<ExpiringLot>>> =
-        combine(queue, dated) { pending, lots -> pending to lots }
+    // Si no se puede leer qué se produce, cada fila ofrece `Reponer`, que abre una compra.
+    private val producibleIds: Flow<Set<Long>> = attempts.flatMapLatest {
+        producible().flowOn(computation).catch { emit(emptySet()) }
+    }
+
+    private val lists: Flow<InventoryLists> =
+        combine(queue, dated, producibleIds) { pending, lots, made ->
+            InventoryLists(pending, lots, made)
+        }
 
     private val overview: Flow<InventoryOverview?> = combine(attempts, shownLocation) { _, at ->
         at
@@ -147,7 +157,7 @@ class InventoryViewModel(
             val shown = if (empty) InventoryChip.LOW_STOCK else chosen
             InventoryUiState(
                 shown,
-                contentOf(read, shown, pending, lots, typed),
+                contentOf(read, shown, both, typed),
                 shownMessage,
                 shownLocations,
                 locationId,
@@ -176,6 +186,7 @@ class InventoryViewModel(
 
             is InventoryAction.OpenProduct,
             is InventoryAction.Restock,
+            is InventoryAction.Produce,
             is InventoryAction.Adjust,
             is InventoryAction.ChangePrice,
             InventoryAction.ReviewAll,
@@ -203,11 +214,11 @@ class InventoryViewModel(
     private fun contentOf(
         overview: InventoryOverview,
         shown: InventoryChip,
-        pending: List<PriceReview>,
-        lots: List<ExpiringLot>,
+        lists: InventoryLists,
         query: String,
     ): InventoryContent {
         if (!overview.hasProducts) return InventoryContent.EmptyCatalog
+        val (pending, lots, made) = lists
         val products = when (shown) {
             InventoryChip.LOW_STOCK -> overview.lowStock
 
@@ -226,10 +237,10 @@ class InventoryViewModel(
             archivedValue = overview.archivedValue,
             hasStockWithoutCost = overview.hasStockWithoutCost,
             items = if (shown == InventoryChip.ALL) {
-                groupedItems(overview, found)
+                groupedItems(overview, found, made)
             } else {
                 products.filter { found == null || it.id in found }
-                    .map { inventoryItemOf(it, overview.units) }
+                    .map { inventoryItemOf(it, overview.units, made) }
             },
             reviewItems = pending.filter { found == null || it.product.id in found }
                 .map(::reviewItemOf),
@@ -271,20 +282,25 @@ class InventoryViewModel(
      * fila con la suma de las suyas, seguida de ellas. Con búsqueda, un principal que coincide
      * trae todas sus variantes, y uno que no, solo las que coinciden, bajo su fila de la suma.
      */
-    private fun groupedItems(overview: InventoryOverview, found: Set<Long>?): List<InventoryItem> {
+    private fun groupedItems(
+        overview: InventoryOverview,
+        found: Set<Long>?,
+        made: Set<Long>,
+    ): List<InventoryItem> {
         val parents = overview.families.mapTo(mutableSetOf()) { it.parent.id }
         val singles = overview.tracked
             .filter { it.details.parentProductId !in parents && (found == null || it.id in found) }
-            .map { it.details.normalizedName to listOf(inventoryItemOf(it, overview.units)) }
+            .map { it.details.normalizedName to listOf(inventoryItemOf(it, overview.units, made)) }
         val families = overview.families.mapNotNull { family ->
             val variants = if (found == null || family.parent.id in found) {
                 family.variants
             } else {
                 family.variants.filter { it.id in found }.ifEmpty { return@mapNotNull null }
             }
-            val total = inventoryItemOf(family.parent.copy(onHand = family.onHand), overview.units)
+            val total =
+                inventoryItemOf(family.parent.copy(onHand = family.onHand), overview.units, made)
             family.parent.details.normalizedName to
-                listOf(total) + variants.map { inventoryItemOf(it, overview.units) }
+                listOf(total) + variants.map { inventoryItemOf(it, overview.units, made) }
         }
         return (singles + families).sortedBy { it.first }.flatMap { it.second }
     }
@@ -316,6 +332,13 @@ class InventoryViewModel(
             onHand = expiring.lot.onHand,
             unit = overview.units[expiring.lot.baseUnitId],
         )
+
+    /** Las listas que acompañan al inventario: `Revisar`, `Por vencer` y lo que se produce. */
+    private data class InventoryLists(
+        val pending: List<PriceReview>,
+        val lots: List<ExpiringLot>,
+        val producible: Set<Long>,
+    )
 
     private companion object {
         /** Lo que sigue viva la lectura al rotar la pantalla, para no releer el inventario. */

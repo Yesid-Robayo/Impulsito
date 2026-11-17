@@ -9,6 +9,8 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.Scale
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProducibleIdsUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProductionCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveReorderPlanUseCase
 import io.github.yesidrobayo.shopledger.navigation.AppNavKey
@@ -24,7 +26,8 @@ import io.github.yesidrobayo.shopledger.ui.sale.shareIntent
 /**
  * La reposición sugerida en la navegación. `Crear compra` abre la compra nueva con el proveedor y
  * las líneas del grupo, y `Compartir lista` abre el selector del sistema con productos y
- * cantidades, sin costos: la persona elige con qué app enviarla, y nada sale solo.
+ * cantidades, sin costos: la persona elige con qué app enviarla, y nada sale solo. `Producir`, en
+ * un producto con receta, abre la producción con él elegido.
  */
 @Composable
 fun ReorderRoute(key: AppNavKey.Replenishment, navigator: AppNavigator) {
@@ -49,6 +52,14 @@ fun ReorderRoute(key: AppNavKey.Replenishment, navigator: AppNavigator) {
                 savedState = savedState,
                 computation = container.dispatchers.default,
                 initialSupplierId = key.supplierId,
+                producible =
+                    ObserveProducibleIdsUseCase(
+                        ObserveProductionCatalogUseCase(
+                            ports.products,
+                            ports.productComponents,
+                            ports.units,
+                        ),
+                    )(),
             )
         }
     when (model) {
@@ -77,6 +88,9 @@ fun ReorderRoute(key: AppNavKey.Replenishment, navigator: AppNavigator) {
 
                         is ReorderAction.CreatePurchase ->
                             viewModel.purchaseOf(action.supplierId)?.let(navigator::open)
+
+                        is ReorderAction.Produce ->
+                            navigator.open(AppNavKey.ProductionForm(productId = action.productId))
 
                         ReorderAction.Retry,
                         is ReorderAction.CoverChange,

@@ -19,8 +19,8 @@ import kotlinx.datetime.LocalDate
 
 // Vistas previas del inventario, con productos y montos inventados: la lista por agotarse con
 // stock negativo, agotado y bajo, un nombre de 80 caracteres y un valor de trece cifras; la lista
-// vacía; el modo discreto; el catálogo vacío y el error; un insumo con su etiqueta, y una búsqueda
-// sin resultados.
+// vacía; el modo discreto; el catálogo vacío y el error; un insumo con su etiqueta, una búsqueda
+// sin resultados, y productos con receta que se reponen con `Producir`.
 
 private val UNIT_SAMPLE =
     MeasureUnit(
@@ -117,6 +117,14 @@ internal fun previewInventory(
 @Composable
 private fun InventoryLowStockPreview() {
     PreviewTheme { InventoryScreen(InventoryUiState(content = previewInventory()), {}) }
+}
+
+@ThemePreviews
+@Composable
+private fun InventoryProducePreview() {
+    // El de 80 caracteres y el insumo de kilos se hacen con una receta: dicen `Producir`.
+    val items = previewInventoryItems().map { it.copy(producible = it.id == 2L || it.id == 3L) }
+    PreviewTheme { InventoryScreen(InventoryUiState(content = previewInventory(items)), {}) }
 }
 
 @ThemePreviews

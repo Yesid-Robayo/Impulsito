@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -89,6 +90,37 @@ class ReorderViewModelTest {
             // En cero queda fuera de la compra y de la lista.
             assertTrue(model.state.groups.first().toBuy.isEmpty())
             assertNull(model.purchaseOf(10L))
+        }
+
+    @Test
+    fun `a product with a recipe offers to produce and stays out of the purchase`() =
+        runTest(dispatcher) {
+            val made = MutableStateFlow(setOf(1L))
+            val model = viewModel(producible = made)
+
+            val group = model.state.groups.first()
+            assertTrue(model.coffee().producible)
+            // Sigue en la lista con su sugerencia, pero no se le compra al proveedor.
+            assertEquals(QuantityMilli(38_000), model.coffee().quantity)
+            assertTrue(group.toBuy.isEmpty())
+            assertEquals(Money.ZERO, group.estimatedCost)
+            assertNull(model.purchaseOf(10L))
+
+            // Sin la receta, vuelve a la compra con su costo.
+            made.value = emptySet()
+            advanceUntilIdle()
+            assertFalse(model.coffee().producible)
+            assertEquals(Money(47_500), model.state.groups.first().estimatedCost)
+            assertEquals(1, model.purchaseOf(10L)?.prefillLines?.size)
+        }
+
+    @Test
+    fun `without knowing what is produced everything goes to the purchase`() =
+        runTest(dispatcher) {
+            val model = viewModel(producible = flow { error("lectura inventada que falla") })
+
+            assertFalse(model.coffee().producible)
+            assertEquals(1, model.state.groups.first().toBuy.size)
         }
 
     @Test
@@ -207,6 +239,7 @@ class ReorderViewModelTest {
     private fun TestScope.viewModel(
         boxes: Boolean = false,
         minimum: Long = 5_000,
+        producible: Flow<Set<Long>> = flowOf(emptySet()),
     ): ReorderViewModel {
         val model = ReorderViewModel(
             planSource = { query, locationId ->
@@ -216,6 +249,7 @@ class ReorderViewModelTest {
             locations = locations,
             savedState = savedState,
             computation = dispatcher,
+            producible = producible,
         )
         backgroundScope.launch { model.uiState.collect {} }
         advanceUntilIdle()

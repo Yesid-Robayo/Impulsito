@@ -13,6 +13,8 @@ import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingContextUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.DismissPriceReviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.pricing.ObservePriceReviewUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProducibleIdsUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProductionCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveExpiringLotsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.ObserveInventoryUseCase
@@ -32,7 +34,8 @@ import kotlinx.coroutines.flow.map
 /**
  * El inventario en la navegación. Como pestaña de Productos recibe las pestañas en [tabs] y va sin
  * flecha; abierto desde otra pantalla, como el aviso de stock negativo de Inicio, va con flecha.
- * Resuelve abrir el producto, reponerlo con una compra, ajustar su stock y crear el primero.
+ * Resuelve abrir el producto, reponerlo con una compra o, si tiene receta, con una producción,
+ * ajustar su stock y crear el primero.
  *
  * El escáner de la búsqueda es el mismo de la lista de productos: un código conocido abre su
  * producto, y uno desconocido se resuelve en el escáner, que ofrece crearlo o asignarlo.
@@ -69,6 +72,14 @@ fun InventoryRoute(
                     ports.settings,
                     dependencies.container.clock,
                 )
+            val producible =
+                ObserveProducibleIdsUseCase(
+                    ObserveProductionCatalogUseCase(
+                        ports.products,
+                        ports.productComponents,
+                        ports.units,
+                    ),
+                )
             val dismiss =
                 DismissPriceReviewUseCase(
                     ports.transactions,
@@ -88,6 +99,7 @@ fun InventoryRoute(
                     ports.products.observe(ArchiveFilter.ACTIVE)
                         .map { list -> list.any { it.details.barcode != null } }
                         .distinctUntilChanged(),
+                producible = { producible() },
             )
         }
     val navigation = if (asTab) TopBarNavigation.NONE else TopBarNavigation.BACK
@@ -124,6 +136,9 @@ fun InventoryRoute(
 
                         is InventoryAction.Restock ->
                             navigator.open(AppNavKey.Purchase(prefillProductId = action.productId))
+
+                        is InventoryAction.Produce ->
+                            navigator.open(AppNavKey.ProductionForm(productId = action.productId))
 
                         is InventoryAction.Adjust ->
                             navigator.open(AppNavKey.StockAdjustment(action.productId))

@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -56,6 +57,9 @@ private data class ReorderChoice(
  * @param planSource la lectura de la lista para unos días, unos filtros y una ubicación.
  * @param locations las ubicaciones vigentes; con menos de dos no hay selector.
  * @param initialSupplierId el proveedor con que se abrió, como desde su detalle.
+ * @param producible los id de lo que se puede producir hoy. Sus filas ofrecen `Producir` y quedan
+ *   fuera de la compra, de su costo estimado y de la lista compartida: lo que el negocio hace no
+ *   se le compra a un proveedor.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReorderViewModel(
@@ -64,6 +68,7 @@ class ReorderViewModel(
     private val savedState: SavedStateHandle,
     computation: CoroutineDispatcher,
     initialSupplierId: Long? = null,
+    producible: Flow<Set<Long>> = flowOf(emptySet()),
 ) : ViewModel() {
     private val coverText = MutableStateFlow(
         savedState.get<String>(COVER_TEXT) ?: ReorderRules.DEFAULT_COVER_DAYS.toString(),
@@ -96,9 +101,13 @@ class ReorderViewModel(
     // Sin ubicaciones legibles, todo se mira junto y no hay selector.
     private val choices = locations.catch { emit(emptyList()) }
 
+    // Si no se puede leer qué se produce, todo se trata como compra, como antes de las recetas.
+    private val loaded: Flow<Pair<ReorderLoad, Set<Long>>> =
+        combine(load, producible.catch { emit(emptySet()) }) { read, made -> read to made }
+
     val uiState: StateFlow<ReorderUiState> =
-        combine(load, choice, coverText, edits, choices) { read, chosen, text, edited, places ->
-            build(read, chosen, text, edited, places)
+        combine(loaded, choice, coverText, edits, choices) { both, chosen, text, edited, places ->
+            build(both.first, chosen, text, edited, places, made = both.second)
         }.flowOn(computation)
             .stateIn(
                 viewModelScope,
@@ -128,11 +137,13 @@ class ReorderViewModel(
 
             is ReorderAction.Decrement -> step(action.productId, up = false)
 
-            // Volver, administrar ubicaciones, compartir y comprar los resuelve la navegación.
+            // Volver, administrar ubicaciones, compartir, comprar y producir los resuelve la
+            // navegación.
             ReorderAction.Back,
             ReorderAction.ManageLocations,
             is ReorderAction.Share,
             is ReorderAction.CreatePurchase,
+            is ReorderAction.Produce,
             -> Unit
         }
     }
@@ -221,6 +232,7 @@ class ReorderViewModel(
         text: String,
         edited: Map<Long, Long>,
         places: List<Location>,
+        made: Set<Long>,
     ): ReorderUiState {
         val tooHigh = (text.toLongOrNull() ?: 0L) > MAX_COVER_DAYS
         val base = initial().copy(
@@ -253,11 +265,13 @@ class ReorderViewModel(
                             quantity = QuantityMilli(quantity),
                             purchaseUnit = line.purchaseUnit?.let { overview.units[it.unitId] },
                             purchaseFactor = line.purchaseUnit?.factorMilli,
+                            producible = line.product.id in made,
                         )
                     }
-                    val costs = group.lines.zip(lines) { line, shown ->
-                        line.unitCost to shown.quantity
-                    }
+                    // El costo estimado es el de la compra: lo que se produce no suma.
+                    val costs = group.lines.zip(lines)
+                        .filter { (_, shown) -> !shown.producible }
+                        .map { (line, shown) -> line.unitCost to shown.quantity }
                     ReorderGroupUi(
                         supplierId = group.supplier?.id,
                         supplierName = group.supplier?.details?.name,

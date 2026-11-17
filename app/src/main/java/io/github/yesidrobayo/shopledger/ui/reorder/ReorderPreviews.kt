@@ -68,6 +68,18 @@ private fun ReorderPreview() {
 
 @ThemePreviews
 @Composable
+private fun ReorderProducePreview() {
+    // El de 80 caracteres se hace con una receta: ofrece `Producir` y queda fuera de la compra.
+    val state = previewReorder()
+    val groups = state.groups.mapIndexed { index, group ->
+        if (index != 0) return@mapIndexed group
+        group.copy(lines = group.lines.map { it.copy(producible = it.productId == 2L) })
+    }
+    PreviewTheme { ReorderScreen(state.copy(groups = groups), {}) }
+}
+
+@ThemePreviews
+@Composable
 private fun ReorderNeedsSalesPreview() {
     PreviewTheme {
         ReorderScreen(

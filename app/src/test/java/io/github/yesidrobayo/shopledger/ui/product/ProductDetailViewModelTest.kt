@@ -34,6 +34,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -375,6 +376,17 @@ class ProductDetailViewModelTest {
     }
 
     @Test
+    fun `a product with a recipe offers to produce, and without it only to buy`() =
+        runTest(dispatcher) {
+            val model = model()
+            assertFalse(model.uiState.value.producible)
+
+            operations.producible.value = true
+            advanceUntilIdle()
+            assertTrue(model.uiState.value.producible)
+        }
+
+    @Test
     fun `a missing product shows that it could not be opened`() = runTest(dispatcher) {
         operations.product.value = null
         val model = model()
@@ -403,6 +415,11 @@ private class FakeDetailOperations : ProductDetailOperations {
     val corrections = mutableListOf<Pair<Money, String?>>()
 
     override fun overview(productId: Long): Flow<ProductOverview?> = product
+
+    /** Si el arroz se hace con una receta: empieza sin ella. */
+    val producible = MutableStateFlow(false)
+
+    override fun producible(productId: Long): Flow<Boolean> = producible
 
     /** Un negocio sin impuesto, con margen objetivo de 30 % y sin paso de redondeo. */
     val context = MutableStateFlow(

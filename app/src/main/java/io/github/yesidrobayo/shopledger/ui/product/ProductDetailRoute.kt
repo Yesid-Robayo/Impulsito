@@ -23,6 +23,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObservePricingCon
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ObserveProductOverviewUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ReactivateProductUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProducibleIdsUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ObserveProductionCatalogUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
@@ -44,11 +46,13 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.media.ProvidePhotos
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /**
- * El detalle de un producto en la navegación. Resuelve vender, comprar, ajustar, editar y abrir el
- * documento de una fila; al eliminarlo, vuelve atrás con su aviso. Atrás con la hoja abierta la
- * cierra primero.
+ * El detalle de un producto en la navegación. Resuelve vender, comprar, producir, ajustar, editar y
+ * abrir el documento de una fila; al eliminarlo, vuelve atrás con su aviso. Atrás con la hoja
+ * abierta la cierra primero.
  *
  * @param onBack cómo se sale: en su propia pantalla, atrás; en el panel derecho de una ventana
  *   ancha, cerrar el panel.
@@ -107,6 +111,9 @@ fun ProductDetailRoute(
 
                         ProductDetailAction.RegisterPurchase ->
                             navigator.open(AppNavKey.Purchase(prefillProductId = key.productId))
+
+                        ProductDetailAction.Produce ->
+                            navigator.open(AppNavKey.ProductionForm(productId = key.productId))
 
                         ProductDetailAction.AdjustStock ->
                             navigator.open(AppNavKey.StockAdjustment(key.productId))
@@ -212,7 +219,12 @@ class ProductDetailUseCases(
     private val pricingUseCase: ObservePricingContextUseCase,
     private val locationStockUseCase: ObserveProductLocationStockUseCase? = null,
     private val lotsUseCase: ObserveLotsUseCase? = null,
+    private val producibleUseCase: ObserveProducibleIdsUseCase? = null,
 ) : ProductDetailOperations {
+    override fun producible(productId: Long): Flow<Boolean> =
+        producibleUseCase?.invoke()?.map { productId in it }?.distinctUntilChanged()
+            ?: super.producible(productId)
+
     override fun lots(productId: Long): Flow<LotsOverview?> =
         lotsUseCase?.invoke(productId) ?: super.lots(productId)
 
@@ -311,6 +323,13 @@ class ProductDetailUseCases(
                     calendar,
                     ports.settings,
                     clock,
+                ),
+                producibleUseCase = ObserveProducibleIdsUseCase(
+                    ObserveProductionCatalogUseCase(
+                        ports.products,
+                        ports.productComponents,
+                        ports.units,
+                    ),
                 ),
             )
         }

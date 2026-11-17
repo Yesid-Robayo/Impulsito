@@ -290,6 +290,11 @@ private fun GroupHeader(group: ReorderGroupUi) {
     }
 }
 
+/**
+ * Una fila de la lista. Lo que se compra lleva el selector de la cantidad; lo que el negocio hace
+ * con una receta lleva `Producir`, que abre la producción, porque no se le compra a un proveedor.
+ * Esa fila tampoco dice `comprar` en TalkBack: se leen su nombre y lo que queda.
+ */
 @Composable
 private fun ReorderRow(line: ReorderLineUi, onAction: (ReorderAction) -> Unit) {
     val spacing = AppTheme.spacing
@@ -297,7 +302,7 @@ private fun ReorderRow(line: ReorderLineUi, onAction: (ReorderAction) -> Unit) {
     val onHand = quantityText(line.onHand, base)
     val amount = amountText(line, base)
     val days = line.daysLeft?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
-    val spoken = days?.let {
+    val spoken = days?.takeIf { !line.producible }?.let {
         pluralStringResource(R.plurals.a11y_reorder_row, it, line.name, onHand, it, amount)
     }
     SideBySide(
@@ -340,15 +345,23 @@ private fun ReorderRow(line: ReorderLineUi, onAction: (ReorderAction) -> Unit) {
             }
         },
         second = {
-            // Los pasos son de unidades enteras, de compra o de la base: no hay hoja de cantidad.
-            QuantityStepper(
-                quantity = line.quantity,
-                unit = base.copy(allowsFraction = false),
-                productName = line.name,
-                onDecrement = { onAction(ReorderAction.Decrement(line.productId)) },
-                onIncrement = { onAction(ReorderAction.Increment(line.productId)) },
-                valueText = amount,
-            )
+            if (line.producible) {
+                InlineTextButton(
+                    stringResource(R.string.combo_produce_action),
+                    { onAction(ReorderAction.Produce(line.productId)) },
+                )
+            } else {
+                // Los pasos son de unidades enteras, de compra o de la base: no hay hoja de
+                // cantidad.
+                QuantityStepper(
+                    quantity = line.quantity,
+                    unit = base.copy(allowsFraction = false),
+                    productName = line.name,
+                    onDecrement = { onAction(ReorderAction.Decrement(line.productId)) },
+                    onIncrement = { onAction(ReorderAction.Increment(line.productId)) },
+                    valueText = amount,
+                )
+            }
         },
     )
 }

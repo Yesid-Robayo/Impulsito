@@ -75,6 +75,12 @@ interface ProductDetailOperations {
 
     /** Los lotes del producto. Sin lotes conectados, ninguno: el segmento queda vacío. */
     fun lots(productId: Long): Flow<LotsOverview?> = flowOf(null)
+
+    /**
+     * Si el producto se puede producir hoy: con stock propio, vigente y con receta. Sin recetas
+     * conectadas, no: el detalle solo ofrece la compra.
+     */
+    fun producible(productId: Long): Flow<Boolean> = flowOf(false)
 }
 
 /** Lo que muestra el detalle de un producto. */
@@ -192,6 +198,8 @@ sealed interface ProductDetailMessage {
 /**
  * El estado del detalle: lo que se muestra, el segmento elegido, la hoja de corregir el costo, la
  * confirmación pendiente y el aviso de la última acción. [closed] pide volver atrás, tras eliminarlo.
+ * [producible] dice si el negocio lo hace con una receta: entonces ofrece `Producir` junto a la
+ * compra.
  */
 @Immutable
 data class ProductDetailUiState(
@@ -204,6 +212,7 @@ data class ProductDetailUiState(
     val priceSheet: PriceSheet? = null,
     val locationStock: ProductLocationStock = ProductLocationStock.Hidden,
     val lots: List<ProductLotItem> = emptyList(),
+    val producible: Boolean = false,
 )
 
 /** Lo que la persona hace en el detalle. */
@@ -215,6 +224,9 @@ sealed interface ProductDetailAction {
     data object Sell : ProductDetailAction
 
     data object RegisterPurchase : ProductDetailAction
+
+    /** Abrir la producción con el producto elegido: lo resuelve la navegación. */
+    data object Produce : ProductDetailAction
 
     data object AdjustStock : ProductDetailAction
 
@@ -338,9 +350,21 @@ class ProductDetailViewModel(
             .catch { emit(emptyList()) }
     }
 
+    // Si no se puede leer la receta, el detalle sigue: solo no ofrece `Producir`.
+    private val producible = attempts.flatMapLatest {
+        operations.producible(productId).catch { emit(false) }
+    }
+
     val uiState: StateFlow<ProductDetailUiState> =
-        combine(content, extra, byLocation, lotItems) { shown, more, locations, lots ->
+        combine(
+            content,
+            extra,
+            byLocation,
+            lotItems,
+            producible,
+        ) { shown, more, locations, lots, made ->
             ProductDetailUiState(
+                producible = made,
                 lots = lots,
                 locationStock = locations,
                 content = shown,
@@ -468,6 +492,7 @@ class ProductDetailViewModel(
             // Las resuelve la pantalla con la navegación.
             ProductDetailAction.Back, ProductDetailAction.Edit, ProductDetailAction.Sell,
             ProductDetailAction.RegisterPurchase, ProductDetailAction.AdjustStock,
+            ProductDetailAction.Produce,
             is ProductDetailAction.OpenDocument, ProductDetailAction.OpenRecipe,
             is ProductDetailAction.OpenLots,
             -> Unit

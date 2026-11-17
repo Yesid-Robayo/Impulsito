@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -190,6 +191,7 @@ fun ProductDetailScreen(
                         onAction,
                         uiState.locationStock,
                         uiState.lots,
+                        uiState.producible,
                     )
             }
         }
@@ -277,6 +279,7 @@ private fun DetailBody(
     onAction: (ProductDetailAction) -> Unit,
     locationStock: ProductLocationStock = ProductLocationStock.Hidden,
     lots: List<ProductLotItem> = emptyList(),
+    producible: Boolean = false,
 ) {
     val spacing = AppTheme.spacing
     val product = overview.product
@@ -324,7 +327,7 @@ private fun DetailBody(
             }
         }
         if (tracked && unit != null) {
-            item(key = "stock") { StockBlock(product, unit, onAction) }
+            item(key = "stock") { StockBlock(product, unit, onAction, producible) }
         }
         item(key = "figures") { Figures(product, pricing) }
         item(key = "replacement") { ReplacementFigures(product, pricing) }
@@ -437,9 +440,18 @@ private fun LocationStockRow(name: String, onHand: QuantityMilli, unit: UnitLabe
 /**
  * Cuánto hay, en cifra grande, con el mínimo debajo y su estado: por agotarse, agotado o negativo.
  * El estado lleva su texto, no solo su color.
+ *
+ * Debajo, cómo se repone. Si el negocio lo hace con una receta, `Producir` va primero, porque así
+ * se repone; `Registrar compra` sigue, porque también se puede comprar hecho. Las acciones bajan de
+ * línea si no caben, como con letra grande.
  */
 @Composable
-private fun StockBlock(product: Product, unit: UnitLabel, onAction: (ProductDetailAction) -> Unit) {
+private fun StockBlock(
+    product: Product,
+    unit: UnitLabel,
+    onAction: (ProductDetailAction) -> Unit,
+    producible: Boolean = false,
+) {
     val spacing = AppTheme.spacing
     val onHand = product.onHand
     val minStock = product.details.minStock
@@ -482,7 +494,12 @@ private fun StockBlock(product: Product, unit: UnitLabel, onAction: (ProductDeta
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing.s16)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.s16)) {
+            if (producible) {
+                InlineTextButton(stringResource(R.string.combo_produce_action), {
+                    onAction(ProductDetailAction.Produce)
+                })
+            }
             InlineTextButton(stringResource(R.string.empty_movements_action), {
                 onAction(ProductDetailAction.RegisterPurchase)
             })
@@ -1195,6 +1212,23 @@ private fun ProductDetailPreview() {
             ProductDetailSamples.overview().let { overview ->
                 ProductDetailUiState(
                     ProductDetailContent.Ready(overview, ProductDetailSamples.pricing(overview)),
+                )
+            },
+            {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun ProductDetailProducePreview() {
+    // Con receta: `Producir` va antes de `Registrar compra`, y bajan de línea con letra grande.
+    PreviewTheme {
+        ProductDetailScreen(
+            ProductDetailSamples.overview().let { overview ->
+                ProductDetailUiState(
+                    ProductDetailContent.Ready(overview, ProductDetailSamples.pricing(overview)),
+                    producible = true,
                 )
             },
             {},

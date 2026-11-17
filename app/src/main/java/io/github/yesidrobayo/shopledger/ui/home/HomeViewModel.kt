@@ -70,6 +70,8 @@ import kotlinx.coroutines.withContext
  *   fecha.
  * @param requestBackup pide la copia con `Guardar en {provider}`, con la nube del teléfono. Un
  *   fallo al pedirla no cierra la pantalla: el estado del respaldo sigue diciendo lo pendiente.
+ * @param producible los id de lo que se puede producir hoy, para que las filas de la tarjeta digan
+ *   lo mismo que las del inventario.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
@@ -87,6 +89,7 @@ class HomeViewModel(
     private val photoBackup: suspend () -> PhotoBackupFacts? = { null },
     monthGoal: (Flow<Unit>) -> Flow<GoalAdvance?> = { flowOf(null) },
     private val requestBackup: suspend () -> Unit = {},
+    producible: Flow<Set<Long>> = flowOf(emptySet()),
 ) : ViewModel() {
     // La primera mirada a la fecha es al abrir; las demás, al volver a primer plano. Un contador,
     // y no un evento, porque dos vueltas seguidas sin leer entre ellas valen por una.
@@ -142,19 +145,18 @@ class HomeViewModel(
      * día, sin tarjeta. Sin nada que se esté acabando no hay tarjeta.
      */
     val lowStock: StateFlow<HomeLowStock?> =
-        inventory
-            .map<InventoryOverview, HomeLowStock?> { overview ->
-                overview.lowStock.takeIf { it.isNotEmpty() }?.let { low ->
-                    HomeLowStock(
-                        count = low.size,
-                        negativeCount = overview.negative.size,
-                        items = low.take(LOW_STOCK_ROWS).map {
-                            inventoryItemOf(it, overview.units)
-                        },
-                    )
-                }
+        // Sin saber qué se produce, la tarjeta sigue: sus filas solo no lo marcan.
+        combine(inventory, producible.catch { emit(emptySet()) }) { overview, made ->
+            overview.lowStock.takeIf { it.isNotEmpty() }?.let { low ->
+                HomeLowStock(
+                    count = low.size,
+                    negativeCount = overview.negative.size,
+                    items = low.take(LOW_STOCK_ROWS).map {
+                        inventoryItemOf(it, overview.units, made)
+                    },
+                )
             }
-            .flowOn(computation)
+        }.flowOn(computation)
             .catch { emit(null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
 
