@@ -100,10 +100,9 @@ class ObserveProductionCatalogUseCase(
  * sugerida y el detalle del producto, para que todos ofrezcan lo mismo.
  */
 class ObserveProducibleIdsUseCase(private val catalog: ObserveProductionCatalogUseCase) {
-    operator fun invoke(): Flow<Set<Long>> =
-        catalog()
-            .map { read -> read.producible.mapTo(HashSet()) { it.id } }
-            .distinctUntilChanged()
+    operator fun invoke(): Flow<Set<Long>> = catalog()
+        .map { read -> read.producible.mapTo(HashSet()) { it.id } }
+        .distinctUntilChanged()
 }
 
 /**

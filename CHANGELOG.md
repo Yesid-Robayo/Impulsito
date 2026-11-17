@@ -8,6 +8,23 @@ Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](htt
 
 Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
+## [1.0.2] - 2026-11-17
+
+### Agregado
+
+- **Actualizar con un toque:** cuando **Buscar actualización** encuentra una versión nueva, **Actualizar** la baja, comprueba que sea
+  la anunciada en el aviso firmado y que lleve la firma de la app, y Android pide confirmar. La primera vez, Android pide permitir que
+  Impulsito instale sus actualizaciones.
+- **Novedades,** en **Actualizaciones y verificación de APK**: lo que trajo cada versión, sin internet.
+- **Producir para reponer:** un producto con receta ofrece **Producir** en el inventario, la reposición sugerida y su detalle, y abre
+  la producción con ese producto elegido.
+- **Costo total del stock inicial:** al crear un producto con stock inicial, se puede escribir el total pagado en vez del costo por
+  unidad. El valor del stock queda exacto, también en productos baratos por gramos.
+
+### Corregido
+
+- **Proveedores,** en el detalle de un producto sin compras: el aviso ya no queda pegado al borde.
+
 ## [1.0.1] - 2026-11-17
 
 ### Corregido

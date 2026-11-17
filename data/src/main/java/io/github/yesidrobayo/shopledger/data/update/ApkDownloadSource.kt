@@ -47,9 +47,12 @@ internal class ApkDownloadPolicy(
     private val httpsOnly: Boolean = true,
     val maxRedirects: Int = MAX_REDIRECTS,
 ) {
-    /** Si se puede pedir [url]: con el esquema exigido, a un host de la lista, sin credenciales. */
+    /**
+     * Si se puede pedir [url]: con el esquema exigido, a un host de la lista, sin credenciales. Con
+     * `https`, solo en el puerto de siempre: un puerto raro no es el servidor de archivos de GitHub.
+     */
     fun allows(url: HttpUrl): Boolean {
-        val schemeAllowed = !httpsOnly || url.isHttps
+        val schemeAllowed = !httpsOnly || (url.isHttps && url.port == HTTPS_PORT)
         val noCredentials = url.username.isEmpty() && url.password.isEmpty()
         return schemeAllowed && noCredentials && url.host in allowedHosts
     }
@@ -57,6 +60,9 @@ internal class ApkDownloadPolicy(
     companion object {
         /** Bastan dos: la página de la versión y su servidor de archivos. Una más de margen. */
         const val MAX_REDIRECTS = 3
+
+        /** El puerto de `https`. */
+        private const val HTTPS_PORT = 443
 
         /**
          * Los hosts de las versiones publicadas: la página de descargas, y los dos nombres que

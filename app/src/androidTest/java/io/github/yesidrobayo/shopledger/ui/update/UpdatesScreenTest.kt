@@ -388,7 +388,6 @@ class UpdatesScreenTest {
                 InstallFailure.DOWNLOAD_FAILED to text(R.string.update_error_download),
                 InstallFailure.TOO_LARGE to text(R.string.update_error_too_big),
                 InstallFailure.HASH_MISMATCH to text(R.string.update_error_hash),
-                InstallFailure.WRONG_SIGNATURE to text(R.string.verify_mismatch_title),
                 InstallFailure.NOT_NEWER to text(R.string.update_error_not_newer),
                 InstallFailure.NO_INSTALLER to text(R.string.update_error_installer),
             )
@@ -411,6 +410,10 @@ class UpdatesScreenTest {
 
         shown(text(R.string.verify_mismatch_title))
         shown(text(R.string.verify_mismatch_body, app))
+        // Otra firma es un archivo ajeno: no se invita a repetir la descarga.
+        assertTrue(
+            compose.onAllNodesWithText(text(R.string.action_retry)).fetchSemanticsNodes().isEmpty(),
+        )
     }
 
     @Test

@@ -86,6 +86,8 @@ class ApkDownloadSourceTest {
         assertFalse(policy.allows("https://evil.github.com/a.apk".toHttpUrl()))
         assertFalse(policy.allows("https://github.com.example.com/a.apk".toHttpUrl()))
         assertFalse(policy.allows("https://example.com/a.apk".toHttpUrl()))
+        assertFalse(policy.allows("https://github.com:8443/someone/app/a.apk".toHttpUrl()))
+        assertTrue(policy.allows("https://github.com:443/someone/app/a.apk".toHttpUrl()))
         val withCredentials =
             "https://github.com/a.apk".toHttpUrl().newBuilder().username("user").password("pw")
         assertFalse(policy.allows(withCredentials.build()))

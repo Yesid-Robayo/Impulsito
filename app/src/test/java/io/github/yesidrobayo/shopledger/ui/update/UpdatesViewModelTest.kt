@@ -476,26 +476,25 @@ class UpdatesViewModelTest {
         }
 
     @Test
-    fun `while downloading another tap does not download or search again`() =
-        runTest(dispatcher) {
-            val gate = CompletableDeferred<Unit>()
-            download = {
-                gate.await()
-                ApkDownloadResult.Downloaded(HASH, 1024)
-            }
-            val model = withNewVersion()
-
-            model.onAction(UpdatesAction.StartUpdate)
-            advanceUntilIdle()
-            model.onAction(UpdatesAction.StartUpdate)
-            model.onAction(UpdatesAction.Search)
-            gate.complete(Unit)
-            advanceUntilIdle()
-
-            assertEquals(listOf("1.0.1"), downloadedNames)
-            assertEquals(1, searches)
-            assertEquals(InstallUi.Opening, model.uiState.value.install)
+    fun `while downloading another tap does not download or search again`() = runTest(dispatcher) {
+        val gate = CompletableDeferred<Unit>()
+        download = {
+            gate.await()
+            ApkDownloadResult.Downloaded(HASH, 1024)
         }
+        val model = withNewVersion()
+
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+        model.onAction(UpdatesAction.StartUpdate)
+        model.onAction(UpdatesAction.Search)
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf("1.0.1"), downloadedNames)
+        assertEquals(1, searches)
+        assertEquals(InstallUi.Opening, model.uiState.value.install)
+    }
 
     @Test
     fun `cancelling the download stops it and deletes the file`() = runTest(dispatcher) {
@@ -594,24 +593,23 @@ class UpdatesViewModelTest {
     }
 
     @Test
-    fun `without permission it explains and continues once it is allowed`() =
-        runTest(dispatcher) {
-            canInstall = false
-            val model = withNewVersion()
+    fun `without permission it explains and continues once it is allowed`() = runTest(dispatcher) {
+        canInstall = false
+        val model = withNewVersion()
 
-            model.onAction(UpdatesAction.StartUpdate)
-            advanceUntilIdle()
-            assertEquals(InstallUi.NeedsPermission, model.uiState.value.install)
+        model.onAction(UpdatesAction.StartUpdate)
+        advanceUntilIdle()
+        assertEquals(InstallUi.NeedsPermission, model.uiState.value.install)
 
-            // Volver sin permitirlo no cambia nada.
-            model.onAction(UpdatesAction.Resumed)
-            assertEquals(InstallUi.NeedsPermission, model.uiState.value.install)
+        // Volver sin permitirlo no cambia nada.
+        model.onAction(UpdatesAction.Resumed)
+        assertEquals(InstallUi.NeedsPermission, model.uiState.value.install)
 
-            canInstall = true
-            model.onAction(UpdatesAction.Resumed)
-            assertEquals(InstallUi.Opening, model.uiState.value.install)
-            assertEquals(0, discards)
-        }
+        canInstall = true
+        model.onAction(UpdatesAction.Resumed)
+        assertEquals(InstallUi.Opening, model.uiState.value.install)
+        assertEquals(0, discards)
+    }
 
     @Test
     fun `without internet it says so and can be retried`() = runTest(dispatcher) {

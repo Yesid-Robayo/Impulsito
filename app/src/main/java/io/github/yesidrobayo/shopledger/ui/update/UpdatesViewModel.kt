@@ -70,7 +70,7 @@ class UpdatesViewModel(
     zone: Flow<BusinessTimeZone?>,
     private val now: () -> Instant,
     private val downloadApk:
-        suspend (versionName: String, onProgress: (Long, Long?) -> Unit) -> ApkDownloadResult,
+    suspend (versionName: String, onProgress: (Long, Long?) -> Unit) -> ApkDownloadResult,
     private val checkDownloadedApk: suspend (sha256: String) -> ApkCheckResult,
     private val canInstallPackages: () -> Boolean,
     private val discardDownload: suspend () -> Unit,
@@ -251,8 +251,11 @@ class UpdatesViewModel(
         val downloaded =
             when (download) {
                 is ApkDownloadResult.Downloaded -> download
+
                 ApkDownloadResult.Offline -> return failed(InstallFailure.NO_CONNECTION)
+
                 ApkDownloadResult.TooLarge -> return failed(InstallFailure.TOO_LARGE)
+
                 ApkDownloadResult.Failed,
                 ApkDownloadResult.Refused,
                 -> return failed(InstallFailure.DOWNLOAD_FAILED)

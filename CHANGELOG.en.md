@@ -8,6 +8,23 @@ and versions follow [Semantic Versioning](https://semver.org/). Published versio
 
 When a new version is published, it's added at the top with the same content as its release notes.
 
+## [1.0.2] - 2026-11-17
+
+### Added
+
+- **One-tap update:** when **Check for update** finds a new version, **Update** downloads it, checks it's the one announced in the
+  signed notice and carries the app's signature, and Android asks to confirm. The first time, Android asks to allow Impulsito to
+  install its updates.
+- **What's new,** in **Updates and APK check**: what each version brought, offline.
+- **Produce to restock:** a product with a recipe offers **Produce** in the inventory, the suggested restock and its detail, and opens
+  production with that product chosen.
+- **Total cost of the opening stock:** when creating a product with opening stock, you can type the total paid instead of the unit
+  cost. The stock value stays exact, also for cheap products sold by the gram.
+
+### Fixed
+
+- **Suppliers,** in the detail of a product without purchases: the notice no longer sits against the edge.
+
 ## [1.0.1] - 2026-11-17
 
 ### Fixed

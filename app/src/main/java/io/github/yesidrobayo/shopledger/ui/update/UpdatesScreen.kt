@@ -401,13 +401,16 @@ private fun InstallSection(install: InstallUi, onAction: (UpdatesAction) -> Unit
                 onAction = { onAction(UpdatesAction.OpenInstallerAgain) },
             )
 
-        is InstallUi.Failed ->
+        is InstallUi.Failed -> {
+            // Otra firma es un archivo ajeno: el aviso dice que no se instale, sin ofrecer repetir.
+            val retries = install.reason != InstallFailure.WRONG_SIGNATURE
             NoticeCard(
                 text = failureText(install.reason),
                 variant = NoticeVariant.ERROR,
-                actionLabel = retry,
+                actionLabel = retry.takeIf { retries },
                 onAction = { onAction(UpdatesAction.StartUpdate) },
             )
+        }
     }
 }
 

@@ -146,13 +146,15 @@ certificado.
 
 ## 🔄 Actualizar
 
-Las actualizaciones son a mano, y **la app nunca descarga ni instala nada por su cuenta.**
+**La app nunca descarga ni instala nada por su cuenta:** solo cuando tú lo pides.
 
 1. Haz una copia y comprueba que sea reciente.
 2. **Buscar actualización** te dice si hay una versión nueva. Es opcional y solo se ejecuta cuando la tocas.
-3. Descarga el APK nuevo de [Releases](https://github.com/Yesid-Robayo/Impulsito/releases) y usa **Verificar un APK** en la app:
-   compara el certificado del archivo con el de la app instalada antes de abrir el instalador.
-4. Instálalo **encima** de la app actual. **Nunca desinstales para actualizar:** desinstalar borra todo lo que no tenga copia.
+3. Desde la `1.0.2`, toca **Actualizar**: la app baja esa versión de [Releases](https://github.com/Yesid-Robayo/Impulsito/releases),
+   comprueba que sea el archivo anunciado en el aviso firmado y que lleve la firma de la app, y Android te pide confirmar. La primera
+   vez, Android también pide permitir que Impulsito instale sus actualizaciones.
+4. También puedes bajar el APK a mano y usar **Verificar un APK** antes de instalarlo **encima** de la app actual. **Nunca
+   desinstales para actualizar:** desinstalar borra todo lo que no tenga copia.
 
 Si Android rechaza una actualización porque la firma es distinta, el archivo no es el oficial: no la fuerces.
 

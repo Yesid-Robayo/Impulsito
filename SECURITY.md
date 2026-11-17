@@ -37,7 +37,9 @@ unlocked in someone else's hands.
 ### What Impulsito protects
 
 - **No servers and no third-party network.** The app only connects to the WebDAV service you chose and, when you tap **Check for
-  update**, to the version notice, which receives no data. No analytics, ads or crash reporting.
+  update**, to the version notice, which receives no data, and when you tap **Update**, to GitHub Releases to download that version,
+  which is checked against the signed notice and the app's signature before Android asks to install it. No analytics, ads or crash
+  reporting.
 - **HTTPS only,** with the system's certificate authorities only: no cleartext traffic and no user-installed certificates.
 - **The WebDAV password** is stored sealed with a key from the Android Keystore, and never goes into the database, a backup or a log.
 - **Every restored backup is untrusted,** even one the app made: size, checksum, decryption, structure and data are checked, in that
@@ -92,7 +94,9 @@ desbloqueado en manos de otra persona.
 ### Qué protege Impulsito
 
 - **Sin servidores ni red de terceros.** La app solo se conecta al servicio WebDAV que elegiste y, cuando tocas **Buscar
-  actualización**, al aviso de versión, que no recibe ningún dato. Sin analítica, anuncios ni reportes de fallos.
+  actualización**, al aviso de versión, que no recibe ningún dato, y cuando tocas **Actualizar**, a los Releases de GitHub para bajar esa
+  versión, que se comprueba contra el aviso firmado y la firma de la app antes de que Android pida instalarla. Sin analítica, anuncios
+  ni reportes de fallos.
 - **Solo HTTPS,** y solo con las autoridades de certificación del sistema: sin tráfico en claro y sin certificados instalados por el
   usuario.
 - **La contraseña de WebDAV** se guarda sellada con una clave del Android Keystore, y nunca entra en la base, en una copia ni en un

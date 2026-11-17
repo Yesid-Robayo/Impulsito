@@ -55,8 +55,7 @@ class InitialCostModeDeviceTest {
         }
     private val actions = mutableListOf<ProductEditAction>()
 
-    private fun count(text: String) =
-        compose.onAllNodes(hasText(text)).fetchSemanticsNodes().size
+    private fun count(text: String) = compose.onAllNodes(hasText(text)).fetchSemanticsNodes().size
 
     @Test
     fun withoutOpeningStockThereIsNoCostModeToChoose() {

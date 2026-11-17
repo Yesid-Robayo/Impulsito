@@ -50,19 +50,18 @@ class ProductionReadUseCasesTest {
         }
 
     @Test
-    fun `the producible ids are the ones the production form offers, also of an input`() =
-        runTest {
-            catalog.seedProduct(10L, "Combo inventado", stockMode = ProductStockMode.COMPONENTS)
-            catalog.seedProduct(11L, "Archivado inventado", archived = true)
-            fixture.seedRecipe(10L, WAX to 1_000L)
-            fixture.seedRecipe(11L, WAX to 1_000L)
-            // La cera, insumo de la vela, también se hace: con receta, se repone produciéndola.
-            fixture.seedRecipe(WAX, WICK to 1_000L)
+    fun `the producible ids are the ones the production form offers, also of an input`() = runTest {
+        catalog.seedProduct(10L, "Combo inventado", stockMode = ProductStockMode.COMPONENTS)
+        catalog.seedProduct(11L, "Archivado inventado", archived = true)
+        fixture.seedRecipe(10L, WAX to 1_000L)
+        fixture.seedRecipe(11L, WAX to 1_000L)
+        // La cera, insumo de la vela, también se hace: con receta, se repone produciéndola.
+        fixture.seedRecipe(WAX, WICK to 1_000L)
 
-            val ids = ObserveProducibleIdsUseCase(observeCatalog)().first()
+        val ids = ObserveProducibleIdsUseCase(observeCatalog)().first()
 
-            assertEquals(setOf(CANDLE, WAX), ids)
-        }
+        assertEquals(setOf(CANDLE, WAX), ids)
+    }
 
     @Test
     fun `without recipes nothing can be produced`() = runTest {

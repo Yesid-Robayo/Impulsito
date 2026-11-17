@@ -115,13 +115,12 @@ class ReorderViewModelTest {
         }
 
     @Test
-    fun `without knowing what is produced everything goes to the purchase`() =
-        runTest(dispatcher) {
-            val model = viewModel(producible = flow { error("lectura inventada que falla") })
+    fun `without knowing what is produced everything goes to the purchase`() = runTest(dispatcher) {
+        val model = viewModel(producible = flow { error("lectura inventada que falla") })
 
-            assertFalse(model.coffee().producible)
-            assertEquals(1, model.state.groups.first().toBuy.size)
-        }
+        assertFalse(model.coffee().producible)
+        assertEquals(1, model.state.groups.first().toBuy.size)
+    }
 
     @Test
     fun `the purchase carries the supplier, the location and only what is not zero`() =

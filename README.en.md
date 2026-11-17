@@ -145,13 +145,15 @@ Impulsito needs Android 8.0 or newer. Inside the app, **Updates and APK check** 
 
 ## 🔄 Updates
 
-Updates are manual, and **the app never downloads or installs anything by itself.**
+**The app never downloads or installs anything by itself:** only when you ask.
 
 1. Make a backup and check that it's recent.
 2. **Check for update** tells you whether there is a new version. It's optional and only runs when you tap it.
-3. Download the new APK from [Releases](https://github.com/Yesid-Robayo/Impulsito/releases) and use **Check an APK** in the app: it
-   compares the file's certificate with the installed app's before you open the installer.
-4. Install it **over** the current app. **Never uninstall to update:** uninstalling deletes everything that isn't backed up.
+3. From `1.0.2`, tap **Update**: the app downloads that version from [Releases](https://github.com/Yesid-Robayo/Impulsito/releases),
+   checks it's the file announced in the signed notice and carries the app's signature, and Android asks you to confirm. The first
+   time, Android also asks to allow Impulsito to install its updates.
+4. You can also download the APK by hand and use **Check an APK** before installing it **over** the current app. **Never uninstall
+   to update:** uninstalling deletes everything that isn't backed up.
 
 If Android refuses an update because the signature is different, the file isn't the official one: don't force it.
 
