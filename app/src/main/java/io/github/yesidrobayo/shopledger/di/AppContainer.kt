@@ -48,6 +48,7 @@ import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeFile
 import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
 import io.github.yesidrobayo.shopledger.ui.components.PhotoState
 import io.github.yesidrobayo.shopledger.ui.media.PhotoCache
+import io.github.yesidrobayo.shopledger.ui.phrase.VoiceInputPreference
 import io.github.yesidrobayo.shopledger.widget.QuickSaleWidgetUpdater
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -125,6 +126,14 @@ class AppContainer(application: Application) {
      */
     val noDestinationNotice: NoDestinationNoticeStore =
         NoDestinationNoticeFile({ application.noBackupFilesDir })
+
+    /**
+     * Si `Decir` abre el servicio de voz del teléfono en vez del teclado, guardado fuera de
+     * la base: es de este teléfono, no viaja en una copia y restaurar no lo cambia. Crearlo no
+     * toca el disco.
+     */
+    val voiceInput: VoiceInputPreference =
+        VoiceInputPreference({ application.noBackupFilesDir }, dispatchers.io)
 
     /** El contexto en el idioma de la interfaz para lo que corre fuera de una actividad. */
     val localizedContext: LocalizedContextProvider =

@@ -16,8 +16,8 @@ import io.github.yesidrobayo.shopledger.navigation.AppOpenRequest
 import io.github.yesidrobayo.shopledger.surface.SurfaceEvent
 
 /**
- * Los atajos de la app al mantener pulsado su icono: `Vender`, `Gasto` y `Compra`, en ese orden.
- * Son tres, y queda libre uno de los cuatro que se ven.
+ * Los atajos de la app al mantener pulsado su icono: `Vender`, `Decir`, `Gasto` y `Compra`, en ese
+ * orden. Son los cuatro que se ven.
  *
  * - **Dinámicos, no estáticos.** Android resuelve los de un archivo del manifiesto con el idioma
  *   del teléfono; estos se publican con los textos del idioma de la interfaz. Por eso se vuelven a
@@ -68,6 +68,9 @@ class AppShortcuts(private val app: Context, private val log: EventLog) : Locali
         /** El id del atajo `Vender`. */
         const val ID_SALE = "new_sale"
 
+        /** El id del atajo `Decir`. */
+        const val ID_PHRASE = "phrase"
+
         /** El id del atajo `Gasto`. */
         const val ID_EXPENSE = "new_expense"
 
@@ -82,6 +85,13 @@ class AppShortcuts(private val app: Context, private val log: EventLog) : Locali
                     longLabel = R.string.shortcut_sale_long,
                     icon = R.drawable.ic_shortcut_sale,
                     request = AppOpenRequest.NewSale,
+                ),
+                Shortcut(
+                    id = ID_PHRASE,
+                    shortLabel = R.string.shortcut_phrase_short,
+                    longLabel = R.string.shortcut_phrase_long,
+                    icon = R.drawable.ic_shortcut_phrase,
+                    request = AppOpenRequest.Phrase,
                 ),
                 Shortcut(
                     id = ID_EXPENSE,

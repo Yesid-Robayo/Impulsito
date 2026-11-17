@@ -212,4 +212,6 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
     is AppNavKey.WebDavConnect -> detail(R.string.webdav_title, settings)
 
     AppNavKey.DocumentSlotsSetup -> detail(R.string.slots_title, settings)
+
+    is AppNavKey.Phrase -> overlay(R.string.phrase_title, home)
 }

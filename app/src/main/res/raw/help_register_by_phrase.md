@@ -1,0 +1,1 @@
+Tap **Say** on Home, on the widget or on the app icon shortcut, then type or dictate what happened with the keyboard microphone, like "sold 3 breads in cash". {app} shows what it understood on a card, and nothing is registered until **Register** is tapped. This article is still being written.

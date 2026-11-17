@@ -499,8 +499,8 @@ private fun profitChange(compared: ComparedPeriod?, reference: BusinessDate): St
 }
 
 /**
- * Los atajos tonales, que reparten el ancho y bajan a otra línea si la letra no cabe: `Compra`,
- * `Gasto` y `Negocio`.
+ * Los atajos tonales, que reparten el ancho y bajan a otra línea si la letra no cabe: `Decir`,
+ * `Compra`, `Gasto` y `Negocio`.
  */
 @Composable
 private fun Shortcuts(onAction: (HomeAction) -> Unit) {
@@ -509,6 +509,12 @@ private fun Shortcuts(onAction: (HomeAction) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
     ) {
+        PrimaryActionButton(
+            text = stringResource(R.string.phrase_action_say),
+            onClick = { onAction(HomeAction.OpenPhrase) },
+            variant = ActionVariant.TONAL,
+            modifier = Modifier.weight(1f),
+        )
         PrimaryActionButton(
             text = stringResource(R.string.home_shortcut_purchase),
             onClick = { onAction(HomeAction.OpenPurchase) },

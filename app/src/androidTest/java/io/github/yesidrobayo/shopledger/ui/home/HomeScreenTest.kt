@@ -171,6 +171,17 @@ class HomeScreenTest {
     }
 
     @Test
+    fun theSayShortcutOpensThePhraseSheet() {
+        compose.setContent {
+            PreviewTheme { HomeScreen(previewHomeContent(), { actions += it }) }
+        }
+
+        compose.onNodeWithText(text(R.string.phrase_action_say)).performClick()
+
+        assertEquals(listOf<HomeAction>(HomeAction.OpenPhrase), actions)
+    }
+
+    @Test
     fun withoutADestinationTheNoticeCanBeAcceptedAndShrinksToALine() {
         val noDestination =
             previewBackupState(previewOverview(BackupStatus.NOT_CONNECTED, kind = null)).wording

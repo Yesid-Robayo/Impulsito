@@ -300,6 +300,8 @@ private fun ActionsRow(onlySell: Boolean, colors: WidgetColors, texts: Context) 
         }
         if (!onlySell) {
             Spacer(modifier = GlanceModifier.width(8.dp))
+            SayAction(colors = colors, texts = texts)
+            Spacer(modifier = GlanceModifier.width(8.dp))
             SecondaryAction(
                 label = R.string.home_shortcut_expense,
                 request = AppOpenRequest.NewExpense,
@@ -347,6 +349,41 @@ private fun SecondaryAction(
                 text = texts.getString(label),
                 style = textStyle(colors.text, fontSize = 14, weight = FontWeight.Medium),
                 maxLines = 1,
+            )
+        }
+    }
+}
+
+/**
+ * `Decir`: un micrófono de 48 dp que abre `Decir o escribir`. Va solo con icono para que quepa
+ * junto a los demás en el tamaño 4 x 1; TalkBack lo nombra. No muestra nada del negocio, y con el
+ * bloqueo de la app la hoja espera al desbloqueo, como los demás destinos.
+ */
+@GlanceComposable
+@Composable
+private fun SayAction(colors: WidgetColors, texts: Context) {
+    Box(
+        modifier =
+            GlanceModifier
+                .size(48.dp)
+                .background(colors.border)
+                .cornerRadius(12.dp)
+                .padding(1.dp)
+                .clickable(open(texts, AppOpenRequest.Phrase)),
+    ) {
+        Box(
+            modifier =
+                GlanceModifier
+                    .fillMaxSize()
+                    .background(colors.surface)
+                    .cornerRadius(11.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                provider = ImageProvider(R.drawable.ic_mic),
+                contentDescription = texts.getString(R.string.widget_phrase),
+                modifier = GlanceModifier.size(20.dp),
+                colorFilter = ColorFilter.tint(colors.text),
             )
         }
     }

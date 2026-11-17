@@ -20,7 +20,7 @@ class HelpArticlesTest {
 
         assertEquals(keys.size, keys.toSet().size)
         assertTrue(keys.all { Regex("help_[a-z_]+").matches(it) })
-        assertEquals(51, keys.size)
+        assertEquals(52, keys.size)
     }
 
     @Test
@@ -69,6 +69,7 @@ class HelpArticlesTest {
                 HelpTopic.BUSINESS_HUB to listOf(HelpArticleId.BUSINESS_HUB),
                 HelpTopic.NEW_SALE to listOf(HelpArticleId.FIRST_SALE, HelpArticleId.HELD_SALES),
                 HelpTopic.HELD_SALES to listOf(HelpArticleId.HELD_SALES),
+                HelpTopic.REGISTER_BY_PHRASE to listOf(HelpArticleId.REGISTER_BY_PHRASE),
                 HelpTopic.RECORDS to listOf(HelpArticleId.RECORDS, HelpArticleId.RETURNS_VOIDS),
                 HelpTopic.RETURNS to listOf(HelpArticleId.RETURNS_VOIDS),
                 HelpTopic.QUOTES_ORDERS to listOf(HelpArticleId.QUOTES_ORDERS),

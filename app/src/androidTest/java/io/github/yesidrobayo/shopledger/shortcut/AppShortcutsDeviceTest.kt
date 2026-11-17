@@ -37,11 +37,16 @@ class AppShortcutsDeviceTest {
         val published = ShortcutManagerCompat.getDynamicShortcuts(context).sortedBy { it.rank }
 
         assertEquals(
-            listOf(AppShortcuts.ID_SALE, AppShortcuts.ID_EXPENSE, AppShortcuts.ID_PURCHASE),
+            listOf(
+                AppShortcuts.ID_SALE,
+                AppShortcuts.ID_PHRASE,
+                AppShortcuts.ID_EXPENSE,
+                AppShortcuts.ID_PURCHASE,
+            ),
             published.map { it.id },
         )
         assertEquals(
-            listOf("Vender", "Gasto", "Compra"),
+            listOf("Vender", "Decir", "Gasto", "Compra"),
             published.map { it.shortLabel.toString() },
         )
         assertEquals("Nueva venta", published.first().longLabel.toString())
@@ -78,7 +83,12 @@ class AppShortcutsDeviceTest {
                 }
 
         assertEquals(
-            listOf(AppOpenRequest.NewSale, AppOpenRequest.NewExpense, AppOpenRequest.NewPurchase),
+            listOf(
+                AppOpenRequest.NewSale,
+                AppOpenRequest.Phrase,
+                AppOpenRequest.NewExpense,
+                AppOpenRequest.NewPurchase,
+            ),
             requests,
         )
     }

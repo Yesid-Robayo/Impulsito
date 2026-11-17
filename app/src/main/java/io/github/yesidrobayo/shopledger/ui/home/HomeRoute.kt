@@ -151,6 +151,8 @@ fun HomeRoute(navigator: AppNavigator) {
 
                         HomeAction.ReviewPolicy -> policy.review()
 
+                        HomeAction.OpenPhrase -> navigator.open(AppNavKey.Phrase())
+
                         HomeAction.OpenPurchase -> navigator.open(AppNavKey.Purchase())
 
                         HomeAction.OpenExpense ->

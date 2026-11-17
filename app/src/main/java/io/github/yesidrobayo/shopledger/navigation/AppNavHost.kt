@@ -101,6 +101,7 @@ import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodsRoute
 import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionHost
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
+import io.github.yesidrobayo.shopledger.ui.phrase.PhraseRoute
 import io.github.yesidrobayo.shopledger.ui.placeholder.EmptyContent
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderAction
 import io.github.yesidrobayo.shopledger.ui.placeholder.PlaceholderContent
@@ -404,6 +405,8 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.SaleReturn -> SaleReturnRoute(key, navigator)
 
         AppNavKey.Checkout -> CheckoutRoute(navigator)
+
+        is AppNavKey.Phrase -> PhraseRoute(key, navigator)
 
         // Ventas, Compras y Gastos, en la misma pantalla.
         AppNavKey.SaleHistory -> RecordsRoute(navigator)

@@ -48,6 +48,15 @@
          para esta app, y en cada actualización muestra su propia confirmación. La app nunca instala en segundo plano. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- La voz directa, opcional y apagada de inicio: solo para saber si el teléfono tiene un servicio de voz que
+         convierta lo dicho en texto. Lo abre la persona con Decir, y la app recibe solo el texto. La app nunca pide el
+         micrófono: lo usa ese servicio, que es otra app. Sin servicio, el ajuste no aparece y queda el teclado. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <!-- Respaldo de Android apagado en sus dos caminos: la nube y la transferencia entre teléfonos. Solo HTTPS.
          Datos frágiles: desde Android 10, al desinstalar el sistema ofrece conservar los datos del negocio. Es una oferta del
          sistema, que no todos los fabricantes muestran: ningún texto de la app la promete. -->

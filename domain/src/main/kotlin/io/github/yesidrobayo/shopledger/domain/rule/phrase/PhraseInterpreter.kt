@@ -659,7 +659,7 @@ internal class PhraseSession(
 
     private data class ProductAmount(val isCost: Boolean, val number: NumberRead)
 
-    private companion object {
+    internal companion object {
         const val ON_ACCOUNT = "on_account"
         const val MAX_NAME_WORDS = 3
 

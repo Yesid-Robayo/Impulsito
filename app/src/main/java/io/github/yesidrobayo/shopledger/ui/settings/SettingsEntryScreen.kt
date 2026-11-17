@@ -105,6 +105,8 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE, SUPPORT }
  * @param support las líneas de `Información para soporte`, sin datos del negocio.
  * @param onCopySupport copia esas líneas al portapapeles.
  * @param dailySummary `Resumen diario`, en `Avisos`, con su propio estado.
+ * @param voiceInput `Dictar directo con la voz del teléfono`, al final de `Ventas y cobro`, con su
+ *   propio estado. No aparece si el teléfono no tiene un servicio de voz.
  */
 @Composable
 fun SettingsEntryScreen(
@@ -137,6 +139,7 @@ fun SettingsEntryScreen(
     readFailed: Boolean = false,
     onRetryRead: () -> Unit = {},
     dailySummary: @Composable () -> Unit = {},
+    voiceInput: @Composable () -> Unit = {},
 ) {
     var aboutSheet by rememberSaveable { mutableStateOf<AboutSheet?>(null) }
     var rangeOpen by rememberSaveable { mutableStateOf(false) }
@@ -216,6 +219,7 @@ fun SettingsEntryScreen(
                 RegionGroup(overview, onOpen)
                 if (tipsEnabled != null) {
                     SalesGroup(tipsEnabled, onTipsChange, tipsSaveFailed, onOpen)
+                    voiceInput()
                 }
                 if (security != null) {
                     SecurityGroup(security, stringResource(R.string.app_name), onSecurityAction)

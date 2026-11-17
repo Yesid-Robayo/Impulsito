@@ -85,6 +85,9 @@ sealed interface HomeAction {
     /** `Entendido` en el aviso sin destino: se reduce a una línea hasta que toque volver. */
     data object AcknowledgeNoDestination : HomeAction
 
+    /** El atajo `Decir`: abre `Decir o escribir`, para registrar con una frase. */
+    data object OpenPhrase : HomeAction
+
     /** El atajo `Compra`: abre una compra nueva. */
     data object OpenPurchase : HomeAction
 

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Decir o escribir: registrar una operación con una frase, y la voz directa opcional. -->
+    <!-- Entradas: Inicio, el widget, los atajos y la ayuda. -->
+    <string name="phrase_title">Say or type</string>
+    <string name="phrase_action_say">Say</string>
+    <string name="shortcut_phrase_short">Say</string>
+    <string name="shortcut_phrase_long">Say or type</string>
+    <string name="widget_phrase">Say or type</string>
+    <string name="help_article_register_by_phrase_title">Say or type</string>
+    <!-- El campo de la frase. -->
+    <string name="phrase_field_label">What happened</string>
+    <string name="phrase_field_hint">To dictate, tap the keyboard microphone</string>
+    <string name="phrase_field_hint_correct">To fix it, say only what changes, like \"no, it was 3\"</string>
+    <string name="phrase_field_empty">Type or dictate what happened</string>
+    <string name="phrase_voice_failed">The voice service didn\'t open. Dictate with the keyboard microphone</string>
+    <string name="phrase_understand">Understand</string>
+    <string name="phrase_dictate">Dictate with the phone\'s voice</string>
+    <string name="phrase_examples_title">For example:</string>
+    <string name="phrase_example_sale">\"sold 3 breads and 2 juices in cash\"</string>
+    <string name="phrase_example_purchase">\"bought 10 kilos of flour for 50000\"</string>
+    <string name="phrase_example_expense">\"paid the electricity 80000\"</string>
+    <string name="phrase_example_stock">\"2 breads got damaged\"</string>
+    <!-- Lo que no llega a tarjeta. -->
+    <string name="phrase_not_understood">Not understood. Try another way</string>
+    <string name="phrase_mixed">The sentence has more than one transaction. Say one at a time</string>
+    <!-- La tarjeta: la operación. -->
+    <string name="phrase_intent_sale">Sale</string>
+    <string name="phrase_intent_purchase">Purchase</string>
+    <string name="phrase_intent_expense">Expense</string>
+    <string name="phrase_intent_production">Production</string>
+    <string name="phrase_intent_stock_adjustment">Stock adjustment</string>
+    <string name="phrase_intent_stock_count">Actual count</string>
+    <string name="phrase_intent_customer_payment">Customer payment</string>
+    <string name="phrase_intent_supplier_payment">Supplier payment</string>
+    <string name="phrase_intent_recipe">Recipe</string>
+    <string name="phrase_intent_new_product">New product</string>
+    <string name="phrase_intent_cost_correction">Correct cost</string>
+    <string name="phrase_intent_price_change">Change price</string>
+    <!-- La tarjeta: lo que conviene revisar. -->
+    <string name="phrase_issue_unreadable_quantity">A quantity wasn\'t understood. Enter it in its line</string>
+    <string name="phrase_issue_unit_not_for_product">A unit said isn\'t one of that product. Check the quantity</string>
+    <string name="phrase_issue_no_recipe">That product has no recipe. Set it up before producing</string>
+    <string name="phrase_issue_no_stock">That product has no stock of its own: its cost comes from its components</string>
+    <string name="phrase_issue_already_exists">A product with that name already exists</string>
+    <string name="phrase_nothing">There\'s nothing to register like this. Say it another way</string>
+    <!-- La tarjeta: las líneas. -->
+    <string name="phrase_line_no_product">Choose the product</string>
+    <string name="phrase_line_no_quantity">Quantity missing</string>
+    <string name="phrase_line_create_first">Doesn\'t exist: create it or choose another</string>
+    <string name="phrase_line_not_for_sale">Not for sale</string>
+    <string name="phrase_line_not_for_purchase">Not purchased</string>
+    <string name="phrase_line_price_from_product">At the product\'s sale price</string>
+    <string name="phrase_new_tag">New</string>
+    <string name="phrase_heard">Heard \"%1$s\"</string>
+    <string name="phrase_choose_other">Choose another</string>
+    <string name="phrase_pick_product">Choose product</string>
+    <string name="phrase_per_unit">per %1$s</string>
+    <string name="phrase_edit_line">Edit</string>
+    <!-- La tarjeta: receta y producto nuevo. -->
+    <string name="phrase_target_label">Product</string>
+    <string name="phrase_target_missing">Product missing</string>
+    <string name="phrase_recipe_yield">Makes %1$s</string>
+    <string name="phrase_ingredients">Uses</string>
+    <string name="phrase_new_price">Sale price</string>
+    <string name="phrase_new_cost">Cost</string>
+    <string name="phrase_price_missing">Price missing</string>
+    <string name="phrase_cost_missing">Cost missing</string>
+    <string name="phrase_add">Add</string>
+    <string name="phrase_unit">Unit</string>
+    <!-- La tarjeta: categoría, pago y persona. -->
+    <string name="phrase_category">Category</string>
+    <string name="phrase_category_missing">Category missing</string>
+    <string name="phrase_payment">Payment</string>
+    <string name="phrase_payment_missing">Payment method missing</string>
+    <string name="phrase_on_credit">On credit</string>
+    <string name="phrase_customer">Customer</string>
+    <string name="phrase_supplier">Supplier</string>
+    <string name="phrase_customer_missing">Customer missing</string>
+    <string name="phrase_supplier_missing">Supplier missing</string>
+    <string name="phrase_party_unknown">\"%1$s\" isn\'t on the list</string>
+    <string name="phrase_pick_customer">Choose customer</string>
+    <string name="phrase_pick_supplier">Choose supplier</string>
+    <string name="phrase_change">Change</string>
+    <string name="phrase_remove">Remove</string>
+    <!-- La tarjeta: total y registrar. -->
+    <string name="phrase_total">Total</string>
+    <string name="phrase_amount">Amount</string>
+    <string name="phrase_amount_missing">Amount missing</string>
+    <string name="phrase_total_at_register">The total comes from the prices when registering</string>
+    <string name="phrase_start_over">Start over</string>
+    <string name="phrase_register">Register</string>
+    <string name="phrase_incomplete">Some details are missing. Complete what\'s marked to register</string>
+    <string name="phrase_rejected">It couldn\'t be registered with these details. Check the card</string>
+    <!-- Las hojas para corregir. -->
+    <string name="phrase_line_title">Edit the line</string>
+    <string name="phrase_quantity">Quantity</string>
+    <string name="phrase_unit_price">Price per unit</string>
+    <string name="phrase_unit_cost">Cost per unit</string>
+    <string name="phrase_quantity_invalid">Enter a quantity greater than zero</string>
+    <string name="phrase_amount_invalid">Enter a valid amount</string>
+    <string name="phrase_change_product">Change product</string>
+    <string name="phrase_remove_line">Remove from the card</string>
+    <string name="phrase_done">Done</string>
+    <string name="phrase_search_hint">Search by name</string>
+    <!-- El mensaje al registrar, sin montos. -->
+    <string name="phrase_done_sale">Sale registered</string>
+    <string name="phrase_done_purchase">Purchase registered</string>
+    <string name="phrase_done_expense">Expense saved</string>
+    <string name="phrase_done_production">Production registered</string>
+    <string name="phrase_done_stock">Stock adjusted</string>
+    <string name="phrase_done_customer_payment">Payment recorded</string>
+    <string name="phrase_done_supplier_payment">Payment recorded</string>
+    <string name="phrase_done_recipe">Recipe saved</string>
+    <string name="phrase_done_product">Product created</string>
+    <string name="phrase_done_cost">Cost corrected</string>
+    <string name="phrase_done_price">Price changed</string>
+    <!-- La voz directa, en Ajustes. -->
+    <string name="voice_input_setting">Dictate directly with the phone\'s voice</string>
+    <string name="voice_input_summary">Say opens the phone\'s voice service instead of the keyboard</string>
+    <string name="voice_input_confirm_title">Dictate with the phone\'s voice</string>
+    <string name="voice_input_confirm_body">The phone turns speech into text with its own service, which may use the internet if the language isn\'t downloaded. %1$s only receives the text and never uses the microphone.</string>
+    <string name="voice_input_confirm_action">Turn on</string>
+</resources>

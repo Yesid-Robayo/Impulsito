@@ -372,7 +372,13 @@ androidComponents {
                 description =
                     "Comprueba que el manifiesto fusionado de ${variant.name} no pida permisos prohibidos."
                 mergedManifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
-                forbiddenPrefixes.set(listOf("android.permission.FOREGROUND_SERVICE"))
+                // El micrófono tampoco: dictar es cosa del teclado o del servicio de voz del teléfono.
+                forbiddenPrefixes.set(
+                    listOf(
+                        "android.permission.FOREGROUND_SERVICE",
+                        "android.permission.RECORD_AUDIO",
+                    ),
+                )
             }
         tasks.named("check") { dependsOn(verify) }
     }

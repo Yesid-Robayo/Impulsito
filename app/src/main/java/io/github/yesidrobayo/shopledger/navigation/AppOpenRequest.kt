@@ -107,6 +107,19 @@ sealed interface AppOpenRequest {
         }
     }
 
+    /**
+     * `Decir o escribir`, desde `Decir` del widget o su atajo. Nunca lleva una frase: la persona la
+     * dice o la escribe al abrir.
+     */
+    data object Phrase : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.Phrase()
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_PHRASE
+        }
+    }
+
     /** La creación del primer producto, desde el widget de un negocio sin productos. */
     data object NewProduct : AppOpenRequest {
         override val key: AppNavKey get() = AppNavKey.ProductEdit()
@@ -165,6 +178,9 @@ sealed interface AppOpenRequest {
         /** Abre una compra nueva. */
         const val ACTION_NEW_PURCHASE = "io.github.yesidrobayo.shopledger.action.NEW_PURCHASE"
 
+        /** Abre `Decir o escribir`. */
+        const val ACTION_PHRASE = "io.github.yesidrobayo.shopledger.action.PHRASE"
+
         /** Abre la creación de un producto. */
         const val ACTION_NEW_PRODUCT = "io.github.yesidrobayo.shopledger.action.NEW_PRODUCT"
 
@@ -204,6 +220,8 @@ sealed interface AppOpenRequest {
                     ACTION_NEW_EXPENSE -> NewExpense
 
                     ACTION_NEW_PURCHASE -> NewPurchase
+
+                    ACTION_PHRASE -> Phrase
 
                     ACTION_NEW_PRODUCT -> NewProduct
 

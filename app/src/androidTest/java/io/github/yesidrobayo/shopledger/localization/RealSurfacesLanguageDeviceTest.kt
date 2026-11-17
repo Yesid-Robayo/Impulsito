@@ -96,12 +96,18 @@ class RealSurfacesLanguageDeviceTest {
         val published = ShortcutManagerCompat.getDynamicShortcuts(app).sortedBy { it.rank }
 
         assertEquals(
-            listOf(AppShortcuts.ID_SALE, AppShortcuts.ID_EXPENSE, AppShortcuts.ID_PURCHASE),
+            listOf(
+                AppShortcuts.ID_SALE,
+                AppShortcuts.ID_PHRASE,
+                AppShortcuts.ID_EXPENSE,
+                AppShortcuts.ID_PURCHASE,
+            ),
             published.map { it.id },
         )
         assertEquals(
             listOf(
                 R.string.shortcut_sale_short,
+                R.string.shortcut_phrase_short,
                 R.string.shortcut_expense_short,
                 R.string.shortcut_purchase_short,
             ).map(texts::getString),
@@ -110,6 +116,7 @@ class RealSurfacesLanguageDeviceTest {
         assertEquals(
             listOf(
                 R.string.shortcut_sale_long,
+                R.string.shortcut_phrase_long,
                 R.string.shortcut_expense_long,
                 R.string.shortcut_purchase_long,
             ).map(texts::getString),

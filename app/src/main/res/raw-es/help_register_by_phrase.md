@@ -1,0 +1,1 @@
+Al tocar **Decir** en Inicio, en el widget o en el atajo del ícono, se escribe o se dicta lo que pasó con el micrófono del teclado, como «vendí 3 panes en efectivo». {app} muestra lo que entendió en una tarjeta, y nada se registra hasta tocar **Registrar**. Este artículo todavía se está escribiendo.

@@ -359,6 +359,17 @@ sealed interface AppNavKey : NavKey {
 
     @Serializable
     data object DocumentSlotsSetup : AppNavKey
+
+    /**
+     * `Decir o escribir`: registrar una operación diciéndola o escribiéndola. Es una acción que se
+     * abre encima, como la venta nueva. Con [text], abre con esa frase ya leída.
+     *
+     * Ninguna entrada de la app lo usa hoy: `Decir` llega sin texto, y el de la voz directa va de
+     * la hoja a su ViewModel, sin pasar por la pila. Si alguna vez se usa, la frase quedaría en la
+     * pila guardada, que no debe llevar datos del negocio.
+     */
+    @Serializable
+    data class Phrase(val text: String? = null) : AppNavKey
 }
 
 /** El filtro con que se abre el inventario: los chips de esa pantalla. */

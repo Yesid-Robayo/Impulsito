@@ -59,6 +59,8 @@ class AppOpenRequestTest {
             readBack(AppOpenRequest.NewExpense)?.key,
         )
         assertEquals(AppNavKey.Purchase(), readBack(AppOpenRequest.NewPurchase)?.key)
+        // Decir nunca lleva una frase: la persona la dice al abrir.
+        assertEquals(AppNavKey.Phrase(), readBack(AppOpenRequest.Phrase)?.key)
         assertEquals(AppNavKey.ProductEdit(), readBack(AppOpenRequest.NewProduct)?.key)
         assertEquals(AppNavKey.Backup, readBack(AppOpenRequest.Backup)?.key)
     }

@@ -1,0 +1,1 @@
+Ao tocar em **Dizer** no Início, no widget ou no atalho do ícone, escreve-se ou dita-se o que aconteceu com o microfone do teclado, como «vendi 3 pães em dinheiro». O {app} mostra o que entendeu em um cartão, e nada é registrado até tocar em **Registrar**. Este artigo ainda está sendo escrito.

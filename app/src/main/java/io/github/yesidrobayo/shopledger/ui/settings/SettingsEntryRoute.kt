@@ -53,6 +53,7 @@ import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
+import io.github.yesidrobayo.shopledger.ui.phrase.VoiceInputSetting
 import io.github.yesidrobayo.shopledger.ui.rescue.SupportFacts
 import io.github.yesidrobayo.shopledger.ui.rescue.SupportLine
 import io.github.yesidrobayo.shopledger.ui.rescue.appVersionOf
@@ -348,6 +349,7 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 profile = uiState.profile,
                 costStaleDays = uiState.costStaleDays,
                 dailySummary = { DailySummarySetting() },
+                voiceInput = { VoiceInputSetting() },
                 profileSheet = uiState.profileSheet,
                 onProfileAction = viewModel::onProfileAction,
                 security = securityState,

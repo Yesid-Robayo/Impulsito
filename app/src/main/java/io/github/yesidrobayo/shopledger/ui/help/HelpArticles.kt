@@ -57,6 +57,12 @@ enum class HelpArticleId(
         R.string.help_article_held_sales_title,
         R.raw.help_held_sales,
     ),
+    REGISTER_BY_PHRASE(
+        "help_register_by_phrase",
+        HelpGroup.SELL,
+        R.string.help_article_register_by_phrase_title,
+        R.raw.help_register_by_phrase,
+    ),
     PAYMENTS_FEES(
         "help_payments_fees",
         HelpGroup.SELL,
@@ -437,6 +443,8 @@ fun HelpArticleId.target(): HelpTarget? = when (this) {
     HelpArticleId.WIDGET_TILE,
     HelpArticleId.UPDATES,
     HelpArticleId.GLOSSARY,
+    // Se lee desde la misma hoja de `Decir o escribir`: no hace falta volver a abrirla.
+    HelpArticleId.REGISTER_BY_PHRASE,
     -> null
 }
 
@@ -460,6 +468,13 @@ fun HelpArticleId.related(): List<HelpArticleId> = when (this) {
             HelpArticleId.FIRST_SALE,
             HelpArticleId.PAYMENTS_FEES,
             HelpArticleId.CUSTOMERS_POINTS,
+        )
+
+    HelpArticleId.REGISTER_BY_PHRASE ->
+        listOf(
+            HelpArticleId.FIRST_SALE,
+            HelpArticleId.PURCHASES_SUPPLIERS,
+            HelpArticleId.WIDGET_TILE,
         )
 
     HelpArticleId.PAYMENTS_FEES -> listOf(HelpArticleId.MONEY_ACCOUNTS, HelpArticleId.FIRST_SALE)
@@ -631,6 +646,7 @@ enum class HelpTopic(val key: String, val articles: List<HelpArticleId>) {
     BUSINESS_HUB("business_hub", listOf(HelpArticleId.BUSINESS_HUB)),
     NEW_SALE("new_sale", listOf(HelpArticleId.FIRST_SALE, HelpArticleId.HELD_SALES)),
     HELD_SALES("held_sales", listOf(HelpArticleId.HELD_SALES)),
+    REGISTER_BY_PHRASE("register_by_phrase", listOf(HelpArticleId.REGISTER_BY_PHRASE)),
     RECORDS("records", listOf(HelpArticleId.RECORDS, HelpArticleId.RETURNS_VOIDS)),
     RETURNS("returns", listOf(HelpArticleId.RETURNS_VOIDS)),
     QUOTES_ORDERS("quotes_orders", listOf(HelpArticleId.QUOTES_ORDERS)),
