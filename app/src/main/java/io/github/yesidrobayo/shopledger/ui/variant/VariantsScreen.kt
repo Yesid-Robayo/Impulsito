@@ -56,6 +56,8 @@ import io.github.yesidrobayo.shopledger.ui.components.VariantMatrix
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.product.FieldProblem
 import io.github.yesidrobayo.shopledger.ui.product.problemText
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -86,6 +88,7 @@ fun VariantsScreen(
             onNavigate = { onAction(VariantsAction.Close) },
             navigationLabel = stringResource(R.string.a11y_close),
             titleStyle = MaterialTheme.typography.titleLarge,
+            actions = { ScreenHelpLink(HelpTopic.VARIANTS_EXTRAS) },
         )
         when {
             uiState.loading -> DelayedSkeleton { MatrixSkeleton() }

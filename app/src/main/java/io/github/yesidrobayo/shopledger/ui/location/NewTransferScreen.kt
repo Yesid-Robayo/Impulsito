@@ -58,6 +58,8 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stock.locationChoices
 import io.github.yesidrobayo.shopledger.ui.stock.locationName
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -87,6 +89,7 @@ fun NewTransferScreen(
                 onNavigate = { onAction(NewTransferAction.Close) },
                 navigationLabel = stringResource(R.string.action_close),
                 titleStyle = MaterialTheme.typography.titleLarge,
+                actions = { ScreenHelpLink(HelpTopic.LOCATIONS) },
             )
             when {
                 uiState.loadFailed -> NoticeCard(

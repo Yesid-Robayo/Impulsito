@@ -69,6 +69,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.sale.FilterSheetLabel
 import io.github.yesidrobayo.shopledger.ui.sale.HistoryFilterBar
 import io.github.yesidrobayo.shopledger.ui.sale.HistoryFilterSheet
@@ -125,6 +127,7 @@ fun PurchaseHistoryScreen(
                     asTab = asTab,
                     title = R.string.records_tab_purchases,
                     onBack = { onAction(PurchaseHistoryAction.ShowSales) },
+                    actions = { ScreenHelpLink(HelpTopic.PURCHASES) },
                 )
                 backupBanner()
                 if (asTab) {

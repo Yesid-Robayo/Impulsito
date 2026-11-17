@@ -74,6 +74,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFabDefaults
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.YearMonth
@@ -163,6 +165,7 @@ fun PriceIndexScreen(
                     onNavigate = { onAction(PriceIndexAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
                     actions = {
+                        ScreenHelpLink(HelpTopic.PRICE_INDEX)
                         OverflowMenu(
                             listOf(
                                 OverflowAction(stringResource(R.string.index_import_action), {

@@ -18,7 +18,7 @@
     <string name="production_void_action">Anular producción</string>
     <string name="production_empty_title">Fabricar por adelantado</string>
     <string name="production_empty_body">Los insumos bajan y el producto terminado sube</string>
-    <string name="production_empty_no_recipe_action">Crear una receta</string>
+    <string name="production_empty_no_recipe_action">Cómo crear una receta</string>
     <string name="production_warning_negative">Quedarían %1$s</string>
     <string name="production_warning_no_cost">Hay insumos sin costo: el costo real puede ser mayor</string>
     <string name="production_error_stock_cap">Con esta producción, %1$s pasaría del máximo de stock. Revisar la cantidad.</string>

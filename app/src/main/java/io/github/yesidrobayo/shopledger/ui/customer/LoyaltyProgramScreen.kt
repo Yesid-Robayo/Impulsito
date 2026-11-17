@@ -63,6 +63,8 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -119,6 +121,7 @@ fun LoyaltyProgramScreen(
                 navigation = TopBarNavigation.BACK,
                 onNavigate = { onAction(LoyaltyProgramAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
+                actions = { ScreenHelpLink(HelpTopic.CUSTOMERS) },
             )
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 when (uiState) {

@@ -225,7 +225,7 @@ class ProductionFormViewModel(
                 }
 
             // Crear una receta lo resuelve la navegación.
-            ProductionFormAction.CreateRecipe -> Unit
+            ProductionFormAction.RecipeHelp -> Unit
 
             ProductionFormAction.Close -> overlay.update {
                 if (uiState.value.dirty) it.copy(discardAsked = true) else it.copy(closed = true)

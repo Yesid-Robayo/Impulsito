@@ -96,7 +96,7 @@ class ProductionScreensTest {
         }
 
         compose.onNodeWithText(text(R.string.production_empty_no_recipe_action)).performClick()
-        assertTrue(ProductionFormAction.CreateRecipe in formActions)
+        assertTrue(ProductionFormAction.RecipeHelp in formActions)
     }
 
     @Test
@@ -123,7 +123,7 @@ class ProductionScreensTest {
 
         compose.onNodeWithText(text(R.string.production_empty_title)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.production_empty_no_recipe_action)).performClick()
-        assertTrue(ProductionsAction.CreateRecipe in listActions)
+        assertTrue(ProductionsAction.RecipeHelp in listActions)
     }
 
     @Test

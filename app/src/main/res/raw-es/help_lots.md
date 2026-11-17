@@ -3,7 +3,7 @@ Los lotes sirven para productos con vencimiento o que llegan por partidas. Se ac
 ## Cómo funcionan
 
 - Cada compra de un producto con lotes recibe su lote, con su código y su vencimiento, si los tiene.
-- Al vender, **Asignar automático** saca primero lo que vence antes. También se puede elegir el lote.
+- Al vender, **Asignar automáticamente** saca primero lo que vence antes. También se puede elegir el lote.
 - **Lotes y vencimientos**, en **Negocio**, muestra lo que está **Por vencer** y lo **Vencido**, con su valor.
 - **Aviso de vencimiento** fija con cuántos días de anticipación avisar.
 

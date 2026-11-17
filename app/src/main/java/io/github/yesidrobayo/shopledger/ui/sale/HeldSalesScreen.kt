@@ -56,6 +56,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.formatAnnotated
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -95,6 +97,7 @@ fun HeldSalesScreen(
                     navigation = TopBarNavigation.BACK,
                     onNavigate = { onAction(HeldSalesAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
+                    actions = { ScreenHelpLink(HelpTopic.HELD_SALES) },
                 )
                 Box(
                     Modifier.weight(1f).fillMaxWidth(),

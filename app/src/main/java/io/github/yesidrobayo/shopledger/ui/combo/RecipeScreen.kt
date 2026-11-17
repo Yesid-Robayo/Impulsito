@@ -63,6 +63,8 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -95,6 +97,7 @@ fun RecipeScreen(
                 navigationLabel = stringResource(R.string.a11y_back),
                 titleStyle = MaterialTheme.typography.titleLarge,
                 actions = {
+                    ScreenHelpLink(HelpTopic.RECIPES)
                     if (!uiState.loading && !uiState.missing && !uiState.loadFailed) {
                         TopBarAction(
                             icon = R.drawable.ic_edit,

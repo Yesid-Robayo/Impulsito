@@ -18,7 +18,7 @@
     <string name="production_void_action">Void production</string>
     <string name="production_empty_title">Make in advance</string>
     <string name="production_empty_body">Inputs go down and the finished product goes up</string>
-    <string name="production_empty_no_recipe_action">Create a recipe</string>
+    <string name="production_empty_no_recipe_action">How to create a recipe</string>
     <string name="production_warning_negative">%1$s would be left</string>
     <string name="production_warning_no_cost">Some inputs have no cost: the real cost may be higher</string>
     <string name="production_error_stock_cap">With this production, %1$s would exceed the stock limit. Check the quantity.</string>

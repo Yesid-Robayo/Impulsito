@@ -59,6 +59,8 @@ import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.components.performanceTag
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.purchase.EXPENSES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.PURCHASES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.RecordsSegments
@@ -100,7 +102,12 @@ fun SaleHistoryScreen(
             val boxWidth = maxWidth
             val wide = detail != null && maxWidth >= EXPANDED_WIDTH
             Column(Modifier.fillMaxSize()) {
-                RecordsTopBar(asTab = true, title = R.string.nav_records, onBack = {})
+                RecordsTopBar(
+                    asTab = true,
+                    title = R.string.nav_records,
+                    onBack = {},
+                    actions = { ScreenHelpLink(HelpTopic.RECORDS) },
+                )
                 backupBanner()
                 RecordsSegments(selected = SALES_SEGMENT) { index ->
                     when (index) {

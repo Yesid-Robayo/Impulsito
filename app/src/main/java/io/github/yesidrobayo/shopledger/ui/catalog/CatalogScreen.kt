@@ -40,6 +40,8 @@ import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
 import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -65,6 +67,7 @@ fun CatalogScreen(
             onNavigate = { onAction(CatalogAction.Back) },
             navigationLabel = stringResource(R.string.a11y_back),
             actions = {
+                ScreenHelpLink(HelpTopic.CATALOG)
                 if (ready != null) {
                     OverflowMenu(
                         listOf(

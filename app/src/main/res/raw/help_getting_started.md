@@ -12,14 +12,14 @@
 - Create the products with their price and, if known, their cost: with the cost, the profit of each sale is shown.
 - Record each sale with **Sell**, and each purchase and each expense as it happens.
 - Check **Home** for today's sales and the backup status.
-- What is not used every day, such as customers, the cash register or units, is in **Business**. Configuration is in **Settings**.
+- What is not used every day, such as customers, the cash register or units, is in **Business**, on **Home**: see [the Business hub](help_business_hub). Configuration is in **Settings**.
 
 What is not used stays out of the way: a tool appears in **In use** with its first record.
 
 ## Currency
 
-The currency is locked from the first record with money. If the wrong one was chosen, **Settings** lets you change it to another one with the same decimals. Amounts are not converted, and a backup is made first.
+The currency is locked from the first record with money. If the wrong one was chosen, in **Settings**, **Regional settings**, **Correct the currency** replaces it with another one with the same decimals: see [region and language](help_region_language). Amounts are not converted, and a backup is made first.
 
 ## If something is unclear
 
-This help works without internet. Before touching something that is not covered here, ask for help with **Support information**, which carries no business data. It helps to say what you were doing, what you expected and what happened, without sending screenshots with sales, amounts or products, or passwords.
+This help works without internet. Open it with the help button in the top bar of many screens, with **Help** in **Settings**, or at the end of **Business**. Before touching something that is not covered here, ask for help with **Support information**, which carries no business data. It helps to say what you were doing, what you expected and what happened, without sending screenshots with sales, amounts or products, or passwords.

@@ -57,10 +57,10 @@ class HelpViewModelTest {
     @Test
     fun `a screen with several articles puts them first, and one with a single one does not`() {
         val backup = model(topicKey = HelpTopic.BACKUP.key).uiState.value.list as HelpList.Browse
-        val sale = model(topicKey = HelpTopic.NEW_SALE.key).uiState.value.list as HelpList.Browse
+        val taxes = model(topicKey = HelpTopic.TAXES.key).uiState.value.list as HelpList.Browse
 
         assertEquals(HelpTopic.BACKUP.articles, backup.forScreen)
-        assertTrue(sale.forScreen.isEmpty())
+        assertTrue(taxes.forScreen.isEmpty())
     }
 
     @Test

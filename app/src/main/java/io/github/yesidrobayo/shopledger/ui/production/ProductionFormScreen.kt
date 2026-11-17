@@ -63,6 +63,8 @@ import io.github.yesidrobayo.shopledger.ui.components.lotOptionsOf
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -89,6 +91,7 @@ fun ProductionFormScreen(
                 navigation = TopBarNavigation.CLOSE,
                 onNavigate = { onAction(ProductionFormAction.Close) },
                 navigationLabel = stringResource(R.string.a11y_close),
+                actions = { ScreenHelpLink(HelpTopic.RECIPES) },
             )
             when {
                 uiState.loadFailed -> NoticeCard(
@@ -118,7 +121,7 @@ fun ProductionFormScreen(
                 ) {
                     PrimaryActionButton(
                         text = stringResource(R.string.production_empty_no_recipe_action),
-                        onClick = { onAction(ProductionFormAction.CreateRecipe) },
+                        onClick = { onAction(ProductionFormAction.RecipeHelp) },
                         variant = ActionVariant.TONAL,
                     )
                 }

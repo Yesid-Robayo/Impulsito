@@ -84,6 +84,8 @@ import io.github.yesidrobayo.shopledger.ui.components.WholeNumberField
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.money.PayingAccountChips
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlinx.datetime.DayOfWeek
@@ -140,6 +142,7 @@ fun RecurringExpensesScreen(
                     navigationLabel = stringResource(R.string.a11y_back),
                     titleStyle = MaterialTheme.typography.titleLarge,
                     actions = {
+                        ScreenHelpLink(HelpTopic.EXPENSES)
                         if (!archivedView) {
                             OverflowMenu(
                                 listOf(

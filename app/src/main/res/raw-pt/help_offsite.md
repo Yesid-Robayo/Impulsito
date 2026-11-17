@@ -1,4 +1,4 @@
-Uma cópia fora da nuvem protege o negócio se essa conta for perdida. Fica em **Cópias de segurança locais**, em **Configurações**.
+Uma cópia fora da nuvem protege o negócio se essa conta for perdida. Fica em **Cópias locais**, em **Configurações**.
 
 ## Exportar uma cópia completa
 

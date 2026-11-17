@@ -160,7 +160,7 @@ sealed interface ProductionFormAction {
 
     data object Retry : ProductionFormAction
 
-    data object CreateRecipe : ProductionFormAction
+    data object RecipeHelp : ProductionFormAction
 
     data object Close : ProductionFormAction
 

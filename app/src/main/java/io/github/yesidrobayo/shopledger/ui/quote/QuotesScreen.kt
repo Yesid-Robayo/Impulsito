@@ -44,6 +44,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.purchase.RecordsSegments
 import io.github.yesidrobayo.shopledger.ui.purchase.RecordsTopBar
 import io.github.yesidrobayo.shopledger.ui.sale.LocalRecordsExtraSegments
@@ -93,6 +95,7 @@ fun QuotesScreen(
                     asTab = asTab,
                     title = R.string.quote_title,
                     onBack = { onAction(QuotesAction.Back) },
+                    actions = { ScreenHelpLink(HelpTopic.QUOTES_ORDERS) },
                 )
                 if (asTab) {
                     backupBanner()

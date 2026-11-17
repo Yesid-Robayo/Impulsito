@@ -22,7 +22,7 @@ Em **Início** e em **Cópia de segurança**:
 ## Mais proteção
 
 - **Saúde dos meus dados**, em **Cópia de segurança**, mostra de relance como estão todas as proteções.
-- Uma cópia local, em [Cópias de segurança locais](help_offsite), protege se a conta da nuvem for perdida.
+- Uma cópia local, em [Cópias locais](help_offsite), protege se a conta da nuvem for perdida.
 - Uma cópia fixada é a que {app} guarda para não perder nada: nunca é apagada sozinha. **Liberar cópia** só com certeza.
 - Se sobrar pouco espaço no telefone ou na nuvem, libera-se espaço em outras coisas, como fotos ou vídeos, nunca apagando as cópias de {app}.
 

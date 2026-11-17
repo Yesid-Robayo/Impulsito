@@ -75,6 +75,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.region.IcuRegionalCatalog
 import io.github.yesidrobayo.shopledger.ui.region.RegionalOption
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -177,6 +179,7 @@ fun ReferenceCurrencyScreen(
                 navigation = TopBarNavigation.BACK,
                 onNavigate = { onAction(ReferenceCurrencyAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
+                actions = { ScreenHelpLink(HelpTopic.PRICE_LISTS) },
             )
             Column(
                 Modifier

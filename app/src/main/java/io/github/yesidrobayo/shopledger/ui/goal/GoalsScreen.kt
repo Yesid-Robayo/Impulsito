@@ -67,6 +67,8 @@ import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
@@ -151,6 +153,7 @@ fun GoalsScreen(
                 navigation = TopBarNavigation.BACK,
                 onNavigate = { onAction(GoalsAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
+                actions = { ScreenHelpLink(HelpTopic.GOALS) },
             )
             Column(
                 Modifier

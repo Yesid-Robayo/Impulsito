@@ -28,6 +28,7 @@ import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModelWithState
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpArticleId
 
 /**
  * La lista de producciones en la navegación. `Nueva producción` abre el formulario, y sin recetas
@@ -87,7 +88,9 @@ fun ProductionsRoute(navigator: AppNavigator) {
                         ProductionsAction.NewProduction ->
                             navigator.open(AppNavKey.ProductionForm())
 
-                        ProductionsAction.CreateRecipe -> navigator.open(AppNavKey.Combos)
+                        // Una receta se agrega desde el producto, no desde los combos: la ayuda
+                        // dice los pasos y lleva a Productos.
+                        ProductionsAction.RecipeHelp -> navigator.open(recipeHelp)
 
                         ProductionsAction.Back -> navigator.back()
 
@@ -182,11 +185,14 @@ fun ProductionFormRoute(key: AppNavKey.ProductionForm, navigator: AppNavigator) 
                 uiState = uiState,
                 onAction = { action ->
                     viewModel.onAction(action)
-                    if (action == ProductionFormAction.CreateRecipe) {
-                        navigator.open(AppNavKey.Combos)
+                    if (action == ProductionFormAction.RecipeHelp) {
+                        navigator.open(recipeHelp)
                     }
                 },
             )
         }
     }
 }
+
+/** El artículo que explica cómo se crea una receta para producir. */
+private val recipeHelp = AppNavKey.Help(articleKey = HelpArticleId.RECIPES_PRODUCTION.key)

@@ -60,6 +60,8 @@ import io.github.yesidrobayo.shopledger.ui.components.UnitLabel
 import io.github.yesidrobayo.shopledger.ui.components.WholeNumberField
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stock.locationChoices
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -94,6 +96,7 @@ fun ReorderScreen(
                 navigation = TopBarNavigation.BACK,
                 onNavigate = { onAction(ReorderAction.Back) },
                 navigationLabel = stringResource(R.string.a11y_back),
+                actions = { ScreenHelpLink(HelpTopic.RESTOCK) },
             )
             when {
                 uiState.loadFailed -> EmptyState(

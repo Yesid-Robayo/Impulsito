@@ -67,6 +67,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TonalFab
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -100,6 +102,7 @@ fun CategoriesScreen(
                     navigation = TopBarNavigation.BACK,
                     onNavigate = { onAction(CategoriesAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
+                    actions = { ScreenHelpLink(HelpTopic.CATALOG_SETUP) },
                 )
                 if (!wide) {
                     SegmentedTabs(

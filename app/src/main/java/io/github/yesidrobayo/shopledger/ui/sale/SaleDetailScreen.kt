@@ -71,6 +71,8 @@ import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.money.ProvideAccountCurrency
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlinx.datetime.YearMonth
@@ -132,6 +134,7 @@ fun SaleDetailScreen(
                     onNavigate = { onAction(SaleDetailAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
                     actions = {
+                        ScreenHelpLink(HelpTopic.RETURNS)
                         val menu = buildList {
                             // El texto solo de una venta activa; el comprobante en papel, también
                             // de una anulada, porque dice que se anuló.

@@ -56,6 +56,8 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -84,6 +86,7 @@ fun ProductionsScreen(
                     navigation = TopBarNavigation.BACK,
                     onNavigate = { onAction(ProductionsAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
+                    actions = { ScreenHelpLink(HelpTopic.RECIPES) },
                 )
                 when {
                     uiState.loadFailed -> EmptyState(
@@ -152,7 +155,7 @@ private fun EmptyProductions(hasRecipes: Boolean, onAction: (ProductionsAction) 
         } else {
             PrimaryActionButton(
                 text = stringResource(R.string.production_empty_no_recipe_action),
-                onClick = { onAction(ProductionsAction.CreateRecipe) },
+                onClick = { onAction(ProductionsAction.RecipeHelp) },
                 variant = ActionVariant.TONAL,
             )
         }

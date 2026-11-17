@@ -71,6 +71,8 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.money.PayingAccountChips
 import io.github.yesidrobayo.shopledger.ui.sale.unitLabelOf
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -108,6 +110,7 @@ fun SaleReturnScreen(
                 onNavigate = { onAction(SaleReturnAction.Close) },
                 navigationLabel = stringResource(R.string.a11y_close),
                 titleStyle = MaterialTheme.typography.titleLarge,
+                actions = { ScreenHelpLink(HelpTopic.RETURNS) },
             )
             uiState.saleDate?.let { date ->
                 val formats = LocalAppFormats.current

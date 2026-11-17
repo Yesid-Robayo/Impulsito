@@ -12,14 +12,14 @@
 - Crear los productos con su precio y, si se conoce, su costo: con el costo se ve la ganancia de cada venta.
 - Registrar cada venta con **Vender**, y cada compra y cada gasto en el momento.
 - Mirar en **Inicio** las ventas de hoy y el estado de la copia.
-- Lo que no se usa a diario, como clientes, caja o unidades, está en **Negocio**. La configuración está en **Ajustes**.
+- Lo que no se usa a diario, como clientes, caja o unidades, está en **Negocio**, en **Inicio**: ver [el centro Negocio](help_business_hub). La configuración está en **Ajustes**.
 
 Lo que no se usa no estorba: una herramienta aparece en **En uso** con su primer registro.
 
 ## La moneda
 
-La moneda queda fija desde el primer registro con dinero. Si se eligió mal, **Ajustes** permite cambiarla por otra con los mismos decimales. Los montos no se convierten, y antes se hace una copia.
+La moneda queda fija desde el primer registro con dinero. Si se eligió mal, en **Ajustes**, **Configuración regional**, **Corregir la moneda** la cambia por otra con los mismos decimales: ver [región e idioma](help_region_language). Los montos no se convierten, y antes se hace una copia.
 
 ## Si algo no está claro
 
-Esta ayuda funciona sin internet. Antes de tocar algo que no esté aquí, conviene pedir ayuda con **Información para soporte**, que no lleva datos del negocio. Sirve contar qué se estaba haciendo, qué se esperaba y qué pasó, sin enviar capturas con ventas, montos o productos, ni contraseñas.
+Esta ayuda funciona sin internet. Se abre con el botón de ayuda de la barra de arriba de muchas pantallas, con **Ayuda** en **Ajustes** o al final de **Negocio**. Antes de tocar algo que no esté aquí, conviene pedir ayuda con **Información para soporte**, que no lleva datos del negocio. Sirve contar qué se estaba haciendo, qué se esperaba y qué pasó, sin enviar capturas con ventas, montos o productos, ni contraseñas.

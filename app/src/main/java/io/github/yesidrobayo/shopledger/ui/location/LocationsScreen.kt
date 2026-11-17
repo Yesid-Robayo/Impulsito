@@ -68,6 +68,8 @@ import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.stock.inventoryRowData
 import io.github.yesidrobayo.shopledger.ui.stock.locationName
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
@@ -104,6 +106,7 @@ fun LocationsScreen(
                     onNavigate = { onAction(LocationsAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
                     titleStyle = MaterialTheme.typography.titleLarge,
+                    actions = { ScreenHelpLink(HelpTopic.LOCATIONS) },
                 )
                 SegmentedTabs(
                     options = LocationsTab.entries.map { stringResource(tabLabel(it)) },

@@ -55,6 +55,8 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.quantityText
 import io.github.yesidrobayo.shopledger.ui.components.unitLabel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.sale.reasonLabel
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -93,6 +95,7 @@ fun SupplierReturnDetailScreen(
                     onNavigate = { onAction(SupplierReturnDetailAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
                     titleStyle = MaterialTheme.typography.titleLarge,
+                    actions = { ScreenHelpLink(HelpTopic.PURCHASES) },
                 )
                 Box(
                     Modifier

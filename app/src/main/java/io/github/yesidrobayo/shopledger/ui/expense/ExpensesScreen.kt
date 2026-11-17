@@ -83,6 +83,8 @@ import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.money.PayingAccountChips
 import io.github.yesidrobayo.shopledger.ui.purchase.EXPENSES_SEGMENT
 import io.github.yesidrobayo.shopledger.ui.purchase.PURCHASES_SEGMENT
@@ -140,6 +142,7 @@ fun ExpensesScreen(
                     title = R.string.records_tab_expenses,
                     onBack = { onAction(ExpensesAction.ShowSales) },
                 ) {
+                    ScreenHelpLink(HelpTopic.EXPENSES)
                     OverflowMenu(
                         listOf(
                             OverflowAction(

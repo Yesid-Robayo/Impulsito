@@ -56,6 +56,8 @@ import io.github.yesidrobayo.shopledger.ui.components.StatusTone
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.sale.unitLabelOf
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -106,7 +108,10 @@ fun QuoteDetailScreen(
                     navigation = TopBarNavigation.BACK,
                     onNavigate = { onAction(QuoteDetailAction.Back) },
                     navigationLabel = stringResource(R.string.a11y_back),
-                    actions = { if (quote != null) DetailMenu(quote, onAction) },
+                    actions = {
+                        ScreenHelpLink(HelpTopic.QUOTES_ORDERS)
+                        if (quote != null) DetailMenu(quote, onAction)
+                    },
                 )
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                     when (val content = uiState.content) {

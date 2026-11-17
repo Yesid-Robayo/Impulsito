@@ -115,7 +115,7 @@ sealed interface ProductionsAction {
 
     data object NewProduction : ProductionsAction
 
-    data object CreateRecipe : ProductionsAction
+    data object RecipeHelp : ProductionsAction
 
     data object Back : ProductionsAction
 }
@@ -212,7 +212,7 @@ class ProductionsViewModel(
 
             // Crear, abrir una receta y volver los resuelve la navegación.
             ProductionsAction.NewProduction,
-            ProductionsAction.CreateRecipe,
+            ProductionsAction.RecipeHelp,
             ProductionsAction.Back,
             -> Unit
         }

@@ -73,6 +73,8 @@ import io.github.yesidrobayo.shopledger.ui.components.saveErrorText
 import io.github.yesidrobayo.shopledger.ui.currency.rememberMoneyDisplay
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
+import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
+import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
@@ -107,6 +109,7 @@ fun PayableDetailScreen(
                 },
                 titleStyle = MaterialTheme.typography.titleLarge,
             ) {
+                ScreenHelpLink(HelpTopic.PAYABLES)
                 if (ready != null) {
                     TopBarAction(
                         R.drawable.ic_storefront,
