@@ -180,12 +180,6 @@ enum class BackupMessage {
     /** `Respaldar ahora` no se pudo pedir: nada cambió, y se puede reintentar. */
     REQUEST_FAILED,
 
-    /**
-     * `Guardar en {provider}` con la hora del teléfono atrasada: se pidió igual, pero la copia
-     * puede no llegar, y se dice qué corregir. Nunca la da por guardada.
-     */
-    CLOCK_BEHIND,
-
     /** No se pudo guardar la política con datos móviles o la revisión: todo sigue como estaba. */
     SAVE_FAILED,
 }

@@ -72,8 +72,6 @@
     <string name="backup_near_limit">The data is nearing the size %1$s can restore. It still saves fine. Ask for help before it stops fitting.</string>
     <string name="backup_near_limit_slots">The data is nearing the size %1$s can restore. It is still handed off fine. Ask for help before it stops fitting.</string>
     <string name="backup_now_no_internet">No internet. The backup goes out when the connection returns.</string>
-    <!-- backup_save_clock_behind: %1$s = provider -->
-    <string name="backup_save_clock_behind">The phone\'s clock looks behind, so the backup may not reach %1$s. Correct the date and time in Android settings and tap Save to %1$s again.</string>
     <string name="backup_full_verify_late_notice">%2$s has not checked a whole backup for %1$s days. If the service damaged a file, it is not known yet.</string>
     <string name="backup_copy_not_restorable">Cannot be restored</string>
     <string name="backup_destination_label">Where they are saved</string>
