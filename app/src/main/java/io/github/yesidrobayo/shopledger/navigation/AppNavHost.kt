@@ -58,6 +58,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
 import io.github.yesidrobayo.shopledger.ui.components.LocalNavigationLayout
+import io.github.yesidrobayo.shopledger.ui.components.LocalSayOpener
 import io.github.yesidrobayo.shopledger.ui.components.LocalSettingsOpener
 import io.github.yesidrobayo.shopledger.ui.components.NavigationLayout
 import io.github.yesidrobayo.shopledger.ui.components.PerformanceTags
@@ -196,6 +197,8 @@ fun AppNavHost(
     val density = LocalDensity.current
     // El engranaje de cada pestaña abre los ajustes encima de ella.
     val openSettings = remember(navigator) { { navigator.open(AppNavKey.Settings) } }
+    // El micrófono de las pestañas abre Decir o escribir encima de la pantalla visible.
+    val openSay: () -> Unit = remember(navigator) { { navigator.open(AppNavKey.Phrase()) } }
     // El enlace de ayuda de cada pantalla abre su artículo encima de ella.
     val openHelp = remember(navigator) { { topic: HelpTopic -> navigator.open(topic.navKey()) } }
     val messageScope = rememberCoroutineScope()
@@ -257,6 +260,7 @@ fun AppNavHost(
                     LocalPolicyPrompt provides policy,
                     LocalNotificationPermission provides notificationPermission,
                     LocalSettingsOpener provides openSettings,
+                    LocalSayOpener provides openSay,
                     LocalHelpOpener provides openHelp,
                     LocalNavigationLayout provides layout,
                     LocalUnsavedWork provides unsavedWork,

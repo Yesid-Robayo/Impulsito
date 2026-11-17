@@ -83,6 +83,7 @@ import io.github.yesidrobayo.shopledger.ui.components.NoticeCard
 import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.ProductRow
+import io.github.yesidrobayo.shopledger.ui.components.SayButton
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.StatChange
@@ -151,6 +152,7 @@ fun HomeScreen(
                     actions = {
                         ScreenHelpLink(HelpTopic.HOME)
                         DiscreetModeButton()
+                        SayButton()
                         TopBarAction(
                             R.drawable.ic_settings,
                             stringResource(R.string.a11y_settings),

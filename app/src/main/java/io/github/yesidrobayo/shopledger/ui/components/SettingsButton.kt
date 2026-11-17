@@ -21,6 +21,8 @@ val LocalSettingsOpener = staticCompositionLocalOf<() -> Unit> { {} }
 @Composable
 fun SettingsButton() {
     val open = LocalSettingsOpener.current
+    // El micrófono acompaña al engranaje en cada pestaña, justo antes de él.
+    SayButton()
     TopBarAction(R.drawable.ic_settings, stringResource(R.string.a11y_settings), open)
 }
 

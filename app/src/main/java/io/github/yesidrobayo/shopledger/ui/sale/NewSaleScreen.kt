@@ -79,6 +79,7 @@ import io.github.yesidrobayo.shopledger.ui.components.PaymentMethodChips
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.SaleProductTile
 import io.github.yesidrobayo.shopledger.ui.components.SaleTileLine
+import io.github.yesidrobayo.shopledger.ui.components.SayButton
 import io.github.yesidrobayo.shopledger.ui.components.SearchField
 import io.github.yesidrobayo.shopledger.ui.components.SectionHeader
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
@@ -171,6 +172,7 @@ fun NewSaleScreen(
                     navigationLabel = stringResource(R.string.a11y_close),
                     actions = {
                         ScreenHelpLink(HelpTopic.NEW_SALE)
+                        SayButton()
                         HeldSaleActions(uiState, onAction)
                     },
                 )
