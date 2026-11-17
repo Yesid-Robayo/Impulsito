@@ -856,7 +856,11 @@ private fun LazyListScope.lastCostRows(
 ) {
     if (overview.lastCosts.isEmpty()) {
         item(key = "no-costs") {
-            EmptyStateInline(title = stringResource(R.string.empty_purchases_title))
+            // Fuera de una tarjeta, el aviso lleva el mismo margen que las filas de la pestaña.
+            EmptyStateInline(
+                title = stringResource(R.string.empty_purchases_title),
+                modifier = Modifier.padding(horizontal = AppTheme.spacing.s16),
+            )
         }
         return
     }
