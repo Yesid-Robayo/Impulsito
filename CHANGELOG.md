@@ -8,6 +8,21 @@ Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](htt
 
 Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
+## [1.0.3] - 2026-11-17
+
+### Agregado
+
+- **Ayuda completa:** 25 artículos nuevos, entre ellos recetas y producción, compras y proveedores, cuentas por pagar, gastos,
+  reposición, categorías, variantes, ubicaciones, escáner y etiquetas, listas de precios, Números, metas, registros, preferencias,
+  widget y el centro **Negocio**. La ayuda se agrupa según lo que se quiere hacer, y el botón de ayuda de cada pantalla abre su
+  artículo.
+
+### Corregido
+
+- **Producción** sin recetas: **Cómo crear una receta** explica los pasos. Antes abría los combos, que no se producen.
+- **Productos:** editar un producto ya no le quita el proveedor habitual que le dio una importación.
+- **Ayuda:** dos rótulos que ya no coincidían con la app.
+
 ## [1.0.2] - 2026-11-17
 
 ### Agregado

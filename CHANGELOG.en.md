@@ -8,6 +8,21 @@ and versions follow [Semantic Versioning](https://semver.org/). Published versio
 
 When a new version is published, it's added at the top with the same content as its release notes.
 
+## [1.0.3] - 2026-11-17
+
+### Added
+
+- **Complete help:** 25 new articles, among them recipes and production, purchases and suppliers, accounts payable, expenses,
+  restocking, categories, variants, locations, scanner and labels, price lists, Numbers, goals, records, preferences, widget and
+  the **Business** hub. Help is grouped by what you want to do, and the help button of each screen opens its article.
+
+### Fixed
+
+- **Production** without recipes: **How to create a recipe** explains the steps. Before, it opened the combos, which are not
+  produced.
+- **Products:** editing a product no longer removes the usual supplier that an import gave it.
+- **Help:** two labels that no longer matched the app.
+
 ## [1.0.2] - 2026-11-17
 
 ### Added

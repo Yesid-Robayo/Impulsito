@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.yesidrobayo.shopledger.BuildConfig
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.update.UpdateCheckOutcome
 import io.github.yesidrobayo.shopledger.ui.help.HelpBlock
@@ -438,7 +439,11 @@ class UpdatesScreenTest {
                 HelpMarkdown.parse(it.readText(), app)
             }
         val firstHeading = news.filterIsInstance<HelpBlock.Heading>().first()
-        assertEquals("1.0.2", firstHeading.spans.joinToString("") { it.text })
+        // Las novedades de esta versión van primero: la que se instala ya trae las suyas.
+        assertEquals(
+            BuildConfig.VERSION_NAME.removeSuffix("-debug"),
+            firstHeading.spans.joinToString("") { it.text },
+        )
         val state = mutableStateOf(ready())
         compose.setContent { PreviewTheme { UpdatesScreen(state.value, { actions += it }) } }
 

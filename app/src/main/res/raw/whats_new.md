@@ -1,5 +1,11 @@
 What each version of {app} brought, newest first.
 
+## 1.0.3
+
+- **Help:** 25 new articles, among them recipes and production, purchases and suppliers, expenses, categories, price lists, records and the Business hub. Help is grouped by what you want to do, and the help button of each screen opens its article.
+- **Production:** without recipes, **How to create a recipe** explains the steps. Before, it opened the combos, which are not produced.
+- **Products:** editing a product no longer removes the usual supplier that an import gave it.
+
 ## 1.0.2
 
 - **Update in one tap:** when Check for update finds a new version, **Update** downloads it, checks it against the signed version notice and the {app} signature, and then Android asks to install it. The data stays.

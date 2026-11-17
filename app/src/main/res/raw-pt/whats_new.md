@@ -1,5 +1,11 @@
 O que cada versão do {app} trouxe, da mais nova para a mais antiga.
 
+## 1.0.3
+
+- **Ajuda:** 25 artigos novos, entre eles receitas e produção, compras e fornecedores, despesas, categorias, tabelas de preços, registros e o centro Negócio. A ajuda é agrupada pelo que se quer fazer, e o botão de ajuda de cada tela abre o seu artigo.
+- **Produção:** sem receitas, **Como criar uma receita** explica os passos. Antes abria os combos, que não são produzidos.
+- **Produtos:** editar um produto não remove mais o fornecedor habitual que uma importação deu a ele.
+
 ## 1.0.2
 
 - **Atualizar com um toque:** quando Buscar atualização encontra uma nova versão, **Atualizar** a baixa, a compara com o aviso de versão assinado e com a assinatura do {app}, e depois o Android pede para instalá-la. Os dados continuam.
