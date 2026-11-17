@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
+import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.previewFormats
 import org.junit.Assert.assertEquals
@@ -77,7 +78,10 @@ class LockedCostDeviceTest {
         compose.runOnUiThread {
             compose.activity.setContent {
                 AppTheme(palette = ColorPalette.INDIGO_MUSTARD, darkTheme = false) {
-                    CompositionLocalProvider(LocalAppFormats provides previewFormats()) {
+                    CompositionLocalProvider(
+                        LocalAppFormats provides previewFormats(),
+                        LocalDiscreetMode provides false,
+                    ) {
                         ProductEditScreen(uiState = state, onAction = { actions += it })
                     }
                 }

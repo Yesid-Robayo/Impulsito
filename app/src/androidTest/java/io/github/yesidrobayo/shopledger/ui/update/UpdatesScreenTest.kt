@@ -452,7 +452,8 @@ class UpdatesScreenTest {
         state.value = ready().copy(whatsNew = WhatsNewUi.Ready(news))
         compose.waitForIdle()
 
-        compose.onNodeWithText("1.0.2").assertIsDisplayed()
+        // La versión instalada encabeza la hoja, sin depender de cuánto ocupan sus novedades.
+        compose.onNodeWithText(BuildConfig.VERSION_NAME.removeSuffix("-debug")).assertIsDisplayed()
     }
 
     @Test
