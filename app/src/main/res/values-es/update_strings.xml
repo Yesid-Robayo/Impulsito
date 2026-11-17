@@ -5,7 +5,7 @@
     <string name="update_fingerprint_title">Huella de la firma</string>
     <string name="update_fingerprint_help">Se puede comparar con la huella publicada en la página de %1$s.</string>
     <string name="update_how_title">Cómo actualizar</string>
-    <string name="update_how_step_backup">Hacer una copia con Respaldar ahora.</string>
+    <string name="update_how_step_backup">Hacer una copia con Respaldar ahora. Con la nube del teléfono, el botón es Guardar en esa nube.</string>
     <string name="update_how_step_download">Descargar el APK desde la página de %1$s.</string>
     <string name="update_how_step_verify">Comprobarlo aquí con Verificar un APK.</string>
     <string name="update_how_step_install">Instalarlo encima, sin desinstalar %1$s: desinstalar borra lo que no tenga copia.</string>

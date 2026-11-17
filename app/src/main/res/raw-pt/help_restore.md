@@ -18,7 +18,7 @@ Se havia segundo destino, as cópias continuam na pasta dele. Nas boas-vindas, *
 
 ## Trocar de telefone
 
-1. No telefone anterior, abrir {app} com internet e esperar que diga **Tudo salvo**. Com a nuvem do telefone, tocar em **Fazer cópia agora** e conferir se o arquivo aparece nessa nuvem, com esse horário.
+1. No telefone anterior, abrir {app} com internet e esperar que diga **Tudo salvo**. Com a nuvem do telefone, tocar em **Salvar em Drive** e conferir se o arquivo aparece nessa nuvem, com esse horário.
 2. Com Wi-Fi, esperar até não sobrar nenhuma foto sem cópia. Com a nuvem do telefone, as fotos são passadas com **Exportar fotos**.
 3. Parar de registrar no telefone anterior: {app} é usado em um só telefone por vez.
 4. Trazer os dados para o telefone novo, como acima, e comparar produtos, vendas do mês e lucro.

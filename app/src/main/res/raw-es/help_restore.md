@@ -18,7 +18,7 @@ Si había segundo destino, las copias siguen en su carpeta. En la bienvenida, **
 
 ## Cambiar de teléfono
 
-1. En el teléfono anterior, abrir {app} con internet y esperar a que diga **Todo guardado**. Con la nube del teléfono, tocar **Respaldar ahora** y comprobar que el archivo aparezca en esa nube, con esa hora.
+1. En el teléfono anterior, abrir {app} con internet y esperar a que diga **Todo guardado**. Con la nube del teléfono, tocar **Guardar en Drive** y comprobar que el archivo aparezca en esa nube, con esa hora.
 2. Con Wi-Fi, esperar a que no quede ninguna foto sin respaldar. Con la nube del teléfono, las fotos se pasan con **Exportar fotos**.
 3. Dejar de registrar en el teléfono anterior: {app} se usa en un solo teléfono a la vez.
 4. Traer los datos al teléfono nuevo, como arriba, y comparar productos, ventas del mes y ganancia.

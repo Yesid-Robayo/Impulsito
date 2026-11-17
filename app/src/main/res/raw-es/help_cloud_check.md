@@ -11,10 +11,10 @@ Solo con **Drive del teléfono**. {app} entrega cada copia a esa nube, pero no p
 
 ## Si no aparece con esa hora
 
-No tocar ese botón. Abrir esa nube con internet, mirar que tenga la sesión abierta y espacio, tocar **Respaldar ahora** y mirar la hora otra vez. Si sigue sin cambiar, hoy mismo usar **Exportar copia**, guardar el archivo en una memoria USB o una tarjeta SD, y pasar a **Servicio con WebDAV**.
+No tocar ese botón. Abrir esa nube con internet, mirar que tenga la sesión abierta y espacio, tocar **Guardar en Drive** y mirar la hora otra vez. Si sigue sin cambiar, hoy mismo usar **Exportar copia**, guardar el archivo en una memoria USB o una tarjeta SD, y pasar a **Servicio con WebDAV**.
 
 ## Los avisos
 
 - **Falta revisar la copia en Drive**: pasaron 7 días sin revisar. Puede aparecer junto a otro aviso, porque ninguno lo esconde.
-- **Iniciar sesión en Drive**: se cerró la sesión en el teléfono, y las copias están detenidas. Al iniciar sesión siguen solas, sin crear archivos nuevos.
+- **Iniciar sesión en Drive**: se cerró la sesión en el teléfono, y las copias están detenidas. Después de iniciar sesión, **Guardar en Drive** vuelve a entregarlas, sin crear archivos nuevos.
 - **Revisar la copia en la nube**: hay una copia más nueva o de otro teléfono, o uno de los tres archivos cambió por fuera de {app}. Las copias se pararon para no pisar nada. Ante la duda, elegir **Decidir después** y pedir ayuda.

@@ -18,7 +18,7 @@ If there was a second destination, the backups are still in its folder. On the w
 
 ## Change phones
 
-1. On the old phone, open {app} with internet and wait until it says **All saved**. With the phone's cloud, tap **Back up now** and check that the file appears in that cloud, with that time.
+1. On the old phone, open {app} with internet and wait until it says **All saved**. With the phone's cloud, tap **Save to Drive** and check that the file appears in that cloud, with that time.
 2. On Wi-Fi, wait until no photo is left without a backup. With the phone's cloud, move the photos with **Export photos**.
 3. Stop recording on the old phone: {app} is used on only one phone at a time.
 4. Bring the data to the new phone, as above, and compare the products, the month's sales and the profit.

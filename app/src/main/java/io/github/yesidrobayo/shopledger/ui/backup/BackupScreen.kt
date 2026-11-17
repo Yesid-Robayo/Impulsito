@@ -691,7 +691,7 @@ fun MissingHelpSheet(provider: String, onClose: () -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
             for (step in listOf(
                 stringResource(R.string.backup_check_missing_step_1, provider),
-                stringResource(R.string.backup_check_missing_step_2),
+                stringResource(R.string.backup_check_missing_step_2, provider),
                 stringResource(R.string.backup_check_missing_step_3),
             )) {
                 Text(step, style = MaterialTheme.typography.bodyMedium)

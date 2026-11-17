@@ -17,15 +17,21 @@ import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.data.destination.StoredCopy
 import io.github.yesidrobayo.shopledger.data.destination.TransferControl
 import io.github.yesidrobayo.shopledger.data.destination.TransientKind
+import io.github.yesidrobayo.shopledger.data.destination.UploadPlan
 import io.github.yesidrobayo.shopledger.data.destination.VerifiedCopy
 import io.github.yesidrobayo.shopledger.data.destination.VerifyMode
 import io.github.yesidrobayo.shopledger.data.destination.identity
 import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyInstant
+import io.github.yesidrobayo.shopledger.domain.model.backup.UploadGateVerdict
 import java.io.File
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
@@ -204,6 +210,69 @@ class UploadRecoveryTest {
             assertNull(fixture.state().pendingGeneration)
             assertEquals(emptyList<String>(), fixture.stagingFiles())
         }
+
+    @Test
+    fun aWorkStoppedAfterTheFileKeepsItsStagedMetadataAndTheNextRunCompletesTheCopy() =
+        runBlocking {
+            val destination = FakeBackupDestination()
+            goodCopy(destination)
+            fixture.addProduct("Leche de prueba")
+            fixture.advance(1.minutes)
+            val stopping = StoppedAfterTheFile(destination)
+
+            // El sistema detiene el trabajo con el archivo ya en su nombre final y sin sus
+            // metadatos: la corrutina se cancela, y la limpieza del final corre igual.
+            val work = launch { fixture.runner(stopping).run(control) }
+            stopping.reached.await()
+            work.cancelAndJoin()
+
+            val pending =
+                destination.fileNames.mapNotNull(BackupFileName::parse).single {
+                    it.generation == 2L
+                }
+            assertFalse(pending.metaFileName in destination.fileNames)
+            assertEquals(2L, fixture.state().pendingGeneration)
+            assertEquals(STAGED_PENDING, fixture.stagingFiles())
+            fixture.advance(1.minutes)
+            val before = destination.calls.size
+
+            val run = fixture.runner(destination).run(control)
+
+            // La misma generación: solo subieron sus metadatos, y la copia no quedó sin ellos.
+            assertEquals(BackupRun.Verified(2), run)
+            assertFalse(Operation.UPLOAD in destination.calls.drop(before))
+            assertTrue(Operation.UPLOAD_META in destination.calls.drop(before))
+            assertTrue(pending.metaFileName in destination.fileNames)
+            assertNull(fixture.state().pendingGeneration)
+            assertEquals(emptyList<String>(), fixture.stagingFiles())
+        }
+
+    @Test
+    fun aRunHeldByTheNetworkGateKeepsTheStagedMetadataOfThePendingCopy() = runBlocking {
+        val destination = FakeBackupDestination()
+        goodCopy(destination)
+        val pending = cutAfterTheFile(destination)
+        val gate = UploadGate { _, _, metered ->
+            if (metered) UploadGateVerdict.WAIT_FOR_UNMETERED else UploadGateVerdict.PROCEED
+        }
+        fixture.advance(1.minutes)
+
+        // Con datos móviles la compuerta hace esperar, sin tocar el destino: la subida sigue
+        // pendiente, y lo que necesita para terminar se queda en el teléfono.
+        val held = fixture.runner(destination, uploadGate = gate).run(TestControl(metered = true))
+
+        assertEquals(BackupRun.Skipped(SkipReason.WAITING_FOR_UNMETERED), held)
+        assertEquals(2L, fixture.state().pendingGeneration)
+        assertEquals(STAGED_PENDING, fixture.stagingFiles())
+        fixture.advance(1.minutes)
+
+        val run = fixture.runner(destination, uploadGate = gate).run(control)
+
+        assertEquals(BackupRun.Verified(2), run)
+        assertTrue(pending.metaFileName in destination.fileNames)
+        assertNull(fixture.state().pendingGeneration)
+        assertEquals(emptyList<String>(), fixture.stagingFiles())
+    }
 
     @Test
     fun aRecoveredCopyMarkedInvalidIsConfirmedWithItsFailureInSight() = runBlocking {
@@ -409,6 +478,25 @@ class UploadRecoveryTest {
         BackupFileFormat.GZIP,
     )
 
+    /**
+     * Deja el archivo de la copia con su nombre final, sin metadatos, y se queda esperando a que el
+     * sistema detenga el trabajo, como una subida cortada entre el archivo y sus metadatos.
+     */
+    private class StoppedAfterTheFile(private val delegate: FakeBackupDestination) :
+        BackupDestination by delegate {
+        val reached = CompletableDeferred<Unit>()
+
+        override suspend fun upload(
+            plan: UploadPlan,
+            control: TransferControl,
+        ): DestinationResult<StoredCopy> {
+            delegate.crashUploadAfter = UploadStep.AFTER_FILE
+            delegate.upload(plan, control)
+            reached.complete(Unit)
+            awaitCancellation()
+        }
+    }
+
     /** Anota con qué lectura se pidió comprobar cada copia. */
     private class ModeRecordingDestination(private val delegate: FakeBackupDestination) :
         BackupDestination by delegate {
@@ -423,5 +511,10 @@ class UploadRecoveryTest {
             modes += mode
             return delegate.verify(copy, mode, localFile, control)
         }
+    }
+
+    private companion object {
+        /** Lo que espera en el teléfono para retomar la subida de la generación 2. */
+        val STAGED_PENDING = listOf("snapshot-g00000002.db.gz", "snapshot-g00000002.slmeta")
     }
 }

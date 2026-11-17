@@ -12,7 +12,7 @@
     <string name="backup_check_open_failed">Não foi possível abrir %1$s daqui. É possível abrir esse app manualmente, buscar %2$s e olhar o horário.</string>
     <string name="backup_check_missing_title">Se não aparecer com esse horário</string>
     <string name="backup_check_missing_step_1">Abrir %1$s com internet e ver se a sessão está aberta e se há espaço livre.</string>
-    <string name="backup_check_missing_step_2">Tocar em Fazer cópia agora, aguardar um pouco e olhar o horário de novo.</string>
+    <string name="backup_check_missing_step_2">Tocar em Salvar em %1$s, aguardar um pouco e olhar o horário de novo.</string>
     <string name="backup_check_missing_step_3">Se o horário continuar sem mudar, convém exportar uma cópia hoje e escolher um serviço com WebDAV. Até lá, o que é novo está apenas neste telefone.</string>
     <string name="backup_handed_off_detail">Arquivo %1$s, %2$s. Última gravação: %3$s</string>
 </resources>

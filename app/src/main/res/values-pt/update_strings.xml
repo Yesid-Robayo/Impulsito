@@ -5,7 +5,7 @@
     <string name="update_fingerprint_title">Impressão digital da assinatura</string>
     <string name="update_fingerprint_help">Pode ser comparada com a impressão publicada na página do %1$s.</string>
     <string name="update_how_title">Como atualizar</string>
-    <string name="update_how_step_backup">Fazer uma cópia com Fazer cópia agora.</string>
+    <string name="update_how_step_backup">Fazer uma cópia com Fazer cópia agora. Com a nuvem do telefone, o botão é Salvar nessa nuvem.</string>
     <string name="update_how_step_download">Baixar o APK da página do %1$s.</string>
     <string name="update_how_step_verify">Conferir aqui com Verificar um APK.</string>
     <string name="update_how_step_install">Instalar por cima, sem desinstalar o %1$s: desinstalar apaga o que não tiver cópia.</string>

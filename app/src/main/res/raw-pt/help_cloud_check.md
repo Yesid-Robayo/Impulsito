@@ -11,10 +11,10 @@ Só com **Drive do telefone**. {app} entrega cada cópia a essa nuvem, mas não 
 
 ## Se não aparecer com esse horário
 
-Não tocar nesse botão. Abrir essa nuvem com internet, conferir se a sessão está aberta e se há espaço, tocar em **Fazer cópia agora** e olhar o horário de novo. Se continuar sem mudar, hoje mesmo usar **Exportar cópia de segurança**, salvar o arquivo em um pendrive ou em um cartão SD, e passar para **Serviço com WebDAV**.
+Não tocar nesse botão. Abrir essa nuvem com internet, conferir se a sessão está aberta e se há espaço, tocar em **Salvar em Drive** e olhar o horário de novo. Se continuar sem mudar, hoje mesmo usar **Exportar cópia de segurança**, salvar o arquivo em um pendrive ou em um cartão SD, e passar para **Serviço com WebDAV**.
 
 ## Os avisos
 
 - **Falta revisar a cópia em Drive**: passaram 7 dias sem revisar. Pode aparecer junto com outro aviso, porque nenhum o esconde.
-- **Entrar em Drive**: a sessão no telefone foi encerrada, e as cópias estão paradas. Ao entrar de novo, elas continuam sozinhas, sem criar arquivos novos.
+- **Entrar em Drive**: a sessão no telefone foi encerrada, e as cópias estão paradas. Depois de entrar de novo, **Salvar em Drive** volta a entregá-las, sem criar arquivos novos.
 - **Revisar a cópia na nuvem**: há uma cópia mais nova ou de outro telefone, ou um dos três arquivos mudou fora de {app}. As cópias foram paradas para não sobrescrever nada. Na dúvida, escolher **Decidir depois** e pedir ajuda.

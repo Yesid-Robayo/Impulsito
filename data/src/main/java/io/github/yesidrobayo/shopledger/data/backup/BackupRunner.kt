@@ -99,8 +99,9 @@ import kotlinx.coroutines.withContext
  *     Una copia fatal pasa a ser la cabeza, pero los cambios siguen sin respaldar.
  *     Una lectura completa que coincidió queda anotada para el plazo y para la poda.
  * 13. **Podar.** Solo después de confirmar, y un fallo ahí no invalida la copia.
- * 14. **Terminar.** Borra los temporales en un `finally`, salvo el archivo de una subida que se
- *     reintenta, que se conserva hasta un día.
+ * 14. **Terminar.** Borra los temporales en un `finally`, salvo el archivo de una subida que sigue
+ *     pendiente, con sus metadatos, que se conserva hasta un día: la que se reintenta, la que la
+ *     compuerta dejó esperando y la que el sistema detuvo a mitad.
  *
  * Entre pasos revisa si el sistema pidió detenerse. Una ejecución a la vez, bajo [mutex]: la
  * segunda espera, y al entrar vuelve a mirar si queda algo pendiente.
@@ -196,10 +197,32 @@ internal class BackupRunner(
 
     /** Lo que la limpieza del final necesita saber de la ejecución. */
     private class Attempt(var pendingGeneration: Long?) {
+        /** Cómo terminó la ejecución, o nulo si la cortó una cancelación o una falla imprevista. */
         var outcome: BackupRun? = null
 
-        /** El archivo de la subida pendiente se conserva solo si la ejecución se reintenta. */
-        fun keptGeneration(): Long? = pendingGeneration.takeIf { outcome is BackupRun.Retry }
+        /**
+         * El archivo de la subida pendiente, y sus metadatos, se conservan mientras esa subida siga
+         * pendiente y la próxima ejecución pueda retomarla: si se reintenta, si la compuerta de red
+         * la dejó esperando o si el sistema detuvo el trabajo a mitad. Una copia que ya llegó al
+         * destino con su nombre final necesita esos metadatos para no quedar allí sin ellos. Se
+         * borran si la copia se confirmó o si falló de forma permanente, y nunca duran más de un
+         * día: la limpieza solo conserva lo que tiene menos de esa edad.
+         */
+        fun keptGeneration(): Long? = pendingGeneration.takeIf { keepsPending(outcome) }
+
+        private fun keepsPending(run: BackupRun?): Boolean = when (run) {
+            // Cancelada por el sistema, o cortada por una falla que nadie previó: como una muerte
+            // del proceso, la intención sigue en el estado y la próxima ejecución la retoma.
+            null -> true
+
+            is BackupRun.Retry -> true
+
+            // La compuerta de red la hizo esperar antes de tocar el destino: la subida sigue
+            // pendiente. Las demás salidas sin hacer nada no tienen una subida que retomar.
+            is BackupRun.Skipped -> run.reason in GATE_WAITS
+
+            is BackupRun.Verified, is BackupRun.Stopped -> false
+        }
     }
 
     private suspend fun steps(
@@ -965,6 +988,14 @@ internal class BackupRunner(
 
         /** La base y su diario de escritura anticipada: los dos cuentan para el espacio. */
         val DATABASE_SUFFIXES = listOf("", "-wal")
+
+        /** Las salidas de la compuerta de red: la ejecución esperó sin tocar el destino. */
+        val GATE_WAITS =
+            setOf(
+                SkipReason.WAITING_FOR_INTERVAL,
+                SkipReason.WAITING_FOR_UNMETERED,
+                SkipReason.WAITING_FOR_PERSON,
+            )
     }
 }
 
