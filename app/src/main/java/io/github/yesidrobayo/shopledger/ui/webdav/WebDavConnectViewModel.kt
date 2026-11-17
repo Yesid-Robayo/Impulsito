@@ -15,9 +15,11 @@ import io.github.yesidrobayo.shopledger.domain.usecase.backup.ConnectWebDavUseCa
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -30,7 +32,8 @@ import kotlinx.coroutines.withContext
  *   pide, porque su dirección viene con la app.
  * - `http://` o una dirección mal escrita se rechazan sin abrir ninguna conexión, y sin internet no
  *   se intenta.
- * - La prueba muestra en qué paso va, se puede cancelar y nunca se reintenta sola.
+ * - La prueba muestra en qué paso va, se puede cancelar y nunca se reintenta sola. Si un paso
+ *   tarda, dice que la prueba sigue.
  * - Si pasa y hay otro destino conectado, pregunta antes de cambiar: el actual sigue funcionando
  *   hasta confirmar.
  * - Si algo falla, lo escrito se conserva y nada se guarda.
@@ -189,15 +192,34 @@ class WebDavConnectViewModel(
             )
         }
         testing = viewModelScope.launch {
+            val running = MutableStateFlow<WebDavTestStep?>(null)
+            // Algunos servicios tardan minutos en un paso y después pasan: si un paso se demora,
+            // la pantalla dice que la prueba sigue, en vez de parecer colgada.
+            val hint = launch {
+                running.collectLatest { step ->
+                    state.update { it.copy(slowStep = false) }
+                    if (step != null) {
+                        delay(SLOW_STEP_HINT_MILLIS)
+                        state.update { it.copy(slowStep = true) }
+                    }
+                }
+            }
             val result =
                 try {
-                    withContext(computation) { port.test(login, appName, ::markRunning) }
+                    withContext(computation) {
+                        port.test(login, appName) { step ->
+                            markRunning(step)
+                            running.value = step
+                        }
+                    }
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: Exception) {
                     // Un fallo inesperado no guarda nada y se dice como uno de red.
                     WebDavTestResult.Failed(WebDavTestStep.LIST, WebDavTestFailure.UNREACHABLE)
                 }
+            hint.cancel()
+            state.update { it.copy(slowStep = false) }
             onTested(login, result)
         }
     }
@@ -263,6 +285,7 @@ class WebDavConnectViewModel(
             WebDavTestFailure.FORBIDDEN,
             WebDavTestFailure.RATE_LIMITED,
             WebDavTestFailure.UNREACHABLE,
+            WebDavTestFailure.TIMED_OUT,
             WebDavTestFailure.INSECURE,
             WebDavTestFailure.NO_SPACE,
             WebDavTestFailure.BASE_URL,
@@ -332,7 +355,9 @@ class WebDavConnectViewModel(
         if (state.value.phase != WebDavPhase.TESTING) return
         testing?.cancel()
         testing = null
-        state.update { it.copy(phase = WebDavPhase.EDITING, steps = emptyList()) }
+        state.update {
+            it.copy(phase = WebDavPhase.EDITING, steps = emptyList(), slowStep = false)
+        }
     }
 
     private suspend fun <T> read(block: suspend () -> T): T? = try {
@@ -349,5 +374,11 @@ class WebDavConnectViewModel(
     private companion object {
         const val URL_KEY = "url"
         const val USER_KEY = "username"
+
+        /**
+         * Cuánto puede durar un paso antes de decir que la prueba sigue: quince segundos. Una
+         * prueba normal entera tarda unos segundos, así que un paso así ya es lento.
+         */
+        const val SLOW_STEP_HINT_MILLIS = 15_000L
     }
 }

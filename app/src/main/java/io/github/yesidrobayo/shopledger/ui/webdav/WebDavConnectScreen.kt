@@ -226,6 +226,9 @@ private fun ColumnScope.Form(
         Box(Modifier.bringIntoViewRequester(requester)) { Notice(notice, onAction) }
     }
     if (uiState.steps.isNotEmpty()) Steps(uiState.steps)
+    if (uiState.slowStep && uiState.phase == WebDavPhase.TESTING) {
+        NoticeCard(stringResource(R.string.webdav_step_slow), NoticeVariant.INFO)
+    }
     val suggestion = uiState.suggestion
     NoticeCard(
         stringResource(
@@ -265,7 +268,9 @@ private fun Notice(notice: WebDavNotice, onAction: (WebDavConnectAction) -> Unit
             NoticeCard(stringResource(R.string.state_error_save), NoticeVariant.ERROR)
 
         is WebDavNotice.Failed -> {
-            val retry = notice.failure == WebDavTestFailure.UNREACHABLE
+            val retry =
+                notice.failure == WebDavTestFailure.UNREACHABLE ||
+                    notice.failure == WebDavTestFailure.TIMED_OUT
             NoticeCard(
                 text = failureText(notice.step, notice.failure),
                 variant = NoticeVariant.ERROR,
@@ -287,6 +292,8 @@ private fun failureText(step: WebDavTestStep, failure: WebDavTestFailure): Strin
         WebDavTestFailure.RATE_LIMITED -> stringResource(R.string.webdav_error_rate_limited)
 
         WebDavTestFailure.UNREACHABLE -> stringResource(R.string.webdav_error_unreachable)
+
+        WebDavTestFailure.TIMED_OUT -> stringResource(R.string.webdav_error_timed_out)
 
         WebDavTestFailure.INSECURE -> stringResource(R.string.webdav_error_secure, app)
 

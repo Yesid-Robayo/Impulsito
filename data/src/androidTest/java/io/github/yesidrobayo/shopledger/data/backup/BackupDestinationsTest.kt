@@ -3,11 +3,15 @@ package io.github.yesidrobayo.shopledger.data.backup
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.yesidrobayo.shopledger.data.destination.APP_FOLDER
+import io.github.yesidrobayo.shopledger.data.destination.BackupFileFormat
 import io.github.yesidrobayo.shopledger.data.destination.BackupFileName
+import io.github.yesidrobayo.shopledger.data.destination.FakeBackupDestination
 import io.github.yesidrobayo.shopledger.data.destination.FakeHttpServer
 import io.github.yesidrobayo.shopledger.data.destination.FakeResponse
 import io.github.yesidrobayo.shopledger.data.destination.InMemoryWebDav
 import io.github.yesidrobayo.shopledger.data.destination.RecordedRequest
+import io.github.yesidrobayo.shopledger.data.destination.SlMeta
+import io.github.yesidrobayo.shopledger.data.destination.SlMetaCodec
 import io.github.yesidrobayo.shopledger.data.destination.WebDavDestination
 import io.github.yesidrobayo.shopledger.data.destination.slots.ContentResolverDocumentAccess
 import io.github.yesidrobayo.shopledger.data.destination.slots.DocumentResult
@@ -19,11 +23,15 @@ import io.github.yesidrobayo.shopledger.data.destination.slots.SlotStateLoad
 import io.github.yesidrobayo.shopledger.data.destination.slots.SlotTestProvider
 import io.github.yesidrobayo.shopledger.data.destination.slots.WriteMode
 import io.github.yesidrobayo.shopledger.data.destination.testClient
+import io.github.yesidrobayo.shopledger.data.local.AppDatabase
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupConflictKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupFailureCode
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupSlot
+import io.github.yesidrobayo.shopledger.domain.model.backup.CopyInstant
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -145,6 +153,83 @@ class BackupDestinationsTest {
     }
 
     @Test
+    fun anotherPhonesNewerCopyIsAConflictOnTheFirstRunWithoutWriting() = runBlocking {
+        fixture.connect(BackupDestinationKind.WEBDAV)
+        val (dav, server) = dav()
+        assertEquals(BackupRun.Verified(1), fixture.runner(webDav(server)).run(control))
+        fixture.addProduct("Leche de prueba")
+        fixture.advance(2.minutes)
+        assertEquals(BackupRun.Verified(2), fixture.runner(webDav(server)).run(control))
+        // Como en el simulacro con un servicio real: dos copias viejas de un tercer teléfono sin
+        // metadatos, y la copia más nueva de otro teléfono, que restauró la de este y subió encima.
+        putCopy(dav, generation = 1, deviceId = THIRD_DEVICE_ID, withMeta = false)
+        putCopy(dav, generation = 2, deviceId = THIRD_DEVICE_ID, withMeta = false)
+        val foreign = putCopy(dav, generation = 3, deviceId = OTHER_DEVICE_ID)
+        fixture.addProduct("Arroz de prueba")
+        fixture.advance(2.minutes)
+        val before = server.requests.size
+
+        val run = fixture.runner(webDav(server)).run(control)
+
+        assertEquals(BackupRun.Stopped(StopCause.Conflict(BackupConflictKind.OTHER_DEVICE)), run)
+        val state = fixture.state()
+        assertEquals("CONFLICT", state.linkState)
+        assertEquals(3L, state.conflictGeneration)
+        assertEquals(OTHER_DEVICE_ID, state.conflictDeviceId)
+        assertEquals(foreign.fileName, state.conflictFileRef)
+        // Solo la lista y la lectura de los metadatos: nada se escribió ni se borró.
+        val methods = server.requests.drop(before).map { it.method }.toSet()
+        assertEquals(setOf("PROPFIND", "GET"), methods)
+    }
+
+    @Test
+    fun aMomentaryFailureReadingAnOldCopyDefersTheConflictWithoutWriting() = runBlocking {
+        fixture.connect(BackupDestinationKind.WEBDAV)
+        val failing = AtomicBoolean(false)
+        val oldMeta = AtomicReference("")
+        val (dav, server) = dav { request ->
+            FakeResponse.status(503).takeIf {
+                failing.get() && request.method == "GET" && request.path == oldMeta.get()
+            }
+        }
+        assertEquals(BackupRun.Verified(1), fixture.runner(webDav(server)).run(control))
+        oldMeta.set(
+            synchronized(dav) {
+                dav.files.keys.single { it.endsWith(BackupFileName.META_SUFFIX) }
+            },
+        )
+        putCopy(dav, generation = 2, deviceId = OTHER_DEVICE_ID)
+        fixture.addProduct("Leche de prueba")
+        fixture.advance(2.minutes)
+        // Los metadatos de una copia vieja de este teléfono no se pueden leer un momento.
+        failing.set(true)
+        val before = server.requests.size
+
+        val first = fixture.runner(webDav(server)).run(control)
+
+        // La lista no se toma por completa: la ejecución se reintenta, sin decidir ni escribir.
+        assertTrue("$first", first is BackupRun.Retry)
+        assertEquals(RetryReason.TRANSIENT, (first as BackupRun.Retry).reason)
+        assertEquals("CONNECTED", fixture.state().linkState)
+        val tried = server.requests.drop(before)
+        // El primer intento y los tres reintentos de la ejecución.
+        assertEquals(4, tried.count { it.method == "GET" && it.path == oldMeta.get() })
+        assertEquals(setOf("PROPFIND", "GET"), tried.map { it.method }.toSet())
+
+        // Con el servicio de vuelta, el intento siguiente ve la copia del otro teléfono.
+        failing.set(false)
+        val next = server.requests.size
+        val second = fixture.runner(webDav(server)).run(control)
+
+        assertEquals(
+            BackupRun.Stopped(StopCause.Conflict(BackupConflictKind.OTHER_DEVICE)),
+            second,
+        )
+        assertEquals("CONFLICT", fixture.state().linkState)
+        assertEquals(setOf("PROPFIND", "GET"), server.requests.drop(next).map { it.method }.toSet())
+    }
+
+    @Test
     fun slotsWriteByTurnsAndRereadThroughTheProvider() = runBlocking {
         fixture.connect(BackupDestinationKind.DOCUMENT_SLOTS)
         prepareSlots()
@@ -216,6 +301,55 @@ class BackupDestinationsTest {
     private fun webDav(server: FakeHttpServer) =
         WebDavDestination(client = testClient(server), folder = APP_FOLDER, sleep = {
         }, jitterMillis = { 0 })
+
+    /**
+     * Una copia que subió [deviceId] al servicio falso, con sus metadatos si [withMeta], como la
+     * deja un teléfono que no es el de la prueba.
+     */
+    private fun putCopy(
+        dav: InMemoryWebDav,
+        generation: Long,
+        deviceId: String,
+        withMeta: Boolean = true,
+    ): BackupFileName {
+        val name =
+            BackupFileName(
+                generation,
+                AppDatabase.SCHEMA_VERSION,
+                requireNotNull(CopyInstant.of(fixture.now)),
+                deviceId.take(8),
+                BackupFileFormat.GZIP,
+            )
+        val bytes = ByteArray(64) { it.toByte() }
+        val meta =
+            SlMetaCodec.encode(
+                SlMeta(
+                    format = 1,
+                    keyId = null,
+                    deviceId = deviceId,
+                    deviceLabel = null,
+                    generation = generation,
+                    schemaVersion = AppDatabase.SCHEMA_VERSION.toLong(),
+                    appVersion = null,
+                    sha256 = FakeBackupDestination.sha256(bytes),
+                    rawSize = 4_096,
+                    fileSize = bytes.size.toLong(),
+                    records = 10,
+                    catalogCount = 2,
+                    valid = true,
+                ),
+            )
+        synchronized(dav) {
+            dav.files["/dav/app/${name.fileName}"] = bytes
+            if (withMeta) dav.files["/dav/app/${name.metaFileName}"] = meta
+        }
+        return name
+    }
+
+    private companion object {
+        /** Un tercer teléfono inventado, distinto del de la prueba y del otro. */
+        const val THIRD_DEVICE_ID = "5e6f7a8b-1c2d-4e3f-9a0b-c1d2e3f4a5b6"
+    }
 
     private fun uriOf(id: String) = SlotTestProvider.uriOf("${context.packageName}.slottest", id)
 

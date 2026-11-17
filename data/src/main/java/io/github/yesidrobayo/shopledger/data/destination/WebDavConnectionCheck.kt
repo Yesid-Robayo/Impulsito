@@ -12,15 +12,24 @@ import java.security.SecureRandom
  *   bloquean un rato tras una contraseña mala, y repetir solo alarga el bloqueo.
  * - Si algo falla, borra `.sltest` y `.sltest.sltmp` si llegaron a existir, nunca la carpeta, y dice
  *   en qué paso falló.
+ * - **La prueba entera tiene un tope de tiempo,** [CHECK_TIME_LIMIT_MILLIS]. Algunos servicios
+ *   tardan minutos en un paso y después pasan, así que el tope es holgado; pero sin él, un servicio
+ *   que responde muy despacio dejaría la pantalla esperando sin fin. Cada petición lleva lo que
+ *   queda como tope de su llamada, y ninguna sale con el tiempo agotado: la prueba se detiene con
+ *   [ConnectionFailure.TimedOut], sin guardar nada. El borrado final tiene su propio tope,
+ *   [CLEANUP_TIME_LIMIT_MILLIS], para intentar borrar también lo que dejó una prueba cortada.
  * - La carpeta es la del nombre de la app, o la del primer nombre anterior que ya tenga copias de
  *   esta app, si la del nombre actual no tiene ninguna. Así un cambio de nombre comercial no deja
  *   las copias en una carpeta que la app ya no mira.
  *
  * @param random de dónde salen los bytes de prueba, distintos en cada ejecución.
+ * @param elapsedMillis un reloj monótono en milisegundos, que nunca retrocede. Las pruebas lo
+ *   cambian para simular un servicio lento sin esperar de verdad.
  */
 internal class WebDavConnectionCheck(
     private val client: WebDavClient,
     private val random: SecureRandom = SecureRandom(),
+    private val elapsedMillis: () -> Long = ::monotonicMillis,
 ) {
     /**
      * Corre la prueba. [folderNames] son los nombres de carpeta posibles, el actual primero y
@@ -34,8 +43,12 @@ internal class WebDavConnectionCheck(
         onStep: (ConnectionStep) -> Unit = {},
     ): ConnectionCheck {
         require(folderNames.isNotEmpty()) { "Hace falta al menos el nombre actual" }
+        val deadline = Deadline(elapsedMillis, CHECK_TIME_LIMIT_MILLIS)
         onStep(ConnectionStep.ADDRESS)
-        when (val base = client.propfind(WebDavPath(emptyList()), WebDavClient.Depth.ZERO)) {
+        when (
+            val base =
+                client.propfind(WebDavPath(emptyList()), WebDavClient.Depth.ZERO, deadline)
+        ) {
             is PropfindResult.Listed -> Unit
 
             PropfindResult.NotFound ->
@@ -48,13 +61,13 @@ internal class WebDavConnectionCheck(
         }
         onStep(ConnectionStep.FIND_FOLDER)
         val folder =
-            when (val found = chooseFolder(folderNames)) {
+            when (val found = chooseFolder(folderNames, deadline)) {
                 is Found.Folder -> found
                 is Found.Failed -> return found.check
             }
         if (!folder.exists) {
             onStep(ConnectionStep.CREATE_FOLDER)
-            when (val made = client.mkcol(folder.path)) {
+            when (val made = client.mkcol(folder.path, deadline)) {
                 MkcolResult.Created, MkcolResult.AlreadyExists -> Unit
 
                 MkcolResult.MissingAncestor ->
@@ -66,11 +79,12 @@ internal class WebDavConnectionCheck(
                 is MkcolResult.Failed -> return failed(ConnectionStep.CREATE_FOLDER, made.failure)
             }
         }
-        val result = writeAndRead(folder.path, onStep)
-        // Lo que haya quedado de la prueba se borra pase lo que pase. Un fallo al borrar solo
-        // cuenta si la prueba iba bien: es lo que el paso de borrar comprueba.
+        val result = writeAndRead(folder.path, deadline, onStep)
+        // Lo que haya quedado de la prueba se borra pase lo que pase, también con el tiempo ya
+        // agotado: por eso el borrado lleva su propio tope. Un fallo al borrar solo cuenta si la
+        // prueba iba bien: es lo que el paso de borrar comprueba.
         if (result == null) onStep(ConnectionStep.DELETE)
-        val cleanup = cleanUp(folder.path)
+        val cleanup = cleanUp(folder.path, Deadline(elapsedMillis, CLEANUP_TIME_LIMIT_MILLIS))
         return when {
             result != null -> result
             cleanup != null -> failed(ConnectionStep.DELETE, cleanup)
@@ -84,12 +98,12 @@ internal class WebDavConnectionCheck(
         data class Failed(val check: ConnectionCheck.Failed) : Found
     }
 
-    private suspend fun chooseFolder(names: List<String>): Found {
+    private suspend fun chooseFolder(names: List<String>, deadline: Deadline): Found {
         var current: Found.Folder? = null
         for ((index, name) in names.withIndex()) {
             val path = WebDavPath(listOf(name))
             val listed =
-                when (val found = client.propfind(path, WebDavClient.Depth.ONE)) {
+                when (val found = client.propfind(path, WebDavClient.Depth.ONE, deadline)) {
                     is PropfindResult.Listed -> found.listing
 
                     PropfindResult.NotFound -> null
@@ -117,17 +131,18 @@ internal class WebDavConnectionCheck(
     /** Los pasos que escriben, mueven y leen. Devuelve `null` si todos pasaron. */
     private suspend fun writeAndRead(
         folder: WebDavPath,
+        deadline: Deadline,
         onStep: (ConnectionStep) -> Unit,
     ): ConnectionCheck.Failed? {
         val temporary = folder.file(TEST_FILE + BackupFileName.TEMPORARY_SUFFIX)
         val final = folder.file(TEST_FILE)
         // Lo que haya dejado una prueba anterior se borra antes: si no, el MOVE daría 412 de entrada.
         onStep(ConnectionStep.WRITE)
-        cleanUp(folder)?.let { return failed(ConnectionStep.WRITE, it) }
+        cleanUp(folder, deadline)?.let { return failed(ConnectionStep.WRITE, it) }
         val first = ByteArray(TEST_BYTES).also(random::nextBytes)
-        put(temporary, first)?.let { return failed(ConnectionStep.WRITE, it) }
+        put(temporary, first, deadline)?.let { return failed(ConnectionStep.WRITE, it) }
         onStep(ConnectionStep.MOVE)
-        when (val moved = client.move(temporary, final)) {
+        when (val moved = client.move(temporary, final, control = deadline)) {
             is MoveResult.Moved -> Unit
 
             MoveResult.NotFound, MoveResult.Conflict, MoveResult.TargetExists ->
@@ -140,8 +155,8 @@ internal class WebDavConnectionCheck(
         }
         onStep(ConnectionStep.NO_OVERWRITE)
         val second = ByteArray(TEST_BYTES).also(random::nextBytes)
-        put(temporary, second)?.let { return failed(ConnectionStep.WRITE, it) }
-        when (val again = client.move(temporary, final)) {
+        put(temporary, second, deadline)?.let { return failed(ConnectionStep.WRITE, it) }
+        when (val again = client.move(temporary, final, control = deadline)) {
             // Lo esperado: el servicio no pisa un destino que existe.
             MoveResult.TargetExists -> Unit
 
@@ -160,7 +175,7 @@ internal class WebDavConnectionCheck(
         }
         onStep(ConnectionStep.READ_BACK)
         val sink = ByteArrayOutputStream()
-        return when (val read = client.get(final, sink, MAX_TEST_READ_BYTES)) {
+        return when (val read = client.get(final, sink, MAX_TEST_READ_BYTES, deadline)) {
             is GetResult.Downloaded ->
                 if (sink.toByteArray().contentEquals(first)) {
                     null
@@ -177,8 +192,12 @@ internal class WebDavConnectionCheck(
         }
     }
 
-    private suspend fun put(path: WebDavPath, bytes: ByteArray): ConnectionFailure? =
-        when (val put = client.putBytes(path, bytes, TEST_CONTENT_TYPE)) {
+    private suspend fun put(
+        path: WebDavPath,
+        bytes: ByteArray,
+        deadline: Deadline,
+    ): ConnectionFailure? =
+        when (val put = client.putBytes(path, bytes, TEST_CONTENT_TYPE, deadline)) {
             is PutResult.Stored -> null
 
             is PutResult.MissingFolder -> ConnectionFailure.Unsupported(
@@ -189,10 +208,10 @@ internal class WebDavConnectionCheck(
         }
 
     /** Borra los dos archivos de la prueba. Devuelve el primer fallo, o `null`. */
-    private suspend fun cleanUp(folder: WebDavPath): ConnectionFailure? {
+    private suspend fun cleanUp(folder: WebDavPath, deadline: Deadline): ConnectionFailure? {
         var failure: ConnectionFailure? = null
         for (name in listOf(TEST_FILE, TEST_FILE + BackupFileName.TEMPORARY_SUFFIX)) {
-            val deleted = client.delete(folder.file(name))
+            val deleted = client.delete(folder.file(name), deadline)
             if (deleted is DeleteResult.Failed &&
                 failure == null
             ) {
@@ -208,9 +227,37 @@ internal class WebDavConnectionCheck(
     private fun failed(step: ConnectionStep, failure: ConnectionFailure) =
         ConnectionCheck.Failed(step, failure)
 
+    /**
+     * Un tope de [limitMillis] desde ahora, en el reloj [elapsedMillis]. No se detiene por otra
+     * cosa: la persona cancela la prueba cancelando la corrutina.
+     */
+    private class Deadline(
+        private val elapsedMillis: () -> Long,
+        limitMillis: Long,
+    ) : TransferControl {
+        private val endsAt = elapsedMillis() + limitMillis
+
+        override fun isStopped(): Boolean = false
+
+        override fun remainingMillis(): Long = (endsAt - elapsedMillis()).coerceAtLeast(0)
+
+        override fun meteredStop(): Boolean = false
+
+        override fun isMetered(): Boolean = false
+    }
+
     companion object {
         /** El archivo de la prueba. Solo la prueba lo crea y lo borra. */
         const val TEST_FILE = ".sltest"
+
+        /**
+         * Lo más que dura la prueba entera, sin el borrado final: cinco minutos. Lo normal son unos
+         * segundos, y en un simulacro con Koofr un solo paso tardó unos dos minutos y pasó.
+         */
+        const val CHECK_TIME_LIMIT_MILLIS = 5L * 60 * 1_000
+
+        /** Lo más que dura el borrado final de los archivos de la prueba: un minuto. */
+        const val CLEANUP_TIME_LIMIT_MILLIS = 60L * 1_000
 
         private const val TEST_BYTES = 64
         private const val MAX_TEST_READ_BYTES = 16L * 1024
@@ -295,6 +342,12 @@ internal sealed interface ConnectionFailure {
     /** Una lista con un error dentro. */
     data object Incomplete : ConnectionFailure
 
+    /**
+     * La prueba entera pasó de su tope de tiempo: el servicio respondía, pero muy despacio. No se
+     * guardó nada, y se puede reintentar.
+     */
+    data object TimedOut : ConnectionFailure
+
     companion object {
         fun of(failure: WebDavFailure): ConnectionFailure = when (failure) {
             is WebDavFailure.PermissionLost ->
@@ -317,10 +370,22 @@ internal sealed interface ConnectionFailure {
                     },
                 )
 
-            // La prueba no tiene tope de tiempo ni detención: no llega aquí.
-            is WebDavFailure.Interrupted -> Unreachable(TransientKind.NETWORK)
+            is WebDavFailure.Interrupted ->
+                when (failure.reason) {
+                    InterruptReason.OUT_OF_TIME -> TimedOut
+
+                    // La prueba no se detiene por pedido del sistema ni mira la red medida: no
+                    // llega aquí, y si llegara se dice como una falta de respuesta.
+                    InterruptReason.STOPPED, InterruptReason.METERED ->
+                        Unreachable(TransientKind.NETWORK)
+                }
         }
 
         private const val FORBIDDEN_STATUS = 403
     }
 }
+
+/** Un reloj monótono en milisegundos: no cambia con la hora del teléfono. */
+internal fun monotonicMillis(): Long = System.nanoTime() / NANOS_PER_MILLI
+
+private const val NANOS_PER_MILLI = 1_000_000L

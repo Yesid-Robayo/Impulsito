@@ -23,11 +23,14 @@ import okhttp3.OkHttpClient
  *
  * @param http el único cliente de la app. Las pruebas pasan uno que lleva las peticiones a un
  *   servidor falso, sin cambiar nada de lo que decide este código.
+ * @param elapsedMillis el reloj monótono del tope de tiempo de la prueba de conexión. Las pruebas
+ *   lo cambian para simular un servicio lento.
  */
 internal class WebDavConnector(
     private val http: OkHttpClient,
     private val credentials: WebDavCredentialStore,
     private val links: DestinationLinkStore,
+    private val elapsedMillis: () -> Long = ::monotonicMillis,
 ) {
     /**
      * Revisa la dirección y corre la prueba de conexión completa, sin guardar nada.
@@ -62,7 +65,8 @@ internal class WebDavConnector(
             return CheckOutcome.Stopped(ConnectResult.InvalidAppName)
         }
         val client = WebDavClient(endpoint, WebDavCredential(username, password), http)
-        return when (val check = WebDavConnectionCheck(client).run(folderNames, onStep)) {
+        val connectionCheck = WebDavConnectionCheck(client, elapsedMillis = elapsedMillis)
+        return when (val check = connectionCheck.run(folderNames, onStep)) {
             is ConnectionCheck.Passed ->
                 CheckOutcome.Passed(
                     CheckedWebDav(

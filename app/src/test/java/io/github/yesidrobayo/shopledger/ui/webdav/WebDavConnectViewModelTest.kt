@@ -18,8 +18,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -212,6 +214,75 @@ class WebDavConnectViewModelTest {
         assertTrue(model.uiState.value.steps.isEmpty())
         assertTrue(port.saves.isEmpty())
         assertEquals("inventada", model.uiState.value.password)
+    }
+
+    @Test
+    fun `a step that takes long says the test is still working`() = runTest(dispatcher) {
+        port.gate = CompletableDeferred()
+        val model = model(suggestionKey = "example")
+        model.onAction(WebDavConnectAction.UserChange("copias"))
+        model.onAction(WebDavConnectAction.PasswordChange("inventada"))
+
+        model.onAction(WebDavConnectAction.Connect)
+        runCurrent()
+        assertEquals(StepStatus.RUNNING, model.uiState.value.steps[2].status)
+        assertFalse(model.uiState.value.slowStep)
+
+        // Quince segundos en el mismo paso, en el reloj virtual de la prueba.
+        advanceTimeBy(14_999)
+        runCurrent()
+        assertFalse(model.uiState.value.slowStep)
+        advanceTimeBy(2)
+        runCurrent()
+        assertTrue(model.uiState.value.slowStep)
+        assertEquals(WebDavPhase.TESTING, model.uiState.value.phase)
+
+        port.gate?.complete(Unit)
+        advanceUntilIdle()
+
+        assertFalse(model.uiState.value.slowStep)
+        assertEquals(WebDavPhase.VERIFYING, model.uiState.value.phase)
+    }
+
+    @Test
+    fun `cancelling a slow step clears the notice`() = runTest(dispatcher) {
+        port.gate = CompletableDeferred()
+        val model = model(suggestionKey = "example")
+        model.onAction(WebDavConnectAction.UserChange("copias"))
+        model.onAction(WebDavConnectAction.PasswordChange("inventada"))
+        model.onAction(WebDavConnectAction.Connect)
+        advanceTimeBy(15_001)
+        runCurrent()
+        assertTrue(model.uiState.value.slowStep)
+
+        model.onAction(WebDavConnectAction.Cancel)
+        advanceUntilIdle()
+
+        assertFalse(model.uiState.value.slowStep)
+        assertEquals(WebDavPhase.EDITING, model.uiState.value.phase)
+        assertTrue(port.saves.isEmpty())
+    }
+
+    @Test
+    fun `a test that took too long can be retried and saves nothing`() = runTest(dispatcher) {
+        port.result = WebDavTestResult.Failed(WebDavTestStep.UPLOAD, WebDavTestFailure.TIMED_OUT)
+        val model = model(suggestionKey = "example")
+        model.onAction(WebDavConnectAction.UserChange("copias"))
+        model.onAction(WebDavConnectAction.PasswordChange("inventada"))
+
+        model.onAction(WebDavConnectAction.Connect)
+        advanceUntilIdle()
+
+        val state = model.uiState.value
+        assertEquals(WebDavPhase.EDITING, state.phase)
+        assertEquals(
+            WebDavNotice.Failed(WebDavTestStep.UPLOAD, WebDavTestFailure.TIMED_OUT),
+            state.notice,
+        )
+        assertEquals(StepStatus.FAILED, state.steps[2].status)
+        assertFalse(state.slowStep)
+        assertEquals("inventada", state.password)
+        assertTrue(port.saves.isEmpty())
     }
 
     @Test

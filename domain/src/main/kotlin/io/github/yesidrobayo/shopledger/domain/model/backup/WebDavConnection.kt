@@ -84,6 +84,12 @@ enum class WebDavTestFailure {
     /** Sin respuesta, o el servicio falló: se puede reintentar. */
     UNREACHABLE,
 
+    /**
+     * El servicio respondía, pero la prueba entera pasó de su tope de tiempo. Se detuvo sin guardar
+     * nada, y se puede reintentar más tarde.
+     */
+    TIMED_OUT,
+
     /** El certificado no se pudo comprobar. Nunca se ofrece seguir. */
     INSECURE,
 

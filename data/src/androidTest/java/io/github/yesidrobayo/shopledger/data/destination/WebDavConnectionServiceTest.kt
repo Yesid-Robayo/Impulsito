@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.model.backup.WebDavTestFailure
 import io.github.yesidrobayo.shopledger.domain.model.backup.WebDavTestResult
 import io.github.yesidrobayo.shopledger.domain.model.backup.WebDavTestStep
 import java.io.File
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -64,7 +65,11 @@ class WebDavConnectionServiceTest {
     private var changeOutcome: ChangeOutcome? = null
     private val changes = ArrayList<DestinationLink>()
 
-    private fun service(server: FakeHttpServer, recordOk: Boolean = true): WebDavConnectionService {
+    private fun service(
+        server: FakeHttpServer,
+        recordOk: Boolean = true,
+        elapsedMillis: () -> Long = { 0L },
+    ): WebDavConnectionService {
         val http = testHttp()
             .newBuilder()
             .addInterceptor { chain ->
@@ -74,7 +79,7 @@ class WebDavConnectionServiceTest {
                 chain.proceed(request.newBuilder().url(local).build())
             }.build()
         return WebDavConnectionService(
-            connector = WebDavConnector(http, credentials, links),
+            connector = WebDavConnector(http, credentials, links, elapsedMillis),
             state = { row },
             slotsLabel = { "Nube" },
             record = {
@@ -253,6 +258,29 @@ class WebDavConnectionServiceTest {
                 service(server).test(login, APP_NAME) {},
             )
         }
+        nothingSaved()
+    }
+
+    @Test
+    fun aServiceSlowerThanTheTimeLimitSaysItTookTooLong() = runBlocking<Unit> {
+        // El primer PUT tarda seis minutos en el reloj de la prueba: el paso que sigue ya no sale.
+        val elapsed = AtomicLong(0)
+        val (dav, server) = server { request ->
+            if (request.method == "PUT" && elapsed.get() == 0L) elapsed.addAndGet(360_000L)
+            null
+        }
+        val steps = ArrayList<WebDavTestStep>()
+
+        val result = service(server, elapsedMillis = elapsed::get).test(login, APP_NAME) {
+            steps += it
+        }
+
+        assertEquals(
+            WebDavTestResult.Failed(WebDavTestStep.MOVE, WebDavTestFailure.TIMED_OUT),
+            result,
+        )
+        assertEquals(WebDavTestStep.MOVE, steps.last())
+        assertTrue(dav.files.isEmpty())
         nothingSaved()
     }
 

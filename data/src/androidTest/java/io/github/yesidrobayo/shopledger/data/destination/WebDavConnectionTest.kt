@@ -6,6 +6,7 @@ import io.github.yesidrobayo.shopledger.data.destination.WebDavCredentialStoreTe
 import io.github.yesidrobayo.shopledger.domain.model.backup.BackupDestinationKind
 import io.github.yesidrobayo.shopledger.domain.model.backup.CopyInstant
 import java.io.File
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -70,7 +71,8 @@ class WebDavConnectionTest {
         url: String = BASE_URL,
         previous: List<String> = emptyList(),
         recordOk: Boolean = true,
-    ): ConnectResult = WebDavConnector(http(server), credentials, links)
+        elapsedMillis: () -> Long = { 0L },
+    ): ConnectResult = WebDavConnector(http(server), credentials, links, elapsedMillis)
         .connect(url, TEST_USER, SENTINEL_PASSWORD, APP_NAME, previous, NOW) {
             recorded += it
             recordOk
@@ -193,6 +195,49 @@ class WebDavConnectionTest {
         // La carpeta nunca se borra.
         assertTrue("/dav/$APP_NAME/" in dav.collections)
         assertTrue(recorded.isEmpty())
+    }
+
+    @Test
+    fun aSlowServiceWithinTheTimeLimitStillPasses() = runBlocking<Unit> {
+        // El reloj de la prueba solo avanza cuando el servicio falso tarda: el primer PUT tarda
+        // dos minutos, como el de Koofr en un simulacro, y la prueba lo espera.
+        val elapsed = AtomicLong(0)
+        val (dav, server) = dav { request ->
+            if (request.method == "PUT" && elapsed.get() == 0L) elapsed.addAndGet(TWO_MINUTES)
+            null
+        }
+
+        val result = connect(server, elapsedMillis = elapsed::get)
+
+        assertTrue("$result", result is ConnectResult.Connected)
+        assertTrue(dav.files.isEmpty())
+    }
+
+    @Test
+    fun aServiceSlowerThanTheTimeLimitStopsWithoutSavingAndCleansUp() = runBlocking<Unit> {
+        // El primer PUT tarda seis minutos: su respuesta llega, pero ya no queda tiempo.
+        val elapsed = AtomicLong(0)
+        val (dav, server) = dav { request ->
+            if (request.method == "PUT" && elapsed.get() == 0L) elapsed.addAndGet(SIX_MINUTES)
+            null
+        }
+
+        val result = connect(server, elapsedMillis = elapsed::get)
+
+        assertEquals(
+            ConnectResult.CheckFailed(ConnectionStep.MOVE, ConnectionFailure.TimedOut),
+            result,
+        )
+        // Después del PUT lento no sale ninguna petición de la prueba: solo se borra lo que dejó.
+        assertEquals(
+            "PROPFIND PROPFIND MKCOL DELETE DELETE PUT DELETE DELETE".split(" "),
+            server.requests.map { it.method },
+        )
+        assertTrue(dav.files.isEmpty())
+        assertTrue("/dav/$APP_NAME/" in dav.collections)
+        assertTrue(recorded.isEmpty())
+        assertFalse(File(directory, WebDavCredentialStore.FILE_NAME).exists())
+        assertFalse(File(directory, DestinationLinkStore.FILE_NAME).exists())
     }
 
     @Test
@@ -332,5 +377,9 @@ class WebDavConnectionTest {
         const val APP_NAME = "TiendaDePrueba"
         const val OLD_NAME = "NombreAnterior"
         const val NOW = 1_794_000_000_000L
+
+        /** Dos minutos y seis minutos, escritos a mano en milisegundos. */
+        const val TWO_MINUTES = 120_000L
+        const val SIX_MINUTES = 360_000L
     }
 }

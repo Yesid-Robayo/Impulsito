@@ -36,9 +36,9 @@ import org.junit.runner.RunWith
 
 /**
  * `Conectar el servicio` en el teléfono: el botón espera los tres campos, la contraseña va oculta y
- * marcada como dato sensible, los pasos dicen su estado a TalkBack, un fallo nombra su paso,
- * `Reintentar` solo sin respuesta, el servidor se confirma en ASCII y la ventana lleva
- * `FLAG_SECURE`.
+ * marcada como dato sensible, los pasos dicen su estado a TalkBack, un paso lento dice que la
+ * prueba sigue, un fallo nombra su paso, `Reintentar` solo sin respuesta o con el tiempo agotado,
+ * el servidor se confirma en ASCII y la ventana lleva `FLAG_SECURE`.
  */
 @RunWith(AndroidJUnit4::class)
 class WebDavConnectScreenTest {
@@ -150,6 +150,38 @@ class WebDavConnectScreenTest {
             )
         compose.waitForIdle()
         compose.onNodeWithText(retry).performScrollTo().performClick()
+
+        assertEquals(listOf<WebDavConnectAction>(WebDavConnectAction.Connect), actions)
+    }
+
+    @Test
+    fun aSlowStepSaysTheTestKeepsGoingAndATimeOutOffersRetry() {
+        show(
+            PREVIEW_FILLED.copy(
+                phase = WebDavPhase.TESTING,
+                steps = previewSteps(WebDavTestStep.UPLOAD),
+            ),
+        )
+        val slow = string(R.string.webdav_step_slow)
+        assertTrue(compose.onAllNodesWithText(slow).fetchSemanticsNodes().isEmpty())
+
+        state = state.copy(slowStep = true)
+        compose.waitForIdle()
+        compose.onNodeWithText(slow).performScrollTo().assertIsDisplayed()
+
+        state =
+            state.copy(
+                phase = WebDavPhase.EDITING,
+                slowStep = false,
+                steps = previewSteps(WebDavTestStep.UPLOAD, failed = true),
+                notice = WebDavNotice.Failed(WebDavTestStep.UPLOAD, WebDavTestFailure.TIMED_OUT),
+            )
+        compose.waitForIdle()
+        assertTrue(compose.onAllNodesWithText(slow).fetchSemanticsNodes().isEmpty())
+        compose.onNodeWithText(string(R.string.webdav_error_timed_out))
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText(string(R.string.action_retry)).performScrollTo().performClick()
 
         assertEquals(listOf<WebDavConnectAction>(WebDavConnectAction.Connect), actions)
     }

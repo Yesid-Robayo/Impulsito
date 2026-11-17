@@ -66,6 +66,8 @@ sealed interface WebDavNotice {
  *   `Usuario`.
  * @param connected si quedó conectado, y si la carpeta ya tenía copias, hasta que la navegación lo
  *   tome.
+ * @param slowStep si el paso en curso de la prueba ya tarda más de lo normal: la pantalla dice que
+ *   la prueba sigue, que algunos servicios tardan unos minutos y que se puede cancelar.
  */
 data class WebDavConnectUiState(
     val suggestions: List<WebDavSuggestion> = emptyList(),
@@ -84,6 +86,7 @@ data class WebDavConnectUiState(
     val reconnect: Boolean = false,
     val focusUser: Int = 0,
     val connected: Connected? = null,
+    val slowStep: Boolean = false,
 ) {
     /** `Probar y conectar` se activa con los tres campos llenos y nada corriendo. */
     val canConnect: Boolean

@@ -40,6 +40,7 @@
     <string name="webdav_error_redirect">Esse serviço envia para outro endereço. Por segurança, %1$s não o seguiu: a senha não chegou a esse endereço. Nada foi salvo.</string>
     <string name="webdav_error_space">Esse serviço não tem espaço. Nada foi salvo.</string>
     <string name="webdav_error_unreachable">Não foi possível acessar esse serviço. Convém revisar o endereço e a conexão. Nada foi salvo.</string>
+    <string name="webdav_error_timed_out">Esse serviço demorou demais para responder, e o teste parou. Nada foi salvo. Convém tentar mais tarde.</string>
     <!-- webdav_error_secure: %1$s = app -->
     <string name="webdav_error_secure">Não foi possível verificar a conexão segura com esse serviço, e %1$s não continua sem isso. Nada foi salvo. Outra opção é a nuvem do telefone.</string>
     <string name="webdav_error_no_internet">Conectar o serviço requer internet. O que foi digitado não se perde.</string>
@@ -52,4 +53,6 @@
     <string name="webdav_step_state_running">Em andamento</string>
     <string name="webdav_step_state_failed">Falhou</string>
     <string name="webdav_step_state_pending">Pendente</string>
+    <!-- Bajo los pasos, cuando uno tarda más de lo normal. -->
+    <string name="webdav_step_slow">Esta etapa está demorando. Alguns serviços levam alguns minutos: o teste continua, e dá para cancelar.</string>
 </resources>

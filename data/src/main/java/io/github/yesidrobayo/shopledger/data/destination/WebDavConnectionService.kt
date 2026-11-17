@@ -246,6 +246,8 @@ internal class WebDavConnectionService(
             ConnectionFailure.ReadBackMismatch,
             ConnectionFailure.Incomplete,
             -> WebDavTestFailure.UNSUPPORTED
+
+            ConnectionFailure.TimedOut -> WebDavTestFailure.TIMED_OUT
         }
 
         internal fun problemOf(reason: EndpointRejection): WebDavAddressProblem = when (reason) {
