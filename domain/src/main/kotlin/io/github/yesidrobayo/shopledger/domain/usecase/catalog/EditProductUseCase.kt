@@ -108,7 +108,9 @@ class EditProductUseCase(
             name = valid.name,
             normalizedName = valid.normalizedName,
             categoryId = form.categoryId,
-            defaultSupplierId = form.defaultSupplierId,
+            // La pantalla de edición no muestra el proveedor habitual: sin uno en el formulario,
+            // queda el que tenía, como con los lotes.
+            defaultSupplierId = form.defaultSupplierId ?: current.defaultSupplierId,
             baseUnitId = unit.id,
             stockMode = form.stockMode,
             // Solo un producto con stock propio lleva lotes.

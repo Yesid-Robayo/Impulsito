@@ -10,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductFormIssue
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.stock.LowStockNotificationStatus
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture.Companion.ACTIVE_SUPPLIER_ID
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture.Companion.ARCHIVED_SUPPLIER_ID
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture.Companion.ARCHIVED_UNIT_ID
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CatalogFixture.Companion.KILOGRAM_ID
@@ -256,6 +257,20 @@ class EditProductUseCaseTest {
             SaveProductResult.MissingReference(CatalogReference.UNIT),
             fixture.edit(5L, formOf(5L).copy(baseUnitId = 999L)),
         )
+    }
+
+    @Test
+    fun `an edit that does not carry the habitual supplier keeps it`() = runTest {
+        // La pantalla de edición no muestra el proveedor habitual: lo pone la importación, y la
+        // compra, la reposición y los filtros lo usan. Editar otra cosa no debe borrarlo.
+        fixture.seedProduct(id = 6L, name = "Harina", defaultSupplierId = ACTIVE_SUPPLIER_ID)
+
+        val result =
+            fixture.edit(6L, formOf(6L).copy(name = "Harina fina", defaultSupplierId = null))
+
+        assertEquals(SaveProductResult.Saved(6L), result)
+        assertEquals(ACTIVE_SUPPLIER_ID, fixture.product(6L).details.defaultSupplierId)
+        assertEquals("Harina fina", fixture.product(6L).details.name)
     }
 
     @Test

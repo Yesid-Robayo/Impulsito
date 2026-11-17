@@ -20,6 +20,9 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
  * [referencePrice] es el precio de venta escrito en la moneda de referencia, en su unidad menor,
  * del que parte repreciar con una cotización: cero es sin dato, y `null` lo deja como está.
  *
+ * [defaultSupplierId] es el proveedor habitual. Al editar, `null` lo deja como está: la pantalla de
+ * edición no lo muestra, y lo pone la importación.
+ *
  * [photo] dice qué pasa con la foto: por omisión queda la que tenía.
  *
  * [tracksLots] controla el producto por lotes, solo con stock propio: cada fila de su libro lleva
