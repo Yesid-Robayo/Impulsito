@@ -76,6 +76,28 @@ class HelpViewModelTest {
     }
 
     @Test
+    fun `an article named by the search comes before one that only mentions it`() {
+        // Negocio va antes que las recetas en la lista, pero solo las nombra en su texto.
+        val titled = titles + (HelpArticleId.RECIPES_PRODUCTION to "Recetas y producción")
+        val texts = bodies + (HelpArticleId.BUSINESS_HUB to "Combos y recetas, en Negocio.")
+        val model =
+            HelpViewModel(
+                titled,
+                { id -> texts[id]?.let { HelpMarkdown.parse(it, "Tienda") } },
+                null,
+                null,
+                dispatcher,
+            )
+
+        model.onAction(HelpAction.Search("receta"))
+
+        assertEquals(
+            HelpList.Search(listOf(HelpArticleId.RECIPES_PRODUCTION, HelpArticleId.BUSINESS_HUB)),
+            model.uiState.value.list,
+        )
+    }
+
+    @Test
     fun `before the index is ready the search only looks at titles`() {
         val gate = CompletableDeferred<Unit>()
         val waiting: suspend (HelpArticleId) -> List<HelpBlock>? = { id ->

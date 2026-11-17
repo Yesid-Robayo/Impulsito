@@ -201,12 +201,15 @@ class HelpViewModel(
     private fun listFor(query: String, topic: HelpTopic?): HelpList {
         val folded = TextNormalizer.normalize(query)
         if (folded.isNotEmpty()) {
-            return HelpList.Search(
-                HelpArticleId.entries.filter { id ->
-                    foldedTitles[id]?.contains(folded) == true ||
-                        foldedBodies[id]?.contains(folded) == true
-                },
-            )
+            // Primero los que lo dicen en el título: quien busca `receta` busca ese artículo, no
+            // los que la nombran de paso. Dentro de cada parte, el orden de la lista.
+            val (named, mentioned) =
+                HelpArticleId.entries
+                    .filter { id ->
+                        foldedTitles[id]?.contains(folded) == true ||
+                            foldedBodies[id]?.contains(folded) == true
+                    }.partition { id -> foldedTitles[id]?.contains(folded) == true }
+            return HelpList.Search(named + mentioned)
         }
         val forScreen = topic?.articles?.takeIf { it.size > 1 }.orEmpty()
         val groups = HelpGroup.entries.map { group ->
