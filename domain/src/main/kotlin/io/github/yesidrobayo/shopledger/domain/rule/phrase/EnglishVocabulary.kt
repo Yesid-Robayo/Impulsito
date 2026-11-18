@@ -12,6 +12,9 @@ internal object EnglishVocabulary {
             "sale", "rang up", "rang", "went out", "they took", "went for",
             "people took", "customers took", "made a sale of", "ring up", "rung up", "i rang up",
             "we rang up", "customer got", "customers got", "a customer got",
+            // Quien compra en tercera persona es un cliente: "they bought 2 cakes" es una venta.
+            "they bought", "she bought", "he bought", "they purchased", "she purchased",
+            "he purchased",
         ),
         VerbKind.SELL_NOW to listOf("sell", "i sell", "we sell", "sells"),
         VerbKind.COLLECT to listOf("charged", "i charged", "collected", "i collected"),
@@ -35,7 +38,8 @@ internal object EnglishVocabulary {
             "counted", "i counted", "there are", "there is", "theres", "left", "i have", "we have",
             "stock of", "the stock of",
             "remaining",
-            "in stock", "stock count",
+            "in stock", "stock count", "stock to", "stock at", "set the stock of",
+            "adjust the stock of", "the stock to",
         ),
         VerbKind.DAMAGED to listOf(
             "damaged", "got damaged", "were damaged", "broke", "broken", "got broken", "i broke",
@@ -87,6 +91,7 @@ internal object EnglishVocabulary {
         VerbKind.RECIPE_USES to listOf(
             "takes", "needs", "uses", "i use", "we use", "contains", "has", "recipe", "i put",
             "we put", "is made with", "are made with", "made with", "is made of", "are made of",
+            "need", "i need", "we need",
         ),
         VerbKind.NEW_PRODUCT to listOf(
             "new product", "add product", "add a product", "add", "create product",
@@ -95,6 +100,8 @@ internal object EnglishVocabulary {
             "ill start selling",
             "start selling", "register product", "started selling", "i started selling",
             "began selling", "want to sell", "i want to sell", "sold by the", "sells by the",
+            "register the product", "register a product", "register a new product",
+            "register new product", "register the item", "register an item", "register a new item",
         ),
         VerbKind.COST to listOf(
             "the cost of", "cost of", "cost for", "costs me", "cost me", "fix the cost of",
@@ -110,11 +117,13 @@ internal object EnglishVocabulary {
             "lower the price of", "is now", "are now", "new price", "change the price of", "costs",
             "sells for", "goes up to", "goes down to", "is going up to", "going up to", "now at",
             "is now at", "from now on", "starting today", "goes to", "up to", "raised", "now cost",
-            "now go for", "go for", "goes for", "now sell for",
+            "now go for", "go for", "goes for", "now sell for", "going for", "is going for",
+            "are going for", "now going for",
             "i raised", "lowered", "i lowered", "i raised the price of", "i lowered the price of",
         ),
         VerbKind.PAY_IN to
-            listOf("paid me", "has paid me", "paid me back", "got paid", "gave me", "sent me"),
+            listOf("paid me", "has paid me", "paid me back", "gave me", "sent me"),
+        VerbKind.PAID_PASSIVE to listOf("got paid", "was paid", "has been paid"),
         VerbKind.PAY_OUT to
             listOf(
                 "i paid", "we paid", "spent", "i spent", "we spent", "paid for", "transferred",
@@ -295,7 +304,7 @@ internal object EnglishVocabulary {
             "transport" to listOf(
                 "taxi", "cab", "gas", "gasoline", "fuel", "petrol", "bus", "bus fare", "fare",
                 "parking", "toll",
-                "shipping", "transport", "delivery", "courier",
+                "shipping", "transport", "delivery", "courier", "freight",
             ),
             "packaging_supplies" to listOf("packaging", "supplies", "labels", "tape", "stickers"),
             "advertising" to listOf("advertising", "ads", "ad", "flyers", "marketing"),
@@ -439,6 +448,7 @@ internal object EnglishVocabulary {
                 "dont", "doesnt", "wasnt", "werent",
             ),
             percents = listOf("percent", "per cent"),
+            wholesale = listOf("wholesale"),
             notYet = listOf(
                 "tomorrow", "going to", "gonna", "will", "ill", "need to", "have to", "has to",
                 "got to", "gotta", "must", "should", "plan to", "planning to", "planning on",
@@ -467,7 +477,18 @@ internal object EnglishVocabulary {
             recipeEach = listOf("for every", "for each", "each", "every"),
             createLeads = listOf("new"),
             priceCopulas = listOf("is", "are"),
-            priceSetters = listOf("set", "set the price of", "put", "bump up", "bump"),
+            supplierRoles = listOf(
+                "supplier", "the supplier", "my supplier", "our supplier", "provider",
+                "the provider", "my provider", "vendor", "the vendor", "my vendor",
+            ),
+            priceSetters = listOf(
+                "set",
+                "set the price of",
+                "put",
+                "bump up",
+                "bump",
+                "adjust",
+            ),
             setterMarkers = listOf("to", "at"),
             creditWraps = listOf("on" to "tab", "on" to "account"),
             selfFixes = listOf("sorry", "i meant", "make that", "no wait", "oops", "my bad", "no"),

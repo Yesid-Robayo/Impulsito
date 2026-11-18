@@ -83,6 +83,8 @@ internal class PhraseLexicon(vocabulary: PhraseVocabulary) {
     val negations = PhraseTable.of(vocabulary.refusals.negations)
     val notYet = PhraseTable.of(vocabulary.refusals.notYet)
     val percents = PhraseTable.of(vocabulary.refusals.percents)
+    val wholesale = PhraseTable.of(vocabulary.refusals.wholesale)
+    val supplierRoles = PhraseTable.of(vocabulary.speech.supplierRoles)
     val fromPrepositions = words(vocabulary.speech.fromPrepositions)
     val selfFixes = PhraseTable.of(vocabulary.speech.selfFixes)
     val createLeads = PhraseTable.of(vocabulary.speech.createLeads)
@@ -134,6 +136,9 @@ internal class PhraseLexicon(vocabulary: PhraseVocabulary) {
     val categoryMarks =
         PhraseTable.of(vocabulary.traits.categoryBefore + vocabulary.traits.categoryAfter)
     val descriptionWords = words(vocabulary.traits.descriptionWords)
+
+    /** Lo que une una receta con sus insumos: "is" en "the bread recipe is 70 grams of flour". */
+    val ingredientLinks: Set<String> = descriptionWords + priceCopulas
 
     /**
      * Palabras que cortan el nombre de una categoría dicha: un pago, un monto, a quién va, o la

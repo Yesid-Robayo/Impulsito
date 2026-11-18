@@ -60,9 +60,20 @@ internal enum class VerbKind(
 
     /**
      * Alguien me pagó: un abono de cliente, o el pago de una venta. Dicho de una categoría y sin
-     * cliente ("the water bill got paid"), es un gasto.
+     * cliente ("me pagaron la luz"), es un gasto.
      */
     PAY_IN(
+        PhraseIntent.CUSTOMER_PAYMENT,
+        joins = setOf(PhraseIntent.SALE),
+        steps = listOf(WeakStep.SALE_PRODUCTS, WeakStep.LONE_CATEGORY),
+    ),
+
+    /**
+     * "got paid", "foi pago": a quien se le pagó, dicho en pasiva. Se lee como [PAY_IN], y dicho de
+     * una categoría es un gasto ("the water bill got paid"), salvo dicho de un proveedor que abre
+     * la frase: "Mr. Ramiro got paid 100" es lo que se le pagó a él, no lo que él pagó.
+     */
+    PAID_PASSIVE(
         PhraseIntent.CUSTOMER_PAYMENT,
         joins = setOf(PhraseIntent.SALE),
         steps = listOf(WeakStep.SALE_PRODUCTS, WeakStep.LONE_CATEGORY),

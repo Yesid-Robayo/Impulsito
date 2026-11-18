@@ -83,6 +83,8 @@ internal data class PhraseFacts(
     val drafts: List<LineDraft>,
     /** Si se nombró a alguien sin decir quién: "un cliente se llevó 3 jugos". */
     val someone: Boolean = false,
+    /** Si se dijo que la persona nombrada es un proveedor: "a Julio, el proveedor". */
+    val supplierSaid: Boolean = false,
 )
 
 /** Lo que se sacó de la frase antes de leerla: si va a crédito y si nombra a alguien sin decir quién. */
@@ -90,6 +92,7 @@ internal data class Context(
     val credit: Boolean,
     val someone: Boolean,
     val someoneFirst: Boolean = false,
+    val supplierSaid: Boolean = false,
 )
 
 /** Una lectura con todos los índices del catálogo armados para el idioma de la frase. */
@@ -143,11 +146,15 @@ internal class PhraseSession(
         val unpaid = wrapped.tokens.without(creditHits)
         // "un cliente" dice que alguien se llevó algo, pero no es un producto ni una persona.
         val someoneHits = lexicon.genericParties.findAll(unpaid)
-        val clean = unpaid.without(someoneHits)
+        val unnamed = unpaid.without(someoneHits)
+        // "el proveedor" dice quién es la persona, no es un producto ni una categoría.
+        val roles = supplierRoles(unnamed)
+        val clean = unnamed.without(roles)
         val said = Context(
             credit = creditHits.isNotEmpty() || wrapped.credit,
             someone = someoneHits.isNotEmpty(),
             someoneFirst = someoneHits.any { it.start == 0 },
+            supplierSaid = roles.isNotEmpty(),
         )
         val scan = traitReader.scan(clean)
         if (scan.traits.isEmpty()) return read(clean, emptyList(), said)
@@ -156,6 +163,17 @@ internal class PhraseSession(
         val operation = described.intent ?: return described
         return if (operation in DESCRIBED_INTENTS) described else read(clean, emptyList(), said)
     }
+
+    /**
+     * "a Julio, el proveedor": las palabras que dicen que alguien es un proveedor, salvo las que
+     * son parte del nombre de un proveedor del catálogo, como en "Proveedor del Norte".
+     */
+    private fun supplierRoles(tokens: List<Token>): List<PhraseHit<Unit>> =
+        lexicon.supplierRoles.findAll(tokens).filter { role ->
+            (0..role.start).none { start ->
+                (suppliers.matchAt(tokens, start)?.end ?: 0) > role.start
+            }
+        }
 
     /**
      * Las palabras sin relleno. Un relleno suave, como "este", solo se salta si no va delante del
@@ -183,7 +201,7 @@ internal class PhraseSession(
             clean.without(verbs).filterNot { it.norm in lexicon.pronouns },
             clean,
             verbs,
-            said.someone,
+            said,
         )
         val intents = intents(kinds, facts).map { spent(it, facts) }.distinct()
         val intent = intents.singleOrNull()
@@ -234,7 +252,34 @@ internal class PhraseSession(
         val found = lexicon.verbs.findAll(clean).ifEmpty { closeVerb(clean) }
             .map { yieldOrCost(it, clean) }
         val subject = bySubject(found, clean, someoneFirst)
-        return withCreateLead(withSetter(withEachRecipe(created(subject), clean), clean), clean)
+        val setters =
+            withCountSetter(withSetter(withEachRecipe(created(subject), clean), clean), clean)
+        return withCreateLead(setters, clean)
+    }
+
+    /**
+     * "set the rice stock to 12 kilos", "ajusta o estoque de arroz para 12 quilos": en un conteo,
+     * el verbo de fijar que abre la frase y la marca antes de la cifra solo dicen que se fija lo
+     * que hay. Salen como parte del conteo, y la cifra queda como la cantidad. La marca solo sale
+     * si antes no se dijo ninguna cifra: en "hay 30 panes a 500", el 500 es otra cosa.
+     */
+    private fun withCountSetter(
+        verbs: List<PhraseHit<VerbKind>>,
+        clean: List<Token>,
+    ): List<PhraseHit<VerbKind>> {
+        if (verbs.none { it.value == VerbKind.COUNT }) return verbs
+        val setter = lexicon.priceSetters.matchAt(clean, 0)
+            ?.takeIf { setter -> verbs.none { it.start < setter.end } }
+        val first = clean.indices.firstOrNull { numbers.startsAt(clean, it) } ?: return verbs
+        val marker = (first - 1).takeIf { index ->
+            index >= 0 && clean[index].norm in lexicon.setterMarkers &&
+                verbs.none { index in it.start until it.end }
+        }
+        val absorbed = listOfNotNull(
+            setter?.let { PhraseHit(it.start, it.end, VerbKind.COUNT) },
+            marker?.let { PhraseHit(it, it + 1, VerbKind.COUNT) },
+        )
+        return (absorbed + verbs).sortedBy { it.start }
     }
 
     /** "nuevo: galletas a 2 mil": sin otro verbo, la palabra de producto nuevo al principio. */
@@ -362,7 +407,7 @@ internal class PhraseSession(
      * precio. Con una categoría no: "the rent is 800" es un gasto.
      */
     private fun priceByCopula(clean: List<Token>): List<PhraseHit<VerbKind>> {
-        if (clean.indices.any { categories.matchAt(clean, it) != null }) return emptyList()
+        if (clean.indices.any { categoryHit(clean, it) != null }) return emptyList()
         val copula = (1 until clean.size - 1).firstOrNull { index ->
             clean[index].norm in lexicon.priceCopulas && numbers.startsAt(clean, index + 1)
         } ?: return emptyList()
@@ -410,7 +455,7 @@ internal class PhraseSession(
         body: List<Token>,
         clean: List<Token>,
         verbs: List<PhraseHit<VerbKind>>,
-        someone: Boolean,
+        said: Context,
     ): PhraseFacts {
         val total = findTotal(body)
         val tendered = findTendered(total.rest)
@@ -424,7 +469,8 @@ internal class PhraseSession(
             category = findCategory(clean),
             rest = rest,
             drafts = selfFixed(rest),
-            someone = someone,
+            someone = said.someone,
+            supplierSaid = said.supplierSaid,
         )
     }
 
@@ -671,8 +717,24 @@ internal class PhraseSession(
 
     private fun categoryAt(tokens: List<Token>, index: Int): NameMatch? {
         if (index > 0 && numbers.startsAt(tokens, index - 1)) return null
-        val hit = categories.matchAt(tokens, index) ?: return null
+        val hit = categoryHit(tokens, index) ?: return null
         return nameMatch(hit.ids)
+    }
+
+    /**
+     * Una categoría en [index], salvo que sea parte del nombre de un producto del catálogo dicho
+     * entero: "water" es un servicio, y "bottled water" es un producto.
+     */
+    private fun categoryHit(tokens: List<Token>, index: Int): NameHit? {
+        val hit = categories.matchAt(tokens, index) ?: return null
+        val starts = maxOf(0, index - NAME_REACH)..index
+        val ends = hit.end..minOf(tokens.size, hit.end + NAME_REACH)
+        val named = starts.any { from ->
+            ends.any { to ->
+                to - from > hit.end - index && products.existing(tokens.subList(from, to)) != null
+            }
+        }
+        return if (named) null else hit
     }
 
     // La operación.
@@ -682,7 +744,8 @@ internal class PhraseSession(
      * decidir a lo que se nombró: una categoría es un gasto y un producto del catálogo, una venta.
      */
     private fun intents(kinds: List<VerbKind>, facts: PhraseFacts): List<PhraseIntent> {
-        val main = kinds.filterNot { it.subordinate }.ifEmpty { costOverPrice(kinds) }
+        val said = madeAtCost(kinds)
+        val main = said.filterNot { it.subordinate }.ifEmpty { costOverPrice(said) }
         if (main.isEmpty()) {
             // Una categoría sin verbo es un gasto, aunque otra palabra vaya delante: "el
             // alquiler de este mes, 800.000"; salvo que nombre productos del catálogo, como en
@@ -712,12 +775,24 @@ internal class PhraseSession(
 
     /**
      * "bought gas for the van, 40", "compré gasolina, 40 mil": comprar algo que es una categoría
-     * de gasto y ningún producto del catálogo es un gasto.
+     * de gasto y ningún producto del catálogo es un gasto. Lo mismo con lo que costó: "el flete me
+     * costó 25 mil" no es el costo de un producto, que no se nombró, sino un gasto.
      */
     private fun spent(intent: PhraseIntent, facts: PhraseFacts): PhraseIntent {
         val goods = facts.drafts.any { products.names(it.span) { true } }
-        val expense = intent == PhraseIntent.PURCHASE && facts.category != null && !goods
+        val expense = intent in SPENT_INTENTS && facts.category != null && !goods
         return if (expense) PhraseIntent.EXPENSE else intent
+    }
+
+    /**
+     * "the empanada costs me 0.70 to make": lo que cuesta hacer algo es su costo, no su receta, si
+     * no se dice qué lleva. Sin "lleva" ni lo que rinde, "para hacer" solo dice de qué es el costo
+     * y sale.
+     */
+    private fun madeAtCost(kinds: List<VerbKind>): List<VerbKind> {
+        val recipe = kinds.filter { it.intent == PhraseIntent.RECIPE }
+        val costed = VerbKind.COST in kinds && recipe.all { it == VerbKind.RECIPE_FOR }
+        return if (costed) kinds.filterNot { it == VerbKind.RECIPE_FOR } else kinds
     }
 
     /**
@@ -754,7 +829,9 @@ internal class PhraseSession(
 
         WeakStep.BUYER -> facts.party?.customer != null || facts.someone
 
-        WeakStep.SUPPLIER -> facts.party?.supplier != null
+        // Se dijo que es un proveedor: "a Julio, el proveedor" es uno nuevo, y "le pagué al
+        // proveedor" deja elegir cuál.
+        WeakStep.SUPPLIER -> facts.party?.supplier != null || facts.supplierSaid
 
         WeakStep.SUPPLIER_GOODS ->
             facts.party?.supplier != null && facts.party.customer == null &&
@@ -840,11 +917,22 @@ internal class PhraseSession(
 
     /**
      * "ajusta el stock de pan a 30", "the bread is at 30": en un conteo, el número después de "a"
-     * es lo que hay, no un precio. Lo que se dijo como lo que costó sigue siendo un costo.
+     * es lo que hay, no un precio. También una cifra sola después del producto, como en "set the
+     * bread stock to 30", que sin la marca se lee como un monto. Lo que se dijo como lo que costó
+     * sigue siendo un costo.
      */
     private fun counted(draft: LineDraft): LineDraft {
-        val atCount = draft.quantity == null && draft.unitPrice != null && !draft.costSaid
-        return if (atCount) draft.copy(quantity = draft.unitPrice, unitPrice = null) else draft
+        val said = draft.unitPrice ?: draft.lineTotal
+        val atCount = draft.quantity == null && said != null && !draft.costSaid
+        return if (atCount) {
+            draft.copy(
+                quantity = said,
+                unitPrice = null,
+                lineTotal = null,
+            )
+        } else {
+            draft
+        }
     }
 
     /**
@@ -935,7 +1023,12 @@ internal class PhraseSession(
 
     /** Un precio o un costo nuevo: una sola línea, con el monto en el precio por unidad. */
     private fun change(intent: PhraseIntent, facts: PhraseFacts): PhraseReading {
-        val said = facts.rest.filterNot { it.isSeparator || it.norm in lexicon.changeFillers }
+        // "el pan al por mayor vale 500" es el precio de una lista que la app no lleva. Lo que
+        // cuesta al por mayor sí es el costo, y la palabra no es parte del producto.
+        val wholesale = lexicon.wholesale.findAll(facts.rest)
+        if (intent == PhraseIntent.PRICE_CHANGE && wholesale.isNotEmpty()) return NOTHING
+        val said = facts.rest.without(wholesale)
+            .filterNot { it.isSeparator || it.norm in lexicon.changeFillers }
         // "cada empanada me cuesta 1200": el costo de una.
         val each = lexicon.recipeEach.matchAt(said, 0)?.end ?: 0
         val draft = lineReader.read(said.subList(each, said.size), amounts = true)
@@ -980,9 +1073,26 @@ internal class PhraseSession(
             .dropWhile { it.norm in lexicon.toPrepositions }
         return recipeOf(
             targetTokens,
-            segment(clean, verbs, ingredientsStart, ingredientsEnd),
+            ingredientsSaid(segment(clean, verbs, ingredientsStart, ingredientsEnd)),
             said,
         )
+    }
+
+    /**
+     * Lo usado, sin lo que lo une con lo que va antes: "is" en "the bread recipe is 70 grams of
+     * flour", o "de" en "preciso de 250 gramas". Un "de" solo sale antes de una cifra: en "a cup of
+     * coffee", "a" dice una.
+     */
+    private fun ingredientsSaid(tokens: List<Token>): List<Token> {
+        var from = 0
+        while (from < tokens.size && linksIngredients(tokens, from)) from++
+        return tokens.subList(from, tokens.size)
+    }
+
+    private fun linksIngredients(tokens: List<Token>, index: Int): Boolean {
+        val norm = tokens[index].norm
+        if (norm in lexicon.ingredientLinks) return true
+        return norm in lexicon.nameConnectors && numbers.startsAt(tokens, index + 1)
     }
 
     private fun recipeOf(
@@ -1297,7 +1407,10 @@ internal class PhraseSession(
         )
 
         /** Lo que hace un proveedor cuando lo dice un verbo de quien atiende. */
-        val BY_SUPPLIER: Map<VerbKind, VerbKind> = mapOf(VerbKind.SALE to VerbKind.PURCHASE)
+        val BY_SUPPLIER: Map<VerbKind, VerbKind> = mapOf(
+            VerbKind.SALE to VerbKind.PURCHASE,
+            VerbKind.PAID_PASSIVE to VerbKind.SETTLE_OUT,
+        )
 
         /** La clave del método de pago en efectivo, el de un billete con que se pagó. */
         const val CASH = "cash"
@@ -1349,6 +1462,15 @@ internal class PhraseSession(
         )
 
         val CREDIT_INTENTS = setOf(PhraseIntent.SALE, PhraseIntent.PURCHASE)
+
+        /** Las operaciones que, dichas de una categoría de gasto sin productos, son un gasto. */
+        val SPENT_INTENTS = setOf(PhraseIntent.PURCHASE, PhraseIntent.COST_CORRECTION)
+
+        /**
+         * Cuántas palabras a cada lado de una categoría se miran para ver si es parte del nombre de
+         * un producto: "bottled water", "agua en botella".
+         */
+        const val NAME_REACH = 3
 
         /** Las operaciones en que se nombra un producto nuevo, al que va su descripción. */
         val DESCRIBED_INTENTS = setOf(

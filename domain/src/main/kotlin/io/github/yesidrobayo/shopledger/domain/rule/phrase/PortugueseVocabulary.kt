@@ -10,6 +10,8 @@ internal object PortugueseVocabulary {
             // "saíram" sem "do forno" é o que se vendeu no balcão.
             "saíram", "despachei", "despachamos", "fiz uma venda de", "fizemos uma venda de",
             "acabei de vender", "acabamos de vender",
+            // Quien compra en tercera persona es un cliente: "ela comprou 2 bolos" es una venta.
+            "ele comprou", "ela comprou", "eles compraram", "elas compraram",
         ),
         VerbKind.SELL_NOW to listOf("vendo", "eu vendo"),
         // "passei no cartão": cobrei. Sem ela, "passei" se lia como "assei", uma produção.
@@ -31,7 +33,9 @@ internal object PortugueseVocabulary {
         VerbKind.COUNT to listOf(
             "contei", "contamos", "sobraram", "sobrou", "restam", "restaram", "sobram", "tem",
             "tenho", "temos", "há",
-            "contagem", "contagem de", "inventário de",
+            "contagem", "contagem de", "inventário de", "ajusta o estoque de",
+            "ajusta o estoque do", "ajusta o estoque da", "ajustar o estoque de", "o estoque de",
+            "o estoque do", "o estoque da", "estoque de", "estoque do", "estoque da",
         ),
         VerbKind.DAMAGED to listOf(
             "estragou", "estragaram", "se estragou", "estragado", "estragados", "estragada",
@@ -116,9 +120,8 @@ internal object PortugueseVocabulary {
             "me transferiram",
             "me fez um pix",
             "me depositou",
-            "foi paga",
-            "foi pago",
         ),
+        VerbKind.PAID_PASSIVE to listOf("foi paga", "foi pago"),
         VerbKind.PAY_OUT to
             listOf(
                 "paguei", "pagamos", "gastei", "gastamos", "gasto", "gasto de", "transferi",
@@ -424,6 +427,7 @@ internal object PortugueseVocabulary {
             ),
             negations = listOf("não", "nao", "nunca", "jamais", "nem", "ainda não", "ainda nao"),
             percents = listOf("por cento", "porcento"),
+            wholesale = listOf("atacado", "atacadista"),
             notYet = listOf(
                 "amanhã", "depois de amanhã", "vou", "vamos", "vai", "vão", "tenho que",
                 "temos que", "tenho de", "tem que", "preciso comprar", "preciso pagar",
@@ -463,6 +467,12 @@ internal object PortugueseVocabulary {
             recipeEach = listOf("a cada", "para cada", "pra cada", "cada"),
             createLeads = listOf("novo", "nova"),
             priceCopulas = listOf("são", "está", "estão"),
+            supplierRoles = listOf(
+                "fornecedor",
+                "o fornecedor",
+                "meu fornecedor",
+                "nosso fornecedor",
+            ),
             fromPrepositions = listOf("do", "da", "de"),
             selfFixes = listOf(
                 "desculpa",
@@ -474,8 +484,8 @@ internal object PortugueseVocabulary {
                 "errei",
                 "não",
             ),
-            priceSetters = listOf("põe", "coloca", "deixa", "bota"),
-            setterMarkers = listOf("a", "por", "em"),
+            priceSetters = listOf("põe", "coloca", "deixa", "bota", "ajusta"),
+            setterMarkers = listOf("a", "por", "em", "para", "pra"),
         ),
     )
 }

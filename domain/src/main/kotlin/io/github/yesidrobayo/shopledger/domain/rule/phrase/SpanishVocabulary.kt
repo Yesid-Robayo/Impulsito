@@ -14,6 +14,8 @@ internal object SpanishVocabulary {
             "despaché", "despachamos",
             // "salieron" sin "del horno" es lo que se vendió en el mostrador.
             "salieron", "hice una venta de", "hicimos una venta de",
+            // Quien compra en tercera persona es un cliente: "ella compró 2 tortas" es una venta.
+            "ella compró", "ellos compraron", "ellas compraron",
         ),
         VerbKind.COLLECT to listOf("cobré", "le cobré", "cobramos", "les cobré", "le cobramos"),
         VerbKind.SELL_NOW to listOf(
@@ -479,6 +481,7 @@ internal object SpanishVocabulary {
             ),
             negations = listOf("no", "nunca", "jamás", "tampoco", "ni", "todavía no", "aún no"),
             percents = listOf("por ciento", "porciento"),
+            wholesale = listOf("mayorista", "al por mayor", "por mayor"),
             notYet = listOf(
                 "mañana", "pasado mañana", "voy a", "vamos a", "va a", "van a", "tengo que",
                 "tenemos que", "hay que", "debo", "debemos", "debería", "tendría que", "pienso",
@@ -519,6 +522,12 @@ internal object SpanishVocabulary {
             recipeEach = listOf("por cada", "para cada", "cada"),
             createLeads = listOf("nuevo", "nueva"),
             priceCopulas = listOf("es", "son", "está", "están"),
+            supplierRoles = listOf(
+                "proveedor",
+                "el proveedor",
+                "mi proveedor",
+                "nuestro proveedor",
+            ),
             fromPrepositions = listOf("de"),
             selfFixes = listOf(
                 "perdón", "perdon", "digo", "mejor dicho", "corrijo", "no perdón", "no, perdón",

@@ -123,6 +123,12 @@ internal class Refusals(
     val notYet: List<String>,
     /** Después de una cifra, un porcentaje: "un 10 por ciento". */
     val percents: List<String> = emptyList(),
+    /**
+     * Dicen un precio al por mayor: "mayorista", "wholesale". Un cambio de precio que lo dice no
+     * es el precio del producto, sino el de una lista que la app no lleva, y no se registra; una
+     * compra al por mayor sí es una compra.
+     */
+    val wholesale: List<String> = emptyList(),
 )
 
 /**
@@ -151,6 +157,8 @@ internal class Refusals(
  * - [createLeads] crean un producto si abren la frase sin otro verbo: "nuevo: galletas a 2 mil".
  * - [priceCopulas] dicen un precio entre el producto y el monto, sin otro verbo: "el pan es 600",
  *   "rolls are 0.70".
+ * - [supplierRoles] dicen que la persona nombrada es un proveedor aunque no esté en el catálogo:
+ *   "a Julio, el proveedor". No son un producto ni una categoría: salen de la frase.
  */
 internal class SpeechForms(
     val softFillers: List<String> = emptyList(),
@@ -170,6 +178,7 @@ internal class SpeechForms(
     val selfFixes: List<String> = emptyList(),
     val createLeads: List<String> = emptyList(),
     val priceCopulas: List<String> = emptyList(),
+    val supplierRoles: List<String> = emptyList(),
 )
 
 /**
