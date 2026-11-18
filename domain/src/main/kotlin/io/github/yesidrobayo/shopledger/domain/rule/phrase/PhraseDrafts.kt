@@ -30,6 +30,8 @@ import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
  * - En una venta o una compra de una sola línea sin monto, el "todo por" es el total de esa línea.
  * - Lo que se dijo de un producto nuevo (su uso, su categoría) viaja con él. En una compra no
  *   viaja que sea un servicio: lo que se compra lleva stock, y un servicio no lo lleva.
+ * - Los insumos dichos de una producción pasan como sus líneas, y uno que no existe se ofrece
+ *   crear. Una cantidad que no se dijo se pregunta, como en una receta.
  */
 fun PhraseReading.toDraft(): PhraseDraft? = intent?.let(::draftAs)
 
@@ -57,6 +59,7 @@ internal fun PhraseReading.draftAs(intent: PhraseIntent): PhraseDraft {
         price = price,
         cost = cost,
         unitId = unitId,
+        inputs = inputs.map { it.toDraftLine(creatable = true, stocked = false, fallback = null) },
     )
 }
 
@@ -74,8 +77,11 @@ internal fun PhraseReading.draftAs(intent: PhraseIntent): PhraseDraft {
  *   nombre.
  * - Un ajuste necesita un motivo de los que se pueden decir: el motivo "otro" exige una nota que la
  *   frase no trae.
+ * - Una producción necesita, en cada insumo dicho, un producto que exista y su cantidad. Si no se
+ *   dijo ninguno, cada producto que se produce necesita receta: [hasRecipe] lo dice de cada id, y
+ *   por omisión supone que la tiene, porque eso solo lo sabe la base o el catálogo leído.
  */
-fun PhraseDraft.gaps(): Set<DraftGap> = buildSet {
+fun PhraseDraft.gaps(hasRecipe: (Long) -> Boolean = { true }): Set<DraftGap> = buildSet {
     when (intent) {
         PhraseIntent.SALE -> {
             addLineGaps(lines, needsQuantity = true)
@@ -90,7 +96,15 @@ fun PhraseDraft.gaps(): Set<DraftGap> = buildSet {
             if (!totalMatches(lines, total)) add(DraftGap.AMOUNT)
         }
 
-        PhraseIntent.PRODUCTION -> addLineGaps(lines, needsQuantity = true)
+        PhraseIntent.PRODUCTION -> {
+            addLineGaps(lines, needsQuantity = true)
+            if (inputs.isNotEmpty()) addLineGaps(inputs, needsQuantity = true)
+            val unwritten = lines.any { line ->
+                val product = line.product
+                product is DraftTarget.Existing && !hasRecipe(product.productId)
+            }
+            if (inputs.isEmpty() && unwritten) add(DraftGap.INPUTS)
+        }
 
         PhraseIntent.STOCK_ADJUSTMENT -> {
             addLineGaps(lines, needsQuantity = true)

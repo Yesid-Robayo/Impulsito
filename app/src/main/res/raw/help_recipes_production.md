@@ -31,6 +31,8 @@ The **Combos and recipes** list shows only combos: a tracked product's recipe op
 
 The inputs go down and the finished product goes up. If an input is short, its row shows how much would be left below zero, but production can still be recorded. A wrong production is opened in **Production** and voided with **Void production**: the inputs come back and the finished product goes out.
 
+Production can also be said with **Say**: "made 20 empanadas", or with what went in, "made a cake with 200 grams of flour and 3 eggs". If the product has no recipe, what was said becomes its recipe, per unit, in the same record. If it has one, what was said is used only in that batch, unless **Update the recipe** is on.
+
 ## The cost
 
 The cost of a combo is the **Component cost**: what its components cost today.

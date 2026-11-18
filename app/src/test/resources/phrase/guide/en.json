@@ -5923,7 +5923,8 @@
   "text": "baked 40 rolls with 2 kilos of wheat flour",
   "tags": [
    "production",
-   "hard"
+   "hard",
+   "inputs"
   ],
   "expect": {
    "intent": "PRODUCTION",
@@ -5947,7 +5948,16 @@
    "price": null,
    "cost": null,
    "unit": null,
-   "issues": []
+   "issues": [],
+   "inputs": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
   }
  },
  {
@@ -10596,6 +10606,272 @@
    "unit": null,
    "issues": [
     "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "en-5331",
+  "text": "made 2 packs of cookies with 400 grams of wheat flour and 3 eggs",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "wheat_flour",
+     "qty": "400",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "en-5332",
+  "text": "made 10 scented candles with 2 kilos of soy wax",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "soy_wax",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "en-5333",
+  "text": "baked a chocolate cake with 250 grams of sugar",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "sugar",
+     "qty": "250",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "en-5334",
+  "text": "made 2 packs of cookies with 200 g of butter",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs",
+   "unknown"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": {
+      "new": "Butter",
+      "usage": "INPUT"
+     },
+     "qty": "200",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "en-5335",
+  "text": "made 10 empanadas and 5 bread rolls",
+  "tags": [
+   "production",
+   "multi"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "bread",
+     "qty": "5",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "en-5336",
+  "text": "made a strawberry jam with 1 liter of sugar",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs",
+   "unit",
+   "edge"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "jam",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNIT_NOT_FOR_PRODUCT"
+   ],
+   "inputs": [
+    {
+     "product": "sugar",
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
    ]
   }
  }

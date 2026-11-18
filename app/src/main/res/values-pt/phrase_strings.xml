@@ -70,6 +70,15 @@
     <string name="phrase_target_missing">Falta o produto</string>
     <string name="phrase_recipe_yield">Rende %1$s</string>
     <string name="phrase_ingredients">Leva</string>
+    <string name="phrase_inputs_missing">Não tem receita. Dizer o que leva, como «leva 200 g de farinha e 3 ovos»: ao registrar, fica como a receita</string>
+    <string name="phrase_saves_recipe">Ao registrar, o que leva fica como a receita, por unidade</string>
+    <string name="phrase_update_recipe">Atualizar a receita</string>
+    <string name="phrase_update_recipe_off">O que foi dito vale só para esta produção</string>
+    <string name="phrase_update_recipe_on">A receita fica com o que foi dito, por unidade</string>
+    <string name="phrase_input_recipe">Na receita: %1$s</string>
+    <string name="phrase_input_not_in_recipe">Não está na receita: só nesta produção</string>
+    <string name="phrase_input_added_to_recipe">Não está na receita: é adicionado</string>
+    <string name="phrase_line_not_produced">Não é produzido</string>
     <string name="phrase_new_price">Preço de venda</string>
     <string name="phrase_new_cost">Custo</string>
     <string name="phrase_price_missing">Falta o preço</string>

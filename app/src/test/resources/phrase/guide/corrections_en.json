@@ -3866,5 +3866,479 @@
    "unit": null,
    "issues": []
   }
+ },
+ {
+  "id": "en-c5066",
+  "initial": "made 2 packs of cookies",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NO_RECIPE"
+   ]
+  },
+  "correction": "it takes 400 grams of wheat flour and 3 eggs",
+  "tags": [
+   "correction",
+   "inputs",
+   "recipe",
+   "production"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NO_RECIPE"
+   ],
+   "inputs": [
+    {
+     "product": "wheat_flour",
+     "qty": "400",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "en-c5067",
+  "initial": "made 2 packs of cookies",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NO_RECIPE"
+   ]
+  },
+  "correction": "400 grams of wheat flour and 3 eggs",
+  "tags": [
+   "correction",
+   "inputs",
+   "recipe",
+   "no_verb",
+   "production"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NO_RECIPE"
+   ],
+   "inputs": [
+    {
+     "product": "wheat_flour",
+     "qty": "400",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "en-c5068",
+  "initial": "made 10 scented candles",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "with 2 kilos of soy wax",
+  "tags": [
+   "correction",
+   "inputs",
+   "production"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "soy_wax",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "en-c5069",
+  "initial": "made 10 scented candles with 2 kilos of soy wax",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "soy_wax",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  },
+  "correction": "no, it was 3 kilos of soy wax",
+  "tags": [
+   "correction",
+   "inputs",
+   "quantity",
+   "production"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "soy_wax",
+     "qty": "3",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "en-c5070",
+  "initial": "made 2 packs of cookies with 400 grams of wheat flour",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "wheat_flour",
+     "qty": "400",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  },
+  "correction": "and 3 eggs",
+  "tags": [
+   "correction",
+   "inputs",
+   "add",
+   "production"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "wheat_flour",
+     "qty": "400",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "en-c5071",
+  "initial": "made 2 packs of cookies",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NO_RECIPE"
+   ]
+  },
+  "correction": "it takes 200 g of butter",
+  "tags": [
+   "correction",
+   "inputs",
+   "unknown",
+   "production"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NO_RECIPE"
+   ],
+   "inputs": [
+    {
+     "product": {
+      "new": "Butter",
+      "usage": "INPUT"
+     },
+     "qty": "200",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
  }
 ]

@@ -47,7 +47,7 @@ class RegisterPhraseWithUseCasesTest {
         sale = sale,
         purchase = { error("No es una compra") },
         expense = expense,
-        production = { error("No es una producción") },
+        productions = { error("No es una producción") },
         adjustments = adjustments,
         customerPayment = { error("No es un abono") },
         supplierPayment = { error("No es un pago") },

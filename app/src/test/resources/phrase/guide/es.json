@@ -5915,7 +5915,8 @@
   "text": "hice 40 panes con 2 kilos de harina de trigo",
   "tags": [
    "production",
-   "hard"
+   "hard",
+   "inputs"
   ],
   "expect": {
    "intent": "PRODUCTION",
@@ -5939,7 +5940,16 @@
    "price": null,
    "cost": null,
    "unit": null,
-   "issues": []
+   "issues": [],
+   "inputs": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
   }
  },
  {
@@ -10589,6 +10599,272 @@
    "unit": null,
    "issues": [
     "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "es-5331",
+  "text": "hice 2 paquetes de galletas con 400 gramos de harina de trigo y 3 huevos",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "wheat_flour",
+     "qty": "400",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "es-5332",
+  "text": "hice 10 velas aromáticas con 2 kilos de cera de soya",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "soy_wax",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "es-5333",
+  "text": "horneé una torta de chocolate con 250 gramos de azúcar",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": "sugar",
+     "qty": "250",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "es-5334",
+  "text": "hice 2 paquetes de galletas con 200 g de mantequilla",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs",
+   "unknown"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [],
+   "inputs": [
+    {
+     "product": {
+      "new": "Mantequilla",
+      "usage": "INPUT"
+     },
+     "qty": "200",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "es-5335",
+  "text": "hice 10 empanadas y 5 panes",
+  "tags": [
+   "production",
+   "multi"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "bread",
+     "qty": "5",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-5336",
+  "text": "preparé una mermelada de fresa con 1 litro de azúcar",
+  "tags": [
+   "production",
+   "recipe",
+   "inputs",
+   "unit",
+   "edge"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "jam",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNIT_NOT_FOR_PRODUCT"
+   ],
+   "inputs": [
+    {
+     "product": "sugar",
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
    ]
   }
  }

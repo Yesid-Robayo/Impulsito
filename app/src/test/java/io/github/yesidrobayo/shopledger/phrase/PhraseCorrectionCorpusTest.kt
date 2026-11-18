@@ -216,6 +216,7 @@ private fun PhraseDraft.withExtra(extra: Map<String, Json>, catalog: FixtureCata
 /** La tarjeta con los nombres nuevos sin tildes, mayúsculas ni plurales, para compararla. */
 private fun PhraseDraft.loose(): PhraseDraft = copy(
     lines = lines.map { it.copy(product = it.product?.loose()) },
+    inputs = inputs.map { it.copy(product = it.product?.loose()) },
     target = target?.loose(),
 )
 
@@ -252,6 +253,10 @@ private fun render(draft: PhraseDraft?, catalog: FixtureCatalog): String {
         draft.price?.let { "precio ${it.minor}" },
         draft.cost?.let { "costo ${it.minor}" },
         key(draft.unitId)?.let { "unidad $it" },
+        draft.inputs.takeIf {
+            it.isNotEmpty()
+        }?.joinToString(" + ", "lleva [", "]") { renderLine(it, catalog) },
+        "actualiza la receta".takeIf { draft.updatesRecipe },
     )
     return parts.joinToString(" · ")
 }

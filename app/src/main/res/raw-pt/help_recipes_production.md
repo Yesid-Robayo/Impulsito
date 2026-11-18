@@ -31,6 +31,8 @@ A lista de **Combos e receitas** mostra só os combos: a receita de um produto c
 
 Os insumos diminuem e o produto acabado aumenta. Se faltar um insumo, a linha avisa quanto ficaria negativo, mas dá para produzir igual. Uma produção errada é aberta em **Produção** e anulada com **Anular produção**: os insumos voltam e o produto acabado sai.
 
+Também dá para produzir dizendo com **Dizer**: «fiz 20 pastéis», ou com o que levou, «fiz um bolo com 200 gramas de farinha e 3 ovos». Se o produto não tem receita, o que foi dito fica como a receita, por unidade, no mesmo registro. Se tem, o que foi dito vale só nessa fornada, a não ser com **Atualizar a receita**.
+
 ## O custo
 
 O custo de um combo é o **Custo dos componentes**: o que eles custam hoje.

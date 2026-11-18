@@ -94,11 +94,16 @@ internal data class Expectation(
     val cost: BigDecimal?,
     val unit: String?,
     val issues: Set<String>,
+    /** Lo que se dijo que llevó una producción; vacío en las demás. */
+    val inputs: List<LineView> = emptyList(),
 ) {
     /** Si lo esperado pide preguntar algo: elegir, crear o advertir. */
     val asks: Boolean
         get() = issues.isNotEmpty() ||
-            (lines.map { it.product } + target + payment + party + category).any {
+            (
+                lines.map { it.product } + inputs.map { it.product } + target + payment + party +
+                    category
+                ).any {
                 it is Ref.Choose || it is Ref.New
             }
 
@@ -116,16 +121,8 @@ internal data class Expectation(
         fun of(obj: Map<String, Json>): Expectation = Expectation(
             intent = obj["intent"]?.strOrNull(),
             reason = obj["reason"]?.strOrNull(),
-            lines = obj["lines"]?.arrOrNull().orEmpty().map { line ->
-                val l = line.obj()
-                LineView(
-                    Ref.of(l["product"]),
-                    decimal(l["qty"]),
-                    l["unit"]?.strOrNull(),
-                    decimal(l["unit_price"]),
-                    decimal(l["line_total"]),
-                )
-            },
+            lines = linesOf(obj["lines"]),
+            inputs = linesOf(obj["inputs"]),
             payment = Ref.of(obj["payment"]),
             party = Ref.of(obj["party"]),
             category = Ref.of(obj["category"]),
@@ -138,6 +135,17 @@ internal data class Expectation(
             unit = obj["unit"]?.strOrNull(),
             issues = obj["issues"]?.arrOrNull().orEmpty().mapNotNull { it.strOrNull() }.toSet(),
         )
+
+        private fun linesOf(json: Json?): List<LineView> = json?.arrOrNull().orEmpty().map { line ->
+            val l = line.obj()
+            LineView(
+                Ref.of(l["product"]),
+                decimal(l["qty"]),
+                l["unit"]?.strOrNull(),
+                decimal(l["unit_price"]),
+                decimal(l["line_total"]),
+            )
+        }
 
         fun decimal(json: Json?): BigDecimal? = when (json) {
             is Json.Str -> json.value.toBigDecimalOrNull()
@@ -155,7 +163,8 @@ internal fun same(a: Expectation, b: Expectation): Boolean =
         sameNumber(a.total, b.total) && a.credit == b.credit && sameRef(a.target, b.target) &&
         sameNumber(a.targetQty, b.targetQty) && sameNumber(a.price, b.price) &&
         sameNumber(a.cost, b.cost) &&
-        a.unit == b.unit && a.issues == b.issues
+        a.unit == b.unit && a.issues == b.issues && a.inputs.size == b.inputs.size &&
+        a.inputs.zip(b.inputs).all { (x, y) -> sameLine(x, y) }
 
 internal fun sameLine(a: LineView, b: LineView): Boolean =
     sameRef(a.product, b.product) && sameNumber(a.qty, b.qty) && a.unit == b.unit &&
@@ -287,15 +296,8 @@ internal class FixtureCatalog(fixture: Map<String, Json>, language: String) {
     fun describe(reading: PhraseReading): Expectation = Expectation(
         intent = reading.intent?.name,
         reason = reading.reason?.name,
-        lines = reading.lines.map { line ->
-            LineView(
-                product(line.product),
-                quantity(line.quantity),
-                line.unitId?.let(keyById::getValue),
-                money(line.unitPrice),
-                money(line.lineTotal),
-            )
-        },
+        lines = reading.lines.map(::lineView),
+        inputs = reading.inputs.map(::lineView),
         payment = name(reading.payment),
         party = name(reading.party),
         category = name(reading.category),
@@ -307,6 +309,14 @@ internal class FixtureCatalog(fixture: Map<String, Json>, language: String) {
         cost = money(reading.cost),
         unit = reading.unitId?.let(keyById::getValue),
         issues = reading.issues.map { it.name }.toSet(),
+    )
+
+    private fun lineView(line: PhraseLine): LineView = LineView(
+        product(line.product),
+        quantity(line.quantity),
+        line.unitId?.let(keyById::getValue),
+        money(line.unitPrice),
+        money(line.lineTotal),
     )
 
     private fun product(match: ProductMatch): Ref = when (match) {
@@ -352,15 +362,8 @@ internal class FixtureCatalog(fixture: Map<String, Json>, language: String) {
         return PhraseReading(
             intent = intent,
             reason = expected.reason?.let(StockAdjustmentReason::valueOf),
-            lines = expected.lines.map { line ->
-                PhraseLine(
-                    product = productMatch(requireNotNull(line.product) { "Línea sin producto" }),
-                    quantity = line.qty?.let { QuantityMilli(it.movePointRight(3).toLong()) },
-                    unitId = line.unit?.let { idIn(it, catalog.units.map(PhraseUnit::id)) },
-                    unitPrice = line.unitPrice?.let(::moneyOf),
-                    lineTotal = line.lineTotal?.let(::moneyOf),
-                )
-            },
+            lines = expected.lines.map(::phraseLine),
+            inputs = expected.inputs.map(::phraseLine),
             payment = expected.payment?.let { nameMatch(it, catalog.paymentMethods) },
             party = expected.party?.let { nameMatch(it, people) },
             category = expected.category?.let { nameMatch(it, catalog.expenseCategories) },
@@ -376,6 +379,14 @@ internal class FixtureCatalog(fixture: Map<String, Json>, language: String) {
             issues = expected.issues.map(PhraseIssue::valueOf).toSet(),
         )
     }
+
+    private fun phraseLine(line: LineView): PhraseLine = PhraseLine(
+        product = productMatch(requireNotNull(line.product) { "Línea sin producto" }),
+        quantity = line.qty?.let { QuantityMilli(it.movePointRight(3).toLong()) },
+        unitId = line.unit?.let { idIn(it, catalog.units.map(PhraseUnit::id)) },
+        unitPrice = line.unitPrice?.let(::moneyOf),
+        lineTotal = line.lineTotal?.let(::moneyOf),
+    )
 
     /** La categoría de producto que se llama [name], sin tildes ni plurales, si hay una. */
     fun productCategoryNamed(name: String): Long? =

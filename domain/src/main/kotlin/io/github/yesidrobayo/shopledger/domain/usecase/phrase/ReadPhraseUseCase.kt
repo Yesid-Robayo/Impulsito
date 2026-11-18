@@ -7,7 +7,9 @@ import io.github.yesidrobayo.shopledger.domain.model.SeedTable
 import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseCatalog
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseComponent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseConversion
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIssue
@@ -56,7 +58,7 @@ data class PhraseReadResult(
  * después, con [RegisterPhraseUseCase].
  *
  * Arma el catálogo en el momento, con lo vigente: los productos con su unidad base, sus
- * conversiones y si tienen receta; todas las unidades, porque un producto puede seguir en una que
+ * conversiones y su receta; todas las unidades, porque un producto puede seguir en una que
  * se archivó; los métodos de pago, los proveedores, los clientes que se pueden elegir, las
  * categorías de gasto y las de producto, para la que se diga de un producto nuevo. Cada cosa
  * lleva el nombre que la persona ve, y una fila inicial sin nombre propio lleva el de su clave en
@@ -138,12 +140,12 @@ class ReadPhraseUseCase(
         active: List<Product>,
         conversions: Map<Long, List<ProductConversion>>,
     ): PhraseCatalog {
-        val withRecipe = components.findAll().mapTo(HashSet()) { it.parentProductId }
+        val recipes = components.findAll().groupBy { it.parentProductId }
         // El principal de unas variantes es el que nombran sus variantes.
         val parents = active.mapNotNullTo(HashSet()) { it.details.parentProductId }
         return PhraseCatalog(
             products = active.map { product ->
-                phraseProduct(product, conversions[product.id].orEmpty(), withRecipe, parents)
+                phraseProduct(product, conversions[product.id].orEmpty(), recipes, parents)
             },
             units = units.observeAll().first().map(::phraseUnit),
             paymentMethods = paymentMethods.findActive().map { method ->
@@ -177,7 +179,7 @@ class ReadPhraseUseCase(
     private fun phraseProduct(
         product: Product,
         conversions: List<ProductConversion>,
-        withRecipe: Set<Long>,
+        recipes: Map<Long, List<RecipeComponent>>,
         parents: Set<Long>,
     ): PhraseProduct = PhraseProduct(
         id = product.id,
@@ -188,8 +190,11 @@ class ReadPhraseUseCase(
         },
         forSale = product.details.usage.isSold && product.id !in parents,
         forPurchase = StockModeRules.hasLedger(product.details.stockMode),
-        hasRecipe = product.id in withRecipe,
+        hasRecipe = product.id in recipes,
         stockMode = product.details.stockMode,
+        recipe = recipes[product.id].orEmpty().map {
+            PhraseComponent(it.componentProductId, it.quantity)
+        },
     )
 
     /**

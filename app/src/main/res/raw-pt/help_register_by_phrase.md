@@ -14,7 +14,7 @@ Na primeira vez, o {app} explica para que usa o microfone e o Android pede a per
 - Compras: «comprei 10 quilos de farinha por 500 na distribuidora».
 - Algo novo, com o tipo e a categoria: «comprei 2 quilos de farinha a 50, é um insumo, na categoria matérias primas». O cartão oferece criá-lo já como insumo e nessa categoria. Se a categoria não existe, o cartão a mostra como **Categoria nova**, e ela é criada junto com o produto. **Escolher categoria** a troca.
 - Despesas: «paguei a luz 80», «gastei 15 de táxi».
-- Produção: «fiz 20 pastéis», «assei 50 pães».
+- Produção: «fiz 20 pastéis», «assei 50 pães», ou várias de uma vez: «fiz 10 pastéis e 5 pães». Com o que levou: «fiz um bolo com 200 gramas de farinha e 3 ovos».
 - Estoque: «estragaram 2 pães», «venceram 3 leites», «dei um bolo de brinde», «sobraram 40 pães».
 - Pagamentos: «a Maria me pagou 20», «paguei 50 para o Seu Ramiro».
 - Receitas: «o bolo leva 200 gramas de farinha, 3 ovos e 100 gramas de açúcar», «para fazer 10 pastéis uso 1 quilo de farinha».
@@ -22,6 +22,15 @@ Na primeira vez, o {app} explica para que usa o microfone e o Android pede a per
 - Custo e preço: «o custo do pão agora é 4», «o pão agora sai a 6».
 
 É possível citar vários produtos em uma frase, com números em algarismos ou por extenso («meio quilo», «meia dúzia»). Uma frase é uma só operação: venda e compra se dizem separadas.
+
+## Produzir com o que leva
+
+- Com receita, «fiz 20 pastéis» tira os insumos da receita, pela quantidade produzida.
+- Sem receita, o cartão avisa e pede para dizer o que leva. Com o cartão aberto, «leva 200 gramas de farinha e 3 ovos», ou só «200 gramas de farinha e 3 ovos». Ao tocar em **Registrar**, é produzido e o que foi dito fica como a receita, por unidade: com «fiz 2 bolos com 400 gramas de farinha», a receita fica com 200 gramas por bolo.
+- Com receita e outra quantidade, como «fiz um bolo com 250 gramas de farinha» quando a receita pede 200, é produzido com o que foi dito e o cartão mostra o que a receita pede. O que não foi nomeado sai da receita, e um insumo que a receita não leva entra só nesta produção. **Atualizar a receita** vem desligado; ligado, a receita também fica com o que foi dito.
+- As unidades da mesma classe são convertidas sozinhas: 200 gramas de uma farinha controlada por quilo são 0,200 kg, e o mesmo com mililitros e litros, ou com uma embalagem salva, como uma caixa. Entre classes diferentes, como litros de algo controlado por quilo, a quantidade fica para completar numa unidade do produto.
+- Um insumo que não existe é oferecido para criar como insumo, com **Criar "…"**, ou se escolhe outro com **Escolher outro**. Até lá, nada é registrado.
+- Tudo é salvo junto: a receita com a produção, e as produções de uma mesma frase. Se algo falhar, nenhuma fica.
 
 ## Se algo não ficou certo
 

@@ -67,6 +67,8 @@ import io.github.yesidrobayo.shopledger.ui.components.NoticeVariant
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
 import io.github.yesidrobayo.shopledger.ui.components.QuantityField
 import io.github.yesidrobayo.shopledger.ui.components.SelectionSheet
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRow
+import io.github.yesidrobayo.shopledger.ui.components.SettingsRowAction
 import io.github.yesidrobayo.shopledger.ui.components.StatusTag
 import io.github.yesidrobayo.shopledger.ui.components.StatusTone
 import io.github.yesidrobayo.shopledger.ui.components.TopBarAction
@@ -426,6 +428,7 @@ internal fun PhraseCardView(
                 SectionLabel(stringResource(R.string.phrase_ingredients))
             }
             card.lines.forEach { line -> LineRow(card, line, onAction) }
+            if (card.intent == PhraseIntent.PRODUCTION) InputsSection(card, onAction, highlightGaps)
             if (card.intent == PhraseIntent.NEW_PRODUCT) NewProductSection(card, onAction)
             card.category?.let { CategorySection(it, card.gaps, onAction) }
             card.payment?.let { PaymentSection(card, it, onAction) }
@@ -506,6 +509,98 @@ private fun OperationChips(card: PhraseCard, onAction: (PhraseAction) -> Unit) {
     }
 }
 
+/**
+ * Lo que lleva lo que se produce, bajo lo producido. Sin receta y sin nada dicho, pide decirlo; con
+ * algo dicho, cada insumo con lo que dice la receta de él y, si hay receta, `Actualizar la receta`.
+ * Sin receta, avisa que lo dicho queda como su receta al registrar.
+ */
+@Composable
+private fun InputsSection(card: PhraseCard, onAction: (PhraseAction) -> Unit, highlight: Boolean) {
+    if (DraftGap.INPUTS in card.gaps) {
+        NoticeCard(
+            text = stringResource(R.string.phrase_inputs_missing),
+            variant = if (highlight) NoticeVariant.ERROR else NoticeVariant.WARNING,
+        )
+    }
+    if (card.inputs.isEmpty()) return
+    SectionLabel(stringResource(R.string.phrase_ingredients))
+    card.inputs.forEach { input -> LineRow(card, input, onAction, INPUT_CALLBACKS) }
+    if (card.savesRecipe) {
+        NoticeCard(
+            text = stringResource(R.string.phrase_saves_recipe),
+            variant = NoticeVariant.INFO,
+        )
+    }
+    card.updatesRecipe?.let { on ->
+        SettingsRow(
+            title = stringResource(R.string.phrase_update_recipe),
+            action = SettingsRowAction.Toggle(on) { onAction(PhraseAction.UpdateRecipe(it)) },
+            summary =
+                stringResource(
+                    if (on) R.string.phrase_update_recipe_on else R.string.phrase_update_recipe_off,
+                ),
+        )
+    }
+}
+
+/** Lo que dice la receta de un insumo dicho: lo que lleva para esta tanda o que no lo lleva. */
+@Composable
+private fun RecipeNote(card: PhraseCard, recipe: CardRecipe) {
+    val text =
+        when (recipe) {
+            is CardRecipe.InRecipe ->
+                if (recipe.same) {
+                    null
+                } else {
+                    stringResource(
+                        R.string.phrase_input_recipe,
+                        lineQuantity(recipe.quantity, recipe.unit),
+                    )
+                }
+
+            CardRecipe.NotInRecipe ->
+                stringResource(
+                    if (card.updatesRecipe == true) {
+                        R.string.phrase_input_added_to_recipe
+                    } else {
+                        R.string.phrase_input_not_in_recipe
+                    },
+                )
+        }
+    text?.let { StatusTag(text = it, tone = StatusTone.INFO) }
+}
+
+/**
+ * Las acciones de una fila de la tarjeta: las de una línea o las de un insumo dicho. [pickCategory]
+ * es `null` donde la categoría del producto por crear no se elige aquí.
+ */
+private class LineCallbacks(
+    val open: (Int) -> PhraseAction,
+    val choose: (Int, Long) -> PhraseAction,
+    val pick: (Int) -> PhraseAction,
+    val create: (Int, String) -> PhraseAction,
+    val pickCategory: ((Int) -> PhraseAction)?,
+)
+
+private val LINE_CALLBACKS =
+    LineCallbacks(
+        open = { PhraseAction.OpenLine(it) },
+        choose = { index, id -> PhraseAction.ChooseProduct(index, id) },
+        pick = { PhraseAction.PickProduct(it) },
+        create = { index, name -> PhraseAction.CreateProduct(index, name) },
+        pickCategory = { PhraseAction.PickNewCategory(it) },
+    )
+
+/** Un insumo nuevo se crea como insumo, sin elegir categoría desde la tarjeta. */
+private val INPUT_CALLBACKS =
+    LineCallbacks(
+        open = { PhraseAction.OpenInput(it) },
+        choose = { index, id -> PhraseAction.ChooseInputProduct(index, id) },
+        pick = { PhraseAction.PickInputProduct(it) },
+        create = { index, name -> PhraseAction.CreateInputProduct(index, name) },
+        pickCategory = null,
+    )
+
 @Composable
 private fun SectionLabel(text: String) {
     Text(
@@ -529,7 +624,12 @@ private fun GapTag(@StringRes text: Int) {
  * se puede, `Crear «…»`.
  */
 @Composable
-private fun LineRow(card: PhraseCard, line: CardLine, onAction: (PhraseAction) -> Unit) {
+private fun LineRow(
+    card: PhraseCard,
+    line: CardLine,
+    onAction: (PhraseAction) -> Unit,
+    callbacks: LineCallbacks = LINE_CALLBACKS,
+) {
     val spacing = AppTheme.spacing
     val editLabel = stringResource(R.string.phrase_edit_line)
     val pricedOnly = card.intent == PhraseIntent.PRICE_CHANGE ||
@@ -539,7 +639,7 @@ private fun LineRow(card: PhraseCard, line: CardLine, onAction: (PhraseAction) -
             .fillMaxWidth()
             .heightIn(min = AppTheme.sizes.touchTarget)
             .clickable(onClickLabel = editLabel, role = Role.Button) {
-                onAction(PhraseAction.OpenLine(line.index))
+                onAction(callbacks.open(line.index))
             }.padding(vertical = spacing.s4),
         verticalArrangement = Arrangement.spacedBy(spacing.s8),
     ) {
@@ -555,22 +655,22 @@ private fun LineRow(card: PhraseCard, line: CardLine, onAction: (PhraseAction) -
             LineTitle(line.product, Modifier.weight(1f))
             LineAmount(card, line, pricedOnly)
         }
-        LineNotes(card, line, pricedOnly, onAction)
+        LineNotes(card, line, pricedOnly, onAction, callbacks)
         when (val product = line.product) {
             is CardProduct.Missing ->
                 MissingProduct(
                     product = product,
-                    onChoose = { onAction(PhraseAction.ChooseProduct(line.index, it)) },
-                    onPick = { onAction(PhraseAction.PickProduct(line.index)) },
-                    onCreate = { onAction(PhraseAction.CreateProduct(line.index, it)) },
+                    onChoose = { onAction(callbacks.choose(line.index, it)) },
+                    onPick = { onAction(callbacks.pick(line.index)) },
+                    onCreate = { onAction(callbacks.create(line.index, it)) },
                 )
 
             is CardProduct.New ->
                 if (product.needsCreating) {
                     CreateOrPick(
                         name = product.name,
-                        onCreate = { onAction(PhraseAction.CreateProduct(line.index, it)) },
-                        onPick = { onAction(PhraseAction.PickProduct(line.index)) },
+                        onCreate = { onAction(callbacks.create(line.index, it)) },
+                        onPick = { onAction(callbacks.pick(line.index)) },
                     )
                 }
 
@@ -618,6 +718,7 @@ private fun LineNotes(
     line: CardLine,
     pricedOnly: Boolean,
     onAction: (PhraseAction) -> Unit,
+    callbacks: LineCallbacks,
 ) {
     when (val product = line.product) {
         is CardProduct.Missing -> GapTag(R.string.phrase_line_no_product)
@@ -628,12 +729,17 @@ private fun LineNotes(
             } else {
                 StatusTag(text = stringResource(R.string.phrase_new_tag), tone = StatusTone.INFO)
             }
-            NewProductTraits(product) { onAction(PhraseAction.PickNewCategory(line.index)) }
+            val pickCategory = callbacks.pickCategory
+            NewProductTraits(
+                product,
+                onPickCategory = pickCategory?.let { { onAction(it(line.index)) } },
+            )
         }
 
         is CardProduct.Chosen -> Unit
     }
     if (line.quantity == null && !pricedOnly) GapTag(R.string.phrase_line_no_quantity)
+    line.recipe?.let { RecipeNote(card, it) }
     if (line.otherOperation) {
         StatusTag(
             text = stringResource(otherOperationText(card.intent)),
@@ -767,7 +873,7 @@ private fun ProductName(product: CardProduct, onPickCategory: () -> Unit = {}) {
  * categoría, una del catálogo o una nueva que se crea con él. `Elegir categoría` la cambia a mano.
  */
 @Composable
-private fun NewProductTraits(product: CardProduct.New, onPickCategory: () -> Unit) {
+private fun NewProductTraits(product: CardProduct.New, onPickCategory: (() -> Unit)?) {
     val tags =
         listOfNotNull(
             product.usage?.let { stringResource(usageLabel(it)) },
@@ -780,10 +886,12 @@ private fun NewProductTraits(product: CardProduct.New, onPickCategory: () -> Uni
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
     ) {
         tags.forEach { StatusTag(text = it, tone = StatusTone.INFO) }
-        InlineTextButton(
-            text = stringResource(R.string.phrase_pick_category),
-            onClick = onPickCategory,
-        )
+        if (onPickCategory != null) {
+            InlineTextButton(
+                text = stringResource(R.string.phrase_pick_category),
+                onClick = onPickCategory,
+            )
+        }
     }
 }
 
@@ -1191,7 +1299,15 @@ private fun LineSheet(
             FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.s8)) {
                 InlineTextButton(
                     text = stringResource(R.string.phrase_change_product),
-                    onClick = { onAction(PhraseAction.PickProduct(sheet.index)) },
+                    onClick = {
+                        onAction(
+                            if (sheet.input) {
+                                PhraseAction.PickInputProduct(sheet.index)
+                            } else {
+                                PhraseAction.PickProduct(sheet.index)
+                            },
+                        )
+                    },
                 )
                 InlineTextButton(
                     text = stringResource(R.string.phrase_remove_line),
@@ -1252,7 +1368,8 @@ private fun PickSheet(
     val supplier = card.party?.supplier == true
     val title =
         when (sheet.purpose) {
-            is PickPurpose.LineProduct, PickPurpose.Target -> R.string.phrase_pick_product
+            is PickPurpose.LineProduct, is PickPurpose.InputProduct, PickPurpose.Target ->
+                R.string.phrase_pick_product
 
             is PickPurpose.NewCategory -> R.string.phrase_pick_category
 
@@ -1281,6 +1398,9 @@ private fun PickSheet(
                                     is PickPurpose.LineProduct ->
                                         PhraseAction.ChooseProduct(purpose.index, option.id)
 
+                                    is PickPurpose.InputProduct ->
+                                        PhraseAction.ChooseInputProduct(purpose.index, option.id)
+
                                     PickPurpose.Target -> PhraseAction.ChooseTarget(option.id)
 
                                     is PickPurpose.NewCategory ->
@@ -1299,6 +1419,9 @@ private fun PickSheet(
                         when (val purpose = sheet.purpose) {
                             is PickPurpose.LineProduct ->
                                 PhraseAction.CreateProduct(purpose.index, name)
+
+                            is PickPurpose.InputProduct ->
+                                PhraseAction.CreateInputProduct(purpose.index, name)
 
                             is PickPurpose.NewCategory ->
                                 PhraseAction.NameNewCategory(purpose.index, name)
@@ -1394,7 +1517,7 @@ private fun noticeText(issue: PhraseIssue): Int = when (issue) {
 private fun otherOperationText(intent: PhraseIntent): Int = when (intent) {
     PhraseIntent.PURCHASE -> R.string.phrase_line_not_for_purchase
 
-    PhraseIntent.PRODUCTION -> R.string.phrase_issue_no_recipe
+    PhraseIntent.PRODUCTION -> R.string.phrase_line_not_produced
 
     PhraseIntent.SALE,
     PhraseIntent.EXPENSE,

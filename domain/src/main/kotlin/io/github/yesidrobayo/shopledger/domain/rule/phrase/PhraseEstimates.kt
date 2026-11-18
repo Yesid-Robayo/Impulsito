@@ -77,21 +77,47 @@ private fun listedAmount(
  * [quantity] de [unitId] en la unidad base del producto, como la lleva el registro: con la
  * conversión guardada, o entre unidades métricas del mismo tipo. `null` si no se puede.
  */
-private fun baseQuantity(
+internal fun baseQuantity(
     product: PhraseProduct,
     unitId: Long,
     quantity: QuantityMilli,
     units: Map<Long, PhraseUnit>,
-): QuantityMilli? {
+): QuantityMilli? = measuresOf(product, unitId, units)?.let { (said, base) ->
+    PhraseMeasures.convert(quantity, said, base)
+}
+
+/**
+ * [quantity] de la unidad base del producto llevada a [unitId], al revés que [baseQuantity]: 0,200
+ * kg son 200 g. `null` si no se puede.
+ */
+internal fun quantityIn(
+    product: PhraseProduct,
+    unitId: Long,
+    quantity: QuantityMilli,
+    units: Map<Long, PhraseUnit>,
+): QuantityMilli? = measuresOf(product, unitId, units)?.let { (said, base) ->
+    PhraseMeasures.convert(quantity, base, said)
+}
+
+/**
+ * Lo que mide una unidad de [unitId] y una de la base del producto, en la misma medida: con la
+ * conversión guardada, en milésimas de la base, o entre unidades métricas del mismo tipo. `null`
+ * si no se relacionan.
+ */
+private fun measuresOf(
+    product: PhraseProduct,
+    unitId: Long,
+    units: Map<Long, PhraseUnit>,
+): Pair<Long, Long>? {
     product.conversions.firstOrNull { it.unitId == unitId }?.let {
-        return PhraseMeasures.convert(quantity, it.factorMilli, Scale.MILLI)
+        return it.factorMilli to Scale.MILLI
     }
     val said = units[unitId] ?: return null
     val base = units[product.baseUnitId] ?: return null
     val saidAmount = said.baseAmountMilli ?: return null
     val baseAmount = base.baseAmountMilli ?: return null
     if (said.kind != base.kind) return null
-    return PhraseMeasures.convert(quantity, saidAmount, baseAmount)
+    return saidAmount to baseAmount
 }
 
 private fun Money.amountFor(quantity: QuantityMilli): Money? =

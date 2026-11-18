@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.Scale
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NameMatch
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
@@ -779,8 +780,9 @@ internal class PhraseSession(
     ): PhraseReading {
         val rule = if (kinds.isEmpty()) ANY_PRODUCT else RULES.getValue(intent)
         val reason = REASON_PRIORITY.firstOrNull { reason -> kinds.any { it.reason == reason } }
+        val made = if (intent == PhraseIntent.PRODUCTION) produced(facts) else null
         val read = when {
-            intent == PhraseIntent.PRODUCTION -> countedAfter(produced(facts))
+            made != null -> countedAfter(made.drafts)
             reason == StockAdjustmentReason.COUNT_CORRECTION -> facts.drafts.map(::counted)
             intent == PhraseIntent.STOCK_ADJUSTMENT -> countedAfter(facts.drafts)
             else -> facts.drafts
@@ -796,6 +798,13 @@ internal class PhraseSession(
         // Producir algo que no existe tampoco tiene receta: se avisa, como con uno sin receta.
         val unknownMade = intent == PhraseIntent.PRODUCTION &&
             lines.any { it.line.product is ProductMatch.Unknown }
+        // Lo que se dijo que llevó: con eso se produce, y un producto sin receta no se avisa,
+        // porque lo dicho queda como su receta.
+        val used = made?.used.orEmpty()
+        val inputs = if (used.isEmpty()) NO_INPUTS else inputsRead(used, said)
+        val lineIssues = issues(read, lines).let {
+            if (inputs.lines.isEmpty()) it else it - PhraseIssue.NO_RECIPE
+        }
         val amount = facts.drafts.firstOrNull { it.span.isEmpty() && it.unitId == null }?.amount
         // Sin productos no hay qué registrar: "me robaron 50 mil", "got 20 from Mary" si no es
         // un cliente. Una venta o una compra con su total sí se deja, para elegir los productos.
@@ -812,11 +821,12 @@ internal class PhraseSession(
             party = partyFor(intent, party),
             total = (facts.total ?: amount)?.let(::money),
             credit = onCredit,
-            issues = issues(read, lines) +
+            issues = lineIssues + issues(inputs.drafts, inputs.resolved) +
                 setOfNotNull(
                     PhraseIssue.NO_RECIPE.takeIf { unknownMade },
                     PhraseIssue.COST_LEFT_OUT.takeIf { costed },
                 ),
+            inputs = inputs.lines,
         )
     }
 
@@ -854,15 +864,50 @@ internal class PhraseSession(
         resolved.copy(line = resolved.line.copy(unitPrice = null, lineTotal = null))
 
     /**
-     * Lo producido, sin los insumos que se dicen después de "con": "hice 40 panes con 2 kilos de
-     * harina" produce 40 panes, y los insumos salen de la receta.
+     * Lo producido y lo que se dijo que llevó, después de "con": "hice 40 panes con 2 kilos de
+     * harina" produce 40 panes con 2 kilos de harina.
      */
-    private fun produced(facts: PhraseFacts): List<LineDraft> {
+    private fun produced(facts: PhraseFacts): Produced {
         val rest = facts.rest
         val cut = (0 until rest.size - 1).firstOrNull { index ->
             index > 0 && rest[index].norm in lexicon.yieldLeads && numbers.startsAt(rest, index + 1)
-        } ?: return facts.drafts
-        return prepared(splitter.split(rest.subList(0, cut)).map(lineReader::read))
+        } ?: return Produced(facts.drafts, emptyList())
+        val made = prepared(splitter.split(rest.subList(0, cut)).map(lineReader::read))
+        return Produced(made, rest.subList(cut + 1, rest.size))
+    }
+
+    /**
+     * Los insumos dichos de una producción en [tokens], sin "con" ni el verbo que los presenta: lo
+     * que se usa al tener la tarjeta abierta y decir "lleva 200 g de harina y 3 huevos".
+     */
+    fun inputsOf(tokens: List<Token>): List<PhraseLine> =
+        inputsRead(tokens, Described(tokens, emptyList())).lines
+
+    /**
+     * Los insumos de [tokens], con lo que se dijo de cada producto nuevo en [said]. Un insumo que
+     * no existe se propone como un producto nuevo que es un insumo, salvo que se dijera otro uso.
+     * Una unidad de otra clase que la del insumo no se convierte ni se adivina: la cantidad queda
+     * en hueco. Un precio dicho no es de la producción y sale.
+     */
+    private fun inputsRead(tokens: List<Token>, said: Described): InputsRead {
+        val used = tokens.filterNot { it.norm in lexicon.pronouns }
+        val drafts = prepared(splitter.split(used).map(lineReader::read))
+        val resolved = described(drafts, ANY_PRODUCT, said)
+        val lines = resolved.map { line ->
+            val match = line.line.product
+            val product = if (match is ProductMatch.Unknown) {
+                match.copy(traits = INPUT_USE.with(match.traits))
+            } else {
+                match
+            }
+            line.line.copy(
+                product = product,
+                quantity = line.line.quantity.takeIf { line.unitFits },
+                unitPrice = null,
+                lineTotal = null,
+            )
+        }
+        return InputsRead(drafts, resolved, lines)
     }
 
     /** El método de pago a crédito, si la operación queda a crédito y el catálogo lo tiene. */
@@ -1218,6 +1263,16 @@ internal class PhraseSession(
 
     private data class ProductAmount(val isCost: Boolean, val number: NumberRead)
 
+    /** Lo producido, en líneas, y las palabras de lo que se dijo que llevó, vacías si nada. */
+    private data class Produced(val drafts: List<LineDraft>, val used: List<Token>)
+
+    /** Los insumos dichos: sus líneas leídas, cómo se resolvió cada una y lo que propone. */
+    private class InputsRead(
+        val drafts: List<LineDraft>,
+        val resolved: List<ResolvedLine>,
+        val lines: List<PhraseLine>,
+    )
+
     /** Las palabras de la frase sin sus descripciones, y las descripciones que se sacaron. */
     private data class Described(val tokens: List<Token>, val traits: List<PlacedTrait>)
 
@@ -1292,6 +1347,12 @@ internal class PhraseSession(
         )
 
         val ANY_PRODUCT = ProductRule({ true }, null)
+
+        /** Un insumo que no existe se propone como un producto que es un insumo. */
+        val INPUT_USE = NewProductTraits(usage = ProductUsage.INPUT)
+
+        /** Una producción sin insumos dichos. */
+        private val NO_INPUTS = InputsRead(emptyList(), emptyList(), emptyList())
 
         /** El producto de una receta: mejor uno que ya tiene receta, si no, cualquiera. */
         val RECIPE_TARGET = ProductRule({ it.hasRecipe }, null)

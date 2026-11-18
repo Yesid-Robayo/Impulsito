@@ -31,6 +31,8 @@ La lista de **Combos y recetas** muestra solo los combos: la receta de un produc
 
 Los insumos bajan y el producto terminado sube. Si un insumo no alcanza, la fila avisa cuánto quedaría en negativo, pero se puede producir igual. Una producción equivocada se abre en **Producción** y se anula con **Anular producción**: los insumos vuelven y el terminado sale.
 
+También se produce diciéndolo con **Decir**: «hice 20 empanadas», o con lo que llevó, «hice un pastel con 200 gramos de harina y 3 huevos». Si el producto no tiene receta, lo dicho queda como su receta, por cada unidad, en el mismo registro. Si la tiene, lo dicho se usa solo en esa tanda, salvo con **Actualizar la receta**.
+
 ## El costo
 
 El costo de un combo es el **Costo de componentes**: lo que cuestan hoy sus componentes.

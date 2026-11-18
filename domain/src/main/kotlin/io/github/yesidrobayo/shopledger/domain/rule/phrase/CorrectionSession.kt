@@ -43,7 +43,66 @@ internal class CorrectionSession(
     fun correct(draft: PhraseDraft, text: String): PhraseDraft? {
         val tokens = PhraseTokenizer.tokenize(text).let { it.without(lexicon.fillers.findAll(it)) }
         val body = afterLeads(tokens)
-        return correctBody(draft, body, led = body.size < tokens.size)
+        return inputsSaid(draft, body) ?: correctBody(draft, body, led = body.size < tokens.size)
+    }
+
+    /**
+     * Lo que lleva lo que se produce, dicho con la tarjeta de una producción de un producto abierta:
+     * "lleva 200 g de harina y 3 huevos" o "el pastel lleva…", "con 250 g de harina", y sin verbo,
+     * "200 g de harina y 3 huevos", si lo que se produce no tiene receta o ya se dijo algo que lleva.
+     * Lo dicho de un insumo que ya está corrige su cantidad, como en una receta, salvo con "otros",
+     * que la suma. Un insumo nuevo se agrega al final.
+     *
+     * `null` si no son insumos de esta producción: otra tarjeta, otro verbo, otro producto antes de
+     * "lleva", lo producido nombrado ("eran 3 pasteles"), o una palabra que no es un producto del
+     * catálogo ni dice cuánto.
+     */
+    private fun inputsSaid(draft: PhraseDraft, body: List<Token>): PhraseDraft? {
+        if (draft.intent != PhraseIntent.PRODUCTION) return null
+        val made = (draft.lines.singleOrNull()?.product as? DraftTarget.Existing)?.productId
+            ?: return null
+        // "agrega 2 huevos", "y 3 huevos": lo que abre una línea más no es parte de lo dicho.
+        val start = body.indexOfFirst { !it.isSeparator }.coerceAtLeast(0)
+        val spoken = body.subList(words.additions.matchAt(body, start)?.end ?: start, body.size)
+        val verbs = lexicon.verbs.findAll(spoken)
+        val uses = verbs.filter { it.value == VerbKind.RECIPE_USES }
+        if (uses.size != verbs.size) return null
+        val opened = when (val first = uses.firstOrNull()) {
+            null -> {
+                val led = spoken.firstOrNull()?.norm in lexicon.yieldLeads
+                val open = led || draft.inputs.isNotEmpty() ||
+                    productsById[made]?.hasRecipe != true
+                if (!open) return null
+                spoken.subList(if (led) 1 else 0, spoken.size)
+            }
+
+            else -> {
+                // "it takes", "se usa": un pronombre antes del verbo no nombra otro producto.
+                val before = spoken.subList(0, first.start)
+                    .filterNot { it.isSeparator || it.norm in lexicon.pronouns }
+                if (named(before) && made !in idsOf(matchOf(before, ANY_PRODUCT))) return null
+                (first.end until spoken.size)
+                    .filter { index -> uses.none { index >= it.start && index < it.end } }
+                    .map { spoken[it] }
+            }
+        }
+        val others = words.others.findAll(opened)
+        val said = opened.without(others)
+        val copula = words.copulas.matchAt(said, 0)?.end ?: 0
+        val session = PhraseSession(lexicon, style, moneyDecimals, catalog)
+        val lines = session.inputsOf(said.subList(copula, said.size))
+        val fits = lines.isNotEmpty() && lines.all { line ->
+            val product = line.product
+            val unknown = product is ProductMatch.Unknown && line.quantity == null
+            !unknown && made !in idsOf(product)
+        }
+        if (!fits) return null
+        val inputs = PhraseReading(intent = PhraseIntent.PRODUCTION, inputs = lines)
+            .draftAs(PhraseIntent.PRODUCTION)
+            .inputs
+        return draft.copy(
+            inputs = joinedLines(draft.inputs, inputs, others.isNotEmpty(), ::unitOfLine),
+        )
     }
 
     /**

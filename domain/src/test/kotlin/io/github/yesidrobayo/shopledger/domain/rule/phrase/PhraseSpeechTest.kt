@@ -345,11 +345,13 @@ class PhraseSpeechTest {
     }
 
     @Test
-    fun `a production without its ingredients, and a new product has no recipe`() {
+    fun `a production with the ingredients said, and a new product has no recipe`() {
+        // Lo dicho después de "con" es lo que llevó la tanda: se produce con eso.
         assertEquals(
             PhraseReading(
                 intent = PhraseIntent.PRODUCTION,
                 lines = listOf(line(found(BREAD), units(40))),
+                inputs = listOf(line(found(WHEAT_FLOUR), units(2), KILOGRAM)),
             ),
             spanish("hice 40 panes con 2 kilos de harina de trigo"),
         )

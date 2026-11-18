@@ -78,8 +78,9 @@ sealed interface PhraseRejection {
     data class Recipe(val result: SaveRecipeResult) : PhraseRejection
 
     /**
-     * Esta operación se registra con un solo producto, y la tarjeta trae varios: una producción o
-     * un cambio de precio o de costo van uno por uno, cada uno en su registro.
+     * Esta operación se registra con un solo producto, y la tarjeta trae varios: un cambio de
+     * precio o de costo va uno por uno, y lo que se dijo que llevó una producción es de un solo
+     * producto.
      */
     data object OneProductAtATime : PhraseRejection
 
@@ -95,6 +96,12 @@ sealed interface PhraseRejection {
      * redondea a cero.
      */
     data class UnitNotConvertible(val index: Int) : PhraseRejection
+
+    /**
+     * La unidad del insumo dicho [index] de una producción no se puede llevar a la del insumo, como
+     * [UnitNotConvertible] con una línea.
+     */
+    data class InputUnitNotConvertible(val index: Int) : PhraseRejection
 
     /**
      * Un precio nuevo dicho en una presentación, como una caja, no cambia el precio del producto:

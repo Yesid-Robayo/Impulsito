@@ -26,6 +26,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.phrase.ReadPhraseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.phrase.RegisterPhraseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.phrase.RegisterPhraseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.region.BusinessCalendarSource
 import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
@@ -63,6 +64,8 @@ internal fun phraseUseCases(
     val calendar = BusinessCalendarSource(ports.settings)
     val currencyLock = CurrencyLock(ports.settings)
     val texts = AndroidPhraseTexts(resources, formats)
+    val recipe =
+        SaveRecipeUseCase(ports.transactions, ports.products, ports.productComponents, clock)
     val read =
         ReadPhraseUseCase(
             settings = ports.settings,
@@ -139,11 +142,16 @@ internal fun phraseUseCases(
                     money = DocumentMoney(ports.moneyAccounts, ports.moneyLedger),
                     recurring = ports.recurringExpenses,
                 ),
-            production =
-                RegisterProductionUseCase(
-                    ports.transactions, ports.products, ports.units, ports.productComponents,
-                    ports.productionBatches, ports.systemRows, ports.stockLedger,
-                    ports.lowStockAlerts, calendar, currencyLock, clock, ports.stockLots,
+            // Las producciones de una tarjeta, con la receta que se dijo, en una transacción.
+            productions =
+                RegisterProductionsUseCase(
+                    ports.transactions,
+                    recipe,
+                    RegisterProductionUseCase(
+                        ports.transactions, ports.products, ports.units, ports.productComponents,
+                        ports.productionBatches, ports.systemRows, ports.stockLedger,
+                        ports.lowStockAlerts, calendar, currencyLock, clock, ports.stockLots,
+                    ),
                 ),
             adjustment =
                 AdjustStockUseCase(
@@ -197,13 +205,7 @@ internal fun phraseUseCases(
                     ports.units, ports.systemRows, ports.priceHistory, ports.stockLedger,
                     ports.lowStockAlerts, calendar, currencyLock, clock, ports.mediaAssets,
                 ),
-            recipe =
-                SaveRecipeUseCase(
-                    ports.transactions,
-                    ports.products,
-                    ports.productComponents,
-                    clock,
-                ),
+            recipe = recipe,
         )
     val register =
         RegisterPhraseUseCase(

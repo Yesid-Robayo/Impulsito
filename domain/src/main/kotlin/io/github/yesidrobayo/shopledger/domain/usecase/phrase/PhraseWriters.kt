@@ -21,9 +21,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseUs
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.PaySupplierResult
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.PaySupplierUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.SupplierPaymentRequest
-import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionRequest
-import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionResult
-import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionStep
+import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionsResult
+import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionsUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
@@ -36,7 +36,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsRes
 /**
  * Los casos de uso de siempre con que se registra cada operación de una tarjeta. Cada uno abre su
  * propia transacción, y una tarjeta llama a uno solo: así lo que se dice registra exactamente lo
- * mismo que la pantalla de esa operación, con sus reglas y en una sola escritura.
+ * mismo que la pantalla de esa operación, con sus reglas y en una sola escritura. Las producciones
+ * de una tarjeta, con la receta que se dijo, van juntas en una sola.
  *
  * Son funciones para que las pruebas vean la petición que arma la tarjeta sin armar cada caso de
  * uso; [of] los toma de los casos de uso reales.
@@ -45,7 +46,11 @@ class PhraseWriters(
     val sale: suspend (SaleRequest) -> RegisterSaleResult,
     val purchase: suspend (PurchaseRequest) -> RegisterPurchaseResult,
     val expense: suspend (ExpenseRequest) -> RegisterExpenseResult,
-    val production: suspend (ProductionRequest) -> RegisterProductionResult,
+    /**
+     * Las producciones de una tarjeta, de uno o de varios productos, cada una con la receta que se
+     * guarda antes si cambia, todas en una transacción.
+     */
+    val productions: suspend (List<ProductionStep>) -> RegisterProductionsResult,
     /** Los ajustes de una tarjeta, de una o de varias líneas, todos en una transacción. */
     val adjustments: suspend (List<StockAdjustmentRequest>) -> StockAdjustmentsResult,
     val customerPayment: suspend (CustomerPaymentRequest) -> RecordCustomerPaymentResult,
@@ -62,7 +67,7 @@ class PhraseWriters(
             sale: RegisterSaleUseCase,
             purchase: RegisterPurchaseUseCase,
             expense: RegisterExpenseUseCase,
-            production: RegisterProductionUseCase,
+            productions: RegisterProductionsUseCase,
             adjustment: AdjustStockUseCase,
             customerPayment: RecordCustomerPaymentUseCase,
             supplierPayment: PaySupplierUseCase,
@@ -74,7 +79,7 @@ class PhraseWriters(
             sale = { sale(it) },
             purchase = { purchase(it) },
             expense = { expense(it) },
-            production = { production(it) },
+            productions = { productions(it) },
             adjustments = { adjustment.all(it) },
             customerPayment = { customerPayment(it) },
             supplierPayment = { supplierPayment(it) },

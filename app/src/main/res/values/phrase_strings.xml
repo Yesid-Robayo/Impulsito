@@ -70,6 +70,15 @@
     <string name="phrase_target_missing">Product missing</string>
     <string name="phrase_recipe_yield">Makes %1$s</string>
     <string name="phrase_ingredients">Uses</string>
+    <string name="phrase_inputs_missing">It has no recipe. Say what it takes, like \"takes 200 g of flour and 3 eggs\": when registered, it becomes its recipe</string>
+    <string name="phrase_saves_recipe">When registered, what it takes becomes its recipe, per unit</string>
+    <string name="phrase_update_recipe">Update the recipe</string>
+    <string name="phrase_update_recipe_off">What was said applies only to this batch</string>
+    <string name="phrase_update_recipe_on">The recipe keeps what was said, per unit</string>
+    <string name="phrase_input_recipe">Recipe: %1$s</string>
+    <string name="phrase_input_not_in_recipe">Not in the recipe: only in this batch</string>
+    <string name="phrase_input_added_to_recipe">Not in the recipe: it is added</string>
+    <string name="phrase_line_not_produced">Not produced</string>
     <string name="phrase_new_price">Sale price</string>
     <string name="phrase_new_cost">Cost</string>
     <string name="phrase_price_missing">Price missing</string>

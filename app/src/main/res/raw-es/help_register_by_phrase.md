@@ -14,7 +14,7 @@ La primera vez, {app} explica para qué usa el micrófono y Android pide el perm
 - Compras: «compré 10 kilos de harina por 500 a la distribuidora».
 - Algo nuevo, con su tipo y su categoría: «compré 2 kilos de harina a 50, es un insumo, en la categoría materias primas». La tarjeta ofrece crearlo ya como insumo y en esa categoría. Si la categoría no existe, la tarjeta la muestra como **Categoría nueva**, y se crea junto con el producto. **Elegir categoría** la cambia.
 - Gastos: «pagué la luz 80», «gasté 15 en taxi».
-- Producción: «hice 20 empanadas», «horneé 50 panes».
+- Producción: «hice 20 empanadas», «horneé 50 panes», o varias a la vez: «hice 10 empanadas y 5 panes». Con lo que llevó: «hice un pastel con 200 gramos de harina y 3 huevos».
 - Stock: «se dañaron 2 panes», «se vencieron 3 leches», «regalé una torta», «quedan 40 panes».
 - Abonos y pagos: «María abonó 20», «le pagué 50 a Don Ramiro».
 - Recetas: «la torta lleva 200 gramos de harina, 3 huevos y 100 gramos de azúcar», «para hacer 10 empanadas uso 1 kilo de harina».
@@ -22,6 +22,15 @@ La primera vez, {app} explica para qué usa el micrófono y Android pide el perm
 - Costo y precio: «el costo del pan ahora es 4», «el pan ahora vale 6».
 
 Se pueden nombrar varios productos en una frase, con números en cifras o en palabras («medio kilo», «media docena»). Una frase es una sola operación: vender y comprar se dicen por separado.
+
+## Producir con lo que lleva
+
+- Con receta, «hice 20 empanadas» saca los insumos de la receta, por la cantidad producida.
+- Sin receta, la tarjeta lo dice y pide decir qué lleva. Con la tarjeta abierta, «lleva 200 gramos de harina y 3 huevos», o solo «200 gramos de harina y 3 huevos». Al tocar **Registrar**, se produce y lo dicho queda como su receta, por cada unidad: con «hice 2 pasteles con 400 gramos de harina», la receta queda con 200 gramos por pastel.
+- Con receta y otra cantidad, como «hice un pastel con 250 gramos de harina» cuando la receta pide 200, se produce con lo dicho y la tarjeta muestra lo que pide la receta. Lo que no se nombró sale de la receta, y un insumo que la receta no lleva entra solo en esta producción. **Actualizar la receta** viene apagado; encendido, la receta también queda con lo dicho.
+- Las unidades de la misma clase se convierten solas: 200 gramos de una harina que se lleva por kilo son 0,200 kg, y lo mismo con mililitros y litros, o con una presentación guardada, como una caja. Entre clases distintas, como litros de algo que se lleva por kilo, la cantidad queda por completar en una unidad del producto.
+- Un insumo que no existe se ofrece crear como insumo, con **Crear "…"**, o se elige otro con **Elegir otro**. Hasta entonces, no se registra.
+- Todo se guarda junto: la receta con la producción, y las producciones de una misma frase. Si algo falla, no queda ninguna.
 
 ## Si algo no quedó bien
 

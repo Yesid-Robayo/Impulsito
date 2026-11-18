@@ -140,6 +140,11 @@ sealed interface PhraseFailure {
  * @param notices lo que la frase dejó dudoso y conviene revisar.
  * @param operations las operaciones que se eligen con un toque arriba de la tarjeta, vacía si esta
  *   operación no se cambia a mano. La elegida es la de [intent] y [reason].
+ * @param inputs en una producción, lo que se dijo que llevó, con lo que dice la receta de cada uno.
+ * @param updatesRecipe en una producción con receta y con insumos dichos, el interruptor
+ *   `Actualizar la receta`, que nace apagado; `null` si no se muestra.
+ * @param savesRecipe en una producción de algo sin receta, con insumos dichos: al registrar, lo
+ *   dicho queda como su receta.
  */
 @Immutable
 data class PhraseCard(
@@ -160,7 +165,24 @@ data class PhraseCard(
     val gaps: Set<DraftGap> = emptySet(),
     val notices: List<PhraseIssue> = emptyList(),
     val operations: List<CardOperation> = emptyList(),
+    val inputs: List<CardLine> = emptyList(),
+    val updatesRecipe: Boolean? = null,
+    val savesRecipe: Boolean = false,
 )
+
+/** Lo que dice la receta de un insumo dicho en una producción, junto a él en la tarjeta. */
+sealed interface CardRecipe {
+    /** La receta no lo lleva: entra solo en esta producción, salvo que se actualice la receta. */
+    data object NotInRecipe : CardRecipe
+
+    /**
+     * Para esta tanda, la receta lleva [quantity] en [unit]; [same] si es lo mismo que se dijo, y
+     * entonces no hay diferencia que mostrar.
+     */
+    @Immutable
+    data class InRecipe(val quantity: QuantityMilli, val unit: CardUnit?, val same: Boolean) :
+        CardRecipe
+}
 
 /**
  * Una línea de la tarjeta.
@@ -172,6 +194,7 @@ data class PhraseCard(
  * @param otherOperation el producto existe pero no es de esta operación, como vender un insumo.
  * @param lastCost en una compra sin costo dicho, el último costo del producto en la unidad de la
  *   línea, para ofrecerlo con un toque. Nunca se pone solo: un costo errado daña el promedio.
+ * @param recipe en un insumo dicho de una producción, lo que dice la receta de él, o `null`.
  */
 @Immutable
 data class CardLine(
@@ -183,6 +206,7 @@ data class CardLine(
     val amount: Money?,
     val otherOperation: Boolean = false,
     val lastCost: Money? = null,
+    val recipe: CardRecipe? = null,
 )
 
 /** El producto de una línea o de una receta. */
@@ -260,7 +284,8 @@ sealed interface PhraseSheet {
     /**
      * Corregir una línea: su cantidad, su precio o costo por unidad, cambiar el producto o
      * quitarla. Los textos son lo que la persona escribe; los errores se marcan al tocar `Listo`.
-     * Un cambio de precio o de costo no lleva cantidad: [showsQuantity] es falso.
+     * Un cambio de precio o de costo no lleva cantidad: [showsQuantity] es falso. [input] dice si es
+     * un insumo dicho de una producción, y no una línea.
      */
     @Immutable
     data class Line(
@@ -273,6 +298,7 @@ sealed interface PhraseSheet {
         val showsQuantity: Boolean = true,
         val quantityError: Boolean = false,
         val priceError: Boolean = false,
+        val input: Boolean = false,
     ) : PhraseSheet
 
     /** Escribir un monto de la tarjeta: el total, el precio o el costo. */
@@ -297,6 +323,9 @@ sealed interface PhraseSheet {
 sealed interface PickPurpose {
     /** El producto de la línea [index]. */
     data class LineProduct(val index: Int) : PickPurpose
+
+    /** El producto del insumo dicho [index] de una producción. */
+    data class InputProduct(val index: Int) : PickPurpose
 
     /** El producto de la receta o el producto nuevo. */
     data object Target : PickPurpose

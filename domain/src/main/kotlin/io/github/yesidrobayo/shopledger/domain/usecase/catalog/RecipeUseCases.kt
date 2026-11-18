@@ -52,7 +52,12 @@ class SaveRecipeUseCase(
             transactions.write { save(parentId, lines) }
         }
 
-    private suspend fun save(parentId: Long, lines: List<RecipeLine>): TxResult<SaveRecipeResult> {
+    /**
+     * Guarda dentro de una transacción ya abierta, para quien junta la receta con otra escritura,
+     * como producir con lo que se dijo. Una receta igual a la guardada vuelve con `Rollback` y
+     * [SaveRecipeResult.Saved]: no escribió nada.
+     */
+    internal suspend fun save(parentId: Long, lines: List<RecipeLine>): TxResult<SaveRecipeResult> {
         val parent = products.findById(parentId) ?: return reject(SaveRecipeResult.NotFound)
         if (!RecipeRules.allowsRecipe(parent.details.stockMode)) {
             return reject(SaveRecipeResult.NotCombo)

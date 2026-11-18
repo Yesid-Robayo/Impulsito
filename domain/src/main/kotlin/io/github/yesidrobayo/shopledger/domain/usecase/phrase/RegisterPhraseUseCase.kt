@@ -8,8 +8,10 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
+import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftGap
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
@@ -35,8 +37,10 @@ import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseAmounts
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseMeasures
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.gaps
+import io.github.yesidrobayo.shopledger.domain.rule.production.ProductionInput
 import io.github.yesidrobayo.shopledger.domain.rule.production.ProductionRules
 import io.github.yesidrobayo.shopledger.domain.rule.production.RecipeInputsResult
+import io.github.yesidrobayo.shopledger.domain.rule.production.SaidRecipes
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 import io.github.yesidrobayo.shopledger.domain.rule.timesQuantity
@@ -49,7 +53,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseRe
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.PaySupplierResult
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.SupplierPaymentRequest
 import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionRequest
-import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionResult
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionStep
+import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionsResult
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
@@ -81,7 +86,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsRes
  * - **El dinero** de un gasto, una compra pagada, un abono o un pago sale de la cuenta del método
  *   de pago dicho, si tiene una; la venta ya lo hace sola con su método.
  * - **Un conteo o un ajuste de varios productos** se registra entero en una sola transacción: cada
- *   línea es un movimiento nuevo del libro, y si una se rechaza no queda ninguna.
+ *   línea es un movimiento nuevo del libro, y si una se rechaza no queda ninguna. Lo mismo con una
+ *   producción de varios productos, y con la receta que se guarda al producir con lo dicho.
  *
  * Lee el catálogo fuera de la escritura, como la pantalla de cada operación: el caso de uso vuelve
  * a leer y validar todo dentro de su propia transacción.
@@ -196,31 +202,102 @@ class RegisterPhraseUseCase(
         return rejected(PhraseRejection.Expense(result))
     }
 
+    /**
+     * Una producción de uno o de varios productos, todas en una sola transacción. Sin insumos
+     * dichos, cada producto sale de su receta, y uno sin receta pide decir qué lleva. Con insumos
+     * dichos, que son de un solo producto, se produce con lo dicho: ver [withSaid].
+     */
     private suspend fun production(draft: PhraseDraft): RegisterPhraseResult {
-        val line = draft.lines.singleOrNull()
-            ?: return rejected(PhraseRejection.OneProductAtATime)
-        val product = productOf(line) ?: return unavailable(line)
-        // Lo producido entra siempre en su unidad base, como en el formulario de producción.
-        val placed = placementOf(product, line, keeps = { false })
-            ?: return rejected(PhraseRejection.UnitNotConvertible(0))
+        val said = draft.inputs
+        if (said.isNotEmpty() && draft.lines.size != 1) {
+            return rejected(PhraseRejection.OneProductAtATime)
+        }
         val recipes = components.findAll().groupBy { it.parentProductId }
         val componentIds = recipes.values.flatten().mapTo(HashSet()) { it.componentProductId }
         val modes = products.findByIds(componentIds).associate { it.id to it.details.stockMode }
-        val inputs = when (
-            val result = ProductionRules.recipeInputs(product.id, placed.quantity, recipes, modes)
-        ) {
-            is RecipeInputsResult.Inputs -> result.inputs
+        val steps = ArrayList<ProductionStep>()
+        for ((index, line) in draft.lines.withIndex()) {
+            val product = productOf(line) ?: return unavailable(line)
+            // Lo producido entra siempre en su unidad base, como en el formulario de producción.
+            val placed = placementOf(product, line, keeps = { false })
+                ?: return rejected(PhraseRejection.UnitNotConvertible(index))
+            val stored = recipes[product.id].orEmpty()
+            if (said.isEmpty() && stored.isEmpty()) {
+                return RegisterPhraseResult.Incomplete(setOf(DraftGap.INPUTS))
+            }
+            val fromRecipe = if (stored.isEmpty()) {
+                emptyList()
+            } else {
+                when (
+                    val result =
+                        ProductionRules.recipeInputs(product.id, placed.quantity, recipes, modes)
+                ) {
+                    is RecipeInputsResult.Inputs -> result.inputs
 
-            is RecipeInputsResult.InputRoundsToZero,
-            RecipeInputsResult.QuantityOutOfRange,
-            RecipeInputsResult.TooDeep,
-            -> return rejected(PhraseRejection.ProductionInputs(result))
+                    is RecipeInputsResult.InputRoundsToZero,
+                    RecipeInputsResult.QuantityOutOfRange,
+                    RecipeInputsResult.TooDeep,
+                    -> return rejected(PhraseRejection.ProductionInputs(result))
+                }
+            }
+            steps += if (said.isEmpty()) {
+                ProductionStep(ProductionRequest(product.id, placed.quantity, fromRecipe, null))
+            } else {
+                when (val step = withSaid(draft, product.id, placed.quantity, stored, fromRecipe)) {
+                    is SaidStep.Ready -> step.step
+                    is SaidStep.Refused -> return step.result
+                }
+            }
         }
-        val request = ProductionRequest(product.id, placed.quantity, inputs, note = null)
-        val result = writers.production(request)
-        if (result is RegisterProductionResult.Registered) return registered(draft, result.batchId)
-        if (result is RegisterProductionResult.StorageFailed) return failed(result.failure)
-        return rejected(PhraseRejection.Production(result))
+        return when (val result = writers.productions(steps)) {
+            is RegisterProductionsResult.Registered -> registered(draft, result.batchIds.first())
+
+            is RegisterProductionsResult.RecipeRejected ->
+                rejected(PhraseRejection.Recipe(result.result))
+
+            is RegisterProductionsResult.ProductionRejected ->
+                rejected(PhraseRejection.Production(result.result))
+
+            is RegisterProductionsResult.StorageFailed -> failed(result.failure)
+        }
+    }
+
+    /**
+     * Producir [produced] milésimas de [productId] con lo que se dijo que llevó, cada insumo
+     * llevado a su unidad base:
+     *
+     * - **Se produce con lo dicho**, y lo que la receta lleva y no se nombró, [fromRecipe], sale de
+     *   la receta escalado a lo producido. Un insumo dicho que la receta no lleva entra solo en esta
+     *   tanda.
+     * - **Sin receta,** lo dicho se guarda como su receta, por unidad, en la misma transacción.
+     * - **Con el interruptor de actualizar la receta**, lo dicho también reemplaza o se agrega a la
+     *   receta guardada, [stored], por unidad; lo que no se nombró queda como estaba.
+     */
+    private suspend fun withSaid(
+        draft: PhraseDraft,
+        productId: Long,
+        produced: QuantityMilli,
+        stored: List<RecipeComponent>,
+        fromRecipe: List<ProductionInput>,
+    ): SaidStep {
+        val said = ArrayList<ProductionInput>()
+        for ((index, input) in draft.inputs.withIndex()) {
+            val component = productOf(input) ?: return SaidStep.Refused(unavailable(input))
+            val placed = placementOf(component, input, keeps = { false })
+                ?: return SaidStep.Refused(
+                    rejected(PhraseRejection.InputUnitNotConvertible(index)),
+                )
+            said += ProductionInput(component.id, placed.quantity)
+        }
+        val inputs = SaidRecipes.inputs(fromRecipe, said)
+        val request = ProductionRequest(productId, produced, inputs, note = null)
+        if (stored.isNotEmpty() && !draft.updatesRecipe) {
+            return SaidStep.Ready(ProductionStep(request))
+        }
+        val rows = stored.map { RecipeLine(it.componentProductId, it.quantity) }
+        val recipe = SaidRecipes.recipe(rows, said, produced)
+            ?: return SaidStep.Refused(rejected(PhraseRejection.AmountNotApplicable))
+        return SaidStep.Ready(ProductionStep(request, recipe))
     }
 
     /**
@@ -540,6 +617,13 @@ class RegisterPhraseUseCase(
         val conversion: ConversionDetails?,
         val scaled: Boolean,
     )
+
+    /** Una producción lista para registrar, o lo que la detuvo. */
+    private sealed interface SaidStep {
+        data class Ready(val step: ProductionStep) : SaidStep
+
+        data class Refused(val result: RegisterPhraseResult) : SaidStep
+    }
 
     /** Una línea de venta y lo que cobra, si se puede calcular. */
     private data class SaleLinePlan(val request: SaleLineRequest, val amount: Money?)

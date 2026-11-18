@@ -17,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NumberStyle
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseComponent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseConversion
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
@@ -173,7 +174,7 @@ class ReadPhraseUseCaseTest {
                         "Pan",
                         conversions = listOf(PhraseConversion(BOX, 12_000)),
                         recipe = true,
-                    ),
+                    ).copy(recipe = listOf(PhraseComponent(FLOUR, QuantityMilli(100)))),
                 ),
                 read("hola").catalog.products,
             )

@@ -34,8 +34,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.customer.RecordCustomerPa
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.PaySupplierResult
 import io.github.yesidrobayo.shopledger.domain.usecase.payable.SupplierPaymentRequest
-import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionRequest
-import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionResult
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionStep
+import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionsResult
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.measureUnit
@@ -62,7 +62,7 @@ internal class RecordingWriters {
     var sale: RegisterSaleResult = RegisterSaleResult.Registered(saleId = 11L)
     var purchase: RegisterPurchaseResult = RegisterPurchaseResult.Registered(12L, emptyList())
     var expense: RegisterExpenseResult = RegisterExpenseResult.Registered(13L)
-    var production: RegisterProductionResult = RegisterProductionResult.Registered(14L, Money(0))
+    var productions: RegisterProductionsResult = RegisterProductionsResult.Registered(listOf(14L))
     var adjustments: StockAdjustmentsResult = StockAdjustmentsResult.Adjusted(listOf(15L))
     var customerPayment: RecordCustomerPaymentResult = RecordCustomerPaymentResult.Recorded(
         entryId = 16L,
@@ -89,9 +89,9 @@ internal class RecordingWriters {
             requests += request
             expense
         },
-        production = { request: ProductionRequest ->
-            requests += request
-            production
+        productions = { steps: List<ProductionStep> ->
+            requests.addAll(steps)
+            productions
         },
         adjustments = { list: List<StockAdjustmentRequest> ->
             requests.addAll(list)

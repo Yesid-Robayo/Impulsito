@@ -94,7 +94,11 @@ class RegisterProductionUseCase(
             transactions.write { register(request) }
         }
 
-    private suspend fun register(request: ProductionRequest): TxResult<RegisterProductionResult> {
+    /**
+     * Registra dentro de una transacción ya abierta, para quien junta varias producciones o una
+     * receta con la producción en una sola escritura.
+     */
+    internal suspend fun register(request: ProductionRequest): TxResult<RegisterProductionResult> {
         ledger.start()
         val note = request.note?.trim()?.takeIf { it.isNotEmpty() }
         if ((note?.length ?: 0) > MAX_NOTE_LENGTH) {

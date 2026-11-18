@@ -47,7 +47,9 @@ import io.github.yesidrobayo.shopledger.domain.usecase.phrase.PhraseWorld.Compan
 import io.github.yesidrobayo.shopledger.domain.usecase.phrase.PhraseWorld.Companion.POUND
 import io.github.yesidrobayo.shopledger.domain.usecase.phrase.PhraseWorld.Companion.SACK
 import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionRequest
+import io.github.yesidrobayo.shopledger.domain.usecase.production.ProductionStep
 import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionResult
+import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProductionsResult
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.product
@@ -562,14 +564,16 @@ class RegisterPhraseUseCaseTest {
         assertEquals(RegisterPhraseResult.Registered(PhraseIntent.PRODUCTION, 14L), result)
         assertEquals(
             listOf(
-                ProductionRequest(
-                    productId = EMPANADA,
-                    quantity = QuantityMilli(20_000),
-                    inputs = listOf(
-                        ProductionInput(FLOUR, QuantityMilli(2_000)),
-                        ProductionInput(EGG, QuantityMilli(20_000)),
+                ProductionStep(
+                    ProductionRequest(
+                        productId = EMPANADA,
+                        quantity = QuantityMilli(20_000),
+                        inputs = listOf(
+                            ProductionInput(FLOUR, QuantityMilli(2_000)),
+                            ProductionInput(EGG, QuantityMilli(20_000)),
+                        ),
+                        note = null,
                     ),
-                    note = null,
                 ),
             ),
             writers.requests,
@@ -579,7 +583,7 @@ class RegisterPhraseUseCaseTest {
     @Test
     fun `a production said in another unit goes in the base unit`() = runTest {
         register(single(PhraseIntent.PRODUCTION, line(EMPANADA, 2_000, unitId = DOZEN)))
-        val request = writers.requests.single() as ProductionRequest
+        val request = (writers.requests.single() as ProductionStep).request
         assertEquals(QuantityMilli(24_000), request.quantity)
         assertEquals(
             listOf(
@@ -602,11 +606,25 @@ class RegisterPhraseUseCaseTest {
     }
 
     @Test
-    fun `a production goes one product at a time and with a product that exists`() = runTest {
-        assertEquals(
-            rejected(PhraseRejection.OneProductAtATime),
-            register(single(PhraseIntent.PRODUCTION, line(EMPANADA), line(BREAD))),
-        )
+    fun `a production of several lines goes in one call, each with a product that exists`() =
+        runTest {
+            assertEquals(
+                RegisterPhraseResult.Registered(PhraseIntent.PRODUCTION, 14L),
+                register(single(PhraseIntent.PRODUCTION, line(EMPANADA), line(EMPANADA, 2_000))),
+            )
+            assertEquals(2, writers.requests.size)
+            writers.requests.clear()
+            assertEquals(
+                rejected(PhraseRejection.UnitNotConvertible(1)),
+                register(
+                    single(PhraseIntent.PRODUCTION, line(EMPANADA), line(EMPANADA, unitId = GRAM)),
+                ),
+            )
+            assertTrue(writers.requests.isEmpty())
+            productionThatExists()
+        }
+
+    private suspend fun productionThatExists() {
         assertEquals(
             rejected(PhraseRejection.ProductUnavailable(ARCHIVED)),
             register(single(PhraseIntent.PRODUCTION, line(ARCHIVED))),
@@ -618,16 +636,30 @@ class RegisterPhraseUseCaseTest {
     }
 
     @Test
+    fun `a production without a recipe or inputs asks what it takes and writes nothing`() =
+        runTest {
+            assertEquals(
+                RegisterPhraseResult.Incomplete(setOf(DraftGap.INPUTS)),
+                register(single(PhraseIntent.PRODUCTION, line(BREAD))),
+            )
+            assertTrue(writers.requests.isEmpty())
+        }
+
+    @Test
     fun `a production refusal and a storage failure come back as they are`() = runTest {
-        writers.production = RegisterProductionResult.NoRecipe
+        writers.productions =
+            RegisterProductionsResult.ProductionRejected(0, RegisterProductionResult.NotStocked)
         assertEquals(
-            rejected(PhraseRejection.Production(RegisterProductionResult.NoRecipe)),
-            register(single(PhraseIntent.PRODUCTION, line(BREAD))),
+            rejected(PhraseRejection.Production(RegisterProductionResult.NotStocked)),
+            register(single(PhraseIntent.PRODUCTION, line(EMPANADA))),
         )
-        // Sin receta no hay insumos: lo dice la producción de siempre.
-        val request = writers.requests.single() as ProductionRequest
-        assertEquals(emptyList<ProductionInput>(), request.inputs)
-        writers.production = RegisterProductionResult.StorageFailed(StorageFailure.IO_ERROR)
+        writers.productions =
+            RegisterProductionsResult.RecipeRejected(0, SaveRecipeResult.NotCombo)
+        assertEquals(
+            rejected(PhraseRejection.Recipe(SaveRecipeResult.NotCombo)),
+            register(single(PhraseIntent.PRODUCTION, line(EMPANADA))),
+        )
+        writers.productions = RegisterProductionsResult.StorageFailed(StorageFailure.IO_ERROR)
         assertEquals(
             RegisterPhraseResult.StorageFailed(StorageFailure.IO_ERROR),
             register(single(PhraseIntent.PRODUCTION, line(EMPANADA))),

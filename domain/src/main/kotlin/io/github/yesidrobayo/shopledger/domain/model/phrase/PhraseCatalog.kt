@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.model.phrase
 
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 
@@ -29,6 +30,9 @@ data class PhraseCatalog(
  * Un producto del catálogo. [conversions] son las otras unidades en que se compra o se vende, con
  * cuántas milésimas de la unidad base trae cada una. Los indicadores filtran lo que una operación
  * admite: en una venta solo lo que se vende, en una producción solo lo que tiene receta.
+ *
+ * [recipe] son las filas de su receta, lo que lleva una unidad, para mostrar en la tarjeta de una
+ * producción en qué se aparta lo dicho de la receta. Vacía si no tiene o no se leyó.
  */
 data class PhraseProduct(
     val id: Long,
@@ -39,7 +43,14 @@ data class PhraseProduct(
     val forPurchase: Boolean,
     val hasRecipe: Boolean,
     val stockMode: ProductStockMode,
+    val recipe: List<PhraseComponent> = emptyList(),
 )
+
+/**
+ * Una fila de la receta de un producto: una unidad del producto lleva [quantity] milésimas de la
+ * unidad base de [productId].
+ */
+data class PhraseComponent(val productId: Long, val quantity: QuantityMilli)
 
 /**
  * Una unidad más de un producto: una de [unitId] trae [factorMilli] milésimas de su unidad base.

@@ -2,6 +2,7 @@ What each version of {app} brought, newest first.
 
 ## 1.0.7
 
+- **Producing by saying what it takes:** "made a cake with 200 grams of flour and 3 eggs" produces with that. If the product has no recipe, the card asks what it takes and, when registered, keeps it as its recipe. If it has one, it shows how what was said differs, and **Update the recipe** changes it too. "made 10 empanadas and 5 bread rolls" registers both at once.
 - **New versions are announced:** once a day, with internet, {app} checks whether there is a new version, without sending any data. If there is one, a notification arrives, only once per version, and **Home** says so until it is installed. Nothing is downloaded until **Update** is tapped. It is turned off with **Check for updates automatically**, in **Updates and APK check**.
 - **Notifications at the start:** at the end of the initial setup, a short sheet explains what notifications are for, and then Android asks for the permission. People who already used {app} are asked only once. If it is declined, it is not asked again: notifications are turned on in **Settings**, **Alerts**.
 

@@ -68,6 +68,21 @@ sealed interface PhraseAction {
     /** Toca la línea [index] para corregirla. */
     data class OpenLine(val index: Int) : PhraseAction
 
+    /** Toca el insumo dicho [index] de una producción para corregirlo o quitarlo. */
+    data class OpenInput(val index: Int) : PhraseAction
+
+    /** Elige [productId] para el insumo dicho [index], entre los parecidos o en la lista. */
+    data class ChooseInputProduct(val index: Int, val productId: Long) : PhraseAction
+
+    /** `Crear «…»` en el insumo dicho [index]: lo crea como insumo y lo elige. */
+    data class CreateInputProduct(val index: Int, val name: String) : PhraseAction
+
+    /** `Elegir otro` en el insumo dicho [index]: abre la lista de productos. */
+    data class PickInputProduct(val index: Int) : PhraseAction
+
+    /** El interruptor `Actualizar la receta` de una producción con receta. */
+    data class UpdateRecipe(val on: Boolean) : PhraseAction
+
     data class LineQuantityChange(val text: String) : PhraseAction
 
     data class LinePriceChange(val text: String) : PhraseAction

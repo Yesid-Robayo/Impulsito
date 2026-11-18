@@ -19,6 +19,11 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
  * - [credit] solo en una venta o compra a crédito.
  * - [target] y [targetQuantity] son el producto de una receta y cuánto rinde, o el producto que se
  *   crea; [price], [cost] y [unitId] son el precio, el costo y la unidad del producto nuevo.
+ * - [inputs] solo en una producción de un producto: lo que se dijo que llevó. Sin ellos, los
+ *   insumos salen de la receta. Con ellos, se produce con lo dicho y lo que la receta lleva y no se
+ *   nombró sale de la receta; si el producto no tiene receta, lo dicho se guarda como su receta.
+ * - [updatesRecipe] es el interruptor `Actualizar la receta`: con él encendido, lo dicho también
+ *   cambia la receta guardada, en la misma escritura. Nace apagado.
  */
 data class PhraseDraft(
     val intent: PhraseIntent,
@@ -34,6 +39,8 @@ data class PhraseDraft(
     val price: Money? = null,
     val cost: Money? = null,
     val unitId: Long? = null,
+    val inputs: List<DraftLine> = emptyList(),
+    val updatesRecipe: Boolean = false,
 )
 
 /**
@@ -99,6 +106,12 @@ enum class DraftGap {
 
     /** Falta el costo: el de una línea de compra o el nuevo de un producto. */
     COST,
+
+    /**
+     * Lo que se produce no tiene receta y no se dijo qué lleva: con lo que se diga, se produce y se
+     * guarda como su receta.
+     */
+    INPUTS,
 
     /** La tarjeta no tiene nada que se pueda registrar así. */
     NOTHING,

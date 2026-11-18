@@ -136,6 +136,10 @@ data class PhraseLine(
  * - [target], [targetQuantity], [price], [cost] y [unitId] solo en una receta o un producto nuevo:
  *   el producto de la receta y cuánto rinde, o el producto que se crea con su precio, su costo y su
  *   unidad.
+ * - [inputs] solo en una producción: lo que se dijo que llevó, después de "con", como en "hice un
+ *   pastel con 200 g de harina y 3 huevos". Sin precios: producir no compra nada. Una cantidad en
+ *   una unidad de otra clase que la del insumo, como litros de algo que se lleva por kilo, queda
+ *   en `null`, para pedirla en una unidad del producto.
  */
 data class PhraseReading(
     val intent: PhraseIntent?,
@@ -152,4 +156,5 @@ data class PhraseReading(
     val cost: Money? = null,
     val unitId: Long? = null,
     val issues: Set<PhraseIssue> = emptySet(),
+    val inputs: List<PhraseLine> = emptyList(),
 )
