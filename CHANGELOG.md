@@ -8,6 +8,28 @@ Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](htt
 
 Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
+## [1.0.8] - 2026-11-18
+
+### Agregado
+
+- **Lo que no existe se crea al registrar:** un producto dicho que no está en el catálogo, y sin parecidos, aparece en la tarjeta como
+  **Nuevo** y se crea al tocar **Registrar**, en la misma transacción que la venta, la compra, el conteo o la producción. Si algo se
+  rechaza, no queda ni el producto. Con parecidos se elige como antes.
+- **Producir algo nuevo:** «hice un pastel con 200 g de harina» crea el pastel con eso como su receta y lo produce. «hice un pastel» y
+  después «lleva 200 g de harina» también.
+- **La unidad se cambia en cada línea:** tocando la línea, entre las unidades del producto y las de su clase.
+- **La medida de la libra, la onza y el galón:** cambian según el lugar, así que la app no la supone. La primera vez que se dicen gramos de
+  algo que se lleva por libra, la línea pregunta cuánto pesa una libra, con los valores habituales u **Otro valor**, y convierte en el
+  acto. Al registrar, la medida queda en el producto y desde ahí convierte sola.
+
+### Corregido
+
+- **Miles con espacio:** «gasté 200 000 en el arriendo» queda en 200 000, también con los espacios que pone el dictado.
+- **Una venta sin precio:** un producto sin precio, como uno creado al producirlo, pide el precio en vez de venderse en cero.
+- **Combos en una receta:** un insumo dicho que la receta trae dentro de un combo ya no se cuenta dos veces.
+- **Frases en inglés y portugués:** un cliente que pagó lo que se llevó es una venta, y un pago con tarjeta ya no se lee como una
+  producción.
+
 ## [1.0.7] - 2026-11-18
 
 ### Agregado

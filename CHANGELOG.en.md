@@ -8,6 +8,29 @@ and versions follow [Semantic Versioning](https://semver.org/). Published versio
 
 When a new version is published, it's added at the top with the same content as its release notes.
 
+## [1.0.8] - 2026-11-18
+
+### Added
+
+- **What doesn't exist is created when registering:** a product that is said, is not in the catalog and has no similar ones shows on
+  the card as **New** and is created when **Register** is tapped, in the same transaction as the sale, purchase, count or production. If
+  something is rejected, not even the product is left. With similar ones, it is chosen as before.
+- **Producing something new:** "made a cake with 200 g of flour" creates the cake with that as its recipe and produces it. "made a cake"
+  and then "it takes 200 g of flour" too.
+- **The unit is changed on each line:** by tapping the line, among the product's units and those of its kind.
+- **The measure of the pound, the ounce and the gallon:** it changes from place to place, so the app doesn't assume it. The first time
+  grams are said of something kept in pounds, the line asks how much a pound weighs, with the usual values or **Other value**, and
+  converts right away. When registered, the measure is kept in the product, and from then on it converts on its own.
+
+### Fixed
+
+- **Thousands with a space:** "spent 200 000 on rent" stays at 200,000, also with the spaces that dictation puts in.
+- **A sale without a price:** a product without a price, like one created by producing it, asks for the price instead of being sold at
+  zero.
+- **Combos in a recipe:** an input that was said and that the recipe brings inside a combo is no longer counted twice.
+- **Sentences in English and Portuguese:** a customer who paid for what they took is a sale, and a card payment is no longer read as a
+  production.
+
 ## [1.0.7] - 2026-11-18
 
 ### Added

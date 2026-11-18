@@ -800,7 +800,7 @@ class PhraseScreenTest {
                         ),
                     paymentMethodId = CASH,
                 )
-            return PhraseReadResult(reading, catalog(), draft)
+            return PhraseReadResult(reading, catalog(), draft, PRICES)
         }
 
         /** Una venta ya clara: dos gaseosas grandes en efectivo. */
@@ -833,7 +833,7 @@ class PhraseScreenTest {
                         ),
                     paymentMethodId = CASH,
                 )
-            return PhraseReadResult(reading, catalog(), draft)
+            return PhraseReadResult(reading, catalog(), draft, PRICES)
         }
 
         /** Precios de la lista inicial y el último costo de la gaseosa grande. */

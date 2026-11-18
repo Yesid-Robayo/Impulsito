@@ -12,7 +12,7 @@ The first time, {app} explains what it uses the microphone for and Android asks 
 
 - Sales: "sold 2 kilos of rice and a dozen eggs on credit to Mary".
 - Purchases: "bought 10 kilos of flour for 500 from the distributor".
-- Something new, with its type and category: "bought 2 kilos of flour at 50, it's a supply, in the raw materials category". The card offers to create it as a supply in that category. If the category does not exist, the card shows it as **New category**, and it is created along with the product. **Choose category** changes it.
+- Something new, with its type and category: "bought 2 kilos of flour at 50, it's a supply, in the raw materials category". The card shows it as **New**, already as a supply in that category, and it is created when **Register** is tapped. If the category does not exist, the card shows it as **New category**, and it is created along with the product. **Choose category** changes it.
 - Expenses: "paid the electricity 80", "spent 15 on a taxi".
 - Production: "made 20 empanadas", "baked 50 bread rolls", or several at once: "made 10 empanadas and 5 bread rolls". With what went in: "made a cake with 200 grams of flour and 3 eggs".
 - Stock: "2 bread rolls got damaged", "3 milks expired", "gave away a cake", "there are 40 bread rolls left".
@@ -26,16 +26,19 @@ You can name several products in one sentence, with numbers in digits or in word
 ## Producing with what it takes
 
 - With a recipe, "made 20 empanadas" takes the inputs from the recipe, for the quantity produced.
+- Something that does not exist is created when registering, with what was said as its recipe: "made a cake with 200 grams of flour" creates the cake and produces it.
 - Without a recipe, the card says so and asks what it takes. With the card open, "it takes 200 grams of flour and 3 eggs", or just "200 grams of flour and 3 eggs". When **Register** is tapped, it is produced and what was said becomes its recipe, per unit: with "made 2 cakes with 400 grams of flour", the recipe keeps 200 grams per cake.
 - With a recipe and another quantity, like "made a cake with 250 grams of flour" when the recipe calls for 200, it is produced with what was said and the card shows what the recipe calls for. What was not named comes from the recipe, and an input the recipe does not have goes only into this batch. **Update the recipe** starts off; turned on, the recipe also keeps what was said.
 - Units of the same kind convert on their own: 200 grams of a flour kept by the kilo are 0.200 kg, and the same with milliliters and liters, or with a saved package, like a box. Between different kinds, like liters of something kept by the kilo, the quantity is left to complete in a unit of the product.
-- An input that does not exist is offered to be created as an input, with **Create "…"**, or another one is picked with **Choose another**. Until then, nothing is registered.
-- Everything is saved together: the recipe with the production, and the productions of the same phrase. If something fails, none is left.
+- The pound, the ounce and the gallon change from place to place, so {app} doesn't assume them. The first time grams are said of something kept by the pound, the line asks how much a pound of that product weighs, with the usual values or **Other value**, and converts right away. When registered, the measure is kept in the product, and from then on it converts on its own.
+- An input that does not exist and is not like any other shows as **New** and is created as an input when registering. If it is like others, one is picked, or **Create "…"**.
+- Everything is saved together: the new products, the recipe and the measure with the production, and the productions of the same phrase. If something fails, nothing is left.
 
 ## If something is not right
 
-- If a product matches several, the card shows them so you can choose. If it does not exist, the card offers to create it, or **Choose another**.
-- Tap a line to open **Edit**: change the quantity or the price, **Change product** or **Remove from the card**.
+- If a product matches several, the card shows them so you can choose, with **Create "…"** as one more option. If it does not exist and is not like any other, it stays as **New** and is created when registering; **Choose another** swaps it for one from the catalog.
+- Tap a line to open **Edit**: change the quantity, the unit or the price, **Change product** or **Remove from the card**.
+- A sale of a product without a price, like one created by producing it, asks for the price: "at 15 thousand", or in **Edit**.
 - You can also correct it with a short sentence, without repeating everything: "no, it was 3", "the flour was corn", "the flour is a supply", "remove the sodas", "add 2 eggs", "cash", "no, it was a purchase".
 - While the card is open, what you say adds to it or corrects it, and never clears what is already there. What you say without a verb, like "a kilo of flour" or "and 2 of sugar at 3 thousand", adds to the card's operation. A sentence of the same operation, like "I have a kilo of flour" on a count, also adds its products.
 - A product already on the card is corrected with the new quantity. In a sale or a purchase, "and" or "another" adds to it: "and another 2 bread rolls". In a count, what you say is what there is.

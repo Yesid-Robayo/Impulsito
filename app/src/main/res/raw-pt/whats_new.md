@@ -1,5 +1,12 @@
 O que cada versão do {app} trouxe, da mais nova para a mais antiga.
 
+## 1.0.8
+
+- **O que não existe é criado ao registrar:** um produto dito que não está e não se parece com nenhum aparece no cartão como **Novo** e é criado ao tocar em **Registrar**, junto com a operação. «fiz um bolo com 200 g de farinha» cria o bolo com isso como receita e o produz.
+- **A unidade muda na linha:** ao tocar na linha, escolhe-se outra unidade do produto. A libra, a onça e o galão mudam conforme o lugar: na primeira vez a linha pergunta quanto pesa uma libra daquele produto, e a partir daí converte sozinha.
+- **Milhares com espaço:** «gastei 200 000 no aluguel» fica em 200 000.
+- **Uma venda sem preço** pede o preço em vez de ser registrada em zero.
+
 ## 1.0.7
 
 - **O cartão soma e não apaga:** com o cartão aberto, o que se diz soma ou corrige. «tenho 1 quilo de queijo» e depois «um quilo de farinha» mantém as duas linhas; sem verbo, a frase segue a operação do cartão. Outra operação pergunta se começa outro cartão. No alto, **Operação** a muda sem perder as linhas. Uma contagem de vários produtos é registrada inteira.

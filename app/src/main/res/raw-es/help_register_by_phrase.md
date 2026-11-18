@@ -12,7 +12,7 @@ La primera vez, {app} explica para qué usa el micrófono y Android pide el perm
 
 - Ventas: «vendí 2 kilos de arroz y una docena de huevos a crédito a María».
 - Compras: «compré 10 kilos de harina por 500 a la distribuidora».
-- Algo nuevo, con su tipo y su categoría: «compré 2 kilos de harina a 50, es un insumo, en la categoría materias primas». La tarjeta ofrece crearlo ya como insumo y en esa categoría. Si la categoría no existe, la tarjeta la muestra como **Categoría nueva**, y se crea junto con el producto. **Elegir categoría** la cambia.
+- Algo nuevo, con su tipo y su categoría: «compré 2 kilos de harina a 50, es un insumo, en la categoría materias primas». La tarjeta lo muestra como **Nuevo**, ya como insumo y en esa categoría, y se crea al tocar **Registrar**. Si la categoría no existe, la tarjeta la muestra como **Categoría nueva**, y se crea junto con el producto. **Elegir categoría** la cambia.
 - Gastos: «pagué la luz 80», «gasté 15 en taxi».
 - Producción: «hice 20 empanadas», «horneé 50 panes», o varias a la vez: «hice 10 empanadas y 5 panes». Con lo que llevó: «hice un pastel con 200 gramos de harina y 3 huevos».
 - Stock: «se dañaron 2 panes», «se vencieron 3 leches», «regalé una torta», «quedan 40 panes».
@@ -26,16 +26,19 @@ Se pueden nombrar varios productos en una frase, con números en cifras o en pal
 ## Producir con lo que lleva
 
 - Con receta, «hice 20 empanadas» saca los insumos de la receta, por la cantidad producida.
+- Algo que no existe se crea al registrar, con lo dicho como su receta: «hice un pastel con 200 gramos de harina» crea el pastel y lo produce.
 - Sin receta, la tarjeta lo dice y pide decir qué lleva. Con la tarjeta abierta, «lleva 200 gramos de harina y 3 huevos», o solo «200 gramos de harina y 3 huevos». Al tocar **Registrar**, se produce y lo dicho queda como su receta, por cada unidad: con «hice 2 pasteles con 400 gramos de harina», la receta queda con 200 gramos por pastel.
 - Con receta y otra cantidad, como «hice un pastel con 250 gramos de harina» cuando la receta pide 200, se produce con lo dicho y la tarjeta muestra lo que pide la receta. Lo que no se nombró sale de la receta, y un insumo que la receta no lleva entra solo en esta producción. **Actualizar la receta** viene apagado; encendido, la receta también queda con lo dicho.
 - Las unidades de la misma clase se convierten solas: 200 gramos de una harina que se lleva por kilo son 0,200 kg, y lo mismo con mililitros y litros, o con una presentación guardada, como una caja. Entre clases distintas, como litros de algo que se lleva por kilo, la cantidad queda por completar en una unidad del producto.
-- Un insumo que no existe se ofrece crear como insumo, con **Crear "…"**, o se elige otro con **Elegir otro**. Hasta entonces, no se registra.
-- Todo se guarda junto: la receta con la producción, y las producciones de una misma frase. Si algo falla, no queda ninguna.
+- La libra, la onza y el galón cambian según el lugar, así que {app} no los supone. La primera vez que se dicen gramos de algo que se lleva por libra, la línea pregunta cuánto pesa una libra de ese producto, con los valores habituales u **Otro valor**, y convierte en el acto. Al registrar, la medida queda en el producto y desde ahí convierte sola.
+- Un insumo que no existe y no se parece a ninguno aparece como **Nuevo** y se crea como insumo al registrar. Si se parece a otros, se elige uno, o **Crear "…"**.
+- Todo se guarda junto: los productos nuevos, la receta y la medida con la producción, y las producciones de una misma frase. Si algo falla, no queda nada.
 
 ## Si algo no quedó bien
 
-- Si un producto se parece a varios, la tarjeta los muestra para elegir. Si no existe, ofrece crearlo, o **Elegir otro**.
-- Tocar una línea abre **Corregir**: se cambia la cantidad o el precio, **Cambiar producto** o **Quitar de la tarjeta**.
+- Si un producto se parece a varios, la tarjeta los muestra para elegir, con **Crear "…"** como una opción más. Si no existe y no se parece a ninguno, queda como **Nuevo** y se crea al registrar; **Elegir otro** lo cambia por uno del catálogo.
+- Tocar una línea abre **Corregir**: se cambia la cantidad, la unidad o el precio, **Cambiar producto** o **Quitar de la tarjeta**.
+- Una venta de un producto sin precio, como uno creado al producirlo, pide el precio: «a 15 mil», o en **Corregir**.
 - También se corrige con una frase corta, sin repetir todo: «no, eran 3», «la harina era de maíz», «la harina es insumo», «quita las gaseosas», «agrega 2 huevos», «en efectivo», «no, fue una compra».
 - Con la tarjeta a la vista, lo dicho se suma o corrige, y nunca borra lo que ya está. Lo dicho sin verbo, como «un kilo de harina» o «y 2 de azúcar a 3 mil», se suma a la operación de la tarjeta. Una frase de la misma operación, como «tengo un kilo de harina» sobre un conteo, también suma sus productos.
 - Un producto que ya está en la tarjeta se corrige con la cantidad nueva. En una venta o una compra se suma con «y» u «otros»: «y otros 2 panes». En un conteo, lo dicho es lo que hay.

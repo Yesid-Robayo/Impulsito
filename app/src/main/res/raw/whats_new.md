@@ -1,5 +1,12 @@
 What each version of {app} brought, newest first.
 
+## 1.0.8
+
+- **What doesn't exist is created when registering:** a product that is said, isn't there and isn't like any other shows on the card as **New** and is created when **Register** is tapped, together with the operation. "made a cake with 200 g of flour" creates the cake with that as its recipe and produces it.
+- **The unit is changed on the line:** tapping the line chooses another unit of the product. The pound, the ounce and the gallon change from place to place: the first time, the line asks how much a pound of that product weighs, and from then on it converts on its own.
+- **Thousands with a space:** "spent 200 000 on rent" stays at 200,000.
+- **A sale without a price** asks for the price instead of being registered at zero.
+
 ## 1.0.7
 
 - **The card adds and never clears:** with the card open, what is said adds or corrects. "I have 1 kilo of cheese" and then "a kilo of flour" keeps both lines; without a verb, the sentence follows the card's operation. Another operation asks whether to start another card. At the top, **Transaction** changes it without losing the lines. A count of several products is registered in full.
