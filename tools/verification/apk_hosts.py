@@ -404,7 +404,7 @@ class Policy:
         self.destinations = {host: suggestion for host in WEBDAV_SUGGESTION_HOSTS}
         self.links = dict(LINK_HOSTS)
         if update_host:
-            self.destinations[update_host] = "Aviso de versión firmado, solo al tocar Buscar actualización"
+            self.destinations[update_host] = "Aviso de versión firmado, una vez al día y al tocar Buscar actualización"
             self.links.setdefault(update_host, "Páginas públicas de la app")
         if release_host:
             self.destinations.setdefault(
